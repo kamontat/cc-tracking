@@ -1,0 +1,32 @@
+{
+  "name": "credit-cards-usage",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "imports": {
+    "#lib/*": "./src/lib/*",
+    "#components/*": "./src/components/*"
+  },
+  "scripts": {
+    "dev": "bun-server dev --mode mpa",
+    "build": "bun-server build --mode mpa",
+    "preview": "bun-server preview"
+  },
+  "dependencies": {
+    "@kctools/bun-server": "0.2.0",
+    "@picocss/pico": "2.1.1",
+    "lit": "3.3.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@happy-dom/global-registrator": "20.14.3",
+    "@kcconfigs/biome": "2.0.5",
+    "@kcconfigs/tsconfig": "1.1.7",
+    "@types/bun": "1.4.2",
+    "typescript-language-server": "6.0.0",
+    "wrangler": "4.131.0"
+  },
+  "peerDependencies": {
+    "typescript": "7.0.2"
+  }
+}

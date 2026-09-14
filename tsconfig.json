@@ -1,0 +1,3 @@
+{
+  "extends": [ "@kcconfigs/tsconfig/bun", "@kcconfigs/tsconfig/features/lit" ]
+}
