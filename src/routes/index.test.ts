@@ -47,6 +47,119 @@ class RejectingPaymentRepository extends InMemoryRepository {
 	}
 }
 
+/** A repository whose savePurchase always rejects, to exercise the failure path in isolation. */
+class RejectingPurchaseRepository extends InMemoryRepository {
+	override savePurchase(): Promise<void> {
+		return Promise.reject(new Error("disk is full"));
+	}
+}
+
+// closeDay 18, dueOffsetDays 15: a purchase on the 18th closes that same month's
+// statement; one on the 19th spills into the following month's statement instead.
+const quickAddCard: Card = {
+	id: "scb",
+	name: "SCB Mastercard",
+	last4: "1234",
+	location: "Bangkok",
+	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+	archived: false,
+};
+
+const fillQuickAdd = (quickAdd: HTMLElement, name: string, value: string) => {
+	const field = quickAdd.shadowRoot?.querySelector<
+		HTMLInputElement | HTMLSelectElement
+	>(`[name="${name}"]`);
+	if (!field) throw new Error(`no field named ${name}`);
+	field.value = value;
+	field.dispatchEvent(new Event("input", { bubbles: true }));
+};
+
+const submitQuickAdd = (quickAdd: HTMLElement) =>
+	quickAdd.shadowRoot
+		?.querySelector("form")
+		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+test("a purchase dated on the close day lands on that statement", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = root.querySelector("cc-quick-add");
+	await quickAdd?.updateComplete;
+	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+
+	fillQuickAdd(quickAdd, "cardId", "scb");
+	fillQuickAdd(quickAdd, "date", "2026-09-18");
+	fillQuickAdd(quickAdd, "amount", "500");
+	fillQuickAdd(quickAdd, "note", "dinner");
+	submitQuickAdd(quickAdd);
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
+	const purchases = await repo.listPurchases("scb");
+	expect(purchases).toHaveLength(1);
+	expect(purchases[0]).toMatchObject({
+		cardId: "scb",
+		date: "2026-09-18",
+		amount: 50_000,
+		note: "dinner",
+	});
+	expect(quickAdd.answer).toBe(
+		"Lands on the statement closing 18 Sep 2026 — pay by 3 Oct 2026.",
+	);
+	await quickAdd.updateComplete;
+	expect(quickAdd.shadowRoot?.textContent).toContain("pay by 3 Oct 2026");
+});
+
+test("a purchase dated the day after the close day lands on the next statement", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = root.querySelector("cc-quick-add");
+	await quickAdd?.updateComplete;
+	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+
+	fillQuickAdd(quickAdd, "cardId", "scb");
+	fillQuickAdd(quickAdd, "date", "2026-09-19");
+	fillQuickAdd(quickAdd, "amount", "500");
+	submitQuickAdd(quickAdd);
+	await settle();
+
+	const purchases = await repo.listPurchases("scb");
+	expect(purchases).toHaveLength(1);
+	expect(purchases[0]?.date).toBe("2026-09-19");
+	expect(quickAdd.answer).toBe(
+		"Lands on the statement closing 18 Oct 2026 — pay by 2 Nov 2026.",
+	);
+});
+
+test("a failed purchase save leaves a message in the banner and stores nothing", async () => {
+	const repo = new RejectingPurchaseRepository();
+	await repo.saveCard(quickAddCard);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = root.querySelector("cc-quick-add");
+	await quickAdd?.updateComplete;
+	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+
+	fillQuickAdd(quickAdd, "cardId", "scb");
+	fillQuickAdd(quickAdd, "date", "2026-09-18");
+	fillQuickAdd(quickAdd, "amount", "500");
+	submitQuickAdd(quickAdd);
+	await settle();
+
+	expect(bannerMessage(root)).toContain("disk is full");
+	expect(await repo.listPurchases("scb")).toEqual([]);
+	expect(quickAdd.answer).toBe("");
+});
+
 test("a failed mark-paid keeps its error message after the refresh that follows it", async () => {
 	const repo = new RejectingPaymentRepository();
 	await repo.saveCard(card);

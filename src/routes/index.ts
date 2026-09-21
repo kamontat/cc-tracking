@@ -1,9 +1,12 @@
 import "@picocss/pico/css/pico.min.css";
 import "#components/cc-due-list.ts";
 import "#components/cc-error-banner.ts";
+import "#components/cc-quick-add.ts";
 import { html, render } from "lit";
 import type { DueRow } from "#components/cc-due-list.ts";
-import { today } from "#lib/domain/date.ts";
+import type { QuickAddDetail } from "#components/cc-quick-add.ts";
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
+import { displayDate, today } from "#lib/domain/date.ts";
 import { nextActionable } from "#lib/domain/statement.ts";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
 import type { Repository } from "#lib/storage/repository.ts";
@@ -16,6 +19,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
 	let error = "";
+	let answer = "";
 
 	const load = async (preserveError = false) => {
 		try {
@@ -66,6 +70,24 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			});
 		}, "Could not record the payment.");
 
+	const onAdd = (event: CustomEvent<QuickAddDetail>) =>
+		guard(async () => {
+			const { cardId, date, amount, note } = event.detail;
+			const card = cards.find((c) => c.id === cardId);
+			if (!card) return;
+			await repo.savePurchase({
+				id: crypto.randomUUID(),
+				cardId,
+				date,
+				amount,
+				note,
+			});
+			const period = periodOfPurchase(card.cycle, date);
+			answer =
+				`Lands on the statement closing ${displayDate(closeDateOf(card.cycle, period))}` +
+				` — pay by ${displayDate(dueDateOf(card.cycle, period))}.`;
+		}, "Could not save the purchase.");
+
 	const rows = (): DueRow[] =>
 		cards.map((card) => ({
 			card,
@@ -80,6 +102,10 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				<article>
 					<h2>Due next</h2>
 					<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
+				</article>
+				<article>
+					<h2>Add a purchase</h2>
+					<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 				</article>
 			`,
 			root,
