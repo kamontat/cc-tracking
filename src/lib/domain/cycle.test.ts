@@ -22,6 +22,12 @@ describe("closeDateOf", () => {
 		expect(closeDateOf(endOfMonth, "2026-02")).toBe("2026-02-28");
 		expect(closeDateOf(endOfMonth, "2026-04")).toBe("2026-04-30");
 	});
+
+	test("clamps into a leap-year February instead of a common one", () => {
+		expect(closeDateOf(endOfMonth, "2028-02")).toBe("2028-02-29");
+		expect(closeDateOf(endOfMonth, "2000-02")).toBe("2000-02-29"); // divisible by 400
+		expect(closeDateOf(endOfMonth, "1900-02")).toBe("1900-02-28"); // century, not by 400
+	});
 });
 
 describe("dueDateOf, offset rule", () => {

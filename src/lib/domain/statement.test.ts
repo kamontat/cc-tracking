@@ -146,12 +146,24 @@ describe("urgencyOf", () => {
 		expect(urgencyOf(september, "2026-09-10")).toBe("future");
 	});
 
+	test("is future exactly on the close date", () => {
+		expect(urgencyOf(september, "2026-09-18")).toBe("future");
+	});
+
 	test("is overdue after the due date", () => {
 		expect(urgencyOf(september, "2026-10-04")).toBe("overdue");
 	});
 
 	test("is soon within seven days of the due date", () => {
 		expect(urgencyOf(september, "2026-09-28")).toBe("soon");
+	});
+
+	test("is soon exactly seven days before the due date", () => {
+		expect(urgencyOf(september, "2026-09-26")).toBe("soon");
+	});
+
+	test("is soon exactly on the due date, zero days out", () => {
+		expect(urgencyOf(september, "2026-10-03")).toBe("soon");
 	});
 
 	test("is open when closed but still far from due", () => {
@@ -168,5 +180,50 @@ describe("urgencyOf", () => {
 		};
 		const paid = buildStatement(card, "2026-09", purchases, payment);
 		expect(urgencyOf(paid, "2026-10-10")).toBe("open");
+	});
+});
+
+describe("a fixed-rule card", () => {
+	// Closes the 18th, due day 5 <= close day 18, so due date rolls into the next month.
+	const fixedCard: Card = {
+		id: "scb",
+		name: "SCB Mastercard",
+		last4: "1234",
+		location: "Bangkok",
+		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
+		archived: false,
+	};
+
+	const fixedPurchases: Purchase[] = [
+		{ id: "x", cardId: "scb", date: "2026-09-05", amount: 10_000, note: "x" },
+		{ id: "y", cardId: "scb", date: "2026-09-18", amount: 25_000, note: "y" },
+		{ id: "z", cardId: "scb", date: "2026-09-19", amount: 50_000, note: "z" },
+	];
+
+	test("buildStatement collects the period's purchases and computes fixed-rule dates", () => {
+		const statement = buildStatement(fixedCard, "2026-09", fixedPurchases);
+		expect(statement.purchases.map((p) => p.id)).toEqual(["x", "y"]);
+		expect(statement.total).toBe(35_000);
+		expect(statement.closeDate).toBe("2026-09-18");
+		expect(statement.dueDate).toBe("2026-10-05");
+	});
+
+	test("nextActionable finds the oldest closed unpaid statement", () => {
+		const statement = nextActionable(
+			fixedCard,
+			fixedPurchases,
+			[],
+			"2026-09-25",
+		);
+		expect(statement.period).toBe("2026-09");
+		expect(statement.paid).toBe(false);
+	});
+
+	test("urgencyOf tracks close and due dates", () => {
+		const statement = buildStatement(fixedCard, "2026-09", fixedPurchases);
+		expect(urgencyOf(statement, "2026-09-10")).toBe("future");
+		expect(urgencyOf(statement, "2026-09-18")).toBe("future");
+		expect(urgencyOf(statement, "2026-09-19")).toBe("open");
+		expect(urgencyOf(statement, "2026-10-06")).toBe("overdue");
 	});
 });
