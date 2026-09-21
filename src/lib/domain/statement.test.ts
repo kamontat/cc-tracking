@@ -106,6 +106,27 @@ describe("nextActionable", () => {
 		expect(statement.period).toBe("2026-09");
 		expect(statement.total).toBe(0);
 	});
+
+	test("skips empty periods and returns the first period with unpaid purchases", () => {
+		// January has purchases and is paid; Feb-May are empty; June has a purchase.
+		// From 2026-05-25, the open period is June; the walk should skip Feb-May empties
+		// and return June's statement, not stop at February's empty ฿0.00.
+		const januaryPayment: StatementPayment = {
+			cardId: "kbank",
+			period: "2026-01",
+			paidAt: "2026-02-15",
+			closeDate: "2026-01-18",
+			dueDate: "2026-02-02",
+		};
+		const purchases2 = [
+			purchase("jan", "2026-01-10", 50_000),
+			purchase("jun", "2026-06-10", 100_000),
+		];
+		const statement = nextActionable(card, purchases2, [januaryPayment], "2026-05-25");
+		expect(statement.period).toBe("2026-06");
+		expect(statement.total).toBe(100_000);
+		expect(statement.paid).toBe(false);
+	});
 });
 
 describe("urgencyOf", () => {

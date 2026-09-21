@@ -75,7 +75,7 @@ export function nextActionable(
 	let period = earliest && comparePeriods(earliest, open) < 0 ? earliest : open;
 	while (comparePeriods(period, open) < 0) {
 		const statement = buildStatement(card, period, purchases, paymentFor(period));
-		if (!statement.paid) return statement;
+		if (!statement.paid && statement.total > 0) return statement;
 		period = addPeriods(period, 1);
 	}
 	return buildStatement(card, open, purchases, paymentFor(open));
