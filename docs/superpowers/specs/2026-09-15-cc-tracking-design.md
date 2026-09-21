@@ -104,8 +104,10 @@ set use different conventions.
 All date logic lives in pure functions with no storage or DOM dependency, and
 carries the bulk of the test suite.
 
-- Timezone is fixed to Asia/Bangkok. Dates are plain `YYYY-MM-DD` strings; the
-  `Date` object is not used for calendar arithmetic, to avoid timezone drift.
+- Timezone is fixed to Asia/Bangkok. Dates are plain `YYYY-MM-DD` strings. Local-time
+  `Date` values are never read or constructed, because they drift with the host
+  timezone; day arithmetic goes through `Date.UTC` and `getUTC*`, which do not, and
+  the clock is read only through `Intl.DateTimeFormat` with an explicit `timeZone`.
 - Day-of-month clamping: a `closeDay` or `dueDay` of 31 resolves to 28 or 29 in
   February, and to 30 in 30-day months.
 - `offset` rule: due date is the close date plus N calendar days. No clamping needed.

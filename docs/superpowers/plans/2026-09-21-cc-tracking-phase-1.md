@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Bun only. `bun test`, `bun run`, `bun install`, `bunx`. Never npm, node, jest, vitest, or ts-node.
-- Timezone is fixed to `Asia/Bangkok`. Dates are `YYYY-MM-DD` strings; never use a `Date` object for calendar arithmetic, only as a clock reading.
+- Timezone is fixed to `Asia/Bangkok`. Dates are `YYYY-MM-DD` strings. Never read or construct local-time `Date` values (`new Date(y, m, d)`, `getFullYear`, `getMonth`, `getDate`) — they drift with the host timezone. `Date.UTC` with `getUTC*` readers is permitted for day arithmetic, because it is timezone-independent, and `Intl.DateTimeFormat` with an explicit `timeZone` is the one way to read the clock.
 - Money is stored and computed as **satang integers**. Never a float. Display only through `formatAmount`.
 - `src/lib/domain/**` imports nothing from `src/lib/storage/**`, and never references `localStorage`, `fetch`, `window`, or `document`.
 - Components receive a repository through a property. A component never constructs one.
