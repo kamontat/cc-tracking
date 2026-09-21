@@ -150,5 +150,15 @@ export function repositoryContract(name: string, create: () => Repository): void
 			if (card) card.name = "mutated";
 			expect((await repo.getCard("kbank"))?.name).toBe("KBank Visa");
 		});
+
+		test("saving a purchase with the same id but different date replaces it, not appends", async () => {
+			await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }));
+			// Save the same purchase id with a different date WITHOUT deleting first.
+			await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-25" }));
+
+			const purchases = await repo.listPurchases("kbank");
+			expect(purchases).toHaveLength(1);
+			expect(purchases[0]?.date).toBe("2026-09-25");
+		});
 	});
 }

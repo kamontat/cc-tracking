@@ -6,9 +6,11 @@ const CARD = `${PREFIX}card:`;
 const PURCHASE = `${PREFIX}purchase:`;
 const PAYMENT = `${PREFIX}payment:`;
 
-export const cardKey = (cardId: string): string => `${CARD}${cardId}`;
-export const purchaseKey = (p: Purchase): string => `${PURCHASE}${p.cardId}:${p.date}:${p.id}`;
-export const paymentKey = (cardId: string, period: string): string => `${PAYMENT}${cardId}:${period}`;
+export const cardKey = (cardId: string): string => `${CARD}${encodeURIComponent(cardId)}`;
+export const purchaseKey = (p: Purchase): string =>
+	`${PURCHASE}${encodeURIComponent(p.cardId)}:${encodeURIComponent(p.date)}:${encodeURIComponent(p.id)}`;
+export const paymentKey = (cardId: string, period: string): string =>
+	`${PAYMENT}${encodeURIComponent(cardId)}:${encodeURIComponent(period)}`;
 
 /** Phase 1 store. Key shapes match the Cloudflare KV layout so phase 2 is a drop-in. */
 export class LocalStorageRepository implements Repository {
@@ -66,24 +68,27 @@ export class LocalStorageRepository implements Repository {
 
 	async listPurchases(cardId: string, from?: string, to?: string): Promise<Purchase[]> {
 		// Keys sort by date because the date sits before the id in the key.
-		return this.readAll<Purchase>(`${PURCHASE}${cardId}:`)
+		return this.readAll<Purchase>(`${PURCHASE}${encodeURIComponent(cardId)}:`)
 			.filter((p) => (from ? p.date >= from : true))
 			.filter((p) => (to ? p.date <= to : true));
 	}
 
 	async savePurchase(purchase: Purchase): Promise<void> {
+		// Delete any existing entry with the same cardId:id, regardless of date.
+		await this.deletePurchase(purchase.cardId, purchase.id);
 		this.write(purchaseKey(purchase), purchase);
 	}
 
 	async deletePurchase(cardId: string, id: string): Promise<void> {
-		const suffix = `:${id}`;
-		for (const key of this.keysWithPrefix(`${PURCHASE}${cardId}:`)) {
-			if (key.endsWith(suffix)) this.storage.removeItem(key);
+		const encodedId = encodeURIComponent(id);
+		for (const key of this.keysWithPrefix(`${PURCHASE}${encodeURIComponent(cardId)}:`)) {
+			const segments = key.split(":");
+			if (segments[segments.length - 1] === encodedId) this.storage.removeItem(key);
 		}
 	}
 
 	async listPayments(cardId: string): Promise<StatementPayment[]> {
-		return this.readAll<StatementPayment>(`${PAYMENT}${cardId}:`);
+		return this.readAll<StatementPayment>(`${PAYMENT}${encodeURIComponent(cardId)}:`);
 	}
 
 	async savePayment(payment: StatementPayment): Promise<void> {

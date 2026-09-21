@@ -58,4 +58,25 @@ describe("LocalStorageRepository key layout", () => {
 		const repo = new LocalStorageRepository(failing);
 		await expect(repo.saveCard(sampleCard())).rejects.toThrow(StorageError);
 	});
+
+	test("isolates card data when card ids contain colons", async () => {
+		const repo = new LocalStorageRepository(freshStorage());
+		// Save two cards where one id is a prefix of the other
+		await repo.saveCard(sampleCard({ id: "abc" }));
+		await repo.saveCard(sampleCard({ id: "abc:def" }));
+
+		// Save purchases for both cards
+		await repo.savePurchase(samplePurchase({ id: "p1", cardId: "abc", date: "2026-09-05" }));
+		await repo.savePurchase(samplePurchase({ id: "p2", cardId: "abc:def", date: "2026-09-10" }));
+
+		// Verify each card only sees its own purchases
+		const abcPurchases = await repo.listPurchases("abc");
+		const abcDefPurchases = await repo.listPurchases("abc:def");
+
+		expect(abcPurchases).toHaveLength(1);
+		expect(abcPurchases[0]?.id).toBe("p1");
+
+		expect(abcDefPurchases).toHaveLength(1);
+		expect(abcDefPurchases[0]?.id).toBe("p2");
+	});
 });
