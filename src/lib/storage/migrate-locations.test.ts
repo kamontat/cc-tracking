@@ -81,4 +81,5 @@ test("a corrupt notice reads as no notice", () => {
 	storage.setItem(MIGRATION_KEY, "{not json");
 
 	expect(takeResetNotice(storage)).toEqual([]);
+	expect(storage.getItem(MIGRATION_KEY)).toBeNull();
 });

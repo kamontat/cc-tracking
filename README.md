@@ -20,8 +20,8 @@ bun run check      # biome check
 - `/` — statements due next, quick purchase entry, cards grouped by location
 - `/cards` — the card registry, and JSON backup export and import. When adding
   or editing a card, you choose its physical location from a dropdown: one of
-  Bangkok, Phichit, or Krabi. Cards found to have a free-text location from an
-  older backup are automatically reset to Bangkok once at startup; the page then
+  Bangkok, Phichit, or Krabi. Cards already stored in this browser from before
+  the locations were fixed are reset to Bangkok once at startup; the page then
   names those cards, once, with a Dismiss button, so you can pick the correct
   location by hand.
 - `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
@@ -62,11 +62,13 @@ already there. A file that is not valid JSON, is missing its expected lists,
 has a card/purchase/payment with the wrong shape, or was written by a
 different backup version is rejected with a message naming what was wrong,
 and nothing is imported. A backup whose card names any location other than
-the three known places is rejected by card name — for instance, a card might be
-rejected with That backup's card #1 has a location that is not bangkok, phichit,
-or krabi. — and nothing is imported. Import itself is not atomic, though: it writes cards, then
-purchases, then payments one at a time, so a failure partway through (for
-instance, storage filling up) can leave some records imported and others not.
+the three known places is rejected by its position in the file — for instance,
+a card might be rejected with
+`That backup's card #1 has a location that is not bangkok, phichit, or krabi.`
+— and nothing is imported. Import itself is not atomic, though: it writes
+cards, then purchases, then payments one at a time, so a failure partway
+through (for instance, storage filling up) can leave some records imported
+and others not.
 
 ## Design and plans
 
