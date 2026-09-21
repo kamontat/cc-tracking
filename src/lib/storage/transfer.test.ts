@@ -95,6 +95,62 @@ describe("parseBackup", () => {
 			/not a readable backup/i,
 		);
 	});
+
+	test("rejects a card that is missing its required fields", () => {
+		expect(() =>
+			parseBackup(
+				JSON.stringify({
+					version: 1,
+					cards: [{}],
+					purchases: [],
+					payments: [],
+				}),
+			),
+		).toThrow(/card #1/i);
+	});
+
+	test("rejects a purchase with a non-integer amount", () => {
+		expect(() =>
+			parseBackup(
+				JSON.stringify({
+					version: 1,
+					cards: [],
+					purchases: [
+						{
+							id: "p1",
+							cardId: "kbank",
+							date: "2026-09-05",
+							amount: 100.5,
+							note: "",
+						},
+					],
+					payments: [],
+				}),
+			),
+		).toThrow(/non-integer amount/i);
+	});
+
+	test("rejects a string version, even one that looks like the right number", () => {
+		expect(() =>
+			parseBackup(
+				JSON.stringify({
+					version: "1",
+					cards: [],
+					purchases: [],
+					payments: [],
+				}),
+			),
+		).toThrow(/version/i);
+	});
+
+	test("a valid backup still round-trips", async () => {
+		const backup = await exportBackup(await populated());
+		const parsed = parseBackup(JSON.stringify(backup));
+
+		expect(parsed.cards.map((c) => c.id)).toEqual(["kbank", "scb"]);
+		expect(parsed.purchases.map((p) => p.id)).toEqual(["p1", "p2"]);
+		expect(parsed.payments).toHaveLength(1);
+	});
 });
 
 describe("importBackup", () => {
