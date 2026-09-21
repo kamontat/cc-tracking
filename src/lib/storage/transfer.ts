@@ -1,4 +1,5 @@
 import { isValidDate } from "#lib/domain/date";
+import { toLocation } from "#lib/domain/location";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
 import type { Repository } from "#lib/storage/repository";
 
@@ -77,8 +78,8 @@ function cardProblem(value: unknown): string | null {
 	if (!isNonEmptyString(prop(value, "id"))) return "is missing an id";
 	if (!isNonEmptyString(prop(value, "name"))) return "is missing a name";
 	if (!isNonEmptyString(prop(value, "last4"))) return "is missing last4";
-	if (!isNonEmptyString(prop(value, "location")))
-		return "is missing a location";
+	if (toLocation(prop(value, "location")) === null)
+		return "has a location that is not bangkok, phichit, or krabi";
 	return cycleProblem(prop(value, "cycle"));
 }
 

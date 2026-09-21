@@ -147,6 +147,52 @@ describe("parseBackup", () => {
 		expect(parsed.purchases.map((p) => p.id)).toEqual(["p1", "p2"]);
 		expect(parsed.payments).toHaveLength(1);
 	});
+
+	test("rejects a backup whose card has an unknown location", () => {
+		const backup = {
+			version: 1,
+			exportedAt: "2026-09-21T00:00:00.000Z",
+			cards: [
+				{
+					id: "kbank",
+					name: "KBank Visa",
+					last4: "4821",
+					location: "Chiang Mai",
+					cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+					archived: false,
+				},
+			],
+			purchases: [],
+			payments: [],
+		};
+
+		expect(() => parseBackup(JSON.stringify(backup))).toThrow(
+			"That backup's card #1 has a location that is not bangkok, phichit, or krabi.",
+		);
+	});
+
+	test("accepts a backup whose card location is a known key", () => {
+		const backup = {
+			version: 1,
+			exportedAt: "2026-09-21T00:00:00.000Z",
+			cards: [
+				{
+					id: "kbank",
+					name: "KBank Visa",
+					last4: "4821",
+					location: "phichit",
+					cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+					archived: false,
+				},
+			],
+			purchases: [],
+			payments: [],
+		};
+
+		expect(parseBackup(JSON.stringify(backup)).cards[0]?.location).toBe(
+			"phichit",
+		);
+	});
 });
 
 describe("importBackup", () => {
