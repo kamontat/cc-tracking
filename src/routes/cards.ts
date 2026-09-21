@@ -2,8 +2,9 @@ import "@picocss/pico/css/pico.min.css";
 import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import type { Card } from "#lib/domain/types";
+import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
 import { bootstrap } from "#lib/ui/page";
@@ -26,10 +27,16 @@ export async function prepareBackupFile(
 }
 
 /** Renders the card registry page into `root`, wiring it to `repo`. Exported for tests and for Task 14 to extend. */
-export function renderCardsPage(repo: Repository, root: HTMLElement): void {
+export function renderCardsPage(
+	repo: Repository,
+	root: HTMLElement,
+	storage: Storage = globalThis.localStorage,
+): void {
 	let cards: Card[] = [];
 	let counts: Record<string, number> = {};
 	let editing: Card | null = null;
+	// Read once per page load: the notice is consumed here, not on every paint.
+	let resetNames = takeResetNotice(storage);
 
 	const state = createPageState({
 		fetch: async () => {
@@ -110,6 +117,23 @@ export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 			html`
 				<h1>Cards</h1>
 				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
+				${
+					resetNames.length > 0
+						? html`
+							<article data-testid="location-reset">
+								<p>
+									These cards were kept somewhere this app no longer recognises, so their
+									location was set to Bangkok: <strong>${resetNames.join(", ")}</strong>.
+									Edit each one to pick the right place.
+								</p>
+								<button class="secondary" type="button" @click=${() => {
+									resetNames = [];
+									paint();
+								}}>Dismiss</button>
+							</article>
+						`
+						: nothing
+				}
 				<article>
 					<h2>${editing ? `Edit ${editing.name}` : "Add a card"}</h2>
 					<cc-card-form

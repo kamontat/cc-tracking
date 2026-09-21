@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Card } from "#lib/domain/types";
+import { MIGRATION_KEY } from "#lib/storage/migrate-locations";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { exportBackup, parseBackup } from "#lib/storage/transfer";
 import { prepareBackupFile, renderCardsPage } from "./cards";
@@ -227,4 +228,26 @@ test("clicking Export JSON does not raise an error", async () => {
 	await settle();
 
 	expect(bannerMessage(root)).toBe("");
+});
+
+test("names the cards whose location was reset, once", async () => {
+	const repo = new InMemoryRepository();
+	const root = mount();
+	const storage = globalThis.localStorage;
+	storage.clear();
+	storage.setItem(MIGRATION_KEY, JSON.stringify(["KBank Visa", "SCB"]));
+
+	renderCardsPage(repo, root, storage);
+	await settle();
+
+	const notice = root.querySelector('[data-testid="location-reset"]');
+	expect(notice?.textContent).toContain("KBank Visa");
+	expect(notice?.textContent).toContain("SCB");
+	expect(storage.getItem(MIGRATION_KEY)).toBeNull();
+
+	// A second render of a fresh page must not repeat it.
+	const second = mount();
+	renderCardsPage(repo, second, storage);
+	await settle();
+	expect(second.querySelector('[data-testid="location-reset"]')).toBeNull();
 });
