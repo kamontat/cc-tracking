@@ -13,6 +13,7 @@ export function bootstrap(render: (repo: Repository) => void): void {
 	try {
 		render(createRepository());
 	} catch (error) {
+		console.error(error);
 		const banner = document.createElement("cc-error-banner");
 		banner.message =
 			error instanceof StorageUnavailableError
@@ -20,6 +21,7 @@ export function bootstrap(render: (repo: Repository) => void): void {
 				: "Something went wrong starting the page.";
 		banner.retryLabel = "Reload";
 		banner.addEventListener("retry", () => location.reload());
-		document.querySelector("main")?.prepend(banner);
+		const target = document.querySelector("main") ?? document.body;
+		target.prepend(banner);
 	}
 }
