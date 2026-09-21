@@ -72,6 +72,15 @@ export function repositoryContract(name: string, create: () => Repository): void
 			expect(await repo.getCard("kbank")).toBeNull();
 		});
 
+		test("lists cards sorted by id in ascending order", async () => {
+			await repo.saveCard(sampleCard({ id: "scb" }));
+			await repo.saveCard(sampleCard());
+			const cards = await repo.listCards();
+			expect(cards).toHaveLength(2);
+			expect(cards[0]?.id).toBe("kbank");
+			expect(cards[1]?.id).toBe("scb");
+		});
+
 		test("lists purchases of one card only, sorted by date", async () => {
 			await repo.savePurchase(samplePurchase({ id: "p2", date: "2026-09-20" }));
 			await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }));
@@ -96,6 +105,20 @@ export function repositoryContract(name: string, create: () => Repository): void
 			const purchases = await repo.listPurchases("kbank");
 			expect(purchases).toHaveLength(1);
 			expect(purchases[0]?.amount).toBe(25_000);
+		});
+
+		test("saves and lists purchases independently per card", async () => {
+			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank" }));
+			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "scb", date: "2026-09-09" }));
+
+			const kbankPurchases = await repo.listPurchases("kbank");
+			const scbPurchases = await repo.listPurchases("scb");
+
+			expect(kbankPurchases).toHaveLength(1);
+			expect(kbankPurchases[0]?.date).toBe("2026-09-05");
+
+			expect(scbPurchases).toHaveLength(1);
+			expect(scbPurchases[0]?.date).toBe("2026-09-09");
 		});
 
 		test("deletes a purchase", async () => {
