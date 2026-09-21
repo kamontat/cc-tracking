@@ -1,10 +1,11 @@
 import { expect, test } from "bun:test";
 import "#components/cc-location-groups";
 import type { DueRow } from "#components/cc-due-list";
+import type { Location } from "#lib/domain/location";
 import { buildStatement } from "#lib/domain/statement";
 import type { Card } from "#lib/domain/types";
 
-const card = (id: string, location: string): Card => ({
+const card = (id: string, location: Location): Card => ({
 	id,
 	name: `Card ${id}`,
 	last4: "0000",
@@ -27,7 +28,7 @@ const mount = async (rows: DueRow[]) => {
 
 test("groups cards by location and counts them", async () => {
 	const element = await mount(
-		rowsFor(card("a", "Krabi"), card("b", "Krabi"), card("c", "Bangkok")),
+		rowsFor(card("a", "krabi"), card("b", "krabi"), card("c", "bangkok")),
 	);
 	const text = element.shadowRoot?.textContent ?? "";
 	expect(text).toContain("Bangkok (1)");
@@ -35,18 +36,13 @@ test("groups cards by location and counts them", async () => {
 });
 
 test("names the soonest due date in each group", async () => {
-	const element = await mount(rowsFor(card("a", "Krabi")));
+	const element = await mount(rowsFor(card("a", "krabi")));
 	expect(element.shadowRoot?.textContent).toContain("3 Oct 2026");
 });
 
 test("starts collapsed", async () => {
-	const element = await mount(rowsFor(card("a", "Krabi")));
+	const element = await mount(rowsFor(card("a", "krabi")));
 	expect(
 		element.shadowRoot?.querySelector("details")?.hasAttribute("open"),
 	).toBe(false);
-});
-
-test("falls back to Unknown for a card with an empty location", async () => {
-	const element = await mount(rowsFor(card("a", "")));
-	expect(element.shadowRoot?.textContent).toContain("Unknown (1)");
 });

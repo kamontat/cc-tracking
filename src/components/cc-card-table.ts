@@ -1,6 +1,7 @@
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { describeCycle } from "#lib/domain/cycle";
+import { locationLabel } from "#lib/domain/location";
 import type { Card } from "#lib/domain/types";
 
 @customElement("cc-card-table")
@@ -29,7 +30,7 @@ export class CcCardTable extends LitElement {
 								<td><a href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.id}</a></td>
 								<td>${card.name}${card.archived ? html` <small>(archived)</small>` : ""}</td>
 								<td>••••${card.last4}</td>
-								<td>${card.location}</td>
+								<td>${locationLabel(card.location)}</td>
 								<td>${describeCycle(card.cycle)}</td>
 								<td>${card.comment ?? ""}</td>
 								<td>

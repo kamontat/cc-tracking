@@ -47,7 +47,7 @@ const sampleCard: Card = {
 	id: "kbank",
 	name: "KBank Visa",
 	last4: "4821",
-	location: "Krabi",
+	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	comment: "",
 	archived: false,
@@ -69,7 +69,7 @@ test("a failed save keeps its error message after the refresh that follows it", 
 	fill(root, "id", "kbank");
 	fill(root, "name", "KBank Visa");
 	fill(root, "last4", "4821");
-	fill(root, "location", "Krabi");
+	fill(root, "location", "krabi");
 	fill(root, "closeDay", "18");
 	fill(root, "dueOffsetDays", "15");
 	submit(root);
@@ -90,7 +90,7 @@ test("creating a card with an id that already exists does not overwrite it", asy
 	fill(root, "id", "kbank");
 	fill(root, "name", "A completely different card");
 	fill(root, "last4", "9999");
-	fill(root, "location", "Bangkok");
+	fill(root, "location", "bangkok");
 	fill(root, "closeDay", "1");
 	fill(root, "dueOffsetDays", "10");
 	submit(root);
@@ -111,7 +111,7 @@ test("a successful save clears the banner and the card appears in the table", as
 	fill(root, "id", "scb");
 	fill(root, "name", "SCB Mastercard");
 	fill(root, "last4", "1234");
-	fill(root, "location", "Bangkok");
+	fill(root, "location", "bangkok");
 	fill(root, "closeDay", "18");
 	fill(root, "dueOffsetDays", "15");
 	submit(root);
@@ -130,7 +130,7 @@ test("importing a backup merges it into a populated repository without wiping wh
 		...sampleCard,
 		id: "scb",
 		name: "SCB Mastercard",
-		location: "Bangkok",
+		location: "bangkok",
 	});
 	await backupSource.savePurchase({
 		id: "p1",
@@ -185,7 +185,7 @@ test("prepareBackupFile produces text that parseBackup accepts and that round-tr
 		...sampleCard,
 		id: "scb",
 		name: "SCB Mastercard",
-		location: "Bangkok",
+		location: "bangkok",
 	});
 	await repo.savePurchase({
 		id: "p1",

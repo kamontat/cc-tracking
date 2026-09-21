@@ -22,7 +22,7 @@ const card: Card = {
 	id: "kbank",
 	name: "KBank Visa",
 	last4: "4821",
-	location: "Krabi",
+	location: "krabi",
 	cycle: { kind: "offset", closeDay: 1, dueOffsetDays: 5 },
 	archived: false,
 };
@@ -60,7 +60,7 @@ const quickAddCard: Card = {
 	id: "scb",
 	name: "SCB Mastercard",
 	last4: "1234",
-	location: "Bangkok",
+	location: "bangkok",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
 };

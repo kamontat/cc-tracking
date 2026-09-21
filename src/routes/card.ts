@@ -4,6 +4,7 @@ import "#components/cc-statement-list";
 import { html, render } from "lit";
 import { describeCycle } from "#lib/domain/cycle";
 import { today } from "#lib/domain/date";
+import { locationLabel } from "#lib/domain/location";
 import { buildStatement, recentPeriods } from "#lib/domain/statement";
 import type {
 	Card,
@@ -97,7 +98,7 @@ export function renderCardPage(
 					card
 						? html`
 							<h1>${card.name} <small>••••${card.last4}</small></h1>
-							<p>${card.location} — ${describeCycle(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
+							<p>${locationLabel(card.location)} — ${describeCycle(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
 							<cc-statement-list
 								.statements=${statements()}
 								.today=${now}

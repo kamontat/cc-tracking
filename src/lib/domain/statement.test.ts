@@ -11,7 +11,7 @@ const card: Card = {
 	id: "kbank",
 	name: "KBank Visa",
 	last4: "4821",
-	location: "Krabi",
+	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
 };
@@ -189,7 +189,7 @@ describe("a fixed-rule card", () => {
 		id: "scb",
 		name: "SCB Mastercard",
 		last4: "1234",
-		location: "Bangkok",
+		location: "bangkok",
 		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
 		archived: false,
 	};

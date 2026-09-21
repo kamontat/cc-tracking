@@ -1,5 +1,6 @@
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { DEFAULT_LOCATION, toLocation } from "#lib/domain/location";
 import type { Card, CycleRule } from "#lib/domain/types";
 
 @customElement("cc-card-form")
@@ -62,7 +63,7 @@ export class CcCardForm extends LitElement {
 			id,
 			name: this.value("name"),
 			last4,
-			location: this.value("location"),
+			location: toLocation(this.value("location")) ?? DEFAULT_LOCATION,
 			cycle,
 			comment: this.value("comment"),
 			archived: this.card?.archived ?? false,

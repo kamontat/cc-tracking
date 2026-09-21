@@ -6,7 +6,7 @@ export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
 	id: "kbank",
 	name: "KBank Visa",
 	last4: "4821",
-	location: "Krabi",
+	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
 	...overrides,
@@ -62,10 +62,10 @@ export function repositoryContract(
 
 		test("saving the same id replaces the card", async () => {
 			await repo.saveCard(sampleCard());
-			await repo.saveCard(sampleCard({ location: "Bangkok" }));
+			await repo.saveCard(sampleCard({ location: "bangkok" }));
 			const cards = await repo.listCards();
 			expect(cards).toHaveLength(1);
-			expect(cards[0]?.location).toBe("Bangkok");
+			expect(cards[0]?.location).toBe("bangkok");
 		});
 
 		test("stores both cycle rule kinds", async () => {

@@ -1,3 +1,5 @@
+import type { Location } from "#lib/domain/location";
+
 /** A calendar date in Asia/Bangkok, formatted `YYYY-MM-DD`. */
 export type PlainDate = string;
 
@@ -14,7 +16,7 @@ export type Card = {
 	id: string;
 	name: string;
 	last4: string;
-	location: string;
+	location: Location;
 	cycle: CycleRule;
 	comment?: string;
 	archived: boolean;

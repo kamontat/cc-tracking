@@ -11,7 +11,7 @@ const populated = async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard());
 	await repo.saveCard(
-		sampleCard({ id: "scb", name: "SCB Mastercard", location: "Phichit" }),
+		sampleCard({ id: "scb", name: "SCB Mastercard", location: "phichit" }),
 	);
 	await repo.savePurchase(samplePurchase({ id: "p1" }));
 	await repo.savePurchase(
@@ -57,12 +57,12 @@ describe("exportBackup", () => {
 		await repo.deleteCard("kbank");
 
 		// Create a new card with the same id (mimics user deleting and re-adding a card)
-		await repo.saveCard(sampleCard({ id: "kbank", location: "Bangkok" }));
+		await repo.saveCard(sampleCard({ id: "kbank", location: "bangkok" }));
 
 		// Export and verify no orphaned records reappear
 		const backup = await exportBackup(repo);
 		expect(backup.cards.map((c) => c.id)).toEqual(["kbank"]);
-		expect(backup.cards[0]?.location).toBe("Bangkok");
+		expect(backup.cards[0]?.location).toBe("bangkok");
 		expect(backup.purchases).toEqual([]); // Old purchase must not resurface
 		expect(backup.payments).toEqual([]); // Old payment must not resurface
 	});
@@ -168,7 +168,7 @@ describe("importBackup", () => {
 	test("merges over existing records rather than wiping them", async () => {
 		const target = new InMemoryRepository();
 		await target.saveCard(
-			sampleCard({ id: "ktc", name: "KTC Card", location: "Bangkok" }),
+			sampleCard({ id: "ktc", name: "KTC Card", location: "bangkok" }),
 		);
 		await target.saveCard(sampleCard({ name: "stale name" }));
 

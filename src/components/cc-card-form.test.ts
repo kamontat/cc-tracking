@@ -35,7 +35,7 @@ test("emits a complete card with an offset rule", async () => {
 	fill(element, "id", "kbank");
 	fill(element, "name", "KBank Visa");
 	fill(element, "last4", "4821");
-	fill(element, "location", "Krabi");
+	fill(element, "location", "krabi");
 	fill(element, "closeDay", "18");
 	fill(element, "dueOffsetDays", "15");
 	submit(element);
@@ -44,7 +44,7 @@ test("emits a complete card with an offset rule", async () => {
 		id: "kbank",
 		name: "KBank Visa",
 		last4: "4821",
-		location: "Krabi",
+		location: "krabi",
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		comment: "",
 		archived: false,
@@ -67,7 +67,7 @@ test("emits a fixed rule when that kind is chosen", async () => {
 	fill(element, "id", "scb");
 	fill(element, "name", "SCB Mastercard");
 	fill(element, "last4", "1234");
-	fill(element, "location", "Bangkok");
+	fill(element, "location", "bangkok");
 	fill(element, "closeDay", "18");
 	fill(element, "dueDay", "5");
 	submit(element);
@@ -85,7 +85,7 @@ test("refuses a last4 that is not four digits", async () => {
 	fill(element, "id", "kbank");
 	fill(element, "name", "KBank Visa");
 	fill(element, "last4", "48");
-	fill(element, "location", "Krabi");
+	fill(element, "location", "krabi");
 	fill(element, "closeDay", "18");
 	fill(element, "dueOffsetDays", "15");
 	submit(element);
@@ -111,7 +111,7 @@ test("clears the form after a successful create so the next card starts blank", 
 	fill(element, "id", "kbank");
 	fill(element, "name", "KBank Visa");
 	fill(element, "last4", "4821");
-	fill(element, "location", "Krabi");
+	fill(element, "location", "krabi");
 	fill(element, "closeDay", "18");
 	fill(element, "dueDay", "5");
 	submit(element);
@@ -140,7 +140,7 @@ test("clears the form after a successful create so the next card starts blank", 
 	fill(element, "id", "scb");
 	fill(element, "name", "SCB Mastercard");
 	fill(element, "last4", "1234");
-	fill(element, "location", "Bangkok");
+	fill(element, "location", "bangkok");
 	fill(element, "closeDay", "20");
 	fill(element, "dueOffsetDays", "10");
 	submit(element);
@@ -150,7 +150,7 @@ test("clears the form after a successful create so the next card starts blank", 
 		id: "scb",
 		name: "SCB Mastercard",
 		last4: "1234",
-		location: "Bangkok",
+		location: "bangkok",
 		cycle: { kind: "offset", closeDay: 20, dueOffsetDays: 10 },
 		comment: "",
 		archived: false,
@@ -162,7 +162,7 @@ test("locks the id when editing an existing card", async () => {
 		id: "kbank",
 		name: "KBank Visa",
 		last4: "4821",
-		location: "Krabi",
+		location: "krabi",
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		archived: false,
 	});

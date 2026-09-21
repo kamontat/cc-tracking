@@ -1,6 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { daysBetween, displayDate } from "#lib/domain/date";
+import { locationLabel } from "#lib/domain/location";
 import { formatAmount } from "#lib/domain/money";
 import { urgencyOf } from "#lib/domain/statement";
 import type { Card, PlainDate, Statement } from "#lib/domain/types";
@@ -53,7 +54,7 @@ export class CcDueList extends LitElement {
 									<a href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
 									<br /><small>••••${card.last4}</small>
 								</td>
-								<td>${card.location}</td>
+								<td>${locationLabel(card.location)}</td>
 								<td>${displayDate(statement.closeDate)}</td>
 								<td>${displayDate(statement.dueDate)}<br /><small>${this.when(statement)}</small></td>
 								<td>${formatAmount(statement.total)}</td>
