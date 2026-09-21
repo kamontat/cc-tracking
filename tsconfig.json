@@ -1,8 +1,8 @@
 {
-  "extends": "@kcconfigs/tsconfig/bun",
-  "compilerOptions": {
-    // FIXME: https://github.com/oven-sh/bun/issues/43097
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false
-  }
+	"extends": "@kcconfigs/tsconfig/bun",
+	"compilerOptions": {
+		// FIXME: https://github.com/oven-sh/bun/issues/43097
+		"experimentalDecorators": true,
+		"useDefineForClassFields": false
+	}
 }

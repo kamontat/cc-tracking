@@ -1,7 +1,4 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.13/schema.json",
-	"extends": ["@kcconfigs/biome"],
-	"files": {
-		"includes": ["!assets", "!.claude", "!.worktrees"]
-	}
+	"$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+	"extends": ["@kcconfigs/biome"]
 }

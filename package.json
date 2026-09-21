@@ -1,32 +1,34 @@
 {
-  "name": "credit-cards-usage",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "imports": {
-    "#lib/*": "./src/lib/*",
-    "#components/*": "./src/components/*"
-  },
-  "scripts": {
-    "dev": "bun-server dev",
-    "build": "bun-server build",
-    "preview": "bun-server preview"
-  },
-  "dependencies": {
-    "@kctools/bun-server": "0.3.2",
-    "@picocss/pico": "2.1.1",
-    "lit": "3.3.3"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.5.14",
-    "@happy-dom/global-registrator": "20.14.5",
-    "@kcconfigs/biome": "2.0.6",
-    "@kcconfigs/tsconfig": "1.1.8",
-    "@types/bun": "1.4.2",
-    "typescript-language-server": "6.0.0",
-    "wrangler": "4.135.0"
-  },
-  "peerDependencies": {
-    "typescript": "7.0.2"
-  }
+	"name": "credit-cards-usage",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"imports": {
+		"#lib/*": "./src/lib/*",
+		"#components/*": "./src/components/*"
+	},
+	"scripts": {
+		"dev": "bun-server dev",
+		"build": "bun-server build",
+		"preview": "bun-server preview",
+		"check": "biome check",
+		"format": "biome check --unsafe --write"
+	},
+	"dependencies": {
+		"@kctools/bun-server": "0.3.2",
+		"@picocss/pico": "2.1.1",
+		"lit": "3.3.3"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.14",
+		"@happy-dom/global-registrator": "20.14.5",
+		"@kcconfigs/biome": "2.0.6",
+		"@kcconfigs/tsconfig": "1.1.8",
+		"@types/bun": "1.4.2",
+		"typescript-language-server": "6.0.0",
+		"wrangler": "4.135.0"
+	},
+	"peerDependencies": {
+		"typescript": "7.0.2"
+	}
 }
