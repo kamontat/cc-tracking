@@ -27,6 +27,10 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .cache
 *.tsbuildinfo
 
+# agent scratch space
+.claude/worktrees
+.superpowers
+
 # IntelliJ based IDEs
 .idea
 
