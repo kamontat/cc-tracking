@@ -1,5 +1,5 @@
 {
-	"name": "credit-cards-usage",
+	"name": "cc-tracking",
 	"module": "index.ts",
 	"type": "module",
 	"private": true,
@@ -11,6 +11,7 @@
 		"dev": "bun-server dev",
 		"build": "bun-server build",
 		"preview": "bun-server preview",
+		"test": "bun test",
 		"check": "biome check",
 		"format": "biome check --unsafe --write"
 	},
