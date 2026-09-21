@@ -31,18 +31,25 @@ describe("exportBackup", () => {
 		expect(backup.payments).toEqual([]);
 	});
 
-	test("does not export purchases and payments of deleted cards", async () => {
-		const repo = await populated();
-		// Delete the first card; its purchase and payment should not appear in the backup
-		await repo.deleteCard("kbank");
-		const backup = await exportBackup(repo);
+	test("does not resurrect deleted card records on card re-creation", async () => {
+		const repo = new InMemoryRepository();
+		// Save a card with a purchase and a payment
+		await repo.saveCard(sampleCard({ id: "kbank" }));
+		await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank", amount: 10_000 }));
+		await repo.savePayment(samplePayment({ cardId: "kbank", period: "2026-09" }));
 
-		// Only the second card should be in the backup
-		expect(backup.cards.map((c) => c.id)).toEqual(["scb"]);
-		// Only the second card's purchase should be exported
-		expect(backup.purchases.map((p) => p.id)).toEqual(["p2"]);
-		// No payments should remain (the only payment was for kbank which was deleted)
-		expect(backup.payments).toEqual([]);
+		// Delete the card
+		await repo.deleteCard("kbank");
+
+		// Create a new card with the same id (mimics user deleting and re-adding a card)
+		await repo.saveCard(sampleCard({ id: "kbank", location: "Bangkok" }));
+
+		// Export and verify no orphaned records reappear
+		const backup = await exportBackup(repo);
+		expect(backup.cards.map((c) => c.id)).toEqual(["kbank"]);
+		expect(backup.cards[0]?.location).toBe("Bangkok");
+		expect(backup.purchases).toEqual([]); // Old purchase must not resurface
+		expect(backup.payments).toEqual([]); // Old payment must not resurface
 	});
 });
 

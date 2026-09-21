@@ -96,6 +96,29 @@ export function repositoryContract(name: string, create: () => Repository): void
 			expect(await repo.listPayments("scb")).toHaveLength(1);
 		});
 
+		test("cascade delete does not affect cards whose id is a prefix", async () => {
+			// Create cards abc and abc:def to test prefix collision vulnerability
+			await repo.saveCard(sampleCard({ id: "abc" }));
+			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "abc" }));
+			await repo.savePayment(samplePayment({ cardId: "abc", period: "2026-09" }));
+
+			await repo.saveCard(sampleCard({ id: "abc:def" }));
+			await repo.savePurchase(samplePurchase({ id: "p2", cardId: "abc:def" }));
+			await repo.savePayment(samplePayment({ cardId: "abc:def", period: "2026-09" }));
+
+			// Delete the shorter-id card
+			await repo.deleteCard("abc");
+
+			// Verify abc's records are gone
+			expect(await repo.listPurchases("abc")).toEqual([]);
+			expect(await repo.listPayments("abc")).toEqual([]);
+
+			// Verify abc:def's records are intact
+			expect(await repo.listPurchases("abc:def")).toHaveLength(1);
+			expect((await repo.listPurchases("abc:def"))[0]?.id).toBe("p2");
+			expect(await repo.listPayments("abc:def")).toHaveLength(1);
+		});
+
 		test("lists cards sorted by id in ascending order", async () => {
 			await repo.saveCard(sampleCard({ id: "scb" }));
 			await repo.saveCard(sampleCard());
