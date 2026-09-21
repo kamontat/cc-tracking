@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { periodOfPurchase } from "#lib/domain/cycle.ts";
-import { addDays, today } from "#lib/domain/date.ts";
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
+import { addDays, addPeriods, today } from "#lib/domain/date.ts";
 import type { Card, Purchase } from "#lib/domain/types.ts";
 import { InMemoryRepository } from "#lib/storage/repository.ts";
 import { renderDashboardPage } from "./index.ts";
@@ -201,4 +201,41 @@ test("marking a statement paid records the payment and clears it from the due li
 	expect(
 		listAfter?.shadowRoot?.querySelector("[data-urgency='overdue']"),
 	).toBeNull();
+});
+
+test("marking paid freezes the dates of the event's own period, not whatever nextActionable recomputes", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	// A second, later statement that has also already closed and gone unpaid. `nextActionable`
+	// would return `period` (the oldest unpaid one), but this test asks to mark `newerPeriod`
+	// paid instead, by dispatching the event directly rather than clicking the row -- exactly
+	// the kind of stale-period request nothing else in this flow currently prevents.
+	const newerPeriod = addPeriods(period, 1);
+	await repo.savePurchase({
+		id: "b",
+		cardId: "kbank",
+		date: closeDateOf(card.cycle, newerPeriod),
+		amount: 12_000,
+		note: "parts",
+	});
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const list = root.querySelector("cc-due-list");
+	await list?.updateComplete;
+	list?.dispatchEvent(
+		new CustomEvent("mark-paid", {
+			detail: { cardId: "kbank", period: newerPeriod },
+		}),
+	);
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
+	const payments = await repo.listPayments("kbank");
+	expect(payments).toHaveLength(1);
+	expect(payments[0]?.period).toBe(newerPeriod);
+	expect(payments[0]?.closeDate).toBe(closeDateOf(card.cycle, newerPeriod));
+	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, newerPeriod));
 });

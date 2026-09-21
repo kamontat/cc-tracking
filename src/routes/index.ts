@@ -8,7 +8,7 @@ import type { DueRow } from "#components/cc-due-list.ts";
 import type { QuickAddDetail } from "#components/cc-quick-add.ts";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
 import { displayDate, today } from "#lib/domain/date.ts";
-import { nextActionable } from "#lib/domain/statement.ts";
+import { buildStatement, nextActionable } from "#lib/domain/statement.ts";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
 import type { Repository } from "#lib/storage/repository.ts";
 import { bootstrap } from "#lib/ui/page.ts";
@@ -41,7 +41,9 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			const { cardId, period } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
 			if (!card) return;
-			const statement = nextActionable(card, purchases, payments, now);
+			// Freeze the dates of the statement the event names, not whatever
+			// nextActionable happens to recompute right now -- those can disagree.
+			const statement = buildStatement(card, period, purchases);
 			await repo.savePayment({
 				cardId,
 				period,
