@@ -1,6 +1,7 @@
 import "@picocss/pico/css/pico.min.css";
 import "#components/cc-due-list.ts";
 import "#components/cc-error-banner.ts";
+import "#components/cc-location-groups.ts";
 import "#components/cc-quick-add.ts";
 import { html, render } from "lit";
 import type { DueRow } from "#components/cc-due-list.ts";
@@ -106,6 +107,9 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				<article>
 					<h2>Add a purchase</h2>
 					<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
+				</article>
+				<article>
+					<cc-location-groups .rows=${rows()}></cc-location-groups>
 				</article>
 			`,
 			root,
