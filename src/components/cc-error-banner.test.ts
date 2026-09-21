@@ -6,7 +6,8 @@ const mount = async (message: string) => {
 	const element = document.createElement("cc-error-banner");
 	element.setAttribute("message", message);
 	document.body.append(element);
-	await (element as unknown as { updateComplete: Promise<unknown> }).updateComplete;
+	await (element as unknown as { updateComplete: Promise<unknown> })
+		.updateComplete;
 	return element;
 };
 

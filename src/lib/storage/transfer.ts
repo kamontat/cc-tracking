@@ -11,7 +11,10 @@ export type Backup = {
 	payments: StatementPayment[];
 };
 
-export async function exportBackup(repo: Repository, now: Date = new Date()): Promise<Backup> {
+export async function exportBackup(
+	repo: Repository,
+	now: Date = new Date(),
+): Promise<Backup> {
 	const cards = await repo.listCards();
 	const purchases: Purchase[] = [];
 	const payments: StatementPayment[] = [];
@@ -21,7 +24,13 @@ export async function exportBackup(repo: Repository, now: Date = new Date()): Pr
 		payments.push(...(await repo.listPayments(card.id)));
 	}
 
-	return { version: BACKUP_VERSION, exportedAt: now.toISOString(), cards, purchases, payments };
+	return {
+		version: BACKUP_VERSION,
+		exportedAt: now.toISOString(),
+		cards,
+		purchases,
+		payments,
+	};
 }
 
 const isList = (value: unknown): value is unknown[] => Array.isArray(value);
@@ -40,14 +49,21 @@ export function parseBackup(text: string): Backup {
 			`That backup is version ${backup.version}, and this app reads version ${BACKUP_VERSION}.`,
 		);
 	}
-	if (!isList(backup?.cards) || !isList(backup?.purchases) || !isList(backup?.payments)) {
+	if (
+		!isList(backup?.cards) ||
+		!isList(backup?.purchases) ||
+		!isList(backup?.payments)
+	) {
 		throw new Error("That file is not a readable backup.");
 	}
 	return backup as Backup;
 }
 
 /** Additive: writes every record over whatever shares its key, and deletes nothing. */
-export async function importBackup(repo: Repository, backup: Backup): Promise<void> {
+export async function importBackup(
+	repo: Repository,
+	backup: Backup,
+): Promise<void> {
 	for (const card of backup.cards) await repo.saveCard(card);
 	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
 	for (const payment of backup.payments) await repo.savePayment(payment);

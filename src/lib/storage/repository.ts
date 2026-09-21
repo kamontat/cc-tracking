@@ -15,7 +15,11 @@ export interface Repository {
 	deleteCard(id: string): Promise<void>;
 
 	/** Purchases for one card, sorted by date ascending, optionally limited to `[from, to]`. */
-	listPurchases(cardId: string, from?: string, to?: string): Promise<Purchase[]>;
+	listPurchases(
+		cardId: string,
+		from?: string,
+		to?: string,
+	): Promise<Purchase[]>;
 	savePurchase(purchase: Purchase): Promise<void>;
 	deletePurchase(cardId: string, id: string): Promise<void>;
 
@@ -33,7 +37,9 @@ export class InMemoryRepository implements Repository {
 	private payments = new Map<string, StatementPayment>();
 
 	async listCards(): Promise<Card[]> {
-		return [...this.cards.values()].map(clone).sort((a, b) => (a.id < b.id ? -1 : 1));
+		return [...this.cards.values()]
+			.map(clone)
+			.sort((a, b) => (a.id < b.id ? -1 : 1));
 	}
 
 	async getCard(id: string): Promise<Card | null> {
@@ -56,13 +62,19 @@ export class InMemoryRepository implements Repository {
 		}
 	}
 
-	async listPurchases(cardId: string, from?: string, to?: string): Promise<Purchase[]> {
+	async listPurchases(
+		cardId: string,
+		from?: string,
+		to?: string,
+	): Promise<Purchase[]> {
 		return [...this.purchases.values()]
 			.filter((p) => p.cardId === cardId)
 			.filter((p) => (from ? p.date >= from : true))
 			.filter((p) => (to ? p.date <= to : true))
 			.map(clone)
-			.sort((a, b) => (a.date === b.date ? (a.id < b.id ? -1 : 1) : a.date < b.date ? -1 : 1));
+			.sort((a, b) =>
+				a.date === b.date ? (a.id < b.id ? -1 : 1) : a.date < b.date ? -1 : 1,
+			);
 	}
 
 	async savePurchase(purchase: Purchase): Promise<void> {

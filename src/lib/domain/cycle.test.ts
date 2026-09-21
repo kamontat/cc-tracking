@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { closeDateOf, describeCycle, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
+import {
+	closeDateOf,
+	describeCycle,
+	dueDateOf,
+	periodOfPurchase,
+} from "#lib/domain/cycle.ts";
 import type { CycleRule } from "#lib/domain/types.ts";
 
 const offset: CycleRule = { kind: "offset", closeDay: 18, dueOffsetDays: 15 };

@@ -1,21 +1,36 @@
 import { describe, expect, test } from "bun:test";
-import { sampleCard, samplePayment, samplePurchase } from "#lib/storage/contract.ts";
+import {
+	sampleCard,
+	samplePayment,
+	samplePurchase,
+} from "#lib/storage/contract.ts";
 import { InMemoryRepository } from "#lib/storage/repository.ts";
-import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer.ts";
+import {
+	exportBackup,
+	importBackup,
+	parseBackup,
+} from "#lib/storage/transfer.ts";
 
 const populated = async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard());
-	await repo.saveCard(sampleCard({ id: "scb", name: "SCB Mastercard", location: "Phichit" }));
+	await repo.saveCard(
+		sampleCard({ id: "scb", name: "SCB Mastercard", location: "Phichit" }),
+	);
 	await repo.savePurchase(samplePurchase({ id: "p1" }));
-	await repo.savePurchase(samplePurchase({ id: "p2", cardId: "scb", date: "2026-09-09" }));
+	await repo.savePurchase(
+		samplePurchase({ id: "p2", cardId: "scb", date: "2026-09-09" }),
+	);
 	await repo.savePayment(samplePayment());
 	return repo;
 };
 
 describe("exportBackup", () => {
 	test("captures every card, purchase, and payment", async () => {
-		const backup = await exportBackup(await populated(), new Date("2026-09-21T03:00:00Z"));
+		const backup = await exportBackup(
+			await populated(),
+			new Date("2026-09-21T03:00:00Z"),
+		);
 
 		expect(backup.version).toBe(1);
 		expect(backup.exportedAt).toBe("2026-09-21T03:00:00.000Z");
@@ -35,8 +50,12 @@ describe("exportBackup", () => {
 		const repo = new InMemoryRepository();
 		// Save a card with a purchase and a payment
 		await repo.saveCard(sampleCard({ id: "kbank" }));
-		await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank", amount: 10_000 }));
-		await repo.savePayment(samplePayment({ cardId: "kbank", period: "2026-09" }));
+		await repo.savePurchase(
+			samplePurchase({ id: "p1", cardId: "kbank", amount: 10_000 }),
+		);
+		await repo.savePayment(
+			samplePayment({ cardId: "kbank", period: "2026-09" }),
+		);
 
 		// Delete the card
 		await repo.deleteCard("kbank");
@@ -64,12 +83,17 @@ describe("parseBackup", () => {
 	});
 
 	test("rejects a future backup version", () => {
-		expect(() => parseBackup(JSON.stringify({ version: 2, cards: [], purchases: [], payments: [] })))
-			.toThrow(/version 2/i);
+		expect(() =>
+			parseBackup(
+				JSON.stringify({ version: 2, cards: [], purchases: [], payments: [] }),
+			),
+		).toThrow(/version 2/i);
 	});
 
 	test("rejects JSON missing the expected lists", () => {
-		expect(() => parseBackup(JSON.stringify({ version: 1 }))).toThrow(/not a readable backup/i);
+		expect(() => parseBackup(JSON.stringify({ version: 1 }))).toThrow(
+			/not a readable backup/i,
+		);
 	});
 });
 
@@ -79,14 +103,21 @@ describe("importBackup", () => {
 		const restored = new InMemoryRepository();
 		await importBackup(restored, backup);
 
-		expect((await restored.listCards()).map((c) => c.id)).toEqual(["kbank", "scb"]);
-		expect((await restored.listPurchases("kbank")).map((p) => p.id)).toEqual(["p1"]);
+		expect((await restored.listCards()).map((c) => c.id)).toEqual([
+			"kbank",
+			"scb",
+		]);
+		expect((await restored.listPurchases("kbank")).map((p) => p.id)).toEqual([
+			"p1",
+		]);
 		expect(await restored.listPayments("kbank")).toHaveLength(1);
 	});
 
 	test("merges over existing records rather than wiping them", async () => {
 		const target = new InMemoryRepository();
-		await target.saveCard(sampleCard({ id: "ktc", name: "KTC Card", location: "Bangkok" }));
+		await target.saveCard(
+			sampleCard({ id: "ktc", name: "KTC Card", location: "Bangkok" }),
+		);
 		await target.saveCard(sampleCard({ name: "stale name" }));
 
 		await importBackup(target, await exportBackup(await populated()));

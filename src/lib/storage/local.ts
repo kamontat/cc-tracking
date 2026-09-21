@@ -6,7 +6,8 @@ const CARD = `${PREFIX}card:`;
 const PURCHASE = `${PREFIX}purchase:`;
 const PAYMENT = `${PREFIX}payment:`;
 
-export const cardKey = (cardId: string): string => `${CARD}${encodeURIComponent(cardId)}`;
+export const cardKey = (cardId: string): string =>
+	`${CARD}${encodeURIComponent(cardId)}`;
 export const purchaseKey = (p: Purchase): string =>
 	`${PURCHASE}${encodeURIComponent(p.cardId)}:${encodeURIComponent(p.date)}:${encodeURIComponent(p.id)}`;
 export const paymentKey = (cardId: string, period: string): string =>
@@ -22,7 +23,9 @@ export class LocalStorageRepository implements Repository {
 		try {
 			return JSON.parse(raw) as T;
 		} catch (cause) {
-			throw new StorageError(`Stored value at ${key} is not readable`, { cause });
+			throw new StorageError(`Stored value at ${key} is not readable`, {
+				cause,
+			});
 		}
 	}
 
@@ -30,7 +33,10 @@ export class LocalStorageRepository implements Repository {
 		try {
 			this.storage.setItem(key, JSON.stringify(value));
 		} catch (cause) {
-			throw new StorageError(`Could not save ${key}. Storage may be full or blocked.`, { cause });
+			throw new StorageError(
+				`Could not save ${key}. Storage may be full or blocked.`,
+				{ cause },
+			);
 		}
 	}
 
@@ -76,7 +82,11 @@ export class LocalStorageRepository implements Repository {
 		}
 	}
 
-	async listPurchases(cardId: string, from?: string, to?: string): Promise<Purchase[]> {
+	async listPurchases(
+		cardId: string,
+		from?: string,
+		to?: string,
+	): Promise<Purchase[]> {
 		// Keys sort by date because the date sits before the id in the key.
 		return this.readAll<Purchase>(`${PURCHASE}${encodeURIComponent(cardId)}:`)
 			.filter((p) => (from ? p.date >= from : true))
@@ -91,14 +101,19 @@ export class LocalStorageRepository implements Repository {
 
 	async deletePurchase(cardId: string, id: string): Promise<void> {
 		const encodedId = encodeURIComponent(id);
-		for (const key of this.keysWithPrefix(`${PURCHASE}${encodeURIComponent(cardId)}:`)) {
+		for (const key of this.keysWithPrefix(
+			`${PURCHASE}${encodeURIComponent(cardId)}:`,
+		)) {
 			const segments = key.split(":");
-			if (segments[segments.length - 1] === encodedId) this.storage.removeItem(key);
+			if (segments[segments.length - 1] === encodedId)
+				this.storage.removeItem(key);
 		}
 	}
 
 	async listPayments(cardId: string): Promise<StatementPayment[]> {
-		return this.readAll<StatementPayment>(`${PAYMENT}${encodeURIComponent(cardId)}:`);
+		return this.readAll<StatementPayment>(
+			`${PAYMENT}${encodeURIComponent(cardId)}:`,
+		);
 	}
 
 	async savePayment(payment: StatementPayment): Promise<void> {

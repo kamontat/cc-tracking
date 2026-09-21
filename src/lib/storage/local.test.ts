@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { repositoryContract, sampleCard, samplePurchase } from "#lib/storage/contract.ts";
+import {
+	repositoryContract,
+	sampleCard,
+	samplePurchase,
+} from "#lib/storage/contract.ts";
 import { LocalStorageRepository } from "#lib/storage/local.ts";
 import { StorageError } from "#lib/storage/repository.ts";
 
@@ -8,7 +12,10 @@ const freshStorage = (): Storage => {
 	return localStorage;
 };
 
-repositoryContract("localStorage", () => new LocalStorageRepository(freshStorage()));
+repositoryContract(
+	"localStorage",
+	() => new LocalStorageRepository(freshStorage()),
+);
 
 describe("LocalStorageRepository key layout", () => {
 	test("writes the documented key shapes", async () => {
@@ -17,7 +24,9 @@ describe("LocalStorageRepository key layout", () => {
 		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }));
 
 		expect(localStorage.getItem("cc:card:kbank")).not.toBeNull();
-		expect(localStorage.getItem("cc:purchase:kbank:2026-09-05:p1")).not.toBeNull();
+		expect(
+			localStorage.getItem("cc:purchase:kbank:2026-09-05:p1"),
+		).not.toBeNull();
 	});
 
 	test("ignores unrelated keys in the same origin", async () => {
@@ -66,8 +75,12 @@ describe("LocalStorageRepository key layout", () => {
 		await repo.saveCard(sampleCard({ id: "abc:def" }));
 
 		// Save purchases for both cards
-		await repo.savePurchase(samplePurchase({ id: "p1", cardId: "abc", date: "2026-09-05" }));
-		await repo.savePurchase(samplePurchase({ id: "p2", cardId: "abc:def", date: "2026-09-10" }));
+		await repo.savePurchase(
+			samplePurchase({ id: "p1", cardId: "abc", date: "2026-09-05" }),
+		);
+		await repo.savePurchase(
+			samplePurchase({ id: "p2", cardId: "abc:def", date: "2026-09-10" }),
+		);
 
 		// Verify each card only sees its own purchases
 		const abcPurchases = await repo.listPurchases("abc");

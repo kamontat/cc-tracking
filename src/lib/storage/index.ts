@@ -24,11 +24,17 @@ function assertUsable(storage: Storage): void {
 	}
 }
 
-export function createRepository(storage: Storage | undefined = globalThis.localStorage): Repository {
+export function createRepository(
+	storage: Storage | undefined = globalThis.localStorage,
+): Repository {
 	if (!storage) throw new StorageUnavailableError();
 	assertUsable(storage);
 	return new LocalStorageRepository(storage);
 }
 
 export { LocalStorageRepository } from "#lib/storage/local.ts";
-export { InMemoryRepository, type Repository, StorageError } from "#lib/storage/repository.ts";
+export {
+	InMemoryRepository,
+	type Repository,
+	StorageError,
+} from "#lib/storage/repository.ts";

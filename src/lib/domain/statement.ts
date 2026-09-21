@@ -26,7 +26,10 @@ export function buildStatement(
 	payment: StatementPayment | null = null,
 ): Statement {
 	const mine = purchases
-		.filter((p) => p.cardId === card.id && periodOfPurchase(card.cycle, p.date) === period)
+		.filter(
+			(p) =>
+				p.cardId === card.id && periodOfPurchase(card.cycle, p.date) === period,
+		)
 		.sort((a, b) => compareDates(a.date, b.date) || (a.id < b.id ? -1 : 1));
 
 	return {
@@ -47,7 +50,11 @@ export function openPeriod(card: Card, today: PlainDate): Period {
 }
 
 /** `count` periods, newest first, starting at the open period. */
-export function recentPeriods(card: Card, today: PlainDate, count: number): Period[] {
+export function recentPeriods(
+	card: Card,
+	today: PlainDate,
+	count: number,
+): Period[] {
 	const start = openPeriod(card, today);
 	return Array.from({ length: count }, (_, index) => addPeriods(start, -index));
 }
@@ -74,7 +81,12 @@ export function nextActionable(
 	// Walk from the earliest period that could owe money up to the open one.
 	let period = earliest && comparePeriods(earliest, open) < 0 ? earliest : open;
 	while (comparePeriods(period, open) < 0) {
-		const statement = buildStatement(card, period, purchases, paymentFor(period));
+		const statement = buildStatement(
+			card,
+			period,
+			purchases,
+			paymentFor(period),
+		);
 		if (!statement.paid && statement.total > 0) return statement;
 		period = addPeriods(period, 1);
 	}

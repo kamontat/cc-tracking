@@ -12,7 +12,9 @@ export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
 	...overrides,
 });
 
-export const samplePurchase = (overrides: Partial<Purchase> = {}): Purchase => ({
+export const samplePurchase = (
+	overrides: Partial<Purchase> = {},
+): Purchase => ({
 	id: "p1",
 	cardId: "kbank",
 	date: "2026-09-05",
@@ -21,7 +23,9 @@ export const samplePurchase = (overrides: Partial<Purchase> = {}): Purchase => (
 	...overrides,
 });
 
-export const samplePayment = (overrides: Partial<StatementPayment> = {}): StatementPayment => ({
+export const samplePayment = (
+	overrides: Partial<StatementPayment> = {},
+): StatementPayment => ({
 	cardId: "kbank",
 	period: "2026-09",
 	paidAt: "2026-10-01",
@@ -31,7 +35,10 @@ export const samplePayment = (overrides: Partial<StatementPayment> = {}): Statem
 });
 
 /** Runs the behaviour every Repository implementation must have. */
-export function repositoryContract(name: string, create: () => Repository): void {
+export function repositoryContract(
+	name: string,
+	create: () => Repository,
+): void {
 	describe(`${name} repository contract`, () => {
 		let repo: Repository;
 
@@ -62,8 +69,17 @@ export function repositoryContract(name: string, create: () => Repository): void
 		});
 
 		test("stores both cycle rule kinds", async () => {
-			await repo.saveCard(sampleCard({ id: "scb", cycle: { kind: "fixed", closeDay: 18, dueDay: 5 } }));
-			expect((await repo.getCard("scb"))?.cycle).toEqual({ kind: "fixed", closeDay: 18, dueDay: 5 });
+			await repo.saveCard(
+				sampleCard({
+					id: "scb",
+					cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
+				}),
+			);
+			expect((await repo.getCard("scb"))?.cycle).toEqual({
+				kind: "fixed",
+				closeDay: 18,
+				dueDay: 5,
+			});
 		});
 
 		test("deletes a card", async () => {
@@ -76,12 +92,16 @@ export function repositoryContract(name: string, create: () => Repository): void
 			// Save first card with purchase and payment
 			await repo.saveCard(sampleCard({ id: "kbank" }));
 			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank" }));
-			await repo.savePayment(samplePayment({ cardId: "kbank", period: "2026-09" }));
+			await repo.savePayment(
+				samplePayment({ cardId: "kbank", period: "2026-09" }),
+			);
 
 			// Save second card with purchase and payment
 			await repo.saveCard(sampleCard({ id: "scb" }));
 			await repo.savePurchase(samplePurchase({ id: "p2", cardId: "scb" }));
-			await repo.savePayment(samplePayment({ cardId: "scb", period: "2026-09" }));
+			await repo.savePayment(
+				samplePayment({ cardId: "scb", period: "2026-09" }),
+			);
 
 			// Delete first card
 			await repo.deleteCard("kbank");
@@ -100,11 +120,15 @@ export function repositoryContract(name: string, create: () => Repository): void
 			// Create cards abc and abc:def to test prefix collision vulnerability
 			await repo.saveCard(sampleCard({ id: "abc" }));
 			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "abc" }));
-			await repo.savePayment(samplePayment({ cardId: "abc", period: "2026-09" }));
+			await repo.savePayment(
+				samplePayment({ cardId: "abc", period: "2026-09" }),
+			);
 
 			await repo.saveCard(sampleCard({ id: "abc:def" }));
 			await repo.savePurchase(samplePurchase({ id: "p2", cardId: "abc:def" }));
-			await repo.savePayment(samplePayment({ cardId: "abc:def", period: "2026-09" }));
+			await repo.savePayment(
+				samplePayment({ cardId: "abc:def", period: "2026-09" }),
+			);
 
 			// Delete the shorter-id card
 			await repo.deleteCard("abc");
@@ -131,9 +155,14 @@ export function repositoryContract(name: string, create: () => Repository): void
 		test("lists purchases of one card only, sorted by date", async () => {
 			await repo.savePurchase(samplePurchase({ id: "p2", date: "2026-09-20" }));
 			await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }));
-			await repo.savePurchase(samplePurchase({ id: "p3", cardId: "scb", date: "2026-09-06" }));
+			await repo.savePurchase(
+				samplePurchase({ id: "p3", cardId: "scb", date: "2026-09-06" }),
+			);
 
-			expect((await repo.listPurchases("kbank")).map((p) => p.id)).toEqual(["p1", "p2"]);
+			expect((await repo.listPurchases("kbank")).map((p) => p.id)).toEqual([
+				"p1",
+				"p2",
+			]);
 		});
 
 		test("limits purchases to a date range, inclusive at both ends", async () => {
@@ -142,7 +171,11 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.savePurchase(samplePurchase({ id: "p3", date: "2026-09-30" }));
 			await repo.savePurchase(samplePurchase({ id: "p4", date: "2026-10-01" }));
 
-			const inRange = await repo.listPurchases("kbank", "2026-09-01", "2026-09-30");
+			const inRange = await repo.listPurchases(
+				"kbank",
+				"2026-09-01",
+				"2026-09-30",
+			);
 			expect(inRange.map((p) => p.id)).toEqual(["p2", "p3"]);
 		});
 
@@ -156,7 +189,9 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 		test("saves and lists purchases independently per card", async () => {
 			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank" }));
-			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "scb", date: "2026-09-09" }));
+			await repo.savePurchase(
+				samplePurchase({ id: "p1", cardId: "scb", date: "2026-09-09" }),
+			);
 
 			const kbankPurchases = await repo.listPurchases("kbank");
 			const scbPurchases = await repo.listPurchases("scb");
@@ -177,12 +212,19 @@ export function repositoryContract(name: string, create: () => Repository): void
 		test("saves, lists, and deletes payments per card", async () => {
 			await repo.savePayment(samplePayment({ period: "2026-09" }));
 			await repo.savePayment(samplePayment({ period: "2026-08" }));
-			await repo.savePayment(samplePayment({ cardId: "scb", period: "2026-09" }));
+			await repo.savePayment(
+				samplePayment({ cardId: "scb", period: "2026-09" }),
+			);
 
-			expect((await repo.listPayments("kbank")).map((p) => p.period)).toEqual(["2026-08", "2026-09"]);
+			expect((await repo.listPayments("kbank")).map((p) => p.period)).toEqual([
+				"2026-08",
+				"2026-09",
+			]);
 
 			await repo.deletePayment("kbank", "2026-08");
-			expect((await repo.listPayments("kbank")).map((p) => p.period)).toEqual(["2026-09"]);
+			expect((await repo.listPayments("kbank")).map((p) => p.period)).toEqual([
+				"2026-09",
+			]);
 		});
 
 		test("deleting something absent is not an error", async () => {

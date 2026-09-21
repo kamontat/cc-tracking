@@ -10,10 +10,13 @@ import type { CycleRule, Period, PlainDate } from "#lib/domain/types.ts";
 
 const ordinal = (day: number): string => {
 	const suffix =
-		day % 10 === 1 && day !== 11 ? "st"
-		: day % 10 === 2 && day !== 12 ? "nd"
-		: day % 10 === 3 && day !== 13 ? "rd"
-		: "th";
+		day % 10 === 1 && day !== 11
+			? "st"
+			: day % 10 === 2 && day !== 12
+				? "nd"
+				: day % 10 === 3 && day !== 13
+					? "rd"
+					: "th";
 	return `${day}${suffix}`;
 };
 
@@ -29,7 +32,8 @@ export function dueDateOf(rule: CycleRule, period: Period): PlainDate {
 	if (rule.kind === "offset") return addDays(closeDate, rule.dueOffsetDays);
 
 	// A due day at or before the close day belongs to the following month.
-	const duePeriod = rule.dueDay <= rule.closeDay ? addPeriods(period, 1) : period;
+	const duePeriod =
+		rule.dueDay <= rule.closeDay ? addPeriods(period, 1) : period;
 	const { year, month } = periodParts(duePeriod);
 	return clampDay(year, month, rule.dueDay);
 }

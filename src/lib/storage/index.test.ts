@@ -1,6 +1,9 @@
 import { expect, test } from "bun:test";
-import { createRepository, StorageUnavailableError } from "#lib/storage/index.ts";
 import { sampleCard } from "#lib/storage/contract.ts";
+import {
+	createRepository,
+	StorageUnavailableError,
+} from "#lib/storage/index.ts";
 
 test("createRepository throws StorageUnavailableError if storage probe fails", () => {
 	const failing = {

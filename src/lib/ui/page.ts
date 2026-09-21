@@ -1,5 +1,8 @@
 import "#components/cc-error-banner.ts";
-import { createRepository, StorageUnavailableError } from "#lib/storage/index.ts";
+import {
+	createRepository,
+	StorageUnavailableError,
+} from "#lib/storage/index.ts";
 import type { Repository } from "#lib/storage/repository.ts";
 
 /**

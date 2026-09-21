@@ -72,7 +72,11 @@ describe("buildStatement", () => {
 describe("recentPeriods", () => {
 	test("returns periods newest first, starting from the open one", () => {
 		// 2026-09-21 is past the 18th, so the open period is October.
-		expect(recentPeriods(card, "2026-09-21", 3)).toEqual(["2026-10", "2026-09", "2026-08"]);
+		expect(recentPeriods(card, "2026-09-21", 3)).toEqual([
+			"2026-10",
+			"2026-09",
+			"2026-08",
+		]);
 	});
 
 	test("returns the open period alone when asked for one", () => {
@@ -122,7 +126,12 @@ describe("nextActionable", () => {
 			purchase("jan", "2026-01-10", 50_000),
 			purchase("jun", "2026-06-10", 100_000),
 		];
-		const statement = nextActionable(card, purchases2, [januaryPayment], "2026-05-25");
+		const statement = nextActionable(
+			card,
+			purchases2,
+			[januaryPayment],
+			"2026-05-25",
+		);
 		expect(statement.period).toBe("2026-06");
 		expect(statement.total).toBe(100_000);
 		expect(statement.paid).toBe(false);

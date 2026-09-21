@@ -3,8 +3,18 @@ import type { DateParts, Period, PlainDate } from "#lib/domain/types.ts";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD_PATTERN = /^\d{4}-\d{2}$/;
 const MONTH_NAMES = [
-	"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+	"Jan",
+	"Feb",
+	"Mar",
+	"Apr",
+	"May",
+	"Jun",
+	"Jul",
+	"Aug",
+	"Sep",
+	"Oct",
+	"Nov",
+	"Dec",
 ];
 const MILLIS_PER_DAY = 86_400_000;
 
@@ -20,7 +30,11 @@ export function parseDate(value: PlainDate): DateParts {
 	};
 }
 
-export function formatDate(year: number, month: number, day: number): PlainDate {
+export function formatDate(
+	year: number,
+	month: number,
+	day: number,
+): PlainDate {
 	return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`;
 }
 
@@ -49,7 +63,11 @@ const toUtc = (date: PlainDate): number => {
 
 const fromUtc = (millis: number): PlainDate => {
 	const value = new Date(millis);
-	return formatDate(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate());
+	return formatDate(
+		value.getUTCFullYear(),
+		value.getUTCMonth() + 1,
+		value.getUTCDate(),
+	);
 };
 
 export function addDays(date: PlainDate, days: number): PlainDate {
@@ -85,8 +103,12 @@ export function periodOf(date: PlainDate): Period {
 }
 
 export function periodParts(period: Period): { year: number; month: number } {
-	if (!PERIOD_PATTERN.test(period)) throw new RangeError(`Not a period: ${period}`);
-	return { year: Number(period.slice(0, 4)), month: Number(period.slice(5, 7)) };
+	if (!PERIOD_PATTERN.test(period))
+		throw new RangeError(`Not a period: ${period}`);
+	return {
+		year: Number(period.slice(0, 4)),
+		month: Number(period.slice(5, 7)),
+	};
 }
 
 export function addPeriods(period: Period, delta: number): Period {
