@@ -12,6 +12,7 @@ import { nextActionable } from "#lib/domain/statement.ts";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
 import type { Repository } from "#lib/storage/repository.ts";
 import { bootstrap } from "#lib/ui/page.ts";
+import { createPageState } from "#lib/ui/page-state.ts";
 
 /** Renders the dashboard page into `root`, wiring it to `repo`. Exported for tests and for Tasks 11-12 to extend. */
 export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
@@ -19,11 +20,10 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	let cards: Card[] = [];
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
-	let error = "";
 	let answer = "";
 
-	const load = async (preserveError = false) => {
-		try {
+	const state = createPageState({
+		fetch: async () => {
 			cards = (await repo.listCards()).filter((card) => !card.archived);
 			purchases = (
 				await Promise.all(cards.map((card) => repo.listPurchases(card.id)))
@@ -31,33 +31,13 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			payments = (
 				await Promise.all(cards.map((card) => repo.listPayments(card.id)))
 			).flat();
-			if (!preserveError) error = "";
-		} catch (failure) {
-			error =
-				failure instanceof Error
-					? failure.message
-					: "Could not read your cards.";
-		}
-		paint();
-	};
-
-	const guard = async (action: () => Promise<void>, message: string) => {
-		let failed = false;
-		try {
-			await action();
-			error = "";
-		} catch (failure) {
-			error =
-				failure instanceof Error ? `${message} ${failure.message}` : message;
-			failed = true;
-		}
-		// Refresh from storage either way, but keep a failure's message on screen
-		// instead of letting a successful read silently wipe it.
-		await load(failed);
-	};
+		},
+		fallbackMessage: "Could not read your cards.",
+		paint: () => paint(),
+	});
 
 	const onMarkPaid = (event: CustomEvent<{ cardId: string; period: string }>) =>
-		guard(async () => {
+		state.guard(async () => {
 			const { cardId, period } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
 			if (!card) return;
@@ -72,7 +52,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 		}, "Could not record the payment.");
 
 	const onAdd = (event: CustomEvent<QuickAddDetail>) =>
-		guard(async () => {
+		state.guard(async () => {
 			const { cardId, date, amount, note } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
 			if (!card) return;
@@ -99,7 +79,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 		render(
 			html`
 				<h1>Dashboard</h1>
-				<cc-error-banner .message=${error} retry-label="Reload" @retry=${() => load()}></cc-error-banner>
+				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
 				<article>
 					<h2>Due next</h2>
 					<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
@@ -115,7 +95,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			root,
 		);
 
-	void load();
+	void state.load();
 }
 
 bootstrap((repo) => {

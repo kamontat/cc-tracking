@@ -6,16 +6,16 @@ import { html, render } from "lit";
 import type { Card } from "#lib/domain/types.ts";
 import type { Repository } from "#lib/storage/repository.ts";
 import { bootstrap } from "#lib/ui/page.ts";
+import { createPageState } from "#lib/ui/page-state.ts";
 
 /** Renders the card registry page into `root`, wiring it to `repo`. Exported for tests and for Task 14 to extend. */
 export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 	let cards: Card[] = [];
 	let counts: Record<string, number> = {};
 	let editing: Card | null = null;
-	let error = "";
 
-	const load = async (preserveError = false) => {
-		try {
+	const state = createPageState({
+		fetch: async () => {
 			cards = await repo.listCards();
 			counts = Object.fromEntries(
 				await Promise.all(
@@ -25,33 +25,13 @@ export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 					),
 				),
 			);
-			if (!preserveError) error = "";
-		} catch (failure) {
-			error =
-				failure instanceof Error
-					? failure.message
-					: "Could not read the card list.";
-		}
-		paint();
-	};
-
-	const guard = async (action: () => Promise<void>, message: string) => {
-		let failed = false;
-		try {
-			await action();
-			error = "";
-		} catch (failure) {
-			error =
-				failure instanceof Error ? `${message} ${failure.message}` : message;
-			failed = true;
-		}
-		// Refresh from storage either way, but keep a failure's message on screen
-		// instead of letting a successful read silently wipe it.
-		await load(failed);
-	};
+		},
+		fallbackMessage: "Could not read the card list.",
+		paint: () => paint(),
+	});
 
 	const onSave = (event: CustomEvent<Card>) =>
-		guard(async () => {
+		state.guard(async () => {
 			const card = event.detail;
 			if (!editing) {
 				const existing = await repo.getCard(card.id);
@@ -66,10 +46,13 @@ export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 		}, "Could not save the card.");
 
 	const onRemove = (event: CustomEvent<string>) =>
-		guard(() => repo.deleteCard(event.detail), "Could not delete the card.");
+		state.guard(
+			() => repo.deleteCard(event.detail),
+			"Could not delete the card.",
+		);
 
 	const onArchive = (event: CustomEvent<string>) =>
-		guard(async () => {
+		state.guard(async () => {
 			const card = cards.find((c) => c.id === event.detail);
 			if (card) await repo.saveCard({ ...card, archived: !card.archived });
 		}, "Could not archive the card.");
@@ -83,7 +66,7 @@ export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 		render(
 			html`
 				<h1>Cards</h1>
-				<cc-error-banner .message=${error} retry-label="Reload" @retry=${() => load()}></cc-error-banner>
+				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
 				<article>
 					<h2>${editing ? `Edit ${editing.name}` : "Add a card"}</h2>
 					<cc-card-form
@@ -107,7 +90,7 @@ export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 			root,
 		);
 
-	void load();
+	void state.load();
 }
 
 bootstrap((repo) => {
