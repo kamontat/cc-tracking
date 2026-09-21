@@ -96,6 +96,37 @@ test("refuses an impossible date", async () => {
 	expect(element.shadowRoot?.textContent).toContain("date");
 });
 
+test("refuses a future-dated purchase and emits no add event", async () => {
+	const element = await mount();
+	let emitted = false;
+	element.addEventListener("add", () => {
+		emitted = true;
+	});
+
+	fill(element, "date", "2026-09-22");
+	fill(element, "amount", "100");
+	submit(element);
+	await element.updateComplete;
+
+	expect(emitted).toBe(false);
+	expect(element.shadowRoot?.textContent).toContain("future");
+});
+
+test("accepts a purchase dated exactly today, the boundary", async () => {
+	const element = await mount();
+	let emitted = false;
+	element.addEventListener("add", () => {
+		emitted = true;
+	});
+
+	fill(element, "date", "2026-09-21");
+	fill(element, "amount", "100");
+	submit(element);
+	await element.updateComplete;
+
+	expect(emitted).toBe(true);
+});
+
 test("keeps the date defaulted to today after a submit, so a second entry can follow immediately", async () => {
 	const element = await mount();
 	const details: Array<{

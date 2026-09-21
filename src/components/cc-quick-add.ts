@@ -1,6 +1,6 @@
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { isValidDate } from "#lib/domain/date.ts";
+import { compareDates, isValidDate } from "#lib/domain/date.ts";
 import { parseAmount } from "#lib/domain/money.ts";
 import type { Card, PlainDate } from "#lib/domain/types.ts";
 
@@ -38,6 +38,11 @@ export class CcQuickAdd extends LitElement {
 		}
 		if (!isValidDate(date)) {
 			this.error = "That date does not exist. Use YYYY-MM-DD.";
+			return;
+		}
+		if (compareDates(date, this.today) > 0) {
+			this.error =
+				"That date is in the future. A credit-card purchase cannot be dated ahead.";
 			return;
 		}
 		let amount: number;
