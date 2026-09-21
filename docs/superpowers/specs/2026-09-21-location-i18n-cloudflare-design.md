@@ -149,12 +149,19 @@ boot from the catalog by id.
 
 ### Formatting
 
-`displayDate` in `src/lib/domain/date.ts` and the money formatter in
-`src/lib/domain/money.ts` take a locale. Both use `Intl`. The Thai locale is
-`th-TH-u-ca-gregory`: bare `th-TH` renders Buddhist Era years (2569 for 2026),
-and these dates get matched against bank statements, so they stay Gregorian.
-Amounts render as baht with two decimals in both languages; the stored integer
-satang is untouched.
+Dates render as `dd MMM yyyy` in both languages, with a Gregorian year: `21 Sep
+2026` in English, `21 ก.ย. 2026` in Thai. Never Buddhist Era — 2569 would not
+match the bank statement the number is being reconciled against.
+
+`displayDate` in `src/lib/domain/date.ts` already produces exactly this shape
+from a hand-written `MONTH_NAMES` array. It gains a locale parameter and a
+second array of Thai abbreviated month names; nothing else changes. `Intl` is
+deliberately not used: it would pull in locale data and, for `th-TH`, default to
+the Buddhist calendar that has to be suppressed anyway.
+
+Money needs no translation at all. `formatAmount` produces `฿1,234.56` —
+the same symbol, digits, grouping, and decimal mark in both languages — so
+`src/lib/domain/money.ts` is untouched by this phase.
 
 ### Thai copy
 
@@ -188,8 +195,11 @@ segment percent-encoded the same way `local.ts` encodes it — otherwise a card 
 containing `:` round-trips through one store and not the other.
 
 `createRepository` in `src/lib/storage/index.ts` stays the single switch: it
-returns the HTTP repository when the build says so and the localStorage one
-otherwise. No component, route, or domain module changes.
+returns the HTTP repository when `BUN_PUBLIC_CC_STORAGE` is `http` and the
+localStorage one otherwise. `@kctools/bun-server` passes `env: "BUN_PUBLIC_*"`
+to `Bun.build`, so the value is substituted into the bundle at build time and
+the unused implementation is dropped. No component, route, or domain module
+changes.
 
 ### Deletes must still cascade
 
@@ -230,8 +240,8 @@ Phase B: a test asserting the Thai catalog covers every English key — the one
 test that stops the catalogs drifting; `t` interpolation; the selection order
 (saved, then `navigator.language`, then Thai) including a `cc:lang` read that
 throws; and one component test that re-renders on a locale change without a
-reload. Date and money formatting are asserted per locale, with an explicit case
-pinning the Gregorian year in Thai.
+reload. `displayDate` is asserted in both languages, with an explicit case
+pinning `21 ก.ย. 2026` rather than a Buddhist Era year.
 
 Phase C: `repositoryContract` runs against `http.ts` with a fetch shim over the
 Worker handler backed by an in-memory KV, so the HTTP and localStorage
@@ -245,20 +255,26 @@ C is last because it touches no interface text and so cannot collide with B.
 
 Open risks, to be resolved during planning or early implementation:
 
-- **Build-time storage selection.** `@kctools/bun-server build` is a thin
-  wrapper over Bun's bundler, and whether it inlines a custom `process.env`
-  value at build time is unverified. If it does not, the fallback is a generated
-  module written by the build script, or a runtime probe of `/api`. This needs
-  checking before the plan commits to the env-var approach.
 - **Assets binding vs. the three-page build.** The 2026-09-15 spec verified the
   build produces three flat HTML pages plus chunks, which the assets binding
   should serve unchanged, but that has not been tested against a real deploy.
 - **String churn.** Phase B rewrites nearly every user-visible line; running it
   concurrently with any other phase would produce avoidable conflicts.
 
+## Verified during design
+
+- `@kctools/bun-server` 0.3.2 sets `env: "BUN_PUBLIC_*"` on its `Bun.build`
+  call, so a `BUN_PUBLIC_`-prefixed variable is inlined at build time. This is
+  what settles how the repository implementation is selected.
+- `displayDate` already renders `dd MMM yyyy` from a literal month-name array,
+  and `formatAmount` already renders `฿1,234.56` without `Intl`. Adding Thai is
+  a second array, not a formatting rewrite.
+
 ## Assumptions
 
-- Thai dates use Gregorian years, not Buddhist Era.
+- Thai dates use Gregorian years in `dd MMM yyyy`, not Buddhist Era.
+- The day is not zero-padded, matching what `displayDate` produces today
+  (`5 Sep 2026`, not `05 Sep 2026`).
 - Card names, comments, and purchase notes are never translated.
 - The three locations are fixed in code; adding a fourth is a code change, which
   is acceptable because the set describes physical places that rarely change.
