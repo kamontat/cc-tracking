@@ -96,6 +96,37 @@ test("refuses an impossible date", async () => {
 	expect(element.shadowRoot?.textContent).toContain("date");
 });
 
+test("keeps the date defaulted to today after a submit, so a second entry can follow immediately", async () => {
+	const element = await mount();
+	const details: Array<{
+		cardId: string;
+		date: string;
+		amount: number;
+		note: string;
+	}> = [];
+	element.addEventListener("add", (event) => {
+		details.push((event as CustomEvent<(typeof details)[number]>).detail);
+	});
+
+	fill(element, "amount", "100");
+	submit(element);
+
+	const date =
+		element.shadowRoot?.querySelector<HTMLInputElement>('[name="date"]');
+	expect(date?.value).toBe("2026-09-21");
+
+	fill(element, "amount", "200");
+	submit(element);
+
+	expect(details).toHaveLength(2);
+	expect(details[1]).toEqual({
+		cardId: "kbank",
+		date: "2026-09-21",
+		amount: 20_000,
+		note: "",
+	});
+});
+
 test("shows the answer the page gives it", async () => {
 	const element = await mount();
 	element.answer =

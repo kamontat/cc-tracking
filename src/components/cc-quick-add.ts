@@ -53,7 +53,14 @@ export class CcQuickAdd extends LitElement {
 				detail: { cardId, date, amount, note: this.value("note") },
 			}),
 		);
-		this.renderRoot.querySelector("form")?.reset();
+		const form = this.renderRoot.querySelector("form");
+		form?.reset();
+		// The date input is bound via the `.value` property, so `reset()` restores it to
+		// its never-set `defaultValue` (empty) rather than `this.today`, and Lit's dirty
+		// check then skips re-committing a binding whose value hasn't changed. Put it back
+		// explicitly so a required field doesn't block the very next entry.
+		const dateField = form?.querySelector<HTMLInputElement>('[name="date"]');
+		if (dateField) dateField.value = this.today;
 	}
 
 	override render() {
