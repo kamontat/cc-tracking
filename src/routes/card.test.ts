@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
-import { addDays, today } from "#lib/domain/date.ts";
+import { addDays, addPeriods, today } from "#lib/domain/date.ts";
 import type { Card, Purchase } from "#lib/domain/types.ts";
 import { InMemoryRepository } from "#lib/storage/repository.ts";
 import { renderCardPage } from "./card.ts";
@@ -94,6 +94,46 @@ test("no card id at all shows a message instead of a blank page", async () => {
 	await settle();
 
 	expect(bannerMessage(root)).toContain("No card was selected.");
+});
+
+test('"Show older statements" reveals a period beyond the first twelve', async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+
+	// The 13th statement back from the open period -- one past the first page of 12 --
+	// gets a purchase of its own, so the test can anchor on real content (its period and
+	// its purchase's note) rather than counting <article> elements alone.
+	const openPeriod = periodOfPurchase(card.cycle, today());
+	const farPeriod = addPeriods(openPeriod, -12);
+	const farPurchase: Purchase = {
+		id: "far",
+		cardId: "kbank",
+		date: closeDateOf(card.cycle, farPeriod),
+		amount: 5_000,
+		note: "vintage typewriter",
+	};
+	await repo.savePurchase(farPurchase);
+
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	expect(list?.shadowRoot?.querySelectorAll("article")).toHaveLength(12);
+	expect(list?.shadowRoot?.textContent).not.toContain(farPeriod);
+	expect(list?.shadowRoot?.textContent).not.toContain("vintage typewriter");
+
+	const showOlder = root.querySelector<HTMLButtonElement>("button");
+	expect(showOlder?.textContent?.trim()).toBe("Show older statements");
+	showOlder?.click();
+	await settle();
+
+	const listAfter = root.querySelector("cc-statement-list");
+	await listAfter?.updateComplete;
+	expect(listAfter?.shadowRoot?.querySelectorAll("article")).toHaveLength(24);
+	expect(listAfter?.shadowRoot?.textContent).toContain(farPeriod);
+	expect(listAfter?.shadowRoot?.textContent).toContain("vintage typewriter");
 });
 
 test("marking a statement paid records a payment whose frozen dates match that statement", async () => {
