@@ -57,6 +57,7 @@ export class CcCardForm extends LitElement {
 		}
 
 		this.error = "";
+		const wasCreate = this.card === null;
 		const card: Card = {
 			id,
 			name: this.value("name"),
@@ -67,6 +68,23 @@ export class CcCardForm extends LitElement {
 			archived: this.card?.archived ?? false,
 		};
 		this.dispatchEvent(new CustomEvent<Card>("save", { detail: card }));
+
+		if (wasCreate) {
+			// The bindings above are `.value=${card?.name ?? ""}`, so after a create `this.card`
+			// is still null and every expression re-evaluates to the same "" it last committed —
+			// Lit's dirty check then skips the DOM write and the typed text stays put. A native
+			// form reset bypasses that check entirely, the same trick already used in
+			// cc-quick-add's date field. The `checked` bindings are set as properties too, never
+			// as the `checked` attribute, so `reset()` leaves both radios unchecked regardless of
+			// `this.kind`; set the DOM directly rather than trust a Lit re-render to fix it.
+			const form = this.renderRoot.querySelector("form");
+			form?.reset();
+			this.kind = "offset";
+			const offsetRadio = form?.querySelector<HTMLInputElement>(
+				'[name="kind"][value="offset"]',
+			);
+			if (offsetRadio) offsetRadio.checked = true;
+		}
 	}
 
 	private fail(message: string) {
