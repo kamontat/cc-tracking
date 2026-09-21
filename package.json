@@ -12,6 +12,7 @@
 		"build": "bun-server build",
 		"preview": "bun-server preview",
 		"test": "bun test",
+		"typecheck": "tsc --noEmit",
 		"check": "biome check",
 		"format": "biome check --unsafe --write"
 	},

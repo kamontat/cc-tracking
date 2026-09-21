@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Bun only. `bun test`, `bun run`, `bun install`, `bunx`. Never npm, node, jest, vitest, or ts-node.
-- Timezone is fixed to `Asia/Bangkok`. Dates are `YYYY-MM-DD` strings; never use a `Date` object for calendar arithmetic, only as a clock reading.
+- Timezone is fixed to `Asia/Bangkok`. Dates are `YYYY-MM-DD` strings. Never read or construct local-time `Date` values (`new Date(y, m, d)`, `getFullYear`, `getMonth`, `getDate`) — they drift with the host timezone. `Date.UTC` with `getUTC*` readers is permitted for day arithmetic, because it is timezone-independent, and `Intl.DateTimeFormat` with an explicit `timeZone` is the one way to read the clock.
 - Money is stored and computed as **satang integers**. Never a float. Display only through `formatAmount`.
 - `src/lib/domain/**` imports nothing from `src/lib/storage/**`, and never references `localStorage`, `fetch`, `window`, or `document`.
 - Components receive a repository through a property. A component never constructs one.
@@ -728,7 +728,7 @@ git commit -m "feat: compute statement close and due dates from cycle rules"
 Rules these functions encode:
 
 - `buildStatement` selects the purchases whose `periodOfPurchase` equals `period`, sorted by date then id. When a payment record exists its frozen `closeDate` and `dueDate` win over the computed ones.
-- `nextActionable` returns the oldest closed-but-unpaid statement; if there is none, the currently open period's statement. It never returns `null`, so the dashboard always has one row per card.
+- `nextActionable` returns the oldest closed statement that is unpaid **and** has a non-zero total; if there is none, the currently open period's statement. An empty closed period has nothing to pay, so skipping it is what keeps a later real balance visible. It never returns `null`, so the dashboard always has one row per card.
 - `urgencyOf`: `future` when the statement has not closed yet, `overdue` when unpaid past its due date, `soon` when unpaid and due within 7 days, `open` otherwise (including paid).
 
 - [ ] **Step 1: Write the failing test**
