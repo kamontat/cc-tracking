@@ -153,11 +153,15 @@ Dates render as `dd MMM yyyy` in both languages, with a Gregorian year: `21 Sep
 2026` in English, `21 ก.ย. 2026` in Thai. Never Buddhist Era — 2569 would not
 match the bank statement the number is being reconciled against.
 
-`displayDate` in `src/lib/domain/date.ts` already produces exactly this shape
-from a hand-written `MONTH_NAMES` array. It gains a locale parameter and a
-second array of Thai abbreviated month names; nothing else changes. `Intl` is
-deliberately not used: it would pull in locale data and, for `th-TH`, default to
-the Buddhist calendar that has to be suppressed anyway.
+The day is zero-padded to two digits: `05 Sep 2026`, not `5 Sep 2026`. This is a
+change from what ships today, so every date on every page shifts by one
+character — deliberate, for a column of dates that lines up.
+
+`displayDate` in `src/lib/domain/date.ts` already produces this shape from a
+hand-written `MONTH_NAMES` array. It gains a locale parameter, a second array of
+Thai abbreviated month names, and the existing `pad` helper applied to the day.
+`Intl` is deliberately not used: it would pull in locale data and, for `th-TH`,
+default to the Buddhist calendar that has to be suppressed anyway.
 
 Money needs no translation at all. `formatAmount` produces `฿1,234.56` —
 the same symbol, digits, grouping, and decimal mark in both languages — so
@@ -241,7 +245,9 @@ test that stops the catalogs drifting; `t` interpolation; the selection order
 (saved, then `navigator.language`, then Thai) including a `cc:lang` read that
 throws; and one component test that re-renders on a locale change without a
 reload. `displayDate` is asserted in both languages, with an explicit case
-pinning `21 ก.ย. 2026` rather than a Buddhist Era year.
+pinning `21 ก.ย. 2026` rather than a Buddhist Era year, and a single-digit day
+case pinning `05 Sep 2026`. The existing `date.test.ts` expectations for
+unpadded days are updated, not deleted.
 
 Phase C: `repositoryContract` runs against `http.ts` with a fetch shim over the
 Worker handler backed by an in-memory KV, so the HTTP and localStorage
@@ -266,15 +272,13 @@ Open risks, to be resolved during planning or early implementation:
 - `@kctools/bun-server` 0.3.2 sets `env: "BUN_PUBLIC_*"` on its `Bun.build`
   call, so a `BUN_PUBLIC_`-prefixed variable is inlined at build time. This is
   what settles how the repository implementation is selected.
-- `displayDate` already renders `dd MMM yyyy` from a literal month-name array,
+- `displayDate` already renders `d MMM yyyy` from a literal month-name array,
   and `formatAmount` already renders `฿1,234.56` without `Intl`. Adding Thai is
-  a second array, not a formatting rewrite.
+  a second array plus day padding, not a formatting rewrite.
 
 ## Assumptions
 
 - Thai dates use Gregorian years in `dd MMM yyyy`, not Buddhist Era.
-- The day is not zero-padded, matching what `displayDate` produces today
-  (`5 Sep 2026`, not `05 Sep 2026`).
 - Card names, comments, and purchase notes are never translated.
 - The three locations are fixed in code; adding a fourth is a code change, which
   is acceptable because the set describes physical places that rarely change.
