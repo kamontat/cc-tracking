@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import type { Card } from "#lib/domain/types.ts";
 import { InMemoryRepository } from "#lib/storage/repository.ts";
-import { renderCardsPage } from "./cards.ts";
+import { exportBackup, parseBackup } from "#lib/storage/transfer.ts";
+import { prepareBackupFile, renderCardsPage } from "./cards.ts";
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -31,6 +32,16 @@ const submit = (root: HTMLElement) => {
 
 const bannerMessage = (root: HTMLElement): string =>
 	root.querySelector("cc-error-banner")?.message ?? "";
+
+/** Simulates picking `text` as the file for the page's Import JSON input. */
+const chooseFile = (root: HTMLElement, text: string) => {
+	const input = root.querySelector<HTMLInputElement>('input[type="file"]');
+	if (!input) throw new Error("no file input");
+	input.files = [
+		new File([text], "backup.json", { type: "application/json" }),
+	] as unknown as FileList;
+	input.dispatchEvent(new Event("change", { bubbles: true }));
+};
 
 const sampleCard: Card = {
 	id: "kbank",
@@ -111,4 +122,109 @@ test("a successful save clears the banner and the card appears in the table", as
 	const table = root.querySelector("cc-card-table");
 	await table?.updateComplete;
 	expect(table?.shadowRoot?.textContent).toContain("scb");
+});
+
+test("importing a backup merges it into a populated repository without wiping what was there", async () => {
+	const backupSource = new InMemoryRepository();
+	await backupSource.saveCard({
+		...sampleCard,
+		id: "scb",
+		name: "SCB Mastercard",
+		location: "Bangkok",
+	});
+	await backupSource.savePurchase({
+		id: "p1",
+		cardId: "scb",
+		date: "2026-09-05",
+		amount: 10_000,
+		note: "fuel",
+	});
+	await backupSource.savePayment({
+		cardId: "scb",
+		period: "2026-09",
+		paidAt: "2026-10-01",
+		closeDate: "2026-09-18",
+		dueDate: "2026-10-03",
+	});
+	const backupText = JSON.stringify(await exportBackup(backupSource));
+
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard); // pre-existing card, not part of the backup
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	chooseFile(root, backupText);
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
+	expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank", "scb"]);
+	expect(await repo.getCard("kbank")).toEqual(sampleCard);
+	expect(await repo.listPurchases("scb")).toHaveLength(1);
+	expect(await repo.listPayments("scb")).toHaveLength(1);
+});
+
+test("importing a malformed file leaves a message in the banner and changes nothing", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	chooseFile(root, "{ this is not json");
+	await settle();
+
+	expect(bannerMessage(root)).toContain("Could not import that backup.");
+	expect(await repo.listCards()).toEqual([sampleCard]);
+});
+
+test("prepareBackupFile produces text that parseBackup accepts and that round-trips every card, purchase, and payment", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	await repo.saveCard({
+		...sampleCard,
+		id: "scb",
+		name: "SCB Mastercard",
+		location: "Bangkok",
+	});
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "kbank",
+		date: "2026-09-05",
+		amount: 10_000,
+		note: "fuel",
+	});
+	await repo.savePayment({
+		cardId: "kbank",
+		period: "2026-09",
+		paidAt: "2026-10-01",
+		closeDate: "2026-09-18",
+		dueDate: "2026-10-03",
+	});
+
+	const { filename, text } = await prepareBackupFile(
+		repo,
+		new Date("2026-09-21T03:00:00Z"),
+	);
+	expect(filename).toBe("cc-tracking-2026-09-21.json");
+
+	const backup = parseBackup(text);
+	expect(backup.cards).toEqual(await repo.listCards());
+	expect(backup.purchases).toEqual(await repo.listPurchases("kbank"));
+	expect(backup.payments).toEqual(await repo.listPayments("kbank"));
+});
+
+test("clicking Export JSON does not raise an error", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root
+		.querySelector("article button.secondary")
+		?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
 });
