@@ -728,7 +728,7 @@ git commit -m "feat: compute statement close and due dates from cycle rules"
 Rules these functions encode:
 
 - `buildStatement` selects the purchases whose `periodOfPurchase` equals `period`, sorted by date then id. When a payment record exists its frozen `closeDate` and `dueDate` win over the computed ones.
-- `nextActionable` returns the oldest closed-but-unpaid statement; if there is none, the currently open period's statement. It never returns `null`, so the dashboard always has one row per card.
+- `nextActionable` returns the oldest closed statement that is unpaid **and** has a non-zero total; if there is none, the currently open period's statement. An empty closed period has nothing to pay, so skipping it is what keeps a later real balance visible. It never returns `null`, so the dashboard always has one row per card.
 - `urgencyOf`: `future` when the statement has not closed yet, `overdue` when unpaid past its due date, `soon` when unpaid and due within 7 days, `open` otherwise (including paid).
 
 - [ ] **Step 1: Write the failing test**
