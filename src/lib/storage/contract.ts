@@ -72,6 +72,30 @@ export function repositoryContract(name: string, create: () => Repository): void
 			expect(await repo.getCard("kbank")).toBeNull();
 		});
 
+		test("deleting a card cascades to its purchases and payments", async () => {
+			// Save first card with purchase and payment
+			await repo.saveCard(sampleCard({ id: "kbank" }));
+			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank" }));
+			await repo.savePayment(samplePayment({ cardId: "kbank", period: "2026-09" }));
+
+			// Save second card with purchase and payment
+			await repo.saveCard(sampleCard({ id: "scb" }));
+			await repo.savePurchase(samplePurchase({ id: "p2", cardId: "scb" }));
+			await repo.savePayment(samplePayment({ cardId: "scb", period: "2026-09" }));
+
+			// Delete first card
+			await repo.deleteCard("kbank");
+
+			// Verify first card's records are gone
+			expect(await repo.listPurchases("kbank")).toEqual([]);
+			expect(await repo.listPayments("kbank")).toEqual([]);
+
+			// Verify second card's records remain untouched
+			expect(await repo.listPurchases("scb")).toHaveLength(1);
+			expect((await repo.listPurchases("scb"))[0]?.id).toBe("p2");
+			expect(await repo.listPayments("scb")).toHaveLength(1);
+		});
+
 		test("lists cards sorted by id in ascending order", async () => {
 			await repo.saveCard(sampleCard({ id: "scb" }));
 			await repo.saveCard(sampleCard());

@@ -47,6 +47,13 @@ export class InMemoryRepository implements Repository {
 
 	async deleteCard(id: string): Promise<void> {
 		this.cards.delete(id);
+		// Cascade: delete all purchases and payments for this card
+		for (const key of [...this.purchases.keys()]) {
+			if (key.startsWith(`${id}:`)) this.purchases.delete(key);
+		}
+		for (const key of [...this.payments.keys()]) {
+			if (key.startsWith(`${id}:`)) this.payments.delete(key);
+		}
 	}
 
 	async listPurchases(cardId: string, from?: string, to?: string): Promise<Purchase[]> {

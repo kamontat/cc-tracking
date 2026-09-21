@@ -64,6 +64,16 @@ export class LocalStorageRepository implements Repository {
 
 	async deleteCard(id: string): Promise<void> {
 		this.storage.removeItem(cardKey(id));
+		// Cascade: delete all purchases and payments for this card
+		const encodedCardId = encodeURIComponent(id);
+		const purchasePrefix = `${PURCHASE}${encodedCardId}:`;
+		const paymentPrefix = `${PAYMENT}${encodedCardId}:`;
+		for (const key of this.keysWithPrefix(purchasePrefix)) {
+			this.storage.removeItem(key);
+		}
+		for (const key of this.keysWithPrefix(paymentPrefix)) {
+			this.storage.removeItem(key);
+		}
 	}
 
 	async listPurchases(cardId: string, from?: string, to?: string): Promise<Purchase[]> {

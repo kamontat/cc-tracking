@@ -30,6 +30,20 @@ describe("exportBackup", () => {
 		expect(backup.purchases).toEqual([]);
 		expect(backup.payments).toEqual([]);
 	});
+
+	test("does not export purchases and payments of deleted cards", async () => {
+		const repo = await populated();
+		// Delete the first card; its purchase and payment should not appear in the backup
+		await repo.deleteCard("kbank");
+		const backup = await exportBackup(repo);
+
+		// Only the second card should be in the backup
+		expect(backup.cards.map((c) => c.id)).toEqual(["scb"]);
+		// Only the second card's purchase should be exported
+		expect(backup.purchases.map((p) => p.id)).toEqual(["p2"]);
+		// No payments should remain (the only payment was for kbank which was deleted)
+		expect(backup.payments).toEqual([]);
+	});
 });
 
 describe("parseBackup", () => {
