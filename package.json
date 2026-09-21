@@ -8,23 +8,23 @@
     "#components/*": "./src/components/*"
   },
   "scripts": {
-    "dev": "bun-server dev --mode mpa",
-    "build": "bun-server build --mode mpa",
+    "dev": "bun-server dev",
+    "build": "bun-server build",
     "preview": "bun-server preview"
   },
   "dependencies": {
-    "@kctools/bun-server": "0.2.0",
+    "@kctools/bun-server": "0.3.2",
     "@picocss/pico": "2.1.1",
     "lit": "3.3.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.13",
-    "@happy-dom/global-registrator": "20.14.3",
-    "@kcconfigs/biome": "2.0.5",
-    "@kcconfigs/tsconfig": "1.1.7",
+    "@biomejs/biome": "2.5.14",
+    "@happy-dom/global-registrator": "20.14.5",
+    "@kcconfigs/biome": "2.0.6",
+    "@kcconfigs/tsconfig": "1.1.8",
     "@types/bun": "1.4.2",
     "typescript-language-server": "6.0.0",
-    "wrangler": "4.131.0"
+    "wrangler": "4.135.0"
   },
   "peerDependencies": {
     "typescript": "7.0.2"
