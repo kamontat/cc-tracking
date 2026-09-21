@@ -114,7 +114,6 @@ export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 					<h2>${editing ? `Edit ${editing.name}` : "Add a card"}</h2>
 					<cc-card-form
 						.card=${editing}
-						.locations=${[...new Set(cards.map((c) => c.location))].sort()}
 						@save=${onSave}
 						@cancel=${() => {
 							editing = null;

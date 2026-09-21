@@ -123,7 +123,9 @@ test("clears the form after a successful create so the next card starts blank", 
 	expect(value("id")).toBe("");
 	expect(value("name")).toBe("");
 	expect(value("last4")).toBe("");
-	expect(value("location")).toBe("");
+	// A <select> always holds one of its option values -- unlike the free-text input it
+	// replaced, it can't clear to "". It reverts to the first option, "bangkok".
+	expect(value("location")).toBe("bangkok");
 	expect(value("closeDay")).toBe("");
 
 	const offsetRadio = element.shadowRoot?.querySelector<HTMLInputElement>(
@@ -168,4 +170,56 @@ test("locks the id when editing an existing card", async () => {
 	});
 	expect(element.shadowRoot?.querySelector('[name="id"]')).toBeNull();
 	expect(element.shadowRoot?.textContent).toContain("kbank");
+});
+
+test("offers exactly the three locations, labelled", async () => {
+	const element = await mount();
+	const options = [
+		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="location"] option',
+		) ?? []),
+	];
+
+	expect(options.map((option) => option.value)).toEqual([
+		"bangkok",
+		"phichit",
+		"krabi",
+	]);
+	expect(options.map((option) => option.textContent?.trim())).toEqual([
+		"Bangkok",
+		"Phichit",
+		"Krabi",
+	]);
+});
+
+test("defaults a new card to Bangkok without the user touching the field", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	fill(element, "id", "kbank");
+	fill(element, "name", "KBank Visa");
+	fill(element, "last4", "4821");
+	fill(element, "closeDay", "18");
+	fill(element, "dueOffsetDays", "15");
+	submit(element);
+
+	expect(saved?.location).toBe("bangkok");
+});
+
+test("shows the edited card's own location when editing", async () => {
+	const element = await mount({
+		id: "scb",
+		name: "SCB",
+		last4: "1234",
+		location: "phichit",
+		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
+		archived: false,
+	});
+
+	const select =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="location"]');
+	expect(select?.value).toBe("phichit");
 });

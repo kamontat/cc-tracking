@@ -1,19 +1,32 @@
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { DEFAULT_LOCATION, toLocation } from "#lib/domain/location";
+import {
+	DEFAULT_LOCATION,
+	LOCATIONS,
+	locationLabel,
+	toLocation,
+} from "#lib/domain/location";
 import type { Card, CycleRule } from "#lib/domain/types";
 
 @customElement("cc-card-form")
 export class CcCardForm extends LitElement {
 	// Pico styles the light DOM, so this component renders without shadow styles of its own.
 	@property({ attribute: false }) card: Card | null = null;
-	@property({ attribute: false }) locations: string[] = [];
 
 	@state() private kind: CycleRule["kind"] = "offset";
 	@state() private error = "";
 
 	override willUpdate(changed: Map<string, unknown>) {
 		if (changed.has("card") && this.card) this.kind = this.card.cycle.kind;
+	}
+
+	override updated(changed: Map<string, unknown>) {
+		// Only when the edit target changes: doing this on every update would fight the user's
+		// own selection, which re-renders on any @state change.
+		if (!changed.has("card")) return;
+		const select =
+			this.renderRoot.querySelector<HTMLSelectElement>('[name="location"]');
+		if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
 	}
 
 	private value(name: string): string {
@@ -37,6 +50,8 @@ export class CcCardForm extends LitElement {
 		if (!Number.isInteger(closeDay) || closeDay < 1 || closeDay > 31) {
 			return this.fail("Closing day must be between 1 and 31.");
 		}
+		const location = toLocation(this.value("location"));
+		if (!location) return this.fail("Choose where the card is kept.");
 
 		let cycle: CycleRule;
 		if (this.kind === "offset") {
@@ -63,7 +78,7 @@ export class CcCardForm extends LitElement {
 			id,
 			name: this.value("name"),
 			last4,
-			location: toLocation(this.value("location")) ?? DEFAULT_LOCATION,
+			location,
 			cycle,
 			comment: this.value("comment"),
 			archived: this.card?.archived ?? false,
@@ -85,6 +100,9 @@ export class CcCardForm extends LitElement {
 				'[name="kind"][value="offset"]',
 			);
 			if (offsetRadio) offsetRadio.checked = true;
+			const locationSelect =
+				form?.querySelector<HTMLSelectElement>('[name="location"]');
+			if (locationSelect) locationSelect.value = DEFAULT_LOCATION;
 		}
 	}
 
@@ -109,10 +127,12 @@ export class CcCardForm extends LitElement {
 				<label>Last 4 <input name="last4" inputmode="numeric" .value=${card?.last4 ?? ""} required /></label>
 				<label>
 					Location
-					<input name="location" list="cc-locations" .value=${card?.location ?? ""} required />
-					<datalist id="cc-locations">
-						${this.locations.map((value) => html`<option value=${value}></option>`)}
-					</datalist>
+					<select name="location" required>
+						${LOCATIONS.map(
+							(value) =>
+								html`<option value=${value}>${locationLabel(value)}</option>`,
+						)}
+					</select>
 				</label>
 
 				<fieldset>
