@@ -4,8 +4,6 @@
 		// FIXME: https://github.com/oven-sh/bun/issues/43097
 		"experimentalDecorators": true,
 		"useDefineForClassFields": false,
-		// Imports carry their .ts extension, which Bun resolves directly.
-		"allowImportingTsExtensions": true,
 		"noEmit": true
 	}
 }

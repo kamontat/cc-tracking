@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import "#components/cc-card-form.ts";
-import type { Card } from "#lib/domain/types.ts";
+import "#components/cc-card-form";
+import type { Card } from "#lib/domain/types";
 
 const mount = async (card: Card | null = null) => {
 	document.body.innerHTML = "";

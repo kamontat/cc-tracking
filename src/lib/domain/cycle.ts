@@ -5,8 +5,8 @@ import {
 	compareDates,
 	periodOf,
 	periodParts,
-} from "#lib/domain/date.ts";
-import type { CycleRule, Period, PlainDate } from "#lib/domain/types.ts";
+} from "#lib/domain/date";
+import type { CycleRule, Period, PlainDate } from "#lib/domain/types";
 
 const ordinal = (day: number): string => {
 	const suffix =

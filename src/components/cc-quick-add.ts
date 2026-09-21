@@ -1,8 +1,8 @@
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { compareDates, isValidDate } from "#lib/domain/date.ts";
-import { parseAmount } from "#lib/domain/money.ts";
-import type { Card, PlainDate } from "#lib/domain/types.ts";
+import { compareDates, isValidDate } from "#lib/domain/date";
+import { parseAmount } from "#lib/domain/money";
+import type { Card, PlainDate } from "#lib/domain/types";
 
 export type QuickAddDetail = {
 	cardId: string;

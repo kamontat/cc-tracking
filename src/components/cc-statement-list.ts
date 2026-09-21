@@ -1,9 +1,9 @@
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { displayDate } from "#lib/domain/date.ts";
-import { formatAmount } from "#lib/domain/money.ts";
-import { urgencyOf } from "#lib/domain/statement.ts";
-import type { PlainDate, Statement } from "#lib/domain/types.ts";
+import { displayDate } from "#lib/domain/date";
+import { formatAmount } from "#lib/domain/money";
+import { urgencyOf } from "#lib/domain/statement";
+import type { PlainDate, Statement } from "#lib/domain/types";
 
 @customElement("cc-statement-list")
 export class CcStatementList extends LitElement {

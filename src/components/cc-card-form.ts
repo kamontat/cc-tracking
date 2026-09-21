@@ -1,6 +1,6 @@
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { Card, CycleRule } from "#lib/domain/types.ts";
+import type { Card, CycleRule } from "#lib/domain/types";
 
 @customElement("cc-card-form")
 export class CcCardForm extends LitElement {

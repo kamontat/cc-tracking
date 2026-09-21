@@ -1,9 +1,9 @@
 import { expect, test } from "bun:test";
-import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
-import { addDays, addPeriods, today } from "#lib/domain/date.ts";
-import type { Card, Purchase } from "#lib/domain/types.ts";
-import { InMemoryRepository } from "#lib/storage/repository.ts";
-import { renderDashboardPage } from "./index.ts";
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
+import { addDays, addPeriods, today } from "#lib/domain/date";
+import type { Card, Purchase } from "#lib/domain/types";
+import { InMemoryRepository } from "#lib/storage/repository";
+import { renderDashboardPage } from "./index";
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));

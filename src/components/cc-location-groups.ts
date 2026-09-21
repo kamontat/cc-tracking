@@ -1,7 +1,7 @@
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import type { DueRow } from "#components/cc-due-list.ts";
-import { displayDate } from "#lib/domain/date.ts";
+import type { DueRow } from "#components/cc-due-list";
+import { displayDate } from "#lib/domain/date";
 
 @customElement("cc-location-groups")
 export class CcLocationGroups extends LitElement {

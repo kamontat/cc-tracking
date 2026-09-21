@@ -1,4 +1,4 @@
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
+import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
 
 /** Thrown when the underlying store refuses a read or a write. */
 export class StorageError extends Error {

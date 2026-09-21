@@ -1,17 +1,13 @@
 import "@picocss/pico/css/pico.min.css";
-import "#components/cc-card-form.ts";
-import "#components/cc-card-table.ts";
-import "#components/cc-error-banner.ts";
+import "#components/cc-card-form";
+import "#components/cc-card-table";
+import "#components/cc-error-banner";
 import { html, render } from "lit";
-import type { Card } from "#lib/domain/types.ts";
-import type { Repository } from "#lib/storage/repository.ts";
-import {
-	exportBackup,
-	importBackup,
-	parseBackup,
-} from "#lib/storage/transfer.ts";
-import { bootstrap } from "#lib/ui/page.ts";
-import { createPageState } from "#lib/ui/page-state.ts";
+import type { Card } from "#lib/domain/types";
+import type { Repository } from "#lib/storage/repository";
+import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
+import { bootstrap } from "#lib/ui/page";
+import { createPageState } from "#lib/ui/page-state";
 
 /**
  * Turns a repository's contents into a backup file's text and filename. Split out from the

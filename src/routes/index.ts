@@ -1,18 +1,18 @@
 import "@picocss/pico/css/pico.min.css";
-import "#components/cc-due-list.ts";
-import "#components/cc-error-banner.ts";
-import "#components/cc-location-groups.ts";
-import "#components/cc-quick-add.ts";
+import "#components/cc-due-list";
+import "#components/cc-error-banner";
+import "#components/cc-location-groups";
+import "#components/cc-quick-add";
 import { html, render } from "lit";
-import type { DueRow } from "#components/cc-due-list.ts";
-import type { QuickAddDetail } from "#components/cc-quick-add.ts";
-import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
-import { displayDate, today } from "#lib/domain/date.ts";
-import { buildStatement, nextActionable } from "#lib/domain/statement.ts";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
-import type { Repository } from "#lib/storage/repository.ts";
-import { bootstrap } from "#lib/ui/page.ts";
-import { createPageState } from "#lib/ui/page-state.ts";
+import type { DueRow } from "#components/cc-due-list";
+import type { QuickAddDetail } from "#components/cc-quick-add";
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
+import { displayDate, today } from "#lib/domain/date";
+import { buildStatement, nextActionable } from "#lib/domain/statement";
+import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type { Repository } from "#lib/storage/repository";
+import { bootstrap } from "#lib/ui/page";
+import { createPageState } from "#lib/ui/page-state";
 
 /** Renders the dashboard page into `root`, wiring it to `repo`. Exported for tests and for Tasks 11-12 to extend. */
 export function renderDashboardPage(repo: Repository, root: HTMLElement): void {

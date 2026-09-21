@@ -4,8 +4,8 @@
 	"type": "module",
 	"private": true,
 	"imports": {
-		"#lib/*": "./src/lib/*",
-		"#components/*": "./src/components/*"
+		"#lib/*": "./src/lib/*.ts",
+		"#components/*": "./src/components/*.ts"
 	},
 	"scripts": {
 		"dev": "bun-server dev",

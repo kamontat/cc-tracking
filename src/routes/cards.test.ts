@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import type { Card } from "#lib/domain/types.ts";
-import { InMemoryRepository } from "#lib/storage/repository.ts";
-import { exportBackup, parseBackup } from "#lib/storage/transfer.ts";
-import { prepareBackupFile, renderCardsPage } from "./cards.ts";
+import type { Card } from "#lib/domain/types";
+import { InMemoryRepository } from "#lib/storage/repository";
+import { exportBackup, parseBackup } from "#lib/storage/transfer";
+import { prepareBackupFile, renderCardsPage } from "./cards";
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import "#components/cc-error-banner.ts";
+import "#components/cc-error-banner";
 
 const mount = async (message: string) => {
 	document.body.innerHTML = "";

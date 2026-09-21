@@ -3,9 +3,9 @@ import {
 	repositoryContract,
 	sampleCard,
 	samplePurchase,
-} from "#lib/storage/contract.ts";
-import { LocalStorageRepository } from "#lib/storage/local.ts";
-import { StorageError } from "#lib/storage/repository.ts";
+} from "#lib/storage/contract";
+import { LocalStorageRepository } from "#lib/storage/local";
+import { StorageError } from "#lib/storage/repository";
 
 const freshStorage = (): Storage => {
 	localStorage.clear();

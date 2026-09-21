@@ -1,19 +1,19 @@
 import "@picocss/pico/css/pico.min.css";
-import "#components/cc-error-banner.ts";
-import "#components/cc-statement-list.ts";
+import "#components/cc-error-banner";
+import "#components/cc-statement-list";
 import { html, render } from "lit";
-import { describeCycle } from "#lib/domain/cycle.ts";
-import { today } from "#lib/domain/date.ts";
-import { buildStatement, recentPeriods } from "#lib/domain/statement.ts";
+import { describeCycle } from "#lib/domain/cycle";
+import { today } from "#lib/domain/date";
+import { buildStatement, recentPeriods } from "#lib/domain/statement";
 import type {
 	Card,
 	Purchase,
 	Statement,
 	StatementPayment,
-} from "#lib/domain/types.ts";
-import type { Repository } from "#lib/storage/repository.ts";
-import { bootstrap } from "#lib/ui/page.ts";
-import { createPageState } from "#lib/ui/page-state.ts";
+} from "#lib/domain/types";
+import type { Repository } from "#lib/storage/repository";
+import { bootstrap } from "#lib/ui/page";
+import { createPageState } from "#lib/ui/page-state";
 
 const PAGE_SIZE = 12;
 

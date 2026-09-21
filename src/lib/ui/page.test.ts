@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { bootstrap } from "#lib/ui/page.ts";
+import { bootstrap } from "#lib/ui/page";
 
 test("falls back to document.body when the page has no <main>", () => {
 	document.body.innerHTML = "";

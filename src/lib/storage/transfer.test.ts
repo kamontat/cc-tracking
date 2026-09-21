@@ -3,13 +3,9 @@ import {
 	sampleCard,
 	samplePayment,
 	samplePurchase,
-} from "#lib/storage/contract.ts";
-import { InMemoryRepository } from "#lib/storage/repository.ts";
-import {
-	exportBackup,
-	importBackup,
-	parseBackup,
-} from "#lib/storage/transfer.ts";
+} from "#lib/storage/contract";
+import { InMemoryRepository } from "#lib/storage/repository";
+import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
 
 const populated = async () => {
 	const repo = new InMemoryRepository();

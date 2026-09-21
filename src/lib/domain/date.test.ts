@@ -14,7 +14,7 @@ import {
 	periodOf,
 	periodParts,
 	today,
-} from "#lib/domain/date.ts";
+} from "#lib/domain/date";
 
 describe("parseDate / formatDate", () => {
 	test("round trips", () => {

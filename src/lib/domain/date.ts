@@ -1,4 +1,4 @@
-import type { DateParts, Period, PlainDate } from "#lib/domain/types.ts";
+import type { DateParts, Period, PlainDate } from "#lib/domain/types";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD_PATTERN = /^\d{4}-\d{2}$/;

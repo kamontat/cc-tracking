@@ -1,4 +1,4 @@
-import { repositoryContract } from "#lib/storage/contract.ts";
-import { InMemoryRepository } from "#lib/storage/repository.ts";
+import { repositoryContract } from "#lib/storage/contract";
+import { InMemoryRepository } from "#lib/storage/repository";
 
 repositoryContract("in-memory", () => new InMemoryRepository());

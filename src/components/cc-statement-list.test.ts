@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
-import "#components/cc-statement-list.ts";
-import { buildStatement } from "#lib/domain/statement.ts";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
+import "#components/cc-statement-list";
+import { buildStatement } from "#lib/domain/statement";
+import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
 
 const card: Card = {
 	id: "kbank",

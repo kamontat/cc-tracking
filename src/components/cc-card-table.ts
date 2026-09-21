@@ -1,7 +1,7 @@
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { describeCycle } from "#lib/domain/cycle.ts";
-import type { Card } from "#lib/domain/types.ts";
+import { describeCycle } from "#lib/domain/cycle";
+import type { Card } from "#lib/domain/types";
 
 @customElement("cc-card-table")
 export class CcCardTable extends LitElement {

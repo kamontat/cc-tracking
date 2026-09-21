@@ -4,8 +4,8 @@ import {
 	nextActionable,
 	recentPeriods,
 	urgencyOf,
-} from "#lib/domain/statement.ts";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
+} from "#lib/domain/statement";
+import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
 
 const card: Card = {
 	id: "kbank",

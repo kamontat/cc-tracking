@@ -4,8 +4,8 @@ import {
 	describeCycle,
 	dueDateOf,
 	periodOfPurchase,
-} from "#lib/domain/cycle.ts";
-import type { CycleRule } from "#lib/domain/types.ts";
+} from "#lib/domain/cycle";
+import type { CycleRule } from "#lib/domain/types";
 
 const offset: CycleRule = { kind: "offset", closeDay: 18, dueOffsetDays: 15 };
 const fixed: CycleRule = { kind: "fixed", closeDay: 18, dueDay: 5 };

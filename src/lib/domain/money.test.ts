@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { formatAmount, parseAmount, sumAmounts } from "#lib/domain/money.ts";
+import { formatAmount, parseAmount, sumAmounts } from "#lib/domain/money";
 
 describe("parseAmount", () => {
 	test("reads whole baht", () => {

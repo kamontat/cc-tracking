@@ -1,9 +1,9 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { daysBetween, displayDate } from "#lib/domain/date.ts";
-import { formatAmount } from "#lib/domain/money.ts";
-import { urgencyOf } from "#lib/domain/statement.ts";
-import type { Card, PlainDate, Statement } from "#lib/domain/types.ts";
+import { daysBetween, displayDate } from "#lib/domain/date";
+import { formatAmount } from "#lib/domain/money";
+import { urgencyOf } from "#lib/domain/statement";
+import type { Card, PlainDate, Statement } from "#lib/domain/types";
 
 export type DueRow = { card: Card; statement: Statement };
 

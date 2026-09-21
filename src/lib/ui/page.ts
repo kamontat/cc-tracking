@@ -1,9 +1,6 @@
-import "#components/cc-error-banner.ts";
-import {
-	createRepository,
-	StorageUnavailableError,
-} from "#lib/storage/index.ts";
-import type { Repository } from "#lib/storage/repository.ts";
+import "#components/cc-error-banner";
+import { createRepository, StorageUnavailableError } from "#lib/storage/index";
+import type { Repository } from "#lib/storage/repository";
 
 /**
  * Creates the repository once per page and hands it to the page's renderer.

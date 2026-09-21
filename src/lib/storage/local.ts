@@ -1,5 +1,5 @@
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
-import { type Repository, StorageError } from "#lib/storage/repository.ts";
+import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import { type Repository, StorageError } from "#lib/storage/repository";
 
 const PREFIX = "cc:";
 const CARD = `${PREFIX}card:`;

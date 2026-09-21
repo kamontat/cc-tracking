@@ -1,5 +1,5 @@
-import { LocalStorageRepository } from "#lib/storage/local.ts";
-import type { Repository } from "#lib/storage/repository.ts";
+import { LocalStorageRepository } from "#lib/storage/local";
+import type { Repository } from "#lib/storage/repository";
 
 /** Thrown at startup when the browser gives the page no usable storage. */
 export class StorageUnavailableError extends Error {
@@ -32,9 +32,9 @@ export function createRepository(
 	return new LocalStorageRepository(storage);
 }
 
-export { LocalStorageRepository } from "#lib/storage/local.ts";
+export { LocalStorageRepository } from "#lib/storage/local";
 export {
 	InMemoryRepository,
 	type Repository,
 	StorageError,
-} from "#lib/storage/repository.ts";
+} from "#lib/storage/repository";

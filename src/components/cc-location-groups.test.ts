@@ -1,8 +1,8 @@
 import { expect, test } from "bun:test";
-import "#components/cc-location-groups.ts";
-import type { DueRow } from "#components/cc-due-list.ts";
-import { buildStatement } from "#lib/domain/statement.ts";
-import type { Card } from "#lib/domain/types.ts";
+import "#components/cc-location-groups";
+import type { DueRow } from "#components/cc-due-list";
+import { buildStatement } from "#lib/domain/statement";
+import type { Card } from "#lib/domain/types";
 
 const card = (id: string, location: string): Card => ({
 	id,

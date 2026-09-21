@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
-import type { Repository } from "#lib/storage/repository.ts";
+import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type { Repository } from "#lib/storage/repository";
 
 export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
 	id: "kbank",

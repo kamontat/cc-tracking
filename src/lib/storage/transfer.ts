@@ -1,6 +1,6 @@
-import { isValidDate } from "#lib/domain/date.ts";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types.ts";
-import type { Repository } from "#lib/storage/repository.ts";
+import { isValidDate } from "#lib/domain/date";
+import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type { Repository } from "#lib/storage/repository";
 
 export const BACKUP_VERSION = 1;
 

@@ -1,11 +1,11 @@
-import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle.ts";
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import {
 	addPeriods,
 	compareDates,
 	comparePeriods,
 	daysBetween,
-} from "#lib/domain/date.ts";
-import { sumAmounts } from "#lib/domain/money.ts";
+} from "#lib/domain/date";
+import { sumAmounts } from "#lib/domain/money";
 import type {
 	Card,
 	Period,
@@ -13,7 +13,7 @@ import type {
 	Purchase,
 	Statement,
 	StatementPayment,
-} from "#lib/domain/types.ts";
+} from "#lib/domain/types";
 
 export type Urgency = "overdue" | "soon" | "open" | "future";
 

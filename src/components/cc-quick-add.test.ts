@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import "#components/cc-quick-add.ts";
-import type { Card } from "#lib/domain/types.ts";
+import "#components/cc-quick-add";
+import type { Card } from "#lib/domain/types";
 
 const cards: Card[] = [
 	{
