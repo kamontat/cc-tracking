@@ -7,16 +7,14 @@ import type { Card } from "#lib/domain/types.ts";
 import type { Repository } from "#lib/storage/repository.ts";
 import { bootstrap } from "#lib/ui/page.ts";
 
-bootstrap((repo: Repository) => {
-	const root = document.querySelector<HTMLElement>("#page");
-	if (!root) return;
-
+/** Renders the card registry page into `root`, wiring it to `repo`. Exported for tests and for Task 14 to extend. */
+export function renderCardsPage(repo: Repository, root: HTMLElement): void {
 	let cards: Card[] = [];
 	let counts: Record<string, number> = {};
 	let editing: Card | null = null;
 	let error = "";
 
-	const load = async () => {
+	const load = async (preserveError = false) => {
 		try {
 			cards = await repo.listCards();
 			counts = Object.fromEntries(
@@ -27,7 +25,7 @@ bootstrap((repo: Repository) => {
 					),
 				),
 			);
-			error = "";
+			if (!preserveError) error = "";
 		} catch (failure) {
 			error =
 				failure instanceof Error
@@ -38,19 +36,32 @@ bootstrap((repo: Repository) => {
 	};
 
 	const guard = async (action: () => Promise<void>, message: string) => {
+		let failed = false;
 		try {
 			await action();
 			error = "";
 		} catch (failure) {
 			error =
 				failure instanceof Error ? `${message} ${failure.message}` : message;
+			failed = true;
 		}
-		await load();
+		// Refresh from storage either way, but keep a failure's message on screen
+		// instead of letting a successful read silently wipe it.
+		await load(failed);
 	};
 
 	const onSave = (event: CustomEvent<Card>) =>
 		guard(async () => {
-			await repo.saveCard(event.detail);
+			const card = event.detail;
+			if (!editing) {
+				const existing = await repo.getCard(card.id);
+				if (existing) {
+					throw new Error(
+						`A card with id "${card.id}" already exists. Card ids must be unique.`,
+					);
+				}
+			}
+			await repo.saveCard(card);
 			editing = null;
 		}, "Could not save the card.");
 
@@ -72,7 +83,7 @@ bootstrap((repo: Repository) => {
 		render(
 			html`
 				<h1>Cards</h1>
-				<cc-error-banner .message=${error} retry-label="Reload" @retry=${load}></cc-error-banner>
+				<cc-error-banner .message=${error} retry-label="Reload" @retry=${() => load()}></cc-error-banner>
 				<article>
 					<h2>${editing ? `Edit ${editing.name}` : "Add a card"}</h2>
 					<cc-card-form
@@ -97,4 +108,9 @@ bootstrap((repo: Repository) => {
 		);
 
 	void load();
+}
+
+bootstrap((repo) => {
+	const root = document.querySelector<HTMLElement>("#page");
+	if (root) renderCardsPage(repo, root);
 });
