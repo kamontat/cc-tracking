@@ -118,6 +118,21 @@ test("renders its statement text and buttons in the chosen language", async () =
 	expect(element.shadowRoot?.textContent).toContain("รวม");
 });
 
+test("renders the destructive and secondary actions as their variants", async () => {
+	const element = await mount();
+
+	expect(
+		element.shadowRoot?.querySelector(
+			'[data-action="delete-purchase"][data-variant="danger"]',
+		),
+	).not.toBeNull();
+	expect(
+		element.shadowRoot?.querySelector(
+			'[data-action="unmark-paid"][data-variant="quiet"]',
+		),
+	).not.toBeNull();
+});
+
 test("says so when there are no statements, in the chosen language", async () => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-statement-list");

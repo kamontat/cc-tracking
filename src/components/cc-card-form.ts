@@ -39,8 +39,6 @@ export class CcCardForm extends LitElement {
 			}
 
 			.form-actions {
-				display: flex;
-				flex-direction: row;
 				gap: var(--cc-space-2);
 			}
 		`,

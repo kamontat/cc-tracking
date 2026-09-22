@@ -14,8 +14,6 @@ export class CcCardTable extends LitElement {
 		dataTable,
 		css`
 			.actions {
-				display: flex;
-				flex-direction: row;
 				flex-wrap: wrap;
 				gap: var(--cc-space-2);
 			}
