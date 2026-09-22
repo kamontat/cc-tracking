@@ -115,3 +115,15 @@ test("shows an urgency badge, not colour alone", async () => {
 	);
 	expect(badge?.textContent).toContain("7 days overdue");
 });
+
+test("keeps the card cell's layout hook when the locale changes", async () => {
+	setLocale("th");
+	const element = await mount(
+		[{ card, statement: buildStatement(card, "2026-09", purchases) }],
+		"2026-09-25",
+	);
+
+	const cell = element.shadowRoot?.querySelector("td.card-cell");
+	expect(cell).not.toBeNull();
+	expect(cell?.getAttribute("data-label")).toBe("บัตร");
+});

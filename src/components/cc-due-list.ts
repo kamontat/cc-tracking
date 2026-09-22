@@ -52,9 +52,11 @@ export class CcDueList extends LitElement {
 				font-weight: 600;
 			}
 
-			td[data-label="Card"] {
+			td.card-cell {
+				display: flex;
 				flex-direction: column;
 				align-items: flex-start;
+				gap: var(--cc-space-1);
 			}
 		`,
 	];
@@ -102,7 +104,7 @@ export class CcDueList extends LitElement {
 						const urgency = urgencyOf(statement, this.today);
 						return html`
 							<tr data-urgency=${urgency}>
-								<td data-label=${t("due.column.card")}>
+								<td class="card-cell" data-label=${t("due.column.card")}>
 									<a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
 									<small>••••${card.last4}</small>
 								</td>
