@@ -104,3 +104,15 @@ bun --hot ./index.ts
 ```
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+
+## Design system conventions
+
+- Values live once, in `src/styles/tokens.css`. Shadow CSS (`src/styles/shared.ts`, and any
+  component's local `css`) references them only through `var(--cc-*)`, never a literal hex,
+  `rem`/`px`, or colour. This rule is not machine-checked, so review for it by eye.
+- Buttons take `data-variant="quiet"` or `data-variant="danger"`; no attribute means the primary
+  variant. Don't invent a fourth.
+- Never key a CSS selector off translated text -- the interface ships in English and Thai. Use
+  classes or locale-invariant attributes instead.
+- `#styles/*` maps to `.ts` only, so the route modules import `tokens.css` and `app.css` by
+  relative path, not through the alias.

@@ -42,3 +42,30 @@ test("falls back to the retry label in the chosen language", async () => {
 		.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("ลองอีกครั้ง");
 });
+
+test("marks the banner as an error surface and its retry as a quiet button", async () => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-error-banner");
+	element.message = "Could not save the card.";
+	document.body.append(element);
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector('article[data-tone="danger"]'),
+	).not.toBeNull();
+	expect(
+		element.shadowRoot?.querySelector('button[data-variant="quiet"]'),
+	).not.toBeNull();
+});
+
+test("reflects emptiness to [hidden] so an empty banner does not consume a flex gap, and clears it once a message is set", async () => {
+	const element = await mount("");
+	expect(element.hasAttribute("hidden")).toBe(true);
+
+	(element as unknown as { message: string }).message =
+		"Could not save the card.";
+	await (element as unknown as { updateComplete: Promise<unknown> })
+		.updateComplete;
+
+	expect(element.hasAttribute("hidden")).toBe(false);
+});

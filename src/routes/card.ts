@@ -1,4 +1,6 @@
-import "@picocss/pico/css/pico.min.css";
+import "@kcstyles/reset.css";
+import "../styles/tokens.css";
+import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
 import "#components/cc-statement-list";
@@ -99,8 +101,10 @@ export function renderCardPage(
 				${
 					card
 						? html`
-							<h1>${card.name} <small>••••${card.last4}</small></h1>
-							<p>${locationText(card.location)} — ${describeCycleText(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
+							<div class="page-heading">
+								<h1>${card.name} <small>••••${card.last4}</small></h1>
+								<p>${locationText(card.location)} — ${describeCycleText(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
+							</div>
 							<cc-statement-list
 								.statements=${statements()}
 								.today=${now}
@@ -108,7 +112,7 @@ export function renderCardPage(
 								@unmark-paid=${onUnmarkPaid}
 								@delete-purchase=${onDeletePurchase}
 							></cc-statement-list>
-							<button class="secondary" @click=${() => {
+							<button data-variant="quiet" @click=${() => {
 								shown += PAGE_SIZE;
 								paint();
 							}}>${t("card.showOlder")}</button>

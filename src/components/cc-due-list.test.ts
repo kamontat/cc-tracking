@@ -87,3 +87,43 @@ test("renders its empty state and column headings in the chosen language", async
 	expect(element.shadowRoot?.textContent).toContain("ยังไม่มีบัตร");
 	expect(element.shadowRoot?.textContent).toContain("เพิ่มบัตรได้ที่หน้าบัตร");
 });
+
+test("labels every cell so the row stays readable once stacked", async () => {
+	const element = await mount(
+		[{ card, statement: buildStatement(card, "2026-09", purchases) }],
+		"2026-09-25",
+	);
+
+	const labels = [
+		...(element.shadowRoot?.querySelectorAll("tbody td[data-label]") ?? []),
+	].map((cell) => cell.getAttribute("data-label"));
+
+	expect(labels).toEqual(["Card", "Where", "Closes", "Due", "Total"]);
+	expect(
+		element.shadowRoot?.querySelector("td[data-numeric]")?.textContent,
+	).toContain("฿350.00");
+});
+
+test("shows an urgency badge, not colour alone", async () => {
+	const element = await mount(
+		[{ card, statement: buildStatement(card, "2026-09", purchases) }],
+		"2026-10-10",
+	);
+
+	const badge = element.shadowRoot?.querySelector(
+		'[data-urgency="overdue"] .badge',
+	);
+	expect(badge?.textContent).toContain("7 days overdue");
+});
+
+test("keeps the card cell's layout hook when the locale changes", async () => {
+	setLocale("th");
+	const element = await mount(
+		[{ card, statement: buildStatement(card, "2026-09", purchases) }],
+		"2026-09-25",
+	);
+
+	const cell = element.shadowRoot?.querySelector("td.card-cell");
+	expect(cell).not.toBeNull();
+	expect(cell?.getAttribute("data-label")).toBe("บัตร");
+});

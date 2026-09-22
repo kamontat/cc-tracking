@@ -6,13 +6,15 @@
   <script type="module" src="./index.ts"></script>
 </head>
 <body>
-  <nav class="container">
-    <ul><li><strong id="nav-brand">cc-tracking</strong></li></ul>
-    <ul>
-      <li><a href="/" id="nav-dashboard">Dashboard</a></li>
-      <li><a href="/cards" id="nav-cards">Cards</a></li>
-      <li><cc-lang-switch></cc-lang-switch></li>
-    </ul>
-  </nav>
-  <main class="container" id="page"></main>
+  <header class="site-header">
+    <div class="site-header__bar" row>
+      <a class="site-header__brand" id="nav-brand" href="/">cc-tracking</a>
+      <nav class="site-header__nav">
+        <a href="/" id="nav-dashboard">Dashboard</a>
+        <a href="/cards" id="nav-cards">Cards</a>
+      </nav>
+      <cc-lang-switch></cc-lang-switch>
+    </div>
+  </header>
+  <main class="page" id="page"></main>
 </body>

@@ -1,4 +1,6 @@
-import "@picocss/pico/css/pico.min.css";
+import "@kcstyles/reset.css";
+import "../styles/tokens.css";
+import "../styles/app.css";
 import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";
@@ -120,7 +122,7 @@ export function renderCardsPage(
 						? html`
 							<article data-testid="location-reset">
 								<p>${t("cards.locationReset", { names: resetNames.join(", ") })}</p>
-								<button class="secondary" type="button" @click=${() => {
+								<button data-variant="quiet" type="button" @click=${() => {
 									resetNames = [];
 									paint();
 								}}>${t("common.dismiss")}</button>
@@ -128,29 +130,33 @@ export function renderCardsPage(
 						`
 						: nothing
 				}
+				<div class="split">
+					<article>
+						<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
+						<cc-card-form
+							.card=${editing}
+							@save=${onSave}
+							@cancel=${() => {
+								editing = null;
+								paint();
+							}}
+						></cc-card-form>
+					</article>
+					<article class="split__aside">
+						<h2>${t("cards.backup")}</h2>
+						<p><small>${t("cards.backupWarning")}</small></p>
+						<button data-variant="quiet" type="button" @click=${onExport}>${t("cards.export")}</button>
+						<label>${t("cards.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
+					</article>
+				</div>
 				<article>
-					<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
-					<cc-card-form
-						.card=${editing}
-						@save=${onSave}
-						@cancel=${() => {
-							editing = null;
-							paint();
-						}}
-					></cc-card-form>
-				</article>
-				<cc-card-table
-					.cards=${cards}
-					.purchaseCounts=${counts}
-					@edit=${onEdit}
-					@archive=${onArchive}
-					@remove=${onRemove}
-				></cc-card-table>
-				<article>
-					<h2>${t("cards.backup")}</h2>
-					<p><small>${t("cards.backupWarning")}</small></p>
-					<button class="secondary" type="button" @click=${onExport}>${t("cards.export")}</button>
-					<label>${t("cards.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
+					<cc-card-table
+						.cards=${cards}
+						.purchaseCounts=${counts}
+						@edit=${onEdit}
+						@archive=${onArchive}
+						@remove=${onRemove}
+					></cc-card-table>
 				</article>
 			`,
 			root,

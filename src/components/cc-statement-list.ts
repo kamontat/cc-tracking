@@ -1,4 +1,4 @@
-import { html, LitElement } from "lit";
+import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
@@ -6,9 +6,57 @@ import { urgencyOf } from "#lib/domain/statement";
 import type { PlainDate, Statement } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
+import { base, controls, dataTable, panel } from "#styles/shared";
 
 @customElement("cc-statement-list")
 export class CcStatementList extends LitElement {
+	static override styles = [
+		base,
+		controls,
+		panel,
+		dataTable,
+		css`
+			:host {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-4);
+			}
+
+			article[data-urgency="overdue"] {
+				border-left: var(--cc-space-1) solid var(--cc-urgency-overdue);
+			}
+
+			article[data-urgency="soon"] {
+				border-left: var(--cc-space-1) solid var(--cc-urgency-soon);
+			}
+
+			.period {
+				font-size: var(--cc-text-lg);
+				font-weight: 600;
+			}
+
+			.dates {
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.statement-actions {
+				gap: var(--cc-space-2);
+				align-items: center;
+			}
+
+			/*
+			 * The note takes every spare pixel, so the date, amount and delete
+			 * columns sit at the same width in every panel. Left to itself an auto
+			 * table shares the slack out, and a panel of short notes drifts its
+			 * amounts left of the panel above it.
+			 */
+			.note {
+				width: 100%;
+			}
+		`,
+	];
+
 	@property({ attribute: false }) statements: Statement[] = [];
 	@property() today: PlainDate = "";
 
@@ -30,29 +78,31 @@ export class CcStatementList extends LitElement {
 				(statement) => html`
 					<article data-urgency=${urgencyOf(statement, this.today)}>
 						<header>
-							<strong>${statement.period}</strong>
-							—
-							${t("statements.header", {
-								close: displayDate(statement.closeDate, getLocale()),
-								due: displayDate(statement.dueDate, getLocale()),
-							})}
-							<br />
-							${
-								statement.paid && statement.payment
-									? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>
-										<button data-action="unmark-paid" class="secondary"
+							<div>
+								<span class="period">${statement.period}</span>
+								<span class="dates">${t("statements.header", {
+									close: displayDate(statement.closeDate, getLocale()),
+									due: displayDate(statement.dueDate, getLocale()),
+								})}</span>
+							</div>
+							<div class="statement-actions" row>
+								${
+									statement.paid && statement.payment
+										? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>
+											<button data-action="unmark-paid" data-variant="quiet"
+												@click=${() =>
+													this.emit("unmark-paid", {
+														cardId: statement.cardId,
+														period: statement.period,
+													})}>${t("statements.unmark")}</button>`
+										: html`<button data-action="mark-paid"
 											@click=${() =>
-												this.emit("unmark-paid", {
+												this.emit("mark-paid", {
 													cardId: statement.cardId,
 													period: statement.period,
-												})}>${t("statements.unmark")}</button>`
-									: html`<button data-action="mark-paid"
-										@click=${() =>
-											this.emit("mark-paid", {
-												cardId: statement.cardId,
-												period: statement.period,
-											})}>${t("statements.markPaid")}</button>`
-							}
+												})}>${t("statements.markPaid")}</button>`
+								}
+							</div>
 						</header>
 
 						${
@@ -64,11 +114,11 @@ export class CcStatementList extends LitElement {
 											${statement.purchases.map(
 												(purchase) => html`
 													<tr>
-														<td>${displayDate(purchase.date, getLocale())}</td>
-														<td>${purchase.note}</td>
-														<td>${formatAmount(purchase.amount)}</td>
+														<td class="date">${displayDate(purchase.date, getLocale())}</td>
+														<td class="note">${purchase.note}</td>
+														<td data-numeric>${formatAmount(purchase.amount)}</td>
 														<td>
-															<button data-action="delete-purchase" class="secondary outline"
+															<button data-action="delete-purchase" data-variant="danger"
 																@click=${() =>
 																	this.emit("delete-purchase", {
 																		cardId: purchase.cardId,

@@ -1,0 +1,260 @@
+/*
+ * `:root`, not `html`, and `a:any-link`, not `a`: both outrank the reset's own
+ * `html` and `a` rules on specificity regardless of emission order (dev and
+ * production chunk them differently), so the Thai-aware font stack, the
+ * leading and `--cc-link` reach the document either way.
+ */
+:root {
+	font-family: var(--cc-font-sans);
+	line-height: var(--cc-leading);
+}
+
+body {
+	min-height: 100dvh;
+	background: var(--cc-bg);
+	color: var(--cc-text);
+	font-size: var(--cc-text-md);
+}
+
+a:any-link {
+	color: var(--cc-link);
+}
+
+a:any-link:hover {
+	text-decoration: underline;
+}
+
+:focus-visible {
+	outline: none;
+	box-shadow: var(--cc-focus-ring);
+}
+
+/* forced-colors strips box-shadow, and outline is already none above, so without this a
+   focused control has no visible indicator at all under that mode. */
+@media (forced-colors: active) {
+	:focus-visible {
+		outline: 2px solid;
+	}
+}
+
+/* The sticky shell spans the viewport so its background and border do; the bar inside it
+   carries the padding and is capped at the same width as `.page`, so the brand lines up with
+   the content beneath it instead of drifting left on a wide window. */
+.site-header {
+	position: sticky;
+	top: 0;
+	z-index: 10;
+	background: var(--cc-surface);
+	border-bottom: var(--cc-border-width) solid var(--cc-border);
+}
+
+.site-header__bar {
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cc-space-3);
+	width: 100%;
+	max-width: 72rem;
+	margin-inline: auto;
+	padding: var(--cc-space-3)
+		max(var(--cc-space-4), env(safe-area-inset-left, 0px));
+	padding-top: calc(var(--cc-space-3) + env(safe-area-inset-top, 0px));
+}
+
+/* `:any-link` on both, to outweigh the generic `a:any-link` rules above: a pseudo-class carries
+   class-level specificity, so a bare `.site-header__brand` loses to them and the brand renders
+   in link blue with a hover underline. */
+.site-header__brand:any-link {
+	margin-inline-end: auto;
+	font-size: var(--cc-text-lg);
+	font-weight: 600;
+	color: var(--cc-text);
+}
+
+.site-header__brand:any-link:hover {
+	text-decoration: none;
+}
+
+.site-header__nav {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-4);
+}
+
+.site-header__nav a {
+	color: var(--cc-text-muted);
+	font-weight: 500;
+}
+
+.site-header__nav a:hover {
+	color: var(--cc-text);
+}
+
+/* Weight and colour alongside the underline, so the current page is not signalled by colour
+   alone — the same rule the urgency badges follow. */
+.site-header__nav a[aria-current="page"] {
+	color: var(--cc-text);
+	font-weight: 600;
+	text-decoration: underline;
+	text-decoration-color: var(--cc-accent);
+	text-decoration-thickness: calc(var(--cc-border-width) * 2);
+	text-underline-offset: var(--cc-space-1);
+}
+
+.page {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-5);
+	width: 100%;
+	max-width: 72rem;
+	margin-inline: auto;
+	padding: var(--cc-space-5)
+		max(var(--cc-space-4), env(safe-area-inset-left, 0px))
+		calc(var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
+}
+
+.page h1 {
+	font-size: var(--cc-text-2xl);
+	font-weight: 650;
+	letter-spacing: -0.01em;
+}
+
+.page small {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}
+
+.page h1 small {
+	font-size: var(--cc-text-lg);
+	font-weight: 400;
+	color: var(--cc-text-muted);
+}
+
+.page h2 {
+	font-size: var(--cc-text-lg);
+	font-weight: 600;
+}
+
+.page > article,
+.page .split > article {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-4);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-sm);
+}
+
+/*
+ * The light-DOM mirror of `controls`' button rules in shared.ts, deliberately partial: it carries
+ * only the variants the routes actually use (the base button and `data-variant="quiet"`), not
+ * `white-space: nowrap`, `:disabled`, or `data-variant="danger"`. `controls` is the full contract
+ * -- check there before assuming a variant is unsupported.
+ */
+.page button {
+	align-self: flex-start;
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font: inherit;
+	font-size: var(--cc-text-sm);
+	font-weight: 550;
+	line-height: 1.2;
+	color: var(--cc-accent-text);
+	background: var(--cc-accent);
+	border: var(--cc-border-width) solid transparent;
+	border-radius: var(--cc-radius-sm);
+}
+
+.page button:hover {
+	background: var(--cc-accent-hover);
+}
+
+.page button[data-variant="quiet"] {
+	color: var(--cc-text);
+	background: var(--cc-surface-sunken);
+	border-color: var(--cc-border);
+}
+
+.page button[data-variant="quiet"]:hover {
+	background: var(--cc-border);
+}
+
+.page label {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-1);
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}
+
+.page input {
+	padding: var(--cc-space-2);
+	font: inherit;
+	font-size: var(--cc-text-md);
+	color: var(--cc-text);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+/* A file input ships its own button; without this it is the one browser-default
+   button on the page, and in the dark theme it stays stubbornly light. */
+.page input::file-selector-button {
+	margin-inline-end: var(--cc-space-3);
+	padding: var(--cc-space-1) var(--cc-space-3);
+	font: inherit;
+	font-size: var(--cc-text-sm);
+	font-weight: 550;
+	line-height: 1.2;
+	color: var(--cc-text);
+	cursor: pointer;
+	background: var(--cc-surface-sunken);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page input::file-selector-button:hover {
+	background: var(--cc-border);
+}
+
+/*
+ * Below 960px this is the reset's default column flex. An aside that is the
+ * reason the page is open on a phone -- the dashboard's quick-add -- opts into
+ * being pulled first; one that is not, such as the registry's backup panel,
+ * stays in source order below the form. At 960px it becomes a grid and `order`
+ * goes back to source order for both.
+ */
+.split {
+	gap: var(--cc-space-5);
+}
+
+.split > .split__aside--lead {
+	order: -1;
+}
+
+@media (min-width: 960px) {
+	.split {
+		display: grid;
+		grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.split > .split__aside {
+		order: 0;
+		position: sticky;
+		/* Must clear the sticky .site-header, which is --cc-header-height tall. */
+		top: calc(var(--cc-header-height) + var(--cc-space-4));
+	}
+}
+
+.page-heading {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-1);
+}
+
+.page-heading p {
+	color: var(--cc-text-muted);
+	font-size: var(--cc-text-sm);
+}
