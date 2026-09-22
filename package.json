@@ -5,7 +5,8 @@
 	"private": true,
 	"imports": {
 		"#lib/*": "./src/lib/*.ts",
-		"#components/*": "./src/components/*.ts"
+		"#components/*": "./src/components/*.ts",
+		"#styles/*": "./src/styles/*.ts"
 	},
 	"scripts": {
 		"dev": "bun-server dev",
