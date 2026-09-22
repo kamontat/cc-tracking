@@ -29,6 +29,13 @@
 	   keep this in step if the header's padding or brand type size ever changes. */
 	--cc-header-height: 3.5rem;
 
+	/* A `select` left at `appearance: auto` reserves its own arrow area — about 20px in Chrome,
+	   more in Safari — inside the border box and on top of whatever padding we set, so its right
+	   inset stops matching the inputs beside it and changes per browser. `controls` paints this
+	   chevron instead and sizes the padding from these two values. */
+	--cc-select-chevron-size: 0.75rem;
+	--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%235b6472' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+
 	--cc-bg: #f6f7f9;
 	--cc-surface: #ffffff;
 	--cc-surface-sunken: #eef0f3;
@@ -69,6 +76,10 @@
 		--cc-text: #e7eaee;
 		--cc-text-muted: #a2acba;
 		--cc-link: #7fb0ff;
+
+		/* Same chevron, stroked in the dark theme's muted text colour. An SVG in a data URI
+		   cannot read `currentColor`, so the whole value is redeclared rather than tinted. */
+		--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23a2acba' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
 
 		--cc-accent: #3b82f6;
 		--cc-accent-hover: #5b9bff;

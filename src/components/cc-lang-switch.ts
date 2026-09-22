@@ -17,11 +17,15 @@ export class CcLangSwitch extends LitElement {
 				display: inline-block;
 			}
 
+			/* The padding shorthand would reset the padding-right that controls sizes for the
+			   chevron, so this compact control restates both at its own tighter gutter. */
 			select {
 				width: auto;
 				padding: var(--cc-space-1) var(--cc-space-2);
+				padding-right: calc(var(--cc-space-2) * 2 + var(--cc-select-chevron-size));
 				font-size: var(--cc-text-sm);
 				color: var(--cc-text-muted);
+				background-position: right var(--cc-space-2) center;
 			}
 		`,
 	];

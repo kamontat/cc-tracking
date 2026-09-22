@@ -146,6 +146,20 @@ export const controls = css`
 		border-radius: var(--cc-radius-sm);
 	}
 
+	/* Drop the UA's own arrow and paint one, so a select's right inset is a token like every
+	   other control's rather than whatever the browser reserves for itself. The padding leaves
+	   the chevron a matching gutter on both sides, so long option text never runs under it.
+	   Only the painting changes — the native dropdown still opens as it always did. */
+	select {
+		appearance: none;
+		-webkit-appearance: none;
+		padding-right: calc(var(--cc-space-3) * 2 + var(--cc-select-chevron-size));
+		background-image: var(--cc-select-chevron);
+		background-repeat: no-repeat;
+		background-position: right var(--cc-space-3) center;
+		background-size: var(--cc-select-chevron-size);
+	}
+
 	input[type="radio"],
 	input[type="checkbox"] {
 		width: auto;
