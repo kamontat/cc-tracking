@@ -32,7 +32,7 @@ test("shows the card's fields and an active row's controls", async () => {
 	expect(text).toContain("4821");
 	expect(text).toContain("Krabi");
 	expect(
-		element.shadowRoot?.querySelector("button.secondary.outline"),
+		element.shadowRoot?.querySelector('button[data-variant="danger"]'),
 	).not.toBeNull();
 });
 
@@ -40,7 +40,7 @@ test("shows a purchase count instead of delete once the card has purchases", asy
 	const element = await mount([card], { kbank: 3 });
 	expect(element.shadowRoot?.textContent).toContain("3 purchases");
 	expect(
-		element.shadowRoot?.querySelector("button.secondary.outline"),
+		element.shadowRoot?.querySelector('button[data-variant="danger"]'),
 	).toBeNull();
 });
 
