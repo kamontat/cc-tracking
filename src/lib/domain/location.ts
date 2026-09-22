@@ -5,12 +5,6 @@ export type Location = (typeof LOCATIONS)[number];
 
 export const DEFAULT_LOCATION: Location = "bangkok";
 
-const LABELS: Record<Location, string> = {
-	bangkok: "Bangkok",
-	phichit: "Phichit",
-	krabi: "Krabi",
-};
-
 /**
  * Narrows untrusted data to a `Location`, or `null` when it is not one.
  *
@@ -23,8 +17,4 @@ export function toLocation(value: unknown): Location | null {
 	return typeof value === "string" && known.includes(value)
 		? (value as Location)
 		: null;
-}
-
-export function locationLabel(location: Location): string {
-	return LABELS[location];
 }

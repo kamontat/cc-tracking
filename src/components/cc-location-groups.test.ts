@@ -4,6 +4,7 @@ import type { DueRow } from "#components/cc-due-list";
 import type { Location } from "#lib/domain/location";
 import { buildStatement } from "#lib/domain/statement";
 import type { Card } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 
 const card = (id: string, location: Location): Card => ({
 	id,
@@ -45,4 +46,18 @@ test("starts collapsed", async () => {
 	expect(
 		element.shadowRoot?.querySelector("details")?.hasAttribute("open"),
 	).toBe(false);
+});
+
+test("renders its heading, location names, and next-due text in the chosen language", async () => {
+	setLocale("en");
+	const element = await mount(rowsFor(card("a", "krabi")));
+	expect(element.shadowRoot?.textContent).toContain("Cards by location");
+	expect(element.shadowRoot?.textContent).toContain("Krabi");
+	expect(element.shadowRoot?.textContent).toContain("Next due");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("บัตรแยกตามที่เก็บ");
+	expect(element.shadowRoot?.textContent).toContain("กระบี่");
+	expect(element.shadowRoot?.textContent).toContain("ครบกำหนดถัดไป");
 });

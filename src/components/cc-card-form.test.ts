@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import "#components/cc-card-form";
 import type { Card } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 
 const mount = async (card: Card | null = null) => {
 	document.body.innerHTML = "";
@@ -222,4 +223,16 @@ test("shows the edited card's own location when editing", async () => {
 	const select =
 		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="location"]');
 	expect(select?.value).toBe("phichit");
+});
+
+test("renders its labels and location options in the chosen language", async () => {
+	setLocale("en");
+	const element = await mount();
+	expect(element.shadowRoot?.textContent).toContain("Add card");
+	expect(element.shadowRoot?.textContent).toContain("Bangkok");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("เพิ่มบัตร");
+	expect(element.shadowRoot?.textContent).toContain("กรุงเทพฯ");
 });

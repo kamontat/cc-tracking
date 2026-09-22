@@ -4,12 +4,18 @@ import { displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { urgencyOf } from "#lib/domain/statement";
 import type { PlainDate, Statement } from "#lib/domain/types";
-import { getLocale } from "#lib/i18n/index";
+import { LocaleController } from "#lib/i18n/controller";
+import { getLocale, t } from "#lib/i18n/index";
 
 @customElement("cc-statement-list")
 export class CcStatementList extends LitElement {
 	@property({ attribute: false }) statements: Statement[] = [];
 	@property() today: PlainDate = "";
+
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
 
 	private emit(name: string, detail: Record<string, string>) {
 		this.dispatchEvent(new CustomEvent(name, { detail }));
@@ -17,7 +23,7 @@ export class CcStatementList extends LitElement {
 
 	override render() {
 		if (this.statements.length === 0) {
-			return html`<p>No statements yet. Add a purchase from the dashboard.</p>`;
+			return html`<p>${t("statements.empty")}</p>`;
 		}
 		return html`
 			${this.statements.map(
@@ -25,30 +31,33 @@ export class CcStatementList extends LitElement {
 					<article data-urgency=${urgencyOf(statement, this.today)}>
 						<header>
 							<strong>${statement.period}</strong>
-							— closes ${displayDate(statement.closeDate, getLocale())},
-							due ${displayDate(statement.dueDate, getLocale())}
+							—
+							${t("statements.header", {
+								close: displayDate(statement.closeDate, getLocale()),
+								due: displayDate(statement.dueDate, getLocale()),
+							})}
 							<br />
 							${
 								statement.paid && statement.payment
-									? html`<small>Paid ${displayDate(statement.payment.paidAt, getLocale())}</small>
+									? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>
 										<button data-action="unmark-paid" class="secondary"
 											@click=${() =>
 												this.emit("unmark-paid", {
 													cardId: statement.cardId,
 													period: statement.period,
-												})}>Unmark</button>`
+												})}>${t("statements.unmark")}</button>`
 									: html`<button data-action="mark-paid"
 										@click=${() =>
 											this.emit("mark-paid", {
 												cardId: statement.cardId,
 												period: statement.period,
-											})}>Mark paid</button>`
+											})}>${t("statements.markPaid")}</button>`
 							}
 						</header>
 
 						${
 							statement.purchases.length === 0
-								? html`<p><small>No purchases in this period.</small></p>`
+								? html`<p><small>${t("statements.noPurchases")}</small></p>`
 								: html`
 									<table>
 										<tbody>
@@ -64,7 +73,7 @@ export class CcStatementList extends LitElement {
 																	this.emit("delete-purchase", {
 																		cardId: purchase.cardId,
 																		purchaseId: purchase.id,
-																	})}>Delete</button>
+																	})}>${t("common.delete")}</button>
 														</td>
 													</tr>
 												`,
@@ -74,7 +83,7 @@ export class CcStatementList extends LitElement {
 								`
 						}
 
-						<footer><strong>Total ${formatAmount(statement.total)}</strong></footer>
+						<footer><strong>${t("statements.total", { amount: formatAmount(statement.total) })}</strong></footer>
 					</article>
 				`,
 			)}

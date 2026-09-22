@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import "#components/cc-quick-add";
 import type { Card } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 
 const cards: Card[] = [
 	{
@@ -164,4 +165,25 @@ test("shows the answer the page gives it", async () => {
 		"Lands on the statement closing 18 Sep 2026 — pay by 3 Oct 2026.";
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("pay by 3 Oct 2026");
+});
+
+test("renders its labels and submit button in the chosen language", async () => {
+	setLocale("en");
+	const element = await mount();
+	expect(element.shadowRoot?.textContent).toContain("Add purchase");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("เพิ่มรายการ");
+});
+
+test("shows its validation failures in the chosen language", async () => {
+	setLocale("th");
+	const element = await mount();
+	fill(element, "amount", "free");
+	submit(element);
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain(
+		"กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
+	);
 });

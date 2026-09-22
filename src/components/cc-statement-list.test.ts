@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import "#components/cc-statement-list";
 import { buildStatement } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 
 const card: Card = {
 	id: "kbank",
@@ -99,4 +100,37 @@ test("emits delete-purchase with the purchase id", async () => {
 		?.querySelector<HTMLButtonElement>("[data-action='delete-purchase']")
 		?.click();
 	expect(detail).toEqual({ cardId: "kbank", purchaseId: "a" });
+});
+
+test("renders its statement text and buttons in the chosen language", async () => {
+	setLocale("en");
+	const element = await mount();
+	expect(element.shadowRoot?.textContent).toContain("Mark paid");
+	expect(element.shadowRoot?.textContent).toContain("Unmark");
+	expect(element.shadowRoot?.textContent).toContain("Delete");
+	expect(element.shadowRoot?.textContent).toContain("Total");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("บันทึกว่าชำระแล้ว");
+	expect(element.shadowRoot?.textContent).toContain("ยกเลิกเครื่องหมาย");
+	expect(element.shadowRoot?.textContent).toContain("ลบ");
+	expect(element.shadowRoot?.textContent).toContain("รวม");
+});
+
+test("says so when there are no statements, in the chosen language", async () => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-statement-list");
+	element.statements = [];
+	element.today = "2026-09-25";
+	document.body.append(element);
+	await element.updateComplete;
+
+	setLocale("en");
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("No statements yet.");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("ยังไม่มีใบแจ้งยอด");
 });

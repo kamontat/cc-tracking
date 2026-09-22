@@ -2,12 +2,19 @@ import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { DueRow } from "#components/cc-due-list";
 import { displayDate } from "#lib/domain/date";
-import { type Location, locationLabel } from "#lib/domain/location";
-import { getLocale } from "#lib/i18n/index";
+import type { Location } from "#lib/domain/location";
+import { LocaleController } from "#lib/i18n/controller";
+import { locationText } from "#lib/i18n/format";
+import { getLocale, t } from "#lib/i18n/index";
 
 @customElement("cc-location-groups")
 export class CcLocationGroups extends LitElement {
 	@property({ attribute: false }) rows: DueRow[] = [];
+
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
 
 	private grouped(): [Location, DueRow[]][] {
 		const groups = new Map<Location, DueRow[]>();
@@ -16,20 +23,23 @@ export class CcLocationGroups extends LitElement {
 			groups.set(location, [...(groups.get(location) ?? []), row]);
 		}
 		return [...groups.entries()].sort(([a], [b]) =>
-			locationLabel(a) < locationLabel(b) ? -1 : 1,
+			locationText(a) < locationText(b) ? -1 : 1,
 		);
 	}
 
 	override render() {
 		return html`
 			<details>
-				<summary>Cards by location</summary>
+				<summary>${t("groups.title")}</summary>
 				${this.grouped().map(([location, rows]) => {
 					const soonest = rows.map((row) => row.statement.dueDate).sort()[0];
+					const date = soonest
+						? displayDate(soonest, getLocale())
+						: t("common.none");
 					return html`
 						<article>
-							<h3>${locationLabel(location)} (${rows.length})</h3>
-							<p><small>Next due ${soonest ? displayDate(soonest, getLocale()) : "—"}</small></p>
+							<h3>${locationText(location)} (${rows.length})</h3>
+							<p><small>${t("groups.nextDue", { date })}</small></p>
 							<ul>
 								${rows.map(
 									({ card }) => html`

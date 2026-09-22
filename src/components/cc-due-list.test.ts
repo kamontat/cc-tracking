@@ -3,6 +3,7 @@ import "#components/cc-due-list";
 import type { DueRow } from "#components/cc-due-list";
 import { buildStatement } from "#lib/domain/statement";
 import type { Card, Purchase } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 
 const card: Card = {
 	id: "kbank",
@@ -73,4 +74,16 @@ test("emits mark-paid with the card and period", async () => {
 test("says so when there is nothing to pay", async () => {
 	const element = await mount([], "2026-09-25");
 	expect(element.shadowRoot?.textContent).toContain("No cards yet");
+});
+
+test("renders its empty state and column headings in the chosen language", async () => {
+	setLocale("en");
+	const element = await mount([], "2026-09-25");
+	expect(element.shadowRoot?.textContent).toContain("No cards yet.");
+	expect(element.shadowRoot?.textContent).toContain("Add one on the");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("ยังไม่มีบัตร");
+	expect(element.shadowRoot?.textContent).toContain("เพิ่มบัตรได้ที่หน้าบัตร");
 });
