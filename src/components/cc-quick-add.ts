@@ -3,6 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { compareDates, isValidDate } from "#lib/domain/date";
 import { parseAmount } from "#lib/domain/money";
 import type { Card, PlainDate } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 
@@ -20,7 +21,9 @@ export class CcQuickAdd extends LitElement {
 	/** Set by the page after a successful save. */
 	@property() answer = "";
 
-	@state() private error = "";
+	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
+	// language switch while an error is on screen re-renders it in the new language too.
+	@state() private errorKey: MessageKey | "" = "";
 
 	constructor() {
 		super();
@@ -40,25 +43,25 @@ export class CcQuickAdd extends LitElement {
 		const cardId = this.value("cardId");
 		const date = this.value("date");
 		if (!cardId) {
-			this.error = t("quickAdd.error.noCard");
+			this.errorKey = "quickAdd.error.noCard";
 			return;
 		}
 		if (!isValidDate(date)) {
-			this.error = t("quickAdd.error.badDate");
+			this.errorKey = "quickAdd.error.badDate";
 			return;
 		}
 		if (compareDates(date, this.today) > 0) {
-			this.error = t("quickAdd.error.futureDate");
+			this.errorKey = "quickAdd.error.futureDate";
 			return;
 		}
 		let amount: number;
 		try {
 			amount = parseAmount(this.value("amount"));
 		} catch {
-			this.error = t("quickAdd.error.badAmount");
+			this.errorKey = "quickAdd.error.badAmount";
 			return;
 		}
-		this.error = "";
+		this.errorKey = "";
 		this.dispatchEvent(
 			new CustomEvent<QuickAddDetail>("add", {
 				detail: { cardId, date, amount, note: this.value("note") },
@@ -77,7 +80,7 @@ export class CcQuickAdd extends LitElement {
 	override render() {
 		return html`
 			<form @submit=${this.onSubmit}>
-				${this.error ? html`<p role="alert"><mark>${this.error}</mark></p>` : nothing}
+				${this.errorKey ? html`<p role="alert"><mark>${t(this.errorKey)}</mark></p>` : nothing}
 				<label>
 					${t("quickAdd.card")}
 					<select name="cardId" required>

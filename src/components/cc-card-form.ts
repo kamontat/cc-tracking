@@ -2,6 +2,7 @@ import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
 import type { Card, CycleRule } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
@@ -12,7 +13,9 @@ export class CcCardForm extends LitElement {
 	@property({ attribute: false }) card: Card | null = null;
 
 	@state() private kind: CycleRule["kind"] = "offset";
-	@state() private error = "";
+	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
+	// language switch while an error is on screen re-renders it in the new language too.
+	@state() private errorKey: MessageKey | "" = "";
 
 	constructor() {
 		super();
@@ -46,14 +49,14 @@ export class CcCardForm extends LitElement {
 		const last4 = this.value("last4");
 		const closeDay = Number(this.value("closeDay"));
 
-		if (!id) return this.fail(t("form.error.id"));
-		if (!this.value("name")) return this.fail(t("form.error.name"));
-		if (!/^\d{4}$/.test(last4)) return this.fail(t("form.error.last4"));
+		if (!id) return this.fail("form.error.id");
+		if (!this.value("name")) return this.fail("form.error.name");
+		if (!/^\d{4}$/.test(last4)) return this.fail("form.error.last4");
 		if (!Number.isInteger(closeDay) || closeDay < 1 || closeDay > 31) {
-			return this.fail(t("form.error.closeDay"));
+			return this.fail("form.error.closeDay");
 		}
 		const location = toLocation(this.value("location"));
-		if (!location) return this.fail(t("form.error.location"));
+		if (!location) return this.fail("form.error.location");
 
 		let cycle: CycleRule;
 		if (this.kind === "offset") {
@@ -63,18 +66,18 @@ export class CcCardForm extends LitElement {
 				dueOffsetDays < 1 ||
 				dueOffsetDays > 60
 			) {
-				return this.fail(t("form.error.dueOffsetDays"));
+				return this.fail("form.error.dueOffsetDays");
 			}
 			cycle = { kind: "offset", closeDay, dueOffsetDays };
 		} else {
 			const dueDay = Number(this.value("dueDay"));
 			if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
-				return this.fail(t("form.error.dueDay"));
+				return this.fail("form.error.dueDay");
 			}
 			cycle = { kind: "fixed", closeDay, dueDay };
 		}
 
-		this.error = "";
+		this.errorKey = "";
 		const wasCreate = this.card === null;
 		const card: Card = {
 			id,
@@ -108,8 +111,8 @@ export class CcCardForm extends LitElement {
 		}
 	}
 
-	private fail(message: string) {
-		this.error = message;
+	private fail(key: MessageKey) {
+		this.errorKey = key;
 	}
 
 	override render() {
@@ -117,7 +120,7 @@ export class CcCardForm extends LitElement {
 		const rule = card?.cycle;
 		return html`
 			<form @submit=${this.onSubmit}>
-				${this.error ? html`<p role="alert"><mark>${this.error}</mark></p>` : nothing}
+				${this.errorKey ? html`<p role="alert"><mark>${t(this.errorKey)}</mark></p>` : nothing}
 
 				${
 					card

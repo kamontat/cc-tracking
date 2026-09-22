@@ -96,6 +96,34 @@ test("refuses a last4 that is not four digits", async () => {
 	expect(element.shadowRoot?.textContent).toContain("four digits");
 });
 
+test("re-renders a displayed error in the new language when the locale switches", async () => {
+	setLocale("en");
+	const element = await mount();
+
+	fill(element, "id", "kbank");
+	fill(element, "name", "KBank Visa");
+	fill(element, "last4", "48");
+	fill(element, "location", "krabi");
+	fill(element, "closeDay", "18");
+	fill(element, "dueOffsetDays", "15");
+	submit(element);
+	await element.updateComplete;
+
+	expect(element.shadowRoot?.textContent).toContain(
+		"Last 4 must be exactly four digits.",
+	);
+
+	setLocale("th");
+	await element.updateComplete;
+
+	expect(element.shadowRoot?.textContent).toContain(
+		"เลข 4 ตัวท้ายต้องเป็นตัวเลขสี่หลัก",
+	);
+	expect(element.shadowRoot?.textContent).not.toContain(
+		"Last 4 must be exactly four digits.",
+	);
+});
+
 test("clears the form after a successful create so the next card starts blank", async () => {
 	const element = await mount();
 	const saves: Card[] = [];

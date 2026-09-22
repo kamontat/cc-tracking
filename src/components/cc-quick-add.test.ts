@@ -187,3 +187,26 @@ test("shows its validation failures in the chosen language", async () => {
 		"กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
 	);
 });
+
+test("re-renders a displayed error in the new language when the locale switches", async () => {
+	setLocale("en");
+	const element = await mount();
+
+	fill(element, "amount", "free");
+	submit(element);
+	await element.updateComplete;
+
+	expect(element.shadowRoot?.textContent).toContain(
+		"Enter the amount in baht, like 1234.56.",
+	);
+
+	setLocale("th");
+	await element.updateComplete;
+
+	expect(element.shadowRoot?.textContent).toContain(
+		"กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
+	);
+	expect(element.shadowRoot?.textContent).not.toContain(
+		"Enter the amount in baht, like 1234.56.",
+	);
+});

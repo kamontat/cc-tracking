@@ -22,6 +22,10 @@ export class CcLocationGroups extends LitElement {
 			const location = row.card.location;
 			groups.set(location, [...(groups.get(location) ?? []), row]);
 		}
+		// `<` compares UTF-16 code units, not Thai collation, since Intl is banned here. That
+		// is not dictionary order -- e.g. "กระบี่" sorts before "กรุงเทพฯ" by code unit even
+		// though a Thai dictionary compares consonants first and would order them the other
+		// way. This is a known, accepted limitation, not a bug to "fix" by adding collation.
 		return [...groups.entries()].sort(([a], [b]) =>
 			locationText(a) < locationText(b) ? -1 : 1,
 		);

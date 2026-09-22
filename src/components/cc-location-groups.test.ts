@@ -61,3 +61,21 @@ test("renders its heading, location names, and next-due text in the chosen langu
 	expect(element.shadowRoot?.textContent).toContain("กระบี่");
 	expect(element.shadowRoot?.textContent).toContain("ครบกำหนดถัดไป");
 });
+
+test("orders groups by the translated text, in the code-unit order the comparator actually produces", async () => {
+	setLocale("th");
+	const element = await mount(
+		rowsFor(card("a", "phichit"), card("b", "bangkok"), card("c", "krabi")),
+	);
+	const headings = [...(element.shadowRoot?.querySelectorAll("h3") ?? [])].map(
+		(h3) => h3.textContent ?? "",
+	);
+	// Without Intl, `<` compares UTF-16 code units rather than Thai collation, so this is
+	// not dictionary order: "กระบี่" (krabi) sorts before "กรุงเทพฯ" (bangkok) because its
+	// second character, ะ (U+0E30), is a lower code unit than ุ (U+0E38) -- a Thai dictionary
+	// compares consonants first and would put กรุงเทพฯ ahead of กระบี่ instead.
+	expect(headings).toHaveLength(3);
+	expect(headings[0]).toContain("กระบี่");
+	expect(headings[1]).toContain("กรุงเทพฯ");
+	expect(headings[2]).toContain("พิจิตร");
+});
