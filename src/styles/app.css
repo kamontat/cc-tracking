@@ -78,6 +78,11 @@ a:hover {
 	letter-spacing: -0.01em;
 }
 
+.page small {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}
+
 .page h1 small {
 	font-size: var(--cc-text-lg);
 	font-weight: 400;
@@ -89,7 +94,8 @@ a:hover {
 	font-weight: 600;
 }
 
-.page > article {
+.page > article,
+.page .split > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -144,7 +150,40 @@ a:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
-.page small {
-	font-size: var(--cc-text-sm);
+/*
+ * Below 960px this is the reset's default column flex, with the aside pulled
+ * first: on a phone, adding a purchase is why the page is open. At 960px it
+ * becomes a grid and `order` goes back to source order.
+ */
+.split {
+	gap: var(--cc-space-5);
+}
+
+.split > .split__aside {
+	order: -1;
+}
+
+@media (min-width: 960px) {
+	.split {
+		display: grid;
+		grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.split > .split__aside {
+		order: 0;
+		position: sticky;
+		top: var(--cc-space-6);
+	}
+}
+
+.page-heading {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-1);
+}
+
+.page-heading p {
 	color: var(--cc-text-muted);
+	font-size: var(--cc-text-sm);
 }

@@ -223,9 +223,11 @@ test("clicking Export JSON does not raise an error", async () => {
 	renderCardsPage(repo, root);
 	await settle();
 
-	root
-		.querySelector("article button.secondary")
-		?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+	const exportButton = root.querySelector(
+		'article button[data-variant="quiet"]',
+	);
+	expect(exportButton).not.toBeNull();
+	exportButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 	await settle();
 
 	expect(bannerMessage(root)).toBe("");

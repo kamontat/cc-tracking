@@ -99,14 +99,16 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			html`
 				<h1>${t("dashboard.title")}</h1>
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<article>
-					<h2>${t("dashboard.dueNext")}</h2>
-					<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
-				</article>
-				<article>
-					<h2>${t("dashboard.addPurchase")}</h2>
-					<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
-				</article>
+				<div class="split">
+					<article>
+						<h2>${t("dashboard.dueNext")}</h2>
+						<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
+					</article>
+					<article class="split__aside">
+						<h2>${t("dashboard.addPurchase")}</h2>
+						<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
+					</article>
+				</div>
 				<article>
 					<cc-location-groups .rows=${rows()}></cc-location-groups>
 				</article>
