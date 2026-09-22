@@ -1,4 +1,4 @@
-import { html, LitElement, nothing } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { compareDates, isValidDate } from "#lib/domain/date";
 import { parseAmount } from "#lib/domain/money";
@@ -6,6 +6,7 @@ import type { Card, PlainDate } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
+import { base, controls } from "#styles/shared";
 
 export type QuickAddDetail = {
 	cardId: string;
@@ -16,6 +17,31 @@ export type QuickAddDetail = {
 
 @customElement("cc-quick-add")
 export class CcQuickAdd extends LitElement {
+	static override styles = [
+		base,
+		controls,
+		css`
+			form {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
+			}
+
+			.answer {
+				padding: var(--cc-space-2) var(--cc-space-3);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-success);
+				background: var(--cc-surface-sunken);
+				border-radius: var(--cc-radius-sm);
+			}
+
+			button[type="submit"] {
+				align-self: stretch;
+				text-align: center;
+			}
+		`,
+	];
+
 	@property({ attribute: false }) cards: Card[] = [];
 	@property() today: PlainDate = "";
 	/** Set by the page after a successful save. */
@@ -80,7 +106,7 @@ export class CcQuickAdd extends LitElement {
 	override render() {
 		return html`
 			<form @submit=${this.onSubmit}>
-				${this.errorKey ? html`<p role="alert"><mark>${t(this.errorKey)}</mark></p>` : nothing}
+				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 				<label>
 					${t("quickAdd.card")}
 					<select name="cardId" required>
@@ -94,7 +120,7 @@ export class CcQuickAdd extends LitElement {
 				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")} required /></label>
 				<label>${t("quickAdd.note")} <input name="note" placeholder=${t("quickAdd.notePlaceholder")} /></label>
 				<button type="submit">${t("quickAdd.submit")}</button>
-				${this.answer ? html`<p><ins>${this.answer}</ins></p>` : nothing}
+				${this.answer ? html`<p class="answer">${this.answer}</p>` : nothing}
 			</form>
 		`;
 	}

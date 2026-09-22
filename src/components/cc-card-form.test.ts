@@ -264,3 +264,15 @@ test("renders its labels and location options in the chosen language", async () 
 	expect(element.shadowRoot?.textContent).toContain("เพิ่มบัตร");
 	expect(element.shadowRoot?.textContent).toContain("กรุงเทพฯ");
 });
+
+test("renders cancel as a quiet button beside the submit", async () => {
+	const element = await mount();
+
+	expect(
+		element.shadowRoot?.querySelector('button[type="submit"]'),
+	).not.toBeNull();
+	expect(
+		element.shadowRoot?.querySelector('button[data-variant="quiet"]')
+			?.textContent,
+	).toContain("Cancel");
+});

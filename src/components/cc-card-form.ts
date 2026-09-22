@@ -1,4 +1,4 @@
-import { html, LitElement, nothing } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
 import type { Card, CycleRule } from "#lib/domain/types";
@@ -6,10 +6,46 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
+import { base, controls } from "#styles/shared";
 
 @customElement("cc-card-form")
 export class CcCardForm extends LitElement {
-	// Pico styles the light DOM, so this component renders without shadow styles of its own.
+	static override styles = [
+		base,
+		controls,
+		css`
+			form {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: var(--cc-space-3);
+			}
+
+			@media (min-width: 640px) {
+				form {
+					grid-template-columns: repeat(2, minmax(0, 1fr));
+				}
+
+				fieldset,
+				.form-actions,
+				[role="alert"] {
+					grid-column: 1 / -1;
+				}
+			}
+
+			fieldset {
+				flex-direction: row;
+				flex-wrap: wrap;
+				gap: var(--cc-space-4);
+			}
+
+			.form-actions {
+				display: flex;
+				flex-direction: row;
+				gap: var(--cc-space-2);
+			}
+		`,
+	];
+
 	@property({ attribute: false }) card: Card | null = null;
 
 	@state() private kind: CycleRule["kind"] = "offset";
@@ -120,7 +156,7 @@ export class CcCardForm extends LitElement {
 		const rule = card?.cycle;
 		return html`
 			<form @submit=${this.onSubmit}>
-				${this.errorKey ? html`<p role="alert"><mark>${t(this.errorKey)}</mark></p>` : nothing}
+				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 
 				${
 					card
@@ -173,9 +209,11 @@ export class CcCardForm extends LitElement {
 
 				<label>${t("form.comment")} <input name="comment" .value=${card?.comment ?? ""} /></label>
 
-				<button type="submit">${card ? t("form.save") : t("form.add")}</button>
-				<button type="button" class="secondary"
-					@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
+				<div class="form-actions" row>
+					<button type="submit">${card ? t("form.save") : t("form.add")}</button>
+					<button type="button" data-variant="quiet"
+						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
+				</div>
 			</form>
 		`;
 	}
