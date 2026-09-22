@@ -104,7 +104,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 						<h2>${t("dashboard.dueNext")}</h2>
 						<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
 					</article>
-					<article class="split__aside">
+					<article class="split__aside split__aside--lead">
 						<h2>${t("dashboard.addPurchase")}</h2>
 						<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 					</article>

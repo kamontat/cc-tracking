@@ -42,7 +42,9 @@
 	--cc-danger: #b3261e;
 	--cc-danger-surface: #fdeceb;
 	--cc-success: #1b7f4b;
-	--cc-warning: #b26a00;
+	/* Dark enough to stay readable on its own tint, not only on the surface. */
+	--cc-warning: #9a5b00;
+	--cc-warning-surface: #fdf2e0;
 
 	/* Resolved at use, so the dark block below re-points these for free. */
 	--cc-urgency-overdue: var(--cc-danger);
@@ -72,6 +74,7 @@
 		--cc-danger-surface: #3a1d1b;
 		--cc-success: #5bc98d;
 		--cc-warning: #e0a458;
+		--cc-warning-surface: #3a2a14;
 
 		--cc-focus-ring: 0 0 0 3px rgb(59 130 246 / 0.45);
 	}

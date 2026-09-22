@@ -1,4 +1,10 @@
-html {
+/*
+ * `:root`, not `html`: the bundler emits the reset after this file, so a bare
+ * `html` selector here loses the tie to the reset's own `html` rule and neither
+ * the Thai-aware font stack nor the leading would reach the document at all.
+ * The same reasoning drives `a:any-link` below.
+ */
+:root {
 	font-family: var(--cc-font-sans);
 	line-height: var(--cc-leading);
 }
@@ -10,11 +16,11 @@ body {
 	font-size: var(--cc-text-md);
 }
 
-a {
+a:any-link {
 	color: var(--cc-link);
 }
 
-a:hover {
+a:any-link:hover {
 	text-decoration: underline;
 }
 
@@ -150,16 +156,38 @@ a:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
+/* A file input ships its own button; without this it is the one browser-default
+   button on the page, and in the dark theme it stays stubbornly light. */
+.page input::file-selector-button {
+	margin-inline-end: var(--cc-space-3);
+	padding: var(--cc-space-1) var(--cc-space-3);
+	font: inherit;
+	font-size: var(--cc-text-sm);
+	font-weight: 550;
+	line-height: 1.2;
+	color: var(--cc-text);
+	cursor: pointer;
+	background: var(--cc-surface-sunken);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page input::file-selector-button:hover {
+	background: var(--cc-border);
+}
+
 /*
- * Below 960px this is the reset's default column flex, with the aside pulled
- * first: on a phone, adding a purchase is why the page is open. At 960px it
- * becomes a grid and `order` goes back to source order.
+ * Below 960px this is the reset's default column flex. An aside that is the
+ * reason the page is open on a phone -- the dashboard's quick-add -- opts into
+ * being pulled first; one that is not, such as the registry's backup panel,
+ * stays in source order below the form. At 960px it becomes a grid and `order`
+ * goes back to source order for both.
  */
 .split {
 	gap: var(--cc-space-5);
 }
 
-.split > .split__aside {
+.split > .split__aside--lead {
 	order: -1;
 }
 

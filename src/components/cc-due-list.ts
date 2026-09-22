@@ -46,17 +46,30 @@ export class CcDueList extends LitElement {
 
 			[data-urgency="soon"] .badge {
 				color: var(--cc-urgency-soon);
+				background: var(--cc-warning-surface);
 			}
 
 			.card-name {
+				display: block;
 				font-weight: 600;
 			}
 
-			td.card-cell {
-				display: flex;
-				flex-direction: column;
-				align-items: flex-start;
-				gap: var(--cc-space-1);
+			td.card-cell small {
+				display: block;
+			}
+
+			/*
+			 * Only once stacked. A flex cell stops being a table cell, and the
+			 * column then draws its row rule at its own content height rather
+			 * than the row's, leaving the separator broken in two.
+			 */
+			@media (max-width: 639px) {
+				td.card-cell {
+					display: flex;
+					flex-direction: column;
+					align-items: flex-start;
+					gap: var(--cc-space-1);
+				}
 			}
 		`,
 	];
@@ -109,7 +122,7 @@ export class CcDueList extends LitElement {
 									<small>••••${card.last4}</small>
 								</td>
 								<td data-label=${t("due.column.where")}>${locationText(card.location)}</td>
-								<td data-label=${t("due.column.closes")}>${displayDate(statement.closeDate, getLocale())}</td>
+								<td class="date" data-label=${t("due.column.closes")}>${displayDate(statement.closeDate, getLocale())}</td>
 								<td data-label=${t("due.column.due")}>
 									${displayDate(statement.dueDate, getLocale())}
 									<span class="badge">${this.when(statement)}</span>

@@ -44,6 +44,16 @@ export class CcStatementList extends LitElement {
 				gap: var(--cc-space-2);
 				align-items: center;
 			}
+
+			/*
+			 * The note takes every spare pixel, so the date, amount and delete
+			 * columns sit at the same width in every panel. Left to itself an auto
+			 * table shares the slack out, and a panel of short notes drifts its
+			 * amounts left of the panel above it.
+			 */
+			.note {
+				width: 100%;
+			}
 		`,
 	];
 
@@ -104,8 +114,8 @@ export class CcStatementList extends LitElement {
 											${statement.purchases.map(
 												(purchase) => html`
 													<tr>
-														<td>${displayDate(purchase.date, getLocale())}</td>
-														<td>${purchase.note}</td>
+														<td class="date">${displayDate(purchase.date, getLocale())}</td>
+														<td class="note">${purchase.note}</td>
 														<td data-numeric>${formatAmount(purchase.amount)}</td>
 														<td>
 															<button data-action="delete-purchase" data-variant="danger"

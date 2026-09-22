@@ -253,6 +253,19 @@ export const dataTable = css`
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* A date is one value: it breaks across lines far sooner than a note should. */
+	td.date {
+		white-space: nowrap;
+	}
+
+	/*
+	 * The last row's rule would otherwise double up with the panel's own edge,
+	 * or with a footer's border-top.
+	 */
+	tbody tr:last-child td {
+		border-bottom: 0;
+	}
+
 	@media (max-width: 639px) {
 		thead {
 			display: none;
@@ -266,6 +279,10 @@ export const dataTable = css`
 			border-bottom: var(--cc-border-width) solid var(--cc-border);
 		}
 
+		tbody tr:last-child {
+			border-bottom: 0;
+		}
+
 		td {
 			display: flex;
 			flex-direction: row;
@@ -274,6 +291,15 @@ export const dataTable = css`
 			justify-content: space-between;
 			padding: 0;
 			border: 0;
+		}
+
+		/*
+		 * A labelled cell is pushed right by its own label. An unlabelled one is
+		 * a lone flex item, so text-align never gets a say -- it has to be placed
+		 * at the end of the row instead.
+		 */
+		td[data-numeric]:not([data-label]) {
+			justify-content: flex-end;
 		}
 
 		td[data-label]::before {
