@@ -12,6 +12,65 @@
 
 **Depends on:** `docs/superpowers/plans/2026-09-21-location-choices.md` must be complete. This plan assumes `Card.location` is a `Location` and that `locationLabel` exists to be replaced by a catalog lookup.
 
+## Corrections During Execution
+
+This plan was written before implementation, and several of its own instructions turned out
+to be wrong once code met reality. Recorded here so a future reader — or anyone re-running
+this plan — does not have to rediscover them:
+
+- **Test environment.** happy-dom hardcodes `navigator.languages` to `["en-US", "en"]`, so an
+  unstubbed `getLocale()` always resolves to `"en"` in tests, never `"th"`. Task 1's own test
+  ("the resolved locale survives a storage that throws") called the unstubbed `getLocale()`
+  and asserted `"th"`, which contradicts that default and would fail as written. The test now
+  explicitly stubs `navigator.languages` to `[]` for the duration of that one test, so the
+  assertion exercises the storage-throwing path in isolation from browser-language detection.
+- **Locale reset belongs in the preload, not per file.** `tests/setup-happydom.ts` (wired via
+  `bunfig.toml`'s `[test] preload`) carries a global `beforeEach` that calls `resetLocale()`
+  and clears `localStorage` once for the whole suite. The plan's per-file `beforeEach` blocks
+  shown in Tasks 1-7 were redundant boilerplate and were removed except where a file needs a
+  stronger reset than the preload's -- this was not done everywhere: `src/lib/i18n/index.test.ts:13-16`
+  still carries one that merely duplicates the preload, and `src/components/cc-lang-switch.test.ts:4-8`
+  still carries one that goes further, also forcing a starting locale (`setLocale("en")`) the
+  preload's re-detection alone does not guarantee.
+- **Register `LocaleController` in a constructor, not a field.** The plan's
+  `private readonly locale = new LocaleController(this);` produces a field nothing reads,
+  which both `tsc` (`noUnusedLocals`) and Biome flag, needing two suppression comments whose
+  order was silently load-bearing — Biome's autofix deleted the field outright when they were
+  ordered wrongly. `constructor() { super(); new LocaleController(this); }` needs neither and
+  is what every component and `cc-lang-switch` actually use.
+- **`locationText` (the plan's `locationLabel`) had five call sites, not three.** Task 6 names
+  `cc-card-table`, `cc-due-list`, and `cc-location-groups`; it also lives in `cc-card-form.ts`
+  (the location `<select>`'s options) and `routes/card.ts` (the summary line under the card
+  heading).
+- **Task 5 had to convert the routes' error call sites.** The plan left the 3 `fallbackMessage`
+  sites and 10 `guard` sites in `src/routes/*.ts` for Task 7, but Task 5 changes
+  `createPageState`'s and `guard`'s signatures from a string to a `MessageKey`, so the repo
+  would not compile between Task 5's commit and Task 7's without converting those call sites
+  early.
+- **The dashboard confirmation is re-rendered, not cleared.** The plan's Task 7 said to clear
+  `answer` to `""` on a language change. It instead stores the source data
+  (`confirmedPurchase: { card, period } | null`) and rebuilds the sentence *and* both dates
+  inside `paint()`, consistent with how every other string on the page works, so switching
+  language mid-confirmation shows the same fact in the new language instead of erasing it.
+- **`applyChrome` moved into `bootstrap`.** The plan's Task 7 called `applyChrome` from inside
+  each route's `bootstrap` render callback. That callback never runs when storage is
+  unavailable, which would leave a translated error banner sitting inside an untranslated
+  English page frame. `applyChrome` now runs at the top of `bootstrap` itself, before the
+  storage check, so the title and nav are correct in every case, including that one.
+- **`cc-lang-switch` dropped the plan's `<label>` wrapper.** Task 2's snippet wraps the
+  `<select>` in a `<label>` holding a `class="visually-hidden"` span, relying on `aria-label`
+  on the `<select>` too. The implementation keeps only the `aria-label` and drops the `<label>`
+  and the span, because `visually-hidden` is not a class this codebase's CSS defines anywhere
+  -- it would have rendered as plain visible text next to the picker, not hidden anything. The
+  `aria-label` alone gives the same accessible name without a class the app has no styles for.
+- **Task 8 Step 3 (the Thai copy review) is pending the repository owner**, not yet done as of
+  this plan update. The terms flagged in Task 1 Step 5 -- `statement`, `billing cycle`,
+  `close date`, `due date`, the `backup.problem.*` fragments -- are now marked with comments
+  in `src/lib/i18n/th.ts` at their first appearance, including one concrete collision a review
+  found: `backup.problem.noCycle` and `backup.problem.missingPeriod` render identical Thai
+  text ("ไม่มีรอบบิล") for two different English problems. No wording has been changed pending
+  that review.
+
 ## Global Constraints
 
 - Bun only. `bun test`, `bun run`, `bun install`, `bunx`. Never npm, node, jest, vitest, or ts-node.

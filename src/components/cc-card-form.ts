@@ -1,12 +1,11 @@
 import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import {
-	DEFAULT_LOCATION,
-	LOCATIONS,
-	locationLabel,
-	toLocation,
-} from "#lib/domain/location";
+import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
 import type { Card, CycleRule } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
+import { LocaleController } from "#lib/i18n/controller";
+import { locationText } from "#lib/i18n/format";
+import { t } from "#lib/i18n/index";
 
 @customElement("cc-card-form")
 export class CcCardForm extends LitElement {
@@ -14,7 +13,14 @@ export class CcCardForm extends LitElement {
 	@property({ attribute: false }) card: Card | null = null;
 
 	@state() private kind: CycleRule["kind"] = "offset";
-	@state() private error = "";
+	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
+	// language switch while an error is on screen re-renders it in the new language too.
+	@state() private errorKey: MessageKey | "" = "";
+
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
 
 	override willUpdate(changed: Map<string, unknown>) {
 		if (changed.has("card") && this.card) this.kind = this.card.cycle.kind;
@@ -43,15 +49,14 @@ export class CcCardForm extends LitElement {
 		const last4 = this.value("last4");
 		const closeDay = Number(this.value("closeDay"));
 
-		if (!id) return this.fail("Give the card an id you will recognise.");
-		if (!this.value("name")) return this.fail("Give the card a name.");
-		if (!/^\d{4}$/.test(last4))
-			return this.fail("Last 4 must be exactly four digits.");
+		if (!id) return this.fail("form.error.id");
+		if (!this.value("name")) return this.fail("form.error.name");
+		if (!/^\d{4}$/.test(last4)) return this.fail("form.error.last4");
 		if (!Number.isInteger(closeDay) || closeDay < 1 || closeDay > 31) {
-			return this.fail("Closing day must be between 1 and 31.");
+			return this.fail("form.error.closeDay");
 		}
 		const location = toLocation(this.value("location"));
-		if (!location) return this.fail("Choose where the card is kept.");
+		if (!location) return this.fail("form.error.location");
 
 		let cycle: CycleRule;
 		if (this.kind === "offset") {
@@ -61,18 +66,18 @@ export class CcCardForm extends LitElement {
 				dueOffsetDays < 1 ||
 				dueOffsetDays > 60
 			) {
-				return this.fail("Days until due must be between 1 and 60.");
+				return this.fail("form.error.dueOffsetDays");
 			}
 			cycle = { kind: "offset", closeDay, dueOffsetDays };
 		} else {
 			const dueDay = Number(this.value("dueDay"));
 			if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
-				return this.fail("Due day must be between 1 and 31.");
+				return this.fail("form.error.dueDay");
 			}
 			cycle = { kind: "fixed", closeDay, dueDay };
 		}
 
-		this.error = "";
+		this.errorKey = "";
 		const wasCreate = this.card === null;
 		const card: Card = {
 			id,
@@ -106,8 +111,8 @@ export class CcCardForm extends LitElement {
 		}
 	}
 
-	private fail(message: string) {
-		this.error = message;
+	private fail(key: MessageKey) {
+		this.errorKey = key;
 	}
 
 	override render() {
@@ -115,35 +120,35 @@ export class CcCardForm extends LitElement {
 		const rule = card?.cycle;
 		return html`
 			<form @submit=${this.onSubmit}>
-				${this.error ? html`<p role="alert"><mark>${this.error}</mark></p>` : nothing}
+				${this.errorKey ? html`<p role="alert"><mark>${t(this.errorKey)}</mark></p>` : nothing}
 
 				${
 					card
-						? html`<p>Id <strong>${card.id}</strong> <small>(cannot change)</small></p>`
-						: html`<label>Id <input name="id" placeholder="kbank-visa" required /></label>`
+						? html`<p>${t("form.id")} <strong>${card.id}</strong> <small>${t("form.idImmutable")}</small></p>`
+						: html`<label>${t("form.id")} <input name="id" placeholder=${t("form.idPlaceholder")} required /></label>`
 				}
 
-				<label>Name <input name="name" .value=${card?.name ?? ""} required /></label>
-				<label>Last 4 <input name="last4" inputmode="numeric" .value=${card?.last4 ?? ""} required /></label>
+				<label>${t("form.name")} <input name="name" .value=${card?.name ?? ""} required /></label>
+				<label>${t("form.last4")} <input name="last4" inputmode="numeric" .value=${card?.last4 ?? ""} required /></label>
 				<label>
-					Location
+					${t("form.location")}
 					<select name="location" required>
 						${LOCATIONS.map(
 							(value) =>
-								html`<option value=${value}>${locationLabel(value)}</option>`,
+								html`<option value=${value}>${locationText(value)}</option>`,
 						)}
 					</select>
 				</label>
 
 				<fieldset>
-					<legend>Billing cycle</legend>
+					<legend>${t("form.cycle")}</legend>
 					<label>
 						<input type="radio" name="kind" value="offset"
 							.checked=${this.kind === "offset"}
 							@change=${() => {
 								this.kind = "offset";
 							}} />
-						Due a number of days after closing
+						${t("form.cycleOffset")}
 					</label>
 					<label>
 						<input type="radio" name="kind" value="fixed"
@@ -151,26 +156,26 @@ export class CcCardForm extends LitElement {
 							@change=${() => {
 								this.kind = "fixed";
 							}} />
-						Due on a fixed day of the month
+						${t("form.cycleFixed")}
 					</label>
 				</fieldset>
 
-				<label>Closing day <input name="closeDay" type="number" min="1" max="31"
+				<label>${t("form.closeDay")} <input name="closeDay" type="number" min="1" max="31"
 					.value=${String(rule?.closeDay ?? "")} required /></label>
 
 				${
 					this.kind === "offset"
-						? html`<label>Days until due <input name="dueOffsetDays" type="number" min="1" max="60"
+						? html`<label>${t("form.dueOffsetDays")} <input name="dueOffsetDays" type="number" min="1" max="60"
 							.value=${String(rule?.kind === "offset" ? rule.dueOffsetDays : "")} required /></label>`
-						: html`<label>Due day <input name="dueDay" type="number" min="1" max="31"
+						: html`<label>${t("form.dueDay")} <input name="dueDay" type="number" min="1" max="31"
 							.value=${String(rule?.kind === "fixed" ? rule.dueDay : "")} required /></label>`
 				}
 
-				<label>Comment <input name="comment" .value=${card?.comment ?? ""} /></label>
+				<label>${t("form.comment")} <input name="comment" .value=${card?.comment ?? ""} /></label>
 
-				<button type="submit">${card ? "Save changes" : "Add card"}</button>
+				<button type="submit">${card ? t("form.save") : t("form.add")}</button>
 				<button type="button" class="secondary"
-					@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>Cancel</button>
+					@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
 			</form>
 		`;
 	}

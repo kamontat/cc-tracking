@@ -1,10 +1,5 @@
 import { expect, test } from "bun:test";
-import {
-	DEFAULT_LOCATION,
-	LOCATIONS,
-	locationLabel,
-	toLocation,
-} from "#lib/domain/location";
+import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
 
 test("accepts each known location", () => {
 	for (const location of LOCATIONS) {
@@ -25,8 +20,4 @@ test("rejects anything that is not one of the three", () => {
 
 test("the default is itself a known location", () => {
 	expect(toLocation(DEFAULT_LOCATION)).toBe(DEFAULT_LOCATION);
-});
-
-test("labels every location in declaration order", () => {
-	expect(LOCATIONS.map(locationLabel)).toEqual(["Bangkok", "Phichit", "Krabi"]);
 });

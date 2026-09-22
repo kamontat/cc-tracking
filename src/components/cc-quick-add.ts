@@ -3,6 +3,9 @@ import { customElement, property, state } from "lit/decorators.js";
 import { compareDates, isValidDate } from "#lib/domain/date";
 import { parseAmount } from "#lib/domain/money";
 import type { Card, PlainDate } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
+import { LocaleController } from "#lib/i18n/controller";
+import { t } from "#lib/i18n/index";
 
 export type QuickAddDetail = {
 	cardId: string;
@@ -18,7 +21,14 @@ export class CcQuickAdd extends LitElement {
 	/** Set by the page after a successful save. */
 	@property() answer = "";
 
-	@state() private error = "";
+	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
+	// language switch while an error is on screen re-renders it in the new language too.
+	@state() private errorKey: MessageKey | "" = "";
+
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
 
 	private value(name: string): string {
 		return (
@@ -33,26 +43,25 @@ export class CcQuickAdd extends LitElement {
 		const cardId = this.value("cardId");
 		const date = this.value("date");
 		if (!cardId) {
-			this.error = "Choose a card first.";
+			this.errorKey = "quickAdd.error.noCard";
 			return;
 		}
 		if (!isValidDate(date)) {
-			this.error = "That date does not exist. Use YYYY-MM-DD.";
+			this.errorKey = "quickAdd.error.badDate";
 			return;
 		}
 		if (compareDates(date, this.today) > 0) {
-			this.error =
-				"That date is in the future. A credit-card purchase cannot be dated ahead.";
+			this.errorKey = "quickAdd.error.futureDate";
 			return;
 		}
 		let amount: number;
 		try {
 			amount = parseAmount(this.value("amount"));
 		} catch {
-			this.error = "Enter the amount in baht, like 1234.56.";
+			this.errorKey = "quickAdd.error.badAmount";
 			return;
 		}
-		this.error = "";
+		this.errorKey = "";
 		this.dispatchEvent(
 			new CustomEvent<QuickAddDetail>("add", {
 				detail: { cardId, date, amount, note: this.value("note") },
@@ -71,9 +80,9 @@ export class CcQuickAdd extends LitElement {
 	override render() {
 		return html`
 			<form @submit=${this.onSubmit}>
-				${this.error ? html`<p role="alert"><mark>${this.error}</mark></p>` : nothing}
+				${this.errorKey ? html`<p role="alert"><mark>${t(this.errorKey)}</mark></p>` : nothing}
 				<label>
-					Card
+					${t("quickAdd.card")}
 					<select name="cardId" required>
 						${this.cards.map(
 							(card) =>
@@ -81,10 +90,10 @@ export class CcQuickAdd extends LitElement {
 						)}
 					</select>
 				</label>
-				<label>Date <input name="date" type="date" .value=${this.today} required /></label>
-				<label>Amount (THB) <input name="amount" inputmode="decimal" placeholder="1234.56" required /></label>
-				<label>Note <input name="note" placeholder="office supplies" /></label>
-				<button type="submit">Add purchase</button>
+				<label>${t("quickAdd.date")} <input name="date" type="date" .value=${this.today} required /></label>
+				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")} required /></label>
+				<label>${t("quickAdd.note")} <input name="note" placeholder=${t("quickAdd.notePlaceholder")} /></label>
+				<button type="submit">${t("quickAdd.submit")}</button>
 				${this.answer ? html`<p><ins>${this.answer}</ins></p>` : nothing}
 			</form>
 		`;

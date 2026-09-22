@@ -2,8 +2,11 @@ import "@picocss/pico/css/pico.min.css";
 import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";
+import "#components/cc-lang-switch";
 import { html, nothing, render } from "lit";
 import type { Card } from "#lib/domain/types";
+import { MessageError } from "#lib/i18n/error";
+import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
@@ -50,7 +53,7 @@ export function renderCardsPage(
 				),
 			);
 		},
-		fallbackMessage: "Could not read the card list.",
+		fallbackKey: "cards.error.read",
 		paint: () => paint(),
 	});
 
@@ -60,26 +63,21 @@ export function renderCardsPage(
 			if (!editing) {
 				const existing = await repo.getCard(card.id);
 				if (existing) {
-					throw new Error(
-						`A card with id "${card.id}" already exists. Card ids must be unique.`,
-					);
+					throw new MessageError("cards.error.duplicateId", { id: card.id });
 				}
 			}
 			await repo.saveCard(card);
 			editing = null;
-		}, "Could not save the card.");
+		}, "cards.error.save");
 
 	const onRemove = (event: CustomEvent<string>) =>
-		state.guard(
-			() => repo.deleteCard(event.detail),
-			"Could not delete the card.",
-		);
+		state.guard(() => repo.deleteCard(event.detail), "cards.error.delete");
 
 	const onArchive = (event: CustomEvent<string>) =>
 		state.guard(async () => {
 			const card = cards.find((c) => c.id === event.detail);
 			if (card) await repo.saveCard({ ...card, archived: !card.archived });
-		}, "Could not archive the card.");
+		}, "cards.error.archive");
 
 	const onEdit = (event: CustomEvent<string>) => {
 		editing = cards.find((c) => c.id === event.detail) ?? null;
@@ -100,7 +98,7 @@ export function renderCardsPage(
 			// has started reading the blob (a long-standing source of dropped
 			// downloads in some browsers); deferring it a tick is the safe pattern.
 			setTimeout(() => URL.revokeObjectURL(url), 0);
-		}, "Could not export a backup.");
+		}, "cards.error.export");
 
 	const onImport = (event: Event) => {
 		const input = event.target as HTMLInputElement;
@@ -109,33 +107,29 @@ export function renderCardsPage(
 		input.value = "";
 		return state.guard(async () => {
 			await importBackup(repo, parseBackup(await file.text()));
-		}, "Could not import that backup.");
+		}, "cards.error.import");
 	};
 
 	const paint = () =>
 		render(
 			html`
-				<h1>Cards</h1>
-				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
+				<h1>${t("cards.title")}</h1>
+				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				${
 					resetNames.length > 0
 						? html`
 							<article data-testid="location-reset">
-								<p>
-									These cards were kept somewhere this app no longer recognises, so their
-									location was set to Bangkok: <strong>${resetNames.join(", ")}</strong>.
-									Edit each one to pick the right place.
-								</p>
+								<p>${t("cards.locationReset", { names: resetNames.join(", ") })}</p>
 								<button class="secondary" type="button" @click=${() => {
 									resetNames = [];
 									paint();
-								}}>Dismiss</button>
+								}}>${t("common.dismiss")}</button>
 							</article>
 						`
 						: nothing
 				}
 				<article>
-					<h2>${editing ? `Edit ${editing.name}` : "Add a card"}</h2>
+					<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
 					<cc-card-form
 						.card=${editing}
 						@save=${onSave}
@@ -153,19 +147,20 @@ export function renderCardsPage(
 					@remove=${onRemove}
 				></cc-card-table>
 				<article>
-					<h2>Backup</h2>
-					<p><small>Data lives in this browser only. Export regularly; clearing site data erases everything.</small></p>
-					<button class="secondary" type="button" @click=${onExport}>Export JSON</button>
-					<label>Import JSON <input type="file" accept="application/json" @change=${onImport} /></label>
+					<h2>${t("cards.backup")}</h2>
+					<p><small>${t("cards.backupWarning")}</small></p>
+					<button class="secondary" type="button" @click=${onExport}>${t("cards.export")}</button>
+					<label>${t("cards.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
 				</article>
 			`,
 			root,
 		);
 
+	subscribe(() => paint());
 	void state.load();
 }
 
-bootstrap((repo) => {
+bootstrap("title.cards", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (root) renderCardsPage(repo, root);
 });

@@ -83,8 +83,16 @@ describe("periodOfPurchase", () => {
 });
 
 describe("describeCycle", () => {
-	test("describes both kinds in words", () => {
-		expect(describeCycle(offset)).toBe("closes 18th, due 15 days later");
-		expect(describeCycle(fixed)).toBe("closes 18th, due on the 5th");
+	test("describes an offset rule as a key and its parameters", () => {
+		expect(
+			describeCycle({ kind: "offset", closeDay: 18, dueOffsetDays: 15 }),
+		).toEqual({ key: "cycle.offset", params: { closeDay: 18, days: 15 } });
+	});
+
+	test("describes a fixed rule as a key and its parameters", () => {
+		expect(describeCycle({ kind: "fixed", closeDay: 18, dueDay: 5 })).toEqual({
+			key: "cycle.fixed",
+			params: { closeDay: 18, dueDay: 5 },
+		});
 	});
 });

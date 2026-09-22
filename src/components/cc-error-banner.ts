@@ -1,5 +1,7 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { LocaleController } from "#lib/i18n/controller";
+import { t } from "#lib/i18n/index";
 
 @customElement("cc-error-banner")
 export class CcErrorBanner extends LitElement {
@@ -14,7 +16,15 @@ export class CcErrorBanner extends LitElement {
 	`;
 
 	@property() message = "";
-	@property({ attribute: "retry-label" }) retryLabel = "Try again";
+	// Left empty rather than defaulting to a catalog string: a property default is evaluated
+	// once at construction, which would freeze the language at load. render() falls back to
+	// t("common.retry") instead, re-evaluated on every render.
+	@property({ attribute: "retry-label" }) retryLabel = "";
+
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
 
 	override render() {
 		if (!this.message) return nothing;
@@ -22,7 +32,7 @@ export class CcErrorBanner extends LitElement {
 			<article role="alert">
 				<p>${this.message}</p>
 				<button @click=${() => this.dispatchEvent(new CustomEvent("retry"))}>
-					${this.retryLabel}
+					${this.retryLabel || t("common.retry")}
 				</button>
 			</article>
 		`;

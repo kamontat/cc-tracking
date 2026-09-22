@@ -1,0 +1,183 @@
+import type { Catalog } from "#lib/i18n/catalog";
+
+/**
+ * Pending owner review (Task 8 Step 3 of
+ * docs/superpowers/plans/2026-09-21-english-thai.md, not yet done as of this comment):
+ * a handful of terms were machine-translated without a native speaker's eye and are flagged
+ * below, at their first appearance, for the repository owner to confirm or correct. Nothing
+ * else in this file has been reviewed either, but these specifically depend on getting a
+ * domain term or a sentence's word order right, not just a dictionary word.
+ */
+export const th: Catalog = {
+	"nav.brand": "cc-tracking",
+	"nav.dashboard": "หน้ารวม",
+	"nav.cards": "บัตร",
+	"title.dashboard": "หน้ารวม — cc-tracking",
+	"title.cards": "ทะเบียนบัตร — cc-tracking",
+	"title.card": "บัตร — cc-tracking",
+	"lang.label": "ภาษา",
+	"lang.en": "English",
+	"lang.th": "ไทย",
+
+	"common.reload": "โหลดใหม่",
+	"common.retry": "ลองอีกครั้ง",
+	"common.cancel": "ยกเลิก",
+	"common.edit": "แก้ไข",
+	"common.delete": "ลบ",
+	"common.dismiss": "ปิด",
+	"common.none": "—",
+
+	"location.bangkok": "กรุงเทพฯ",
+	"location.phichit": "พิจิตร",
+	"location.krabi": "กระบี่",
+
+	"dashboard.title": "หน้ารวม",
+	// FLAG FOR OWNER REVIEW: "due date" -- ครบกำหนด, used throughout this catalog.
+	"dashboard.dueNext": "ครบกำหนดถัดไป",
+	"dashboard.addPurchase": "เพิ่มรายการใช้จ่าย",
+	// FLAG FOR OWNER REVIEW: "statement" -- ใบแจ้งยอด (also card.showOlder, statements.empty)
+	// and "close date" -- ปิดยอด (also due.column.closes, form.closeDay, statements.header,
+	// cycle.offset/fixed). This sentence also depends on Thai word order matching English.
+	"dashboard.answer": "อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ {close} — ชำระภายใน {due}",
+	"dashboard.error.read": "อ่านข้อมูลบัตรไม่สำเร็จ",
+	"dashboard.error.markPaid": "บันทึกการชำระเงินไม่สำเร็จ",
+	"dashboard.error.addPurchase": "บันทึกรายการใช้จ่ายไม่สำเร็จ",
+
+	"due.empty": "ยังไม่มีบัตร",
+	"due.emptyAction": "เพิ่มบัตรได้ที่หน้าบัตร",
+	"due.column.card": "บัตร",
+	"due.column.where": "ที่เก็บ",
+	"due.column.closes": "ปิดยอด",
+	"due.column.due": "ครบกำหนด",
+	"due.column.total": "รวม",
+	"due.overdue": "เกินกำหนด {days} วัน",
+	"due.today": "ครบกำหนดวันนี้",
+	"due.inDays": "อีก {days} วัน",
+	"due.stillOpen": "ยังไม่ปิดยอด",
+	"due.markPaid": "บันทึกว่าชำระแล้ว",
+
+	"groups.title": "บัตรแยกตามที่เก็บ",
+	"groups.nextDue": "ครบกำหนดถัดไป {date}",
+
+	"quickAdd.card": "บัตร",
+	"quickAdd.date": "วันที่",
+	"quickAdd.amount": "จำนวนเงิน (บาท)",
+	"quickAdd.amountPlaceholder": "1234.56",
+	"quickAdd.note": "หมายเหตุ",
+	"quickAdd.notePlaceholder": "เครื่องเขียนสำนักงาน",
+	"quickAdd.submit": "เพิ่มรายการ",
+	"quickAdd.error.noCard": "เลือกบัตรก่อน",
+	"quickAdd.error.badDate": "ไม่มีวันที่นี้ ใช้รูปแบบ YYYY-MM-DD",
+	"quickAdd.error.futureDate": "วันที่อยู่ในอนาคต รายการบัตรเครดิตลงวันที่ล่วงหน้าไม่ได้",
+	"quickAdd.error.badAmount": "กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
+
+	"cards.title": "บัตร",
+	"cards.add": "เพิ่มบัตร",
+	"cards.edit": "แก้ไข {name}",
+	"cards.empty": "ยังไม่มีบัตร เพิ่มใบแรกด้วยแบบฟอร์มด้านบน",
+	"cards.column.id": "รหัส",
+	"cards.column.name": "ชื่อ",
+	"cards.column.last4": "เลข 4 ตัวท้าย",
+	"cards.column.location": "ที่เก็บ",
+	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
+	// backup.problem.*Cycle fragments below).
+	"cards.column.cycle": "รอบบิล",
+	"cards.column.comment": "หมายเหตุ",
+	"cards.archived": "(เก็บเข้าคลัง)",
+	"cards.archive": "เก็บเข้าคลัง",
+	"cards.unarchive": "นำออกจากคลัง",
+	"cards.purchaseCount": "{count} รายการ",
+	"cards.backup": "สำรองข้อมูล",
+	"cards.backupWarning":
+		"ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น ส่งออกเป็นประจำ การล้างข้อมูลเว็บไซต์จะลบทั้งหมด",
+	"cards.export": "ส่งออก JSON",
+	"cards.import": "นำเข้า JSON",
+	"cards.locationReset":
+		"บัตรเหล่านี้เคยเก็บไว้ในที่ที่แอปไม่รู้จักแล้ว จึงตั้งที่เก็บเป็นกรุงเทพฯ: {names} แก้ไขแต่ละใบเพื่อเลือกที่เก็บที่ถูกต้อง",
+	"cards.error.read": "อ่านรายการบัตรไม่สำเร็จ",
+	"cards.error.save": "บันทึกบัตรไม่สำเร็จ",
+	"cards.error.delete": "ลบบัตรไม่สำเร็จ",
+	"cards.error.archive": "เก็บบัตรเข้าคลังไม่สำเร็จ",
+	"cards.error.export": "ส่งออกข้อมูลสำรองไม่สำเร็จ",
+	"cards.error.import": "นำเข้าข้อมูลสำรองไม่สำเร็จ",
+	"cards.error.duplicateId": 'มีบัตรรหัส "{id}" อยู่แล้ว รหัสบัตรต้องไม่ซ้ำกัน',
+
+	"form.id": "รหัส",
+	"form.idImmutable": "(เปลี่ยนไม่ได้)",
+	"form.idPlaceholder": "kbank-visa",
+	"form.name": "ชื่อ",
+	"form.last4": "เลข 4 ตัวท้าย",
+	"form.location": "ที่เก็บ",
+	"form.cycle": "รอบบิล",
+	"form.cycleOffset": "ครบกำหนดหลังปิดยอดกี่วัน",
+	"form.cycleFixed": "ครบกำหนดวันที่แน่นอนของเดือน",
+	"form.closeDay": "วันปิดยอด",
+	"form.dueOffsetDays": "จำนวนวันจนครบกำหนด",
+	"form.dueDay": "วันครบกำหนด",
+	"form.comment": "หมายเหตุ",
+	"form.save": "บันทึกการแก้ไข",
+	"form.add": "เพิ่มบัตร",
+	"form.error.id": "ตั้งรหัสบัตรที่จำได้",
+	"form.error.name": "ตั้งชื่อบัตร",
+	"form.error.last4": "เลข 4 ตัวท้ายต้องเป็นตัวเลขสี่หลัก",
+	"form.error.location": "เลือกที่เก็บบัตร",
+	"form.error.closeDay": "วันปิดยอดต้องอยู่ระหว่าง 1 ถึง 31",
+	"form.error.dueOffsetDays": "จำนวนวันจนครบกำหนดต้องอยู่ระหว่าง 1 ถึง 60",
+	"form.error.dueDay": "วันครบกำหนดต้องอยู่ระหว่าง 1 ถึง 31",
+
+	"card.showOlder": "ดูใบแจ้งยอดเก่ากว่านี้",
+	"card.back": "กลับไปหน้าบัตร",
+	"card.error.noSelection": "ยังไม่ได้เลือกบัตร",
+	"card.error.notFound": "ไม่พบบัตรรหัส {id}",
+	"card.error.read": "อ่านข้อมูลบัตรนี้ไม่สำเร็จ",
+	"card.error.markPaid": "บันทึกการชำระเงินไม่สำเร็จ",
+	"card.error.unmarkPaid": "ยกเลิกการชำระเงินไม่สำเร็จ",
+	"card.error.deletePurchase": "ลบรายการใช้จ่ายไม่สำเร็จ",
+
+	"statements.empty": "ยังไม่มีใบแจ้งยอด เพิ่มรายการใช้จ่ายจากหน้ารวม",
+	"statements.header": "ปิดยอด {close} ครบกำหนด {due}",
+	"statements.paid": "ชำระแล้ว {date}",
+	"statements.unmark": "ยกเลิกเครื่องหมาย",
+	"statements.markPaid": "บันทึกว่าชำระแล้ว",
+	"statements.noPurchases": "ไม่มีรายการใช้จ่ายในรอบนี้",
+	"statements.total": "รวม {amount}",
+
+	"cycle.offset": "ปิดยอดวันที่ {closeDay} ครบกำหนดอีก {days} วัน",
+	"cycle.fixed": "ปิดยอดวันที่ {closeDay} ครบกำหนดวันที่ {dueDay}",
+
+	"storage.unavailable":
+		"เบราว์เซอร์นี้ไม่อนุญาตให้หน้าเว็บเก็บข้อมูล หน้าต่างส่วนตัวและการบล็อกข้อมูลเว็บไซต์ทำให้เกิดปัญหานี้",
+	"startup.failed": "เริ่มหน้าเว็บไม่สำเร็จ",
+
+	"backup.unreadable": "ไฟล์นี้ไม่ใช่ข้อมูลสำรองที่อ่านได้",
+	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
+	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.payment are each
+	// assembled with one of the backup.problem.* fragments below (backup.card + " " +
+	// backup.problem.missingId, say) to form one sentence, so Thai word order has to match
+	// what the English assembly produces, not just translate each fragment in isolation.
+	"backup.card": "บัตรลำดับที่ {index} ในข้อมูลสำรอง {problem}",
+	"backup.purchase": "รายการใช้จ่ายลำดับที่ {index} ในข้อมูลสำรอง {problem}",
+	"backup.payment": "การชำระเงินลำดับที่ {index} ในข้อมูลสำรอง {problem}",
+	"backup.problem.notObject": "ไม่ใช่ออบเจ็กต์",
+	"backup.problem.missingId": "ไม่มีรหัส",
+	"backup.problem.missingName": "ไม่มีชื่อ",
+	"backup.problem.missingLast4": "ไม่มีเลข 4 ตัวท้าย",
+	"backup.problem.badLocation": "มีที่เก็บที่ไม่ใช่ bangkok, phichit หรือ krabi",
+	// FLAG FOR OWNER REVIEW: noCycle and missingPeriod below both render as "ไม่มีรอบบิล"
+	// ("has no cycle" vs. "is missing a period" in English -- two different problems).
+	// Benign today: backup.card and backup.payment name which one broke ("card #N ..." vs.
+	// "payment #N ..."), so the sentence still disambiguates. But it is the exact class of
+	// bug this review exists to catch, so it is flagged rather than silently left.
+	"backup.problem.noCycle": "ไม่มีรอบบิล",
+	"backup.problem.badOffsetCycle": "มีรอบบิลแบบ offset ที่ค่าวันไม่ใช่จำนวนเต็ม",
+	"backup.problem.badFixedCycle": "มีรอบบิลแบบ fixed ที่ค่าวันไม่ใช่จำนวนเต็ม",
+	"backup.problem.badCycleKind": 'มีรอบบิลที่ kind ไม่ใช่ "offset" หรือ "fixed"',
+	"backup.problem.missingCardId": "ไม่มี cardId",
+	"backup.problem.badDate": "วันที่ไม่ถูกต้อง",
+	"backup.problem.badAmount": "จำนวนเงินไม่ใช่จำนวนเต็ม",
+	// See the noCycle comment above -- same collision, same "ไม่มีรอบบิล" text.
+	"backup.problem.missingPeriod": "ไม่มีรอบบิล",
+	"backup.problem.badPaidAt": "วันที่ paidAt ไม่ถูกต้อง",
+	"backup.problem.badCloseDate": "วันที่ closeDate ไม่ถูกต้อง",
+	"backup.problem.badDueDate": "วันที่ dueDate ไม่ถูกต้อง",
+};

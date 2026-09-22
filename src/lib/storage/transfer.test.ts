@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { MessageError } from "#lib/i18n/error";
 import {
 	sampleCard,
 	samplePayment,
@@ -6,6 +7,16 @@ import {
 } from "#lib/storage/contract";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
+
+/** Runs `fn`, expecting it to throw, and returns what it threw. */
+function captureThrow(fn: () => unknown): unknown {
+	try {
+		fn();
+	} catch (failure) {
+		return failure;
+	}
+	throw new Error("expected function to throw");
+}
 
 const populated = async () => {
 	const repo = new InMemoryRepository();
@@ -75,25 +86,35 @@ describe("parseBackup", () => {
 	});
 
 	test("rejects malformed JSON", () => {
-		expect(() => parseBackup("{nope")).toThrow(/not a readable backup/i);
+		const failure = captureThrow(() => parseBackup("{nope"));
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).key).toBe("backup.unreadable");
 	});
 
 	test("rejects a future backup version", () => {
-		expect(() =>
+		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({ version: 2, cards: [], purchases: [], payments: [] }),
 			),
-		).toThrow(/version 2/i);
+		);
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).key).toBe("backup.version");
+		expect((failure as MessageError).params).toEqual({
+			found: "2",
+			expected: 1,
+		});
 	});
 
 	test("rejects JSON missing the expected lists", () => {
-		expect(() => parseBackup(JSON.stringify({ version: 1 }))).toThrow(
-			/not a readable backup/i,
+		const failure = captureThrow(() =>
+			parseBackup(JSON.stringify({ version: 1 })),
 		);
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).key).toBe("backup.unreadable");
 	});
 
 	test("rejects a card that is missing its required fields", () => {
-		expect(() =>
+		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
 					version: 1,
@@ -102,11 +123,39 @@ describe("parseBackup", () => {
 					payments: [],
 				}),
 			),
-		).toThrow(/card #1/i);
+		);
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).key).toBe("backup.card");
+		expect((failure as MessageError).params).toEqual({
+			index: 1,
+			problem: "backup.problem.missingId",
+		});
+	});
+
+	test("names which card is wrong, by key", () => {
+		const backup = {
+			version: 1,
+			exportedAt: "2026-09-21T00:00:00.000Z",
+			cards: [{ id: "kbank", name: "KBank Visa", last4: "4821" }],
+			purchases: [],
+			payments: [],
+		};
+
+		try {
+			parseBackup(JSON.stringify(backup));
+			throw new Error("expected parseBackup to throw");
+		} catch (failure) {
+			expect(failure).toBeInstanceOf(MessageError);
+			expect((failure as MessageError).key).toBe("backup.card");
+			expect((failure as MessageError).params).toEqual({
+				index: 1,
+				problem: "backup.problem.badLocation",
+			});
+		}
 	});
 
 	test("rejects a purchase with a non-integer amount", () => {
-		expect(() =>
+		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
 					version: 1,
@@ -123,11 +172,17 @@ describe("parseBackup", () => {
 					payments: [],
 				}),
 			),
-		).toThrow(/non-integer amount/i);
+		);
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).key).toBe("backup.purchase");
+		expect((failure as MessageError).params).toEqual({
+			index: 1,
+			problem: "backup.problem.badAmount",
+		});
 	});
 
 	test("rejects a string version, even one that looks like the right number", () => {
-		expect(() =>
+		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
 					version: "1",
@@ -136,7 +191,13 @@ describe("parseBackup", () => {
 					payments: [],
 				}),
 			),
-		).toThrow(/version/i);
+		);
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).key).toBe("backup.version");
+		expect((failure as MessageError).params).toEqual({
+			found: '"1"',
+			expected: 1,
+		});
 	});
 
 	test("a valid backup still round-trips", async () => {
@@ -166,9 +227,13 @@ describe("parseBackup", () => {
 			payments: [],
 		};
 
-		expect(() => parseBackup(JSON.stringify(backup))).toThrow(
-			"That backup's card #1 has a location that is not bangkok, phichit, or krabi.",
-		);
+		const failure = captureThrow(() => parseBackup(JSON.stringify(backup)));
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).key).toBe("backup.card");
+		expect((failure as MessageError).params).toEqual({
+			index: 1,
+			problem: "backup.problem.badLocation",
+		});
 	});
 
 	test("accepts a backup whose card location is a known key", () => {

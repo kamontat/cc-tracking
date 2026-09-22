@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import "#components/cc-error-banner";
+import { setLocale } from "#lib/i18n/index";
 
 const mount = async (message: string) => {
 	document.body.innerHTML = "";
@@ -29,4 +30,15 @@ test("emits retry when the retry button is pressed", async () => {
 test("renders nothing without a message", async () => {
 	const element = await mount("");
 	expect(element.shadowRoot?.querySelector("article")).toBeNull();
+});
+
+test("falls back to the retry label in the chosen language", async () => {
+	setLocale("en");
+	const element = await mount("Could not save the card.");
+	expect(element.shadowRoot?.textContent).toContain("Try again");
+
+	setLocale("th");
+	await (element as unknown as { updateComplete: Promise<unknown> })
+		.updateComplete;
+	expect(element.shadowRoot?.textContent).toContain("ลองอีกครั้ง");
 });

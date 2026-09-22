@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { renderCardPage } from "./card";
 
@@ -268,4 +269,18 @@ test("a failed delete-purchase leaves a message in the banner and keeps the purc
 
 	expect(bannerMessage(root)).toContain("disk is full");
 	expect(await repo.listPurchases("kbank")).toEqual([purchase]);
+});
+
+test("renders its controls in the chosen language", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+	expect(root.textContent).toContain("Show older statements");
+
+	setLocale("th");
+	await settle();
+	expect(root.textContent).toContain("ดูใบแจ้งยอดเก่ากว่านี้");
 });

@@ -1,6 +1,7 @@
 import "@picocss/pico/css/pico.min.css";
 import "#components/cc-due-list";
 import "#components/cc-error-banner";
+import "#components/cc-lang-switch";
 import "#components/cc-location-groups";
 import "#components/cc-quick-add";
 import { html, render } from "lit";
@@ -10,6 +11,7 @@ import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -20,7 +22,10 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	let cards: Card[] = [];
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
-	let answer = "";
+	// Carries the card and period a purchase landed on, not a resolved sentence: paint()
+	// resolves it every time, so a language switch re-renders the confirmation instead of
+	// leaving it frozen in whatever language it was written in (or clearing it outright).
+	let confirmedPurchase: { card: Card; period: string } | null = null;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -32,7 +37,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				await Promise.all(cards.map((card) => repo.listPayments(card.id)))
 			).flat();
 		},
-		fallbackMessage: "Could not read your cards.",
+		fallbackKey: "dashboard.error.read",
 		paint: () => paint(),
 	});
 
@@ -51,7 +56,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				closeDate: statement.closeDate,
 				dueDate: statement.dueDate,
 			});
-		}, "Could not record the payment.");
+		}, "dashboard.error.markPaid");
 
 	const onAdd = (event: CustomEvent<QuickAddDetail>) =>
 		state.guard(async () => {
@@ -66,10 +71,8 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				note,
 			});
 			const period = periodOfPurchase(card.cycle, date);
-			answer =
-				`Lands on the statement closing ${displayDate(closeDateOf(card.cycle, period))}` +
-				` — pay by ${displayDate(dueDateOf(card.cycle, period))}.`;
-		}, "Could not save the purchase.");
+			confirmedPurchase = { card, period };
+		}, "dashboard.error.addPurchase");
 
 	const rows = (): DueRow[] =>
 		cards.map((card) => ({
@@ -77,17 +80,29 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			statement: nextActionable(card, purchases, payments, now),
 		}));
 
-	const paint = () =>
+	const paint = () => {
+		const answer = confirmedPurchase
+			? t("dashboard.answer", {
+					close: displayDate(
+						closeDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
+						getLocale(),
+					),
+					due: displayDate(
+						dueDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
+						getLocale(),
+					),
+				})
+			: "";
 		render(
 			html`
-				<h1>Dashboard</h1>
-				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
+				<h1>${t("dashboard.title")}</h1>
+				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				<article>
-					<h2>Due next</h2>
+					<h2>${t("dashboard.dueNext")}</h2>
 					<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
 				</article>
 				<article>
-					<h2>Add a purchase</h2>
+					<h2>${t("dashboard.addPurchase")}</h2>
 					<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 				</article>
 				<article>
@@ -96,11 +111,13 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			`,
 			root,
 		);
+	};
 
+	subscribe(() => paint());
 	void state.load();
 }
 
-bootstrap((repo) => {
+bootstrap("title.dashboard", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (root) renderDashboardPage(repo, root);
 });

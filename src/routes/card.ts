@@ -1,10 +1,9 @@
 import "@picocss/pico/css/pico.min.css";
 import "#components/cc-error-banner";
+import "#components/cc-lang-switch";
 import "#components/cc-statement-list";
 import { html, render } from "lit";
-import { describeCycle } from "#lib/domain/cycle";
 import { today } from "#lib/domain/date";
-import { locationLabel } from "#lib/domain/location";
 import { buildStatement, recentPeriods } from "#lib/domain/statement";
 import type {
 	Card,
@@ -12,6 +11,9 @@ import type {
 	Statement,
 	StatementPayment,
 } from "#lib/domain/types";
+import { MessageError } from "#lib/i18n/error";
+import { describeCycleText, locationText } from "#lib/i18n/format";
+import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -33,16 +35,16 @@ export function renderCardPage(
 	const state = createPageState({
 		fetch: async () => {
 			if (!cardId) {
-				throw new Error("No card was selected.");
+				throw new MessageError("card.error.noSelection");
 			}
 			card = await repo.getCard(cardId);
 			if (!card) {
-				throw new Error(`No card with the id ${cardId}.`);
+				throw new MessageError("card.error.notFound", { id: cardId });
 			}
 			purchases = await repo.listPurchases(card.id);
 			payments = await repo.listPayments(card.id);
 		},
-		fallbackMessage: "Could not read this card.",
+		fallbackKey: "card.error.read",
 		paint: () => paint(),
 	});
 
@@ -72,14 +74,14 @@ export function renderCardPage(
 				closeDate: statement.closeDate,
 				dueDate: statement.dueDate,
 			});
-		}, "Could not record the payment.");
+		}, "card.error.markPaid");
 
 	const onUnmarkPaid = (
 		event: CustomEvent<{ cardId: string; period: string }>,
 	) =>
 		state.guard(
 			() => repo.deletePayment(event.detail.cardId, event.detail.period),
-			"Could not undo the payment.",
+			"card.error.unmarkPaid",
 		);
 
 	const onDeletePurchase = (
@@ -87,18 +89,18 @@ export function renderCardPage(
 	) =>
 		state.guard(
 			() => repo.deletePurchase(event.detail.cardId, event.detail.purchaseId),
-			"Could not delete the purchase.",
+			"card.error.deletePurchase",
 		);
 
 	const paint = () =>
 		render(
 			html`
-				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
+				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				${
 					card
 						? html`
 							<h1>${card.name} <small>••••${card.last4}</small></h1>
-							<p>${locationLabel(card.location)} — ${describeCycle(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
+							<p>${locationText(card.location)} — ${describeCycleText(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
 							<cc-statement-list
 								.statements=${statements()}
 								.today=${now}
@@ -109,18 +111,19 @@ export function renderCardPage(
 							<button class="secondary" @click=${() => {
 								shown += PAGE_SIZE;
 								paint();
-							}}>Show older statements</button>
+							}}>${t("card.showOlder")}</button>
 						`
-						: html`<p><a href="/cards">Back to cards</a></p>`
+						: html`<p><a href="/cards">${t("card.back")}</a></p>`
 				}
 			`,
 			root,
 		);
 
+	subscribe(() => paint());
 	void state.load();
 }
 
-bootstrap((repo) => {
+bootstrap("title.card", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (!root) return;
 	const cardId = new URLSearchParams(location.search).get("id");

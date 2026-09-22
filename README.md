@@ -70,6 +70,41 @@ cards, then purchases, then payments one at a time, so a failure partway
 through (for instance, storage filling up) can leave some records imported
 and others not.
 
+## Language
+
+The interface is available in English and Thai. The picker sits in the nav on every
+page; switching it re-renders the current page in place — no reload, and nothing typed
+into an open form is lost. The choice is remembered in this browser's `localStorage`
+under `cc:lang`, so it survives a reload and future visits. A first visit with nothing
+saved yet defaults to Thai, unless the browser's own language list asks for English —
+these are Thai company cards in baht on Asia/Bangkok dates, so Thai is the more likely
+daily language and English is opted into, not the other way around.
+
+Dates render as `dd MMM yyyy` — a zero-padded day and a Gregorian year — in both
+languages, for example `05 Sep 2026` and `05 ก.ย. 2026`. This is deliberately not
+`Intl`: a Thai locale (`th-TH`) would default to Buddhist Era years, printing `2569`
+where a bank statement says `2026`, and these dates are reconciled against exactly
+those statements. Money is likewise never translated or reformatted per locale;
+`฿1,234.56` reads the same in either language.
+
+Text a user typed in — a card's name, its comment, a purchase's note — is never
+translated. Only the application's own wording comes from the catalog.
+
+One consequence of avoiding `Intl` is worth knowing: the location groups on the
+dashboard sort by plain UTF-16 code-unit order, not Thai collation, and the two can
+disagree. A Thai dictionary treats a leading vowel like เ as following the consonant
+it is pronounced with, not preceding it, so `เกา` ("to scratch") collates as if it
+were spelled starting with ก and sorts *before* `ขาว` ("white") — confirmed with
+`Intl.Collator("th")`. Plain code-unit order gets this backwards: เ's code point
+(`U+0E40`) is higher than every consonant's, so `เกา` sorts *after* `ขาว` instead.
+As it happens, the app's three actual locations — Bangkok, Phichit, and Krabi — land
+in the same order under both code-unit comparison and real Thai collation, so this
+gap is latent rather than visible in the UI today; it would only surface if a location
+were added whose name has this shape. This is a known, deliberate trade-off rather
+than a bug: fixing it needs `Intl.Collator`, and using any `Intl` API on `th-TH` risks
+pulling in the same Buddhist-era year handling the date rendering above exists to
+avoid.
+
 ## Design and plans
 
 - `docs/superpowers/specs/2026-09-15-cc-tracking-design.md`

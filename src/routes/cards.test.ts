@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Card } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { exportBackup, parseBackup } from "#lib/storage/transfer";
@@ -250,4 +251,16 @@ test("names the cards whose location was reset, once", async () => {
 	renderCardsPage(repo, second, storage);
 	await settle();
 	expect(second.querySelector('[data-testid="location-reset"]')).toBeNull();
+});
+
+test("renders its heading in the chosen language", async () => {
+	const repo = new InMemoryRepository();
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+	expect(root.querySelector("h1")?.textContent).toBe("Cards");
+
+	setLocale("th");
+	await settle();
+	expect(root.querySelector("h1")?.textContent).toBe("บัตร");
 });
