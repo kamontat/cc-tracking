@@ -1,4 +1,6 @@
-import "@picocss/pico/css/pico.min.css";
+import "@kcstyles/reset.css";
+import "../styles/tokens.css";
+import "../styles/app.css";
 import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";

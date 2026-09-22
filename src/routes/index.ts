@@ -1,4 +1,6 @@
-import "@picocss/pico/css/pico.min.css";
+import "@kcstyles/reset.css";
+import "../styles/tokens.css";
+import "../styles/app.css";
 import "#components/cc-due-list";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";

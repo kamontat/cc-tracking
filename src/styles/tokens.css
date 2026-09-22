@@ -1,0 +1,78 @@
+:root {
+	color-scheme: light dark;
+
+	--cc-font-sans:
+		system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai",
+		"Noto Sans Thai", "Sarabun", sans-serif;
+	--cc-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+	--cc-leading: 1.65;
+
+	--cc-text-xs: 0.75rem;
+	--cc-text-sm: 0.8125rem;
+	--cc-text-md: 0.9375rem;
+	--cc-text-lg: 1.125rem;
+	--cc-text-2xl: 1.75rem;
+
+	--cc-space-1: 0.25rem;
+	--cc-space-2: 0.5rem;
+	--cc-space-3: 0.75rem;
+	--cc-space-4: 1rem;
+	--cc-space-5: 1.5rem;
+	--cc-space-6: 2rem;
+	--cc-space-7: 3rem;
+
+	--cc-radius-sm: 4px;
+	--cc-radius-md: 8px;
+	--cc-border-width: 1px;
+
+	--cc-bg: #f6f7f9;
+	--cc-surface: #ffffff;
+	--cc-surface-sunken: #eef0f3;
+	--cc-border: #d6dae0;
+	--cc-shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+
+	--cc-text: #1b1f24;
+	--cc-text-muted: #5b6472;
+	--cc-link: #0b5cd5;
+
+	--cc-accent: #0b5cd5;
+	--cc-accent-hover: #0847a6;
+	--cc-accent-text: #ffffff;
+
+	--cc-danger: #b3261e;
+	--cc-danger-surface: #fdeceb;
+	--cc-success: #1b7f4b;
+	--cc-warning: #b26a00;
+
+	/* Resolved at use, so the dark block below re-points these for free. */
+	--cc-urgency-overdue: var(--cc-danger);
+	--cc-urgency-soon: var(--cc-warning);
+	--cc-urgency-open: var(--cc-border);
+
+	--cc-focus-ring: 0 0 0 3px rgb(11 92 213 / 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--cc-bg: #14171c;
+		--cc-surface: #1b1f26;
+		--cc-surface-sunken: #23272f;
+		--cc-border: #333a44;
+		--cc-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+
+		--cc-text: #e7eaee;
+		--cc-text-muted: #a2acba;
+		--cc-link: #7fb0ff;
+
+		--cc-accent: #3b82f6;
+		--cc-accent-hover: #5b9bff;
+		--cc-accent-text: #0b1220;
+
+		--cc-danger: #f2837c;
+		--cc-danger-surface: #3a1d1b;
+		--cc-success: #5bc98d;
+		--cc-warning: #e0a458;
+
+		--cc-focus-ring: 0 0 0 3px rgb(59 130 246 / 0.45);
+	}
+}
