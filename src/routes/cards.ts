@@ -6,9 +6,11 @@ import "#components/cc-lang-switch";
 import { html, nothing, render } from "lit";
 import type { Card } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
+import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
+import { applyChrome } from "#lib/ui/chrome";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -112,27 +114,23 @@ export function renderCardsPage(
 	const paint = () =>
 		render(
 			html`
-				<h1>Cards</h1>
-				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
+				<h1>${t("cards.title")}</h1>
+				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				${
 					resetNames.length > 0
 						? html`
 							<article data-testid="location-reset">
-								<p>
-									These cards were kept somewhere this app no longer recognises, so their
-									location was set to Bangkok: <strong>${resetNames.join(", ")}</strong>.
-									Edit each one to pick the right place.
-								</p>
+								<p>${t("cards.locationReset", { names: resetNames.join(", ") })}</p>
 								<button class="secondary" type="button" @click=${() => {
 									resetNames = [];
 									paint();
-								}}>Dismiss</button>
+								}}>${t("common.dismiss")}</button>
 							</article>
 						`
 						: nothing
 				}
 				<article>
-					<h2>${editing ? `Edit ${editing.name}` : "Add a card"}</h2>
+					<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
 					<cc-card-form
 						.card=${editing}
 						@save=${onSave}
@@ -150,19 +148,21 @@ export function renderCardsPage(
 					@remove=${onRemove}
 				></cc-card-table>
 				<article>
-					<h2>Backup</h2>
-					<p><small>Data lives in this browser only. Export regularly; clearing site data erases everything.</small></p>
-					<button class="secondary" type="button" @click=${onExport}>Export JSON</button>
-					<label>Import JSON <input type="file" accept="application/json" @change=${onImport} /></label>
+					<h2>${t("cards.backup")}</h2>
+					<p><small>${t("cards.backupWarning")}</small></p>
+					<button class="secondary" type="button" @click=${onExport}>${t("cards.export")}</button>
+					<label>${t("cards.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
 				</article>
 			`,
 			root,
 		);
 
+	subscribe(() => paint());
 	void state.load();
 }
 
 bootstrap((repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (root) renderCardsPage(repo, root);
+	applyChrome("title.cards");
 });

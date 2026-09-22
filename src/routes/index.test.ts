@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { renderDashboardPage } from "./index";
 
@@ -238,4 +239,46 @@ test("marking paid freezes the dates of the event's own period, not whatever nex
 	expect(payments[0]?.period).toBe(newerPeriod);
 	expect(payments[0]?.closeDate).toBe(closeDateOf(card.cycle, newerPeriod));
 	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, newerPeriod));
+});
+
+test("renders its heading in the chosen language", async () => {
+	const repo = new InMemoryRepository();
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+	expect(root.textContent).toContain("Dashboard");
+
+	setLocale("th");
+	await settle();
+	expect(root.textContent).toContain("หน้ารวม");
+});
+
+test("the purchase confirmation re-renders in the new language instead of freezing or clearing", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = root.querySelector("cc-quick-add");
+	await quickAdd?.updateComplete;
+	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+
+	fillQuickAdd(quickAdd, "cardId", "scb");
+	fillQuickAdd(quickAdd, "date", "2026-09-18");
+	fillQuickAdd(quickAdd, "amount", "500");
+	submitQuickAdd(quickAdd);
+	await settle();
+
+	expect(quickAdd.answer).toBe(
+		"Lands on the statement closing 18 Sep 2026 — pay by 03 Oct 2026.",
+	);
+
+	setLocale("th");
+	await settle();
+
+	// Same confirmation, re-resolved in the new language -- not cleared, not left in English.
+	expect(quickAdd.answer).toBe(
+		"อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ 18 ก.ย. 2026 — ชำระภายใน 03 ต.ค. 2026",
+	);
 });

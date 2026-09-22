@@ -13,7 +13,9 @@ import type {
 } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { describeCycleText, locationText } from "#lib/i18n/format";
+import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { applyChrome } from "#lib/ui/chrome";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -94,7 +96,7 @@ export function renderCardPage(
 	const paint = () =>
 		render(
 			html`
-				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
+				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				${
 					card
 						? html`
@@ -110,14 +112,15 @@ export function renderCardPage(
 							<button class="secondary" @click=${() => {
 								shown += PAGE_SIZE;
 								paint();
-							}}>Show older statements</button>
+							}}>${t("card.showOlder")}</button>
 						`
-						: html`<p><a href="/cards">Back to cards</a></p>`
+						: html`<p><a href="/cards">${t("card.back")}</a></p>`
 				}
 			`,
 			root,
 		);
 
+	subscribe(() => paint());
 	void state.load();
 }
 
@@ -126,4 +129,5 @@ bootstrap((repo) => {
 	if (!root) return;
 	const cardId = new URLSearchParams(location.search).get("id");
 	renderCardPage(repo, cardId, root);
+	applyChrome("title.card");
 });

@@ -11,8 +11,9 @@ import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
-import { getLocale } from "#lib/i18n/index";
+import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { applyChrome } from "#lib/ui/chrome";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -22,7 +23,10 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	let cards: Card[] = [];
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
-	let answer = "";
+	// Carries the card and period a purchase landed on, not a resolved sentence: paint()
+	// resolves it every time, so a language switch re-renders the confirmation instead of
+	// leaving it frozen in whatever language it was written in (or clearing it outright).
+	let confirmedPurchase: { card: Card; period: string } | null = null;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -68,9 +72,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				note,
 			});
 			const period = periodOfPurchase(card.cycle, date);
-			answer =
-				`Lands on the statement closing ${displayDate(closeDateOf(card.cycle, period), getLocale())}` +
-				` — pay by ${displayDate(dueDateOf(card.cycle, period), getLocale())}.`;
+			confirmedPurchase = { card, period };
 		}, "dashboard.error.addPurchase");
 
 	const rows = (): DueRow[] =>
@@ -79,17 +81,29 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			statement: nextActionable(card, purchases, payments, now),
 		}));
 
-	const paint = () =>
+	const paint = () => {
+		const answer = confirmedPurchase
+			? t("dashboard.answer", {
+					close: displayDate(
+						closeDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
+						getLocale(),
+					),
+					due: displayDate(
+						dueDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
+						getLocale(),
+					),
+				})
+			: "";
 		render(
 			html`
-				<h1>Dashboard</h1>
-				<cc-error-banner .message=${state.error} retry-label="Reload" @retry=${() => state.load()}></cc-error-banner>
+				<h1>${t("dashboard.title")}</h1>
+				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				<article>
-					<h2>Due next</h2>
+					<h2>${t("dashboard.dueNext")}</h2>
 					<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
 				</article>
 				<article>
-					<h2>Add a purchase</h2>
+					<h2>${t("dashboard.addPurchase")}</h2>
 					<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 				</article>
 				<article>
@@ -98,11 +112,14 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			`,
 			root,
 		);
+	};
 
+	subscribe(() => paint());
 	void state.load();
 }
 
 bootstrap((repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (root) renderDashboardPage(repo, root);
+	applyChrome("title.dashboard");
 });
