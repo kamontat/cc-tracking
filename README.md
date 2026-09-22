@@ -91,13 +91,19 @@ Text a user typed in — a card's name, its comment, a purchase's note — is ne
 translated. Only the application's own wording comes from the catalog.
 
 One consequence of avoiding `Intl` is worth knowing: the location groups on the
-dashboard sort by plain UTF-16 code-unit order, not Thai collation. In Thai,
-`กระบี่` (Krabi) sorts before `กรุงเทพฯ` (Bangkok) under code-unit order — their third
-characters are the vowel marks ะ and ุ, and ะ has the lower code point — whereas a
-Thai dictionary compares base consonants first, skipping vowel marks, and would order
-them the other way. This is a known, deliberate gap rather than a bug: fixing it needs
-`Intl.Collator`, and using any `Intl` API on `th-TH` risks pulling in the same
-Buddhist-era year handling the date rendering above exists to avoid.
+dashboard sort by plain UTF-16 code-unit order, not Thai collation, and the two can
+disagree. A Thai dictionary treats a leading vowel like เ as following the consonant
+it is pronounced with, not preceding it, so `เกา` ("to scratch") collates as if it
+were spelled starting with ก and sorts *before* `ขาว` ("white") — confirmed with
+`Intl.Collator("th")`. Plain code-unit order gets this backwards: เ's code point
+(`U+0E40`) is higher than every consonant's, so `เกา` sorts *after* `ขาว` instead.
+As it happens, the app's three actual locations — Bangkok, Phichit, and Krabi — land
+in the same order under both code-unit comparison and real Thai collation, so this
+gap is latent rather than visible in the UI today; it would only surface if a location
+were added whose name has this shape. This is a known, deliberate trade-off rather
+than a bug: fixing it needs `Intl.Collator`, and using any `Intl` API on `th-TH` risks
+pulling in the same Buddhist-era year handling the date rendering above exists to
+avoid.
 
 ## Design and plans
 
