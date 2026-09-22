@@ -2,6 +2,7 @@ import "@picocss/pico/css/pico.min.css";
 import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";
+import "#components/cc-lang-switch";
 import { html, nothing, render } from "lit";
 import type { Card } from "#lib/domain/types";
 import { takeResetNotice } from "#lib/storage/migrate-locations";

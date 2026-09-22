@@ -1,6 +1,7 @@
 import "@picocss/pico/css/pico.min.css";
 import "#components/cc-due-list";
 import "#components/cc-error-banner";
+import "#components/cc-lang-switch";
 import "#components/cc-location-groups";
 import "#components/cc-quick-add";
 import { html, render } from "lit";

@@ -1,5 +1,6 @@
 import "@picocss/pico/css/pico.min.css";
 import "#components/cc-error-banner";
+import "#components/cc-lang-switch";
 import "#components/cc-statement-list";
 import { html, render } from "lit";
 import { describeCycle } from "#lib/domain/cycle";
