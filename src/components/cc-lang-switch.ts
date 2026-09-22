@@ -8,9 +8,10 @@ const LOCALES: readonly Locale[] = ["en", "th"];
 
 @customElement("cc-lang-switch")
 export class CcLangSwitch extends LitElement {
-	// @ts-expect-error TS6133: never read — constructing the controller in the field initialiser is the point
-	// biome-ignore lint/correctness/noUnusedPrivateClassMembers: constructing the controller is the point
-	private readonly locale = new LocaleController(this);
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
 
 	private onChange(event: Event) {
 		const value = (event.target as HTMLSelectElement).value;
@@ -20,17 +21,14 @@ export class CcLangSwitch extends LitElement {
 	override render() {
 		const current = getLocale();
 		return html`
-			<label>
-				<span class="visually-hidden">${t("lang.label")}</span>
-				<select aria-label=${t("lang.label")} @change=${this.onChange}>
-					${LOCALES.map(
-						(locale) =>
-							html`<option value=${locale} ?selected=${locale === current}>
-								${t(locale === "en" ? "lang.en" : "lang.th")}
-							</option>`,
-					)}
-				</select>
-			</label>
+			<select aria-label=${t("lang.label")} @change=${this.onChange}>
+				${LOCALES.map(
+					(locale) =>
+						html`<option value=${locale} ?selected=${locale === current}>
+							${t(locale === "en" ? "lang.en" : "lang.th")}
+						</option>`,
+				)}
+			</select>
 		`;
 	}
 
