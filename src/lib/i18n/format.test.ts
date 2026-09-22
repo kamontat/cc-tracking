@@ -12,6 +12,16 @@ test("writes an English ordinal for the closing day", () => {
 	);
 });
 
+test("writes the irregular English ordinals for 11, 12, and 13", () => {
+	setLocale("en");
+	expect(describeCycleText({ kind: "fixed", closeDay: 11, dueDay: 12 })).toBe(
+		"closes 11th, due on the 12th",
+	);
+	expect(
+		describeCycleText({ kind: "offset", closeDay: 13, dueOffsetDays: 15 }),
+	).toBe("closes 13th, due 15 days later");
+});
+
 test("writes a plain number in Thai, where an ordinal suffix has no meaning", () => {
 	setLocale("th");
 	expect(
