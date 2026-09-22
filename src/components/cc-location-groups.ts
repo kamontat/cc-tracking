@@ -1,4 +1,4 @@
-import { html, LitElement } from "lit";
+import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { DueRow } from "#components/cc-due-list";
 import { displayDate } from "#lib/domain/date";
@@ -6,9 +6,48 @@ import type { Location } from "#lib/domain/location";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
+import { base, panel } from "#styles/shared";
 
 @customElement("cc-location-groups")
 export class CcLocationGroups extends LitElement {
+	static override styles = [
+		base,
+		panel,
+		css`
+			details {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
+			}
+
+			summary {
+				font-size: var(--cc-text-lg);
+				font-weight: 600;
+				cursor: pointer;
+			}
+
+			article[data-group] {
+				gap: var(--cc-space-2);
+				background: var(--cc-surface-sunken);
+			}
+
+			article[data-group] h3 {
+				font-size: var(--cc-text-md);
+				font-weight: 600;
+			}
+
+			ul {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-1);
+			}
+
+			li {
+				font-size: var(--cc-text-sm);
+			}
+		`,
+	];
+
 	@property({ attribute: false }) rows: DueRow[] = [];
 
 	constructor() {
@@ -41,7 +80,7 @@ export class CcLocationGroups extends LitElement {
 						? displayDate(soonest, getLocale())
 						: t("common.none");
 					return html`
-						<article>
+						<article data-group>
 							<h3>${locationText(location)} (${rows.length})</h3>
 							<p><small>${t("groups.nextDue", { date })}</small></p>
 							<ul>

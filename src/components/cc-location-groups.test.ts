@@ -79,3 +79,12 @@ test("orders groups by the translated text, in the code-unit order the comparato
 	expect(headings[1]).toContain("กรุงเทพฯ");
 	expect(headings[2]).toContain("พิจิตร");
 });
+
+test("gives each group a heading and a card list the styles can select", async () => {
+	const element = await mount(rowsFor(card("a", "krabi")));
+
+	expect(element.shadowRoot?.querySelector("details > summary")).not.toBeNull();
+	expect(
+		element.shadowRoot?.querySelector("article[data-group] > h3"),
+	).not.toBeNull();
+});

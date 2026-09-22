@@ -1,13 +1,31 @@
-import { html, LitElement } from "lit";
+import { css, html, LitElement } from "lit";
 import { customElement } from "lit/decorators.js";
 import { LocaleController } from "#lib/i18n/controller";
 import type { Locale } from "#lib/i18n/index";
 import { getLocale, setLocale, t } from "#lib/i18n/index";
+import { base, controls } from "#styles/shared";
 
 const LOCALES: readonly Locale[] = ["en", "th"];
 
 @customElement("cc-lang-switch")
 export class CcLangSwitch extends LitElement {
+	static override styles = [
+		base,
+		controls,
+		css`
+			:host {
+				display: inline-block;
+			}
+
+			select {
+				width: auto;
+				padding: var(--cc-space-1) var(--cc-space-2);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+		`,
+	];
+
 	constructor() {
 		super();
 		new LocaleController(this);
