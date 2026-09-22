@@ -8,18 +8,6 @@ import {
 } from "#lib/domain/date";
 import type { CycleRule, Period, PlainDate } from "#lib/domain/types";
 
-const ordinal = (day: number): string => {
-	const suffix =
-		day % 10 === 1 && day !== 11
-			? "st"
-			: day % 10 === 2 && day !== 12
-				? "nd"
-				: day % 10 === 3 && day !== 13
-					? "rd"
-					: "th";
-	return `${day}${suffix}`;
-};
-
 /** The date the statement for `period` closes. */
 export function closeDateOf(rule: CycleRule, period: Period): PlainDate {
 	const { year, month } = periodParts(period);
@@ -49,9 +37,19 @@ export function periodOfPurchase(rule: CycleRule, date: PlainDate): Period {
 		: addPeriods(candidate, 1);
 }
 
-export function describeCycle(rule: CycleRule): string {
-	const closes = `closes ${ordinal(rule.closeDay)}`;
+export type CycleDescription =
+	| { key: "cycle.offset"; params: { closeDay: number; days: number } }
+	| { key: "cycle.fixed"; params: { closeDay: number; dueDay: number } };
+
+/** The rule as a catalog key and its parameters. Wording is the i18n layer's business. */
+export function describeCycle(rule: CycleRule): CycleDescription {
 	return rule.kind === "offset"
-		? `${closes}, due ${rule.dueOffsetDays} days later`
-		: `${closes}, due on the ${ordinal(rule.dueDay)}`;
+		? {
+				key: "cycle.offset",
+				params: { closeDay: rule.closeDay, days: rule.dueOffsetDays },
+			}
+		: {
+				key: "cycle.fixed",
+				params: { closeDay: rule.closeDay, dueDay: rule.dueDay },
+			};
 }

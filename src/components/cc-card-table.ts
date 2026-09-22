@@ -1,8 +1,8 @@
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { describeCycle } from "#lib/domain/cycle";
 import { locationLabel } from "#lib/domain/location";
 import type { Card } from "#lib/domain/types";
+import { describeCycleText } from "#lib/i18n/format";
 
 @customElement("cc-card-table")
 export class CcCardTable extends LitElement {
@@ -31,7 +31,7 @@ export class CcCardTable extends LitElement {
 								<td>${card.name}${card.archived ? html` <small>(archived)</small>` : ""}</td>
 								<td>••••${card.last4}</td>
 								<td>${locationLabel(card.location)}</td>
-								<td>${describeCycle(card.cycle)}</td>
+								<td>${describeCycleText(card.cycle)}</td>
 								<td>${card.comment ?? ""}</td>
 								<td>
 									<button @click=${() => this.emit("edit", card.id)}>Edit</button>
