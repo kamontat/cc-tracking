@@ -181,6 +181,23 @@ describe("urgencyOf", () => {
 		const paid = buildStatement(card, "2026-09", purchases, payment);
 		expect(urgencyOf(paid, "2026-10-10")).toBe("open");
 	});
+
+	// A period nobody spent on owes nothing, so no date can make it late. This is the
+	// rule nextActionable already applies when it decides what needs attention.
+	test("is open for an empty statement long past its due date", () => {
+		const empty = buildStatement(card, "2026-09", []);
+		expect(urgencyOf(empty, "2026-10-04")).toBe("open");
+	});
+
+	test("is open for an empty statement inside the due-soon window", () => {
+		const empty = buildStatement(card, "2026-09", []);
+		expect(urgencyOf(empty, "2026-09-28")).toBe("open");
+	});
+
+	test("is still future for an empty statement that has not closed", () => {
+		const empty = buildStatement(card, "2026-09", []);
+		expect(urgencyOf(empty, "2026-09-10")).toBe("future");
+	});
 });
 
 describe("a fixed-rule card", () => {

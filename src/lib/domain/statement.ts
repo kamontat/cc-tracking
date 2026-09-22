@@ -96,6 +96,10 @@ export function nextActionable(
 export function urgencyOf(statement: Statement, today: PlainDate): Urgency {
 	if (compareDates(today, statement.closeDate) <= 0) return "future";
 	if (statement.paid) return "open";
+	// A period nobody spent on owes nothing, so no date can make it late. `nextActionable`
+	// above already applies this rule when it picks what needs attention, which is why the
+	// dashboard skipped these while the card page still drew them overdue.
+	if (statement.total <= 0) return "open";
 	const remaining = daysBetween(today, statement.dueDate);
 	if (remaining < 0) return "overdue";
 	return remaining <= DUE_SOON_DAYS ? "soon" : "open";
