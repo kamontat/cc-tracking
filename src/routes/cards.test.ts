@@ -258,9 +258,9 @@ test("renders its heading in the chosen language", async () => {
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
-	expect(root.textContent).toContain("Cards");
+	expect(root.querySelector("h1")?.textContent).toBe("Cards");
 
 	setLocale("th");
 	await settle();
-	expect(root.textContent).toContain("บัตร");
+	expect(root.querySelector("h1")?.textContent).toBe("บัตร");
 });

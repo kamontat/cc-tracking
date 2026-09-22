@@ -1,19 +1,29 @@
 import "#components/cc-error-banner";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { messageOf } from "#lib/i18n/error";
-import { getLocale, t } from "#lib/i18n/index";
+import { t } from "#lib/i18n/index";
 import { createRepository } from "#lib/storage/index";
 import { migrateLocations } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
+import { applyChrome } from "#lib/ui/chrome";
 
 /**
  * Creates the repository once per page, reconciles any stored location the closed set no
  * longer recognises, and hands the repository to the page's renderer. A browser that
  * refuses storage gets the banner instead of a half-working page.
+ *
+ * `titleKey` fills the document title and the nav via `applyChrome` before anything else
+ * runs -- including the storage-unavailable banner below. Applying chrome from inside
+ * `render` (the per-route callback) cannot cover that early-return path, since `render`
+ * is never invoked when storage is unavailable; hoisting it here instead means a reader
+ * whose browser refuses storage still gets a translated title and nav under the banner,
+ * and no route can structurally miss that path the way a `render`-side call always would.
  */
-export function bootstrap(render: (repo: Repository) => void): void {
-	// Set before anything renders, so assistive technology and font selection agree with
-	// the words on the page.
-	document.documentElement.lang = getLocale();
+export function bootstrap(
+	titleKey: MessageKey,
+	render: (repo: Repository) => void,
+): void {
+	applyChrome(titleKey);
 
 	let repo: Repository;
 	try {

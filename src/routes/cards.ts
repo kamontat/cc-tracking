@@ -10,7 +10,6 @@ import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
-import { applyChrome } from "#lib/ui/chrome";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -161,8 +160,7 @@ export function renderCardsPage(
 	void state.load();
 }
 
-bootstrap((repo) => {
+bootstrap("title.cards", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (root) renderCardsPage(repo, root);
-	applyChrome("title.cards");
 });

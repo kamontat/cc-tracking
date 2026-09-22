@@ -13,7 +13,6 @@ import { buildStatement, nextActionable } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { applyChrome } from "#lib/ui/chrome";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -118,8 +117,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	void state.load();
 }
 
-bootstrap((repo) => {
+bootstrap("title.dashboard", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (root) renderDashboardPage(repo, root);
-	applyChrome("title.dashboard");
 });

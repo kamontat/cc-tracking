@@ -15,7 +15,6 @@ import { MessageError } from "#lib/i18n/error";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { applyChrome } from "#lib/ui/chrome";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -124,10 +123,9 @@ export function renderCardPage(
 	void state.load();
 }
 
-bootstrap((repo) => {
+bootstrap("title.card", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (!root) return;
 	const cardId = new URLSearchParams(location.search).get("id");
 	renderCardPage(repo, cardId, root);
-	applyChrome("title.card");
 });
