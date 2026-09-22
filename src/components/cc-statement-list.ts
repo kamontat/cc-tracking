@@ -19,7 +19,17 @@ export class CcStatementList extends LitElement {
 			:host {
 				display: flex;
 				flex-direction: column;
-				gap: var(--cc-space-4);
+				gap: var(--cc-space-2);
+			}
+
+			/*
+			 * Tighter than the shared panel: a card's history is a dozen of these stacked,
+			 * most of them a single collapsed line, so panel-sized padding spends more height
+			 * on the gaps than on the months themselves.
+			 */
+			article {
+				gap: var(--cc-space-2);
+				padding: var(--cc-space-2) var(--cc-space-3);
 			}
 
 			/* Tinted, not just ruled -- the same louder treatment the dashboard gives an
@@ -37,7 +47,7 @@ export class CcStatementList extends LitElement {
 			details {
 				display: flex;
 				flex-direction: column;
-				gap: var(--cc-space-3);
+				gap: var(--cc-space-2);
 			}
 
 			summary {
@@ -75,6 +85,11 @@ export class CcStatementList extends LitElement {
 			.statement-actions {
 				gap: var(--cc-space-2);
 				align-items: center;
+			}
+
+			/* In step with the tighter panel above. */
+			td {
+				padding: var(--cc-space-2);
 			}
 
 			/*
