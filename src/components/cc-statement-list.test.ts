@@ -1,14 +1,7 @@
-import { beforeEach, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import "#components/cc-statement-list";
 import { buildStatement } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
-import { setLocale } from "#lib/i18n/index";
-
-// Other test files leave the locale singleton set to "th"; pin it so this file's
-// English date assertions do not depend on suite run order.
-beforeEach(() => {
-	setLocale("en");
-});
 
 const card: Card = {
 	id: "kbank",

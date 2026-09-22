@@ -1,16 +1,9 @@
-import { beforeEach, expect, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
-import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { renderDashboardPage } from "./index";
-
-// Other test files leave the locale singleton set to "th"; pin it so this file's
-// English date assertions do not depend on suite run order.
-beforeEach(() => {
-	setLocale("en");
-});
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
