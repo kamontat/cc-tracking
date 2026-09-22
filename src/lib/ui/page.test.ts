@@ -62,3 +62,35 @@ test("applies chrome in the current language even when storage is unavailable an
 		globalThis.localStorage = original;
 	}
 });
+
+test("the storage-unavailable banner follows a locale switch instead of freezing in the language it failed in", () => {
+	mountNav();
+	setLocale("en");
+	const original = globalThis.localStorage;
+	try {
+		// @ts-expect-error Intentionally breaking the global for this test
+		delete globalThis.localStorage;
+
+		bootstrap("title.cards", () => {});
+
+		// createRepository() throws StorageUnavailableError, a MessageError keyed to
+		// "storage.unavailable" -- that key, not the "startup.failed" fallback, is what
+		// messageOf renders, since a MessageError always speaks for itself.
+		const banner = document.querySelector("cc-error-banner");
+		expect(banner?.message).toBe(
+			"This browser is not letting the page store data. Private windows and blocked site data both cause this.",
+		);
+		expect(banner?.retryLabel).toBe("Reload");
+
+		// The language picker beside this banner works via the same subscribe mechanism --
+		// the banner must follow it too, not freeze in whatever language start-up failed in.
+		setLocale("th");
+
+		expect(banner?.message).toBe(
+			"เบราว์เซอร์นี้ไม่อนุญาตให้หน้าเว็บเก็บข้อมูล หน้าต่างส่วนตัวและการบล็อกข้อมูลเว็บไซต์ทำให้เกิดปัญหานี้",
+		);
+		expect(banner?.retryLabel).toBe("โหลดใหม่");
+	} finally {
+		globalThis.localStorage = original;
+	}
+});

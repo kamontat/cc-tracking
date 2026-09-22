@@ -1,7 +1,7 @@
 import "#components/cc-error-banner";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { messageOf } from "#lib/i18n/error";
-import { t } from "#lib/i18n/index";
+import { subscribe, t } from "#lib/i18n/index";
 import { createRepository } from "#lib/storage/index";
 import { migrateLocations } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
@@ -31,8 +31,17 @@ export function bootstrap(
 	} catch (error) {
 		console.error(error);
 		const banner = document.createElement("cc-error-banner");
-		banner.message = messageOf(error, "startup.failed");
-		banner.retryLabel = t("common.reload");
+		// Mirrors applyChrome above: re-render this banner's text on every locale switch,
+		// not just once at the moment startup failed. Without this the language picker
+		// sitting right beside the banner would work while the banner itself stayed frozen
+		// in whichever language `createRepository` happened to fail in -- the same class of
+		// bug 094668d already fixed for cc-card-form and cc-quick-add.
+		const paintBanner = () => {
+			banner.message = messageOf(error, "startup.failed");
+			banner.retryLabel = t("common.reload");
+		};
+		paintBanner();
+		subscribe(paintBanner);
 		banner.addEventListener("retry", () => location.reload());
 		const target = document.querySelector("main") ?? document.body;
 		target.prepend(banner);

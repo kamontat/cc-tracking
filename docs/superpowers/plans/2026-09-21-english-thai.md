@@ -27,7 +27,11 @@ this plan — does not have to rediscover them:
 - **Locale reset belongs in the preload, not per file.** `tests/setup-happydom.ts` (wired via
   `bunfig.toml`'s `[test] preload`) carries a global `beforeEach` that calls `resetLocale()`
   and clears `localStorage` once for the whole suite. The plan's per-file `beforeEach` blocks
-  shown in Tasks 1-7 were redundant boilerplate and were removed as each file was written.
+  shown in Tasks 1-7 were redundant boilerplate and were removed except where a file needs a
+  stronger reset than the preload's -- this was not done everywhere: `src/lib/i18n/index.test.ts:13-16`
+  still carries one that merely duplicates the preload, and `src/components/cc-lang-switch.test.ts:4-8`
+  still carries one that goes further, also forcing a starting locale (`setLocale("en")`) the
+  preload's re-detection alone does not guarantee.
 - **Register `LocaleController` in a constructor, not a field.** The plan's
   `private readonly locale = new LocaleController(this);` produces a field nothing reads,
   which both `tsc` (`noUnusedLocals`) and Biome flag, needing two suppression comments whose
@@ -53,6 +57,19 @@ this plan — does not have to rediscover them:
   unavailable, which would leave a translated error banner sitting inside an untranslated
   English page frame. `applyChrome` now runs at the top of `bootstrap` itself, before the
   storage check, so the title and nav are correct in every case, including that one.
+- **`cc-lang-switch` dropped the plan's `<label>` wrapper.** Task 2's snippet wraps the
+  `<select>` in a `<label>` holding a `class="visually-hidden"` span, relying on `aria-label`
+  on the `<select>` too. The implementation keeps only the `aria-label` and drops the `<label>`
+  and the span, because `visually-hidden` is not a class this codebase's CSS defines anywhere
+  -- it would have rendered as plain visible text next to the picker, not hidden anything. The
+  `aria-label` alone gives the same accessible name without a class the app has no styles for.
+- **Task 8 Step 3 (the Thai copy review) is pending the repository owner**, not yet done as of
+  this plan update. The terms flagged in Task 1 Step 5 -- `statement`, `billing cycle`,
+  `close date`, `due date`, the `backup.problem.*` fragments -- are now marked with comments
+  in `src/lib/i18n/th.ts` at their first appearance, including one concrete collision a review
+  found: `backup.problem.noCycle` and `backup.problem.missingPeriod` render identical Thai
+  text ("ไม่มีรอบบิล") for two different English problems. No wording has been changed pending
+  that review.
 
 ## Global Constraints
 

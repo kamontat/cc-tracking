@@ -1,5 +1,13 @@
 import type { Catalog } from "#lib/i18n/catalog";
 
+/**
+ * Pending owner review (Task 8 Step 3 of
+ * docs/superpowers/plans/2026-09-21-english-thai.md, not yet done as of this comment):
+ * a handful of terms were machine-translated without a native speaker's eye and are flagged
+ * below, at their first appearance, for the repository owner to confirm or correct. Nothing
+ * else in this file has been reviewed either, but these specifically depend on getting a
+ * domain term or a sentence's word order right, not just a dictionary word.
+ */
 export const th: Catalog = {
 	"nav.brand": "cc-tracking",
 	"nav.dashboard": "หน้ารวม",
@@ -24,8 +32,12 @@ export const th: Catalog = {
 	"location.krabi": "กระบี่",
 
 	"dashboard.title": "หน้ารวม",
+	// FLAG FOR OWNER REVIEW: "due date" -- ครบกำหนด, used throughout this catalog.
 	"dashboard.dueNext": "ครบกำหนดถัดไป",
 	"dashboard.addPurchase": "เพิ่มรายการใช้จ่าย",
+	// FLAG FOR OWNER REVIEW: "statement" -- ใบแจ้งยอด (also card.showOlder, statements.empty)
+	// and "close date" -- ปิดยอด (also due.column.closes, form.closeDay, statements.header,
+	// cycle.offset/fixed). This sentence also depends on Thai word order matching English.
 	"dashboard.answer": "อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ {close} — ชำระภายใน {due}",
 	"dashboard.error.read": "อ่านข้อมูลบัตรไม่สำเร็จ",
 	"dashboard.error.markPaid": "บันทึกการชำระเงินไม่สำเร็จ",
@@ -67,6 +79,8 @@ export const th: Catalog = {
 	"cards.column.name": "ชื่อ",
 	"cards.column.last4": "เลข 4 ตัวท้าย",
 	"cards.column.location": "ที่เก็บ",
+	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
+	// backup.problem.*Cycle fragments below).
 	"cards.column.cycle": "รอบบิล",
 	"cards.column.comment": "หมายเหตุ",
 	"cards.archived": "(เก็บเข้าคลัง)",
@@ -137,6 +151,10 @@ export const th: Catalog = {
 
 	"backup.unreadable": "ไฟล์นี้ไม่ใช่ข้อมูลสำรองที่อ่านได้",
 	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
+	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.payment are each
+	// assembled with one of the backup.problem.* fragments below (backup.card + " " +
+	// backup.problem.missingId, say) to form one sentence, so Thai word order has to match
+	// what the English assembly produces, not just translate each fragment in isolation.
 	"backup.card": "บัตรลำดับที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.purchase": "รายการใช้จ่ายลำดับที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.payment": "การชำระเงินลำดับที่ {index} ในข้อมูลสำรอง {problem}",
@@ -145,6 +163,11 @@ export const th: Catalog = {
 	"backup.problem.missingName": "ไม่มีชื่อ",
 	"backup.problem.missingLast4": "ไม่มีเลข 4 ตัวท้าย",
 	"backup.problem.badLocation": "มีที่เก็บที่ไม่ใช่ bangkok, phichit หรือ krabi",
+	// FLAG FOR OWNER REVIEW: noCycle and missingPeriod below both render as "ไม่มีรอบบิล"
+	// ("has no cycle" vs. "is missing a period" in English -- two different problems).
+	// Benign today: backup.card and backup.payment name which one broke ("card #N ..." vs.
+	// "payment #N ..."), so the sentence still disambiguates. But it is the exact class of
+	// bug this review exists to catch, so it is flagged rather than silently left.
 	"backup.problem.noCycle": "ไม่มีรอบบิล",
 	"backup.problem.badOffsetCycle": "มีรอบบิลแบบ offset ที่ค่าวันไม่ใช่จำนวนเต็ม",
 	"backup.problem.badFixedCycle": "มีรอบบิลแบบ fixed ที่ค่าวันไม่ใช่จำนวนเต็ม",
@@ -152,6 +175,7 @@ export const th: Catalog = {
 	"backup.problem.missingCardId": "ไม่มี cardId",
 	"backup.problem.badDate": "วันที่ไม่ถูกต้อง",
 	"backup.problem.badAmount": "จำนวนเงินไม่ใช่จำนวนเต็ม",
+	// See the noCycle comment above -- same collision, same "ไม่มีรอบบิล" text.
 	"backup.problem.missingPeriod": "ไม่มีรอบบิล",
 	"backup.problem.badPaidAt": "วันที่ paidAt ไม่ถูกต้อง",
 	"backup.problem.badCloseDate": "วันที่ closeDate ไม่ถูกต้อง",

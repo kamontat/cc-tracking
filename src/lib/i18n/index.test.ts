@@ -1,5 +1,6 @@
 import { beforeEach, expect, test } from "bun:test";
 import { en } from "#lib/i18n/en";
+import type { MessageKey } from "#lib/i18n/index";
 import {
 	detectLocale,
 	getLocale,
@@ -25,6 +26,21 @@ test("no catalog entry is left empty", () => {
 	}
 	for (const [key, value] of Object.entries(en)) {
 		expect(value.length, `en.${key} is empty`).toBeGreaterThan(0);
+	}
+});
+
+test("every Thai entry substitutes the same placeholders as its English counterpart", () => {
+	// The key-set test above guarantees the keys line up; it says nothing about a Thai
+	// string quietly dropping a {name}, {id}, {date}, or {count} that the English one
+	// still substitutes -- a regression that typechecks, passes every other test, and
+	// deletes a card name or a date from the sentence for Thai readers only.
+	const params = (s: string) =>
+		[...s.matchAll(/\{(\w+)\}/g)]
+			.map((m) => m[1])
+			.sort()
+			.join(",");
+	for (const key of Object.keys(en) as MessageKey[]) {
+		expect(params(th[key]), key).toBe(params(en[key]));
 	}
 });
 
