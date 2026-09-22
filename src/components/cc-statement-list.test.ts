@@ -60,6 +60,35 @@ test("lists each statement with its dates, purchases, and total", async () => {
 	expect(text).toContain("฿350.00");
 });
 
+const detailsFor = (element: Element, period: string): HTMLDetailsElement => {
+	const found = [
+		...(element.shadowRoot?.querySelectorAll<HTMLDetailsElement>("details") ??
+			[]),
+	].find((details) => details.textContent?.includes(period));
+	if (!found) throw new Error(`no statement for period ${period}`);
+	return found;
+};
+
+test("starts a month that has purchases open", async () => {
+	const element = await mount();
+	expect(detailsFor(element, "2026-09").open).toBe(true);
+});
+
+test("starts a month with no purchases collapsed", async () => {
+	const element = await mount();
+	expect(detailsFor(element, "2026-08").open).toBe(false);
+});
+
+test("names the period, the dates, and the total on the collapsed line", async () => {
+	const element = await mount();
+	const summary =
+		detailsFor(element, "2026-08").querySelector("summary")?.textContent ?? "";
+	expect(summary).toContain("2026-08");
+	expect(summary).toContain("18 Aug 2026");
+	expect(summary).toContain("02 Sep 2026");
+	expect(summary).toContain("฿0.00");
+});
+
 test("shows a paid statement as paid, with its payment date", async () => {
 	const element = await mount();
 	expect(element.shadowRoot?.textContent).toContain("Paid 01 Sep 2026");

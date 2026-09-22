@@ -44,6 +44,37 @@ test("shows a purchase count instead of delete once the card has purchases", asy
 	).toBeNull();
 });
 
+test("marks a card that may take purchases, and leaves one that may not unmarked", async () => {
+	const element = await mount([
+		{ ...card, id: "kbank", canPurchase: true },
+		{ ...card, id: "scb", canPurchase: false },
+	]);
+	const cells = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
+			'td[data-field="can-purchase"]',
+		) ?? []),
+	];
+
+	expect(cells).toHaveLength(2);
+	expect(cells[0]?.textContent).toContain("Allowed");
+	expect(cells[1]?.textContent?.trim()).toBe("—");
+});
+
+test("falls back to where the card is kept when it carries no answer", async () => {
+	const element = await mount([
+		{ ...card, id: "kbank", location: "krabi" },
+		{ ...card, id: "scb", location: "bangkok" },
+	]);
+	const cells = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
+			'td[data-field="can-purchase"]',
+		) ?? []),
+	];
+
+	expect(cells[0]?.textContent).toContain("Allowed");
+	expect(cells[1]?.textContent?.trim()).toBe("—");
+});
+
 test("emits edit, archive, and remove with the card id", async () => {
 	const element = await mount([card]);
 	const events: Record<string, string> = {};

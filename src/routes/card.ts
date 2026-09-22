@@ -102,7 +102,7 @@ export function renderCardPage(
 					card
 						? html`
 							<div class="page-heading">
-								<h1>${card.name} <small>••••${card.last4}</small></h1>
+								<h1>${card.name} <small>${card.id} · ••••${card.last4}</small></h1>
 								<p>${locationText(card.location)} — ${describeCycleText(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
 							</div>
 							<cc-statement-list

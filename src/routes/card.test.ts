@@ -78,6 +78,19 @@ class RejectingDeleteRepository extends InMemoryRepository {
 	}
 }
 
+test("heads the page with the card's id, name, and last four digits", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const heading = root.querySelector(".page-heading h1")?.textContent ?? "";
+	expect(heading).toContain("KBank Visa");
+	expect(heading).toContain("kbank");
+	expect(heading).toContain("4821");
+});
+
 test("an unknown card id shows a message instead of a blank page", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();

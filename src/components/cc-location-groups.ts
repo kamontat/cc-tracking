@@ -45,6 +45,11 @@ export class CcLocationGroups extends LitElement {
 			li {
 				font-size: var(--cc-text-sm);
 			}
+
+			.card-id {
+				font-family: var(--cc-font-mono);
+				font-size: var(--cc-text-xs);
+			}
 		`,
 	];
 
@@ -88,7 +93,7 @@ export class CcLocationGroups extends LitElement {
 									({ card }) => html`
 										<li>
 											<a href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
-											••••${card.last4}
+											<small class="card-id">${card.id}</small>
 										</li>
 									`,
 								)}

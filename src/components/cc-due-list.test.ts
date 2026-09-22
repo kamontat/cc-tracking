@@ -41,7 +41,9 @@ test("shows the card, its total, and both dates", async () => {
 	);
 	const text = element.shadowRoot?.textContent ?? "";
 	expect(text).toContain("KBank Visa");
-	expect(text).toContain("4821");
+	// The id, not the last four digits: the id is what the card is called everywhere else.
+	expect(text).toContain("kbank");
+	expect(text).not.toContain("4821");
 	expect(text).toContain("Krabi");
 	expect(text).toContain("฿350.00");
 	expect(text).toContain("18 Sep 2026");

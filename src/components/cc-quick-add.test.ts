@@ -38,6 +38,30 @@ const submit = (element: HTMLElement) =>
 		?.querySelector("form")
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
+test("says so, and offers no form, when no card may take a purchase", async () => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-quick-add");
+	element.cards = [];
+	element.today = "2026-09-21";
+	document.body.append(element);
+	await element.updateComplete;
+
+	expect(element.shadowRoot?.querySelector("form")).toBeNull();
+	expect(element.shadowRoot?.textContent).toContain(
+		"No card here can take a purchase",
+	);
+});
+
+test("names each option by card id and card name", async () => {
+	const element = await mount();
+	const option = element.shadowRoot?.querySelector<HTMLOptionElement>(
+		'[name="cardId"] option',
+	);
+	expect(option?.value).toBe("kbank");
+	expect(option?.textContent).toContain("kbank");
+	expect(option?.textContent).toContain("KBank Visa");
+});
+
 test("defaults the date to today", async () => {
 	const element = await mount();
 	const date =

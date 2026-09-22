@@ -1,5 +1,6 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { canPurchase, PURCHASE_LOCATION } from "#lib/domain/card";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
 import type { Card, CycleRule } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
@@ -47,6 +48,9 @@ export class CcCardForm extends LitElement {
 	@property({ attribute: false }) card: Card | null = null;
 
 	@state() private kind: CycleRule["kind"] = "offset";
+	@state() private allowPurchase = false;
+	// Once the user has had an opinion about the box, the location select stops having one.
+	@state() private purchaseTouched = false;
 	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
 	// language switch while an error is on screen re-renders it in the new language too.
 	@state() private errorKey: MessageKey | "" = "";
@@ -57,7 +61,10 @@ export class CcCardForm extends LitElement {
 	}
 
 	override willUpdate(changed: Map<string, unknown>) {
-		if (changed.has("card") && this.card) this.kind = this.card.cycle.kind;
+		if (!changed.has("card")) return;
+		if (this.card) this.kind = this.card.cycle.kind;
+		this.allowPurchase = this.card ? canPurchase(this.card) : false;
+		this.purchaseTouched = false;
 	}
 
 	override updated(changed: Map<string, unknown>) {
@@ -121,6 +128,7 @@ export class CcCardForm extends LitElement {
 			cycle,
 			comment: this.value("comment"),
 			archived: this.card?.archived ?? false,
+			canPurchase: this.allowPurchase,
 		};
 		this.dispatchEvent(new CustomEvent<Card>("save", { detail: card }));
 
@@ -135,6 +143,8 @@ export class CcCardForm extends LitElement {
 			const form = this.renderRoot.querySelector("form");
 			form?.reset();
 			this.kind = "offset";
+			this.allowPurchase = false;
+			this.purchaseTouched = false;
 			const offsetRadio = form?.querySelector<HTMLInputElement>(
 				'[name="kind"][value="offset"]',
 			);
@@ -147,6 +157,23 @@ export class CcCardForm extends LitElement {
 
 	private fail(key: MessageKey) {
 		this.errorKey = key;
+	}
+
+	/**
+	 * A card being created follows its location until the user says otherwise: the Krabi cards
+	 * are the ones purchases are entered against today, so the box arrives already ticked for
+	 * them. An existing card is left alone -- its stored answer is the user's, not the
+	 * location's, and moving a card must not silently revoke it.
+	 */
+	private onLocationInput(event: Event) {
+		if (this.card || this.purchaseTouched) return;
+		this.allowPurchase =
+			(event.target as HTMLSelectElement).value === PURCHASE_LOCATION;
+	}
+
+	private onPurchaseChange(event: Event) {
+		this.allowPurchase = (event.target as HTMLInputElement).checked;
+		this.purchaseTouched = true;
 	}
 
 	override render() {
@@ -166,12 +193,19 @@ export class CcCardForm extends LitElement {
 				<label>${t("form.last4")} <input name="last4" inputmode="numeric" .value=${card?.last4 ?? ""} required /></label>
 				<label>
 					${t("form.location")}
-					<select name="location" required>
+					<select name="location" required @input=${this.onLocationInput}>
 						${LOCATIONS.map(
 							(value) =>
 								html`<option value=${value}>${locationText(value)}</option>`,
 						)}
 					</select>
+				</label>
+
+				<label>
+					<input type="checkbox" name="canPurchase"
+						.checked=${this.allowPurchase}
+						@change=${this.onPurchaseChange} />
+					${t("form.canPurchase")}
 				</label>
 
 				<fieldset>

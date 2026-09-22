@@ -36,6 +36,14 @@ test("groups cards by location and counts them", async () => {
 	expect(text).toContain("Krabi (2)");
 });
 
+test("names each card by id as well as by name", async () => {
+	const element = await mount(rowsFor(card("kbank", "krabi")));
+	const text = element.shadowRoot?.textContent ?? "";
+	expect(text).toContain("Card kbank");
+	expect(text).toContain("kbank");
+	expect(text).not.toContain("0000");
+});
+
 test("names the soonest due date in each group", async () => {
 	const element = await mount(rowsFor(card("a", "krabi")));
 	expect(element.shadowRoot?.textContent).toContain("03 Oct 2026");

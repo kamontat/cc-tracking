@@ -1,4 +1,4 @@
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
@@ -22,12 +22,38 @@ export class CcStatementList extends LitElement {
 				gap: var(--cc-space-4);
 			}
 
+			/* Tinted, not just ruled -- the same louder treatment the dashboard gives an
+			   overdue row, so the two pages agree on what "late" looks like. */
 			article[data-urgency="overdue"] {
-				border-left: var(--cc-space-1) solid var(--cc-urgency-overdue);
+				border: var(--cc-border-width) solid var(--cc-urgency-overdue);
+				border-left: var(--cc-space-2) solid var(--cc-urgency-overdue);
+				background: var(--cc-danger-surface);
 			}
 
 			article[data-urgency="soon"] {
 				border-left: var(--cc-space-1) solid var(--cc-urgency-soon);
+			}
+
+			details {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
+			}
+
+			summary {
+				cursor: pointer;
+			}
+
+			/*
+			 * A summary is a list-item box, so its content only sits on the marker's line while
+			 * it stays inline-level -- an inner block would drop below the triangle.
+			 */
+			.summary-line {
+				display: inline-flex;
+				flex-wrap: wrap;
+				gap: var(--cc-space-2);
+				align-items: baseline;
+				width: calc(100% - var(--cc-space-5));
 			}
 
 			.period {
@@ -38,6 +64,12 @@ export class CcStatementList extends LitElement {
 			.dates {
 				font-size: var(--cc-text-sm);
 				color: var(--cc-text-muted);
+			}
+
+			/* Pushed to the end of the line, so every month's total reads down one column. */
+			.total {
+				margin-left: auto;
+				font-variant-numeric: tabular-nums;
 			}
 
 			.statement-actions {
@@ -77,19 +109,55 @@ export class CcStatementList extends LitElement {
 			${this.statements.map(
 				(statement) => html`
 					<article data-urgency=${urgencyOf(statement, this.today)}>
-						<header>
-							<div>
-								<span class="period">${statement.period}</span>
-								<span class="dates">${t("statements.header", {
-									close: displayDate(statement.closeDate, getLocale()),
-									due: displayDate(statement.dueDate, getLocale()),
-								})}</span>
-							</div>
+						<details ?open=${statement.purchases.length > 0}>
+							<summary>
+								<div class="summary-line" row>
+									<span class="period">${statement.period}</span>
+									<span class="dates">${t("statements.header", {
+										close: displayDate(statement.closeDate, getLocale()),
+										due: displayDate(statement.dueDate, getLocale()),
+									})}</span>
+									${
+										statement.paid && statement.payment
+											? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>`
+											: nothing
+									}
+									<strong class="total">${t("statements.total", { amount: formatAmount(statement.total) })}</strong>
+								</div>
+							</summary>
+
+							${
+								statement.purchases.length === 0
+									? html`<p><small>${t("statements.noPurchases")}</small></p>`
+									: html`
+										<table>
+											<tbody>
+												${statement.purchases.map(
+													(purchase) => html`
+														<tr>
+															<td class="date">${displayDate(purchase.date, getLocale())}</td>
+															<td class="note">${purchase.note}</td>
+															<td data-numeric>${formatAmount(purchase.amount)}</td>
+															<td>
+																<button data-action="delete-purchase" data-variant="danger"
+																	@click=${() =>
+																		this.emit("delete-purchase", {
+																			cardId: purchase.cardId,
+																			purchaseId: purchase.id,
+																		})}>${t("common.delete")}</button>
+															</td>
+														</tr>
+													`,
+												)}
+											</tbody>
+										</table>
+									`
+							}
+
 							<div class="statement-actions" row>
 								${
-									statement.paid && statement.payment
-										? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>
-											<button data-action="unmark-paid" data-variant="quiet"
+									statement.paid
+										? html`<button data-action="unmark-paid" data-variant="quiet"
 												@click=${() =>
 													this.emit("unmark-paid", {
 														cardId: statement.cardId,
@@ -103,37 +171,7 @@ export class CcStatementList extends LitElement {
 												})}>${t("statements.markPaid")}</button>`
 								}
 							</div>
-						</header>
-
-						${
-							statement.purchases.length === 0
-								? html`<p><small>${t("statements.noPurchases")}</small></p>`
-								: html`
-									<table>
-										<tbody>
-											${statement.purchases.map(
-												(purchase) => html`
-													<tr>
-														<td class="date">${displayDate(purchase.date, getLocale())}</td>
-														<td class="note">${purchase.note}</td>
-														<td data-numeric>${formatAmount(purchase.amount)}</td>
-														<td>
-															<button data-action="delete-purchase" data-variant="danger"
-																@click=${() =>
-																	this.emit("delete-purchase", {
-																		cardId: purchase.cardId,
-																		purchaseId: purchase.id,
-																	})}>${t("common.delete")}</button>
-														</td>
-													</tr>
-												`,
-											)}
-										</tbody>
-									</table>
-								`
-						}
-
-						<footer><strong>${t("statements.total", { amount: formatAmount(statement.total) })}</strong></footer>
+						</details>
 					</article>
 				`,
 			)}

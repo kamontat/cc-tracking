@@ -2,9 +2,11 @@ export const en = {
 	"nav.brand": "cc-tracking",
 	"nav.dashboard": "Dashboard",
 	"nav.cards": "Cards",
+	"nav.backup": "Backup",
 	"title.dashboard": "Dashboard — cc-tracking",
 	"title.cards": "Card registry — cc-tracking",
 	"title.card": "Card — cc-tracking",
+	"title.backup": "Backup — cc-tracking",
 	"lang.label": "Language",
 	"lang.en": "English",
 	"lang.th": "ไทย",
@@ -52,6 +54,8 @@ export const en = {
 	"quickAdd.note": "Note",
 	"quickAdd.notePlaceholder": "office supplies",
 	"quickAdd.submit": "Add purchase",
+	"quickAdd.noEligible":
+		"No card here can take a purchase. Tick “Can be used for new purchases” on the card you spend with, on the Cards page.",
 	"quickAdd.error.noCard": "Choose a card first.",
 	"quickAdd.error.badDate": "That date does not exist. Use YYYY-MM-DD.",
 	"quickAdd.error.futureDate":
@@ -66,25 +70,20 @@ export const en = {
 	"cards.column.name": "Name",
 	"cards.column.last4": "Last 4",
 	"cards.column.location": "Location",
+	"cards.column.canPurchase": "Purchases",
 	"cards.column.cycle": "Cycle",
 	"cards.column.comment": "Comment",
+	"cards.canPurchase": "Allowed",
 	"cards.archived": "(archived)",
 	"cards.archive": "Archive",
 	"cards.unarchive": "Unarchive",
 	"cards.purchaseCount": "{count} purchases",
-	"cards.backup": "Backup",
-	"cards.backupWarning":
-		"Data lives in this browser only. Export regularly; clearing site data erases everything.",
-	"cards.export": "Export JSON",
-	"cards.import": "Import JSON",
 	"cards.locationReset":
 		"These cards were kept somewhere this app no longer recognises, so their location was set to Bangkok: {names}. Edit each one to pick the right place.",
 	"cards.error.read": "Could not read the card list.",
 	"cards.error.save": "Could not save the card.",
 	"cards.error.delete": "Could not delete the card.",
 	"cards.error.archive": "Could not archive the card.",
-	"cards.error.export": "Could not export a backup.",
-	"cards.error.import": "Could not import that backup.",
 	"cards.error.duplicateId":
 		'A card with id "{id}" already exists. Card ids must be unique.',
 
@@ -101,6 +100,7 @@ export const en = {
 	"form.dueOffsetDays": "Days until due",
 	"form.dueDay": "Due day",
 	"form.comment": "Comment",
+	"form.canPurchase": "Can be used for new purchases",
 	"form.save": "Save changes",
 	"form.add": "Add card",
 	"form.error.id": "Give the card an id you will recognise.",
@@ -134,6 +134,15 @@ export const en = {
 	"storage.unavailable":
 		"This browser is not letting the page store data. Private windows and blocked site data both cause this.",
 	"startup.failed": "Something went wrong starting the page.",
+
+	"backup.title": "Backup",
+	"backup.warning":
+		"Data lives in this browser only. Export regularly; clearing site data erases everything.",
+	"backup.export": "Export JSON",
+	"backup.import": "Import JSON",
+	"backup.error.read": "Could not read your data.",
+	"backup.error.export": "Could not export a backup.",
+	"backup.error.import": "Could not import that backup.",
 
 	"backup.unreadable": "That file is not a readable backup.",
 	"backup.version":

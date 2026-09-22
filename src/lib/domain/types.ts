@@ -20,6 +20,8 @@ export type Card = {
 	cycle: CycleRule;
 	comment?: string;
 	archived: boolean;
+	/** Absent on cards saved before the flag existed; see `canPurchase` in `#lib/domain/card`. */
+	canPurchase?: boolean;
 };
 
 export type Purchase = {

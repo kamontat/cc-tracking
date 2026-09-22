@@ -64,6 +64,7 @@ const quickAddCard: Card = {
 	location: "bangkok",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
+	canPurchase: true,
 };
 
 const fillQuickAdd = (quickAdd: HTMLElement, name: string, value: string) => {
@@ -79,6 +80,35 @@ const submitQuickAdd = (quickAdd: HTMLElement) =>
 	quickAdd.shadowRoot
 		?.querySelector("form")
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+test("offers only the cards that may take a purchase, while listing them all as due", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	await repo.saveCard({
+		...quickAddCard,
+		id: "ktb",
+		name: "KTB Debit",
+		canPurchase: false,
+	});
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = root.querySelector("cc-quick-add");
+	await quickAdd?.updateComplete;
+	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+
+	const options = [
+		...(quickAdd.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="cardId"] option',
+		) ?? []),
+	];
+	expect(options.map((option) => option.value)).toEqual(["scb"]);
+
+	const dueList = root.querySelector("cc-due-list");
+	await dueList?.updateComplete;
+	expect(dueList?.shadowRoot?.textContent).toContain("KTB Debit");
+});
 
 test("a purchase dated on the close day lands on that statement", async () => {
 	const repo = new InMemoryRepository();

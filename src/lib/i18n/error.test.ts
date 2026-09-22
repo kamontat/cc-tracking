@@ -39,7 +39,7 @@ test("resolves a nested problem key inside the parameters", () => {
 		index: 1,
 		problem: "backup.problem.missingName",
 	});
-	expect(messageOf(failure, "cards.error.import")).toBe(
+	expect(messageOf(failure, "backup.error.import")).toBe(
 		"That backup's card #1 is missing a name.",
 	);
 });

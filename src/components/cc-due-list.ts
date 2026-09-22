@@ -22,8 +22,21 @@ export class CcDueList extends LitElement {
 				border-left: var(--cc-space-1) solid transparent;
 			}
 
+			/*
+			 * Overdue is the one state worth interrupting someone for, so it gets more than a
+			 * rule down the side: the whole row is tinted, its due date takes the danger colour,
+			 * and its badge is filled rather than tinted. "Soon" deliberately keeps the quieter
+			 * treatment, or neither would stand out.
+			 */
 			tbody tr[data-urgency="overdue"] {
 				border-left-color: var(--cc-urgency-overdue);
+				border-left-width: var(--cc-space-2);
+				background: var(--cc-danger-surface);
+			}
+
+			tbody tr[data-urgency="overdue"] .due-cell {
+				font-weight: 600;
+				color: var(--cc-urgency-overdue);
 			}
 
 			tbody tr[data-urgency="soon"] {
@@ -40,8 +53,8 @@ export class CcDueList extends LitElement {
 			}
 
 			[data-urgency="overdue"] .badge {
-				color: var(--cc-urgency-overdue);
-				background: var(--cc-danger-surface);
+				color: var(--cc-surface);
+				background: var(--cc-urgency-overdue);
 			}
 
 			[data-urgency="soon"] .badge {
@@ -52,6 +65,11 @@ export class CcDueList extends LitElement {
 			.card-name {
 				display: block;
 				font-weight: 600;
+			}
+
+			.card-id {
+				font-family: var(--cc-font-mono);
+				font-size: var(--cc-text-xs);
 			}
 
 			td.card-cell small {
@@ -119,11 +137,11 @@ export class CcDueList extends LitElement {
 							<tr data-urgency=${urgency}>
 								<td class="card-cell" data-label=${t("due.column.card")}>
 									<a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
-									<small>••••${card.last4}</small>
+									<small class="card-id">${card.id}</small>
 								</td>
 								<td data-label=${t("due.column.where")}>${locationText(card.location)}</td>
 								<td class="date" data-label=${t("due.column.closes")}>${displayDate(statement.closeDate, getLocale())}</td>
-								<td data-label=${t("due.column.due")}>
+								<td class="due-cell" data-label=${t("due.column.due")}>
 									${displayDate(statement.dueDate, getLocale())}
 									<span class="badge">${this.when(statement)}</span>
 								</td>

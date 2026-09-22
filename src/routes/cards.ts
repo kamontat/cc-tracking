@@ -11,25 +11,8 @@ import { MessageError } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
-import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
-
-/**
- * Turns a repository's contents into a backup file's text and filename. Split out from the
- * click handler because `URL.createObjectURL` and a synthetic `<a>` click aren't meaningfully
- * testable outside a browser; this half is, and it's the half with logic worth covering.
- */
-export async function prepareBackupFile(
-	repo: Repository,
-	now: Date = new Date(),
-): Promise<{ filename: string; text: string }> {
-	const backup = await exportBackup(repo, now);
-	return {
-		text: JSON.stringify(backup, null, 2),
-		filename: `cc-tracking-${backup.exportedAt.slice(0, 10)}.json`,
-	};
-}
 
 /** Renders the card registry page into `root`, wiring it to `repo`. Exported for tests and for Task 14 to extend. */
 export function renderCardsPage(
@@ -86,32 +69,6 @@ export function renderCardsPage(
 		paint();
 	};
 
-	const onExport = () =>
-		state.guard(async () => {
-			const { filename, text } = await prepareBackupFile(repo);
-			const url = URL.createObjectURL(
-				new Blob([text], { type: "application/json" }),
-			);
-			const link = document.createElement("a");
-			link.href = url;
-			link.download = filename;
-			link.click();
-			// Revoking synchronously after click() risks revoking before the browser
-			// has started reading the blob (a long-standing source of dropped
-			// downloads in some browsers); deferring it a tick is the safe pattern.
-			setTimeout(() => URL.revokeObjectURL(url), 0);
-		}, "cards.error.export");
-
-	const onImport = (event: Event) => {
-		const input = event.target as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file) return;
-		input.value = "";
-		return state.guard(async () => {
-			await importBackup(repo, parseBackup(await file.text()));
-		}, "cards.error.import");
-	};
-
 	const paint = () =>
 		render(
 			html`
@@ -130,25 +87,17 @@ export function renderCardsPage(
 						`
 						: nothing
 				}
-				<div class="split">
-					<article>
-						<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
-						<cc-card-form
-							.card=${editing}
-							@save=${onSave}
-							@cancel=${() => {
-								editing = null;
-								paint();
-							}}
-						></cc-card-form>
-					</article>
-					<article class="split__aside">
-						<h2>${t("cards.backup")}</h2>
-						<p><small>${t("cards.backupWarning")}</small></p>
-						<button data-variant="quiet" type="button" @click=${onExport}>${t("cards.export")}</button>
-						<label>${t("cards.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
-					</article>
-				</div>
+				<article>
+					<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
+					<cc-card-form
+						.card=${editing}
+						@save=${onSave}
+						@cancel=${() => {
+							editing = null;
+							paint();
+						}}
+					></cc-card-form>
+				</article>
 				<article>
 					<cc-card-table
 						.cards=${cards}

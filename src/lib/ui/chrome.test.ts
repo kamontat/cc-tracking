@@ -11,6 +11,7 @@ const mountNav = () => {
 			<strong id="nav-brand">cc-tracking</strong>
 			<a href="/" id="nav-dashboard">Dashboard</a>
 			<a href="/cards" id="nav-cards">Cards</a>
+			<a href="/backup" id="nav-backup">Backup</a>
 		</nav>`;
 };
 
@@ -23,6 +24,16 @@ test("fills the title and the nav in the current language", () => {
 		"Dashboard",
 	);
 	expect(document.querySelector("#nav-cards")?.textContent).toBe("Cards");
+	expect(document.querySelector("#nav-backup")?.textContent).toBe("Backup");
+});
+
+test("marks the backup link as the current page on the backup path", () => {
+	mountNav();
+	markCurrentLink(document, "/backup");
+
+	expect(currentOf("nav-backup")).toBe("page");
+	expect(currentOf("nav-cards")).toBeNull();
+	expect(currentOf("nav-dashboard")).toBeNull();
 });
 
 test("marks the dashboard link as the current page on the root path", () => {
@@ -41,12 +52,13 @@ test("marks the cards link as the current page on the registry path", () => {
 	expect(currentOf("nav-dashboard")).toBeNull();
 });
 
-test("marks neither link on a card detail page", () => {
+test("marks no link at all on a card detail page", () => {
 	mountNav();
 	markCurrentLink(document, "/card");
 
 	expect(currentOf("nav-dashboard")).toBeNull();
 	expect(currentOf("nav-cards")).toBeNull();
+	expect(currentOf("nav-backup")).toBeNull();
 });
 
 test("clears a stale marker when the current path changes", () => {
@@ -65,5 +77,6 @@ test("refills them when the language changes", () => {
 
 	expect(document.title).toBe("ทะเบียนบัตร — cc-tracking");
 	expect(document.querySelector("#nav-dashboard")?.textContent).toBe("หน้ารวม");
+	expect(document.querySelector("#nav-backup")?.textContent).toBe("สำรองข้อมูล");
 	expect(document.documentElement.lang).toBe("th");
 });

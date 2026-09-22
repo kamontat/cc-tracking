@@ -10,6 +10,7 @@ const setText = (root: ParentNode, id: string, key: MessageKey): void => {
 const NAV_PATHS: readonly (readonly [id: string, path: string])[] = [
 	["nav-dashboard", "/"],
 	["nav-cards", "/cards"],
+	["nav-backup", "/backup"],
 ];
 
 /**
@@ -47,6 +48,7 @@ export function applyChrome(
 		setText(root, "nav-brand", "nav.brand");
 		setText(root, "nav-dashboard", "nav.dashboard");
 		setText(root, "nav-cards", "nav.cards");
+		setText(root, "nav-backup", "nav.backup");
 	};
 	apply();
 	markCurrentLink(root, location.pathname);

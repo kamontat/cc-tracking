@@ -17,16 +17,31 @@ bun run check      # biome check
 
 ## Pages
 
-- `/` — statements due next, quick purchase entry, cards grouped by location
-- `/cards` — the card registry, and JSON backup export and import. When adding
-  or editing a card, you choose its physical location from a dropdown: one of
-  Bangkok, Phichit, or Krabi. Cards already stored in this browser from before
-  the locations were fixed are reset to Bangkok once at startup; the page then
-  names those cards, once, with a Dismiss button, so you can pick the correct
-  location by hand.
+- `/` — statements due next, quick purchase entry, cards grouped by location.
+  The purchase form offers only the cards that may take one; see *Which cards
+  can take a purchase* below.
+- `/cards` — the card registry. When adding or editing a card, you choose its
+  physical location from a dropdown: one of Bangkok, Phichit, or Krabi. Cards
+  already stored in this browser from before the locations were fixed are reset
+  to Bangkok once at startup; the page then names those cards, once, with a
+  Dismiss button, so you can pick the correct location by hand.
+- `/backup` — JSON backup export and import.
 - `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
-  paging. There is no in-place edit for a purchase: changing one means
-  deleting it and adding a new one.
+  paging. A month with no purchases in it starts collapsed, so a long run of
+  unused months stays one line each. There is no in-place edit for a purchase:
+  changing one means deleting it and adding a new one.
+
+## Which cards can take a purchase
+
+Each card carries its own answer, ticked on the card form as *Can be used for
+new purchases*. Only those cards appear in the dashboard's purchase form; every
+card still appears everywhere else, including the due list.
+
+A card saved before this flag existed has no answer stored, and falls back to
+where it is kept: Krabi yes, anywhere else no. That reproduces the rule that was
+in force before — purchases were only ever entered against the Krabi cards —
+without rewriting a single stored card. Editing and saving any card writes an
+explicit answer for it, and the fallback then no longer applies to it.
 
 ## How statements work
 
@@ -56,7 +71,7 @@ A card's location is stored as one of three lowercase keys: `bangkok`,
 shown on screen or in the UI, the location goes through a display function
 that renders them as "Bangkok", "Phichit", and "Krabi".
 
-Use the Export JSON button on `/cards` as your backup — importing merges a
+Use the Export JSON button on `/backup` as your backup — importing merges a
 backup's cards, purchases, and payments back in without deleting anything
 already there. A file that is not valid JSON, is missing its expected lists,
 has a card/purchase/payment with the wrong shape, or was written by a

@@ -1,5 +1,6 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { canPurchase } from "#lib/domain/card";
 import type { Card } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
@@ -30,6 +31,15 @@ export class CcCardTable extends LitElement {
 				background: var(--cc-surface-sunken);
 				border-radius: var(--cc-radius-sm);
 			}
+
+			.allowed {
+				padding: 0 var(--cc-space-1);
+				font-size: var(--cc-text-xs);
+				font-weight: 600;
+				color: var(--cc-success);
+				background: var(--cc-surface-sunken);
+				border-radius: var(--cc-radius-sm);
+			}
 		`,
 	];
 
@@ -57,6 +67,7 @@ export class CcCardTable extends LitElement {
 						<th>${t("cards.column.name")}</th>
 						<th>${t("cards.column.last4")}</th>
 						<th>${t("cards.column.location")}</th>
+						<th>${t("cards.column.canPurchase")}</th>
 						<th>${t("cards.column.cycle")}</th>
 						<th>${t("cards.column.comment")}</th>
 						<th></th>
@@ -75,6 +86,13 @@ export class CcCardTable extends LitElement {
 								</td>
 								<td data-label=${t("cards.column.last4")}>••••${card.last4}</td>
 								<td data-label=${t("cards.column.location")}>${locationText(card.location)}</td>
+								<td data-field="can-purchase" data-label=${t("cards.column.canPurchase")}>
+									${
+										canPurchase(card)
+											? html`<span class="allowed">${t("cards.canPurchase")}</span>`
+											: html`${t("common.none")}`
+									}
+								</td>
 								<td data-label=${t("cards.column.cycle")}>${describeCycleText(card.cycle)}</td>
 								<td data-label=${t("cards.column.comment")}>${card.comment ?? ""}</td>
 								<td>

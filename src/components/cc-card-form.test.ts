@@ -49,6 +49,7 @@ test("emits a complete card with an offset rule", async () => {
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		comment: "",
 		archived: false,
+		canPurchase: true,
 	});
 });
 
@@ -185,6 +186,7 @@ test("clears the form after a successful create so the next card starts blank", 
 		cycle: { kind: "offset", closeDay: 20, dueOffsetDays: 10 },
 		comment: "",
 		archived: false,
+		canPurchase: false,
 	});
 });
 
@@ -263,6 +265,89 @@ test("renders its labels and location options in the chosen language", async () 
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("เพิ่มบัตร");
 	expect(element.shadowRoot?.textContent).toContain("กรุงเทพฯ");
+});
+
+test("lets a new card kept at Krabi take purchases without the user ticking anything", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	fill(element, "id", "kbank");
+	fill(element, "name", "KBank Visa");
+	fill(element, "last4", "4821");
+	fill(element, "location", "krabi");
+	fill(element, "closeDay", "18");
+	fill(element, "dueOffsetDays", "15");
+	submit(element);
+
+	expect(saved?.canPurchase).toBe(true);
+});
+
+test("keeps the ticked box when the location changes afterwards", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	const box = element.shadowRoot?.querySelector<HTMLInputElement>(
+		'[name="canPurchase"]',
+	);
+	box?.click();
+	await element.updateComplete;
+
+	fill(element, "id", "scb");
+	fill(element, "name", "SCB Mastercard");
+	fill(element, "last4", "1234");
+	fill(element, "location", "phichit");
+	fill(element, "closeDay", "18");
+	fill(element, "dueOffsetDays", "15");
+	submit(element);
+
+	expect(saved?.canPurchase).toBe(true);
+});
+
+test("shows the edited card's own answer, and saves it back untouched", async () => {
+	const element = await mount({
+		id: "scb",
+		name: "SCB",
+		last4: "1234",
+		location: "bangkok",
+		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
+		archived: false,
+		canPurchase: true,
+	});
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	const box = element.shadowRoot?.querySelector<HTMLInputElement>(
+		'[name="canPurchase"]',
+	);
+	expect(box?.checked).toBe(true);
+
+	submit(element);
+	expect(saved?.canPurchase).toBe(true);
+});
+
+test("shows a Krabi card that was turned off as turned off", async () => {
+	const element = await mount({
+		id: "scb",
+		name: "SCB",
+		last4: "1234",
+		location: "krabi",
+		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
+		archived: false,
+		canPurchase: false,
+	});
+
+	const box = element.shadowRoot?.querySelector<HTMLInputElement>(
+		'[name="canPurchase"]',
+	);
+	expect(box?.checked).toBe(false);
 });
 
 test("renders cancel as a quiet button beside the submit", async () => {

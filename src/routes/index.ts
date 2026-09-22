@@ -9,6 +9,7 @@ import "#components/cc-quick-add";
 import { html, render } from "lit";
 import type { DueRow } from "#components/cc-due-list";
 import type { QuickAddDetail } from "#components/cc-quick-add";
+import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
@@ -106,7 +107,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					</article>
 					<article class="split__aside split__aside--lead">
 						<h2>${t("dashboard.addPurchase")}</h2>
-						<cc-quick-add .cards=${cards} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
+						<cc-quick-add .cards=${cards.filter(canPurchase)} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 					</article>
 				</div>
 				<article>

@@ -104,6 +104,11 @@ export class CcQuickAdd extends LitElement {
 	}
 
 	override render() {
+		// The page hands over only the cards a purchase may be entered against, so an empty
+		// list means every card is turned off -- not that there are no cards at all.
+		if (this.cards.length === 0) {
+			return html`<p>${t("quickAdd.noEligible")}</p>`;
+		}
 		return html`
 			<form @submit=${this.onSubmit}>
 				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
@@ -112,7 +117,7 @@ export class CcQuickAdd extends LitElement {
 					<select name="cardId" required>
 						${this.cards.map(
 							(card) =>
-								html`<option value=${card.id}>${card.name} ••••${card.last4}</option>`,
+								html`<option value=${card.id}>${card.id} — ${card.name}</option>`,
 						)}
 					</select>
 				</label>

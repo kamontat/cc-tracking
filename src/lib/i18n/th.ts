@@ -12,9 +12,11 @@ export const th: Catalog = {
 	"nav.brand": "cc-tracking",
 	"nav.dashboard": "หน้ารวม",
 	"nav.cards": "บัตร",
+	"nav.backup": "สำรองข้อมูล",
 	"title.dashboard": "หน้ารวม — cc-tracking",
 	"title.cards": "ทะเบียนบัตร — cc-tracking",
 	"title.card": "บัตร — cc-tracking",
+	"title.backup": "สำรองข้อมูล — cc-tracking",
 	"lang.label": "ภาษา",
 	"lang.en": "English",
 	"lang.th": "ไทย",
@@ -66,6 +68,8 @@ export const th: Catalog = {
 	"quickAdd.note": "หมายเหตุ",
 	"quickAdd.notePlaceholder": "เครื่องเขียนสำนักงาน",
 	"quickAdd.submit": "เพิ่มรายการ",
+	"quickAdd.noEligible":
+		"ไม่มีบัตรใบใดบันทึกรายการใหม่ได้ ไปที่หน้าบัตรแล้วติ๊ก “ใช้บันทึกรายการใหม่ได้” บนบัตรที่ใช้จ่าย",
 	"quickAdd.error.noCard": "เลือกบัตรก่อน",
 	"quickAdd.error.badDate": "ไม่มีวันที่นี้ ใช้รูปแบบ YYYY-MM-DD",
 	"quickAdd.error.futureDate": "วันที่อยู่ในอนาคต รายการบัตรเครดิตลงวันที่ล่วงหน้าไม่ได้",
@@ -81,25 +85,20 @@ export const th: Catalog = {
 	"cards.column.location": "ที่เก็บ",
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
 	// backup.problem.*Cycle fragments below).
+	"cards.column.canPurchase": "บันทึกรายการ",
 	"cards.column.cycle": "รอบบิล",
 	"cards.column.comment": "หมายเหตุ",
+	"cards.canPurchase": "ได้",
 	"cards.archived": "(เก็บเข้าคลัง)",
 	"cards.archive": "เก็บเข้าคลัง",
 	"cards.unarchive": "นำออกจากคลัง",
 	"cards.purchaseCount": "{count} รายการ",
-	"cards.backup": "สำรองข้อมูล",
-	"cards.backupWarning":
-		"ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น ส่งออกเป็นประจำ การล้างข้อมูลเว็บไซต์จะลบทั้งหมด",
-	"cards.export": "ส่งออก JSON",
-	"cards.import": "นำเข้า JSON",
 	"cards.locationReset":
 		"บัตรเหล่านี้เคยเก็บไว้ในที่ที่แอปไม่รู้จักแล้ว จึงตั้งที่เก็บเป็นกรุงเทพฯ: {names} แก้ไขแต่ละใบเพื่อเลือกที่เก็บที่ถูกต้อง",
 	"cards.error.read": "อ่านรายการบัตรไม่สำเร็จ",
 	"cards.error.save": "บันทึกบัตรไม่สำเร็จ",
 	"cards.error.delete": "ลบบัตรไม่สำเร็จ",
 	"cards.error.archive": "เก็บบัตรเข้าคลังไม่สำเร็จ",
-	"cards.error.export": "ส่งออกข้อมูลสำรองไม่สำเร็จ",
-	"cards.error.import": "นำเข้าข้อมูลสำรองไม่สำเร็จ",
 	"cards.error.duplicateId": 'มีบัตรรหัส "{id}" อยู่แล้ว รหัสบัตรต้องไม่ซ้ำกัน',
 
 	"form.id": "รหัส",
@@ -115,6 +114,7 @@ export const th: Catalog = {
 	"form.dueOffsetDays": "จำนวนวันจนครบกำหนด",
 	"form.dueDay": "วันครบกำหนด",
 	"form.comment": "หมายเหตุ",
+	"form.canPurchase": "ใช้บันทึกรายการใหม่ได้",
 	"form.save": "บันทึกการแก้ไข",
 	"form.add": "เพิ่มบัตร",
 	"form.error.id": "ตั้งรหัสบัตรที่จำได้",
@@ -148,6 +148,15 @@ export const th: Catalog = {
 	"storage.unavailable":
 		"เบราว์เซอร์นี้ไม่อนุญาตให้หน้าเว็บเก็บข้อมูล หน้าต่างส่วนตัวและการบล็อกข้อมูลเว็บไซต์ทำให้เกิดปัญหานี้",
 	"startup.failed": "เริ่มหน้าเว็บไม่สำเร็จ",
+
+	"backup.title": "สำรองข้อมูล",
+	"backup.warning":
+		"ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น ส่งออกเป็นประจำ การล้างข้อมูลเว็บไซต์จะลบทั้งหมด",
+	"backup.export": "ส่งออก JSON",
+	"backup.import": "นำเข้า JSON",
+	"backup.error.read": "อ่านข้อมูลไม่สำเร็จ",
+	"backup.error.export": "ส่งออกข้อมูลสำรองไม่สำเร็จ",
+	"backup.error.import": "นำเข้าข้อมูลสำรองไม่สำเร็จ",
 
 	"backup.unreadable": "ไฟล์นี้ไม่ใช่ข้อมูลสำรองที่อ่านได้",
 	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
