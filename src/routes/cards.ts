@@ -5,6 +5,7 @@ import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
 import { html, nothing, render } from "lit";
 import type { Card } from "#lib/domain/types";
+import { MessageError } from "#lib/i18n/error";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
@@ -51,7 +52,7 @@ export function renderCardsPage(
 				),
 			);
 		},
-		fallbackMessage: "Could not read the card list.",
+		fallbackKey: "cards.error.read",
 		paint: () => paint(),
 	});
 
@@ -61,26 +62,21 @@ export function renderCardsPage(
 			if (!editing) {
 				const existing = await repo.getCard(card.id);
 				if (existing) {
-					throw new Error(
-						`A card with id "${card.id}" already exists. Card ids must be unique.`,
-					);
+					throw new MessageError("cards.error.duplicateId", { id: card.id });
 				}
 			}
 			await repo.saveCard(card);
 			editing = null;
-		}, "Could not save the card.");
+		}, "cards.error.save");
 
 	const onRemove = (event: CustomEvent<string>) =>
-		state.guard(
-			() => repo.deleteCard(event.detail),
-			"Could not delete the card.",
-		);
+		state.guard(() => repo.deleteCard(event.detail), "cards.error.delete");
 
 	const onArchive = (event: CustomEvent<string>) =>
 		state.guard(async () => {
 			const card = cards.find((c) => c.id === event.detail);
 			if (card) await repo.saveCard({ ...card, archived: !card.archived });
-		}, "Could not archive the card.");
+		}, "cards.error.archive");
 
 	const onEdit = (event: CustomEvent<string>) => {
 		editing = cards.find((c) => c.id === event.detail) ?? null;
@@ -101,7 +97,7 @@ export function renderCardsPage(
 			// has started reading the blob (a long-standing source of dropped
 			// downloads in some browsers); deferring it a tick is the safe pattern.
 			setTimeout(() => URL.revokeObjectURL(url), 0);
-		}, "Could not export a backup.");
+		}, "cards.error.export");
 
 	const onImport = (event: Event) => {
 		const input = event.target as HTMLInputElement;
@@ -110,7 +106,7 @@ export function renderCardsPage(
 		input.value = "";
 		return state.guard(async () => {
 			await importBackup(repo, parseBackup(await file.text()));
-		}, "Could not import that backup.");
+		}, "cards.error.import");
 	};
 
 	const paint = () =>

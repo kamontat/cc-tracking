@@ -34,7 +34,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				await Promise.all(cards.map((card) => repo.listPayments(card.id)))
 			).flat();
 		},
-		fallbackMessage: "Could not read your cards.",
+		fallbackKey: "dashboard.error.read",
 		paint: () => paint(),
 	});
 
@@ -53,7 +53,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				closeDate: statement.closeDate,
 				dueDate: statement.dueDate,
 			});
-		}, "Could not record the payment.");
+		}, "dashboard.error.markPaid");
 
 	const onAdd = (event: CustomEvent<QuickAddDetail>) =>
 		state.guard(async () => {
@@ -71,7 +71,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			answer =
 				`Lands on the statement closing ${displayDate(closeDateOf(card.cycle, period), getLocale())}` +
 				` — pay by ${displayDate(dueDateOf(card.cycle, period), getLocale())}.`;
-		}, "Could not save the purchase.");
+		}, "dashboard.error.addPurchase");
 
 	const rows = (): DueRow[] =>
 		cards.map((card) => ({

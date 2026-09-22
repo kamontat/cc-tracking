@@ -12,6 +12,7 @@ import type {
 	Statement,
 	StatementPayment,
 } from "#lib/domain/types";
+import { MessageError } from "#lib/i18n/error";
 import { describeCycleText } from "#lib/i18n/format";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
@@ -34,16 +35,16 @@ export function renderCardPage(
 	const state = createPageState({
 		fetch: async () => {
 			if (!cardId) {
-				throw new Error("No card was selected.");
+				throw new MessageError("card.error.noSelection");
 			}
 			card = await repo.getCard(cardId);
 			if (!card) {
-				throw new Error(`No card with the id ${cardId}.`);
+				throw new MessageError("card.error.notFound", { id: cardId });
 			}
 			purchases = await repo.listPurchases(card.id);
 			payments = await repo.listPayments(card.id);
 		},
-		fallbackMessage: "Could not read this card.",
+		fallbackKey: "card.error.read",
 		paint: () => paint(),
 	});
 
@@ -73,14 +74,14 @@ export function renderCardPage(
 				closeDate: statement.closeDate,
 				dueDate: statement.dueDate,
 			});
-		}, "Could not record the payment.");
+		}, "card.error.markPaid");
 
 	const onUnmarkPaid = (
 		event: CustomEvent<{ cardId: string; period: string }>,
 	) =>
 		state.guard(
 			() => repo.deletePayment(event.detail.cardId, event.detail.period),
-			"Could not undo the payment.",
+			"card.error.unmarkPaid",
 		);
 
 	const onDeletePurchase = (
@@ -88,7 +89,7 @@ export function renderCardPage(
 	) =>
 		state.guard(
 			() => repo.deletePurchase(event.detail.cardId, event.detail.purchaseId),
-			"Could not delete the purchase.",
+			"card.error.deletePurchase",
 		);
 
 	const paint = () =>

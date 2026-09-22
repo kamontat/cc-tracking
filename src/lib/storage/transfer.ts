@@ -1,6 +1,8 @@
 import { isValidDate } from "#lib/domain/date";
 import { toLocation } from "#lib/domain/location";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
+import { MessageError } from "#lib/i18n/error";
 import type { Repository } from "#lib/storage/repository";
 
 export const BACKUP_VERSION = 1;
@@ -53,54 +55,60 @@ const isInteger = (value: unknown): value is number =>
 const isPlainDate = (value: unknown): value is string =>
 	typeof value === "string" && isValidDate(value);
 
-/** `null` when the cycle is well-formed, otherwise what's wrong with it. */
-function cycleProblem(value: unknown): string | null {
-	if (!isPlainObject(value)) return "has no cycle";
+/** `null` when the cycle is well-formed, otherwise which catalog key names what's wrong. */
+function cycleProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.noCycle";
 	const kind = prop(value, "kind");
 	if (kind === "offset") {
 		return isInteger(prop(value, "closeDay")) &&
 			isInteger(prop(value, "dueOffsetDays"))
 			? null
-			: "has an offset cycle with a non-integer day field";
+			: "backup.problem.badOffsetCycle";
 	}
 	if (kind === "fixed") {
 		return isInteger(prop(value, "closeDay")) &&
 			isInteger(prop(value, "dueDay"))
 			? null
-			: "has a fixed cycle with a non-integer day field";
+			: "backup.problem.badFixedCycle";
 	}
-	return 'has a cycle whose kind is neither "offset" nor "fixed"';
+	return "backup.problem.badCycleKind";
 }
 
-/** `null` when the card is well-formed, otherwise what's wrong with it. */
-function cardProblem(value: unknown): string | null {
-	if (!isPlainObject(value)) return "is not an object";
-	if (!isNonEmptyString(prop(value, "id"))) return "is missing an id";
-	if (!isNonEmptyString(prop(value, "name"))) return "is missing a name";
-	if (!isNonEmptyString(prop(value, "last4"))) return "is missing last4";
+/** `null` when the card is well-formed, otherwise which catalog key names what's wrong. */
+function cardProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
+	if (!isNonEmptyString(prop(value, "name")))
+		return "backup.problem.missingName";
+	if (!isNonEmptyString(prop(value, "last4")))
+		return "backup.problem.missingLast4";
 	if (toLocation(prop(value, "location")) === null)
-		return "has a location that is not bangkok, phichit, or krabi";
+		return "backup.problem.badLocation";
 	return cycleProblem(prop(value, "cycle"));
 }
 
-/** `null` when the purchase is well-formed, otherwise what's wrong with it. */
-function purchaseProblem(value: unknown): string | null {
-	if (!isPlainObject(value)) return "is not an object";
-	if (!isNonEmptyString(prop(value, "id"))) return "is missing an id";
-	if (!isNonEmptyString(prop(value, "cardId"))) return "is missing a cardId";
-	if (!isPlainDate(prop(value, "date"))) return "has an invalid date";
-	if (!isInteger(prop(value, "amount"))) return "has a non-integer amount";
+/** `null` when the purchase is well-formed, otherwise which catalog key names what's wrong. */
+function purchaseProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
+	if (!isNonEmptyString(prop(value, "cardId")))
+		return "backup.problem.missingCardId";
+	if (!isPlainDate(prop(value, "date"))) return "backup.problem.badDate";
+	if (!isInteger(prop(value, "amount"))) return "backup.problem.badAmount";
 	return null;
 }
 
-/** `null` when the payment is well-formed, otherwise what's wrong with it. */
-function paymentProblem(value: unknown): string | null {
-	if (!isPlainObject(value)) return "is not an object";
-	if (!isNonEmptyString(prop(value, "cardId"))) return "is missing a cardId";
-	if (!isNonEmptyString(prop(value, "period"))) return "is missing a period";
-	if (!isPlainDate(prop(value, "paidAt"))) return "has an invalid paidAt date";
-	if (!isPlainDate(prop(value, "closeDate"))) return "has an invalid closeDate";
-	if (!isPlainDate(prop(value, "dueDate"))) return "has an invalid dueDate";
+/** `null` when the payment is well-formed, otherwise which catalog key names what's wrong. */
+function paymentProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "cardId")))
+		return "backup.problem.missingCardId";
+	if (!isNonEmptyString(prop(value, "period")))
+		return "backup.problem.missingPeriod";
+	if (!isPlainDate(prop(value, "paidAt"))) return "backup.problem.badPaidAt";
+	if (!isPlainDate(prop(value, "closeDate")))
+		return "backup.problem.badCloseDate";
+	if (!isPlainDate(prop(value, "dueDate"))) return "backup.problem.badDueDate";
 	return null;
 }
 
@@ -109,43 +117,46 @@ export function parseBackup(text: string): Backup {
 	try {
 		value = JSON.parse(text);
 	} catch (cause) {
-		throw new Error("That file is not a readable backup.", { cause });
+		const failure = new MessageError("backup.unreadable");
+		failure.cause = cause;
+		throw failure;
 	}
 
 	if (!isPlainObject(value)) {
-		throw new Error("That file is not a readable backup.");
+		throw new MessageError("backup.unreadable");
 	}
 
 	const version = prop(value, "version");
 	if (version !== BACKUP_VERSION) {
-		throw new Error(
-			`That backup is version ${JSON.stringify(version)}, and this app reads version ${BACKUP_VERSION}.`,
-		);
+		throw new MessageError("backup.version", {
+			found: JSON.stringify(version),
+			expected: BACKUP_VERSION,
+		});
 	}
 
 	const cards = prop(value, "cards");
 	const purchases = prop(value, "purchases");
 	const payments = prop(value, "payments");
 	if (!isList(cards) || !isList(purchases) || !isList(payments)) {
-		throw new Error("That file is not a readable backup.");
+		throw new MessageError("backup.unreadable");
 	}
 
 	for (const [index, card] of cards.entries()) {
 		const problem = cardProblem(card);
 		if (problem) {
-			throw new Error(`That backup's card #${index + 1} ${problem}.`);
+			throw new MessageError("backup.card", { index: index + 1, problem });
 		}
 	}
 	for (const [index, purchase] of purchases.entries()) {
 		const problem = purchaseProblem(purchase);
 		if (problem) {
-			throw new Error(`That backup's purchase #${index + 1} ${problem}.`);
+			throw new MessageError("backup.purchase", { index: index + 1, problem });
 		}
 	}
 	for (const [index, payment] of payments.entries()) {
 		const problem = paymentProblem(payment);
 		if (problem) {
-			throw new Error(`That backup's payment #${index + 1} ${problem}.`);
+			throw new MessageError("backup.payment", { index: index + 1, problem });
 		}
 	}
 

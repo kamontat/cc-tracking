@@ -1,3 +1,7 @@
+import type { MessageKey } from "#lib/i18n/catalog";
+import { messageOf } from "#lib/i18n/error";
+import { t } from "#lib/i18n/index";
+
 /**
  * The load / guard / paint trio shared by every page.
  *
@@ -6,23 +10,23 @@
  * around those two page-owned pieces. In particular:
  *
  * - `load` runs the page's `fetch`, catches a failure into `error`, then paints.
- * - `guard` runs a write; on failure it prefixes `message` onto the error. Either way it
- *   reloads afterwards, passing `preserveError` so a failed write's message survives the
- *   successful read that follows it instead of being silently wiped.
+ * - `guard` runs a write; on failure it prefixes the translated `messageKey` onto the error.
+ *   Either way it reloads afterwards, passing `preserveError` so a failed write's message
+ *   survives the successful read that follows it instead of being silently wiped.
  */
 export type PageState = {
 	/** The current error message, or "" when there is none. */
 	readonly error: string;
 	load(preserveError?: boolean): Promise<void>;
-	guard(action: () => Promise<void>, message: string): Promise<void>;
+	guard(action: () => Promise<void>, messageKey: MessageKey): Promise<void>;
 };
 
 export function createPageState(options: {
 	/** Fetches this page's data into its own state. Its return value is ignored; its
 	 * rejection becomes `error`. */
 	fetch: () => Promise<void>;
-	/** Shown when `fetch` rejects with something that isn't an `Error`. */
-	fallbackMessage: string;
+	/** Shown when `fetch` rejects with something that carries no message of its own. */
+	fallbackKey: MessageKey;
 	/** Called after every `load`. Reads `error` (and whatever else the page owns) to render. */
 	paint: () => void;
 }): PageState {
@@ -33,23 +37,21 @@ export function createPageState(options: {
 			await options.fetch();
 			if (!preserveError) error = "";
 		} catch (failure) {
-			error =
-				failure instanceof Error ? failure.message : options.fallbackMessage;
+			error = messageOf(failure, options.fallbackKey);
 		}
 		options.paint();
 	};
 
 	const guard = async (
 		action: () => Promise<void>,
-		message: string,
+		messageKey: MessageKey,
 	): Promise<void> => {
 		let failed = false;
 		try {
 			await action();
 			error = "";
 		} catch (failure) {
-			error =
-				failure instanceof Error ? `${message} ${failure.message}` : message;
+			error = `${t(messageKey)} ${messageOf(failure, messageKey)}`;
 			failed = true;
 		}
 		// Refresh from storage either way, but keep a failure's message on screen

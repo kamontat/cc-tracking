@@ -1,15 +1,13 @@
+import { MessageError } from "#lib/i18n/error";
 import { LocalStorageRepository } from "#lib/storage/local";
 import type { Repository } from "#lib/storage/repository";
 
 /** Thrown at startup when the browser gives the page no usable storage. */
-export class StorageUnavailableError extends Error {
+export class StorageUnavailableError extends MessageError {
 	constructor(options?: { cause?: unknown }) {
-		super(
-			"This browser is not letting the page store data. " +
-				"Private windows and blocked site data both cause this.",
-			options,
-		);
+		super("storage.unavailable");
 		this.name = "StorageUnavailableError";
+		if (options?.cause !== undefined) this.cause = options.cause;
 	}
 }
 
