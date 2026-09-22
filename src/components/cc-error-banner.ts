@@ -1,4 +1,4 @@
-import { html, LitElement, nothing } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
@@ -6,7 +6,18 @@ import { base, controls, panel } from "#styles/shared";
 
 @customElement("cc-error-banner")
 export class CcErrorBanner extends LitElement {
-	static override styles = [base, controls, panel];
+	static override styles = [
+		base,
+		controls,
+		panel,
+		// `base`'s `:host { display: block }` is author-origin, so it beats the UA's `[hidden]`
+		// rule. Without this, an empty banner still takes a flex gap in `.page`.
+		css`
+			:host([hidden]) {
+				display: none;
+			}
+		`,
+	];
 
 	@property() message = "";
 	// Left empty rather than defaulting to a catalog string: a property default is evaluated
@@ -17,6 +28,10 @@ export class CcErrorBanner extends LitElement {
 	constructor() {
 		super();
 		new LocaleController(this);
+	}
+
+	override willUpdate() {
+		this.toggleAttribute("hidden", !this.message);
 	}
 
 	override render() {

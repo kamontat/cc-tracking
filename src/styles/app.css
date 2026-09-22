@@ -1,8 +1,8 @@
 /*
- * `:root`, not `html`: the bundler emits the reset after this file, so a bare
- * `html` selector here loses the tie to the reset's own `html` rule and neither
- * the Thai-aware font stack nor the leading would reach the document at all.
- * The same reasoning drives `a:any-link` below.
+ * `:root`, not `html`, and `a:any-link`, not `a`: both outrank the reset's own
+ * `html` and `a` rules on specificity regardless of emission order (dev and
+ * production chunk them differently), so the Thai-aware font stack, the
+ * leading and `--cc-link` reach the document either way.
  */
 :root {
 	font-family: var(--cc-font-sans);
@@ -27,6 +27,14 @@ a:any-link:hover {
 :focus-visible {
 	outline: none;
 	box-shadow: var(--cc-focus-ring);
+}
+
+/* forced-colors strips box-shadow, and outline is already none above, so without this a
+   focused control has no visible indicator at all under that mode. */
+@media (forced-colors: active) {
+	:focus-visible {
+		outline: 2px solid;
+	}
 }
 
 .site-header {
@@ -112,10 +120,17 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
+/*
+ * The light-DOM mirror of `controls`' button rules in shared.ts, deliberately partial: it carries
+ * only the variants the routes actually use (the base button and `data-variant="quiet"`), not
+ * `white-space: nowrap`, `:disabled`, or `data-variant="danger"`. `controls` is the full contract
+ * -- check there before assuming a variant is unsupported.
+ */
 .page button {
 	align-self: flex-start;
 	padding: var(--cc-space-2) var(--cc-space-3);
 	font: inherit;
+	font-size: var(--cc-text-sm);
 	font-weight: 550;
 	line-height: 1.2;
 	color: var(--cc-accent-text);
@@ -201,7 +216,8 @@ a:any-link:hover {
 	.split > .split__aside {
 		order: 0;
 		position: sticky;
-		top: var(--cc-space-6);
+		/* Must clear the sticky .site-header, which is --cc-header-height tall. */
+		top: calc(var(--cc-header-height) + var(--cc-space-4));
 	}
 }
 

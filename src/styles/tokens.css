@@ -18,12 +18,16 @@
 	--cc-space-3: 0.75rem;
 	--cc-space-4: 1rem;
 	--cc-space-5: 1.5rem;
-	--cc-space-6: 2rem;
 	--cc-space-7: 3rem;
 
 	--cc-radius-sm: 4px;
 	--cc-radius-md: 8px;
 	--cc-border-width: 1px;
+
+	/* Exists so the sticky aside (`.split__aside`) can clear the sticky `.site-header` when it
+	   parks. Header height = 2 × var(--cc-space-3) padding + the ~30px brand line + 1px border;
+	   keep this in step if the header's padding or brand type size ever changes. */
+	--cc-header-height: 3.5rem;
 
 	--cc-bg: #f6f7f9;
 	--cc-surface: #ffffff;
@@ -41,7 +45,8 @@
 
 	--cc-danger: #b3261e;
 	--cc-danger-surface: #fdeceb;
-	--cc-success: #1b7f4b;
+	/* Darkened from #1b7f4b (4.40:1 on --cc-surface-sunken) to clear AA's 4.5:1 for normal text. */
+	--cc-success: #166b3f;
 	/* Dark enough to stay readable on its own tint, not only on the surface. */
 	--cc-warning: #9a5b00;
 	--cc-warning-surface: #fdf2e0;
@@ -49,7 +54,6 @@
 	/* Resolved at use, so the dark block below re-points these for free. */
 	--cc-urgency-overdue: var(--cc-danger);
 	--cc-urgency-soon: var(--cc-warning);
-	--cc-urgency-open: var(--cc-border);
 
 	--cc-focus-ring: 0 0 0 3px rgb(11 92 213 / 0.35);
 }

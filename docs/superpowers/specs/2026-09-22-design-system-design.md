@@ -127,7 +127,7 @@ between themes.
 | Text | `--cc-text`, `--cc-text-muted`, `--cc-link` |
 | Accent | `--cc-accent`, `--cc-accent-hover`, `--cc-accent-text` |
 | Status | `--cc-danger`, `--cc-danger-surface`, `--cc-success`, `--cc-warning` |
-| Urgency | `--cc-urgency-overdue`, `--cc-urgency-soon`, `--cc-urgency-open` |
+| Urgency | `--cc-urgency-overdue`, `--cc-urgency-soon` |
 | Focus | `--cc-focus-ring` |
 
 `--cc-font-sans` names a Thai face ahead of the Latin system stack so that both
@@ -219,11 +219,12 @@ changes, so no test that reads cell text or clicks a button is affected.
 
 ### Urgency
 
-`--cc-urgency-*` drives a left border and a tinted row background, as today, but
-colour is no longer the only signal: an overdue or due-soon row also carries a
-short text badge. The existing `due.overdue` / `due.today` / `due.inDays`
-messages already supply that text per language, so the badge is a style applied
-to markup that exists rather than a new string in the catalog.
+`--cc-urgency-*` drives a left border, as it did before this branch, but colour
+is no longer the only signal: an overdue or due-soon row also carries a short
+text badge, so a reader who cannot distinguish the border still gets the signal
+in text. The existing `due.overdue` / `due.today` / `due.inDays` messages
+already supply that text per language, so the badge is a style applied to
+markup that exists rather than a new string in the catalog.
 
 ## Dependencies
 

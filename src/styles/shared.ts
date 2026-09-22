@@ -181,6 +181,14 @@ export const controls = css`
 		outline: none;
 		box-shadow: var(--cc-focus-ring);
 	}
+
+	/* forced-colors strips box-shadow, and outline is already none above, so without this a
+	   focused control has no visible indicator at all under that mode. */
+	@media (forced-colors: active) {
+		:focus-visible {
+			outline: 2px solid;
+		}
+	}
 `;
 
 /** A bordered, padded surface. `data-tone="danger"` tints it for error states. */
@@ -193,6 +201,7 @@ export const panel = css`
 		background: var(--cc-surface);
 		border: var(--cc-border-width) solid var(--cc-border);
 		border-radius: var(--cc-radius-md);
+		box-shadow: var(--cc-shadow-sm);
 	}
 
 	article[data-tone="danger"] {

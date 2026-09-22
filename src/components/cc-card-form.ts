@@ -27,7 +27,7 @@ export class CcCardForm extends LitElement {
 
 				fieldset,
 				.form-actions,
-				[role="alert"] {
+				p[role="alert"] {
 					grid-column: 1 / -1;
 				}
 			}
