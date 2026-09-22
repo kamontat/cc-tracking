@@ -37,25 +37,41 @@ a:any-link:hover {
 	}
 }
 
+/* The sticky shell spans the viewport so its background and border do; the bar inside it
+   carries the padding and is capped at the same width as `.page`, so the brand lines up with
+   the content beneath it instead of drifting left on a wide window. */
 .site-header {
 	position: sticky;
 	top: 0;
 	z-index: 10;
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: var(--cc-space-3);
-	padding: var(--cc-space-3) var(--cc-space-4);
-	padding-top: calc(var(--cc-space-3) + env(safe-area-inset-top, 0px));
 	background: var(--cc-surface);
 	border-bottom: var(--cc-border-width) solid var(--cc-border);
 }
 
-.site-header__brand {
+.site-header__bar {
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--cc-space-3);
+	width: 100%;
+	max-width: 72rem;
+	margin-inline: auto;
+	padding: var(--cc-space-3)
+		max(var(--cc-space-4), env(safe-area-inset-left, 0px));
+	padding-top: calc(var(--cc-space-3) + env(safe-area-inset-top, 0px));
+}
+
+/* `:any-link` on both, to outweigh the generic `a:any-link` rules above: a pseudo-class carries
+   class-level specificity, so a bare `.site-header__brand` loses to them and the brand renders
+   in link blue with a hover underline. */
+.site-header__brand:any-link {
 	margin-inline-end: auto;
 	font-size: var(--cc-text-lg);
 	font-weight: 600;
+	color: var(--cc-text);
+}
+
+.site-header__brand:any-link:hover {
+	text-decoration: none;
 }
 
 .site-header__nav {
@@ -72,6 +88,17 @@ a:any-link:hover {
 
 .site-header__nav a:hover {
 	color: var(--cc-text);
+}
+
+/* Weight and colour alongside the underline, so the current page is not signalled by colour
+   alone — the same rule the urgency badges follow. */
+.site-header__nav a[aria-current="page"] {
+	color: var(--cc-text);
+	font-weight: 600;
+	text-decoration: underline;
+	text-decoration-color: var(--cc-accent);
+	text-decoration-thickness: calc(var(--cc-border-width) * 2);
+	text-underline-offset: var(--cc-space-1);
 }
 
 .page {
