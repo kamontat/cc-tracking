@@ -122,7 +122,22 @@ describe("today", () => {
 
 describe("displayDate", () => {
 	test("renders a readable date", () => {
-		expect(displayDate("2026-09-21")).toBe("21 Sep 2026");
+		expect(displayDate("2026-09-21", "en")).toBe("21 Sep 2026");
+	});
+
+	test("renders a date as dd MMM yyyy in English", () => {
+		expect(displayDate("2026-09-21", "en")).toBe("21 Sep 2026");
+	});
+
+	test("pads a single-digit day", () => {
+		expect(displayDate("2026-09-05", "en")).toBe("05 Sep 2026");
+		expect(displayDate("2026-09-05", "th")).toBe("05 ก.ย. 2026");
+	});
+
+	test("renders Thai months with a Gregorian year, never Buddhist Era", () => {
+		expect(displayDate("2026-09-21", "th")).toBe("21 ก.ย. 2026");
+		expect(displayDate("2026-01-01", "th")).toBe("01 ม.ค. 2026");
+		expect(displayDate("2026-12-31", "th")).toBe("31 ธ.ค. 2026");
 	});
 });
 

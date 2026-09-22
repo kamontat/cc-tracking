@@ -1,9 +1,16 @@
-import { expect, test } from "bun:test";
+import { beforeEach, expect, test } from "bun:test";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { renderDashboardPage } from "./index";
+
+// Other test files leave the locale singleton set to "th"; pin it so this file's
+// English date assertions do not depend on suite run order.
+beforeEach(() => {
+	setLocale("en");
+});
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -107,10 +114,10 @@ test("a purchase dated on the close day lands on that statement", async () => {
 		note: "dinner",
 	});
 	expect(quickAdd.answer).toBe(
-		"Lands on the statement closing 18 Sep 2026 — pay by 3 Oct 2026.",
+		"Lands on the statement closing 18 Sep 2026 — pay by 03 Oct 2026.",
 	);
 	await quickAdd.updateComplete;
-	expect(quickAdd.shadowRoot?.textContent).toContain("pay by 3 Oct 2026");
+	expect(quickAdd.shadowRoot?.textContent).toContain("pay by 03 Oct 2026");
 });
 
 test("a purchase dated the day after the close day lands on the next statement", async () => {
@@ -134,7 +141,7 @@ test("a purchase dated the day after the close day lands on the next statement",
 	expect(purchases).toHaveLength(1);
 	expect(purchases[0]?.date).toBe("2026-09-19");
 	expect(quickAdd.answer).toBe(
-		"Lands on the statement closing 18 Oct 2026 — pay by 2 Nov 2026.",
+		"Lands on the statement closing 18 Oct 2026 — pay by 02 Nov 2026.",
 	);
 });
 

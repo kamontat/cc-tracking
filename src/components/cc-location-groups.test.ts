@@ -1,9 +1,16 @@
-import { expect, test } from "bun:test";
+import { beforeEach, expect, test } from "bun:test";
 import "#components/cc-location-groups";
 import type { DueRow } from "#components/cc-due-list";
 import type { Location } from "#lib/domain/location";
 import { buildStatement } from "#lib/domain/statement";
 import type { Card } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
+
+// Other test files leave the locale singleton set to "th"; pin it so this file's
+// English date assertions do not depend on suite run order.
+beforeEach(() => {
+	setLocale("en");
+});
 
 const card = (id: string, location: Location): Card => ({
 	id,
@@ -37,7 +44,7 @@ test("groups cards by location and counts them", async () => {
 
 test("names the soonest due date in each group", async () => {
 	const element = await mount(rowsFor(card("a", "krabi")));
-	expect(element.shadowRoot?.textContent).toContain("3 Oct 2026");
+	expect(element.shadowRoot?.textContent).toContain("03 Oct 2026");
 });
 
 test("starts collapsed", async () => {

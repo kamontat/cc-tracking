@@ -11,6 +11,7 @@ import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import { getLocale } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -68,8 +69,8 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			});
 			const period = periodOfPurchase(card.cycle, date);
 			answer =
-				`Lands on the statement closing ${displayDate(closeDateOf(card.cycle, period))}` +
-				` — pay by ${displayDate(dueDateOf(card.cycle, period))}.`;
+				`Lands on the statement closing ${displayDate(closeDateOf(card.cycle, period), getLocale())}` +
+				` — pay by ${displayDate(dueDateOf(card.cycle, period), getLocale())}.`;
 		}, "Could not save the purchase.");
 
 	const rows = (): DueRow[] =>

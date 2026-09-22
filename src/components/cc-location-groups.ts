@@ -3,6 +3,7 @@ import { customElement, property } from "lit/decorators.js";
 import type { DueRow } from "#components/cc-due-list";
 import { displayDate } from "#lib/domain/date";
 import { type Location, locationLabel } from "#lib/domain/location";
+import { getLocale } from "#lib/i18n/index";
 
 @customElement("cc-location-groups")
 export class CcLocationGroups extends LitElement {
@@ -28,7 +29,7 @@ export class CcLocationGroups extends LitElement {
 					return html`
 						<article>
 							<h3>${locationLabel(location)} (${rows.length})</h3>
-							<p><small>Next due ${soonest ? displayDate(soonest) : "—"}</small></p>
+							<p><small>Next due ${soonest ? displayDate(soonest, getLocale()) : "—"}</small></p>
 							<ul>
 								${rows.map(
 									({ card }) => html`

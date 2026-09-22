@@ -1,7 +1,14 @@
-import { expect, test } from "bun:test";
+import { beforeEach, expect, test } from "bun:test";
 import "#components/cc-statement-list";
 import { buildStatement } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
+
+// Other test files leave the locale singleton set to "th"; pin it so this file's
+// English date assertions do not depend on suite run order.
+beforeEach(() => {
+	setLocale("en");
+});
 
 const card: Card = {
 	id: "kbank",
@@ -54,14 +61,14 @@ test("lists each statement with its dates, purchases, and total", async () => {
 	const element = await mount();
 	const text = element.shadowRoot?.textContent ?? "";
 	expect(text).toContain("18 Sep 2026");
-	expect(text).toContain("3 Oct 2026");
+	expect(text).toContain("03 Oct 2026");
 	expect(text).toContain("fuel");
 	expect(text).toContain("฿350.00");
 });
 
 test("shows a paid statement as paid, with its payment date", async () => {
 	const element = await mount();
-	expect(element.shadowRoot?.textContent).toContain("Paid 1 Sep 2026");
+	expect(element.shadowRoot?.textContent).toContain("Paid 01 Sep 2026");
 });
 
 test("emits mark-paid for an unpaid statement", async () => {

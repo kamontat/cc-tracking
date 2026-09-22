@@ -4,6 +4,7 @@ import { displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { urgencyOf } from "#lib/domain/statement";
 import type { PlainDate, Statement } from "#lib/domain/types";
+import { getLocale } from "#lib/i18n/index";
 
 @customElement("cc-statement-list")
 export class CcStatementList extends LitElement {
@@ -24,12 +25,12 @@ export class CcStatementList extends LitElement {
 					<article data-urgency=${urgencyOf(statement, this.today)}>
 						<header>
 							<strong>${statement.period}</strong>
-							— closes ${displayDate(statement.closeDate)},
-							due ${displayDate(statement.dueDate)}
+							— closes ${displayDate(statement.closeDate, getLocale())},
+							due ${displayDate(statement.dueDate, getLocale())}
 							<br />
 							${
 								statement.paid && statement.payment
-									? html`<small>Paid ${displayDate(statement.payment.paidAt)}</small>
+									? html`<small>Paid ${displayDate(statement.payment.paidAt, getLocale())}</small>
 										<button data-action="unmark-paid" class="secondary"
 											@click=${() =>
 												this.emit("unmark-paid", {
@@ -54,7 +55,7 @@ export class CcStatementList extends LitElement {
 											${statement.purchases.map(
 												(purchase) => html`
 													<tr>
-														<td>${displayDate(purchase.date)}</td>
+														<td>${displayDate(purchase.date, getLocale())}</td>
 														<td>${purchase.note}</td>
 														<td>${formatAmount(purchase.amount)}</td>
 														<td>

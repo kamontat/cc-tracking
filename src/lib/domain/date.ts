@@ -1,21 +1,38 @@
 import type { DateParts, Period, PlainDate } from "#lib/domain/types";
+import type { Locale } from "#lib/i18n/catalog";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD_PATTERN = /^\d{4}-\d{2}$/;
-const MONTH_NAMES = [
-	"Jan",
-	"Feb",
-	"Mar",
-	"Apr",
-	"May",
-	"Jun",
-	"Jul",
-	"Aug",
-	"Sep",
-	"Oct",
-	"Nov",
-	"Dec",
-];
+const MONTH_NAMES: Record<Locale, readonly string[]> = {
+	en: [
+		"Jan",
+		"Feb",
+		"Mar",
+		"Apr",
+		"May",
+		"Jun",
+		"Jul",
+		"Aug",
+		"Sep",
+		"Oct",
+		"Nov",
+		"Dec",
+	],
+	th: [
+		"ม.ค.",
+		"ก.พ.",
+		"มี.ค.",
+		"เม.ย.",
+		"พ.ค.",
+		"มิ.ย.",
+		"ก.ค.",
+		"ส.ค.",
+		"ก.ย.",
+		"ต.ค.",
+		"พ.ย.",
+		"ธ.ค.",
+	],
+};
 const MILLIS_PER_DAY = 86_400_000;
 
 const pad = (value: number, width: number): string =>
@@ -93,9 +110,16 @@ export function today(now: Date = new Date()): PlainDate {
 	}).format(now);
 }
 
-export function displayDate(date: PlainDate): string {
+/**
+ * `dd MMM yyyy` with a padded day and a Gregorian year in both languages.
+ *
+ * `Intl` is deliberately not used: it carries locale data this needs nothing of, and
+ * `th-TH` renders Buddhist Era years, which would print 2569 against a bank statement
+ * that says 2026.
+ */
+export function displayDate(date: PlainDate, locale: Locale): string {
 	const { year, month, day } = parseDate(date);
-	return `${day} ${MONTH_NAMES[month - 1]} ${year}`;
+	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`;
 }
 
 export function periodOf(date: PlainDate): Period {

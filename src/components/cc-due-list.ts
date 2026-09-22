@@ -5,6 +5,7 @@ import { locationLabel } from "#lib/domain/location";
 import { formatAmount } from "#lib/domain/money";
 import { urgencyOf } from "#lib/domain/statement";
 import type { Card, PlainDate, Statement } from "#lib/domain/types";
+import { getLocale } from "#lib/i18n/index";
 
 export type DueRow = { card: Card; statement: Statement };
 
@@ -55,8 +56,8 @@ export class CcDueList extends LitElement {
 									<br /><small>••••${card.last4}</small>
 								</td>
 								<td>${locationLabel(card.location)}</td>
-								<td>${displayDate(statement.closeDate)}</td>
-								<td>${displayDate(statement.dueDate)}<br /><small>${this.when(statement)}</small></td>
+								<td>${displayDate(statement.closeDate, getLocale())}</td>
+								<td>${displayDate(statement.dueDate, getLocale())}<br /><small>${this.when(statement)}</small></td>
 								<td>${formatAmount(statement.total)}</td>
 								<td>
 									${
