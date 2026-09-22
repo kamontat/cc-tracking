@@ -7,19 +7,57 @@ import type { Card, PlainDate, Statement } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
+import { base, controls, dataTable } from "#styles/shared";
 
 export type DueRow = { card: Card; statement: Statement };
 
 @customElement("cc-due-list")
 export class CcDueList extends LitElement {
-	static override styles = css`
-		table { width: 100%; border-collapse: collapse; }
-		td, th { padding: 0.5rem; border-bottom: 1px solid #ddd; text-align: left; }
-		[data-urgency="overdue"] { border-left: 4px solid #b3261e; }
-		[data-urgency="soon"] { border-left: 4px solid #b26a00; }
-		[data-urgency="open"], [data-urgency="future"] { border-left: 4px solid transparent; }
-		small { color: #666; }
-	`;
+	static override styles = [
+		base,
+		controls,
+		dataTable,
+		css`
+			tbody tr {
+				border-left: var(--cc-space-1) solid transparent;
+			}
+
+			tbody tr[data-urgency="overdue"] {
+				border-left-color: var(--cc-urgency-overdue);
+			}
+
+			tbody tr[data-urgency="soon"] {
+				border-left-color: var(--cc-urgency-soon);
+			}
+
+			.badge {
+				display: inline-block;
+				padding: 0 var(--cc-space-1);
+				font-size: var(--cc-text-xs);
+				font-weight: 600;
+				border-radius: var(--cc-radius-sm);
+				color: var(--cc-text-muted);
+			}
+
+			[data-urgency="overdue"] .badge {
+				color: var(--cc-urgency-overdue);
+				background: var(--cc-danger-surface);
+			}
+
+			[data-urgency="soon"] .badge {
+				color: var(--cc-urgency-soon);
+			}
+
+			.card-name {
+				font-weight: 600;
+			}
+
+			td[data-label="Card"] {
+				flex-direction: column;
+				align-items: flex-start;
+			}
+		`,
+	];
 
 	@property({ attribute: false }) rows: DueRow[] = [];
 	@property() today: PlainDate = "";
@@ -50,21 +88,31 @@ export class CcDueList extends LitElement {
 		return html`
 			<table>
 				<thead>
-					<tr><th>${t("due.column.card")}</th><th>${t("due.column.where")}</th><th>${t("due.column.closes")}</th><th>${t("due.column.due")}</th><th>${t("due.column.total")}</th><th></th></tr>
+					<tr>
+						<th>${t("due.column.card")}</th>
+						<th>${t("due.column.where")}</th>
+						<th>${t("due.column.closes")}</th>
+						<th>${t("due.column.due")}</th>
+						<th data-numeric>${t("due.column.total")}</th>
+						<th></th>
+					</tr>
 				</thead>
 				<tbody>
 					${sorted.map(({ card, statement }) => {
 						const urgency = urgencyOf(statement, this.today);
 						return html`
 							<tr data-urgency=${urgency}>
-								<td>
-									<a href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
-									<br /><small>••••${card.last4}</small>
+								<td data-label=${t("due.column.card")}>
+									<a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
+									<small>••••${card.last4}</small>
 								</td>
-								<td>${locationText(card.location)}</td>
-								<td>${displayDate(statement.closeDate, getLocale())}</td>
-								<td>${displayDate(statement.dueDate, getLocale())}<br /><small>${this.when(statement)}</small></td>
-								<td>${formatAmount(statement.total)}</td>
+								<td data-label=${t("due.column.where")}>${locationText(card.location)}</td>
+								<td data-label=${t("due.column.closes")}>${displayDate(statement.closeDate, getLocale())}</td>
+								<td data-label=${t("due.column.due")}>
+									${displayDate(statement.dueDate, getLocale())}
+									<span class="badge">${this.when(statement)}</span>
+								</td>
+								<td data-label=${t("due.column.total")} data-numeric>${formatAmount(statement.total)}</td>
 								<td>
 									${
 										urgency === "future"
