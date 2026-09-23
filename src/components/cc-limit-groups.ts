@@ -1,6 +1,10 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { formatAmount, parseAmount } from "#lib/domain/money";
+import {
+	formatAmount,
+	formatAmountInput,
+	parseAmount,
+} from "#lib/domain/money";
 import type { LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
@@ -105,7 +109,7 @@ export class CcLimitGroups extends LitElement {
 				<label>${t("limits.name")} <input name="groupName" .value=${editing?.name ?? ""}
 					placeholder=${t("limits.namePlaceholder")} required /></label>
 				<label>${t("limits.limit")} <input name="groupLimit" inputmode="decimal"
-					.value=${editing ? String(editing.limit / 100) : ""}
+					.value=${editing ? formatAmountInput(editing.limit) : ""}
 					placeholder=${t("limits.limitPlaceholder")} required /></label>
 				<div class="actions" row>
 					<button type="submit">${editing ? t("limits.save") : t("limits.add")}</button>

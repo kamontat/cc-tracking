@@ -23,6 +23,11 @@ export class CcSpendable extends LitElement {
 				font-weight: 600;
 			}
 
+			.card-id {
+				font-family: var(--cc-font-mono);
+				font-size: var(--cc-text-xs);
+			}
+
 			.group {
 				font-size: var(--cc-text-xs);
 				color: var(--cc-text-muted);
@@ -86,6 +91,7 @@ export class CcSpendable extends LitElement {
 							<tr data-shared=${row.sharedWith > 0 ? "true" : "false"}>
 								<td data-label=${t("spendable.column.card")}>
 									<a class="card-name" href=${`/card?id=${encodeURIComponent(row.card.id)}`}>${row.card.name}</a>
+									<small class="card-id">${row.card.id}</small>
 									${
 										row.sharedWith > 0
 											? html`<small class="group">${t("spendable.shared", {

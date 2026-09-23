@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { formatAmount, parseAmount, sumAmounts } from "#lib/domain/money";
+import {
+	formatAmount,
+	formatAmountInput,
+	parseAmount,
+	sumAmounts,
+} from "#lib/domain/money";
 
 describe("parseAmount", () => {
 	test("reads whole baht", () => {
@@ -35,6 +40,27 @@ describe("formatAmount", () => {
 		expect(formatAmount(123_456)).toBe("฿1,234.56");
 		expect(formatAmount(120_000)).toBe("฿1,200.00");
 		expect(formatAmount(50)).toBe("฿0.50");
+	});
+});
+
+describe("formatAmountInput", () => {
+	test("drops the decimal for a whole baht amount", () => {
+		expect(formatAmountInput(500_000)).toBe("5000");
+	});
+
+	test("keeps two digits of satang when there is a fraction", () => {
+		expect(formatAmountInput(123_456)).toBe("1234.56");
+	});
+
+	test("has no currency symbol or thousands separator", () => {
+		const text = formatAmountInput(1_000_000);
+		expect(text).not.toContain("฿");
+		expect(text).not.toContain(",");
+	});
+
+	test("round-trips through parseAmount", () => {
+		expect(parseAmount(formatAmountInput(123_456))).toBe(123_456);
+		expect(parseAmount(formatAmountInput(500_000))).toBe(500_000);
 	});
 });
 

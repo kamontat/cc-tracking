@@ -52,6 +52,9 @@ export class CcCardForm extends LitElement {
 	@state() private allowPurchase = false;
 	// Once the user has had an opinion about the box, the location select stops having one.
 	@state() private purchaseTouched = false;
+	// Tracked independently of the DOM so a `groups` reshape can be checked against the user's
+	// actual choice -- see willUpdate below.
+	@state() private selectedGroupId = "";
 	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
 	// language switch while an error is on screen re-renders it in the new language too.
 	@state() private errorKey: MessageKey | "" = "";
@@ -62,23 +65,41 @@ export class CcCardForm extends LitElement {
 	}
 
 	override willUpdate(changed: Map<string, unknown>) {
-		if (!changed.has("card")) return;
-		if (this.card) this.kind = this.card.cycle.kind;
-		this.allowPurchase = this.card ? canPurchase(this.card) : false;
-		this.purchaseTouched = false;
+		if (changed.has("card")) {
+			if (this.card) this.kind = this.card.cycle.kind;
+			this.allowPurchase = this.card ? canPurchase(this.card) : false;
+			this.purchaseTouched = false;
+			this.selectedGroupId = this.card?.limitGroupId ?? "";
+			return;
+		}
+		if (!changed.has("groups")) return;
+		// The options come from an unkeyed map, so when `groups` changes shape while the form is
+		// open -- a group added or deleted elsewhere on the same /cards page -- Lit patches the
+		// existing <option> nodes positionally and the browser keeps its `selectedIndex`, which
+		// can silently land the selection on a different group with no `change` event. A
+		// create-in-progress has no `this.card` to reset from, so keep the select's own current
+		// choice, falling back to the empty placeholder when it no longer names a live group.
+		if (!this.groups.some((group) => group.id === this.selectedGroupId)) {
+			this.selectedGroupId = "";
+		}
 	}
 
 	override updated(changed: Map<string, unknown>) {
 		// Only when the edit target changes: doing this on every update would fight the user's
 		// own selection, which re-renders on any @state change.
-		if (!changed.has("card")) return;
-		const select =
-			this.renderRoot.querySelector<HTMLSelectElement>('[name="location"]');
-		if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
+		if (changed.has("card")) {
+			const select =
+				this.renderRoot.querySelector<HTMLSelectElement>('[name="location"]');
+			if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
+		}
+		if (!changed.has("card") && !changed.has("groups")) return;
 		const limitGroup = this.renderRoot.querySelector<HTMLSelectElement>(
 			'[name="limitGroupId"]',
 		);
-		if (limitGroup) limitGroup.value = this.card?.limitGroupId ?? "";
+		// Written from tracked state, not read back from the DOM: by the time this runs, Lit has
+		// already patched the <option> nodes for the new `groups`, so the select's own `.value`
+		// may already have silently drifted onto the wrong option.
+		if (limitGroup) limitGroup.value = this.selectedGroupId;
 	}
 
 	private value(name: string): string {
@@ -161,6 +182,7 @@ export class CcCardForm extends LitElement {
 			const locationSelect =
 				form?.querySelector<HTMLSelectElement>('[name="location"]');
 			if (locationSelect) locationSelect.value = DEFAULT_LOCATION;
+			this.selectedGroupId = "";
 			const limitGroupSelect = form?.querySelector<HTMLSelectElement>(
 				'[name="limitGroupId"]',
 			);
@@ -216,7 +238,10 @@ export class CcCardForm extends LitElement {
 
 				<label>
 					${t("form.limitGroup")}
-					<select name="limitGroupId" required ?disabled=${this.groups.length === 0}>
+					<select name="limitGroupId" required ?disabled=${this.groups.length === 0}
+						@change=${(event: Event) => {
+							this.selectedGroupId = (event.target as HTMLSelectElement).value;
+						}}>
 						<option value="">${t("form.limitGroupNone")}</option>
 						${this.groups.map(
 							(group) => html`<option value=${group.id}>${group.name}</option>`,

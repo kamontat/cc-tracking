@@ -47,6 +47,15 @@ test("shows what is left, the limit it comes from, and both dates", async () => 
 	expect(text).toContain("02 Nov 2026");
 });
 
+test("names the card by both its name and its id", async () => {
+	const element = await mount();
+	const cell = element.shadowRoot?.querySelector("td");
+	expect(cell?.querySelector(".card-name")?.textContent).toContain(
+		"kbank card",
+	);
+	expect(cell?.querySelector(".card-id")?.textContent).toContain("kbank");
+});
+
 test("marks a shared group and says how many other cards hold it", async () => {
 	const element = await mount({ rows: [row({ sharedWith: 2 })] });
 	const shared = element.shadowRoot?.querySelector('[data-shared="true"]');

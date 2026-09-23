@@ -72,6 +72,30 @@ test("marking the statement paid returns its credit", () => {
 	expect(outstandingOf(card(), [old], [payment()], TODAY)).toBe(0);
 });
 
+test("a payment recorded against the still-open period does not hide its purchases", () => {
+	// The open period, given TODAY = 2026-09-23 and a close day of 18, is 2026-10 -- see the
+	// "still open" comment on the purchase-in-the-open-period test above.
+	const openPayment = payment({ period: "2026-10" });
+	expect(outstandingOf(card(), [purchase()], [openPayment], TODAY)).toBe(
+		10_000,
+	);
+});
+
+test("a purchase dated far in the future counts instead of throwing", () => {
+	// closeDay 31 keeps the purchase's own period at 9999-12 -- the far future date this
+	// guards against is the unbounded walk between here and the open period, not a period
+	// whose own math already overflows a four-digit year.
+	const farFutureCard = card({
+		cycle: { kind: "offset", closeDay: 31, dueOffsetDays: 15 },
+	});
+	const distant = purchase({
+		id: "p-far",
+		date: "9999-12-31",
+		amount: 42_000,
+	});
+	expect(outstandingOf(farFutureCard, [distant], [], TODAY)).toBe(42_000);
+});
+
 test("another card's purchases are not this card's debt", () => {
 	const theirs = purchase({ id: "p9", cardId: "scb", amount: 90_000 });
 	expect(outstandingOf(card(), [theirs], [], TODAY)).toBe(0);

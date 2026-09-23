@@ -106,6 +106,34 @@ test("emits mark-paid for an unpaid statement", async () => {
 	expect(detail).toEqual({ cardId: "kbank", period: "2026-09" });
 });
 
+test("offers no mark-paid on the still-open statement, but keeps it on a closed unpaid one", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-statement-list");
+	element.statements = [
+		// Closes 18 Sep; "today" below is before that, so this period is still open.
+		buildStatement(card, "2026-09", purchases),
+		// Closes 18 Aug, long since past, unpaid.
+		buildStatement(card, "2026-08", purchases),
+	];
+	element.today = "2026-09-10";
+	document.body.append(element);
+	await element.updateComplete;
+
+	const openArticle = [
+		...(element.shadowRoot?.querySelectorAll("article") ?? []),
+	].find((article) => article.getAttribute("data-urgency") === "future");
+	const closedArticle = [
+		...(element.shadowRoot?.querySelectorAll("article") ?? []),
+	].find((article) => article.getAttribute("data-urgency") !== "future");
+
+	expect(openArticle?.querySelector("[data-action='mark-paid']")).toBeNull();
+	expect(openArticle?.textContent).toContain("still open");
+	expect(
+		closedArticle?.querySelector("[data-action='mark-paid']"),
+	).not.toBeNull();
+});
+
 test("emits unmark-paid for a paid statement", async () => {
 	const element = await mount();
 	let detail: { cardId: string; period: string } | undefined;

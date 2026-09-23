@@ -19,6 +19,20 @@ export function formatAmount(satang: number): string {
 	return `${sign}฿${baht}.${String(absolute % 100).padStart(2, "0")}`;
 }
 
+/**
+ * The inverse of `parseAmount`: satang as plain baht text for an `<input>` -- no currency
+ * symbol, no thousands separator -- since `parseAmount` reads the same field back.
+ */
+export function formatAmountInput(satang: number): string {
+	const sign = satang < 0 ? "-" : "";
+	const absolute = Math.abs(satang);
+	const baht = Math.floor(absolute / 100);
+	const remainder = absolute % 100;
+	return remainder === 0
+		? `${sign}${baht}`
+		: `${sign}${baht}.${String(remainder).padStart(2, "0")}`;
+}
+
 export function sumAmounts(values: number[]): number {
 	return values.reduce((total, value) => total + value, 0);
 }

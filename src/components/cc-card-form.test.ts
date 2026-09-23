@@ -88,6 +88,52 @@ test("opens an existing card on its stored group", async () => {
 	).toBe("pool");
 });
 
+test("keeps the chosen limit group in place when the group list reshapes under the open form", async () => {
+	const threeGroups: LimitGroup[] = [
+		{ id: "a", name: "Group A", limit: 100_000 },
+		{ id: "b", name: "Group B", limit: 200_000 },
+		{ id: "c", name: "Group C", limit: 300_000 },
+	];
+	const element = await mount(null, threeGroups);
+
+	const select = element.shadowRoot?.querySelector<HTMLSelectElement>(
+		'[name="limitGroupId"]',
+	);
+	if (!select) throw new Error("no limit group select");
+	select.value = "b";
+	select.dispatchEvent(new Event("change", { bubbles: true }));
+	await element.updateComplete;
+
+	// A fourth group is inserted ahead of "b", so a group named "d" now occupies the array
+	// position "b" used to hold. The options render from an unkeyed map, so without a fix Lit
+	// patches the existing <option> nodes positionally and the browser's native selection
+	// silently lands on "d" -- no `change` event fires -- while the user actually chose "b".
+	element.groups = [
+		threeGroups[0] as LimitGroup,
+		{ id: "d", name: "Group D", limit: 400_000 },
+		threeGroups[1] as LimitGroup,
+		threeGroups[2] as LimitGroup,
+	];
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>(
+			'[name="limitGroupId"]',
+		)?.value,
+	).toBe("b");
+
+	// "b" is now deleted outright, with nothing left behind at its old slot -- the selection
+	// must fall back to the empty placeholder, not silently adopt whatever group ends up there.
+	element.groups = [threeGroups[0] as LimitGroup, threeGroups[2] as LimitGroup];
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>(
+			'[name="limitGroupId"]',
+		)?.value,
+	).toBe("");
+});
+
 test("disables the selector and says where to go when no group exists", async () => {
 	const element = await mount(null, []);
 	const field = element.shadowRoot?.querySelector<HTMLSelectElement>(

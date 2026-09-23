@@ -1,11 +1,9 @@
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import { addPeriods, comparePeriods } from "#lib/domain/date";
 import { buildStatement, openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	LimitGroup,
-	Period,
 	PlainDate,
 	Purchase,
 	StatementPayment,
@@ -29,9 +27,17 @@ export type SpendRow = {
 /**
  * What this card still owes: every purchase on a statement with no payment against it.
  *
- * The open period counts. Money spent this cycle is gone from the limit the moment it is
- * spent, and only comes back when that statement is marked paid -- which is also the only
- * way credit is ever returned, since a payment records no amount of its own.
+ * The open period always counts, payment or not: it is the cycle still being spent on, and
+ * only once it closes -- becoming a past period -- does a payment against it return the
+ * credit normally. A payment shouldn't exist against a period still open, but stored or
+ * imported data could carry one anyway, and honouring it would hide every purchase made this
+ * cycle from the available-credit total -- the one direction this feature must not be wrong in.
+ *
+ * Sums only the distinct periods that actually carry a purchase for this card, plus the open
+ * period, rather than walking every period from the earliest purchase through today. An empty
+ * period contributes zero either way, so the total is identical, but a purchase dated far in
+ * the future -- imported data can hold one the form would refuse -- no longer means walking
+ * (and risking overflowing `Period`'s four-digit year on) thousands of empty months to reach it.
  */
 export function outstandingOf(
 	card: Card,
@@ -40,26 +46,20 @@ export function outstandingOf(
 	today: PlainDate,
 ): number {
 	const mine = purchases.filter((purchase) => purchase.cardId === card.id);
-	const periods = mine.map((purchase) =>
-		periodOfPurchase(card.cycle, purchase.date),
-	);
 	const open = openPeriod(card, today);
-	const sorted = [...periods].sort(comparePeriods);
-	const first = sorted[0];
-	const last = sorted[sorted.length - 1];
-
-	// Imported data can hold a future-dated purchase the form would refuse, so walk past the
-	// open period when one exists rather than silently dropping what it owes.
-	let period: Period = first && comparePeriods(first, open) < 0 ? first : open;
-	const end: Period = last && comparePeriods(last, open) > 0 ? last : open;
+	const periods = new Set(
+		mine.map((purchase) => periodOfPurchase(card.cycle, purchase.date)),
+	);
+	periods.add(open);
 
 	let total = 0;
-	while (comparePeriods(period, end) <= 0) {
+	for (const period of periods) {
 		const paid = payments.some(
 			(payment) => payment.cardId === card.id && payment.period === period,
 		);
-		if (!paid) total += buildStatement(card, period, mine).total;
-		period = addPeriods(period, 1);
+		if (period === open || !paid) {
+			total += buildStatement(card, period, mine).total;
+		}
 	}
 	return total;
 }

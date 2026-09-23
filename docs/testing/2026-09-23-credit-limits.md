@@ -12,7 +12,7 @@ The automated suite (`bun test`, 350 tests) already covers the arithmetic —
 outstanding balances, shared pools, paid statements returning credit,
 over-limit and archived-card edge cases — and the component rendering. What
 is worth a human's eye is the part it cannot see: how the two new panels
-look, and whether cards saved before this feature behaves sanely once it
+look, and whether cards saved before this feature behave sanely once it
 exists.
 
 ## What is new
