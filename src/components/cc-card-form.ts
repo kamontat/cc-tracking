@@ -1,7 +1,7 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { canPurchase, PURCHASE_LOCATION } from "#lib/domain/card";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
+import { DEFAULT_OWNER, OWNERS, ownerOf, toOwner } from "#lib/domain/owner";
 import type { Card, CycleRule, LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
@@ -49,9 +49,7 @@ export class CcCardForm extends LitElement {
 	@property({ attribute: false }) groups: LimitGroup[] = [];
 
 	@state() private kind: CycleRule["kind"] = "offset";
-	@state() private allowPurchase = false;
-	// Once the user has had an opinion about the box, the location select stops having one.
-	@state() private purchaseTouched = false;
+	@state() private supplementary = false;
 	// Tracked independently of the DOM so a `groups` reshape can be checked against the user's
 	// actual choice -- see willUpdate below.
 	@state() private selectedGroupId = "";
@@ -67,8 +65,7 @@ export class CcCardForm extends LitElement {
 	override willUpdate(changed: Map<string, unknown>) {
 		if (changed.has("card")) {
 			if (this.card) this.kind = this.card.cycle.kind;
-			this.allowPurchase = this.card ? canPurchase(this.card) : false;
-			this.purchaseTouched = false;
+			this.supplementary = this.card?.supplementary ?? false;
 			this.selectedGroupId = this.card?.limitGroupId ?? "";
 			return;
 		}
@@ -91,6 +88,9 @@ export class CcCardForm extends LitElement {
 			const select =
 				this.renderRoot.querySelector<HTMLSelectElement>('[name="location"]');
 			if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
+			const owner =
+				this.renderRoot.querySelector<HTMLSelectElement>('[name="owner"]');
+			if (owner) owner.value = this.card ? ownerOf(this.card) : DEFAULT_OWNER;
 		}
 		if (!changed.has("card") && !changed.has("groups")) return;
 		const limitGroup = this.renderRoot.querySelector<HTMLSelectElement>(
@@ -124,6 +124,8 @@ export class CcCardForm extends LitElement {
 		}
 		const location = toLocation(this.value("location"));
 		if (!location) return this.fail("form.error.location");
+		const owner = toOwner(this.value("owner"));
+		if (!owner) return this.fail("form.error.owner");
 
 		let cycle: CycleRule;
 		if (this.kind === "offset") {
@@ -154,10 +156,11 @@ export class CcCardForm extends LitElement {
 			name: this.value("name"),
 			last4,
 			location,
+			owner,
+			supplementary: this.supplementary,
 			cycle,
 			comment: this.value("comment"),
 			archived: this.card?.archived ?? false,
-			canPurchase: this.allowPurchase,
 			limitGroupId,
 		};
 		this.dispatchEvent(new CustomEvent<Card>("save", { detail: card }));
@@ -173,8 +176,7 @@ export class CcCardForm extends LitElement {
 			const form = this.renderRoot.querySelector("form");
 			form?.reset();
 			this.kind = "offset";
-			this.allowPurchase = false;
-			this.purchaseTouched = false;
+			this.supplementary = false;
 			const offsetRadio = form?.querySelector<HTMLInputElement>(
 				'[name="kind"][value="offset"]',
 			);
@@ -182,6 +184,9 @@ export class CcCardForm extends LitElement {
 			const locationSelect =
 				form?.querySelector<HTMLSelectElement>('[name="location"]');
 			if (locationSelect) locationSelect.value = DEFAULT_LOCATION;
+			const ownerSelect =
+				form?.querySelector<HTMLSelectElement>('[name="owner"]');
+			if (ownerSelect) ownerSelect.value = DEFAULT_OWNER;
 			this.selectedGroupId = "";
 			const limitGroupSelect = form?.querySelector<HTMLSelectElement>(
 				'[name="limitGroupId"]',
@@ -192,23 +197,6 @@ export class CcCardForm extends LitElement {
 
 	private fail(key: MessageKey) {
 		this.errorKey = key;
-	}
-
-	/**
-	 * A card being created follows its location until the user says otherwise: the Krabi cards
-	 * are the ones purchases are entered against today, so the box arrives already ticked for
-	 * them. An existing card is left alone -- its stored answer is the user's, not the
-	 * location's, and moving a card must not silently revoke it.
-	 */
-	private onLocationInput(event: Event) {
-		if (this.card || this.purchaseTouched) return;
-		this.allowPurchase =
-			(event.target as HTMLSelectElement).value === PURCHASE_LOCATION;
-	}
-
-	private onPurchaseChange(event: Event) {
-		this.allowPurchase = (event.target as HTMLInputElement).checked;
-		this.purchaseTouched = true;
 	}
 
 	override render() {
@@ -228,12 +216,28 @@ export class CcCardForm extends LitElement {
 				<label>${t("form.last4")} <input name="last4" inputmode="numeric" .value=${card?.last4 ?? ""} required /></label>
 				<label>
 					${t("form.location")}
-					<select name="location" required @input=${this.onLocationInput}>
+					<select name="location" required>
 						${LOCATIONS.map(
 							(value) =>
 								html`<option value=${value}>${locationText(value)}</option>`,
 						)}
 					</select>
+				</label>
+
+				<label>
+					${t("form.owner")}
+					<select name="owner" required>
+						${OWNERS.map((value) => html`<option value=${value}>${value}</option>`)}
+					</select>
+				</label>
+
+				<label>
+					<input type="checkbox" name="supplementary"
+						.checked=${this.supplementary}
+						@change=${(event: Event) => {
+							this.supplementary = (event.target as HTMLInputElement).checked;
+						}} />
+					${t("form.supplementary")}
 				</label>
 
 				<label>
@@ -248,13 +252,6 @@ export class CcCardForm extends LitElement {
 						)}
 					</select>
 					${this.groups.length === 0 ? html`<small>${t("form.limitGroupEmpty")}</small>` : nothing}
-				</label>
-
-				<label>
-					<input type="checkbox" name="canPurchase"
-						.checked=${this.allowPurchase}
-						@change=${this.onPurchaseChange} />
-					${t("form.canPurchase")}
 				</label>
 
 				<fieldset>

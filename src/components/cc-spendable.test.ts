@@ -11,7 +11,6 @@ const card = (id: string): Card => ({
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
-	canPurchase: true,
 	limitGroupId: "pool",
 });
 
@@ -32,6 +31,7 @@ const mount = async (overrides: Record<string, unknown> = {}) => {
 	const element = document.createElement("cc-spendable");
 	element.rows = [row()];
 	element.unassigned = 0;
+	element.today = "2026-10-16";
 	Object.assign(element, overrides);
 	document.body.append(element);
 	await element.updateComplete;
@@ -45,6 +45,35 @@ test("shows what is left, the limit it comes from, and both dates", async () => 
 	expect(text).toContain("฿5,000.00");
 	expect(text).toContain("18 Oct 2026");
 	expect(text).toContain("02 Nov 2026");
+});
+
+test("says how far off each date is, beside the date itself", async () => {
+	const element = await mount();
+	const closes = element.shadowRoot?.querySelector('[data-field="closes"]');
+	const due = element.shadowRoot?.querySelector('[data-field="due"]');
+	expect(closes?.textContent).toContain("18 Oct 2026");
+	expect(closes?.querySelector(".badge")?.textContent).toContain("in 2 days");
+	expect(due?.textContent).toContain("02 Nov 2026");
+	expect(due?.querySelector(".badge")?.textContent).toContain("in 17 days");
+});
+
+test("names today rather than counting zero days to it", async () => {
+	const element = await mount({ today: "2026-10-18" });
+	const closes = element.shadowRoot?.querySelector('[data-field="closes"]');
+	expect(closes?.querySelector(".badge")?.textContent).toContain("today");
+});
+
+test("counts backward for a close date already past", async () => {
+	const element = await mount({ today: "2026-10-21" });
+	const closes = element.shadowRoot?.querySelector('[data-field="closes"]');
+	expect(closes?.querySelector(".badge")?.textContent).toContain("3 days ago");
+});
+
+test("leaves the badges off when no date to count from was given", async () => {
+	const element = await mount({ today: "" });
+	const closes = element.shadowRoot?.querySelector('[data-field="closes"]');
+	expect(closes?.textContent).toContain("18 Oct 2026");
+	expect(closes?.querySelector(".badge")).toBeNull();
 });
 
 test("names the card by both its name and its id", async () => {

@@ -164,10 +164,11 @@ test("emits a complete card with an offset rule", async () => {
 		name: "KBank Visa",
 		last4: "4821",
 		location: "krabi",
+		owner: "KC",
+		supplementary: false,
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		comment: "",
 		archived: false,
-		canPurchase: true,
 		limitGroupId: "pool",
 	});
 });
@@ -305,12 +306,28 @@ test("clears the form after a successful create so the next card starts blank", 
 		name: "SCB Mastercard",
 		last4: "1234",
 		location: "bangkok",
+		owner: "KC",
+		supplementary: false,
 		cycle: { kind: "offset", closeDay: 20, dueOffsetDays: 10 },
 		comment: "",
 		archived: false,
-		canPurchase: false,
 		limitGroupId: "pool",
 	});
+});
+
+test("shows a four-digit example in the id field, in both languages", async () => {
+	setLocale("en");
+	const element = await mount();
+	const field =
+		element.shadowRoot?.querySelector<HTMLInputElement>('[name="id"]');
+	expect(field?.placeholder).toBe("0001");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(
+		element.shadowRoot?.querySelector<HTMLInputElement>('[name="id"]')
+			?.placeholder,
+	).toBe("0001");
 });
 
 test("locks the id when editing an existing card", async () => {
@@ -391,90 +408,177 @@ test("renders its labels and location options in the chosen language", async () 
 	expect(element.shadowRoot?.textContent).toContain("กรุงเทพฯ");
 });
 
-test("lets a new card kept at Krabi take purchases without the user ticking anything", async () => {
+test("no longer asks whether the card may take purchases -- that moved to settings", async () => {
 	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
-
-	fill(element, "id", "kbank");
-	fill(element, "name", "KBank Visa");
-	fill(element, "last4", "4821");
-	fill(element, "location", "krabi");
-	fill(element, "closeDay", "18");
-	fill(element, "dueOffsetDays", "15");
-	fill(element, "limitGroupId", "pool");
-	submit(element);
-
-	expect(saved?.canPurchase).toBe(true);
+	expect(element.shadowRoot?.querySelector('[name="canPurchase"]')).toBeNull();
 });
 
-test("keeps the ticked box when the location changes afterwards", async () => {
+test("offers exactly the three owners, by their initials in both languages", async () => {
+	setLocale("en");
 	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
+	const options = [
+		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="owner"] option',
+		) ?? []),
+	];
 
-	const box = element.shadowRoot?.querySelector<HTMLInputElement>(
-		'[name="canPurchase"]',
-	);
-	box?.click();
+	expect(options.map((option) => option.value)).toEqual(["KC", "NT", "RI"]);
+	expect(options.map((option) => option.textContent?.trim())).toEqual([
+		"KC",
+		"NT",
+		"RI",
+	]);
+
+	setLocale("th");
 	await element.updateComplete;
+	expect(
+		[
+			...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+				'[name="owner"] option',
+			) ?? []),
+		].map((option) => option.textContent?.trim()),
+	).toEqual(["KC", "NT", "RI"]);
+});
 
-	fill(element, "id", "scb");
-	fill(element, "name", "SCB Mastercard");
-	fill(element, "last4", "1234");
-	fill(element, "location", "phichit");
-	fill(element, "closeDay", "18");
-	fill(element, "dueOffsetDays", "15");
+test("defaults a new card to KC without the user touching the field", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	fillCard(element);
 	fill(element, "limitGroupId", "pool");
 	submit(element);
 
-	expect(saved?.canPurchase).toBe(true);
+	expect(saved?.owner).toBe("KC");
 });
 
-test("shows the edited card's own answer, and saves it back untouched", async () => {
+test("carries the chosen owner in the saved card", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	fillCard(element);
+	fill(element, "owner", "RI");
+	fill(element, "limitGroupId", "pool");
+	submit(element);
+
+	expect(saved?.owner).toBe("RI");
+});
+
+test("shows the edited card's own owner", async () => {
+	const element = await mount({
+		id: "scb",
+		name: "SCB",
+		last4: "1234",
+		location: "phichit",
+		owner: "NT",
+		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
+		archived: false,
+	});
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
+			?.value,
+	).toBe("NT");
+});
+
+test("shows a card stored before the owner field existed as belonging to KC", async () => {
+	const element = await mount({
+		id: "scb",
+		name: "SCB",
+		last4: "1234",
+		location: "phichit",
+		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
+		archived: false,
+	});
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
+			?.value,
+	).toBe("KC");
+});
+
+test("saves a card as supplementary only when the box is ticked", async () => {
+	const element = await mount();
+	const saves: Card[] = [];
+	element.addEventListener("save", (event) => {
+		saves.push((event as CustomEvent<Card>).detail);
+	});
+
+	fillCard(element);
+	fill(element, "limitGroupId", "pool");
+	submit(element);
+	await element.updateComplete;
+	expect(saves[0]?.supplementary).toBe(false);
+
+	element.shadowRoot
+		?.querySelector<HTMLInputElement>('[name="supplementary"]')
+		?.click();
+	await element.updateComplete;
+	fillCard(element);
+	fill(element, "limitGroupId", "pool");
+	submit(element);
+
+	expect(saves[1]?.supplementary).toBe(true);
+});
+
+test("shows the edited card's supplementary answer, and saves it back untouched", async () => {
 	const element = await mount({
 		id: "scb",
 		name: "SCB",
 		last4: "1234",
 		location: "bangkok",
+		owner: "NT",
+		supplementary: true,
 		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
 		archived: false,
-		canPurchase: true,
 	});
 	let saved: Card | undefined;
 	element.addEventListener("save", (event) => {
 		saved = (event as CustomEvent<Card>).detail;
 	});
 
-	const box = element.shadowRoot?.querySelector<HTMLInputElement>(
-		'[name="canPurchase"]',
-	);
-	expect(box?.checked).toBe(true);
+	expect(
+		element.shadowRoot?.querySelector<HTMLInputElement>(
+			'[name="supplementary"]',
+		)?.checked,
+	).toBe(true);
 
 	fill(element, "limitGroupId", "pool");
 	submit(element);
-	expect(saved?.canPurchase).toBe(true);
+	expect(saved?.supplementary).toBe(true);
 });
 
-test("shows a Krabi card that was turned off as turned off", async () => {
-	const element = await mount({
-		id: "scb",
-		name: "SCB",
-		last4: "1234",
-		location: "krabi",
-		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
-		archived: false,
-		canPurchase: false,
+test("clears the owner and the supplementary box after a create", async () => {
+	const element = await mount();
+	const saves: Card[] = [];
+	element.addEventListener("save", (event) => {
+		saves.push((event as CustomEvent<Card>).detail);
 	});
 
-	const box = element.shadowRoot?.querySelector<HTMLInputElement>(
-		'[name="canPurchase"]',
-	);
-	expect(box?.checked).toBe(false);
+	fill(element, "owner", "RI");
+	element.shadowRoot
+		?.querySelector<HTMLInputElement>('[name="supplementary"]')
+		?.click();
+	await element.updateComplete;
+	fillCard(element);
+	fill(element, "limitGroupId", "pool");
+	submit(element);
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
+			?.value,
+	).toBe("KC");
+	expect(
+		element.shadowRoot?.querySelector<HTMLInputElement>(
+			'[name="supplementary"]',
+		)?.checked,
+	).toBe(false);
 });
 
 test("renders cancel as a quiet button beside the submit", async () => {

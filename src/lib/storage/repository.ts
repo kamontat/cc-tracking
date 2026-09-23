@@ -1,3 +1,4 @@
+import { defaultSettings, type Settings } from "#lib/domain/settings";
 import type {
 	Card,
 	LimitGroup,
@@ -35,6 +36,10 @@ export interface Repository {
 	listLimitGroups(): Promise<LimitGroup[]>;
 	saveLimitGroup(group: LimitGroup): Promise<void>;
 	deleteLimitGroup(id: string): Promise<void>;
+
+	/** The stored settings, or `DEFAULT_SETTINGS` when nothing has been saved yet. */
+	getSettings(): Promise<Settings>;
+	saveSettings(settings: Settings): Promise<void>;
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -45,6 +50,7 @@ export class InMemoryRepository implements Repository {
 	private purchases = new Map<string, Purchase>();
 	private payments = new Map<string, StatementPayment>();
 	private limitGroups = new Map<string, LimitGroup>();
+	private settings: Settings | null = null;
 
 	async listCards(): Promise<Card[]> {
 		return [...this.cards.values()]
@@ -122,5 +128,13 @@ export class InMemoryRepository implements Repository {
 
 	async deleteLimitGroup(id: string): Promise<void> {
 		this.limitGroups.delete(id);
+	}
+
+	async getSettings(): Promise<Settings> {
+		return this.settings ? clone(this.settings) : defaultSettings();
+	}
+
+	async saveSettings(settings: Settings): Promise<void> {
+		this.settings = clone(settings);
 	}
 }

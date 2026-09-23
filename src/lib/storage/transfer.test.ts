@@ -274,6 +274,125 @@ describe("parseBackup", () => {
 	});
 });
 
+describe("settings in a backup", () => {
+	test("exports the stored settings alongside everything else", async () => {
+		const repo = await populated();
+		await repo.saveSettings({ purchaseLocations: ["bangkok", "krabi"] });
+		const backup = await exportBackup(repo);
+
+		expect(backup.version).toBe(2);
+		expect(backup.settings).toEqual({
+			purchaseLocations: ["bangkok", "krabi"],
+		});
+	});
+
+	test("restores them on import", async () => {
+		const repo = await populated();
+		await repo.saveSettings({ purchaseLocations: ["phichit"] });
+		const restored = new InMemoryRepository();
+		await importBackup(restored, await exportBackup(repo));
+
+		expect(await restored.getSettings()).toEqual({
+			purchaseLocations: ["phichit"],
+		});
+	});
+
+	test("an older file carrying no settings still imports, leaving them untouched", async () => {
+		const restored = new InMemoryRepository();
+		await restored.saveSettings({ purchaseLocations: ["bangkok"] });
+		const parsed = parseBackup(
+			JSON.stringify({
+				version: 2,
+				exportedAt: "2026-09-23T00:00:00.000Z",
+				limitGroups: [],
+				cards: [],
+				purchases: [],
+				payments: [],
+			}),
+		);
+		await importBackup(restored, parsed);
+
+		expect(parsed.settings).toBeUndefined();
+		expect(await restored.getSettings()).toEqual({
+			purchaseLocations: ["bangkok"],
+		});
+	});
+
+	test("drops a stored location the closed set does not recognise", () => {
+		const parsed = parseBackup(
+			JSON.stringify({
+				version: 2,
+				exportedAt: "2026-09-23T00:00:00.000Z",
+				limitGroups: [],
+				cards: [],
+				purchases: [],
+				payments: [],
+				settings: { purchaseLocations: ["krabi", "chiang-mai"] },
+			}),
+		);
+		expect(parsed.settings).toEqual({ purchaseLocations: ["krabi"] });
+	});
+
+	test("reads settings that are not an object as none at all", () => {
+		const parsed = parseBackup(
+			JSON.stringify({
+				version: 2,
+				exportedAt: "2026-09-23T00:00:00.000Z",
+				limitGroups: [],
+				cards: [],
+				purchases: [],
+				payments: [],
+				settings: "krabi",
+			}),
+		);
+		expect(parsed.settings).toBeUndefined();
+	});
+});
+
+describe("owner in a backup", () => {
+	test("keeps a known owner", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [],
+			cards: [sampleCard({ owner: "RI" })],
+			purchases: [],
+			payments: [],
+		});
+		expect(parseBackup(text).cards[0]?.owner).toBe("RI");
+	});
+
+	test("rejects an owner outside the closed set", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [],
+			cards: [{ ...sampleCard(), owner: "ZZ" }],
+			purchases: [],
+			payments: [],
+		});
+		const failure = captureThrow(() => parseBackup(text));
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).params).toEqual({
+			index: 1,
+			problem: "backup.problem.badOwner",
+		});
+	});
+
+	test("accepts a card written before the owner field existed", () => {
+		const { owner: _owner, ...legacy } = sampleCard();
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [],
+			cards: [legacy],
+			purchases: [],
+			payments: [],
+		});
+		expect(parseBackup(text).cards).toHaveLength(1);
+	});
+});
+
 describe("importBackup", () => {
 	test("restores everything into an empty repository", async () => {
 		const backup = await exportBackup(await populated());

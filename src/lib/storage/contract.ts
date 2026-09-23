@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
+import type { Location } from "#lib/domain/location";
+import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type {
 	Card,
 	LimitGroup,
@@ -12,6 +14,8 @@ export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
+	owner: "KC",
+	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
 	...overrides,
@@ -310,6 +314,47 @@ export function repositoryContract(
 			const [group] = await repo.listLimitGroups();
 			if (group) group.name = "mutated";
 			expect((await repo.listLimitGroups())[0]?.name).toBe("KBank account");
+		});
+
+		test("reads the default settings before anything is saved", async () => {
+			expect(await repo.getSettings()).toEqual(DEFAULT_SETTINGS);
+		});
+
+		test("saves and reads settings back whole", async () => {
+			const settings = {
+				purchaseLocations: ["bangkok", "krabi"] as Location[],
+			};
+			await repo.saveSettings(settings);
+			expect(await repo.getSettings()).toEqual(settings);
+		});
+
+		test("saving settings replaces them rather than merging", async () => {
+			await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+			await repo.saveSettings({ purchaseLocations: ["phichit"] });
+			expect(await repo.getSettings()).toEqual({
+				purchaseLocations: ["phichit"],
+			});
+		});
+
+		test("an empty list of purchase locations survives a round trip", async () => {
+			await repo.saveSettings({ purchaseLocations: [] });
+			expect(await repo.getSettings()).toEqual({ purchaseLocations: [] });
+		});
+
+		test("the default settings handed out are a copy, not the shared constant", async () => {
+			const settings = await repo.getSettings();
+			settings.purchaseLocations.push("bangkok");
+			expect(await repo.getSettings()).toEqual(DEFAULT_SETTINGS);
+			expect(DEFAULT_SETTINGS.purchaseLocations).toEqual(["krabi"]);
+		});
+
+		test("returned settings are copies, not live references", async () => {
+			await repo.saveSettings({ purchaseLocations: ["krabi"] });
+			const settings = await repo.getSettings();
+			settings.purchaseLocations.push("bangkok");
+			expect(await repo.getSettings()).toEqual({
+				purchaseLocations: ["krabi"],
+			});
 		});
 	});
 }

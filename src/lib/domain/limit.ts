@@ -1,5 +1,6 @@
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
+import type { Settings } from "#lib/domain/settings";
 import { buildStatement, openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
@@ -93,6 +94,7 @@ export function spendableRows(
 	purchases: Purchase[],
 	payments: StatementPayment[],
 	today: PlainDate,
+	settings: Settings,
 ): SpendRow[] {
 	const members = new Map<string, number>();
 	for (const card of cards) {
@@ -107,7 +109,7 @@ export function spendableRows(
 	);
 
 	return cards
-		.filter((card) => !card.archived && canPurchase(card))
+		.filter((card) => !card.archived && canPurchase(card, settings))
 		.flatMap((card) => {
 			const group = groups.find(({ id }) => id === card.limitGroupId);
 			if (!group) return [];

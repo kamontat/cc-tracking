@@ -15,6 +15,7 @@ import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { spendableRows, unassignedCards } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
+import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
 import type {
 	Card,
@@ -34,6 +35,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	let groups: LimitGroup[] = [];
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
+	let settings: Settings = DEFAULT_SETTINGS;
 	// Carries the card and period a purchase landed on, not a resolved sentence: paint()
 	// resolves it every time, so a language switch re-renders the confirmation instead of
 	// leaving it frozen in whatever language it was written in (or clearing it outright).
@@ -48,6 +50,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 		fetch: async () => {
 			cards = await repo.listCards();
 			groups = await repo.listLimitGroups();
+			settings = await repo.getSettings();
 			purchases = (
 				await Promise.all(cards.map((card) => repo.listPurchases(card.id)))
 			).flat();
@@ -81,9 +84,14 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			const { cardId, date, amount, note } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
 			if (!card) return;
-			const row = spendableRows(cards, groups, purchases, payments, now).find(
-				(candidate) => candidate.card.id === cardId,
-			);
+			const row = spendableRows(
+				cards,
+				groups,
+				purchases,
+				payments,
+				now,
+				settings,
+			).find((candidate) => candidate.card.id === cardId);
 			await repo.savePurchase({
 				id: crypto.randomUUID(),
 				cardId,
@@ -110,7 +118,14 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 		}));
 
 	const paint = () => {
-		const spendable = spendableRows(cards, groups, purchases, payments, now);
+		const spendable = spendableRows(
+			cards,
+			groups,
+			purchases,
+			payments,
+			now,
+			settings,
+		);
 		const over =
 			confirmedPurchase && confirmedPurchase.over > 0
 				? ` ${t("dashboard.answerOver", {
@@ -138,6 +153,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					<cc-spendable
 						.rows=${spendable}
 						.unassigned=${unassignedCards(cards, groups).length}
+						.today=${now}
 					></cc-spendable>
 				</article>
 				<div class="split">
@@ -147,7 +163,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					</article>
 					<article class="split__aside split__aside--lead">
 						<h2>${t("dashboard.addPurchase")}</h2>
-						<cc-quick-add .cards=${visible().filter(canPurchase)} .rows=${spendable} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
+						<cc-quick-add .cards=${visible().filter((entry) => canPurchase(entry, settings))} .rows=${spendable} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 					</article>
 				</div>
 				<article>
