@@ -200,4 +200,15 @@ export const en = {
 	"limits.inUse": "{count} cards use this group",
 	"limits.error.name": "Give the limit group a name.",
 	"limits.error.limit": "Enter the limit in baht, like 300000.",
+
+	"spendable.title": "Can spend now",
+	"spendable.column.card": "Card",
+	"spendable.column.available": "Available",
+	"spendable.column.closes": "Closes",
+	"spendable.column.due": "Due",
+	"spendable.of": "of {limit}",
+	"spendable.shared": "{name}, shared with {count} more",
+	"spendable.empty": "No card here can take a purchase.",
+	"spendable.unassigned": "{count} cards have no limit group yet.",
+	"spendable.unassignedAction": "Assign them",
 } as const;

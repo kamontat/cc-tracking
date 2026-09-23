@@ -271,6 +271,57 @@ test("marking paid freezes the dates of the event's own period, not whatever nex
 	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, newerPeriod));
 });
 
+test("the panel lists spendable cards and counts those with no group", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+	const { limitGroupId: _limitGroupId, ...noGroupCard } = quickAddCard;
+	await repo.saveCard({ ...noGroupCard, id: "nogroup" });
+
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const panel = root.querySelector("cc-spendable");
+	expect(panel?.rows.map((row) => row.card.id)).toEqual([quickAddCard.id]);
+	expect(panel?.unassigned).toBe(1);
+});
+
+test("an archived card's unpaid balance still holds down the group it shares", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+	await repo.saveCard({
+		...quickAddCard,
+		id: "retired",
+		archived: true,
+		limitGroupId: "pool",
+	});
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "retired",
+		date: today(),
+		amount: 150_000,
+		note: "old",
+	});
+
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const panel = root.querySelector("cc-spendable");
+	expect(panel?.rows).toHaveLength(1);
+	expect(panel?.rows[0]?.available).toBe(350_000);
+});
+
 test("renders its heading in the chosen language", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();

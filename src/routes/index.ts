@@ -6,14 +6,21 @@ import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
 import "#components/cc-location-groups";
 import "#components/cc-quick-add";
+import "#components/cc-spendable";
 import { html, render } from "lit";
 import type { DueRow } from "#components/cc-due-list";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
+import { spendableRows, unassignedCards } from "#lib/domain/limit";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type {
+	Card,
+	LimitGroup,
+	Purchase,
+	StatementPayment,
+} from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
@@ -23,6 +30,7 @@ import { createPageState } from "#lib/ui/page-state";
 export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	const now = today();
 	let cards: Card[] = [];
+	let groups: LimitGroup[] = [];
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
 	// Carries the card and period a purchase landed on, not a resolved sentence: paint()
@@ -32,7 +40,8 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 
 	const state = createPageState({
 		fetch: async () => {
-			cards = (await repo.listCards()).filter((card) => !card.archived);
+			cards = await repo.listCards();
+			groups = await repo.listLimitGroups();
 			purchases = (
 				await Promise.all(cards.map((card) => repo.listPurchases(card.id)))
 			).flat();
@@ -77,8 +86,11 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			confirmedPurchase = { card, period };
 		}, "dashboard.error.addPurchase");
 
+	/** Cards the page shows. Archived ones are still loaded: they weigh on a shared limit. */
+	const visible = (): Card[] => cards.filter((card) => !card.archived);
+
 	const rows = (): DueRow[] =>
-		cards.map((card) => ({
+		visible().map((card) => ({
 			card,
 			statement: nextActionable(card, purchases, payments, now),
 		}));
@@ -100,6 +112,12 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			html`
 				<h1>${t("dashboard.title")}</h1>
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+				<article>
+					<cc-spendable
+						.rows=${spendableRows(cards, groups, purchases, payments, now)}
+						.unassigned=${unassignedCards(cards, groups).length}
+					></cc-spendable>
+				</article>
 				<div class="split">
 					<article>
 						<h2>${t("dashboard.dueNext")}</h2>
@@ -107,7 +125,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					</article>
 					<article class="split__aside split__aside--lead">
 						<h2>${t("dashboard.addPurchase")}</h2>
-						<cc-quick-add .cards=${cards.filter(canPurchase)} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
+						<cc-quick-add .cards=${visible().filter(canPurchase)} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 					</article>
 				</div>
 				<article>

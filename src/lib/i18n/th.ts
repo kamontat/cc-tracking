@@ -218,4 +218,15 @@ export const th: Catalog = {
 	"limits.inUse": "มีบัตรใช้กลุ่มนี้ {count} ใบ",
 	"limits.error.name": "ตั้งชื่อกลุ่มวงเงิน",
 	"limits.error.limit": "กรอกวงเงินเป็นบาท เช่น 300000",
+
+	"spendable.title": "รูดได้ตอนนี้",
+	"spendable.column.card": "บัตร",
+	"spendable.column.available": "คงเหลือ",
+	"spendable.column.closes": "ปิดรอบ",
+	"spendable.column.due": "ครบกำหนด",
+	"spendable.of": "จาก {limit}",
+	"spendable.shared": "{name} ใช้ร่วมกับอีก {count} ใบ",
+	"spendable.empty": "ไม่มีบัตรที่รูดได้",
+	"spendable.unassigned": "มีบัตร {count} ใบยังไม่ผูกกลุ่มวงเงิน",
+	"spendable.unassignedAction": "ไปผูกกลุ่ม",
 };
