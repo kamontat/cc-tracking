@@ -84,6 +84,8 @@ export const en = {
 	"cards.error.save": "Could not save the card.",
 	"cards.error.delete": "Could not delete the card.",
 	"cards.error.archive": "Could not archive the card.",
+	"cards.error.saveGroup": "Could not save that limit group.",
+	"cards.error.deleteGroup": "Could not delete that limit group.",
 	"cards.error.duplicateId":
 		'A card with id "{id}" already exists. Card ids must be unique.',
 

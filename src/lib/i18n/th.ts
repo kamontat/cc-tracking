@@ -99,6 +99,8 @@ export const th: Catalog = {
 	"cards.error.save": "บันทึกบัตรไม่สำเร็จ",
 	"cards.error.delete": "ลบบัตรไม่สำเร็จ",
 	"cards.error.archive": "เก็บบัตรเข้าคลังไม่สำเร็จ",
+	"cards.error.saveGroup": "บันทึกกลุ่มวงเงินไม่สำเร็จ",
+	"cards.error.deleteGroup": "ลบกลุ่มวงเงินไม่สำเร็จ",
 	"cards.error.duplicateId": 'มีบัตรรหัส "{id}" อยู่แล้ว รหัสบัตรต้องไม่ซ้ำกัน',
 
 	"form.id": "รหัส",
