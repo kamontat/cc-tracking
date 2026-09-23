@@ -2,7 +2,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { canPurchase, PURCHASE_LOCATION } from "#lib/domain/card";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
-import type { Card, CycleRule } from "#lib/domain/types";
+import type { Card, CycleRule, LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
@@ -46,6 +46,7 @@ export class CcCardForm extends LitElement {
 	];
 
 	@property({ attribute: false }) card: Card | null = null;
+	@property({ attribute: false }) groups: LimitGroup[] = [];
 
 	@state() private kind: CycleRule["kind"] = "offset";
 	@state() private allowPurchase = false;
@@ -74,6 +75,10 @@ export class CcCardForm extends LitElement {
 		const select =
 			this.renderRoot.querySelector<HTMLSelectElement>('[name="location"]');
 		if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
+		const limitGroup = this.renderRoot.querySelector<HTMLSelectElement>(
+			'[name="limitGroupId"]',
+		);
+		if (limitGroup) limitGroup.value = this.card?.limitGroupId ?? "";
 	}
 
 	private value(name: string): string {
@@ -118,6 +123,9 @@ export class CcCardForm extends LitElement {
 			cycle = { kind: "fixed", closeDay, dueDay };
 		}
 
+		const limitGroupId = this.value("limitGroupId");
+		if (!limitGroupId) return this.fail("form.error.limitGroup");
+
 		this.errorKey = "";
 		const wasCreate = this.card === null;
 		const card: Card = {
@@ -129,6 +137,7 @@ export class CcCardForm extends LitElement {
 			comment: this.value("comment"),
 			archived: this.card?.archived ?? false,
 			canPurchase: this.allowPurchase,
+			limitGroupId,
 		};
 		this.dispatchEvent(new CustomEvent<Card>("save", { detail: card }));
 
@@ -152,6 +161,10 @@ export class CcCardForm extends LitElement {
 			const locationSelect =
 				form?.querySelector<HTMLSelectElement>('[name="location"]');
 			if (locationSelect) locationSelect.value = DEFAULT_LOCATION;
+			const limitGroupSelect = form?.querySelector<HTMLSelectElement>(
+				'[name="limitGroupId"]',
+			);
+			if (limitGroupSelect) limitGroupSelect.value = "";
 		}
 	}
 
@@ -199,6 +212,17 @@ export class CcCardForm extends LitElement {
 								html`<option value=${value}>${locationText(value)}</option>`,
 						)}
 					</select>
+				</label>
+
+				<label>
+					${t("form.limitGroup")}
+					<select name="limitGroupId" required ?disabled=${this.groups.length === 0}>
+						<option value="">${t("form.limitGroupNone")}</option>
+						${this.groups.map(
+							(group) => html`<option value=${group.id}>${group.name}</option>`,
+						)}
+					</select>
+					${this.groups.length === 0 ? html`<small>${t("form.limitGroupEmpty")}</small>` : nothing}
 				</label>
 
 				<label>

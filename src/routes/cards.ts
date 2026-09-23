@@ -136,6 +136,7 @@ export function renderCardsPage(
 					<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
 					<cc-card-form
 						.card=${editing}
+						.groups=${groups}
 						@save=${onSave}
 						@cancel=${() => {
 							editing = null;
@@ -147,6 +148,7 @@ export function renderCardsPage(
 					<cc-card-table
 						.cards=${cards}
 						.purchaseCounts=${counts}
+						.groups=${groups}
 						@edit=${onEdit}
 						@archive=${onArchive}
 						@remove=${onRemove}

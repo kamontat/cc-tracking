@@ -54,6 +54,11 @@ class RejectingSaveRepository extends InMemoryRepository {
 
 test("a failed save keeps its error message after the refresh that follows it", async () => {
 	const repo = new RejectingSaveRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
@@ -64,6 +69,7 @@ test("a failed save keeps its error message after the refresh that follows it", 
 	fill(root, "location", "krabi");
 	fill(root, "closeDay", "18");
 	fill(root, "dueOffsetDays", "15");
+	fill(root, "limitGroupId", "pool");
 	submit(root);
 	await settle();
 
@@ -75,6 +81,11 @@ test("a failed save keeps its error message after the refresh that follows it", 
 test("creating a card with an id that already exists does not overwrite it", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard);
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
@@ -85,6 +96,7 @@ test("creating a card with an id that already exists does not overwrite it", asy
 	fill(root, "location", "bangkok");
 	fill(root, "closeDay", "1");
 	fill(root, "dueOffsetDays", "10");
+	fill(root, "limitGroupId", "pool");
 	submit(root);
 	await settle();
 
@@ -96,6 +108,11 @@ test("creating a card with an id that already exists does not overwrite it", asy
 
 test("a successful save clears the banner and the card appears in the table", async () => {
 	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
@@ -106,6 +123,7 @@ test("a successful save clears the banner and the card appears in the table", as
 	fill(root, "location", "bangkok");
 	fill(root, "closeDay", "18");
 	fill(root, "dueOffsetDays", "15");
+	fill(root, "limitGroupId", "pool");
 	submit(root);
 	await settle();
 

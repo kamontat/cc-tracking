@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import "#components/cc-card-table";
-import type { Card } from "#lib/domain/types";
+import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
 const card: Card = {
@@ -15,11 +15,13 @@ const card: Card = {
 const mount = async (
 	cards: Card[],
 	purchaseCounts: Record<string, number> = {},
+	groups: LimitGroup[] = [],
 ) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-card-table");
 	element.cards = cards;
 	element.purchaseCounts = purchaseCounts;
+	element.groups = groups;
 	document.body.append(element);
 	await element.updateComplete;
 	return element;
@@ -89,6 +91,20 @@ test("emits edit, archive, and remove with the card id", async () => {
 	];
 	for (const button of buttons) button.click();
 	expect(events).toEqual({ edit: "kbank", archive: "kbank", remove: "kbank" });
+});
+
+test("names the limit group each card draws on", async () => {
+	const element = await mount(
+		[
+			{ ...card, limitGroupId: "pool" },
+			{ ...card, id: "scb" },
+		],
+		{},
+		[{ id: "pool", name: "KBank account", limit: 500_000 }],
+	);
+	const text = element.shadowRoot?.textContent ?? "";
+	expect(text).toContain("KBank account");
+	expect(text).toContain("Not assigned");
 });
 
 test("renders its column headings and empty state in the chosen language", async () => {
