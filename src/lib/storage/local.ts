@@ -1,10 +1,16 @@
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type {
+	Card,
+	LimitGroup,
+	Purchase,
+	StatementPayment,
+} from "#lib/domain/types";
 import { type Repository, StorageError } from "#lib/storage/repository";
 
 const PREFIX = "cc:";
 const CARD = `${PREFIX}card:`;
 const PURCHASE = `${PREFIX}purchase:`;
 const PAYMENT = `${PREFIX}payment:`;
+const LIMIT_GROUP = `${PREFIX}limitgroup:`;
 
 export const cardKey = (cardId: string): string =>
 	`${CARD}${encodeURIComponent(cardId)}`;
@@ -12,6 +18,8 @@ export const purchaseKey = (p: Purchase): string =>
 	`${PURCHASE}${encodeURIComponent(p.cardId)}:${encodeURIComponent(p.date)}:${encodeURIComponent(p.id)}`;
 export const paymentKey = (cardId: string, period: string): string =>
 	`${PAYMENT}${encodeURIComponent(cardId)}:${encodeURIComponent(period)}`;
+export const limitGroupKey = (id: string): string =>
+	`${LIMIT_GROUP}${encodeURIComponent(id)}`;
 
 /** Phase 1 store. Key shapes match the Cloudflare KV layout so phase 2 is a drop-in. */
 export class LocalStorageRepository implements Repository {
@@ -122,5 +130,17 @@ export class LocalStorageRepository implements Repository {
 
 	async deletePayment(cardId: string, period: string): Promise<void> {
 		this.storage.removeItem(paymentKey(cardId, period));
+	}
+
+	async listLimitGroups(): Promise<LimitGroup[]> {
+		return this.readAll<LimitGroup>(LIMIT_GROUP);
+	}
+
+	async saveLimitGroup(group: LimitGroup): Promise<void> {
+		this.write(limitGroupKey(group.id), group);
+	}
+
+	async deleteLimitGroup(id: string): Promise<void> {
+		this.storage.removeItem(limitGroupKey(id));
 	}
 }

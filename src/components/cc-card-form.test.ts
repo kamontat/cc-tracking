@@ -1,15 +1,30 @@
 import { expect, test } from "bun:test";
 import "#components/cc-card-form";
-import type { Card } from "#lib/domain/types";
+import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
-const mount = async (card: Card | null = null) => {
+const groups: LimitGroup[] = [
+	{ id: "pool", name: "KBank account", limit: 500_000 },
+];
+
+const mount = async (card: Card | null = null, limitGroups = groups) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-card-form");
 	element.card = card;
+	element.groups = limitGroups;
 	document.body.append(element);
 	await element.updateComplete;
 	return element;
+};
+
+/** Every field a valid offset-rule card needs, except the limit group. */
+const fillCard = (element: HTMLElement) => {
+	fill(element, "id", "kbank");
+	fill(element, "name", "KBank Visa");
+	fill(element, "last4", "4821");
+	fill(element, "location", "krabi");
+	fill(element, "closeDay", "18");
+	fill(element, "dueOffsetDays", "15");
 };
 
 const fill = (element: HTMLElement, name: string, value: string) => {
@@ -26,6 +41,108 @@ const submit = (element: HTMLElement) =>
 		?.querySelector("form")
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
+test("refuses to save a card with no limit group", async () => {
+	const element = await mount();
+	let emitted = false;
+	element.addEventListener("save", () => {
+		emitted = true;
+	});
+
+	fillCard(element);
+	submit(element);
+	await element.updateComplete;
+
+	expect(emitted).toBe(false);
+	expect(element.shadowRoot?.textContent).toContain("limit group");
+});
+
+test("carries the chosen limit group in the saved card", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	fillCard(element);
+	fill(element, "limitGroupId", "pool");
+	submit(element);
+
+	expect(saved?.limitGroupId).toBe("pool");
+});
+
+test("opens an existing card on its stored group", async () => {
+	const card: Card = {
+		id: "kbank",
+		name: "KBank Visa",
+		last4: "4821",
+		location: "krabi",
+		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+		archived: false,
+		limitGroupId: "pool",
+	};
+	const element = await mount(card);
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>(
+			'[name="limitGroupId"]',
+		)?.value,
+	).toBe("pool");
+});
+
+test("keeps the chosen limit group in place when the group list reshapes under the open form", async () => {
+	const threeGroups: LimitGroup[] = [
+		{ id: "a", name: "Group A", limit: 100_000 },
+		{ id: "b", name: "Group B", limit: 200_000 },
+		{ id: "c", name: "Group C", limit: 300_000 },
+	];
+	const element = await mount(null, threeGroups);
+
+	const select = element.shadowRoot?.querySelector<HTMLSelectElement>(
+		'[name="limitGroupId"]',
+	);
+	if (!select) throw new Error("no limit group select");
+	select.value = "b";
+	select.dispatchEvent(new Event("change", { bubbles: true }));
+	await element.updateComplete;
+
+	// A fourth group is inserted ahead of "b", so a group named "d" now occupies the array
+	// position "b" used to hold. The options render from an unkeyed map, so without a fix Lit
+	// patches the existing <option> nodes positionally and the browser's native selection
+	// silently lands on "d" -- no `change` event fires -- while the user actually chose "b".
+	element.groups = [
+		threeGroups[0] as LimitGroup,
+		{ id: "d", name: "Group D", limit: 400_000 },
+		threeGroups[1] as LimitGroup,
+		threeGroups[2] as LimitGroup,
+	];
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>(
+			'[name="limitGroupId"]',
+		)?.value,
+	).toBe("b");
+
+	// "b" is now deleted outright, with nothing left behind at its old slot -- the selection
+	// must fall back to the empty placeholder, not silently adopt whatever group ends up there.
+	element.groups = [threeGroups[0] as LimitGroup, threeGroups[2] as LimitGroup];
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>(
+			'[name="limitGroupId"]',
+		)?.value,
+	).toBe("");
+});
+
+test("disables the selector and says where to go when no group exists", async () => {
+	const element = await mount(null, []);
+	const field = element.shadowRoot?.querySelector<HTMLSelectElement>(
+		'[name="limitGroupId"]',
+	);
+	expect(field?.disabled).toBe(true);
+	expect(element.shadowRoot?.textContent).toContain("Add a limit group");
+});
+
 test("emits a complete card with an offset rule", async () => {
 	const element = await mount();
 	let saved: Card | undefined;
@@ -39,6 +156,7 @@ test("emits a complete card with an offset rule", async () => {
 	fill(element, "location", "krabi");
 	fill(element, "closeDay", "18");
 	fill(element, "dueOffsetDays", "15");
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 
 	expect(saved).toEqual({
@@ -50,6 +168,7 @@ test("emits a complete card with an offset rule", async () => {
 		comment: "",
 		archived: false,
 		canPurchase: true,
+		limitGroupId: "pool",
 	});
 });
 
@@ -72,6 +191,7 @@ test("emits a fixed rule when that kind is chosen", async () => {
 	fill(element, "location", "bangkok");
 	fill(element, "closeDay", "18");
 	fill(element, "dueDay", "5");
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 
 	expect(saved?.cycle).toEqual({ kind: "fixed", closeDay: 18, dueDay: 5 });
@@ -144,6 +264,7 @@ test("clears the form after a successful create so the next card starts blank", 
 	fill(element, "location", "krabi");
 	fill(element, "closeDay", "18");
 	fill(element, "dueDay", "5");
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 	await element.updateComplete;
 
@@ -175,6 +296,7 @@ test("clears the form after a successful create so the next card starts blank", 
 	fill(element, "location", "bangkok");
 	fill(element, "closeDay", "20");
 	fill(element, "dueOffsetDays", "10");
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 
 	expect(saves).toHaveLength(2);
@@ -187,6 +309,7 @@ test("clears the form after a successful create so the next card starts blank", 
 		comment: "",
 		archived: false,
 		canPurchase: false,
+		limitGroupId: "pool",
 	});
 });
 
@@ -235,6 +358,7 @@ test("defaults a new card to Bangkok without the user touching the field", async
 	fill(element, "last4", "4821");
 	fill(element, "closeDay", "18");
 	fill(element, "dueOffsetDays", "15");
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 
 	expect(saved?.location).toBe("bangkok");
@@ -280,6 +404,7 @@ test("lets a new card kept at Krabi take purchases without the user ticking anyt
 	fill(element, "location", "krabi");
 	fill(element, "closeDay", "18");
 	fill(element, "dueOffsetDays", "15");
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 
 	expect(saved?.canPurchase).toBe(true);
@@ -304,6 +429,7 @@ test("keeps the ticked box when the location changes afterwards", async () => {
 	fill(element, "location", "phichit");
 	fill(element, "closeDay", "18");
 	fill(element, "dueOffsetDays", "15");
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 
 	expect(saved?.canPurchase).toBe(true);
@@ -329,6 +455,7 @@ test("shows the edited card's own answer, and saves it back untouched", async ()
 	);
 	expect(box?.checked).toBe(true);
 
+	fill(element, "limitGroupId", "pool");
 	submit(element);
 	expect(saved?.canPurchase).toBe(true);
 });

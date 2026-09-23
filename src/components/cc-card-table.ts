@@ -1,7 +1,7 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { canPurchase } from "#lib/domain/card";
-import type { Card } from "#lib/domain/types";
+import type { Card, LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
@@ -45,6 +45,7 @@ export class CcCardTable extends LitElement {
 
 	@property({ attribute: false }) cards: Card[] = [];
 	@property({ attribute: false }) purchaseCounts: Record<string, number> = {};
+	@property({ attribute: false }) groups: LimitGroup[] = [];
 
 	constructor() {
 		super();
@@ -67,6 +68,7 @@ export class CcCardTable extends LitElement {
 						<th>${t("cards.column.name")}</th>
 						<th>${t("cards.column.last4")}</th>
 						<th>${t("cards.column.location")}</th>
+						<th>${t("cards.column.limitGroup")}</th>
 						<th>${t("cards.column.canPurchase")}</th>
 						<th>${t("cards.column.cycle")}</th>
 						<th>${t("cards.column.comment")}</th>
@@ -86,6 +88,12 @@ export class CcCardTable extends LitElement {
 								</td>
 								<td data-label=${t("cards.column.last4")}>••••${card.last4}</td>
 								<td data-label=${t("cards.column.location")}>${locationText(card.location)}</td>
+								<td data-field="limit-group" data-label=${t("cards.column.limitGroup")}>
+									${
+										this.groups.find(({ id }) => id === card.limitGroupId)
+											?.name ?? t("cards.unassigned")
+									}
+								</td>
 								<td data-field="can-purchase" data-label=${t("cards.column.canPurchase")}>
 									${
 										canPurchase(card)

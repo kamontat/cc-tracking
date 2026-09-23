@@ -5,8 +5,16 @@ import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
+import "#components/cc-limit-groups";
 import { html, nothing, render } from "lit";
-import type { Card } from "#lib/domain/types";
+import { today } from "#lib/domain/date";
+import { groupUsage } from "#lib/domain/limit";
+import type {
+	Card,
+	LimitGroup,
+	Purchase,
+	StatementPayment,
+} from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
@@ -21,21 +29,30 @@ export function renderCardsPage(
 	storage: Storage = globalThis.localStorage,
 ): void {
 	let cards: Card[] = [];
+	let purchases: Purchase[] = [];
+	let payments: StatementPayment[] = [];
 	let counts: Record<string, number> = {};
+	let groups: LimitGroup[] = [];
 	let editing: Card | null = null;
 	// Read once per page load: the notice is consumed here, not on every paint.
 	let resetNames = takeResetNotice(storage);
+	const now = today();
 
 	const state = createPageState({
 		fetch: async () => {
 			cards = await repo.listCards();
+			groups = await repo.listLimitGroups();
+			purchases = (
+				await Promise.all(cards.map((card) => repo.listPurchases(card.id)))
+			).flat();
+			payments = (
+				await Promise.all(cards.map((card) => repo.listPayments(card.id)))
+			).flat();
 			counts = Object.fromEntries(
-				await Promise.all(
-					cards.map(
-						async (card) =>
-							[card.id, (await repo.listPurchases(card.id)).length] as const,
-					),
-				),
+				cards.map((card) => [
+					card.id,
+					purchases.filter((purchase) => purchase.cardId === card.id).length,
+				]),
 			);
 		},
 		fallbackKey: "cards.error.read",
@@ -69,6 +86,34 @@ export function renderCardsPage(
 		paint();
 	};
 
+	const onSaveGroup = (event: CustomEvent<LimitGroup>) =>
+		state.guard(
+			() => repo.saveLimitGroup(event.detail),
+			"cards.error.saveGroup",
+		);
+
+	const onRemoveGroup = (event: CustomEvent<string>) =>
+		state.guard(
+			() => repo.deleteLimitGroup(event.detail),
+			"cards.error.deleteGroup",
+		);
+
+	const usage = (): Record<string, number> =>
+		Object.fromEntries(
+			groups.map((group) => [
+				group.id,
+				groupUsage(group, cards, purchases, payments, now),
+			]),
+		);
+
+	const groupCounts = (): Record<string, number> =>
+		Object.fromEntries(
+			groups.map((group) => [
+				group.id,
+				cards.filter((card) => card.limitGroupId === group.id).length,
+			]),
+		);
+
 	const paint = () =>
 		render(
 			html`
@@ -91,6 +136,7 @@ export function renderCardsPage(
 					<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
 					<cc-card-form
 						.card=${editing}
+						.groups=${groups}
 						@save=${onSave}
 						@cancel=${() => {
 							editing = null;
@@ -102,10 +148,20 @@ export function renderCardsPage(
 					<cc-card-table
 						.cards=${cards}
 						.purchaseCounts=${counts}
+						.groups=${groups}
 						@edit=${onEdit}
 						@archive=${onArchive}
 						@remove=${onRemove}
 					></cc-card-table>
+				</article>
+				<article>
+					<cc-limit-groups
+						.groups=${groups}
+						.usage=${usage()}
+						.counts=${groupCounts()}
+						@save-group=${onSaveGroup}
+						@remove-group=${onRemoveGroup}
+					></cc-limit-groups>
 				</article>
 			`,
 			root,

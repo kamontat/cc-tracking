@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import type { Card, LimitGroup } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import {
 	sampleCard,
 	samplePayment,
 	samplePurchase,
 } from "#lib/storage/contract";
+import type { Repository } from "#lib/storage/repository";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
 
@@ -39,7 +41,7 @@ describe("exportBackup", () => {
 			new Date("2026-09-21T03:00:00Z"),
 		);
 
-		expect(backup.version).toBe(1);
+		expect(backup.version).toBe(2);
 		expect(backup.exportedAt).toBe("2026-09-21T03:00:00.000Z");
 		expect(backup.cards.map((c) => c.id)).toEqual(["kbank", "scb"]);
 		expect(backup.purchases.map((p) => p.id)).toEqual(["p1", "p2"]);
@@ -94,20 +96,26 @@ describe("parseBackup", () => {
 	test("rejects a future backup version", () => {
 		const failure = captureThrow(() =>
 			parseBackup(
-				JSON.stringify({ version: 2, cards: [], purchases: [], payments: [] }),
+				JSON.stringify({
+					version: 3,
+					cards: [],
+					purchases: [],
+					payments: [],
+					limitGroups: [],
+				}),
 			),
 		);
 		expect(failure).toBeInstanceOf(MessageError);
 		expect((failure as MessageError).key).toBe("backup.version");
 		expect((failure as MessageError).params).toEqual({
-			found: "2",
-			expected: 1,
+			found: "3",
+			expected: 2,
 		});
 	});
 
 	test("rejects JSON missing the expected lists", () => {
 		const failure = captureThrow(() =>
-			parseBackup(JSON.stringify({ version: 1 })),
+			parseBackup(JSON.stringify({ version: 2 })),
 		);
 		expect(failure).toBeInstanceOf(MessageError);
 		expect((failure as MessageError).key).toBe("backup.unreadable");
@@ -117,7 +125,8 @@ describe("parseBackup", () => {
 		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
-					version: 1,
+					version: 2,
+					limitGroups: [],
 					cards: [{}],
 					purchases: [],
 					payments: [],
@@ -134,8 +143,9 @@ describe("parseBackup", () => {
 
 	test("names which card is wrong, by key", () => {
 		const backup = {
-			version: 1,
+			version: 2,
 			exportedAt: "2026-09-21T00:00:00.000Z",
+			limitGroups: [],
 			cards: [{ id: "kbank", name: "KBank Visa", last4: "4821" }],
 			purchases: [],
 			payments: [],
@@ -158,7 +168,8 @@ describe("parseBackup", () => {
 		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
-					version: 1,
+					version: 2,
+					limitGroups: [],
 					cards: [],
 					purchases: [
 						{
@@ -185,7 +196,8 @@ describe("parseBackup", () => {
 		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
-					version: "1",
+					version: "2",
+					limitGroups: [],
 					cards: [],
 					purchases: [],
 					payments: [],
@@ -195,8 +207,8 @@ describe("parseBackup", () => {
 		expect(failure).toBeInstanceOf(MessageError);
 		expect((failure as MessageError).key).toBe("backup.version");
 		expect((failure as MessageError).params).toEqual({
-			found: '"1"',
-			expected: 1,
+			found: '"2"',
+			expected: 2,
 		});
 	});
 
@@ -211,8 +223,9 @@ describe("parseBackup", () => {
 
 	test("rejects a backup whose card has an unknown location", () => {
 		const backup = {
-			version: 1,
+			version: 2,
 			exportedAt: "2026-09-21T00:00:00.000Z",
+			limitGroups: [],
 			cards: [
 				{
 					id: "kbank",
@@ -238,8 +251,9 @@ describe("parseBackup", () => {
 
 	test("accepts a backup whose card location is a known key", () => {
 		const backup = {
-			version: 1,
+			version: 2,
 			exportedAt: "2026-09-21T00:00:00.000Z",
+			limitGroups: [],
 			cards: [
 				{
 					id: "kbank",
@@ -288,5 +302,98 @@ describe("importBackup", () => {
 		const cards = await target.listCards();
 		expect(cards.map((c) => c.id)).toEqual(["kbank", "ktc", "scb"]);
 		expect(cards.find((c) => c.id === "kbank")?.name).toBe("KBank Visa");
+	});
+
+	test("exports limit groups alongside the cards", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveLimitGroup({ id: "pool", name: "KBank", limit: 500_000 });
+		const backup = await exportBackup(repo);
+		expect(backup.version).toBe(2);
+		expect(backup.limitGroups).toEqual([
+			{ id: "pool", name: "KBank", limit: 500_000 },
+		]);
+	});
+
+	test("rejects a version 1 file", () => {
+		const text = JSON.stringify({
+			version: 1,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			cards: [],
+			purchases: [],
+			payments: [],
+		});
+		expect(() => parseBackup(text)).toThrow(MessageError);
+	});
+
+	test("rejects a file with no limitGroups list", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			cards: [],
+			purchases: [],
+			payments: [],
+		});
+		expect(() => parseBackup(text)).toThrow(MessageError);
+	});
+
+	test("names the limit group that is wrong, by position", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [{ id: "pool", name: "KBank", limit: "lots" }],
+			cards: [],
+			purchases: [],
+			payments: [],
+		});
+		try {
+			parseBackup(text);
+			throw new Error("expected parseBackup to throw");
+		} catch (failure) {
+			expect(failure).toBeInstanceOf(MessageError);
+			expect((failure as MessageError).key).toBe("backup.limitGroup");
+			expect((failure as MessageError).params).toEqual({
+				index: 1,
+				problem: "backup.problem.badLimit",
+			});
+		}
+	});
+
+	test("imports limit groups before the cards that point at them", async () => {
+		const repo = new InMemoryRepository();
+		const written: string[] = [];
+		const spy = {
+			...repo,
+			saveLimitGroup: async (group: LimitGroup) => {
+				written.push("group");
+				return repo.saveLimitGroup(group);
+			},
+			saveCard: async (card: Card) => {
+				written.push("card");
+				return repo.saveCard(card);
+			},
+		} as unknown as Repository;
+
+		await importBackup(spy, {
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000 }],
+			cards: [sampleCard({ limitGroupId: "pool" })],
+			purchases: [],
+			payments: [],
+		});
+
+		expect(written).toEqual(["group", "card"]);
+	});
+
+	test("accepts a card pointing at a group the file does not define", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [],
+			cards: [sampleCard({ limitGroupId: "elsewhere" })],
+			purchases: [],
+			payments: [],
+		});
+		expect(parseBackup(text).cards).toHaveLength(1);
 	});
 });

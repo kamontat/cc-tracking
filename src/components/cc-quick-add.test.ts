@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import "#components/cc-quick-add";
+import type { SpendRow } from "#lib/domain/limit";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
@@ -13,6 +14,48 @@ const cards: Card[] = [
 		archived: false,
 	},
 ];
+
+const otherCard: Card = {
+	id: "scb",
+	name: "SCB Mastercard",
+	last4: "9002",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+	archived: false,
+	canPurchase: true,
+	limitGroupId: "solo",
+};
+
+const spendRow: SpendRow = {
+	card: cards[0] as Card,
+	group: { id: "pool", name: "KBank account", limit: 500_000 },
+	used: 200_000,
+	available: 300_000,
+	closeDate: "2026-10-18",
+	dueDate: "2026-11-02",
+	sharedWith: 0,
+};
+
+const otherRow: SpendRow = {
+	...spendRow,
+	card: otherCard,
+	group: { id: "solo", name: "SCB", limit: 100_000 },
+	used: 0,
+	available: 100_000,
+};
+
+// A third card that lands at the same array index `otherCard` occupied, so an unkeyed
+// `.map()` over the options reuses that option's DOM node rather than adding or removing one.
+const thirdCard: Card = {
+	id: "ktb",
+	name: "KTB Debit",
+	last4: "1111",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+	archived: false,
+	canPurchase: true,
+	limitGroupId: "solo",
+};
 
 const mount = async () => {
 	document.body.innerHTML = "";
@@ -233,4 +276,69 @@ test("re-renders a displayed error in the new language when the locale switches"
 	expect(element.shadowRoot?.textContent).not.toContain(
 		"Enter the amount in baht, like 1234.56.",
 	);
+});
+
+test("shows what is left on the selected card", async () => {
+	const element = await mount();
+	element.rows = [spendRow];
+	await element.updateComplete;
+	const note = element.shadowRoot?.querySelector('[data-testid="available"]');
+	expect(note?.textContent).toContain("฿3,000.00");
+	expect(note?.textContent).toContain("฿5,000.00");
+});
+
+test("follows the selection to another card's remaining credit", async () => {
+	const element = await mount();
+	element.cards = [cards[0] as Card, otherCard];
+	element.rows = [spendRow, otherRow];
+	await element.updateComplete;
+
+	const select =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	if (!select) throw new Error("no card select");
+	select.value = "scb";
+	select.dispatchEvent(new Event("change", { bubbles: true }));
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector('[data-testid="available"]')?.textContent,
+	).toContain("฿1,000.00");
+});
+
+test("says nothing about credit when the card has no limit group", async () => {
+	const element = await mount();
+	element.rows = [];
+	await element.updateComplete;
+	expect(
+		element.shadowRoot?.querySelector('[data-testid="available"]'),
+	).toBeNull();
+});
+
+test("keeps the note and the select in agreement when the selected card drops out of the list", async () => {
+	const element = await mount();
+	element.cards = [cards[0] as Card, otherCard];
+	element.rows = [spendRow, otherRow];
+	await element.updateComplete;
+
+	const select =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	if (!select) throw new Error("no card select");
+	select.value = "scb";
+	select.dispatchEvent(new Event("change", { bubbles: true }));
+	await element.updateComplete;
+
+	// otherCard ("scb") drops out, replaced at the same array position by thirdCard ("ktb").
+	// An unkeyed option list reuses that DOM node in place, so without a fix the browser's
+	// native selection can silently keep pointing at what is now "ktb" -- no change event
+	// fires -- while the tracked state still says "scb".
+	element.cards = [cards[0] as Card, thirdCard];
+	element.rows = [spendRow];
+	await element.updateComplete;
+
+	const selectAfter =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	const note = element.shadowRoot?.querySelector('[data-testid="available"]');
+	expect(selectAfter?.value).toBe("kbank");
+	expect(note?.textContent).toContain("฿3,000.00");
+	expect(note?.textContent).toContain("฿5,000.00");
 });

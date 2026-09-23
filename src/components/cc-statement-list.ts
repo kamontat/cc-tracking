@@ -121,9 +121,10 @@ export class CcStatementList extends LitElement {
 			return html`<p>${t("statements.empty")}</p>`;
 		}
 		return html`
-			${this.statements.map(
-				(statement) => html`
-					<article data-urgency=${urgencyOf(statement, this.today)}>
+			${this.statements.map((statement) => {
+				const urgency = urgencyOf(statement, this.today);
+				return html`
+					<article data-urgency=${urgency}>
 						<details ?open=${statement.purchases.length > 0}>
 							<summary>
 								<div class="summary-line" row>
@@ -178,18 +179,20 @@ export class CcStatementList extends LitElement {
 														cardId: statement.cardId,
 														period: statement.period,
 													})}>${t("statements.unmark")}</button>`
-										: html`<button data-action="mark-paid"
-											@click=${() =>
-												this.emit("mark-paid", {
-													cardId: statement.cardId,
-													period: statement.period,
-												})}>${t("statements.markPaid")}</button>`
+										: urgency === "future"
+											? html`<small>${t("due.stillOpen")}</small>`
+											: html`<button data-action="mark-paid"
+												@click=${() =>
+													this.emit("mark-paid", {
+														cardId: statement.cardId,
+														period: statement.period,
+													})}>${t("statements.markPaid")}</button>`
 								}
 							</div>
 						</details>
 					</article>
-				`,
-			)}
+				`;
+			})}
 		`;
 	}
 }

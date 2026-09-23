@@ -1,4 +1,9 @@
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type {
+	Card,
+	LimitGroup,
+	Purchase,
+	StatementPayment,
+} from "#lib/domain/types";
 
 /** Thrown when the underlying store refuses a read or a write. */
 export class StorageError extends Error {
@@ -26,6 +31,10 @@ export interface Repository {
 	listPayments(cardId: string): Promise<StatementPayment[]>;
 	savePayment(payment: StatementPayment): Promise<void>;
 	deletePayment(cardId: string, period: string): Promise<void>;
+
+	listLimitGroups(): Promise<LimitGroup[]>;
+	saveLimitGroup(group: LimitGroup): Promise<void>;
+	deleteLimitGroup(id: string): Promise<void>;
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -35,6 +44,7 @@ export class InMemoryRepository implements Repository {
 	private cards = new Map<string, Card>();
 	private purchases = new Map<string, Purchase>();
 	private payments = new Map<string, StatementPayment>();
+	private limitGroups = new Map<string, LimitGroup>();
 
 	async listCards(): Promise<Card[]> {
 		return [...this.cards.values()]
@@ -98,5 +108,19 @@ export class InMemoryRepository implements Repository {
 
 	async deletePayment(cardId: string, period: string): Promise<void> {
 		this.payments.delete(`${cardId}:${period}`);
+	}
+
+	async listLimitGroups(): Promise<LimitGroup[]> {
+		return [...this.limitGroups.values()]
+			.map(clone)
+			.sort((a, b) => (a.id < b.id ? -1 : 1));
+	}
+
+	async saveLimitGroup(group: LimitGroup): Promise<void> {
+		this.limitGroups.set(group.id, clone(group));
+	}
+
+	async deleteLimitGroup(id: string): Promise<void> {
+		this.limitGroups.delete(id);
 	}
 }

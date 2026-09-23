@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { today } from "#lib/domain/date";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations";
@@ -53,6 +54,11 @@ class RejectingSaveRepository extends InMemoryRepository {
 
 test("a failed save keeps its error message after the refresh that follows it", async () => {
 	const repo = new RejectingSaveRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
@@ -63,6 +69,7 @@ test("a failed save keeps its error message after the refresh that follows it", 
 	fill(root, "location", "krabi");
 	fill(root, "closeDay", "18");
 	fill(root, "dueOffsetDays", "15");
+	fill(root, "limitGroupId", "pool");
 	submit(root);
 	await settle();
 
@@ -74,6 +81,11 @@ test("a failed save keeps its error message after the refresh that follows it", 
 test("creating a card with an id that already exists does not overwrite it", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard);
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
@@ -84,6 +96,7 @@ test("creating a card with an id that already exists does not overwrite it", asy
 	fill(root, "location", "bangkok");
 	fill(root, "closeDay", "1");
 	fill(root, "dueOffsetDays", "10");
+	fill(root, "limitGroupId", "pool");
 	submit(root);
 	await settle();
 
@@ -95,6 +108,11 @@ test("creating a card with an id that already exists does not overwrite it", asy
 
 test("a successful save clears the banner and the card appears in the table", async () => {
 	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
@@ -105,6 +123,7 @@ test("a successful save clears the banner and the card appears in the table", as
 	fill(root, "location", "bangkok");
 	fill(root, "closeDay", "18");
 	fill(root, "dueOffsetDays", "15");
+	fill(root, "limitGroupId", "pool");
 	submit(root);
 	await settle();
 
@@ -158,4 +177,87 @@ test("renders its heading in the chosen language", async () => {
 	setLocale("th");
 	await settle();
 	expect(root.querySelector("h1")?.textContent).toBe("บัตร");
+});
+
+test("shows the limit groups with what each has used", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" });
+	await repo.savePurchase({
+		id: "p1",
+		cardId: sampleCard.id,
+		date: today(),
+		amount: 120_000,
+		note: "fuel",
+	});
+
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	const section = root.querySelector("cc-limit-groups");
+	expect(section?.groups).toHaveLength(1);
+	expect(section?.usage).toEqual({ pool: 120_000 });
+	expect(section?.counts).toEqual({ pool: 1 });
+});
+
+test("saves a new limit group", async () => {
+	const repo = new InMemoryRepository();
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root.querySelector("cc-limit-groups")?.dispatchEvent(
+		new CustomEvent("save-group", {
+			detail: { id: "pool", name: "KBank account", limit: 500_000 },
+		}),
+	);
+	await settle();
+
+	expect(await repo.listLimitGroups()).toEqual([
+		{ id: "pool", name: "KBank account", limit: 500_000 },
+	]);
+});
+
+test("deletes a limit group", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root
+		.querySelector("cc-limit-groups")
+		?.dispatchEvent(new CustomEvent("remove-group", { detail: "pool" }));
+	await settle();
+
+	expect(await repo.listLimitGroups()).toEqual([]);
+});
+
+test("says so when a limit group cannot be saved", async () => {
+	class Rejecting extends InMemoryRepository {
+		override saveLimitGroup(): Promise<void> {
+			return Promise.reject(new Error("disk is full"));
+		}
+	}
+	const root = mount();
+	renderCardsPage(new Rejecting(), root);
+	await settle();
+
+	root.querySelector("cc-limit-groups")?.dispatchEvent(
+		new CustomEvent("save-group", {
+			detail: { id: "pool", name: "KBank account", limit: 500_000 },
+		}),
+	);
+	await settle();
+
+	expect(bannerMessage(root)).toContain("disk is full");
 });

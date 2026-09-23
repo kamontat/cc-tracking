@@ -271,6 +271,57 @@ test("marking paid freezes the dates of the event's own period, not whatever nex
 	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, newerPeriod));
 });
 
+test("the panel lists spendable cards and counts those with no group", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+	const { limitGroupId: _limitGroupId, ...noGroupCard } = quickAddCard;
+	await repo.saveCard({ ...noGroupCard, id: "nogroup" });
+
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const panel = root.querySelector("cc-spendable");
+	expect(panel?.rows.map((row) => row.card.id)).toEqual([quickAddCard.id]);
+	expect(panel?.unassigned).toBe(1);
+});
+
+test("an archived card's unpaid balance still holds down the group it shares", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+	await repo.saveCard({
+		...quickAddCard,
+		id: "retired",
+		archived: true,
+		limitGroupId: "pool",
+	});
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "retired",
+		date: today(),
+		amount: 150_000,
+		note: "old",
+	});
+
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const panel = root.querySelector("cc-spendable");
+	expect(panel?.rows).toHaveLength(1);
+	expect(panel?.rows[0]?.available).toBe(350_000);
+});
+
 test("renders its heading in the chosen language", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();
@@ -311,4 +362,35 @@ test("the purchase confirmation re-renders in the new language instead of freezi
 	expect(quickAdd.answer).toBe(
 		"อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ 18 ก.ย. 2026 — ชำระภายใน 03 ต.ค. 2026",
 	);
+});
+
+test("confirms a purchase that goes over the limit, and still saves it", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 50_000,
+	});
+	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	root.querySelector("cc-quick-add")?.dispatchEvent(
+		new CustomEvent("add", {
+			detail: {
+				cardId: quickAddCard.id,
+				date: today(),
+				amount: 80_000,
+				note: "laptop",
+			},
+		}),
+	);
+	await settle();
+
+	expect(await repo.listPurchases(quickAddCard.id)).toHaveLength(1);
+	const answer = root.querySelector("cc-quick-add")?.answer ?? "";
+	expect(answer).toContain("฿300.00");
+	expect(answer).toContain("KBank account");
 });

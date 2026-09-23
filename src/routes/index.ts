@@ -6,14 +6,22 @@ import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
 import "#components/cc-location-groups";
 import "#components/cc-quick-add";
+import "#components/cc-spendable";
 import { html, render } from "lit";
 import type { DueRow } from "#components/cc-due-list";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
+import { spendableRows, unassignedCards } from "#lib/domain/limit";
+import { formatAmount } from "#lib/domain/money";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type {
+	Card,
+	LimitGroup,
+	Purchase,
+	StatementPayment,
+} from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
@@ -23,16 +31,23 @@ import { createPageState } from "#lib/ui/page-state";
 export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 	const now = today();
 	let cards: Card[] = [];
+	let groups: LimitGroup[] = [];
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
 	// Carries the card and period a purchase landed on, not a resolved sentence: paint()
 	// resolves it every time, so a language switch re-renders the confirmation instead of
 	// leaving it frozen in whatever language it was written in (or clearing it outright).
-	let confirmedPurchase: { card: Card; period: string } | null = null;
+	let confirmedPurchase: {
+		card: Card;
+		period: string;
+		over: number;
+		groupName: string;
+	} | null = null;
 
 	const state = createPageState({
 		fetch: async () => {
-			cards = (await repo.listCards()).filter((card) => !card.archived);
+			cards = await repo.listCards();
+			groups = await repo.listLimitGroups();
 			purchases = (
 				await Promise.all(cards.map((card) => repo.listPurchases(card.id)))
 			).flat();
@@ -66,6 +81,9 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			const { cardId, date, amount, note } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
 			if (!card) return;
+			const row = spendableRows(cards, groups, purchases, payments, now).find(
+				(candidate) => candidate.card.id === cardId,
+			);
 			await repo.savePurchase({
 				id: crypto.randomUUID(),
 				cardId,
@@ -74,18 +92,34 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				note,
 			});
 			const period = periodOfPurchase(card.cycle, date);
-			confirmedPurchase = { card, period };
+			confirmedPurchase = {
+				card,
+				period,
+				over: row ? Math.max(0, amount - row.available) : 0,
+				groupName: row?.group.name ?? "",
+			};
 		}, "dashboard.error.addPurchase");
 
+	/** Cards the page shows. Archived ones are still loaded: they weigh on a shared limit. */
+	const visible = (): Card[] => cards.filter((card) => !card.archived);
+
 	const rows = (): DueRow[] =>
-		cards.map((card) => ({
+		visible().map((card) => ({
 			card,
 			statement: nextActionable(card, purchases, payments, now),
 		}));
 
 	const paint = () => {
+		const spendable = spendableRows(cards, groups, purchases, payments, now);
+		const over =
+			confirmedPurchase && confirmedPurchase.over > 0
+				? ` ${t("dashboard.answerOver", {
+						over: formatAmount(confirmedPurchase.over),
+						name: confirmedPurchase.groupName,
+					})}`
+				: "";
 		const answer = confirmedPurchase
-			? t("dashboard.answer", {
+			? `${t("dashboard.answer", {
 					close: displayDate(
 						closeDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
 						getLocale(),
@@ -94,12 +128,18 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 						dueDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
 						getLocale(),
 					),
-				})
+				})}${over}`
 			: "";
 		render(
 			html`
 				<h1>${t("dashboard.title")}</h1>
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+				<article>
+					<cc-spendable
+						.rows=${spendable}
+						.unassigned=${unassignedCards(cards, groups).length}
+					></cc-spendable>
+				</article>
 				<div class="split">
 					<article>
 						<h2>${t("dashboard.dueNext")}</h2>
@@ -107,7 +147,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					</article>
 					<article class="split__aside split__aside--lead">
 						<h2>${t("dashboard.addPurchase")}</h2>
-						<cc-quick-add .cards=${cards.filter(canPurchase)} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
+						<cc-quick-add .cards=${visible().filter(canPurchase)} .rows=${spendable} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 					</article>
 				</div>
 				<article>
