@@ -3,7 +3,9 @@ import { customElement, property } from "lit/decorators.js";
 import { displayDate } from "#lib/domain/date";
 import type { SpendRow } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
+import type { PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
+import { relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
 import { base, dataTable } from "#styles/shared";
 
@@ -44,6 +46,17 @@ export class CcSpendable extends LitElement {
 				color: var(--cc-danger);
 			}
 
+			/*
+			 * Deliberately quieter than cc-due-list's badge, which tints itself by urgency. This
+			 * table answers "if I spend today, when does that bill land", so neither date is
+			 * late yet and neither has anything to warn about.
+			 */
+			.badge {
+				display: block;
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
+			}
+
 			[data-testid="unassigned"] {
 				margin-block-start: var(--cc-space-3);
 				font-size: var(--cc-text-sm);
@@ -54,10 +67,17 @@ export class CcSpendable extends LitElement {
 	@property({ attribute: false }) rows: SpendRow[] = [];
 	/** How many unarchived cards point at no limit group. */
 	@property({ type: Number }) unassigned = 0;
+	/** Today in Asia/Bangkok. Empty means the caller gave none, and the badges stay off. */
+	@property() today: PlainDate = "";
 
 	constructor() {
 		super();
 		new LocaleController(this);
+	}
+
+	private relative(date: PlainDate) {
+		if (!this.today) return nothing;
+		return html`<small class="badge">${relativeDayText(this.today, date)}</small>`;
 	}
 
 	private notice() {
@@ -106,8 +126,12 @@ export class CcSpendable extends LitElement {
 									${formatAmount(row.available)}
 									<small class="limit">${t("spendable.of", { limit: formatAmount(row.group.limit) })}</small>
 								</td>
-								<td class="date" data-label=${t("spendable.column.closes")}>${displayDate(row.closeDate, getLocale())}</td>
-								<td class="date" data-label=${t("spendable.column.due")}>${displayDate(row.dueDate, getLocale())}</td>
+								<td class="date" data-field="closes" data-label=${t("spendable.column.closes")}>
+									${displayDate(row.closeDate, getLocale())}${this.relative(row.closeDate)}
+								</td>
+								<td class="date" data-field="due" data-label=${t("spendable.column.due")}>
+									${displayDate(row.dueDate, getLocale())}${this.relative(row.dueDate)}
+								</td>
 							</tr>
 						`,
 					)}

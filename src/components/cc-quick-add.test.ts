@@ -22,7 +22,6 @@ const otherCard: Card = {
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
-	canPurchase: true,
 	limitGroupId: "solo",
 };
 
@@ -53,7 +52,6 @@ const thirdCard: Card = {
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
-	canPurchase: true,
 	limitGroupId: "solo",
 };
 

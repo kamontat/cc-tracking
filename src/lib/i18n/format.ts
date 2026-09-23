@@ -1,6 +1,7 @@
 import { describeCycle } from "#lib/domain/cycle";
+import { daysBetween } from "#lib/domain/date";
 import type { Location } from "#lib/domain/location";
-import type { CycleRule } from "#lib/domain/types";
+import type { CycleRule, PlainDate } from "#lib/domain/types";
 import { getLocale, t } from "#lib/i18n/index";
 
 export const locationText = (location: Location): string =>
@@ -24,6 +25,21 @@ function ordinalEn(day: number): string {
 
 const day = (value: number): string =>
 	getLocale() === "en" ? ordinalEn(value) : String(value);
+
+/**
+ * How far `date` is from `from`, in words: "today", "in 9 days", "2 days ago".
+ *
+ * Deliberately neutral about what the date means. `due.overdue` reads "3 days overdue",
+ * which is right for a payment and wrong for a closing date, so a column that shows both
+ * kinds of date needs wording that says only how far away the day is.
+ */
+export function relativeDayText(from: PlainDate, date: PlainDate): string {
+	const days = daysBetween(from, date);
+	if (days === 0) return t("relative.today");
+	return days > 0
+		? t("relative.inDays", { days })
+		: t("relative.agoDays", { days: Math.abs(days) });
+}
 
 export function describeCycleText(rule: CycleRule): string {
 	const description = describeCycle(rule);

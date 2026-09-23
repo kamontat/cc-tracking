@@ -12,10 +12,12 @@ export const th: Catalog = {
 	"nav.brand": "cc-tracking",
 	"nav.dashboard": "หน้ารวม",
 	"nav.cards": "บัตร",
+	"nav.settings": "ตั้งค่า",
 	"nav.backup": "สำรองข้อมูล",
 	"title.dashboard": "หน้ารวม — cc-tracking",
 	"title.cards": "ทะเบียนบัตร — cc-tracking",
 	"title.card": "บัตร — cc-tracking",
+	"title.settings": "ตั้งค่า — cc-tracking",
 	"title.backup": "สำรองข้อมูล — cc-tracking",
 	"lang.label": "ภาษา",
 	"lang.en": "English",
@@ -28,6 +30,10 @@ export const th: Catalog = {
 	"common.delete": "ลบ",
 	"common.dismiss": "ปิด",
 	"common.none": "—",
+
+	"relative.today": "วันนี้",
+	"relative.inDays": "อีก {days} วัน",
+	"relative.agoDays": "{days} วันก่อน",
 
 	"location.bangkok": "กรุงเทพฯ",
 	"location.phichit": "พิจิตร",
@@ -70,7 +76,7 @@ export const th: Catalog = {
 	"quickAdd.notePlaceholder": "เครื่องเขียนสำนักงาน",
 	"quickAdd.submit": "เพิ่มรายการ",
 	"quickAdd.noEligible":
-		"ไม่มีบัตรใบใดบันทึกรายการใหม่ได้ ไปที่หน้าบัตรแล้วติ๊ก “ใช้บันทึกรายการใหม่ได้” บนบัตรที่ใช้จ่าย",
+		"ไม่มีบัตรใบใดบันทึกรายการใหม่ได้ ไปที่หน้าตั้งค่าแล้วติ๊กที่ที่ใช้จ่ายใต้หัวข้อการใช้จ่าย",
 	"quickAdd.error.noCard": "เลือกบัตรก่อน",
 	"quickAdd.error.badDate": "ไม่มีวันที่นี้ ใช้รูปแบบ YYYY-MM-DD",
 	"quickAdd.error.futureDate": "วันที่อยู่ในอนาคต รายการบัตรเครดิตลงวันที่ล่วงหน้าไม่ได้",
@@ -85,14 +91,13 @@ export const th: Catalog = {
 	"cards.column.name": "ชื่อ",
 	"cards.column.last4": "เลข 4 ตัวท้าย",
 	"cards.column.location": "ที่เก็บ",
+	"cards.column.owner": "เจ้าของ",
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
 	// backup.problem.*Cycle fragments below).
-	"cards.column.canPurchase": "บันทึกรายการ",
 	"cards.column.cycle": "รอบบิล",
 	"cards.column.comment": "หมายเหตุ",
 	"cards.column.limitGroup": "กลุ่มวงเงิน",
 	"cards.unassigned": "ยังไม่ผูกกลุ่ม",
-	"cards.canPurchase": "ได้",
 	"cards.archived": "(เก็บเข้าคลัง)",
 	"cards.archive": "เก็บเข้าคลัง",
 	"cards.unarchive": "นำออกจากคลัง",
@@ -109,10 +114,12 @@ export const th: Catalog = {
 
 	"form.id": "รหัส",
 	"form.idImmutable": "(เปลี่ยนไม่ได้)",
-	"form.idPlaceholder": "kbank-visa",
+	"form.idPlaceholder": "0001",
 	"form.name": "ชื่อ",
 	"form.last4": "เลข 4 ตัวท้าย",
 	"form.location": "ที่เก็บ",
+	"form.owner": "เจ้าของ",
+	"form.supplementary": "บัตรเสริม",
 	"form.limitGroup": "กลุ่มวงเงิน",
 	"form.limitGroupNone": "เลือกกลุ่มวงเงิน",
 	"form.limitGroupEmpty": "สร้างกลุ่มวงเงินในส่วนด้านล่างก่อน",
@@ -123,13 +130,13 @@ export const th: Catalog = {
 	"form.dueOffsetDays": "จำนวนวันจนครบกำหนด",
 	"form.dueDay": "วันครบกำหนด",
 	"form.comment": "หมายเหตุ",
-	"form.canPurchase": "ใช้บันทึกรายการใหม่ได้",
 	"form.save": "บันทึกการแก้ไข",
 	"form.add": "เพิ่มบัตร",
 	"form.error.id": "ตั้งรหัสบัตรที่จำได้",
 	"form.error.name": "ตั้งชื่อบัตร",
 	"form.error.last4": "เลข 4 ตัวท้ายต้องเป็นตัวเลขสี่หลัก",
 	"form.error.location": "เลือกที่เก็บบัตร",
+	"form.error.owner": "เลือกเจ้าของบัตร",
 	"form.error.limitGroup": "เลือกกลุ่มวงเงินที่บัตรใบนี้ใช้",
 	"form.error.closeDay": "วันปิดยอดต้องอยู่ระหว่าง 1 ถึง 31",
 	"form.error.dueOffsetDays": "จำนวนวันจนครบกำหนดต้องอยู่ระหว่าง 1 ถึง 60",
@@ -183,6 +190,7 @@ export const th: Catalog = {
 	"backup.problem.missingName": "ไม่มีชื่อ",
 	"backup.problem.missingLast4": "ไม่มีเลข 4 ตัวท้าย",
 	"backup.problem.badLocation": "มีที่เก็บที่ไม่ใช่ bangkok, phichit หรือ krabi",
+	"backup.problem.badOwner": "มีเจ้าของที่ไม่ใช่ KC, NT หรือ RI",
 	// FLAG FOR OWNER REVIEW: noCycle and missingPeriod below both render as "ไม่มีรอบบิล"
 	// ("has no cycle" vs. "is missing a period" in English -- two different problems).
 	// Benign today: backup.card and backup.payment name which one broke ("card #N ..." vs.
@@ -220,6 +228,15 @@ export const th: Catalog = {
 	"limits.inUse": "มีบัตรใช้กลุ่มนี้ {count} ใบ",
 	"limits.error.name": "ตั้งชื่อกลุ่มวงเงิน",
 	"limits.error.limit": "กรอกวงเงินเป็นบาท เช่น 300000",
+
+	"settings.title": "ตั้งค่า",
+	"settings.purchases.title": "การใช้จ่าย",
+	"settings.purchases.explain": "บันทึกรายการใหม่ได้กับบัตรทุกใบที่เก็บไว้ในที่ที่ติ๊กไว้ตรงนี้",
+	"settings.purchases.legend": "ที่ที่บันทึกรายการใหม่ได้",
+	"settings.purchases.none":
+		"ยังไม่มีที่ใดบันทึกรายการใหม่ได้ จึงรูดบัตรไม่ได้เลย ติ๊กอย่างน้อยหนึ่งที่",
+	"settings.error.read": "อ่านการตั้งค่าไม่สำเร็จ",
+	"settings.error.save": "บันทึกการตั้งค่าไม่สำเร็จ",
 
 	"spendable.title": "รูดได้ตอนนี้",
 	"spendable.column.card": "บัตร",

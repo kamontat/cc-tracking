@@ -5,6 +5,7 @@ import {
 	spendableRows,
 	unassignedCards,
 } from "#lib/domain/limit";
+import { DEFAULT_SETTINGS, withPurchaseAt } from "#lib/domain/settings";
 import type {
 	Card,
 	LimitGroup,
@@ -19,9 +20,10 @@ const card = (overrides: Partial<Card> = {}): Card => ({
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
+	owner: "KC",
+	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
-	canPurchase: true,
 	limitGroupId: "pool",
 	...overrides,
 });
@@ -118,7 +120,14 @@ test("usage pools every card in the group, archived ones included", () => {
 test("spending on one card reduces what is available on the card sharing its group", () => {
 	const cards = [card(), card({ id: "scb" })];
 	const purchases = [purchase({ id: "a", cardId: "kbank", amount: 200_000 })];
-	const rows = spendableRows(cards, [group()], purchases, [], TODAY);
+	const rows = spendableRows(
+		cards,
+		[group()],
+		purchases,
+		[],
+		TODAY,
+		DEFAULT_SETTINGS,
+	);
 
 	expect(rows.map((row) => row.card.id)).toEqual(["kbank", "scb"]);
 	expect(rows.map((row) => row.available)).toEqual([300_000, 300_000]);
@@ -126,7 +135,14 @@ test("spending on one card reduces what is available on the card sharing its gro
 });
 
 test("a row carries the open period's close and due dates", () => {
-	const [row] = spendableRows([card()], [group()], [], [], TODAY);
+	const [row] = spendableRows(
+		[card()],
+		[group()],
+		[],
+		[],
+		TODAY,
+		DEFAULT_SETTINGS,
+	);
 	// 23 Sep is past the 18th, so today's purchase lands on the October statement.
 	expect(row?.closeDate).toBe("2026-10-18");
 	expect(row?.dueDate).toBe("2026-11-02");
@@ -135,22 +151,38 @@ test("a row carries the open period's close and due dates", () => {
 test("rows come back with the most room first", () => {
 	const cards = [card(), card({ id: "scb", limitGroupId: "small" })];
 	const groups = [group(), group({ id: "small", name: "SCB", limit: 100_000 })];
-	const rows = spendableRows(cards, groups, [], [], TODAY);
+	const rows = spendableRows(cards, groups, [], [], TODAY, DEFAULT_SETTINGS);
 	expect(rows.map((row) => row.card.id)).toEqual(["kbank", "scb"]);
 });
 
 test("available goes negative when the group is over its limit", () => {
 	const purchases = [purchase({ amount: 600_000 })];
-	const [row] = spendableRows([card()], [group()], purchases, [], TODAY);
+	const [row] = spendableRows(
+		[card()],
+		[group()],
+		purchases,
+		[],
+		TODAY,
+		DEFAULT_SETTINGS,
+	);
 	expect(row?.available).toBe(-100_000);
 });
 
-test("archived cards and cards closed to purchases are not rows", () => {
+test("archived cards and cards kept where purchases are closed are not rows", () => {
 	const cards = [
 		card({ id: "archived", archived: true }),
-		card({ id: "no-purchases", canPurchase: false }),
+		card({ id: "elsewhere", location: "bangkok" }),
 	];
-	expect(spendableRows(cards, [group()], [], [], TODAY)).toEqual([]);
+	expect(
+		spendableRows(cards, [group()], [], [], TODAY, DEFAULT_SETTINGS),
+	).toEqual([]);
+});
+
+test("turning a location on makes its cards rows without touching a single card", () => {
+	const cards = [card({ id: "elsewhere", location: "bangkok" })];
+	const settings = withPurchaseAt(DEFAULT_SETTINGS, "bangkok", true);
+	const rows = spendableRows(cards, [group()], [], [], TODAY, settings);
+	expect(rows.map((row) => row.card.id)).toEqual(["elsewhere"]);
 });
 
 test("a card whose group is missing is not a row", () => {
@@ -159,12 +191,15 @@ test("a card whose group is missing is not a row", () => {
 		name: "Card",
 		last4: "0000",
 		location: "krabi",
+		owner: "KC",
+		supplementary: false,
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		archived: false,
-		canPurchase: true,
 	};
 	const cards = [noGroupCard];
-	expect(spendableRows(cards, [group()], [], [], TODAY)).toEqual([]);
+	expect(
+		spendableRows(cards, [group()], [], [], TODAY, DEFAULT_SETTINGS),
+	).toEqual([]);
 });
 
 test("unassigned names the unarchived cards with no group of their own", () => {
@@ -173,18 +208,20 @@ test("unassigned names the unarchived cards with no group of their own", () => {
 		name: "Card",
 		last4: "0000",
 		location: "krabi",
+		owner: "KC",
+		supplementary: false,
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		archived: false,
-		canPurchase: true,
 	};
 	const oldCard: Card = {
 		id: "old",
 		name: "Card",
 		last4: "0000",
 		location: "krabi",
+		owner: "KC",
+		supplementary: false,
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		archived: true,
-		canPurchase: true,
 	};
 	const cards = [
 		card(),

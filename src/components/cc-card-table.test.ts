@@ -8,6 +8,8 @@ const card: Card = {
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
+	owner: "KC",
+	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
 };
@@ -46,35 +48,42 @@ test("shows a purchase count instead of delete once the card has purchases", asy
 	).toBeNull();
 });
 
-test("marks a card that may take purchases, and leaves one that may not unmarked", async () => {
+test("no longer has a purchases column -- that answer moved to settings", async () => {
+	const element = await mount([card]);
+	expect(
+		element.shadowRoot?.querySelector('td[data-field="can-purchase"]'),
+	).toBeNull();
+});
+
+test("names whose card each one is, falling back to KC when nothing is stored", async () => {
 	const element = await mount([
-		{ ...card, id: "kbank", canPurchase: true },
-		{ ...card, id: "scb", canPurchase: false },
+		{ ...card, id: "kbank", owner: "RI" },
+		{ ...card, id: "scb" },
 	]);
 	const cells = [
 		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
-			'td[data-field="can-purchase"]',
+			'td[data-field="owner"]',
 		) ?? []),
 	];
 
 	expect(cells).toHaveLength(2);
-	expect(cells[0]?.textContent).toContain("Allowed");
-	expect(cells[1]?.textContent?.trim()).toBe("—");
+	expect(cells[0]?.textContent?.trim()).toBe("RI");
+	expect(cells[1]?.textContent?.trim()).toBe("KC");
 });
 
-test("falls back to where the card is kept when it carries no answer", async () => {
+test("marks a supplementary card and leaves an ordinary one unmarked", async () => {
 	const element = await mount([
-		{ ...card, id: "kbank", location: "krabi" },
-		{ ...card, id: "scb", location: "bangkok" },
+		{ ...card, id: "kbank", supplementary: true },
+		{ ...card, id: "scb" },
 	]);
-	const cells = [
-		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
-			'td[data-field="can-purchase"]',
-		) ?? []),
+	const rows = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>("tbody tr") ?? []),
 	];
 
-	expect(cells[0]?.textContent).toContain("Allowed");
-	expect(cells[1]?.textContent?.trim()).toBe("—");
+	expect(rows[0]?.querySelector(".supplementary")?.textContent).toContain(
+		"Supplementary card",
+	);
+	expect(rows[1]?.querySelector(".supplementary")).toBeNull();
 });
 
 test("emits edit, archive, and remove with the card id", async () => {

@@ -1,4 +1,5 @@
 import type { Location } from "#lib/domain/location";
+import type { Owner } from "#lib/domain/owner";
 
 /** A calendar date in Asia/Bangkok, formatted `YYYY-MM-DD`. */
 export type PlainDate = string;
@@ -17,11 +18,16 @@ export type Card = {
 	name: string;
 	last4: string;
 	location: Location;
+	/** Absent on cards saved before the field existed; see `ownerOf` in `#lib/domain/owner`. */
+	owner?: Owner;
+	/**
+	 * A บัตรเสริม — a supplementary card issued against someone else's account. Absent on
+	 * cards saved before the field existed, which reads the same as not being one.
+	 */
+	supplementary?: boolean;
 	cycle: CycleRule;
 	comment?: string;
 	archived: boolean;
-	/** Absent on cards saved before the flag existed; see `canPurchase` in `#lib/domain/card`. */
-	canPurchase?: boolean;
 	/** Absent only on cards stored before limits existed; the card form requires one. */
 	limitGroupId?: string;
 };

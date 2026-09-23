@@ -1,6 +1,6 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { canPurchase } from "#lib/domain/card";
+import { ownerOf } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
@@ -32,11 +32,10 @@ export class CcCardTable extends LitElement {
 				border-radius: var(--cc-radius-sm);
 			}
 
-			.allowed {
+			.supplementary {
 				padding: 0 var(--cc-space-1);
 				font-size: var(--cc-text-xs);
-				font-weight: 600;
-				color: var(--cc-success);
+				color: var(--cc-text-muted);
 				background: var(--cc-surface-sunken);
 				border-radius: var(--cc-radius-sm);
 			}
@@ -68,8 +67,8 @@ export class CcCardTable extends LitElement {
 						<th>${t("cards.column.name")}</th>
 						<th>${t("cards.column.last4")}</th>
 						<th>${t("cards.column.location")}</th>
+						<th>${t("cards.column.owner")}</th>
 						<th>${t("cards.column.limitGroup")}</th>
-						<th>${t("cards.column.canPurchase")}</th>
 						<th>${t("cards.column.cycle")}</th>
 						<th>${t("cards.column.comment")}</th>
 						<th></th>
@@ -84,21 +83,19 @@ export class CcCardTable extends LitElement {
 									<a class="card-id" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.id}</a>
 								</td>
 								<td data-label=${t("cards.column.name")}>
-									${card.name}${card.archived ? html` <span class="archived">${t("cards.archived")}</span>` : ""}
+									${card.name}${card.archived ? html` <span class="archived">${t("cards.archived")}</span>` : ""}${
+										card.supplementary
+											? html` <span class="supplementary">${t("form.supplementary")}</span>`
+											: ""
+									}
 								</td>
 								<td data-label=${t("cards.column.last4")}>••••${card.last4}</td>
 								<td data-label=${t("cards.column.location")}>${locationText(card.location)}</td>
+								<td data-field="owner" data-label=${t("cards.column.owner")}>${ownerOf(card)}</td>
 								<td data-field="limit-group" data-label=${t("cards.column.limitGroup")}>
 									${
 										this.groups.find(({ id }) => id === card.limitGroupId)
 											?.name ?? t("cards.unassigned")
-									}
-								</td>
-								<td data-field="can-purchase" data-label=${t("cards.column.canPurchase")}>
-									${
-										canPurchase(card)
-											? html`<span class="allowed">${t("cards.canPurchase")}</span>`
-											: html`${t("common.none")}`
 									}
 								</td>
 								<td data-label=${t("cards.column.cycle")}>${describeCycleText(card.cycle)}</td>

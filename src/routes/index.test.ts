@@ -24,6 +24,8 @@ const card: Card = {
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
+	owner: "KC",
+	supplementary: false,
 	cycle: { kind: "offset", closeDay: 1, dueOffsetDays: 5 },
 	archived: false,
 };
@@ -61,10 +63,11 @@ const quickAddCard: Card = {
 	id: "scb",
 	name: "SCB Mastercard",
 	last4: "1234",
-	location: "bangkok",
+	location: "krabi",
+	owner: "KC",
+	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
-	canPurchase: true,
 };
 
 const fillQuickAdd = (quickAdd: HTMLElement, name: string, value: string) => {
@@ -81,14 +84,14 @@ const submitQuickAdd = (quickAdd: HTMLElement) =>
 		?.querySelector("form")
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
-test("offers only the cards that may take a purchase, while listing them all as due", async () => {
+test("offers only the cards kept where purchases are allowed, while listing them all as due", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(quickAddCard);
 	await repo.saveCard({
 		...quickAddCard,
 		id: "ktb",
 		name: "KTB Debit",
-		canPurchase: false,
+		location: "bangkok",
 	});
 	const root = mount();
 	renderDashboardPage(repo, root);
@@ -108,6 +111,29 @@ test("offers only the cards that may take a purchase, while listing them all as 
 	const dueList = root.querySelector("cc-due-list");
 	await dueList?.updateComplete;
 	expect(dueList?.shadowRoot?.textContent).toContain("KTB Debit");
+});
+
+test("turning a location on in settings opens its cards to purchases", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({
+		...quickAddCard,
+		id: "ktb",
+		name: "KTB Debit",
+		location: "bangkok",
+	});
+	await repo.saveSettings({ purchaseLocations: ["krabi", "bangkok"] });
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = root.querySelector("cc-quick-add");
+	await quickAdd?.updateComplete;
+	const options = [
+		...(quickAdd?.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="cardId"] option',
+		) ?? []),
+	];
+	expect(options.map((option) => option.value)).toEqual(["ktb"]);
 });
 
 test("a purchase dated on the close day lands on that statement", async () => {
@@ -289,6 +315,22 @@ test("the panel lists spendable cards and counts those with no group", async () 
 	const panel = root.querySelector("cc-spendable");
 	expect(panel?.rows.map((row) => row.card.id)).toEqual([quickAddCard.id]);
 	expect(panel?.unassigned).toBe(1);
+});
+
+test("the panel is told today's date, so it can say how far off each statement is", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	expect(root.querySelector("cc-spendable")?.today).toBe(today());
 });
 
 test("an archived card's unpaid balance still holds down the group it shares", async () => {

@@ -1,3 +1,4 @@
+import { type Settings, toSettings } from "#lib/domain/settings";
 import type {
 	Card,
 	LimitGroup,
@@ -11,6 +12,7 @@ const CARD = `${PREFIX}card:`;
 const PURCHASE = `${PREFIX}purchase:`;
 const PAYMENT = `${PREFIX}payment:`;
 const LIMIT_GROUP = `${PREFIX}limitgroup:`;
+const SETTINGS = `${PREFIX}settings`;
 
 export const cardKey = (cardId: string): string =>
 	`${CARD}${encodeURIComponent(cardId)}`;
@@ -142,5 +144,15 @@ export class LocalStorageRepository implements Repository {
 
 	async deleteLimitGroup(id: string): Promise<void> {
 		this.storage.removeItem(limitGroupKey(id));
+	}
+
+	async getSettings(): Promise<Settings> {
+		// Narrowed rather than trusted: this key can hold anything a past version wrote, and
+		// an unrecognised location in it must not reach the rest of the app as a `Location`.
+		return toSettings(this.read<unknown>(SETTINGS));
+	}
+
+	async saveSettings(settings: Settings): Promise<void> {
+		this.write(SETTINGS, settings);
 	}
 }

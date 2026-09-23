@@ -1,5 +1,7 @@
 import { isValidDate } from "#lib/domain/date";
 import { toLocation } from "#lib/domain/location";
+import { toOwner } from "#lib/domain/owner";
+import { type Settings, toSettings } from "#lib/domain/settings";
 import type {
 	Card,
 	LimitGroup,
@@ -19,6 +21,12 @@ export type Backup = {
 	cards: Card[];
 	purchases: Purchase[];
 	payments: StatementPayment[];
+	/**
+	 * Absent in files written before settings existed. The version stays 2 rather than
+	 * bumping to 3 for a field whose absence means "leave what is already stored alone":
+	 * a bump would reject every backup already sitting in someone's downloads folder.
+	 */
+	settings?: Settings;
 };
 
 export async function exportBackup(
@@ -27,6 +35,7 @@ export async function exportBackup(
 ): Promise<Backup> {
 	const limitGroups = await repo.listLimitGroups();
 	const cards = await repo.listCards();
+	const settings = await repo.getSettings();
 	const purchases: Purchase[] = [];
 	const payments: StatementPayment[] = [];
 
@@ -42,6 +51,7 @@ export async function exportBackup(
 		cards,
 		purchases,
 		payments,
+		settings,
 	};
 }
 
@@ -92,6 +102,12 @@ function cardProblem(value: unknown): MessageKey | null {
 		return "backup.problem.missingLast4";
 	if (toLocation(prop(value, "location")) === null)
 		return "backup.problem.badLocation";
+	// Absent is fine -- cards written before the field existed read as the default owner.
+	// A value that is present but unknown is not: that is a file claiming something the
+	// closed set cannot honour, and silently rewriting it would lose whose card it is.
+	const owner = prop(value, "owner");
+	if (owner !== undefined && toOwner(owner) === null)
+		return "backup.problem.badOwner";
 	return cycleProblem(prop(value, "cycle"));
 }
 
@@ -193,7 +209,13 @@ export function parseBackup(text: string): Backup {
 		}
 	}
 
-	return value as unknown as Backup;
+	// Narrowed rather than trusted, and left absent when the file carries nothing usable, so
+	// that importing an older backup leaves the settings already stored alone.
+	const settings = prop(value, "settings");
+	const parsed = value as unknown as Backup;
+	if (isPlainObject(settings)) parsed.settings = toSettings(settings);
+	else delete parsed.settings;
+	return parsed;
 }
 
 /** Additive: writes every record over whatever shares its key, and deletes nothing. */
@@ -205,4 +227,5 @@ export async function importBackup(
 	for (const card of backup.cards) await repo.saveCard(card);
 	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
 	for (const payment of backup.payments) await repo.savePayment(payment);
+	if (backup.settings) await repo.saveSettings(backup.settings);
 }
