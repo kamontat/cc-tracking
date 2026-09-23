@@ -3,5 +3,24 @@
 	"extends": ["@kcconfigs/biome"],
 	"files": {
 		"includes": ["!.claude"]
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["src/routes/*.html"],
+			"linter": {
+				"rules": {
+					"complexity": {
+						"useArrowFunction": "off",
+						"useDateNow": "off"
+					},
+					"style": {
+						"useTemplate": "off"
+					},
+					"suspicious": {
+						"noDoubleEquals": "off"
+					}
+				}
+			}
+		}
+	]
 }
