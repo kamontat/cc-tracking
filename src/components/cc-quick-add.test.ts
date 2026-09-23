@@ -44,6 +44,19 @@ const otherRow: SpendRow = {
 	available: 100_000,
 };
 
+// A third card that lands at the same array index `otherCard` occupied, so an unkeyed
+// `.map()` over the options reuses that option's DOM node rather than adding or removing one.
+const thirdCard: Card = {
+	id: "ktb",
+	name: "KTB Debit",
+	last4: "1111",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+	archived: false,
+	canPurchase: true,
+	limitGroupId: "solo",
+};
+
 const mount = async () => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-quick-add");
@@ -299,4 +312,33 @@ test("says nothing about credit when the card has no limit group", async () => {
 	expect(
 		element.shadowRoot?.querySelector('[data-testid="available"]'),
 	).toBeNull();
+});
+
+test("keeps the note and the select in agreement when the selected card drops out of the list", async () => {
+	const element = await mount();
+	element.cards = [cards[0] as Card, otherCard];
+	element.rows = [spendRow, otherRow];
+	await element.updateComplete;
+
+	const select =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	if (!select) throw new Error("no card select");
+	select.value = "scb";
+	select.dispatchEvent(new Event("change", { bubbles: true }));
+	await element.updateComplete;
+
+	// otherCard ("scb") drops out, replaced at the same array position by thirdCard ("ktb").
+	// An unkeyed option list reuses that DOM node in place, so without a fix the browser's
+	// native selection can silently keep pointing at what is now "ktb" -- no change event
+	// fires -- while the tracked state still says "scb".
+	element.cards = [cards[0] as Card, thirdCard];
+	element.rows = [spendRow];
+	await element.updateComplete;
+
+	const selectAfter =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	const note = element.shadowRoot?.querySelector('[data-testid="available"]');
+	expect(selectAfter?.value).toBe("kbank");
+	expect(note?.textContent).toContain("฿3,000.00");
+	expect(note?.textContent).toContain("฿5,000.00");
 });

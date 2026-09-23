@@ -60,6 +60,30 @@ export class CcQuickAdd extends LitElement {
 		new LocaleController(this);
 	}
 
+	override willUpdate(changed: Map<string, unknown>) {
+		// The options are rendered by an unkeyed map, so when `cards` changes shape (a card
+		// archived or removed elsewhere), Lit reuses <option> DOM nodes by position rather than
+		// by card id -- the browser's native selection can end up silently pointing at a
+		// different card's value, with no change event to catch it. Re-validate the tracked
+		// selection against the new list here, before render, falling back to the first card
+		// when the old one is gone -- a property set in willUpdate is folded into this same
+		// render pass rather than scheduling a second one.
+		if (!changed.has("cards")) return;
+		if (!this.cards.some((card) => card.id === this.selectedId)) {
+			this.selectedId = this.cards[0]?.id ?? "";
+		}
+	}
+
+	override updated(changed: Map<string, unknown>) {
+		// The select's actual selection is native DOM state that render() alone doesn't drive,
+		// so once willUpdate has settled `selectedId` against the current `cards`, write it onto
+		// the element explicitly to bring the DOM in line with it.
+		if (!changed.has("cards")) return;
+		const select =
+			this.renderRoot.querySelector<HTMLSelectElement>('[name="cardId"]');
+		if (select) select.value = this.selectedId;
+	}
+
 	private get selected(): SpendRow | null {
 		const id = this.selectedId || this.cards[0]?.id;
 		return this.rows.find((row) => row.card.id === id) ?? null;
