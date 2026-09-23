@@ -22,6 +22,16 @@ export type Card = {
 	archived: boolean;
 	/** Absent on cards saved before the flag existed; see `canPurchase` in `#lib/domain/card`. */
 	canPurchase?: boolean;
+	/** Absent only on cards stored before limits existed; the card form requires one. */
+	limitGroupId?: string;
+};
+
+/** A pool of credit. A card that shares its limit with nothing else still has one of these. */
+export type LimitGroup = {
+	id: string;
+	name: string;
+	/** Satang. Always a positive integer, like `Purchase.amount`. */
+	limit: number;
 };
 
 export type Purchase = {
