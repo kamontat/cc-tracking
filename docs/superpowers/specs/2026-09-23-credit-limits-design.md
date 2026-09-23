@@ -172,7 +172,7 @@ export function spendableRows(
   today: PlainDate,
 ): SpendRow[];
 
-/** Cards pointing at no group, or at one that does not exist. */
+/** Unarchived cards pointing at no group, or at one that does not exist. */
 export function unassignedCards(cards: Card[], groups: LimitGroup[]): Card[];
 ```
 
