@@ -1,7 +1,8 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { compareDates, isValidDate } from "#lib/domain/date";
-import { parseAmount } from "#lib/domain/money";
+import type { SpendRow } from "#lib/domain/limit";
+import { formatAmount, parseAmount } from "#lib/domain/money";
 import type { Card, PlainDate } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
@@ -46,14 +47,22 @@ export class CcQuickAdd extends LitElement {
 	@property() today: PlainDate = "";
 	/** Set by the page after a successful save. */
 	@property() answer = "";
+	/** Rows for the cards above, from `spendableRows`. A card with no row shows no credit. */
+	@property({ attribute: false }) rows: SpendRow[] = [];
 
 	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
 	// language switch while an error is on screen re-renders it in the new language too.
 	@state() private errorKey: MessageKey | "" = "";
+	@state() private selectedId = "";
 
 	constructor() {
 		super();
 		new LocaleController(this);
+	}
+
+	private get selected(): SpendRow | null {
+		const id = this.selectedId || this.cards[0]?.id;
+		return this.rows.find((row) => row.card.id === id) ?? null;
 	}
 
 	private value(name: string): string {
@@ -101,6 +110,10 @@ export class CcQuickAdd extends LitElement {
 		// explicitly so a required field doesn't block the very next entry.
 		const dateField = form?.querySelector<HTMLInputElement>('[name="date"]');
 		if (dateField) dateField.value = this.today;
+		// The card select also goes back to its first option on reset, so the tracked
+		// selection must follow -- otherwise the note keeps describing the card that was
+		// just used rather than the one now selected.
+		this.selectedId = "";
 	}
 
 	override render() {
@@ -114,13 +127,27 @@ export class CcQuickAdd extends LitElement {
 				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 				<label>
 					${t("quickAdd.card")}
-					<select name="cardId" required>
+					<select
+						name="cardId"
+						required
+						@change=${(event: Event) => {
+							this.selectedId = (event.target as HTMLSelectElement).value;
+						}}
+					>
 						${this.cards.map(
 							(card) =>
 								html`<option value=${card.id}>${card.id} — ${card.name}</option>`,
 						)}
 					</select>
 				</label>
+				${
+					this.selected
+						? html`<p data-testid="available"><small>${t("quickAdd.available", {
+								available: formatAmount(this.selected.available),
+								limit: formatAmount(this.selected.group.limit),
+							})}</small></p>`
+						: nothing
+				}
 				<label>${t("quickAdd.date")} <input name="date" type="date" .value=${this.today} required /></label>
 				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")} required /></label>
 				<label>${t("quickAdd.note")} <input name="note" placeholder=${t("quickAdd.notePlaceholder")} /></label>

@@ -27,6 +27,7 @@ export const en = {
 	"dashboard.dueNext": "Due next",
 	"dashboard.addPurchase": "Add a purchase",
 	"dashboard.answer": "Lands on the statement closing {close} — pay by {due}.",
+	"dashboard.answerOver": "That is {over} over the {name} limit.",
 	"dashboard.error.read": "Could not read your cards.",
 	"dashboard.error.markPaid": "Could not record the payment.",
 	"dashboard.error.addPurchase": "Could not save the purchase.",
@@ -61,6 +62,7 @@ export const en = {
 	"quickAdd.error.futureDate":
 		"That date is in the future. A credit-card purchase cannot be dated ahead.",
 	"quickAdd.error.badAmount": "Enter the amount in baht, like 1234.56.",
+	"quickAdd.available": "Available {available} of {limit}",
 
 	"cards.title": "Cards",
 	"cards.add": "Add a card",

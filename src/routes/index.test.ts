@@ -363,3 +363,34 @@ test("the purchase confirmation re-renders in the new language instead of freezi
 		"อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ 18 ก.ย. 2026 — ชำระภายใน 03 ต.ค. 2026",
 	);
 });
+
+test("confirms a purchase that goes over the limit, and still saves it", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 50_000,
+	});
+	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	root.querySelector("cc-quick-add")?.dispatchEvent(
+		new CustomEvent("add", {
+			detail: {
+				cardId: quickAddCard.id,
+				date: today(),
+				amount: 80_000,
+				note: "laptop",
+			},
+		}),
+	);
+	await settle();
+
+	expect(await repo.listPurchases(quickAddCard.id)).toHaveLength(1);
+	const answer = root.querySelector("cc-quick-add")?.answer ?? "";
+	expect(answer).toContain("฿300.00");
+	expect(answer).toContain("KBank account");
+});

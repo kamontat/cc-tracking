@@ -41,6 +41,7 @@ export const th: Catalog = {
 	// and "close date" -- ปิดยอด (also due.column.closes, form.closeDay, statements.header,
 	// cycle.offset/fixed). This sentence also depends on Thai word order matching English.
 	"dashboard.answer": "อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ {close} — ชำระภายใน {due}",
+	"dashboard.answerOver": "ยอดนี้เกินวงเงิน {name} อยู่ {over}",
 	"dashboard.error.read": "อ่านข้อมูลบัตรไม่สำเร็จ",
 	"dashboard.error.markPaid": "บันทึกการชำระเงินไม่สำเร็จ",
 	"dashboard.error.addPurchase": "บันทึกรายการใช้จ่ายไม่สำเร็จ",
@@ -74,6 +75,7 @@ export const th: Catalog = {
 	"quickAdd.error.badDate": "ไม่มีวันที่นี้ ใช้รูปแบบ YYYY-MM-DD",
 	"quickAdd.error.futureDate": "วันที่อยู่ในอนาคต รายการบัตรเครดิตลงวันที่ล่วงหน้าไม่ได้",
 	"quickAdd.error.badAmount": "กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
+	"quickAdd.available": "คงเหลือ {available} จาก {limit}",
 
 	"cards.title": "บัตร",
 	"cards.add": "เพิ่มบัตร",
