@@ -1,15 +1,21 @@
 import { isValidDate } from "#lib/domain/date";
 import { toLocation } from "#lib/domain/location";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type {
+	Card,
+	LimitGroup,
+	Purchase,
+	StatementPayment,
+} from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { MessageError } from "#lib/i18n/error";
 import type { Repository } from "#lib/storage/repository";
 
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 export type Backup = {
 	version: typeof BACKUP_VERSION;
 	exportedAt: string;
+	limitGroups: LimitGroup[];
 	cards: Card[];
 	purchases: Purchase[];
 	payments: StatementPayment[];
@@ -19,6 +25,7 @@ export async function exportBackup(
 	repo: Repository,
 	now: Date = new Date(),
 ): Promise<Backup> {
+	const limitGroups = await repo.listLimitGroups();
 	const cards = await repo.listCards();
 	const purchases: Purchase[] = [];
 	const payments: StatementPayment[] = [];
@@ -31,6 +38,7 @@ export async function exportBackup(
 	return {
 		version: BACKUP_VERSION,
 		exportedAt: now.toISOString(),
+		limitGroups,
 		cards,
 		purchases,
 		payments,
@@ -112,6 +120,16 @@ function paymentProblem(value: unknown): MessageKey | null {
 	return null;
 }
 
+/** `null` when the limit group is well-formed, otherwise which catalog key names what's wrong. */
+function limitGroupProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
+	if (!isNonEmptyString(prop(value, "name")))
+		return "backup.problem.missingName";
+	if (!isInteger(prop(value, "limit"))) return "backup.problem.badLimit";
+	return null;
+}
+
 export function parseBackup(text: string): Backup {
 	let value: unknown;
 	try {
@@ -134,13 +152,28 @@ export function parseBackup(text: string): Backup {
 		});
 	}
 
+	const limitGroups = prop(value, "limitGroups");
 	const cards = prop(value, "cards");
 	const purchases = prop(value, "purchases");
 	const payments = prop(value, "payments");
-	if (!isList(cards) || !isList(purchases) || !isList(payments)) {
+	if (
+		!isList(limitGroups) ||
+		!isList(cards) ||
+		!isList(purchases) ||
+		!isList(payments)
+	) {
 		throw new MessageError("backup.unreadable");
 	}
 
+	for (const [index, group] of limitGroups.entries()) {
+		const problem = limitGroupProblem(group);
+		if (problem) {
+			throw new MessageError("backup.limitGroup", {
+				index: index + 1,
+				problem,
+			});
+		}
+	}
 	for (const [index, card] of cards.entries()) {
 		const problem = cardProblem(card);
 		if (problem) {
@@ -168,6 +201,7 @@ export async function importBackup(
 	repo: Repository,
 	backup: Backup,
 ): Promise<void> {
+	for (const group of backup.limitGroups) await repo.saveLimitGroup(group);
 	for (const card of backup.cards) await repo.saveCard(card);
 	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
 	for (const payment of backup.payments) await repo.savePayment(payment);

@@ -150,6 +150,7 @@ export const en = {
 	"backup.card": "That backup's card #{index} {problem}.",
 	"backup.purchase": "That backup's purchase #{index} {problem}.",
 	"backup.payment": "That backup's payment #{index} {problem}.",
+	"backup.limitGroup": "That backup's limit group #{index} {problem}.",
 	"backup.problem.notObject": "is not an object",
 	"backup.problem.missingId": "is missing an id",
 	"backup.problem.missingName": "is missing a name",
@@ -170,4 +171,5 @@ export const en = {
 	"backup.problem.badPaidAt": "has an invalid paidAt date",
 	"backup.problem.badCloseDate": "has an invalid closeDate",
 	"backup.problem.badDueDate": "has an invalid dueDate",
+	"backup.problem.badLimit": "has a limit that is not a whole number of satang",
 } as const;

@@ -167,6 +167,7 @@ export const th: Catalog = {
 	"backup.card": "บัตรลำดับที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.purchase": "รายการใช้จ่ายลำดับที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.payment": "การชำระเงินลำดับที่ {index} ในข้อมูลสำรอง {problem}",
+	"backup.limitGroup": "กลุ่มวงเงินที่ {index} ในไฟล์สำรอง{problem}",
 	"backup.problem.notObject": "ไม่ใช่ออบเจ็กต์",
 	"backup.problem.missingId": "ไม่มีรหัส",
 	"backup.problem.missingName": "ไม่มีชื่อ",
@@ -189,4 +190,5 @@ export const th: Catalog = {
 	"backup.problem.badPaidAt": "วันที่ paidAt ไม่ถูกต้อง",
 	"backup.problem.badCloseDate": "วันที่ closeDate ไม่ถูกต้อง",
 	"backup.problem.badDueDate": "วันที่ dueDate ไม่ถูกต้อง",
+	"backup.problem.badLimit": "มีวงเงินที่ไม่ใช่จำนวนเต็มสตางค์",
 };
