@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type {
+	Card,
+	LimitGroup,
+	Purchase,
+	StatementPayment,
+} from "#lib/domain/types";
 import type { Repository } from "#lib/storage/repository";
 
 export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
@@ -31,6 +36,15 @@ export const samplePayment = (
 	paidAt: "2026-10-01",
 	closeDate: "2026-09-18",
 	dueDate: "2026-10-03",
+	...overrides,
+});
+
+export const sampleLimitGroup = (
+	overrides: Partial<LimitGroup> = {},
+): LimitGroup => ({
+	id: "pool",
+	name: "KBank account",
+	limit: 500_000,
 	...overrides,
 });
 
@@ -248,6 +262,54 @@ export function repositoryContract(
 			const purchases = await repo.listPurchases("kbank");
 			expect(purchases).toHaveLength(1);
 			expect(purchases[0]?.date).toBe("2026-09-25");
+		});
+
+		test("returns no limit groups before anything is saved", async () => {
+			expect(await repo.listLimitGroups()).toEqual([]);
+		});
+
+		test("saves and reads a limit group back whole", async () => {
+			const group = sampleLimitGroup();
+			await repo.saveLimitGroup(group);
+			expect(await repo.listLimitGroups()).toEqual([group]);
+		});
+
+		test("saving the same limit group id replaces it", async () => {
+			await repo.saveLimitGroup(sampleLimitGroup());
+			await repo.saveLimitGroup(sampleLimitGroup({ limit: 750_000 }));
+			const groups = await repo.listLimitGroups();
+			expect(groups).toHaveLength(1);
+			expect(groups[0]?.limit).toBe(750_000);
+		});
+
+		test("lists limit groups sorted by id", async () => {
+			await repo.saveLimitGroup(sampleLimitGroup({ id: "scb" }));
+			await repo.saveLimitGroup(sampleLimitGroup({ id: "kbank" }));
+			expect((await repo.listLimitGroups()).map((g) => g.id)).toEqual([
+				"kbank",
+				"scb",
+			]);
+		});
+
+		test("deletes a limit group, and deleting an absent one is not an error", async () => {
+			await repo.saveLimitGroup(sampleLimitGroup());
+			await repo.deleteLimitGroup("pool");
+			await repo.deleteLimitGroup("pool");
+			expect(await repo.listLimitGroups()).toEqual([]);
+		});
+
+		test("deleting a card leaves its limit group alone", async () => {
+			await repo.saveLimitGroup(sampleLimitGroup());
+			await repo.saveCard(sampleCard({ limitGroupId: "pool" }));
+			await repo.deleteCard("kbank");
+			expect(await repo.listLimitGroups()).toHaveLength(1);
+		});
+
+		test("returned limit groups are copies, not live references", async () => {
+			await repo.saveLimitGroup(sampleLimitGroup());
+			const [group] = await repo.listLimitGroups();
+			if (group) group.name = "mutated";
+			expect((await repo.listLimitGroups())[0]?.name).toBe("KBank account");
 		});
 	});
 }
