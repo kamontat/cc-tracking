@@ -137,7 +137,12 @@ test("starts open, and stays closed once the reader closes it", async () => {
 	expect(section.open).toBe(true);
 
 	section.open = false;
-	element.purchaseCounts = { kbank: 4 };
+	// Round-tripping through empty is what catches an `?open=${...}` binding: a binding whose
+	// value never changes is dirty-checked away and reads exactly like the static attribute,
+	// so only a render where the bound value would differ tells the two apart.
+	element.cards = [];
+	await element.updateComplete;
+	element.cards = [card];
 	await element.updateComplete;
 
 	expect(

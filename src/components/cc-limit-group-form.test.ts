@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import type { CcLimitGroupForm } from "#components/cc-limit-group-form";
 import "#components/cc-limit-group-form";
 import type { LimitGroup } from "#lib/domain/types";
-import { setLocale } from "#lib/i18n/index";
+import { setLocale, t } from "#lib/i18n/index";
 
 const mount = async (group: LimitGroup | null = null) => {
 	setLocale("en");
@@ -113,8 +113,25 @@ test("refuses a group with no name, and saves nothing", async () => {
 
 	expect(seen).toHaveLength(0);
 	expect(
-		element.shadowRoot?.querySelector('[role="alert"]')?.textContent,
-	).toContain("name");
+		element.shadowRoot?.querySelector('[role="alert"]')?.textContent?.trim(),
+	).toBe(t("limits.error.name"));
+});
+
+test("offers exactly the three owners, by their initials in both languages", async () => {
+	const element = await mount();
+	const initials = () =>
+		[
+			...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+				'[name="owner"] option',
+			) ?? []),
+		].map((option) => option.textContent?.trim());
+
+	expect(initials()).toEqual(["KC", "NT", "RI"]);
+
+	// The initials are stored codes, not prose: Thai must leave them exactly as they are.
+	setLocale("th");
+	await element.updateComplete;
+	expect(initials()).toEqual(["KC", "NT", "RI"]);
 });
 
 test("refuses a limit that is not an amount, and saves nothing", async () => {
@@ -127,9 +144,11 @@ test("refuses a limit that is not an amount, and saves nothing", async () => {
 	await element.updateComplete;
 
 	expect(seen).toHaveLength(0);
+	// Compared against the catalog rather than a substring: "Give the limit group a name."
+	// contains "limit" too, so a substring check cannot tell the two errors apart.
 	expect(
-		element.shadowRoot?.querySelector('[role="alert"]')?.textContent,
-	).toContain("limit");
+		element.shadowRoot?.querySelector('[role="alert"]')?.textContent?.trim(),
+	).toBe(t("limits.error.limit"));
 });
 
 test("clears itself after a create so the next group starts empty", async () => {
@@ -184,6 +203,13 @@ test("stays closed once the reader closes it", async () => {
 	element.requestUpdate();
 	await element.updateComplete;
 	expect(details(element)?.open).toBe(false);
+
+	// ...and the close has to have been recorded, not merely gone unnoticed: a component that
+	// never listened to `toggle` still believes it is open, so Lit writes nothing here and the
+	// next edit target can never open it again.
+	element.group = { id: "solo", name: "SCB", limit: 100_000 };
+	await element.updateComplete;
+	expect(details(element)?.open).toBe(true);
 });
 
 test("re-renders a displayed error in the new language when the locale switches", async () => {

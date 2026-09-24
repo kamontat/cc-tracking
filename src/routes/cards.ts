@@ -75,7 +75,13 @@ export function renderCardsPage(
 		}, "cards.error.save");
 
 	const onRemove = (event: CustomEvent<string>) =>
-		state.guard(() => repo.deleteCard(event.detail), "cards.error.delete");
+		state.guard(async () => {
+			await repo.deleteCard(event.detail);
+			// Left loaded, the form would still hold the deleted record, and Save would write it
+			// straight back -- a delete the reader watched happen, undone by a button that looks
+			// like it is only saving an edit.
+			if (editing?.id === event.detail) editing = null;
+		}, "cards.error.delete");
 
 	const onArchive = (event: CustomEvent<string>) =>
 		state.guard(async () => {
@@ -84,7 +90,11 @@ export function renderCardsPage(
 		}, "cards.error.archive");
 
 	const onEdit = (event: CustomEvent<string>) => {
-		editing = cards.find((c) => c.id === event.detail) ?? null;
+		// Copied, not handed over as-is: picking the same row twice would otherwise hand the form
+		// the identical object, Lit's `!==` dirty check would see no change, and the form would
+		// never learn to open itself again after the reader collapsed it.
+		const card = cards.find((c) => c.id === event.detail);
+		editing = card ? { ...card } : null;
 		paint();
 	};
 
@@ -95,15 +105,18 @@ export function renderCardsPage(
 		}, "cards.error.saveGroup");
 
 	const onEditGroup = (event: CustomEvent<string>) => {
-		editingGroup = groups.find((group) => group.id === event.detail) ?? null;
+		// Copied for the same reason `onEdit` copies a card: the same object twice reads as no
+		// change at all to the form bound to it.
+		const group = groups.find((one) => one.id === event.detail);
+		editingGroup = group ? { ...group } : null;
 		paint();
 	};
 
 	const onRemoveGroup = (event: CustomEvent<string>) =>
-		state.guard(
-			() => repo.deleteLimitGroup(event.detail),
-			"cards.error.deleteGroup",
-		);
+		state.guard(async () => {
+			await repo.deleteLimitGroup(event.detail);
+			if (editingGroup?.id === event.detail) editingGroup = null;
+		}, "cards.error.deleteGroup");
 
 	const usage = (): Record<string, number> =>
 		Object.fromEntries(

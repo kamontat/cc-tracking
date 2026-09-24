@@ -278,6 +278,102 @@ test("feeds the group being edited to the form, and lets go once it is saved", a
 	]);
 });
 
+test("lets go of a group that is deleted while it is being edited", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root
+		.querySelector("cc-limit-group-table")
+		?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
+	await settle();
+	root
+		.querySelector("cc-limit-group-table")
+		?.dispatchEvent(new CustomEvent("remove-group", { detail: "pool" }));
+	await settle();
+
+	// Still loaded, a Save would write the deleted group straight back.
+	expect(root.querySelector("cc-limit-group-form")?.group).toBeNull();
+});
+
+test("lets go of a card that is deleted while it is being edited", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root
+		.querySelector("cc-card-table")
+		?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	await settle();
+	root
+		.querySelector("cc-card-table")
+		?.dispatchEvent(new CustomEvent("remove", { detail: sampleCard.id }));
+	await settle();
+
+	expect(root.querySelector("cc-card-form")?.card).toBeNull();
+});
+
+test("reopens a hand-collapsed form when the same group is picked again", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	const table = root.querySelector("cc-limit-group-table");
+	table?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
+	await settle();
+
+	const form = root.querySelector("cc-limit-group-form");
+	const section = form?.shadowRoot?.querySelector("details");
+	if (!section) throw new Error("no details element");
+	section.open = false;
+	section.dispatchEvent(new Event("toggle"));
+	await settle();
+
+	// Picking the same row again is the reader asking for it back.
+	table?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
+	await settle();
+
+	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
+});
+
+test("reopens a hand-collapsed card form when the same card is picked again", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	const table = root.querySelector("cc-card-table");
+	table?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	await settle();
+
+	const form = root.querySelector("cc-card-form");
+	const section = form?.shadowRoot?.querySelector("details");
+	if (!section) throw new Error("no details element");
+	section.open = false;
+	section.dispatchEvent(new Event("toggle"));
+	await settle();
+
+	table?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	await settle();
+
+	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
+});
+
 test("says so when a limit group cannot be saved", async () => {
 	class Rejecting extends InMemoryRepository {
 		override saveLimitGroup(): Promise<void> {
