@@ -350,48 +350,6 @@ describe("settings in a backup", () => {
 });
 
 describe("owner in a backup", () => {
-	test("keeps a known owner", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
-			cards: [sampleCard({ owner: "RI" })],
-			purchases: [],
-			payments: [],
-		});
-		expect(parseBackup(text).cards[0]?.owner).toBe("RI");
-	});
-
-	test("rejects an owner outside the closed set", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
-			cards: [{ ...sampleCard(), owner: "ZZ" }],
-			purchases: [],
-			payments: [],
-		});
-		const failure = captureThrow(() => parseBackup(text));
-		expect(failure).toBeInstanceOf(MessageError);
-		expect((failure as MessageError).params).toEqual({
-			index: 1,
-			problem: "backup.problem.badOwner",
-		});
-	});
-
-	test("accepts a card written before the owner field existed", () => {
-		const { owner: _owner, ...legacy } = sampleCard();
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
-			cards: [legacy],
-			purchases: [],
-			payments: [],
-		});
-		expect(parseBackup(text).cards).toHaveLength(1);
-	});
-
 	test("keeps a known owner on a limit group", () => {
 		const text = JSON.stringify({
 			version: 2,

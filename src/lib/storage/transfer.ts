@@ -102,12 +102,6 @@ function cardProblem(value: unknown): MessageKey | null {
 		return "backup.problem.missingLast4";
 	if (toLocation(prop(value, "location")) === null)
 		return "backup.problem.badLocation";
-	// Absent is fine -- cards written before the field existed read as the default owner.
-	// A value that is present but unknown is not: that is a file claiming something the
-	// closed set cannot honour, and silently rewriting it would lose whose card it is.
-	const owner = prop(value, "owner");
-	if (owner !== undefined && toOwner(owner) === null)
-		return "backup.problem.badOwner";
 	return cycleProblem(prop(value, "cycle"));
 }
 

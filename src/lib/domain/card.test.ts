@@ -8,7 +8,6 @@ const card = (fields: Partial<Card>): Card => ({
 	name: "KBank Visa",
 	last4: "4821",
 	location: "bangkok",
-	owner: "KC",
 	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,

@@ -18,8 +18,6 @@ export type Card = {
 	name: string;
 	last4: string;
 	location: Location;
-	/** Absent on cards saved before the field existed; see `ownerOf` in `#lib/domain/owner`. */
-	owner?: Owner;
 	/**
 	 * A บัตรเสริม — a supplementary card issued against someone else's account. Absent on
 	 * cards saved before the field existed, which reads the same as not being one.
