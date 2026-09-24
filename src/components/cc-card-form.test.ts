@@ -330,6 +330,26 @@ test("shows a four-digit example in the id field, in both languages", async () =
 	).toBe("0001");
 });
 
+test("the locked id reads as a field, its label above its value like every other one", async () => {
+	setLocale("en");
+	const element = await mount({
+		id: "kbank",
+		name: "KBank Visa",
+		last4: "4821",
+		location: "krabi",
+		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+		archived: false,
+	});
+
+	const field = element.shadowRoot?.querySelector('[data-field="id"]');
+	expect(field?.querySelector(".readonly__label")?.textContent?.trim()).toBe(
+		"Id",
+	);
+	const value = field?.querySelector(".readonly__value");
+	expect(value?.textContent).toContain("kbank");
+	expect(value?.textContent).toContain("cannot change");
+});
+
 test("locks the id when editing an existing card", async () => {
 	const element = await mount({
 		id: "kbank",

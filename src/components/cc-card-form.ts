@@ -31,6 +31,40 @@ export class CcCardForm extends LitElement {
 				p[role="alert"] {
 					grid-column: 1 / -1;
 				}
+
+				/*
+				 * A checkbox is one line where every other cell is a label above a control, and a
+				 * grid cell stretches, so it would otherwise sit against the middle of a row whose
+				 * height the input beside it sets. Pinned to the bottom, and carrying that input's
+				 * own vertical padding and a transparent border in place of its box, its text
+				 * lands on exactly the line the input's text sits on.
+				 */
+				label:has(input[type="checkbox"]) {
+					align-self: end;
+					padding-block: var(--cc-space-2);
+					border-block: var(--cc-border-width) solid transparent;
+				}
+			}
+
+			/*
+			 * The id of a saved card cannot be edited, so it has no input -- but it still has to
+			 * keep the rhythm of the fields around it. The label half takes the same muted
+			 * treatment a real label has, and the value half carries an input's padding and a
+			 * transparent border in place of its box, which lands the text on the same line as
+			 * the real input beside it.
+			 */
+			.readonly {
+				gap: var(--cc-space-1);
+			}
+
+			.readonly__label {
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.readonly__value {
+				padding: var(--cc-space-2);
+				border: var(--cc-border-width) solid transparent;
 			}
 
 			fieldset {
@@ -208,7 +242,12 @@ export class CcCardForm extends LitElement {
 
 				${
 					card
-						? html`<p>${t("form.id")} <strong>${card.id}</strong> <small>${t("form.idImmutable")}</small></p>`
+						? html`
+							<div class="readonly" data-field="id">
+								<span class="readonly__label">${t("form.id")}</span>
+								<span class="readonly__value">${card.id} <small>${t("form.idImmutable")}</small></span>
+							</div>
+						`
 						: html`<label>${t("form.id")} <input name="id" placeholder=${t("form.idPlaceholder")} required /></label>`
 				}
 
