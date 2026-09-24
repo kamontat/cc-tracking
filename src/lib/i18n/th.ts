@@ -55,7 +55,7 @@ export const th: Catalog = {
 	"due.empty": "ยังไม่มีบัตร",
 	"due.emptyAction": "เพิ่มบัตรได้ที่หน้าบัตร",
 	"due.column.card": "บัตร",
-	"due.column.where": "ที่เก็บ",
+	"due.column.where": "ที่อยู่",
 	"due.column.closes": "ปิดยอด",
 	"due.column.due": "ครบกำหนด",
 	"due.column.total": "รวม",
@@ -65,7 +65,7 @@ export const th: Catalog = {
 	"due.stillOpen": "ยังไม่ปิดยอด",
 	"due.markPaid": "บันทึกว่าชำระแล้ว",
 
-	"groups.title": "บัตรแยกตามที่เก็บ",
+	"groups.title": "บัตรแยกตามที่อยู่",
 	"groups.nextDue": "ครบกำหนดถัดไป {date}",
 
 	"quickAdd.card": "บัตร",
@@ -90,7 +90,7 @@ export const th: Catalog = {
 	"cards.column.id": "รหัส",
 	"cards.column.name": "ชื่อ",
 	"cards.column.last4": "เลข 4 ตัวท้าย",
-	"cards.column.location": "ที่เก็บ",
+	"cards.column.location": "ที่อยู่",
 	"cards.column.owner": "เจ้าของ",
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
 	// backup.problem.*Cycle fragments below).
@@ -117,7 +117,7 @@ export const th: Catalog = {
 	"form.idPlaceholder": "0001",
 	"form.name": "ชื่อ",
 	"form.last4": "เลข 4 ตัวท้าย",
-	"form.location": "ที่เก็บ",
+	"form.location": "ที่อยู่",
 	"form.owner": "เจ้าของ",
 	"form.supplementary": "บัตรเสริม",
 	"form.limitGroup": "กลุ่มวงเงิน",
@@ -135,7 +135,7 @@ export const th: Catalog = {
 	"form.error.id": "ตั้งรหัสบัตรที่จำได้",
 	"form.error.name": "ตั้งชื่อบัตร",
 	"form.error.last4": "เลข 4 ตัวท้ายต้องเป็นตัวเลขสี่หลัก",
-	"form.error.location": "เลือกที่เก็บบัตร",
+	"form.error.location": "เลือกที่อยู่บัตร",
 	"form.error.owner": "เลือกเจ้าของบัตร",
 	"form.error.limitGroup": "เลือกกลุ่มวงเงินที่บัตรใบนี้ใช้",
 	"form.error.closeDay": "วันปิดยอดต้องอยู่ระหว่าง 1 ถึง 31",
@@ -220,7 +220,6 @@ export const th: Catalog = {
 	"limits.column.available": "คงเหลือ",
 	"limits.add": "เพิ่มกลุ่มวงเงิน",
 	"limits.save": "บันทึกการแก้ไข",
-	"limits.editing": "กำลังแก้ {name}",
 	"limits.name": "ชื่อ",
 	"limits.namePlaceholder": "บัญชี KBank",
 	"limits.limit": "วงเงิน (บาท)",

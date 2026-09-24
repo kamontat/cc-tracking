@@ -65,7 +65,7 @@ test("renders its heading, location names, and next-due text in the chosen langu
 
 	setLocale("th");
 	await element.updateComplete;
-	expect(element.shadowRoot?.textContent).toContain("บัตรแยกตามที่เก็บ");
+	expect(element.shadowRoot?.textContent).toContain("บัตรแยกตามที่อยู่");
 	expect(element.shadowRoot?.textContent).toContain("กระบี่");
 	expect(element.shadowRoot?.textContent).toContain("ครบกำหนดถัดไป");
 });
