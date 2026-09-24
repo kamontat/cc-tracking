@@ -5,7 +5,8 @@ import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
-import "#components/cc-limit-groups";
+import "#components/cc-limit-group-form";
+import "#components/cc-limit-group-table";
 import { html, nothing, render } from "lit";
 import { today } from "#lib/domain/date";
 import { groupUsage } from "#lib/domain/limit";
@@ -34,6 +35,7 @@ export function renderCardsPage(
 	let counts: Record<string, number> = {};
 	let groups: LimitGroup[] = [];
 	let editing: Card | null = null;
+	let editingGroup: LimitGroup | null = null;
 	// Read once per page load: the notice is consumed here, not on every paint.
 	let resetNames = takeResetNotice(storage);
 	const now = today();
@@ -87,10 +89,15 @@ export function renderCardsPage(
 	};
 
 	const onSaveGroup = (event: CustomEvent<LimitGroup>) =>
-		state.guard(
-			() => repo.saveLimitGroup(event.detail),
-			"cards.error.saveGroup",
-		);
+		state.guard(async () => {
+			await repo.saveLimitGroup(event.detail);
+			editingGroup = null;
+		}, "cards.error.saveGroup");
+
+	const onEditGroup = (event: CustomEvent<string>) => {
+		editingGroup = groups.find((group) => group.id === event.detail) ?? null;
+		paint();
+	};
 
 	const onRemoveGroup = (event: CustomEvent<string>) =>
 		state.guard(
@@ -155,13 +162,23 @@ export function renderCardsPage(
 					></cc-card-table>
 				</article>
 				<article>
-					<cc-limit-groups
+					<cc-limit-group-form
+						.group=${editingGroup}
+						@save-group=${onSaveGroup}
+						@cancel=${() => {
+							editingGroup = null;
+							paint();
+						}}
+					></cc-limit-group-form>
+				</article>
+				<article>
+					<cc-limit-group-table
 						.groups=${groups}
 						.usage=${usage()}
 						.counts=${groupCounts()}
-						@save-group=${onSaveGroup}
+						@edit-group=${onEditGroup}
 						@remove-group=${onRemoveGroup}
-					></cc-limit-groups>
+					></cc-limit-group-table>
 				</article>
 			`,
 			root,
