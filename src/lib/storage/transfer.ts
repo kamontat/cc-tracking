@@ -143,6 +143,12 @@ function limitGroupProblem(value: unknown): MessageKey | null {
 	if (!isNonEmptyString(prop(value, "name")))
 		return "backup.problem.missingName";
 	if (!isInteger(prop(value, "limit"))) return "backup.problem.badLimit";
+	// Absent is fine -- groups written before the field existed read as the default owner.
+	// A value that is present but unknown is not: that is a file claiming something the
+	// closed set cannot honour, and silently rewriting it would lose whose account it is.
+	const owner = prop(value, "owner");
+	if (owner !== undefined && toOwner(owner) === null)
+		return "backup.problem.badOwner";
 	return null;
 }
 

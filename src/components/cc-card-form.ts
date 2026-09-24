@@ -1,7 +1,7 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
-import { DEFAULT_OWNER, OWNERS, ownerOf, toOwner } from "#lib/domain/owner";
+import { DEFAULT_OWNER, OWNERS, toOwner } from "#lib/domain/owner";
 import type { Card, CycleRule, LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
@@ -124,7 +124,7 @@ export class CcCardForm extends LitElement {
 			if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
 			const owner =
 				this.renderRoot.querySelector<HTMLSelectElement>('[name="owner"]');
-			if (owner) owner.value = this.card ? ownerOf(this.card) : DEFAULT_OWNER;
+			if (owner) owner.value = toOwner(this.card?.owner) ?? DEFAULT_OWNER;
 		}
 		if (!changed.has("card") && !changed.has("groups")) return;
 		const limitGroup = this.renderRoot.querySelector<HTMLSelectElement>(

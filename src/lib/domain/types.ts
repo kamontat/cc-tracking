@@ -38,6 +38,8 @@ export type LimitGroup = {
 	name: string;
 	/** Satang. Always a positive integer, like `Purchase.amount`. */
 	limit: number;
+	/** Absent on groups saved before the field existed; see `ownerOf` in `#lib/domain/owner`. */
+	owner?: Owner;
 };
 
 export type Purchase = {

@@ -19,6 +19,7 @@ const mount = async (
 	purchaseCounts: Record<string, number> = {},
 	groups: LimitGroup[] = [],
 ) => {
+	setLocale("en");
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-card-table");
 	element.cards = cards;
@@ -55,20 +56,33 @@ test("no longer has a purchases column -- that answer moved to settings", async 
 	).toBeNull();
 });
 
-test("names whose card each one is, falling back to KC when nothing is stored", async () => {
-	const element = await mount([
-		{ ...card, id: "kbank", owner: "RI" },
-		{ ...card, id: "scb" },
-	]);
+test("names whose card each one is through the group it draws on", async () => {
+	const element = await mount(
+		[
+			{ ...card, id: "kbank", limitGroupId: "pool" },
+			{ ...card, id: "scb", limitGroupId: "solo" },
+			{ ...card, id: "ttb", limitGroupId: "gone" },
+			{ ...card, id: "uob" },
+		],
+		{},
+		[
+			{ id: "pool", name: "KBank account", limit: 500_000, owner: "RI" },
+			{ id: "solo", name: "SCB", limit: 100_000 },
+		],
+	);
 	const cells = [
 		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
 			'td[data-field="owner"]',
 		) ?? []),
 	];
 
-	expect(cells).toHaveLength(2);
+	expect(cells).toHaveLength(4);
 	expect(cells[0]?.textContent?.trim()).toBe("RI");
+	// A group carrying no owner reads as the default.
 	expect(cells[1]?.textContent?.trim()).toBe("KC");
+	// A group that is gone, and a card with no group at all, have nobody to attribute to.
+	expect(cells[2]?.textContent?.trim()).toBe("Not assigned");
+	expect(cells[3]?.textContent?.trim()).toBe("Not assigned");
 });
 
 test("marks a supplementary card and leaves an ordinary one unmarked", async () => {

@@ -49,6 +49,7 @@ export const sampleLimitGroup = (
 	id: "pool",
 	name: "KBank account",
 	limit: 500_000,
+	owner: "KC",
 	...overrides,
 });
 

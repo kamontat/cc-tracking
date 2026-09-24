@@ -391,6 +391,47 @@ describe("owner in a backup", () => {
 		});
 		expect(parseBackup(text).cards).toHaveLength(1);
 	});
+
+	test("keeps a known owner on a limit group", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000, owner: "NT" }],
+			cards: [],
+			purchases: [],
+			payments: [],
+		});
+		expect(parseBackup(text).limitGroups[0]?.owner).toBe("NT");
+	});
+
+	test("accepts a limit group saved before the owner field existed", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000 }],
+			cards: [],
+			purchases: [],
+			payments: [],
+		});
+		expect(parseBackup(text).limitGroups[0]?.owner).toBeUndefined();
+	});
+
+	test("rejects a limit group whose owner is outside the closed set", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000, owner: "ZZ" }],
+			cards: [],
+			purchases: [],
+			payments: [],
+		});
+		const failure = captureThrow(() => parseBackup(text));
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).params).toEqual({
+			index: 1,
+			problem: "backup.problem.badOwner",
+		});
+	});
 });
 
 describe("importBackup", () => {

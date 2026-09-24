@@ -90,6 +90,9 @@ export class CcCardTable extends LitElement {
 				<tbody>
 					${this.cards.map((card) => {
 						const count = this.purchaseCounts[card.id] ?? 0;
+						const group = this.groups.find(
+							({ id }) => id === card.limitGroupId,
+						);
 						return html`
 							<tr>
 								<td data-label=${t("cards.column.id")}>
@@ -104,12 +107,11 @@ export class CcCardTable extends LitElement {
 								</td>
 								<td data-label=${t("cards.column.last4")}>••••${card.last4}</td>
 								<td data-label=${t("cards.column.location")}>${locationText(card.location)}</td>
-								<td data-field="owner" data-label=${t("cards.column.owner")}>${ownerOf(card)}</td>
+								<td data-field="owner" data-label=${t("cards.column.owner")}>${
+									group ? ownerOf(group) : t("cards.unassigned")
+								}</td>
 								<td data-field="limit-group" data-label=${t("cards.column.limitGroup")}>
-									${
-										this.groups.find(({ id }) => id === card.limitGroupId)
-											?.name ?? t("cards.unassigned")
-									}
+									${group?.name ?? t("cards.unassigned")}
 								</td>
 								<td data-label=${t("cards.column.cycle")}>${describeCycleText(card.cycle)}</td>
 								<td data-label=${t("cards.column.comment")}>${card.comment ?? ""}</td>
