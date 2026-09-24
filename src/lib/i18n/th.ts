@@ -31,6 +31,12 @@ export const th: Catalog = {
 	"common.dismiss": "ปิด",
 	"common.none": "—",
 
+	"footer.repo": "ซอร์สโค้ดบน GitHub",
+	// FLAG FOR OWNER REVIEW: "commit" and "built" -- kept as คอมมิต and บิลด์เมื่อ, the
+	// transliterations Thai developers use, rather than translated to everyday words.
+	"footer.commit": "คอมมิต {sha}",
+	"footer.built": "บิลด์เมื่อ {at}",
+
 	"relative.today": "วันนี้",
 	"relative.inDays": "อีก {days} วัน",
 	"relative.agoDays": "{days} วันก่อน",

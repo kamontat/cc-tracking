@@ -21,6 +21,10 @@ export const en = {
 	"common.dismiss": "Dismiss",
 	"common.none": "—",
 
+	"footer.repo": "Source on GitHub",
+	"footer.commit": "Commit {sha}",
+	"footer.built": "Built {at}",
+
 	"relative.today": "today",
 	"relative.inDays": "in {days} days",
 	"relative.agoDays": "{days} days ago",

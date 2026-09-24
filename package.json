@@ -10,7 +10,7 @@
 	},
 	"scripts": {
 		"dev": "bun-server dev",
-		"build": "bun-server build",
+		"build": "bun run scripts/build.ts",
 		"preview": "bun-server preview",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit",

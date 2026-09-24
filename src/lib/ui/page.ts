@@ -1,4 +1,7 @@
 import "#components/cc-error-banner";
+// Registered here rather than route by route: every page reaches this module through
+// bootstrap(), so no route can ship the footer tag without the element behind it.
+import "#components/cc-site-footer";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { messageOf } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
