@@ -164,13 +164,60 @@ test("emits a complete card with an offset rule", async () => {
 		name: "KBank Visa",
 		last4: "4821",
 		location: "krabi",
-		owner: "KC",
 		supplementary: false,
 		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 		comment: "",
 		archived: false,
 		limitGroupId: "pool",
 	});
+});
+
+test("starts closed and titles itself, opening when a card arrives to edit", async () => {
+	const element = await mount();
+	const section =
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details");
+	expect(section?.open).toBe(false);
+	expect(element.shadowRoot?.querySelector("summary")?.textContent).toContain(
+		"Add a card",
+	);
+
+	element.card = {
+		id: "kbank",
+		name: "KBank Visa",
+		last4: "4821",
+		location: "krabi",
+		supplementary: false,
+		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+		archived: false,
+	};
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details")?.open,
+	).toBe(true);
+	expect(element.shadowRoot?.querySelector("summary")?.textContent).toContain(
+		"KBank Visa",
+	);
+});
+
+test("no longer asks whose card it is -- that answer lives on the limit group", async () => {
+	const element = await mount();
+	expect(element.shadowRoot?.querySelector('[name="owner"]')).toBeNull();
+});
+
+test("saves a card with no owner field at all", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	fillCard(element);
+	fill(element, "limitGroupId", "pool");
+	submit(element);
+
+	expect(saved).not.toBeUndefined();
+	expect(saved && "owner" in saved).toBe(false);
 });
 
 test("emits a fixed rule when that kind is chosen", async () => {
@@ -306,7 +353,6 @@ test("clears the form after a successful create so the next card starts blank", 
 		name: "SCB Mastercard",
 		last4: "1234",
 		location: "bangkok",
-		owner: "KC",
 		supplementary: false,
 		cycle: { kind: "offset", closeDay: 20, dueOffsetDays: 10 },
 		comment: "",
@@ -433,95 +479,6 @@ test("no longer asks whether the card may take purchases -- that moved to settin
 	expect(element.shadowRoot?.querySelector('[name="canPurchase"]')).toBeNull();
 });
 
-test("offers exactly the three owners, by their initials in both languages", async () => {
-	setLocale("en");
-	const element = await mount();
-	const options = [
-		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
-			'[name="owner"] option',
-		) ?? []),
-	];
-
-	expect(options.map((option) => option.value)).toEqual(["KC", "NT", "RI"]);
-	expect(options.map((option) => option.textContent?.trim())).toEqual([
-		"KC",
-		"NT",
-		"RI",
-	]);
-
-	setLocale("th");
-	await element.updateComplete;
-	expect(
-		[
-			...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
-				'[name="owner"] option',
-			) ?? []),
-		].map((option) => option.textContent?.trim()),
-	).toEqual(["KC", "NT", "RI"]);
-});
-
-test("defaults a new card to KC without the user touching the field", async () => {
-	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
-
-	fillCard(element);
-	fill(element, "limitGroupId", "pool");
-	submit(element);
-
-	expect(saved?.owner).toBe("KC");
-});
-
-test("carries the chosen owner in the saved card", async () => {
-	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
-
-	fillCard(element);
-	fill(element, "owner", "RI");
-	fill(element, "limitGroupId", "pool");
-	submit(element);
-
-	expect(saved?.owner).toBe("RI");
-});
-
-test("shows the edited card's own owner", async () => {
-	const element = await mount({
-		id: "scb",
-		name: "SCB",
-		last4: "1234",
-		location: "phichit",
-		owner: "NT",
-		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
-		archived: false,
-	});
-
-	expect(
-		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
-			?.value,
-	).toBe("NT");
-});
-
-test("shows a card stored before the owner field existed as belonging to KC", async () => {
-	const element = await mount({
-		id: "scb",
-		name: "SCB",
-		last4: "1234",
-		location: "phichit",
-		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
-		archived: false,
-	});
-
-	expect(
-		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
-			?.value,
-	).toBe("KC");
-});
-
 test("saves a card as supplementary only when the box is ticked", async () => {
 	const element = await mount();
 	const saves: Card[] = [];
@@ -552,7 +509,6 @@ test("shows the edited card's supplementary answer, and saves it back untouched"
 		name: "SCB",
 		last4: "1234",
 		location: "bangkok",
-		owner: "NT",
 		supplementary: true,
 		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
 		archived: false,
@@ -573,14 +529,13 @@ test("shows the edited card's supplementary answer, and saves it back untouched"
 	expect(saved?.supplementary).toBe(true);
 });
 
-test("clears the owner and the supplementary box after a create", async () => {
+test("clears the supplementary box after a create", async () => {
 	const element = await mount();
 	const saves: Card[] = [];
 	element.addEventListener("save", (event) => {
 		saves.push((event as CustomEvent<Card>).detail);
 	});
 
-	fill(element, "owner", "RI");
 	element.shadowRoot
 		?.querySelector<HTMLInputElement>('[name="supplementary"]')
 		?.click();
@@ -590,10 +545,6 @@ test("clears the owner and the supplementary box after a create", async () => {
 	submit(element);
 	await element.updateComplete;
 
-	expect(
-		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
-			?.value,
-	).toBe("KC");
 	expect(
 		element.shadowRoot?.querySelector<HTMLInputElement>(
 			'[name="supplementary"]',

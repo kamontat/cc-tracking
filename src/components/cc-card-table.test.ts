@@ -8,7 +8,6 @@ const card: Card = {
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
-	owner: "KC",
 	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
@@ -19,6 +18,7 @@ const mount = async (
 	purchaseCounts: Record<string, number> = {},
 	groups: LimitGroup[] = [],
 ) => {
+	setLocale("en");
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-card-table");
 	element.cards = cards;
@@ -55,20 +55,33 @@ test("no longer has a purchases column -- that answer moved to settings", async 
 	).toBeNull();
 });
 
-test("names whose card each one is, falling back to KC when nothing is stored", async () => {
-	const element = await mount([
-		{ ...card, id: "kbank", owner: "RI" },
-		{ ...card, id: "scb" },
-	]);
+test("names whose card each one is through the group it draws on", async () => {
+	const element = await mount(
+		[
+			{ ...card, id: "kbank", limitGroupId: "pool" },
+			{ ...card, id: "scb", limitGroupId: "solo" },
+			{ ...card, id: "ttb", limitGroupId: "gone" },
+			{ ...card, id: "uob" },
+		],
+		{},
+		[
+			{ id: "pool", name: "KBank account", limit: 500_000, owner: "RI" },
+			{ id: "solo", name: "SCB", limit: 100_000 },
+		],
+	);
 	const cells = [
 		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
 			'td[data-field="owner"]',
 		) ?? []),
 	];
 
-	expect(cells).toHaveLength(2);
+	expect(cells).toHaveLength(4);
 	expect(cells[0]?.textContent?.trim()).toBe("RI");
+	// A group carrying no owner reads as the default.
 	expect(cells[1]?.textContent?.trim()).toBe("KC");
+	// A group that is gone, and a card with no group at all, have nobody to attribute to.
+	expect(cells[2]?.textContent?.trim()).toBe("Not assigned");
+	expect(cells[3]?.textContent?.trim()).toBe("Not assigned");
 });
 
 test("marks a supplementary card and leaves an ordinary one unmarked", async () => {
@@ -114,6 +127,27 @@ test("names the limit group each card draws on", async () => {
 	const text = element.shadowRoot?.textContent ?? "";
 	expect(text).toContain("KBank account");
 	expect(text).toContain("Not assigned");
+});
+
+test("starts open, and stays closed once the reader closes it", async () => {
+	const element = await mount([card]);
+	const section =
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details");
+	if (!section) throw new Error("no details element");
+	expect(section.open).toBe(true);
+
+	section.open = false;
+	// Round-tripping through empty is what catches an `?open=${...}` binding: a binding whose
+	// value never changes is dirty-checked away and reads exactly like the static attribute,
+	// so only a render where the bound value would differ tells the two apart.
+	element.cards = [];
+	await element.updateComplete;
+	element.cards = [card];
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details")?.open,
+	).toBe(false);
 });
 
 test("renders its column headings and empty state in the chosen language", async () => {

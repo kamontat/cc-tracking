@@ -1,16 +1,11 @@
 import { expect, test } from "bun:test";
 import { DEFAULT_OWNER, OWNERS, ownerOf, toOwner } from "#lib/domain/owner";
-import type { Card } from "#lib/domain/types";
+import type { LimitGroup } from "#lib/domain/types";
 
-const card = (fields: Partial<Card>): Card => ({
-	id: "kbank",
-	name: "KBank Visa",
-	last4: "4821",
-	location: "bangkok",
-	owner: "KC",
-	supplementary: false,
-	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-	archived: false,
+const group = (fields: Partial<LimitGroup> = {}): LimitGroup => ({
+	id: "pool",
+	name: "KBank account",
+	limit: 500_000,
 	...fields,
 });
 
@@ -35,15 +30,14 @@ test("the default is itself a known owner", () => {
 	expect(toOwner(DEFAULT_OWNER)).toBe(DEFAULT_OWNER);
 });
 
-test("reads the owner a card carries", () => {
-	expect(ownerOf(card({ owner: "RI" }))).toBe("RI");
+test("names the owner a group carries", () => {
+	expect(ownerOf(group({ owner: "RI" }))).toBe("RI");
 });
 
-test("falls back to the default for a card stored before the field existed", () => {
-	const { owner: _owner, ...legacy } = card({});
-	expect(ownerOf(legacy)).toBe(DEFAULT_OWNER);
+test("falls back to the default for a group stored before the field existed", () => {
+	expect(ownerOf(group())).toBe(DEFAULT_OWNER);
 });
 
 test("falls back to the default for an owner the closed set does not know", () => {
-	expect(ownerOf(card({ owner: "ZZ" as never }))).toBe(DEFAULT_OWNER);
+	expect(ownerOf(group({ owner: "ZZ" as never }))).toBe(DEFAULT_OWNER);
 });

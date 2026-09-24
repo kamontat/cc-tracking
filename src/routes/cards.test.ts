@@ -199,7 +199,7 @@ test("shows the limit groups with what each has used", async () => {
 	renderCardsPage(repo, root);
 	await settle();
 
-	const section = root.querySelector("cc-limit-groups");
+	const section = root.querySelector("cc-limit-group-table");
 	expect(section?.groups).toHaveLength(1);
 	expect(section?.usage).toEqual({ pool: 120_000 });
 	expect(section?.counts).toEqual({ pool: 1 });
@@ -211,7 +211,7 @@ test("saves a new limit group", async () => {
 	renderCardsPage(repo, root);
 	await settle();
 
-	root.querySelector("cc-limit-groups")?.dispatchEvent(
+	root.querySelector("cc-limit-group-form")?.dispatchEvent(
 		new CustomEvent("save-group", {
 			detail: { id: "pool", name: "KBank account", limit: 500_000 },
 		}),
@@ -235,11 +235,143 @@ test("deletes a limit group", async () => {
 	await settle();
 
 	root
-		.querySelector("cc-limit-groups")
+		.querySelector("cc-limit-group-table")
 		?.dispatchEvent(new CustomEvent("remove-group", { detail: "pool" }));
 	await settle();
 
 	expect(await repo.listLimitGroups()).toEqual([]);
+});
+
+test("feeds the group being edited to the form, and lets go once it is saved", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root
+		.querySelector("cc-limit-group-table")
+		?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
+	await settle();
+
+	expect(root.querySelector("cc-limit-group-form")?.group?.id).toBe("pool");
+
+	root.querySelector("cc-limit-group-form")?.dispatchEvent(
+		new CustomEvent("save-group", {
+			detail: {
+				id: "pool",
+				name: "KBank account",
+				limit: 700_000,
+				owner: "NT",
+			},
+		}),
+	);
+	await settle();
+
+	expect(root.querySelector("cc-limit-group-form")?.group).toBeNull();
+	expect(await repo.listLimitGroups()).toEqual([
+		{ id: "pool", name: "KBank account", limit: 700_000, owner: "NT" },
+	]);
+});
+
+test("lets go of a group that is deleted while it is being edited", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root
+		.querySelector("cc-limit-group-table")
+		?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
+	await settle();
+	root
+		.querySelector("cc-limit-group-table")
+		?.dispatchEvent(new CustomEvent("remove-group", { detail: "pool" }));
+	await settle();
+
+	// Still loaded, a Save would write the deleted group straight back.
+	expect(root.querySelector("cc-limit-group-form")?.group).toBeNull();
+});
+
+test("lets go of a card that is deleted while it is being edited", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	root
+		.querySelector("cc-card-table")
+		?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	await settle();
+	root
+		.querySelector("cc-card-table")
+		?.dispatchEvent(new CustomEvent("remove", { detail: sampleCard.id }));
+	await settle();
+
+	expect(root.querySelector("cc-card-form")?.card).toBeNull();
+});
+
+test("reopens a hand-collapsed form when the same group is picked again", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	const table = root.querySelector("cc-limit-group-table");
+	table?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
+	await settle();
+
+	const form = root.querySelector("cc-limit-group-form");
+	const section = form?.shadowRoot?.querySelector("details");
+	if (!section) throw new Error("no details element");
+	section.open = false;
+	section.dispatchEvent(new Event("toggle"));
+	await settle();
+
+	// Picking the same row again is the reader asking for it back.
+	table?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
+	await settle();
+
+	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
+});
+
+test("reopens a hand-collapsed card form when the same card is picked again", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	const table = root.querySelector("cc-card-table");
+	table?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	await settle();
+
+	const form = root.querySelector("cc-card-form");
+	const section = form?.shadowRoot?.querySelector("details");
+	if (!section) throw new Error("no details element");
+	section.open = false;
+	section.dispatchEvent(new Event("toggle"));
+	await settle();
+
+	table?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	await settle();
+
+	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
 });
 
 test("says so when a limit group cannot be saved", async () => {
@@ -252,7 +384,7 @@ test("says so when a limit group cannot be saved", async () => {
 	renderCardsPage(new Rejecting(), root);
 	await settle();
 
-	root.querySelector("cc-limit-groups")?.dispatchEvent(
+	root.querySelector("cc-limit-group-form")?.dispatchEvent(
 		new CustomEvent("save-group", {
 			detail: { id: "pool", name: "KBank account", limit: 500_000 },
 		}),

@@ -1,7 +1,6 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
-import { DEFAULT_OWNER, OWNERS, ownerOf, toOwner } from "#lib/domain/owner";
 import type { Card, CycleRule, LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
@@ -15,6 +14,18 @@ export class CcCardForm extends LitElement {
 		base,
 		controls,
 		css`
+			details {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
+			}
+
+			summary {
+				font-size: var(--cc-text-lg);
+				font-weight: 600;
+				cursor: pointer;
+			}
+
 			form {
 				display: grid;
 				grid-template-columns: 1fr;
@@ -83,6 +94,10 @@ export class CcCardForm extends LitElement {
 	@property({ attribute: false }) groups: LimitGroup[] = [];
 
 	@state() private kind: CycleRule["kind"] = "offset";
+	// The reader's own answer to "is this section open", not a mirror of `card`: it is forced
+	// open when an edit target arrives, and otherwise follows the element's own toggle event, so
+	// a section closed by hand stays closed through every later repaint.
+	@state() private open = false;
 	@state() private supplementary = false;
 	// Tracked independently of the DOM so a `groups` reshape can be checked against the user's
 	// actual choice -- see willUpdate below.
@@ -98,7 +113,10 @@ export class CcCardForm extends LitElement {
 
 	override willUpdate(changed: Map<string, unknown>) {
 		if (changed.has("card")) {
-			if (this.card) this.kind = this.card.cycle.kind;
+			if (this.card) {
+				this.kind = this.card.cycle.kind;
+				this.open = true;
+			}
 			this.supplementary = this.card?.supplementary ?? false;
 			this.selectedGroupId = this.card?.limitGroupId ?? "";
 			return;
@@ -122,9 +140,6 @@ export class CcCardForm extends LitElement {
 			const select =
 				this.renderRoot.querySelector<HTMLSelectElement>('[name="location"]');
 			if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
-			const owner =
-				this.renderRoot.querySelector<HTMLSelectElement>('[name="owner"]');
-			if (owner) owner.value = this.card ? ownerOf(this.card) : DEFAULT_OWNER;
 		}
 		if (!changed.has("card") && !changed.has("groups")) return;
 		const limitGroup = this.renderRoot.querySelector<HTMLSelectElement>(
@@ -158,8 +173,6 @@ export class CcCardForm extends LitElement {
 		}
 		const location = toLocation(this.value("location"));
 		if (!location) return this.fail("form.error.location");
-		const owner = toOwner(this.value("owner"));
-		if (!owner) return this.fail("form.error.owner");
 
 		let cycle: CycleRule;
 		if (this.kind === "offset") {
@@ -190,7 +203,6 @@ export class CcCardForm extends LitElement {
 			name: this.value("name"),
 			last4,
 			location,
-			owner,
 			supplementary: this.supplementary,
 			cycle,
 			comment: this.value("comment"),
@@ -218,9 +230,6 @@ export class CcCardForm extends LitElement {
 			const locationSelect =
 				form?.querySelector<HTMLSelectElement>('[name="location"]');
 			if (locationSelect) locationSelect.value = DEFAULT_LOCATION;
-			const ownerSelect =
-				form?.querySelector<HTMLSelectElement>('[name="owner"]');
-			if (ownerSelect) ownerSelect.value = DEFAULT_OWNER;
 			this.selectedGroupId = "";
 			const limitGroupSelect = form?.querySelector<HTMLSelectElement>(
 				'[name="limitGroupId"]',
@@ -237,7 +246,11 @@ export class CcCardForm extends LitElement {
 		const card = this.card;
 		const rule = card?.cycle;
 		return html`
-			<form @submit=${this.onSubmit}>
+			<details ?open=${this.open} @toggle=${(event: Event) => {
+				this.open = (event.target as HTMLDetailsElement).open;
+			}}>
+				<summary>${card ? t("cards.edit", { name: card.name }) : t("cards.add")}</summary>
+				<form @submit=${this.onSubmit}>
 				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 
 				${
@@ -260,13 +273,6 @@ export class CcCardForm extends LitElement {
 							(value) =>
 								html`<option value=${value}>${locationText(value)}</option>`,
 						)}
-					</select>
-				</label>
-
-				<label>
-					${t("form.owner")}
-					<select name="owner" required>
-						${OWNERS.map((value) => html`<option value=${value}>${value}</option>`)}
 					</select>
 				</label>
 
@@ -331,7 +337,8 @@ export class CcCardForm extends LitElement {
 					<button type="button" data-variant="quiet"
 						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
 				</div>
-			</form>
+				</form>
+			</details>
 		`;
 	}
 }

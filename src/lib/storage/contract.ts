@@ -14,7 +14,6 @@ export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
-	owner: "KC",
 	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
@@ -49,6 +48,7 @@ export const sampleLimitGroup = (
 	id: "pool",
 	name: "KBank account",
 	limit: 500_000,
+	owner: "KC",
 	...overrides,
 });
 

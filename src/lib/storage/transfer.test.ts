@@ -350,24 +350,36 @@ describe("settings in a backup", () => {
 });
 
 describe("owner in a backup", () => {
-	test("keeps a known owner", () => {
+	test("keeps a known owner on a limit group", () => {
 		const text = JSON.stringify({
 			version: 2,
 			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
-			cards: [sampleCard({ owner: "RI" })],
+			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000, owner: "NT" }],
+			cards: [],
 			purchases: [],
 			payments: [],
 		});
-		expect(parseBackup(text).cards[0]?.owner).toBe("RI");
+		expect(parseBackup(text).limitGroups[0]?.owner).toBe("NT");
 	});
 
-	test("rejects an owner outside the closed set", () => {
+	test("accepts a limit group saved before the owner field existed", () => {
 		const text = JSON.stringify({
 			version: 2,
 			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
-			cards: [{ ...sampleCard(), owner: "ZZ" }],
+			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000 }],
+			cards: [],
+			purchases: [],
+			payments: [],
+		});
+		expect(parseBackup(text).limitGroups[0]?.owner).toBeUndefined();
+	});
+
+	test("rejects a limit group whose owner is outside the closed set", () => {
+		const text = JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000, owner: "ZZ" }],
+			cards: [],
 			purchases: [],
 			payments: [],
 		});
@@ -377,19 +389,6 @@ describe("owner in a backup", () => {
 			index: 1,
 			problem: "backup.problem.badOwner",
 		});
-	});
-
-	test("accepts a card written before the owner field existed", () => {
-		const { owner: _owner, ...legacy } = sampleCard();
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
-			cards: [legacy],
-			purchases: [],
-			payments: [],
-		});
-		expect(parseBackup(text).cards).toHaveLength(1);
 	});
 });
 
