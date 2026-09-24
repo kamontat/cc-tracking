@@ -57,6 +57,29 @@ const purchase: Purchase = {
 	note: "fuel",
 };
 
+/** A repository whose savePurchase always rejects, to exercise the failure path in isolation. */
+class RejectingPurchaseRepository extends InMemoryRepository {
+	override savePurchase(): Promise<void> {
+		return Promise.reject(new Error("disk is full"));
+	}
+}
+
+/** Fills in and submits the page's quick-add form. */
+const submitPurchase = async (
+	root: HTMLElement,
+	fields: { date: string; amount: string; note: string },
+) => {
+	const form = root.querySelector("cc-quick-add");
+	await form?.updateComplete;
+	const shadow = form?.shadowRoot;
+	for (const [name, value] of Object.entries(fields)) {
+		const input = shadow?.querySelector<HTMLInputElement>(`[name="${name}"]`);
+		if (input) input.value = value;
+	}
+	shadow?.querySelector("form")?.requestSubmit();
+	await settle();
+};
+
 /** A repository whose savePayment always rejects, to exercise the failure path in isolation. */
 class RejectingPaymentRepository extends InMemoryRepository {
 	override savePayment(): Promise<void> {
@@ -138,7 +161,9 @@ test('"Show older statements" reveals a period beyond the first twelve', async (
 	expect(list?.shadowRoot?.textContent).not.toContain(farPeriod);
 	expect(list?.shadowRoot?.textContent).not.toContain("vintage typewriter");
 
-	const showOlder = root.querySelector<HTMLButtonElement>("button");
+	const showOlder = root.querySelector<HTMLButtonElement>(
+		"[data-action='show-older']",
+	);
 	expect(showOlder?.textContent?.trim()).toBe("Show older statements");
 	showOlder?.click();
 	await settle();
@@ -296,4 +321,75 @@ test("renders its controls in the chosen language", async () => {
 	setLocale("th");
 	await settle();
 	expect(root.textContent).toContain("ดูใบแจ้งยอดเก่ากว่านี้");
+});
+
+test("adds a purchase against this card and says which statement it lands on", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	// A second card, so the test proves the form is locked to this page's card.
+	await repo.saveCard({ ...card, id: "scb", name: "SCB Mastercard" });
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const form = root.querySelector("cc-quick-add");
+	await form?.updateComplete;
+	const options = [...(form?.shadowRoot?.querySelectorAll("option") ?? [])].map(
+		(option) => option.value,
+	);
+	expect(options).toEqual(["kbank"]);
+
+	await submitPurchase(root, {
+		date: purchaseDate,
+		amount: "1234.50",
+		note: "groceries",
+	});
+
+	expect(bannerMessage(root)).toBe("");
+	const saved = await repo.listPurchases("kbank");
+	expect(saved).toHaveLength(1);
+	expect(saved[0]).toMatchObject({
+		cardId: "kbank",
+		date: purchaseDate,
+		amount: 123_450,
+		note: "groceries",
+	});
+	expect(await repo.listPurchases("scb")).toEqual([]);
+
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	expect(articleFor(list, period).textContent).toContain("groceries");
+	await root.querySelector("cc-quick-add")?.updateComplete;
+	expect(
+		root.querySelector("cc-quick-add")?.shadowRoot?.querySelector(".answer")
+			?.textContent,
+	).toContain("Lands on the statement closing");
+});
+
+test("an archived card offers no purchase form", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({ ...card, archived: true });
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	expect(root.querySelector("cc-statement-list")).not.toBeNull();
+	expect(root.querySelector("cc-quick-add")).toBeNull();
+});
+
+test("a failed purchase leaves a message in the banner and writes nothing", async () => {
+	const repo = new RejectingPurchaseRepository();
+	await repo.saveCard(card);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	await submitPurchase(root, {
+		date: purchaseDate,
+		amount: "100",
+		note: "",
+	});
+
+	expect(bannerMessage(root)).toContain("disk is full");
+	expect(await repo.listPurchases("kbank")).toEqual([]);
 });

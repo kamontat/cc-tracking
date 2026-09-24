@@ -139,6 +139,7 @@ export const en = {
 	"card.error.markPaid": "Could not record the payment.",
 	"card.error.unmarkPaid": "Could not undo the payment.",
 	"card.error.deletePurchase": "Could not delete the purchase.",
+	"card.error.addPurchase": "Could not save the purchase.",
 
 	"statements.empty": "No statements yet. Add a purchase from the dashboard.",
 	"statements.header": "closes {close}, due {due}",

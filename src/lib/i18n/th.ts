@@ -155,6 +155,7 @@ export const th: Catalog = {
 	"card.error.markPaid": "บันทึกการชำระเงินไม่สำเร็จ",
 	"card.error.unmarkPaid": "ยกเลิกการชำระเงินไม่สำเร็จ",
 	"card.error.deletePurchase": "ลบรายการใช้จ่ายไม่สำเร็จ",
+	"card.error.addPurchase": "บันทึกรายการใช้จ่ายไม่สำเร็จ",
 
 	"statements.empty": "ยังไม่มีใบแจ้งยอด เพิ่มรายการใช้จ่ายจากหน้ารวม",
 	"statements.header": "ปิดยอด {close} ครบกำหนด {due}",
