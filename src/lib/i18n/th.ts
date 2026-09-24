@@ -217,7 +217,9 @@ export const th: Catalog = {
 	"limits.column.used": "ใช้ไป",
 	"limits.column.available": "คงเหลือ",
 	"limits.add": "เพิ่มกลุ่มวงเงิน",
+	"limits.edit": "แก้ไข {name}",
 	"limits.save": "บันทึกการแก้ไข",
+	"limits.owner": "เจ้าของ",
 	"limits.name": "ชื่อ",
 	"limits.namePlaceholder": "บัญชี KBank",
 	"limits.limit": "วงเงิน (บาท)",
@@ -225,6 +227,7 @@ export const th: Catalog = {
 	"limits.inUse": "มีบัตรใช้กลุ่มนี้ {count} ใบ",
 	"limits.error.name": "ตั้งชื่อกลุ่มวงเงิน",
 	"limits.error.limit": "กรอกวงเงินเป็นบาท เช่น 300000",
+	"limits.error.owner": "เลือกเจ้าของกลุ่มวงเงิน",
 
 	"settings.title": "ตั้งค่า",
 	"settings.purchases.title": "การใช้จ่าย",

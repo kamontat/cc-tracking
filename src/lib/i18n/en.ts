@@ -199,7 +199,9 @@ export const en = {
 	"limits.column.used": "Used",
 	"limits.column.available": "Available",
 	"limits.add": "Add limit group",
+	"limits.edit": "Edit {name}",
 	"limits.save": "Save changes",
+	"limits.owner": "Owner",
 	"limits.name": "Name",
 	"limits.namePlaceholder": "KBank account",
 	"limits.limit": "Limit (THB)",
@@ -207,6 +209,7 @@ export const en = {
 	"limits.inUse": "{count} cards use this group",
 	"limits.error.name": "Give the limit group a name.",
 	"limits.error.limit": "Enter the limit in baht, like 300000.",
+	"limits.error.owner": "Choose who this limit group belongs to.",
 
 	"settings.title": "Settings",
 	"settings.purchases.title": "Purchases",
