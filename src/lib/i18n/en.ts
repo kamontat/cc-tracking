@@ -202,7 +202,6 @@ export const en = {
 	"limits.column.available": "Available",
 	"limits.add": "Add limit group",
 	"limits.save": "Save changes",
-	"limits.editing": "Editing {name}",
 	"limits.name": "Name",
 	"limits.namePlaceholder": "KBank account",
 	"limits.limit": "Limit (THB)",

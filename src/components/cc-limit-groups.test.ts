@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import type { CcLimitGroups } from "#components/cc-limit-groups";
 import "#components/cc-limit-groups";
 import type { LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
@@ -35,10 +36,22 @@ const fill = (element: HTMLElement, name: string, value: string) => {
 	input.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
-const submit = (element: HTMLElement) =>
+const submitForm = (element: HTMLElement, which: "add" | "edit") =>
 	element.shadowRoot
-		?.querySelector("form")
+		?.querySelector(`form[data-form="${which}"]`)
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+const submit = (element: HTMLElement) => submitForm(element, "add");
+
+const startEditing = async (element: CcLimitGroups, id: string) => {
+	element.shadowRoot
+		?.querySelector<HTMLButtonElement>(`[data-action="edit"][data-id="${id}"]`)
+		?.click();
+	await element.updateComplete;
+};
+
+const editingRow = (element: CcLimitGroups) =>
+	element.shadowRoot?.querySelector("tr[data-editing]");
 
 test("shows each group with what it has used and what is left", async () => {
 	const element = await mount();
@@ -73,16 +86,88 @@ test("editing a group keeps its id", async () => {
 		detail = (event as CustomEvent<LimitGroup>).detail;
 	});
 
-	element.shadowRoot
-		?.querySelector<HTMLButtonElement>('[data-action="edit"][data-id="pool"]')
+	await startEditing(element, "pool");
+
+	expect(field(element, "editName").value).toBe("KBank account");
+	fill(element, "editLimit", "7000");
+	submitForm(element, "edit");
+
+	expect(detail).toEqual({ id: "pool", name: "KBank account", limit: 700_000 });
+});
+
+test("puts the editor in the row being edited rather than above the table", async () => {
+	const element = await mount();
+	await startEditing(element, "solo");
+
+	const row = editingRow(element);
+	expect(row).not.toBeNull();
+	expect(row?.querySelector<HTMLInputElement>('[name="editName"]')?.value).toBe(
+		"SCB",
+	);
+	expect(
+		row?.querySelector<HTMLInputElement>('[name="editLimit"]')?.value,
+	).toBe("1000");
+	// The row it replaced is the one that was clicked, in its own place in the table.
+	const rows = [...(element.shadowRoot?.querySelectorAll("tbody tr") ?? [])];
+	expect(rows.indexOf(row as Element)).toBe(1);
+});
+
+test("leaves the add form alone while a row is being edited", async () => {
+	const element = await mount();
+	await startEditing(element, "pool");
+
+	const add = element.shadowRoot?.querySelector('form[data-form="add"]');
+	expect(
+		add?.querySelector<HTMLInputElement>('[name="groupName"]')?.value,
+	).toBe("");
+	expect(add?.textContent).toContain("Add limit group");
+	expect(add?.querySelector('[name="editName"]')).toBeNull();
+});
+
+test("cancelling puts the row back as it was", async () => {
+	const element = await mount();
+	await startEditing(element, "pool");
+
+	editingRow(element)
+		?.querySelector<HTMLButtonElement>('[data-action="cancel"]')
 		?.click();
 	await element.updateComplete;
 
-	expect(field(element, "groupName").value).toBe("KBank account");
-	fill(element, "groupLimit", "7000");
-	submit(element);
+	expect(editingRow(element)).toBeNull();
+	expect(element.shadowRoot?.textContent).toContain("KBank account");
+});
 
-	expect(detail).toEqual({ id: "pool", name: "KBank account", limit: 700_000 });
+test("an edit that is refused says so in the row, and saves nothing", async () => {
+	const element = await mount();
+	let emitted = false;
+	element.addEventListener("save-group", () => {
+		emitted = true;
+	});
+
+	await startEditing(element, "pool");
+	fill(element, "editName", "");
+	submitForm(element, "edit");
+	await element.updateComplete;
+
+	expect(emitted).toBe(false);
+	const alert = element.shadowRoot?.querySelector('tbody [role="alert"]');
+	expect(alert?.textContent).toContain("name");
+	// Still editing, so the answer is correctable where it was given.
+	expect(editingRow(element)).not.toBeNull();
+});
+
+test("editing one group then another moves the editor to the second row", async () => {
+	const element = await mount();
+	await startEditing(element, "pool");
+	await startEditing(element, "solo");
+
+	const rows = [
+		...(element.shadowRoot?.querySelectorAll("tr[data-editing]") ?? []),
+	];
+	expect(rows).toHaveLength(1);
+	expect(
+		rows[0]?.querySelector<HTMLInputElement>('[name="editName"]')?.value,
+	).toBe("SCB");
 });
 
 test("refuses a group with no name", async () => {
