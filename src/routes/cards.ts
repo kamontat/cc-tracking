@@ -140,7 +140,6 @@ export function renderCardsPage(
 						: nothing
 				}
 				<article>
-					<h2>${editing ? t("cards.edit", { name: editing.name }) : t("cards.add")}</h2>
 					<cc-card-form
 						.card=${editing}
 						.groups=${groups}

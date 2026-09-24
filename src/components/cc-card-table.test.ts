@@ -129,6 +129,22 @@ test("names the limit group each card draws on", async () => {
 	expect(text).toContain("Not assigned");
 });
 
+test("starts open, and stays closed once the reader closes it", async () => {
+	const element = await mount([card]);
+	const section =
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details");
+	if (!section) throw new Error("no details element");
+	expect(section.open).toBe(true);
+
+	section.open = false;
+	element.purchaseCounts = { kbank: 4 };
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details")?.open,
+	).toBe(false);
+});
+
 test("renders its column headings and empty state in the chosen language", async () => {
 	setLocale("en");
 	const element = await mount([]);

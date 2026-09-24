@@ -84,6 +84,7 @@ export const th: Catalog = {
 	"quickAdd.available": "คงเหลือ {available} จาก {limit}",
 
 	"cards.title": "บัตร",
+	"cards.list": "รายการบัตร",
 	"cards.add": "เพิ่มบัตร",
 	"cards.edit": "แก้ไข {name}",
 	"cards.empty": "ยังไม่มีบัตร เพิ่มใบแรกด้วยแบบฟอร์มด้านบน",

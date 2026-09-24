@@ -172,6 +172,34 @@ test("emits a complete card with an offset rule", async () => {
 	});
 });
 
+test("starts closed and titles itself, opening when a card arrives to edit", async () => {
+	const element = await mount();
+	const section =
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details");
+	expect(section?.open).toBe(false);
+	expect(element.shadowRoot?.querySelector("summary")?.textContent).toContain(
+		"Add a card",
+	);
+
+	element.card = {
+		id: "kbank",
+		name: "KBank Visa",
+		last4: "4821",
+		location: "krabi",
+		supplementary: false,
+		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+		archived: false,
+	};
+	await element.updateComplete;
+
+	expect(
+		element.shadowRoot?.querySelector<HTMLDetailsElement>("details")?.open,
+	).toBe(true);
+	expect(element.shadowRoot?.querySelector("summary")?.textContent).toContain(
+		"KBank Visa",
+	);
+});
+
 test("no longer asks whose card it is -- that answer lives on the limit group", async () => {
 	const element = await mount();
 	expect(element.shadowRoot?.querySelector('[name="owner"]')).toBeNull();

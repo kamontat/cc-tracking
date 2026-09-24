@@ -14,6 +14,18 @@ export class CcCardForm extends LitElement {
 		base,
 		controls,
 		css`
+			details {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
+			}
+
+			summary {
+				font-size: var(--cc-text-lg);
+				font-weight: 600;
+				cursor: pointer;
+			}
+
 			form {
 				display: grid;
 				grid-template-columns: 1fr;
@@ -82,6 +94,10 @@ export class CcCardForm extends LitElement {
 	@property({ attribute: false }) groups: LimitGroup[] = [];
 
 	@state() private kind: CycleRule["kind"] = "offset";
+	// The reader's own answer to "is this section open", not a mirror of `card`: it is forced
+	// open when an edit target arrives, and otherwise follows the element's own toggle event, so
+	// a section closed by hand stays closed through every later repaint.
+	@state() private open = false;
 	@state() private supplementary = false;
 	// Tracked independently of the DOM so a `groups` reshape can be checked against the user's
 	// actual choice -- see willUpdate below.
@@ -97,7 +113,10 @@ export class CcCardForm extends LitElement {
 
 	override willUpdate(changed: Map<string, unknown>) {
 		if (changed.has("card")) {
-			if (this.card) this.kind = this.card.cycle.kind;
+			if (this.card) {
+				this.kind = this.card.cycle.kind;
+				this.open = true;
+			}
 			this.supplementary = this.card?.supplementary ?? false;
 			this.selectedGroupId = this.card?.limitGroupId ?? "";
 			return;
@@ -227,7 +246,11 @@ export class CcCardForm extends LitElement {
 		const card = this.card;
 		const rule = card?.cycle;
 		return html`
-			<form @submit=${this.onSubmit}>
+			<details ?open=${this.open} @toggle=${(event: Event) => {
+				this.open = (event.target as HTMLDetailsElement).open;
+			}}>
+				<summary>${card ? t("cards.edit", { name: card.name }) : t("cards.add")}</summary>
+				<form @submit=${this.onSubmit}>
 				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 
 				${
@@ -314,7 +337,8 @@ export class CcCardForm extends LitElement {
 					<button type="button" data-variant="quiet"
 						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
 				</div>
-			</form>
+				</form>
+			</details>
 		`;
 	}
 }

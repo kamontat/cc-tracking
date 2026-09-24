@@ -71,6 +71,7 @@ export const en = {
 	"quickAdd.available": "Available {available} of {limit}",
 
 	"cards.title": "Cards",
+	"cards.list": "Card list",
 	"cards.add": "Add a card",
 	"cards.edit": "Edit {name}",
 	"cards.empty": "No cards yet. Add the first one with the form above.",

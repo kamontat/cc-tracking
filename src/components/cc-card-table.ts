@@ -14,6 +14,18 @@ export class CcCardTable extends LitElement {
 		controls,
 		dataTable,
 		css`
+			details {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
+			}
+
+			summary {
+				font-size: var(--cc-text-lg);
+				font-weight: 600;
+				cursor: pointer;
+			}
+
 			.actions {
 				flex-wrap: wrap;
 				gap: var(--cc-space-2);
@@ -69,9 +81,17 @@ export class CcCardTable extends LitElement {
 	}
 
 	override render() {
-		if (this.cards.length === 0) {
-			return html`<p>${t("cards.empty")}</p>`;
-		}
+		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
+		// reader has just closed.
+		return html`
+			<details open>
+				<summary>${t("cards.list")}</summary>
+				${this.cards.length === 0 ? html`<p>${t("cards.empty")}</p>` : this.table()}
+			</details>
+		`;
+	}
+
+	private table() {
 		return html`
 			<table>
 				<thead>
