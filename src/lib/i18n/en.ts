@@ -194,6 +194,7 @@ export const en = {
 		"A group is a pool of credit. Cards that share a limit share a group.",
 	"limits.empty": "No limit group yet. Add one before adding a card.",
 	"limits.column.name": "Name",
+	"limits.column.owner": "Owner",
 	"limits.column.limit": "Limit",
 	"limits.column.cards": "Cards",
 	"limits.column.used": "Used",

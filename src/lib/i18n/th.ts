@@ -212,6 +212,7 @@ export const th: Catalog = {
 	"limits.explain": "กลุ่มคือวงเงินหนึ่งก้อน บัตรที่ใช้วงเงินร่วมกันอยู่กลุ่มเดียวกัน",
 	"limits.empty": "ยังไม่มีกลุ่มวงเงิน สร้างก่อนเพิ่มบัตร",
 	"limits.column.name": "ชื่อ",
+	"limits.column.owner": "เจ้าของ",
 	"limits.column.limit": "วงเงิน",
 	"limits.column.cards": "บัตร",
 	"limits.column.used": "ใช้ไป",
