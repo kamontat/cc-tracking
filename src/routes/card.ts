@@ -1,6 +1,7 @@
 import "@kcstyles/reset.css";
 import "../styles/tokens.css";
 import "../styles/app.css";
+import "#components/cc-card-summary";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
 import "#components/cc-quick-add";
@@ -10,10 +11,15 @@ import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
-import { spendableRows } from "#lib/domain/limit";
+import { groupUsage, outstandingOf, spendableRows } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
+import { ownerOf } from "#lib/domain/owner";
 import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
-import { buildStatement, recentPeriods } from "#lib/domain/statement";
+import {
+	buildStatement,
+	nextActionable,
+	recentPeriods,
+} from "#lib/domain/statement";
 import type {
 	Card,
 	LimitGroup,
@@ -174,6 +180,56 @@ export function renderCardPage(
 		})}${over}`;
 	};
 
+	const groupOf = (current: Card): LimitGroup | null =>
+		groups.find(({ id }) => id === current.limitGroupId) ?? null;
+
+	const summary = (current: Card) => {
+		const group = groupOf(current);
+		return html`
+			<cc-card-summary
+				.group=${group}
+				.used=${group ? groupUsage(group, allCards, allPurchases, allPayments, now) : 0}
+				.sharedWith=${
+					group
+						? allCards.filter((entry) => entry.limitGroupId === group.id)
+								.length - 1
+						: 0
+				}
+				.owed=${outstandingOf(current, purchases, payments, now)}
+				.next=${nextActionable(current, purchases, payments, now)}
+				.today=${now}
+			></cc-card-summary>
+		`;
+	};
+
+	/** The card's own facts beside its history, and the one way off this page to change them. */
+	const details = (current: Card) => {
+		const group = groupOf(current);
+		const row = (label: string, value: string) =>
+			html`<div class="facts__row" row><dt>${label}</dt><dd>${value}</dd></div>`;
+		return html`
+			<article class="card-details">
+				<h2>${t("card.details")}</h2>
+				<dl class="facts">
+					${row(t("card.group"), group?.name ?? t("cards.unassigned"))}
+					${group ? row(t("card.owner"), ownerOf(group)) : nothing}
+					${row(t("card.location"), locationText(current.location))}
+					${row(t("card.cycle"), describeCycleText(current.cycle))}
+				</dl>
+				${
+					// An archived card takes no purchases wherever it is kept, so naming the place as
+					// the reason would send the reader to the wrong setting.
+					!current.archived && !canPurchase(current, settings)
+						? html`<p class="note">${t("card.noPurchases", {
+								location: locationText(current.location),
+							})}</p>`
+						: nothing
+				}
+				<a class="edit" href=${`/cards?edit=${encodeURIComponent(current.id)}`}>${t("card.edit")}</a>
+			</article>
+		`;
+	};
+
 	const paint = () =>
 		render(
 			html`
@@ -181,10 +237,17 @@ export function renderCardPage(
 				${
 					card
 						? html`
+							<a class="back" href="/cards">${t("card.backShort")}</a>
 							<div class="page-heading">
-								<h1>${card.name} <small>${card.id} · ••••${card.last4}</small></h1>
-								<p>${locationText(card.location)} — ${describeCycleText(card.cycle)}${card.comment ? ` — ${card.comment}` : ""}</p>
+								<h1>
+									${card.name}
+									${card.archived ? html`<span class="badge">${t("cards.archived")}</span>` : nothing}
+									${card.supplementary ? html`<span class="badge">${t("form.supplementary")}</span>` : nothing}
+								</h1>
+								<p class="meta"><span class="mono">${card.id}</span> · ••••${card.last4} · ${locationText(card.location)} · ${describeCycleText(card.cycle)}</p>
+								${card.comment ? html`<p class="comment">${card.comment}</p>` : nothing}
 							</div>
+							${summary(card)}
 							<div class="split">
 								<div class="card-statements">
 									<cc-statement-list
@@ -199,16 +262,19 @@ export function renderCardPage(
 										paint();
 									}}>${t("card.showOlder")}</button>
 								</div>
-								${
-									purchasable()
-										? html`
-											<article class="split__aside split__aside--lead">
-												<h2>${t("dashboard.addPurchase")}</h2>
-												<cc-quick-add .cards=${[card]} .rows=${spendable()} .today=${now} .answer=${answer()} @add=${onAdd}></cc-quick-add>
-											</article>
-										`
-										: nothing
-								}
+								<div class="split__aside card-aside">
+									${
+										purchasable()
+											? html`
+												<article>
+													<h2>${t("dashboard.addPurchase")}</h2>
+													<cc-quick-add .cards=${[card]} .rows=${spendable()} .today=${now} .answer=${answer()} @add=${onAdd}></cc-quick-add>
+												</article>
+											`
+											: nothing
+									}
+									${details(card)}
+								</div>
 							</div>
 						`
 						: html`<p><a href="/cards">${t("card.back")}</a></p>`

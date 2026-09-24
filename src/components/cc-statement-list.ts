@@ -4,6 +4,7 @@ import { displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { urgencyOf } from "#lib/domain/statement";
 import type { PlainDate, Statement } from "#lib/domain/types";
+
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { base, controls, dataTable, panel } from "#styles/shared";
@@ -87,6 +88,14 @@ export class CcStatementList extends LitElement {
 				align-items: center;
 			}
 
+			/* Months with nothing in them: a line of text between panels, not a panel of its own. */
+			.quiet {
+				padding: var(--cc-space-1) var(--cc-space-3);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+				border-left: var(--cc-border-width) dashed var(--cc-border);
+			}
+
 			/* In step with the tighter panel above. */
 			td {
 				padding: var(--cc-space-2);
@@ -120,10 +129,49 @@ export class CcStatementList extends LitElement {
 		if (this.statements.length === 0) {
 			return html`<p>${t("statements.empty")}</p>`;
 		}
+		return html`${this.segments().map((segment) =>
+			Array.isArray(segment)
+				? this.quietLine(segment)
+				: this.statement(segment),
+		)}`;
+	}
+
+	/**
+	 * Statements in order, with each run of quiet ones -- closed, nothing spent, nothing paid --
+	 * gathered into an array. A year of an unused card is otherwise a dozen identical panels
+	 * saying ฿0.00, burying the one month that has anything on it. The open period stays whole
+	 * even when empty (it is where the next purchase lands), and so does a paid one (its payment
+	 * can still be undone).
+	 */
+	private segments(): (Statement | Statement[])[] {
+		const segments: (Statement | Statement[])[] = [];
+		for (const statement of this.statements) {
+			const quiet =
+				statement.purchases.length === 0 &&
+				!statement.paid &&
+				urgencyOf(statement, this.today) !== "future";
+			const last = segments.at(-1);
+			if (!quiet) segments.push(statement);
+			else if (Array.isArray(last)) last.push(statement);
+			else segments.push([statement]);
+		}
+		return segments;
+	}
+
+	private quietLine(run: Statement[]) {
+		// Statements arrive newest first; the range reads oldest to newest.
+		const newest = run[0]?.period ?? "";
+		const oldest = run.at(-1)?.period ?? "";
+		return html`<p class="quiet">${
+			run.length === 1
+				? t("statements.quietOne", { period: newest })
+				: t("statements.quietRun", { from: oldest, to: newest })
+		}</p>`;
+	}
+
+	private statement(statement: Statement) {
+		const urgency = urgencyOf(statement, this.today);
 		return html`
-			${this.statements.map((statement) => {
-				const urgency = urgencyOf(statement, this.today);
-				return html`
 					<article data-urgency=${urgency}>
 						<details ?open=${statement.purchases.length > 0}>
 							<summary>
@@ -192,8 +240,6 @@ export class CcStatementList extends LitElement {
 						</details>
 					</article>
 				`;
-			})}
-		`;
 	}
 }
 

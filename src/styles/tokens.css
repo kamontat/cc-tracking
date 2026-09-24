@@ -29,6 +29,11 @@
 	   keep this in step if the header's padding or brand type size ever changes. */
 	--cc-header-height: 3.5rem;
 
+	/* The narrowest a card-page summary tile or a registry form panel gets before its row
+	   wraps to one per line. A tile holds one large figure; a form holds labelled inputs. */
+	--cc-tile-min: 14rem;
+	--cc-form-min: 22rem;
+
 	/* A `select` left at `appearance: auto` reserves its own arrow area — about 20px in Chrome,
 	   more in Safari — inside the border box and on top of whatever padding we set, so its right
 	   inset stops matching the inputs beside it and changes per browser. `controls` paints this

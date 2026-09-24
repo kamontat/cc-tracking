@@ -393,3 +393,46 @@ test("says so when a limit group cannot be saved", async () => {
 
 	expect(bannerMessage(root)).toContain("disk is full");
 });
+
+test("opens the form on the card a link asked to edit", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root, globalThis.localStorage, "kbank");
+	await settle();
+
+	const form = root.querySelector("cc-card-form");
+	await form?.updateComplete;
+	expect(form?.card?.id).toBe("kbank");
+	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
+});
+
+test("ignores an edit link to a card that is not there", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root, globalThis.localStorage, "gone");
+	await settle();
+
+	expect(root.querySelector("cc-card-form")?.card).toBeNull();
+});
+
+test("keeps both forms together above the lists rather than between them", async () => {
+	const repo = new InMemoryRepository();
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+
+	const forms = root.querySelector(".registry-forms");
+	expect(forms?.querySelector("cc-card-form")).not.toBeNull();
+	expect(forms?.querySelector("cc-limit-group-form")).not.toBeNull();
+	expect(forms?.querySelector("cc-card-table")).toBeNull();
+	const tags = [...root.children].map(
+		(child) =>
+			child.querySelector("cc-card-table, cc-limit-group-table")?.localName ??
+			child.className,
+	);
+	expect(tags.indexOf("registry-forms")).toBeLessThan(
+		tags.indexOf("cc-card-table"),
+	);
+});

@@ -1,11 +1,11 @@
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { ownerOf } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
-import { base, controls, dataTable } from "#styles/shared";
+import { badge, base, controls, dataTable } from "#styles/shared";
 
 @customElement("cc-card-table")
 export class CcCardTable extends LitElement {
@@ -13,7 +13,14 @@ export class CcCardTable extends LitElement {
 		base,
 		controls,
 		dataTable,
+		badge,
 		css`
+			:host {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-4);
+			}
+
 			details {
 				display: flex;
 				flex-direction: column;
@@ -26,43 +33,90 @@ export class CcCardTable extends LitElement {
 				cursor: pointer;
 			}
 
-			.actions {
-				flex-wrap: wrap;
-				gap: var(--cc-space-2);
+			/* A section beneath the main list, not a peer of it: quieter, and ruled off. */
+			details.archived-list {
+				padding-top: var(--cc-space-3);
+				border-top: var(--cc-border-width) solid var(--cc-border);
 			}
 
-			/*
-			 * The purchase count stands in for the Delete button and is wider than it, and auto
-			 * table layout hands this column only what the rest of the row leaves over. Allowed
-			 * to wrap, the count dropped to a line of its own beneath the buttons, where it read
-			 * as a stray note rather than as this row's answer. Held on one line, the column
-			 * claims the width it needs from the emptier ones instead. Below 640px the row has
-			 * stacked and has the full width to itself, so wrapping there stays available.
-			 */
+			details.archived-list > summary {
+				font-size: var(--cc-text-md);
+				color: var(--cc-text-muted);
+			}
+
+			details.archived-list tr {
+				color: var(--cc-text-muted);
+			}
+
+			.card-name {
+				font-weight: 600;
+			}
+
+			.name-line {
+				display: inline-flex;
+				flex-wrap: wrap;
+				gap: var(--cc-space-1) var(--cc-space-2);
+				align-items: center;
+			}
+
+			.meta {
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
+			}
+
+			.meta .card-id {
+				font-family: var(--cc-font-mono);
+			}
+
+			.comment {
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
+				font-style: italic;
+			}
+
+			.owner {
+				display: block;
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
+			}
+
+			/* The widest column's content is prose already broken into lines; let it take the slack. */
+			td.card {
+				width: 100%;
+			}
+
+			/* A cycle is one phrase; broken mid-way it reads as two facts. Stacked rows get the
+			   full width, so this only matters on the wide layout. */
 			@media (min-width: 640px) {
-				.actions {
-					flex-wrap: nowrap;
+				th,
+				td.cycle,
+				td.location,
+				td.group {
+					white-space: nowrap;
 				}
 			}
 
-			.actions small {
-				white-space: nowrap;
+			/*
+			 * Stacked, every cell becomes a label-and-value row. The card cell has no label: its
+			 * name, details and comment are lines of one block and stay stacked, and the group's
+			 * name and owner stay together at the value end rather than being spread apart.
+			 */
+			@media (max-width: 639px) {
+				td.card {
+					flex-direction: column;
+					align-items: flex-start;
+					gap: 0;
+				}
+
+				.group-value {
+					text-align: right;
+				}
 			}
 
-			.card-id {
-				font-family: var(--cc-font-mono);
-				font-size: var(--cc-text-xs);
-			}
-
-			/* A badge is one token. Broken across two lines its background box breaks with it. */
-			.archived,
-			.supplementary {
-				padding: 0 var(--cc-space-1);
-				font-size: var(--cc-text-xs);
-				color: var(--cc-text-muted);
-				white-space: nowrap;
-				background: var(--cc-surface-sunken);
-				border-radius: var(--cc-radius-sm);
+			/* Start-aligned, so Edit and Archive sit in the same place on every row and Delete,
+			   when a row has one, trails after them rather than shoving them sideways. */
+			.actions {
+				gap: var(--cc-space-2);
 			}
 		`,
 	];
@@ -81,79 +135,105 @@ export class CcCardTable extends LitElement {
 	}
 
 	override render() {
+		const active = this.cards.filter((card) => !card.archived);
+		const archived = this.cards.filter((card) => card.archived);
 		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
-		// reader has just closed.
+		// reader has just closed, nor close one they opened.
 		return html`
-			<details open>
+			<details class="active" open>
 				<summary>${t("cards.list")}</summary>
-				${this.cards.length === 0 ? html`<p>${t("cards.empty")}</p>` : this.table()}
+				${
+					this.cards.length === 0
+						? html`<p>${t("cards.empty")}</p>`
+						: active.length > 0
+							? this.table(active)
+							: nothing
+				}
 			</details>
+			${
+				archived.length > 0
+					? html`
+						<details class="archived-list">
+							<summary>${t("cards.archivedList", { count: archived.length })}</summary>
+							${this.table(archived)}
+						</details>
+					`
+					: nothing
+			}
 		`;
 	}
 
-	private table() {
+	private table(cards: Card[]) {
 		return html`
 			<table>
 				<thead>
 					<tr>
-						<th>${t("cards.column.id")}</th>
-						<th>${t("cards.column.name")}</th>
-						<th>${t("cards.column.last4")}</th>
+						<th>${t("cards.column.card")}</th>
 						<th>${t("cards.column.location")}</th>
-						<th>${t("cards.column.owner")}</th>
 						<th>${t("cards.column.limitGroup")}</th>
 						<th>${t("cards.column.cycle")}</th>
-						<th>${t("cards.column.comment")}</th>
 						<th></th>
 					</tr>
 				</thead>
 				<tbody>
-					${this.cards.map((card) => {
-						const count = this.purchaseCounts[card.id] ?? 0;
-						const group = this.groups.find(
-							({ id }) => id === card.limitGroupId,
-						);
-						return html`
-							<tr>
-								<td data-label=${t("cards.column.id")}>
-									<a class="card-id" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.id}</a>
-								</td>
-								<td data-label=${t("cards.column.name")}>
-									${card.name}${card.archived ? html` <span class="archived">${t("cards.archived")}</span>` : ""}${
-										card.supplementary
-											? html` <span class="supplementary">${t("form.supplementary")}</span>`
-											: ""
-									}
-								</td>
-								<td data-label=${t("cards.column.last4")}>••••${card.last4}</td>
-								<td data-label=${t("cards.column.location")}>${locationText(card.location)}</td>
-								<td data-field="owner" data-label=${t("cards.column.owner")}>${
-									group ? ownerOf(group) : t("cards.unassigned")
-								}</td>
-								<td data-field="limit-group" data-label=${t("cards.column.limitGroup")}>
-									${group?.name ?? t("cards.unassigned")}
-								</td>
-								<td data-label=${t("cards.column.cycle")}>${describeCycleText(card.cycle)}</td>
-								<td data-label=${t("cards.column.comment")}>${card.comment ?? ""}</td>
-								<td>
-									<div class="actions" row>
-										<button data-variant="quiet" @click=${() => this.emit("edit", card.id)}>${t("common.edit")}</button>
-										<button data-variant="quiet" @click=${() => this.emit("archive", card.id)}>
-											${card.archived ? t("cards.unarchive") : t("cards.archive")}
-										</button>
-										${
-											count === 0
-												? html`<button data-variant="danger"
-													@click=${() => this.emit("remove", card.id)}>${t("common.delete")}</button>`
-												: html`<small>${t("cards.purchaseCount", { count })}</small>`
-										}
-									</div>
-								</td>
-							</tr>
-						`;
-					})}
+					${cards.map((card) => this.row(card))}
 				</tbody>
 			</table>
+		`;
+	}
+
+	private row(card: Card) {
+		const count = this.purchaseCounts[card.id] ?? 0;
+		const group = this.groups.find(({ id }) => id === card.limitGroupId);
+		const meta = [
+			html`<span class="card-id">${card.id}</span>`,
+			html`••••${card.last4}`,
+			...(count > 0
+				? [
+						count === 1
+							? t("cards.purchaseCountOne")
+							: t("cards.purchaseCount", { count }),
+					]
+				: []),
+		];
+		return html`
+			<tr>
+				<td class="card">
+					<span class="name-line">
+						<a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
+						${card.archived ? html`<span class="badge archived">${t("cards.archived")}</span>` : nothing}
+						${
+							card.supplementary
+								? html`<span class="badge supplementary">${t("form.supplementary")}</span>`
+								: nothing
+						}
+					</span>
+					<div class="meta" block>${meta.map((part, index) => html`${index > 0 ? " · " : ""}${part}`)}</div>
+					${card.comment ? html`<div class="comment">${card.comment}</div>` : nothing}
+				</td>
+				<td class="location" data-label=${t("cards.column.location")}>${locationText(card.location)}</td>
+				<td class="group" data-label=${t("cards.column.limitGroup")}>
+					<span class="group-value">
+						<span data-field="limit-group">${group?.name ?? t("cards.unassigned")}</span>
+						${group ? html`<span class="owner" data-field="owner">${ownerOf(group)}</span>` : nothing}
+					</span>
+				</td>
+				<td class="cycle" data-label=${t("cards.column.cycle")}>${describeCycleText(card.cycle)}</td>
+				<td>
+					<div class="actions" row>
+						<button data-variant="quiet" @click=${() => this.emit("edit", card.id)}>${t("common.edit")}</button>
+						<button data-variant="quiet" @click=${() => this.emit("archive", card.id)}>
+							${card.archived ? t("cards.unarchive") : t("cards.archive")}
+						</button>
+						${
+							count === 0
+								? html`<button data-variant="danger"
+									@click=${() => this.emit("remove", card.id)}>${t("common.delete")}</button>`
+								: nothing
+						}
+					</div>
+				</td>
+			</tr>
 		`;
 	}
 }
