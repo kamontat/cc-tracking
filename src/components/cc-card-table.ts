@@ -19,23 +19,36 @@ export class CcCardTable extends LitElement {
 				gap: var(--cc-space-2);
 			}
 
+			/*
+			 * The purchase count stands in for the Delete button and is wider than it, and auto
+			 * table layout hands this column only what the rest of the row leaves over. Allowed
+			 * to wrap, the count dropped to a line of its own beneath the buttons, where it read
+			 * as a stray note rather than as this row's answer. Held on one line, the column
+			 * claims the width it needs from the emptier ones instead. Below 640px the row has
+			 * stacked and has the full width to itself, so wrapping there stays available.
+			 */
+			@media (min-width: 640px) {
+				.actions {
+					flex-wrap: nowrap;
+				}
+			}
+
+			.actions small {
+				white-space: nowrap;
+			}
+
 			.card-id {
 				font-family: var(--cc-font-mono);
 				font-size: var(--cc-text-xs);
 			}
 
-			.archived {
-				padding: 0 var(--cc-space-1);
-				font-size: var(--cc-text-xs);
-				color: var(--cc-text-muted);
-				background: var(--cc-surface-sunken);
-				border-radius: var(--cc-radius-sm);
-			}
-
+			/* A badge is one token. Broken across two lines its background box breaks with it. */
+			.archived,
 			.supplementary {
 				padding: 0 var(--cc-space-1);
 				font-size: var(--cc-text-xs);
 				color: var(--cc-text-muted);
+				white-space: nowrap;
 				background: var(--cc-surface-sunken);
 				border-radius: var(--cc-radius-sm);
 			}
