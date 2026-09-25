@@ -30,22 +30,66 @@ const mount = async (
 };
 
 test("shows the card's fields and an active row's controls", async () => {
-	const element = await mount([card]);
+	const element = await mount([{ ...card, comment: "glovebox" }]);
 	const text = element.shadowRoot?.textContent ?? "";
 	expect(text).toContain("KBank Visa");
+	expect(text).toContain("kbank");
 	expect(text).toContain("4821");
 	expect(text).toContain("Krabi");
+	expect(text).toContain("glovebox");
 	expect(
 		element.shadowRoot?.querySelector('button[data-variant="danger"]'),
 	).not.toBeNull();
 });
 
-test("shows a purchase count instead of delete once the card has purchases", async () => {
+test("links the card's name to its detail page", async () => {
+	const element = await mount([{ ...card, id: "k b" }]);
+	const link =
+		element.shadowRoot?.querySelector<HTMLAnchorElement>("a.card-name");
+	expect(link?.textContent?.trim()).toBe("KBank Visa");
+	expect(link?.getAttribute("href")).toBe("/card?id=k%20b");
+});
+
+test("counts purchases in the card's details and drops delete once it has any", async () => {
 	const element = await mount([card], { kbank: 3 });
-	expect(element.shadowRoot?.textContent).toContain("3 purchases");
+	expect(element.shadowRoot?.querySelector(".meta")?.textContent).toContain(
+		"3 purchases",
+	);
 	expect(
 		element.shadowRoot?.querySelector('button[data-variant="danger"]'),
 	).toBeNull();
+});
+
+test("says one purchase, not one purchases", async () => {
+	const element = await mount([card], { kbank: 1 });
+	expect(element.shadowRoot?.textContent).toContain("1 purchase");
+	expect(element.shadowRoot?.textContent).not.toContain("1 purchases");
+});
+
+test("keeps archived cards out of the main list, in a section of their own that starts closed", async () => {
+	const element = await mount([
+		card,
+		{ ...card, id: "old", name: "Old UOB", archived: true },
+	]);
+	const shadow = element.shadowRoot;
+	const main = shadow?.querySelector("details.active");
+	const archived = shadow?.querySelector<HTMLDetailsElement>(
+		"details.archived-list",
+	);
+
+	expect(main?.querySelectorAll("tbody tr")).toHaveLength(1);
+	expect(main?.textContent).not.toContain("Old UOB");
+	expect(archived?.open).toBe(false);
+	expect(archived?.querySelector("summary")?.textContent).toContain(
+		"Archived (1)",
+	);
+	expect(archived?.textContent).toContain("Old UOB");
+	expect(archived?.textContent).toContain("Unarchive");
+});
+
+test("has no archived section when nothing is archived", async () => {
+	const element = await mount([card]);
+	expect(element.shadowRoot?.querySelector("details.archived-list")).toBeNull();
 });
 
 test("no longer has a purchases column -- that answer moved to settings", async () => {
@@ -69,19 +113,51 @@ test("names whose card each one is through the group it draws on", async () => {
 			{ id: "solo", name: "SCB", limit: 100_000 },
 		],
 	);
-	const cells = [
-		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
-			'td[data-field="owner"]',
-		) ?? []),
+	const rows = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>("tbody tr") ?? []),
 	];
+	const owner = (row: HTMLElement | undefined) =>
+		row?.querySelector('[data-field="owner"]')?.textContent?.trim();
+	const group = (row: HTMLElement | undefined) =>
+		row?.querySelector('[data-field="limit-group"]')?.textContent?.trim();
 
-	expect(cells).toHaveLength(4);
-	expect(cells[0]?.textContent?.trim()).toBe("RI");
+	expect(rows).toHaveLength(4);
+	expect(owner(rows[0])).toBe("RI");
 	// A group carrying no owner reads as the default.
-	expect(cells[1]?.textContent?.trim()).toBe("KC");
+	expect(owner(rows[1])).toBe("KC");
 	// A group that is gone, and a card with no group at all, have nobody to attribute to.
-	expect(cells[2]?.textContent?.trim()).toBe("Not assigned");
-	expect(cells[3]?.textContent?.trim()).toBe("Not assigned");
+	expect(owner(rows[2])).toBeUndefined();
+	expect(group(rows[2])).toBe("Not assigned");
+	expect(owner(rows[3])).toBeUndefined();
+	expect(group(rows[3])).toBe("Not assigned");
+});
+
+test("names the account's owner beside the group, and a supplementary card's own holder beneath", async () => {
+	const element = await mount(
+		[
+			{ ...card, id: "a1", limitGroupId: "pool" },
+			{
+				...card,
+				id: "a2",
+				limitGroupId: "pool",
+				supplementary: true,
+				owner: "NT",
+			},
+		],
+		{},
+		[{ id: "pool", name: "Card A pool", limit: 500_000, owner: "KC" }],
+	);
+	const rows = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>("tbody tr") ?? []),
+	];
+	const text = (row: HTMLElement | undefined, field: string) =>
+		row?.querySelector(`[data-field="${field}"]`)?.textContent?.trim();
+
+	expect(text(rows[0], "limit-group")).toBe("Card A pool (KC)");
+	expect(text(rows[0], "owner")).toBe("KC");
+	expect(text(rows[1], "limit-group")).toBe("Card A pool (KC)");
+	expect(text(rows[1], "owner")).toBe("NT");
+	expect(rows[1]?.querySelector(".owner")?.textContent).toContain("Owner");
 });
 
 test("marks a supplementary card and leaves an ordinary one unmarked", async () => {
@@ -154,12 +230,12 @@ test("renders its column headings and empty state in the chosen language", async
 	setLocale("en");
 	const element = await mount([]);
 	expect(element.shadowRoot?.textContent).toContain(
-		"No cards yet. Add the first one with the form above.",
+		"No cards yet. Add the first one with the Add a card form.",
 	);
 
 	setLocale("th");
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain(
-		"ยังไม่มีบัตร เพิ่มใบแรกด้วยแบบฟอร์มด้านบน",
+		"ยังไม่มีบัตร เพิ่มใบแรกด้วยแบบฟอร์มเพิ่มบัตร",
 	);
 });

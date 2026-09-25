@@ -102,6 +102,11 @@ function cardProblem(value: unknown): MessageKey | null {
 		return "backup.problem.missingLast4";
 	if (toLocation(prop(value, "location")) === null)
 		return "backup.problem.badLocation";
+	// The same rule a limit group's owner follows: absent is a card from before the field, and
+	// present-but-unknown is a claim about whose card it is that the closed set cannot keep.
+	const owner = prop(value, "owner");
+	if (owner !== undefined && toOwner(owner) === null)
+		return "backup.problem.badOwner";
 	return cycleProblem(prop(value, "cycle"));
 }
 

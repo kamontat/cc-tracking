@@ -108,10 +108,141 @@ test("heads the page with the card's id, name, and last four digits", async () =
 	renderCardPage(repo, "kbank", root);
 	await settle();
 
-	const heading = root.querySelector(".page-heading h1")?.textContent ?? "";
-	expect(heading).toContain("KBank Visa");
-	expect(heading).toContain("kbank");
-	expect(heading).toContain("4821");
+	expect(root.querySelector(".page-heading h1")?.textContent).toContain(
+		"KBank Visa",
+	);
+	const meta = root.querySelector(".page-heading .meta")?.textContent ?? "";
+	expect(meta).toContain("kbank");
+	expect(meta).toContain("4821");
+	expect(meta).toContain("Krabi");
+});
+
+test("leads back to the card list", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	expect(
+		root.querySelector<HTMLAnchorElement>("a.back")?.getAttribute("href"),
+	).toBe("/cards");
+});
+
+test("badges an archived or supplementary card in its heading", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({ ...card, archived: true, supplementary: true });
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const badges = [...root.querySelectorAll(".page-heading .badge")].map(
+		(badge) => badge.textContent?.trim(),
+	);
+	expect(badges).toEqual(["Archived", "Supplementary card"]);
+});
+
+test("sums up the group's room, this card's debt, and the next statement due", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
+	await repo.saveCard({ ...card, limitGroupId: "pool" });
+	// A sibling on the same pool: its spending comes out of this card's room too.
+	await repo.saveCard({ ...card, id: "scb", limitGroupId: "pool" });
+	await repo.savePurchase(purchase);
+	await repo.savePurchase({
+		...purchase,
+		id: "b",
+		cardId: "scb",
+		amount: 10_000,
+	});
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const summary = root.querySelector("cc-card-summary");
+	expect(summary?.group?.id).toBe("pool");
+	expect(summary?.used).toBe(45_000);
+	expect(summary?.sharedWith).toBe(1);
+	expect(summary?.owed).toBe(35_000);
+	expect(summary?.next?.period).toBe(period);
+});
+
+test("describes the card beside its history, with a way to edit it", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+		owner: "NT",
+	});
+	await repo.saveCard({ ...card, id: "k b", limitGroupId: "pool" });
+	const root = mount();
+	renderCardPage(repo, "k b", root);
+	await settle();
+
+	const panel = root.querySelector(".card-details");
+	expect(panel?.textContent).toContain("KBank account");
+	expect(panel?.textContent).toContain("NT");
+	expect(
+		panel?.querySelector<HTMLAnchorElement>("a.edit")?.getAttribute("href"),
+	).toBe("/cards?edit=k%20b");
+});
+
+test("names a supplementary card's own holder, and the account's owner on its group", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "Card A pool",
+		limit: 500_000,
+		owner: "KC",
+	});
+	await repo.saveCard({
+		...card,
+		limitGroupId: "pool",
+		supplementary: true,
+		owner: "NT",
+	});
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const facts = [...root.querySelectorAll(".card-details .facts__row")].map(
+		(row) => [
+			row.querySelector("dt")?.textContent?.trim(),
+			row.querySelector("dd")?.textContent?.trim(),
+		],
+	);
+	expect(facts).toContainEqual(["Limit group", "Card A pool (KC)"]);
+	expect(facts).toContainEqual(["Owner", "NT"]);
+});
+
+test("says why a card kept somewhere that takes no purchases has no purchase form", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({ ...card, location: "bangkok" });
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	expect(root.querySelector("cc-quick-add")).toBeNull();
+	expect(root.querySelector(".card-details")?.textContent).toContain(
+		"Bangkok takes no new purchases.",
+	);
+});
+
+test("gives an archived card no such note: archiving, not the place, is why", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({ ...card, location: "bangkok", archived: true });
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	expect(root.querySelector(".card-details")?.textContent).not.toContain(
+		"takes no new purchases",
+	);
 });
 
 test("an unknown card id shows a message instead of a blank page", async () => {
@@ -157,7 +288,8 @@ test('"Show older statements" reveals a period beyond the first twelve', async (
 
 	const list = root.querySelector("cc-statement-list");
 	await list?.updateComplete;
-	expect(list?.shadowRoot?.querySelectorAll("article")).toHaveLength(12);
+	// Counted on the data, not the markup: the list folds empty months into quiet lines.
+	expect(list?.statements).toHaveLength(12);
 	expect(list?.shadowRoot?.textContent).not.toContain(farPeriod);
 	expect(list?.shadowRoot?.textContent).not.toContain("vintage typewriter");
 
@@ -170,7 +302,7 @@ test('"Show older statements" reveals a period beyond the first twelve', async (
 
 	const listAfter = root.querySelector("cc-statement-list");
 	await listAfter?.updateComplete;
-	expect(listAfter?.shadowRoot?.querySelectorAll("article")).toHaveLength(24);
+	expect(listAfter?.statements).toHaveLength(24);
 	expect(listAfter?.shadowRoot?.textContent).toContain(farPeriod);
 	expect(listAfter?.shadowRoot?.textContent).toContain("vintage typewriter");
 });

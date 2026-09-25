@@ -1,11 +1,12 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { usageLevel, usageShare } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
 import { ownerOf } from "#lib/domain/owner";
 import type { LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { base, controls, dataTable } from "#styles/shared";
+import { base, controls, dataTable, usageBar } from "#styles/shared";
 
 @customElement("cc-limit-group-table")
 export class CcLimitGroupTable extends LitElement {
@@ -13,6 +14,7 @@ export class CcLimitGroupTable extends LitElement {
 		base,
 		controls,
 		dataTable,
+		usageBar,
 		css`
 			details {
 				display: flex;
@@ -34,6 +36,24 @@ export class CcLimitGroupTable extends LitElement {
 			td[data-state="over"] {
 				font-weight: 600;
 				color: var(--cc-danger);
+			}
+
+			/* The amount, then its bar beneath it at the amount's own width. */
+			.available {
+				display: inline-flex;
+				flex-direction: column;
+				gap: var(--cc-space-1);
+				align-items: stretch;
+			}
+
+			@media (min-width: 640px) {
+				.actions {
+					flex-wrap: nowrap;
+				}
+
+				.actions small {
+					white-space: nowrap;
+				}
 			}
 		`,
 	];
@@ -59,7 +79,6 @@ export class CcLimitGroupTable extends LitElement {
 		return html`
 			<details open>
 				<summary>${t("limits.title")}</summary>
-				<p><small>${t("limits.explain")}</small></p>
 				${this.groups.length === 0 ? html`<p>${t("limits.empty")}</p>` : this.table()}
 			</details>
 		`;
@@ -90,6 +109,7 @@ export class CcLimitGroupTable extends LitElement {
 		const used = this.usage[group.id] ?? 0;
 		const available = group.limit - used;
 		const count = this.counts[group.id] ?? 0;
+		const share = usageShare(used, group.limit);
 		return html`
 			<tr>
 				<td data-label=${t("limits.column.name")}>${group.name}</td>
@@ -98,7 +118,13 @@ export class CcLimitGroupTable extends LitElement {
 				<td data-label=${t("limits.column.cards")} data-numeric>${count}</td>
 				<td data-label=${t("limits.column.used")} data-numeric>${formatAmount(used)}</td>
 				<td data-label=${t("limits.column.available")} data-numeric
-					data-state=${available < 0 ? "over" : "within"}>${formatAmount(available)}</td>
+					data-state=${available < 0 ? "over" : "within"}>
+					<span class="available">
+						${formatAmount(available)}
+						<span class="usage" data-level=${usageLevel(used, group.limit)}
+							title=${t("limits.usage", { share })}><span style=${`inline-size: ${share}%`}></span></span>
+					</span>
+				</td>
 				<td>
 					<div class="actions" row>
 						<button type="button" data-variant="quiet" data-action="edit" data-id=${group.id}
@@ -107,7 +133,11 @@ export class CcLimitGroupTable extends LitElement {
 							count === 0
 								? html`<button type="button" data-variant="danger" data-action="remove" data-id=${group.id}
 									@click=${() => this.emit("remove-group", group.id)}>${t("common.delete")}</button>`
-								: html`<small>${t("limits.inUse", { count })}</small>`
+								: html`<small>${
+										count === 1
+											? t("limits.inUseOne")
+											: t("limits.inUse", { count })
+									}</small>`
 						}
 					</div>
 				</td>

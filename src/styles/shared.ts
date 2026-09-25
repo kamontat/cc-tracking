@@ -335,3 +335,63 @@ export const dataTable = css`
 		}
 	}
 `;
+
+/**
+ * A one-token label beside a name: archived, supplementary. Held on one line, since a badge
+ * broken across two lines breaks its background box with it.
+ */
+export const badge = css`
+	.badge {
+		display: inline-block;
+		padding: 0 var(--cc-space-1);
+		font-size: var(--cc-text-xs);
+		font-weight: 500;
+		color: var(--cc-text-muted);
+		white-space: nowrap;
+		vertical-align: middle;
+		background: var(--cc-surface-sunken);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-sm);
+	}
+`;
+
+/**
+ * How much of a limit is spent, as a thin bar. The fill's width is the share itself, set
+ * inline; `data-level` (from `usageLevel`) tints it, and the level is also said in text
+ * beside the bar wherever it is used, so colour is never the only signal.
+ */
+export const usageBar = css`
+	.usage {
+		display: block;
+		inline-size: 100%;
+		block-size: var(--cc-space-1);
+		overflow: hidden;
+		background: var(--cc-surface-sunken);
+		border-radius: var(--cc-radius-sm);
+	}
+
+	.usage > span {
+		display: block;
+		block-size: 100%;
+		background: var(--cc-accent);
+		border-radius: var(--cc-radius-sm);
+	}
+
+	.usage[data-level="high"] > span {
+		background: var(--cc-warning);
+	}
+
+	.usage[data-level="over"] > span {
+		background: var(--cc-danger);
+	}
+
+	@media (forced-colors: active) {
+		.usage {
+			border: var(--cc-border-width) solid;
+		}
+
+		.usage > span {
+			background: CanvasText;
+		}
+	}
+`;

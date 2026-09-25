@@ -26,9 +26,9 @@ test("writes a plain number in Thai, where an ordinal suffix has no meaning", ()
 	setLocale("th");
 	expect(
 		describeCycleText({ kind: "offset", closeDay: 18, dueOffsetDays: 15 }),
-	).toBe("ปิดยอดวันที่ 18 ครบกำหนดอีก 15 วัน");
+	).toBe("สรุปยอดวันที่ 18 ครบกำหนดอีก 15 วัน");
 	expect(describeCycleText({ kind: "fixed", closeDay: 18, dueDay: 5 })).toBe(
-		"ปิดยอดวันที่ 18 ครบกำหนดวันที่ 5",
+		"สรุปยอดวันที่ 18 ครบกำหนดวันที่ 5",
 	);
 });
 

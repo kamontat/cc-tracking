@@ -106,6 +106,35 @@ test("starts open, and stays closed once the reader closes it", async () => {
 	).toBe(false);
 });
 
+test("draws each group's usage as a bar, tinted as it runs out", async () => {
+	const element = await mount({
+		usage: { pool: 450_000, solo: 150_000 },
+	});
+	const bars = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>(".usage") ?? []),
+	];
+	expect(bars).toHaveLength(2);
+	expect(bars[0]?.dataset["level"]).toBe("high");
+	expect(bars[0]?.querySelector("span")?.getAttribute("style")).toContain(
+		"90%",
+	);
+	expect(bars[0]?.getAttribute("title")).toBe("90% of the limit used");
+	expect(bars[1]?.dataset["level"]).toBe("over");
+	expect(bars[1]?.querySelector("span")?.getAttribute("style")).toContain(
+		"100%",
+	);
+});
+
+test("heads the table with no explanatory note", async () => {
+	const element = await mount();
+	expect(element.shadowRoot?.querySelector("details > p")).toBeNull();
+});
+
+test("says one card, not one cards", async () => {
+	const element = await mount({ counts: { pool: 1, solo: 0 } });
+	expect(element.shadowRoot?.textContent).toContain("1 card uses this group");
+});
+
 test("renders its headings in the chosen language", async () => {
 	const element = await mount();
 	expect(element.shadowRoot?.textContent).toContain("Limit groups");

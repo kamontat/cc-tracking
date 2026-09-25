@@ -390,6 +390,46 @@ describe("owner in a backup", () => {
 			problem: "backup.problem.badOwner",
 		});
 	});
+
+	const withCard = (card: Record<string, unknown>) =>
+		JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-23T00:00:00.000Z",
+			limitGroups: [],
+			cards: [
+				{
+					id: "a2",
+					name: "Card A",
+					last4: "2222",
+					location: "krabi",
+					cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+					archived: false,
+					...card,
+				},
+			],
+			purchases: [],
+			payments: [],
+		});
+
+	test("keeps the holder of a supplementary card", () => {
+		const text = withCard({ supplementary: true, owner: "NT" });
+		expect(parseBackup(text).cards[0]?.owner).toBe("NT");
+	});
+
+	test("accepts a card saved before cards had an owner", () => {
+		expect(parseBackup(withCard({})).cards[0]?.owner).toBeUndefined();
+	});
+
+	test("rejects a card whose owner is outside the closed set", () => {
+		const failure = captureThrow(() =>
+			parseBackup(withCard({ supplementary: true, owner: "ZZ" })),
+		);
+		expect(failure).toBeInstanceOf(MessageError);
+		expect((failure as MessageError).params).toEqual({
+			index: 1,
+			problem: "backup.problem.badOwner",
+		});
+	});
 });
 
 describe("importBackup", () => {

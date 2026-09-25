@@ -23,11 +23,16 @@ import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
-/** Renders the card registry page into `root`, wiring it to `repo`. Exported for tests and for Task 14 to extend. */
+/**
+ * Renders the card registry page into `root`, wiring it to `repo`. `editId` is the card a link
+ * from its detail page asked to edit (`/cards?edit=<id>`): loaded into the form once the list
+ * arrives, and ignored when no such card exists. Exported for tests.
+ */
 export function renderCardsPage(
 	repo: Repository,
 	root: HTMLElement,
 	storage: Storage = globalThis.localStorage,
+	editId: string | null = null,
 ): void {
 	let cards: Card[] = [];
 	let purchases: Purchase[] = [];
@@ -38,7 +43,16 @@ export function renderCardsPage(
 	let editingGroup: LimitGroup | null = null;
 	// Read once per page load: the notice is consumed here, not on every paint.
 	let resetNames = takeResetNotice(storage);
+	// Taken on the first load only: a later refresh must not drag the form back to this card
+	// after the reader has saved it or moved on to another.
+	let pendingEdit = editId;
 	const now = today();
+
+	/** Brings the form into view -- picked from far down the list, it is out of sight above. */
+	const revealForm = () =>
+		root
+			.querySelector("cc-card-form")
+			?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
 
 	const state = createPageState({
 		fetch: async () => {
@@ -56,6 +70,14 @@ export function renderCardsPage(
 					purchases.filter((purchase) => purchase.cardId === card.id).length,
 				]),
 			);
+			if (pendingEdit !== null) {
+				const wanted = cards.find((card) => card.id === pendingEdit);
+				pendingEdit = null;
+				if (wanted) {
+					editing = { ...wanted };
+					requestAnimationFrame(revealForm);
+				}
+			}
 		},
 		fallbackKey: "cards.error.read",
 		paint: () => paint(),
@@ -96,6 +118,7 @@ export function renderCardsPage(
 		const card = cards.find((c) => c.id === event.detail);
 		editing = card ? { ...card } : null;
 		paint();
+		revealForm();
 	};
 
 	const onSaveGroup = (event: CustomEvent<LimitGroup>) =>
@@ -152,17 +175,29 @@ export function renderCardsPage(
 						`
 						: nothing
 				}
-				<article>
-					<cc-card-form
-						.card=${editing}
-						.groups=${groups}
-						@save=${onSave}
-						@cancel=${() => {
-							editing = null;
-							paint();
-						}}
-					></cc-card-form>
-				</article>
+				<div class="registry-forms">
+					<article>
+						<cc-card-form
+							.card=${editing}
+							.groups=${groups}
+							@save=${onSave}
+							@cancel=${() => {
+								editing = null;
+								paint();
+							}}
+						></cc-card-form>
+					</article>
+					<article>
+						<cc-limit-group-form
+							.group=${editingGroup}
+							@save-group=${onSaveGroup}
+							@cancel=${() => {
+								editingGroup = null;
+								paint();
+							}}
+						></cc-limit-group-form>
+					</article>
+				</div>
 				<article>
 					<cc-card-table
 						.cards=${cards}
@@ -172,16 +207,6 @@ export function renderCardsPage(
 						@archive=${onArchive}
 						@remove=${onRemove}
 					></cc-card-table>
-				</article>
-				<article>
-					<cc-limit-group-form
-						.group=${editingGroup}
-						@save-group=${onSaveGroup}
-						@cancel=${() => {
-							editingGroup = null;
-							paint();
-						}}
-					></cc-limit-group-form>
 				</article>
 				<article>
 					<cc-limit-group-table
@@ -202,5 +227,7 @@ export function renderCardsPage(
 
 bootstrap("title.cards", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
-	if (root) renderCardsPage(repo, root);
+	if (!root) return;
+	const editId = new URLSearchParams(location.search).get("edit");
+	renderCardsPage(repo, root, globalThis.localStorage, editId);
 });

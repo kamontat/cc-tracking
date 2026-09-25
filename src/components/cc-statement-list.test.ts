@@ -113,8 +113,12 @@ test("offers no mark-paid on the still-open statement, but keeps it on a closed 
 	element.statements = [
 		// Closes 18 Sep; "today" below is before that, so this period is still open.
 		buildStatement(card, "2026-09", purchases),
-		// Closes 18 Aug, long since past, unpaid.
-		buildStatement(card, "2026-08", purchases),
+		// Closes 18 Aug, long since past, unpaid -- and owing something, since a closed month
+		// with nothing on it folds into a quiet line with no button at all.
+		buildStatement(card, "2026-08", [
+			...purchases,
+			{ id: "c", cardId: "kbank", date: "2026-08-10", amount: 5_000, note: "" },
+		]),
 	];
 	element.today = "2026-09-10";
 	document.body.append(element);
@@ -188,6 +192,69 @@ test("renders the destructive and secondary actions as their variants", async ()
 			'[data-action="unmark-paid"][data-variant="quiet"]',
 		),
 	).not.toBeNull();
+});
+
+const mountStatements = async (
+	statements: ReturnType<typeof buildStatement>[],
+	today = "2026-09-25",
+) => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-statement-list");
+	element.statements = statements;
+	element.today = today;
+	document.body.append(element);
+	await element.updateComplete;
+	return element;
+};
+
+test("folds a run of closed, empty, unpaid months into one quiet line", async () => {
+	const element = await mountStatements([
+		// Open (closes 18 Oct, after today): kept whole even with nothing on it.
+		buildStatement(card, "2026-10", purchases),
+		buildStatement(card, "2026-09", purchases),
+		// Empty but paid: kept whole, so the payment can still be undone.
+		buildStatement(card, "2026-08", purchases, payment),
+		buildStatement(card, "2026-07", purchases),
+		buildStatement(card, "2026-06", purchases),
+		buildStatement(card, "2026-05", purchases),
+	]);
+	const shadow = element.shadowRoot;
+	const periods = [...(shadow?.querySelectorAll("article .period") ?? [])].map(
+		(node) => node.textContent,
+	);
+	expect(periods).toEqual(["2026-10", "2026-09", "2026-08"]);
+
+	const quiet = [...(shadow?.querySelectorAll(".quiet") ?? [])];
+	expect(quiet).toHaveLength(1);
+	// Oldest first, so the range reads forwards.
+	expect(quiet[0]?.textContent?.trim()).toBe(
+		"2026-05 – 2026-07 · no purchases",
+	);
+});
+
+test("names a lone quiet month on its own, and breaks runs around a month with purchases", async () => {
+	const june: Purchase = {
+		id: "c",
+		cardId: "kbank",
+		date: "2026-06-10",
+		amount: 5_000,
+		note: "tyres",
+	};
+	const element = await mountStatements([
+		buildStatement(card, "2026-08", [june]),
+		buildStatement(card, "2026-07", [june]),
+		buildStatement(card, "2026-06", [june]),
+		buildStatement(card, "2026-05", [june]),
+	]);
+	const quiet = [...(element.shadowRoot?.querySelectorAll(".quiet") ?? [])].map(
+		(node) => node.textContent?.trim(),
+	);
+	expect(quiet).toEqual([
+		"2026-07 – 2026-08 · no purchases",
+		"2026-05 · no purchases",
+	]);
+	expect(element.shadowRoot?.textContent).toContain("tyres");
 });
 
 test("says so when there are no statements, in the chosen language", async () => {

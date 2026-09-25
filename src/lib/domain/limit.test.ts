@@ -4,6 +4,8 @@ import {
 	outstandingOf,
 	spendableRows,
 	unassignedCards,
+	usageLevel,
+	usageShare,
 } from "#lib/domain/limit";
 import { DEFAULT_SETTINGS, withPurchaseAt } from "#lib/domain/settings";
 import type {
@@ -229,4 +231,23 @@ test("unassigned names the unarchived cards with no group of their own", () => {
 		"nogroup",
 		"ghost",
 	]);
+});
+
+test("usage level reads within, high from 80% used, and over past the limit", () => {
+	expect(usageLevel(0, 100_000)).toBe("within");
+	expect(usageLevel(79_999, 100_000)).toBe("within");
+	expect(usageLevel(80_000, 100_000)).toBe("high");
+	expect(usageLevel(100_000, 100_000)).toBe("high");
+	expect(usageLevel(100_001, 100_000)).toBe("over");
+	// A zero limit has no room at all, so anything spent is over it.
+	expect(usageLevel(0, 0)).toBe("within");
+	expect(usageLevel(1, 0)).toBe("over");
+});
+
+test("usage share is the used fraction as a 0-100 percentage, clamped", () => {
+	expect(usageShare(25_000, 100_000)).toBe(25);
+	expect(usageShare(150_000, 100_000)).toBe(100);
+	expect(usageShare(-5, 100_000)).toBe(0);
+	expect(usageShare(5, 0)).toBe(100);
+	expect(usageShare(0, 0)).toBe(0);
 });
