@@ -395,3 +395,27 @@ export const usageBar = css`
 		}
 	}
 `;
+
+/**
+ * The search, filter and sort row above a list. Fields share the row and wrap onto more
+ * rows as it narrows; the search box asks for more room than a dropdown does.
+ */
+export const listToolbar = css`
+	.toolbar {
+		flex-wrap: wrap;
+		gap: var(--cc-space-3);
+		align-items: flex-end;
+	}
+
+	.toolbar > label {
+		flex: 1 1 calc(var(--cc-space-7) * 3);
+	}
+
+	.toolbar > label.search {
+		flex-basis: calc(var(--cc-space-7) * 5);
+	}
+
+	.toolbar-actions {
+		gap: var(--cc-space-2);
+	}
+`;

@@ -1,5 +1,10 @@
 import { expect, test } from "bun:test";
 import "#components/cc-card-table";
+import {
+	type CardView,
+	DEFAULT_CARD_VIEW,
+	UNASSIGNED,
+} from "#lib/domain/list-view";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
@@ -238,4 +243,118 @@ test("renders its column headings and empty state in the chosen language", async
 	expect(element.shadowRoot?.textContent).toContain(
 		"ยังไม่มีบัตร เพิ่มใบแรกด้วยแบบฟอร์มเพิ่มบัตร",
 	);
+});
+
+const names = (element: HTMLElement) =>
+	[
+		...(element.shadowRoot?.querySelectorAll("details.active a.card-name") ??
+			[]),
+	].map((link) => link.textContent?.trim());
+
+const toolbarField = <T extends HTMLElement>(
+	element: HTMLElement,
+	name: string,
+) => element.shadowRoot?.querySelector<T>(`.toolbar [name="${name}"]`) ?? null;
+
+test("has no toolbar while there are no cards to narrow", async () => {
+	const element = await mount([]);
+	expect(element.shadowRoot?.querySelector(".toolbar")).toBeNull();
+});
+
+test("lists the cards its view lets through, in the view's order", async () => {
+	const element = await mount([
+		{ ...card, id: "b", name: "Bravo" },
+		{ ...card, id: "a", name: "Alpha" },
+		{ ...card, id: "c", name: "Charlie", location: "bangkok" },
+	]);
+	element.view = { ...DEFAULT_CARD_VIEW, location: "krabi", sort: "name" };
+	await element.updateComplete;
+	expect(names(element)).toEqual(["Alpha", "Bravo"]);
+});
+
+test("says nothing matches when the view filters every card out", async () => {
+	const element = await mount([card, { ...card, id: "old", archived: true }]);
+	element.view = { ...DEFAULT_CARD_VIEW, q: "nothing like this" };
+	await element.updateComplete;
+	const text = element.shadowRoot?.textContent ?? "";
+	expect(text).toContain("No cards match these filters.");
+	expect(element.shadowRoot?.querySelector("details.archived-list")).toBeNull();
+});
+
+test("emits the next view as the reader types or picks", async () => {
+	const element = await mount([card]);
+	const seen: CardView[] = [];
+	element.addEventListener("view-change", (event) =>
+		seen.push((event as CustomEvent<CardView>).detail),
+	);
+
+	const search = toolbarField<HTMLInputElement>(element, "q");
+	if (!search) throw new Error("no search field");
+	search.value = "visa";
+	search.dispatchEvent(new Event("input"));
+
+	const sort = toolbarField<HTMLSelectElement>(element, "sort");
+	if (!sort) throw new Error("no sort field");
+	sort.value = "closeDay";
+	sort.dispatchEvent(new Event("change"));
+
+	expect(seen).toEqual([
+		{ ...DEFAULT_CARD_VIEW, q: "visa" },
+		{ ...DEFAULT_CARD_VIEW, sort: "closeDay" },
+	]);
+});
+
+test("offers limit groups in owner-then-name order, after any and unassigned", async () => {
+	const element = await mount([card], {}, [
+		{ id: "ri", name: "Alpha", limit: 1, owner: "RI" },
+		{ id: "kz", name: "Zulu", limit: 1, owner: "KC" },
+		{ id: "ka", name: "Alpha", limit: 1, owner: "KC" },
+	]);
+	const options = [
+		...(toolbarField<HTMLSelectElement>(element, "group")?.options ?? []),
+	].map((option) => option.value);
+	expect(options).toEqual(["", UNASSIGNED, "ka", "kz", "ri"]);
+});
+
+test("reflects the view in its controls", async () => {
+	const element = await mount([card], {}, [
+		{ id: "pool", name: "Pool", limit: 1 },
+	]);
+	element.view = {
+		...DEFAULT_CARD_VIEW,
+		owner: "NT",
+		group: "pool",
+		sort: "name",
+	};
+	await element.updateComplete;
+	expect(toolbarField<HTMLSelectElement>(element, "owner")?.value).toBe("NT");
+	expect(toolbarField<HTMLSelectElement>(element, "group")?.value).toBe("pool");
+	expect(toolbarField<HTMLSelectElement>(element, "sort")?.value).toBe("name");
+});
+
+test("flips the direction only once a sort is picked, and clears back to the default", async () => {
+	const element = await mount([card]);
+	const direction = () =>
+		element.shadowRoot?.querySelector<HTMLButtonElement>(
+			'.toolbar [data-action="direction"]',
+		);
+	const clear = () =>
+		element.shadowRoot?.querySelector<HTMLButtonElement>(
+			'.toolbar [data-action="clear"]',
+		);
+	expect(direction()?.disabled).toBe(true);
+	expect(clear()).toBeNull();
+
+	element.view = { ...DEFAULT_CARD_VIEW, sort: "name" };
+	await element.updateComplete;
+	const seen: CardView[] = [];
+	element.addEventListener("view-change", (event) =>
+		seen.push((event as CustomEvent<CardView>).detail),
+	);
+	direction()?.click();
+	clear()?.click();
+	expect(seen).toEqual([
+		{ ...DEFAULT_CARD_VIEW, sort: "name", dir: "desc" },
+		DEFAULT_CARD_VIEW,
+	]);
 });

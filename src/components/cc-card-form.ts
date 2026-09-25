@@ -1,5 +1,6 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { byOwnerThenName } from "#lib/domain/list-view";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
 import { groupLabel, OWNERS, type Owner, toOwner } from "#lib/domain/owner";
 import type { Card, CycleRule, LimitGroup } from "#lib/domain/types";
@@ -318,10 +319,12 @@ export class CcCardForm extends LitElement {
 							this.selectedGroupId = (event.target as HTMLSelectElement).value;
 						}}>
 						<option value="">${t("form.limitGroupNone")}</option>
-						${this.groups.map(
-							(group) =>
-								html`<option value=${group.id}>${groupLabel(group)}</option>`,
-						)}
+						${[...this.groups]
+							.sort(byOwnerThenName)
+							.map(
+								(group) =>
+									html`<option value=${group.id}>${groupLabel(group)}</option>`,
+							)}
 					</select>
 				</label>
 

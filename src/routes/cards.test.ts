@@ -436,3 +436,61 @@ test("keeps both forms together above the lists rather than between them", async
 		tags.indexOf("cc-card-table"),
 	);
 });
+
+test("opens both lists on the view its query names", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 });
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(
+		repo,
+		root,
+		globalThis.localStorage,
+		null,
+		new URLSearchParams("sort=name&dir=desc&gq=kbank"),
+	);
+	await settle();
+
+	expect(root.querySelector("cc-card-table")?.view).toMatchObject({
+		sort: "name",
+		dir: "desc",
+	});
+	expect(root.querySelector("cc-limit-group-table")?.view.q).toBe("kbank");
+});
+
+test("writes a changed view back into the query, keeping keys it does not own", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	const written: string[] = [];
+	renderCardsPage(
+		repo,
+		root,
+		globalThis.localStorage,
+		null,
+		new URLSearchParams("edit=kbank"),
+		(query) => written.push(query.toString()),
+	);
+	await settle();
+
+	const table = root.querySelector("cc-card-table");
+	table?.dispatchEvent(
+		new CustomEvent("view-change", {
+			detail: { ...table.view, location: "krabi" },
+		}),
+	);
+	const groups = root.querySelector("cc-limit-group-table");
+	groups?.dispatchEvent(
+		new CustomEvent("view-change", {
+			detail: { ...groups.view, owner: "NT" },
+		}),
+	);
+	await settle();
+
+	expect(written).toEqual([
+		"edit=kbank&loc=krabi",
+		"edit=kbank&loc=krabi&gowner=NT",
+	]);
+	expect(root.querySelector("cc-card-table")?.view.location).toBe("krabi");
+	expect(root.querySelector("cc-limit-group-table")?.view.owner).toBe("NT");
+});

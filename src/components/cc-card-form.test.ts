@@ -310,7 +310,22 @@ test("names each group with its owner in the picker", async () => {
 	]
 		.slice(1)
 		.map((option) => option.textContent?.trim());
-	expect(labels).toEqual(["KBank account (NT)", "SCB (KC)"]);
+	expect(labels).toEqual(["SCB (KC)", "KBank account (NT)"]);
+});
+
+test("lists groups in the picker by owner, then by name", async () => {
+	const element = await mount(null, [
+		{ id: "ri", name: "Alpha", limit: 1, owner: "RI" },
+		{ id: "kz", name: "Zulu", limit: 1, owner: "KC" },
+		{ id: "nt", name: "Mike", limit: 1, owner: "NT" },
+		{ id: "ka", name: "Alpha", limit: 1, owner: "KC" },
+	]);
+	const values = [
+		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="limitGroupId"] option',
+		) ?? []),
+	].map((option) => option.value);
+	expect(values).toEqual(["", "ka", "kz", "nt", "ri"]);
 });
 
 test("saves a card with no owner field at all", async () => {

@@ -1,11 +1,33 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { cardOwnerOf, groupLabel } from "#lib/domain/owner";
+import {
+	applyCardView,
+	byOwnerThenName,
+	CARD_SORTS,
+	type CardSort,
+	type CardView,
+	DEFAULT_CARD_VIEW,
+	UNASSIGNED,
+} from "#lib/domain/list-view";
+import { LOCATIONS, toLocation } from "#lib/domain/location";
+import { cardOwnerOf, groupLabel, OWNERS, toOwner } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
-import { badge, base, controls, dataTable } from "#styles/shared";
+import { badge, base, controls, dataTable, listToolbar } from "#styles/shared";
+
+const SORT_LABELS: Record<CardSort, MessageKey> = {
+	default: "list.sortDefault",
+	name: "cards.sort.name",
+	location: "cards.column.location",
+	group: "cards.column.limitGroup",
+	closeDay: "cards.sort.closeDay",
+};
+
+const sameView = (a: CardView, b: CardView) =>
+	(Object.keys(a) as (keyof CardView)[]).every((key) => a[key] === b[key]);
 
 @customElement("cc-card-table")
 export class CcCardTable extends LitElement {
@@ -14,6 +36,7 @@ export class CcCardTable extends LitElement {
 		controls,
 		dataTable,
 		badge,
+		listToolbar,
 		css`
 			:host {
 				display: flex;
@@ -124,6 +147,8 @@ export class CcCardTable extends LitElement {
 	@property({ attribute: false }) cards: Card[] = [];
 	@property({ attribute: false }) purchaseCounts: Record<string, number> = {};
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** Which cards to list and in what order. The table only asks for changes; see `view-change`. */
+	@property({ attribute: false }) view: CardView = DEFAULT_CARD_VIEW;
 
 	constructor() {
 		super();
@@ -134,9 +159,18 @@ export class CcCardTable extends LitElement {
 		this.dispatchEvent(new CustomEvent<string>(name, { detail: id }));
 	}
 
+	private change(patch: Partial<CardView>) {
+		this.dispatchEvent(
+			new CustomEvent<CardView>("view-change", {
+				detail: { ...this.view, ...patch },
+			}),
+		);
+	}
+
 	override render() {
-		const active = this.cards.filter((card) => !card.archived);
-		const archived = this.cards.filter((card) => card.archived);
+		const visible = applyCardView(this.cards, this.groups, this.view);
+		const active = visible.filter((card) => !card.archived);
+		const archived = visible.filter((card) => card.archived);
 		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
 		// reader has just closed, nor close one they opened.
 		return html`
@@ -145,9 +179,16 @@ export class CcCardTable extends LitElement {
 				${
 					this.cards.length === 0
 						? html`<p>${t("cards.empty")}</p>`
-						: active.length > 0
-							? this.table(active)
-							: nothing
+						: html`
+							${this.toolbar()}
+							${
+								visible.length === 0
+									? html`<p>${t("cards.noMatch")}</p>`
+									: active.length > 0
+										? this.table(active)
+										: nothing
+							}
+						`
 				}
 			</details>
 			${
@@ -160,6 +201,87 @@ export class CcCardTable extends LitElement {
 					`
 					: nothing
 			}
+		`;
+	}
+
+	/**
+	 * Options mark themselves `.selected` rather than the select taking a `.value`: on the first
+	 * render the select's own binding is committed before its options exist, and would be lost.
+	 */
+	private toolbar() {
+		const view = this.view;
+		const read = (event: Event) =>
+			(event.target as HTMLInputElement | HTMLSelectElement).value;
+		const sorted = [...this.groups].sort(byOwnerThenName);
+		return html`
+			<div class="toolbar" row>
+				<label class="search">
+					${t("list.search")}
+					<input type="search" name="q" .value=${view.q}
+						placeholder=${t("cards.searchPlaceholder")}
+						@input=${(event: Event) => this.change({ q: read(event) })} />
+				</label>
+				<label>
+					${t("cards.owner")}
+					<select name="owner"
+						@change=${(event: Event) => this.change({ owner: toOwner(read(event)) ?? "" })}>
+						<option value="" .selected=${view.owner === ""}>${t("list.anyOwner")}</option>
+						${OWNERS.map(
+							(owner) =>
+								html`<option value=${owner} .selected=${view.owner === owner}>${owner}</option>`,
+						)}
+					</select>
+				</label>
+				<label>
+					${t("cards.column.location")}
+					<select name="location"
+						@change=${(event: Event) => this.change({ location: toLocation(read(event)) ?? "" })}>
+						<option value="" .selected=${view.location === ""}>${t("list.anyLocation")}</option>
+						${LOCATIONS.map(
+							(location) =>
+								html`<option value=${location} .selected=${view.location === location}>${locationText(location)}</option>`,
+						)}
+					</select>
+				</label>
+				<label>
+					${t("cards.column.limitGroup")}
+					<select name="group" @change=${(event: Event) => this.change({ group: read(event) })}>
+						<option value="" .selected=${view.group === ""}>${t("list.anyGroup")}</option>
+						<option value=${UNASSIGNED} .selected=${view.group === UNASSIGNED}>${t("cards.unassigned")}</option>
+						${sorted.map(
+							(group) =>
+								html`<option value=${group.id} .selected=${view.group === group.id}>${groupLabel(group)}</option>`,
+						)}
+					</select>
+				</label>
+				<label>
+					${t("list.sort")}
+					<select name="sort"
+						@change=${(event: Event) => {
+							const value = read(event);
+							const sort = CARD_SORTS.find((one) => one === value);
+							if (sort) this.change({ sort });
+						}}>
+						${CARD_SORTS.map(
+							(sort) =>
+								html`<option value=${sort} .selected=${view.sort === sort}>${t(SORT_LABELS[sort])}</option>`,
+						)}
+					</select>
+				</label>
+				<div class="toolbar-actions" row>
+					<button type="button" data-variant="quiet" data-action="direction"
+						?disabled=${view.sort === "default"}
+						@click=${() => this.change({ dir: view.dir === "asc" ? "desc" : "asc" })}>
+						${view.dir === "asc" ? `↑ ${t("list.ascending")}` : `↓ ${t("list.descending")}`}
+					</button>
+					${
+						sameView(view, DEFAULT_CARD_VIEW)
+							? nothing
+							: html`<button type="button" data-variant="quiet" data-action="clear"
+								@click=${() => this.change(DEFAULT_CARD_VIEW)}>${t("list.clear")}</button>`
+					}
+				</div>
+			</div>
 		`;
 	}
 
