@@ -27,6 +27,7 @@ export const th: Catalog = {
 	"common.edit": "แก้ไข",
 	"common.delete": "ลบ",
 	"common.dismiss": "ปิด",
+	"common.close": "ปิด",
 	"common.none": "—",
 
 	"footer.repo": "ซอร์สโค้ดบน GitHub",
@@ -103,7 +104,7 @@ export const th: Catalog = {
 	"cards.list": "รายการบัตร",
 	"cards.add": "เพิ่มบัตร",
 	"cards.edit": "แก้ไข {name}",
-	"cards.empty": "ยังไม่มีบัตร เพิ่มใบแรกด้วยแบบฟอร์มเพิ่มบัตร",
+	"cards.empty": "ยังไม่มีบัตร เพิ่มใบแรกด้วยปุ่มเพิ่มบัตร",
 	"cards.column.card": "บัตร",
 	"cards.column.location": "ที่อยู่",
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the

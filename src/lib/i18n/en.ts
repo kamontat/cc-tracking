@@ -17,6 +17,7 @@ export const en = {
 	"common.edit": "Edit",
 	"common.delete": "Delete",
 	"common.dismiss": "Dismiss",
+	"common.close": "Close",
 	"common.none": "—",
 
 	"footer.repo": "Source on GitHub",
@@ -87,7 +88,7 @@ export const en = {
 	"cards.list": "Card list",
 	"cards.add": "Add a card",
 	"cards.edit": "Edit {name}",
-	"cards.empty": "No cards yet. Add the first one with the Add a card form.",
+	"cards.empty": "No cards yet. Add the first one with the Add a card button.",
 	"cards.column.card": "Card",
 	"cards.column.location": "Location",
 	"cards.column.cycle": "Cycle",

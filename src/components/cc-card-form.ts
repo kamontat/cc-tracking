@@ -16,18 +16,6 @@ export class CcCardForm extends LitElement {
 		base,
 		controls,
 		css`
-			details {
-				display: flex;
-				flex-direction: column;
-				gap: var(--cc-space-3);
-			}
-
-			summary {
-				font-size: var(--cc-text-lg);
-				font-weight: 600;
-				cursor: pointer;
-			}
-
 			form {
 				display: grid;
 				grid-template-columns: 1fr;
@@ -113,10 +101,6 @@ export class CcCardForm extends LitElement {
 	@property({ attribute: false }) groups: LimitGroup[] = [];
 
 	@state() private kind: CycleRule["kind"] = "offset";
-	// The reader's own answer to "is this section open", not a mirror of `card`: it is forced
-	// open when an edit target arrives, and otherwise follows the element's own toggle event, so
-	// a section closed by hand stays closed through every later repaint.
-	@state() private open = false;
 	@state() private supplementary = false;
 	// Who holds a supplementary card. Kept while the box is unticked, so ticking it straight back
 	// does not lose the choice, but only written into the saved card while the box is ticked.
@@ -135,10 +119,7 @@ export class CcCardForm extends LitElement {
 
 	override willUpdate(changed: Map<string, unknown>) {
 		if (changed.has("card")) {
-			if (this.card) {
-				this.kind = this.card.cycle.kind;
-				this.open = true;
-			}
+			if (this.card) this.kind = this.card.cycle.kind;
 			this.supplementary = this.card?.supplementary ?? false;
 			this.owner = toOwner(this.card?.owner) ?? "";
 			this.selectedGroupId = this.card?.limitGroupId ?? "";
@@ -230,7 +211,6 @@ export class CcCardForm extends LitElement {
 		if (this.supplementary && !owner) return this.fail("form.error.owner");
 
 		this.errorKey = "";
-		const wasCreate = this.card === null;
 		const card: Card = {
 			id,
 			name: this.value("name"),
@@ -244,34 +224,10 @@ export class CcCardForm extends LitElement {
 			archived: this.card?.archived ?? false,
 			limitGroupId,
 		};
+		// No reset after a create: the page renders this form only inside an open dialog and
+		// closes it once the save lands, so the next add gets a fresh form -- and a save the page
+		// refuses (a duplicate id, say) leaves the reader's typing in place to fix and retry.
 		this.dispatchEvent(new CustomEvent<Card>("save", { detail: card }));
-
-		if (wasCreate) {
-			// The bindings above are `.value=${card?.name ?? ""}`, so after a create `this.card`
-			// is still null and every expression re-evaluates to the same "" it last committed —
-			// Lit's dirty check then skips the DOM write and the typed text stays put. A native
-			// form reset bypasses that check entirely, the same trick already used in
-			// cc-quick-add's date field. The `checked` bindings are set as properties too, never
-			// as the `checked` attribute, so `reset()` leaves both radios unchecked regardless of
-			// `this.kind`; set the DOM directly rather than trust a Lit re-render to fix it.
-			const form = this.renderRoot.querySelector("form");
-			form?.reset();
-			this.kind = "offset";
-			this.supplementary = false;
-			this.owner = "";
-			const offsetRadio = form?.querySelector<HTMLInputElement>(
-				'[name="kind"][value="offset"]',
-			);
-			if (offsetRadio) offsetRadio.checked = true;
-			const locationSelect =
-				form?.querySelector<HTMLSelectElement>('[name="location"]');
-			if (locationSelect) locationSelect.value = DEFAULT_LOCATION;
-			this.selectedGroupId = "";
-			const limitGroupSelect = form?.querySelector<HTMLSelectElement>(
-				'[name="limitGroupId"]',
-			);
-			if (limitGroupSelect) limitGroupSelect.value = "";
-		}
 	}
 
 	private fail(key: MessageKey) {
@@ -282,10 +238,6 @@ export class CcCardForm extends LitElement {
 		const card = this.card;
 		const rule = card?.cycle;
 		return html`
-			<details ?open=${this.open} @toggle=${(event: Event) => {
-				this.open = (event.target as HTMLDetailsElement).open;
-			}}>
-				<summary>${card ? t("cards.edit", { name: card.name }) : t("cards.add")}</summary>
 				<form @submit=${this.onSubmit}>
 				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 
@@ -390,15 +342,10 @@ export class CcCardForm extends LitElement {
 
 				<div class="form-actions" row>
 					<button type="submit">${card ? t("form.save") : t("form.add")}</button>
-					${
-						card
-							? html`<button type="button" data-variant="quiet" data-action="cancel"
-						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>`
-							: nothing
-					}
+					<button type="button" data-variant="quiet" data-action="cancel"
+						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
 				</div>
 				</form>
-			</details>
 		`;
 	}
 }

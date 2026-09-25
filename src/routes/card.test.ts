@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+import type { CcErrorBanner } from "#components/cc-error-banner";
+import type { CcQuickAdd } from "#components/cc-quick-add";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
@@ -64,13 +66,24 @@ class RejectingPurchaseRepository extends InMemoryRepository {
 	}
 }
 
-/** Fills in and submits the page's quick-add form. */
+/** Presses the page's Add a purchase button and hands back the form it opens in a dialog. */
+const openQuickAdd = async (root: HTMLElement) => {
+	root
+		.querySelector<HTMLButtonElement>('button[data-action="add-purchase"]')
+		?.click();
+	await settle();
+	const form = root.querySelector<CcQuickAdd>("cc-modal cc-quick-add");
+	if (!form) throw new Error("the add-purchase dialog did not open");
+	await form.updateComplete;
+	return form;
+};
+
+/** Opens the purchase dialog, then fills in and submits its form. */
 const submitPurchase = async (
 	root: HTMLElement,
 	fields: { date: string; amount: string; note: string },
 ) => {
-	const form = root.querySelector("cc-quick-add");
-	await form?.updateComplete;
+	const form = await openQuickAdd(root);
 	const shadow = form?.shadowRoot;
 	for (const [name, value] of Object.entries(fields)) {
 		const input = shadow?.querySelector<HTMLInputElement>(`[name="${name}"]`);
@@ -228,6 +241,7 @@ test("says why a card kept somewhere that takes no purchases has no purchase for
 	await settle();
 
 	expect(root.querySelector("cc-quick-add")).toBeNull();
+	expect(root.querySelector('button[data-action="add-purchase"]')).toBeNull();
 	expect(root.querySelector(".card-details")?.textContent).toContain(
 		"Bangkok takes no new purchases.",
 	);
@@ -464,12 +478,21 @@ test("adds a purchase against this card and says which statement it lands on", a
 	renderCardPage(repo, "kbank", root);
 	await settle();
 
-	const form = root.querySelector("cc-quick-add");
-	await form?.updateComplete;
-	const options = [...(form?.shadowRoot?.querySelectorAll("option") ?? [])].map(
-		(option) => option.value,
-	);
-	expect(options).toEqual(["kbank"]);
+	expect(root.querySelector("cc-quick-add")).toBeNull();
+	const button = root.querySelector('button[data-action="add-purchase"]');
+	expect(button?.closest(".page-title")?.querySelector("h1")).not.toBeNull();
+
+	const form = await openQuickAdd(root);
+	expect(root.querySelector("cc-modal")?.heading).toBe("Add a purchase");
+	// Locked to this page's card, named as a field rather than offered as a one-option picker.
+	expect(form.cards.map((entry) => entry.id)).toEqual(["kbank"]);
+	expect(form.shadowRoot?.querySelector("select")).toBeNull();
+	expect(
+		form.shadowRoot?.querySelector('[data-field="card"]')?.textContent,
+	).toContain("kbank — KBank Visa");
+	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+	expect(root.querySelector("cc-modal")).toBeNull();
 
 	await submitPurchase(root, {
 		date: purchaseDate,
@@ -491,11 +514,14 @@ test("adds a purchase against this card and says which statement it lands on", a
 	const list = root.querySelector("cc-statement-list");
 	await list?.updateComplete;
 	expect(articleFor(list, period).textContent).toContain("groceries");
-	await root.querySelector("cc-quick-add")?.updateComplete;
-	expect(
-		root.querySelector("cc-quick-add")?.shadowRoot?.querySelector(".answer")
-			?.textContent,
-	).toContain("Lands on the statement closing");
+	expect(root.querySelector("cc-modal")).toBeNull();
+	expect(root.querySelector(".purchase-status p")?.textContent).toContain(
+		"Lands on the statement closing",
+	);
+
+	root.querySelector<HTMLButtonElement>(".purchase-status button")?.click();
+	await settle();
+	expect(root.querySelector(".purchase-status p")).toBeNull();
 });
 
 test("an archived card offers no purchase form", async () => {
@@ -507,6 +533,7 @@ test("an archived card offers no purchase form", async () => {
 
 	expect(root.querySelector("cc-statement-list")).not.toBeNull();
 	expect(root.querySelector("cc-quick-add")).toBeNull();
+	expect(root.querySelector('button[data-action="add-purchase"]')).toBeNull();
 });
 
 test("a failed purchase leaves a message in the banner and writes nothing", async () => {
@@ -524,4 +551,9 @@ test("a failed purchase leaves a message in the banner and writes nothing", asyn
 
 	expect(bannerMessage(root)).toContain("disk is full");
 	expect(await repo.listPurchases("kbank")).toEqual([]);
+	// The dialog stays open with the failure inside it, not hidden behind its backdrop.
+	expect(
+		root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message,
+	).toContain("disk is full");
+	expect(root.querySelector("cc-modal cc-quick-add")).not.toBeNull();
 });

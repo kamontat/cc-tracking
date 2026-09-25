@@ -4,9 +4,8 @@ import "../styles/app.css";
 import "#components/cc-due-list";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
-import "#components/cc-quick-add";
 import "#components/cc-spendable";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import type { DueRow } from "#components/cc-due-list";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
@@ -26,6 +25,11 @@ import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
+import {
+	addPurchaseButton,
+	purchaseDialog,
+	purchaseStatus,
+} from "#lib/ui/purchase-dialog";
 
 /** Renders the dashboard page into `root`, wiring it to `repo`. Exported for tests and for Tasks 11-12 to extend. */
 export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
@@ -44,6 +48,9 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 		over: number;
 		groupName: string;
 	} | null = null;
+	let adding = false;
+	// Whether the open dialog has tried a save yet, so an older page error stays out of it.
+	let addSubmitted = false;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -78,8 +85,22 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			});
 		}, "dashboard.error.markPaid");
 
-	const onAdd = (event: CustomEvent<QuickAddDetail>) =>
-		state.guard(async () => {
+	const openAdd = () => {
+		adding = true;
+		addSubmitted = false;
+		paint();
+	};
+
+	const closeAdd = () => {
+		adding = false;
+		paint();
+	};
+
+	// Closes the dialog only once the purchase is stored; a failed save leaves it open, with the
+	// reason inside it and the reader's typing intact.
+	const onAdd = (event: CustomEvent<QuickAddDetail>) => {
+		addSubmitted = true;
+		return state.guard(async () => {
 			const { cardId, date, amount, note } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
 			if (!card) return;
@@ -105,7 +126,9 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				over: row ? Math.max(0, amount - row.available) : 0,
 				groupName: row?.group.name ?? "",
 			};
+			adding = false;
 		}, "dashboard.error.addPurchase");
+	};
 
 	/** Cards the page shows. Archived ones are still loaded: they weigh on a shared limit. */
 	const visible = (): Card[] => cards.filter((card) => !card.archived);
@@ -146,8 +169,15 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			: "";
 		render(
 			html`
-				<h1>${t("dashboard.title")}</h1>
+				<div class="page-title" row>
+					<h1>${t("dashboard.title")}</h1>
+					${addPurchaseButton(openAdd)}
+				</div>
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+				${purchaseStatus(answer, () => {
+					confirmedPurchase = null;
+					paint();
+				})}
 				<article>
 					<cc-spendable
 						.rows=${spendable}
@@ -155,16 +185,25 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 						.today=${now}
 					></cc-spendable>
 				</article>
-				<div class="split">
-					<article>
-						<h2>${t("dashboard.dueNext")}</h2>
-						<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
-					</article>
-					<article class="split__aside split__aside--lead">
-						<h2>${t("dashboard.addPurchase")}</h2>
-						<cc-quick-add .cards=${visible().filter((entry) => canPurchase(entry, settings))} .rows=${spendable} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
-					</article>
-				</div>
+				<article>
+					<h2>${t("dashboard.dueNext")}</h2>
+					<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
+				</article>
+				${
+					adding
+						? purchaseDialog({
+								cards: visible().filter((entry) =>
+									canPurchase(entry, settings),
+								),
+								rows: spendable,
+								today: now,
+								error: addSubmitted ? state.error : "",
+								onAdd,
+								onClose: closeAdd,
+								onRetry: () => state.load(),
+							})
+						: nothing
+				}
 			`,
 			root,
 		);

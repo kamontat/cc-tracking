@@ -28,25 +28,34 @@ export class CcQuickAdd extends LitElement {
 				gap: var(--cc-space-3);
 			}
 
-			.answer {
-				padding: var(--cc-space-2) var(--cc-space-3);
-				font-size: var(--cc-text-sm);
-				color: var(--cc-success);
-				background: var(--cc-surface-sunken);
-				border-radius: var(--cc-radius-sm);
+			.form-actions {
+				flex-wrap: wrap;
+				gap: var(--cc-space-2);
 			}
 
-			button[type="submit"] {
-				align-self: stretch;
-				text-align: center;
+			/*
+			 * The one card there is to add against, shown as a field rather than a picker with a
+			 * single option -- the same treatment cc-card-form gives a saved card's locked id: a
+			 * label's muted type above a value carrying an input's padding, with no box.
+			 */
+			.readonly {
+				gap: var(--cc-space-1);
+			}
+
+			.readonly__label {
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.readonly__value {
+				padding-block: var(--cc-space-2);
+				border-block: var(--cc-border-width) solid transparent;
 			}
 		`,
 	];
 
 	@property({ attribute: false }) cards: Card[] = [];
 	@property() today: PlainDate = "";
-	/** Set by the page after a successful save. */
-	@property() answer = "";
 	/** Rows for the cards above, from `spendableRows`. A card with no row shows no credit. */
 	@property({ attribute: false }) rows: SpendRow[] = [];
 
@@ -89,6 +98,11 @@ export class CcQuickAdd extends LitElement {
 		return this.rows.find((row) => row.card.id === id) ?? null;
 	}
 
+	/** The card, when there is only one to choose -- the card page's own. Nothing to pick then. */
+	private get onlyCard(): Card | null {
+		return this.cards.length === 1 ? (this.cards[0] ?? null) : null;
+	}
+
 	private value(name: string): string {
 		return (
 			this.renderRoot
@@ -99,7 +113,8 @@ export class CcQuickAdd extends LitElement {
 
 	private onSubmit(event: Event) {
 		event.preventDefault();
-		const cardId = this.value("cardId");
+		const only = this.onlyCard;
+		const cardId = only ? only.id : this.value("cardId");
 		const date = this.value("date");
 		if (!cardId) {
 			this.errorKey = "quickAdd.error.noCard";
@@ -120,24 +135,15 @@ export class CcQuickAdd extends LitElement {
 			this.errorKey = "quickAdd.error.badAmount";
 			return;
 		}
+		// No reset after the add: the page renders this form only inside an open dialog and
+		// closes it once the save lands, so the next purchase gets a fresh form -- and a save
+		// that fails leaves the reader's typing in place to retry.
 		this.errorKey = "";
 		this.dispatchEvent(
 			new CustomEvent<QuickAddDetail>("add", {
 				detail: { cardId, date, amount, note: this.value("note") },
 			}),
 		);
-		const form = this.renderRoot.querySelector("form");
-		form?.reset();
-		// The date input is bound via the `.value` property, so `reset()` restores it to
-		// its never-set `defaultValue` (empty) rather than `this.today`, and Lit's dirty
-		// check then skips re-committing a binding whose value hasn't changed. Put it back
-		// explicitly so a required field doesn't block the very next entry.
-		const dateField = form?.querySelector<HTMLInputElement>('[name="date"]');
-		if (dateField) dateField.value = this.today;
-		// The card select also goes back to its first option on reset, so the tracked
-		// selection must follow -- otherwise the note keeps describing the card that was
-		// just used rather than the one now selected.
-		this.selectedId = "";
 	}
 
 	override render() {
@@ -146,24 +152,36 @@ export class CcQuickAdd extends LitElement {
 		if (this.cards.length === 0) {
 			return html`<p>${t("quickAdd.noEligible")}</p>`;
 		}
+		const only = this.onlyCard;
 		return html`
 			<form @submit=${this.onSubmit}>
 				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
-				<label>
-					${t("quickAdd.card")}
-					<select
-						name="cardId"
-						required
-						@change=${(event: Event) => {
-							this.selectedId = (event.target as HTMLSelectElement).value;
-						}}
-					>
-						${this.cards.map(
-							(card) =>
-								html`<option value=${card.id}>${card.id} — ${card.name}</option>`,
-						)}
-					</select>
-				</label>
+				${
+					only
+						? html`
+							<div class="readonly" data-field="card">
+								<span class="readonly__label">${t("quickAdd.card")}</span>
+								<span class="readonly__value">${only.id} — ${only.name}</span>
+							</div>
+						`
+						: html`
+							<label>
+								${t("quickAdd.card")}
+								<select
+									name="cardId"
+									required
+									@change=${(event: Event) => {
+										this.selectedId = (event.target as HTMLSelectElement).value;
+									}}
+								>
+									${this.cards.map(
+										(card) =>
+											html`<option value=${card.id}>${card.id} — ${card.name}</option>`,
+									)}
+								</select>
+							</label>
+						`
+				}
 				${
 					this.selected
 						? html`<p data-testid="available"><small>${t("quickAdd.available", {
@@ -175,8 +193,11 @@ export class CcQuickAdd extends LitElement {
 				<label>${t("quickAdd.date")} <input name="date" type="date" .value=${this.today} required /></label>
 				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")} required /></label>
 				<label>${t("quickAdd.note")} <input name="note" placeholder=${t("quickAdd.notePlaceholder")} /></label>
-				<button type="submit">${t("quickAdd.submit")}</button>
-				${this.answer ? html`<p class="answer">${this.answer}</p>` : nothing}
+				<div class="form-actions" row>
+					<button type="submit">${t("quickAdd.submit")}</button>
+					<button type="button" data-variant="quiet" data-action="cancel"
+						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
+				</div>
 			</form>
 		`;
 	}

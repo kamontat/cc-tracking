@@ -33,9 +33,6 @@ const submit = (element: CcLimitGroupForm) =>
 		?.querySelector("form")
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
-const details = (element: CcLimitGroupForm) =>
-	element.shadowRoot?.querySelector<HTMLDetailsElement>("details");
-
 const saved = (element: CcLimitGroupForm) => {
 	const seen: LimitGroup[] = [];
 	element.addEventListener("save-group", (event) => {
@@ -151,25 +148,24 @@ test("refuses a limit that is not an amount, and saves nothing", async () => {
 	).toBe(t("limits.error.limit"));
 });
 
-test("clears itself after a create so the next group starts empty", async () => {
+test("lays its fields out in the open, leaving the title to the dialog around it", async () => {
 	const element = await mount();
-	fill(element, "name", "TTB account");
-	fill(element, "limit", "3000");
-	fill(element, "owner", "RI");
-	submit(element);
-	await element.updateComplete;
 
-	expect(field(element, "name").value).toBe("");
-	expect(field(element, "limit").value).toBe("");
-	expect(field(element, "owner").value).toBe("KC");
+	expect(element.shadowRoot?.querySelector("details")).toBeNull();
+	expect(element.shadowRoot?.querySelector("summary")).toBeNull();
+	expect(field(element, "name")).toBeTruthy();
 });
 
-test("offers no cancel while adding a group", async () => {
+test("offers cancel while adding a group too, since it closes the dialog", async () => {
 	const element = await mount();
+	const cancelled: Event[] = [];
+	element.addEventListener("cancel", (event) => cancelled.push(event));
 
-	expect(
-		element.shadowRoot?.querySelector('[data-action="cancel"]'),
-	).toBeNull();
+	element.shadowRoot
+		?.querySelector<HTMLButtonElement>('[data-action="cancel"]')
+		?.click();
+
+	expect(cancelled).toHaveLength(1);
 });
 
 test("asks to be closed away again", async () => {
@@ -186,42 +182,6 @@ test("asks to be closed away again", async () => {
 		?.click();
 
 	expect(cancelled).toHaveLength(1);
-});
-
-test("starts closed, and opens itself when a group arrives to edit", async () => {
-	const element = await mount();
-	expect(details(element)?.open).toBe(false);
-
-	element.group = { id: "pool", name: "KBank account", limit: 500_000 };
-	await element.updateComplete;
-
-	expect(details(element)?.open).toBe(true);
-});
-
-test("stays closed once the reader closes it", async () => {
-	const element = await mount({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	const section = details(element);
-	if (!section) throw new Error("no details element");
-
-	section.open = false;
-	section.dispatchEvent(new Event("toggle"));
-	await element.updateComplete;
-
-	// A repaint that changes nothing about the group must not reopen it.
-	element.requestUpdate();
-	await element.updateComplete;
-	expect(details(element)?.open).toBe(false);
-
-	// ...and the close has to have been recorded, not merely gone unnoticed: a component that
-	// never listened to `toggle` still believes it is open, so Lit writes nothing here and the
-	// next edit target can never open it again.
-	element.group = { id: "solo", name: "SCB", limit: 100_000 };
-	await element.updateComplete;
-	expect(details(element)?.open).toBe(true);
 });
 
 test("re-renders a displayed error in the new language when the locale switches", async () => {

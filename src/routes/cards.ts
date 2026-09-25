@@ -7,6 +7,7 @@ import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
 import "#components/cc-limit-group-form";
 import "#components/cc-limit-group-table";
+import "#components/cc-modal";
 import { html, nothing, render } from "lit";
 import { today } from "#lib/domain/date";
 import { groupUsage } from "#lib/domain/limit";
@@ -27,8 +28,8 @@ import { createPageState } from "#lib/ui/page-state";
 
 /**
  * Renders the card registry page into `root`, wiring it to `repo`. `editId` is the card a link
- * from its detail page asked to edit (`/cards?edit=<id>`): loaded into the form once the list
- * arrives, and ignored when no such card exists. `query` seeds both lists' search, filter and
+ * from its detail page asked to edit (`/cards?edit=<id>`): opened in the edit dialog once the
+ * list arrives, and ignored when no such card exists. `query` seeds both lists' search, filter and
  * sort; every change to them is handed back through `onQuery` as the next query string, so a
  * reload or a shared link reopens the same view. Exported for tests.
  */
@@ -45,11 +46,16 @@ export function renderCardsPage(
 	let payments: StatementPayment[] = [];
 	let counts: Record<string, number> = {};
 	let groups: LimitGroup[] = [];
-	let editing: Card | null = null;
-	let editingGroup: LimitGroup | null = null;
+	// Which dialog is open, and on what: `null` is closed, a `null` record is an add. Only one
+	// can be open at a time -- the backdrop covers everything that could open the other.
+	let cardDialog: { card: Card | null } | null = null;
+	let groupDialog: { group: LimitGroup | null } | null = null;
+	// Whether the open dialog has tried a save yet. The page's error can predate the dialog (a
+	// failed load, say), and must not greet a reader who has only just opened it.
+	let dialogSubmitted = false;
 	// Read once per page load: the notice is consumed here, not on every paint.
 	let resetNames = takeResetNotice(storage);
-	// Taken on the first load only: a later refresh must not drag the form back to this card
+	// Taken on the first load only: a later refresh must not reopen the dialog on this card
 	// after the reader has saved it or moved on to another.
 	let pendingEdit = editId;
 	let views = readViews(query);
@@ -62,11 +68,23 @@ export function renderCardsPage(
 		paint();
 	};
 
-	/** Brings the form into view -- picked from far down the list, it is out of sight above. */
-	const revealForm = () =>
-		root
-			.querySelector("cc-card-form")
-			?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+	const openCard = (card: Card | null) => {
+		cardDialog = { card };
+		dialogSubmitted = false;
+		paint();
+	};
+
+	const openGroup = (group: LimitGroup | null) => {
+		groupDialog = { group };
+		dialogSubmitted = false;
+		paint();
+	};
+
+	const closeDialogs = () => {
+		cardDialog = null;
+		groupDialog = null;
+		paint();
+	};
 
 	const state = createPageState({
 		fetch: async () => {
@@ -88,8 +106,8 @@ export function renderCardsPage(
 				const wanted = cards.find((card) => card.id === pendingEdit);
 				pendingEdit = null;
 				if (wanted) {
-					editing = { ...wanted };
-					requestAnimationFrame(revealForm);
+					cardDialog = { card: wanted };
+					dialogSubmitted = false;
 				}
 			}
 		},
@@ -97,26 +115,30 @@ export function renderCardsPage(
 		paint: () => paint(),
 	});
 
-	const onSave = (event: CustomEvent<Card>) =>
-		state.guard(async () => {
+	// Each save closes its dialog only once the write has landed: a refused or failed save leaves
+	// it open on what the reader typed, with the reason shown inside it.
+	const onSave = (event: CustomEvent<Card>) => {
+		dialogSubmitted = true;
+		return state.guard(async () => {
 			const card = event.detail;
-			if (!editing) {
+			if (!cardDialog?.card) {
 				const existing = await repo.getCard(card.id);
 				if (existing) {
 					throw new MessageError("cards.error.duplicateId", { id: card.id });
 				}
 			}
 			await repo.saveCard(card);
-			editing = null;
+			cardDialog = null;
 		}, "cards.error.save");
+	};
 
 	const onRemove = (event: CustomEvent<string>) =>
 		state.guard(async () => {
 			await repo.deleteCard(event.detail);
-			// Left loaded, the form would still hold the deleted record, and Save would write it
+			// Left open, the dialog would still hold the deleted record, and Save would write it
 			// straight back -- a delete the reader watched happen, undone by a button that looks
 			// like it is only saving an edit.
-			if (editing?.id === event.detail) editing = null;
+			if (cardDialog?.card?.id === event.detail) cardDialog = null;
 		}, "cards.error.delete");
 
 	const onArchive = (event: CustomEvent<string>) =>
@@ -126,34 +148,56 @@ export function renderCardsPage(
 		}, "cards.error.archive");
 
 	const onEdit = (event: CustomEvent<string>) => {
-		// Copied, not handed over as-is: picking the same row twice would otherwise hand the form
-		// the identical object, Lit's `!==` dirty check would see no change, and the form would
-		// never learn to open itself again after the reader collapsed it.
 		const card = cards.find((c) => c.id === event.detail);
-		editing = card ? { ...card } : null;
-		paint();
-		revealForm();
+		if (card) openCard(card);
 	};
 
-	const onSaveGroup = (event: CustomEvent<LimitGroup>) =>
-		state.guard(async () => {
+	const onSaveGroup = (event: CustomEvent<LimitGroup>) => {
+		dialogSubmitted = true;
+		return state.guard(async () => {
 			await repo.saveLimitGroup(event.detail);
-			editingGroup = null;
+			groupDialog = null;
 		}, "cards.error.saveGroup");
+	};
 
 	const onEditGroup = (event: CustomEvent<string>) => {
-		// Copied for the same reason `onEdit` copies a card: the same object twice reads as no
-		// change at all to the form bound to it.
 		const group = groups.find((one) => one.id === event.detail);
-		editingGroup = group ? { ...group } : null;
-		paint();
+		if (group) openGroup(group);
 	};
 
 	const onRemoveGroup = (event: CustomEvent<string>) =>
 		state.guard(async () => {
 			await repo.deleteLimitGroup(event.detail);
-			if (editingGroup?.id === event.detail) editingGroup = null;
+			if (groupDialog?.group?.id === event.detail) groupDialog = null;
 		}, "cards.error.deleteGroup");
+
+	/** The open dialog, if any, with its form and -- once a save has failed -- the reason. */
+	const dialog = () => {
+		if (!cardDialog && !groupDialog) return nothing;
+		const error = dialogSubmitted ? state.error : "";
+		const banner = html`<cc-error-banner .message=${error} retry-label=${t("common.reload")}
+			@retry=${() => state.load()}></cc-error-banner>`;
+		if (cardDialog) {
+			const card = cardDialog.card;
+			return html`
+				<cc-modal heading=${card ? t("cards.edit", { name: card.name }) : t("cards.add")}
+					@close=${closeDialogs}>
+					${banner}
+					<cc-card-form .card=${card} .groups=${groups} @save=${onSave}
+						@cancel=${closeDialogs}></cc-card-form>
+				</cc-modal>
+			`;
+		}
+		const group = groupDialog?.group ?? null;
+		return html`
+			<cc-modal heading=${group ? t("limits.edit", { name: group.name }) : t("limits.add")}
+				@close=${closeDialogs}>
+				${banner}
+				<cc-limit-group-form .group=${group} @save-group=${onSaveGroup}
+					@cancel=${closeDialogs}></cc-limit-group-form>
+			</cc-modal>
+		`;
+	};
 
 	const usage = (): Record<string, number> =>
 		Object.fromEntries(
@@ -189,30 +233,10 @@ export function renderCardsPage(
 						`
 						: nothing
 				}
-				<div class="registry-forms">
-					<article>
-						<cc-card-form
-							.card=${editing}
-							.groups=${groups}
-							@save=${onSave}
-							@cancel=${() => {
-								editing = null;
-								paint();
-							}}
-						></cc-card-form>
-					</article>
-					<article>
-						<cc-limit-group-form
-							.group=${editingGroup}
-							@save-group=${onSaveGroup}
-							@cancel=${() => {
-								editingGroup = null;
-								paint();
-							}}
-						></cc-limit-group-form>
-					</article>
-				</div>
 				<article>
+					<div class="list-actions" row>
+						<button type="button" data-action="add-card" @click=${() => openCard(null)}>${t("cards.add")}</button>
+					</div>
 					<cc-card-table
 						.cards=${cards}
 						.purchaseCounts=${counts}
@@ -225,6 +249,9 @@ export function renderCardsPage(
 					></cc-card-table>
 				</article>
 				<article>
+					<div class="list-actions" row>
+						<button type="button" data-action="add-group" @click=${() => openGroup(null)}>${t("limits.add")}</button>
+					</div>
 					<cc-limit-group-table
 						.groups=${groups}
 						.usage=${usage()}
@@ -235,6 +262,7 @@ export function renderCardsPage(
 						@remove-group=${onRemoveGroup}
 					></cc-limit-group-table>
 				</article>
+				${dialog()}
 			`,
 			root,
 		);
