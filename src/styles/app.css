@@ -136,8 +136,7 @@ a:any-link:hover {
 }
 
 .page > article,
-.page .split > article,
-.page .split__aside > article {
+.page .split > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -148,8 +147,8 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
-/* The settings page's confirmations after a backup import or a reset, matching cc-quick-add's
-   `.answer`. Each element stays in the DOM so its live region is in place before the message
+/* The settings page's confirmations after a backup import or a reset, matching the purchase
+   confirmation's `.purchase-status`. Each element stays in the DOM so its live region is in place before the message
    arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
 .import-status,
 .reset-status {
@@ -255,18 +254,11 @@ a:any-link:hover {
 }
 
 /*
- * Below 960px this is the reset's default column flex. An aside that is the
- * reason the page is open on a phone -- the dashboard's quick-add -- opts into
- * being pulled first; one that is not, such as the registry's backup panel,
- * stays in source order below the form. At 960px it becomes a grid and `order`
- * goes back to source order for both.
+ * Below 960px this is the reset's default column flex, the aside -- reference, not the task --
+ * following the main column. At 960px it becomes a grid with the aside parked beside it.
  */
 .split {
 	gap: var(--cc-space-5);
-}
-
-.split > .split__aside--lead {
-	order: -1;
 }
 
 @media (min-width: 960px) {
@@ -277,7 +269,6 @@ a:any-link:hover {
 	}
 
 	.split > .split__aside {
-		order: 0;
 		position: sticky;
 		/* Must clear the sticky .site-header, which is --cc-header-height tall. */
 		top: calc(var(--cc-header-height) + var(--cc-space-4));
@@ -285,14 +276,32 @@ a:any-link:hover {
 }
 
 /*
- * An aside holding more than one panel (the card page's quick-add and details) stacks them as
- * one column that parks as a unit.
+ * A page's heading with its one action -- Add a purchase -- at the right. On a phone the button
+ * wraps under the heading rather than squeezing it.
  */
-.split > div.split__aside {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-4);
-	min-width: 0;
+.page-title {
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--cc-space-3);
+}
+
+/* Where a saved purchase lands, under the heading. Matches the settings page's confirmations. */
+.purchase-status {
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-2);
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	color: var(--cc-success);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
+}
+
+.purchase-status:empty {
+	display: none;
 }
 
 /* A registry list's add button, lifted onto its list's title line at the panel's top right rather
@@ -361,26 +370,6 @@ a:any-link:hover {
 	background: var(--cc-surface-sunken);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-sm);
-}
-
-/*
- * On a phone the card page's aside comes apart: quick-add is the reason the page is open and
- * leads, as it does on the dashboard, while the facts panel -- reference, not the task -- drops
- * below the statements instead of pushing them a screen further down.
- */
-@media (max-width: 959px) {
-	/* `div.` to match the specificity of the multi-panel aside rule above, which it overrides. */
-	.split > div.card-aside {
-		display: contents;
-	}
-
-	.card-aside > article {
-		order: -1;
-	}
-
-	.card-aside > .card-details {
-		order: 1;
-	}
 }
 
 /* The card page's facts panel: label and value on one line each. */

@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+import type { CcErrorBanner } from "#components/cc-error-banner";
+import type { CcQuickAdd } from "#components/cc-quick-add";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
@@ -82,6 +84,25 @@ const submitQuickAdd = (quickAdd: HTMLElement) =>
 		?.querySelector("form")
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
+/** Presses the page's Add a purchase button and hands back the form it opens in a dialog. */
+const openQuickAdd = async (root: HTMLElement) => {
+	root
+		.querySelector<HTMLButtonElement>('button[data-action="add-purchase"]')
+		?.click();
+	await settle();
+	const quickAdd = root.querySelector<CcQuickAdd>("cc-modal cc-quick-add");
+	if (!quickAdd) throw new Error("the add-purchase dialog did not open");
+	await quickAdd.updateComplete;
+	return quickAdd;
+};
+
+/** The confirmation the page shows under its heading once a purchase is saved. */
+const answerText = (root: HTMLElement): string =>
+	root.querySelector(".purchase-status p")?.textContent?.trim() ?? "";
+
+const modalBannerMessage = (root: HTMLElement): string =>
+	root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message ?? "";
+
 test("offers only the cards kept where purchases are allowed, while listing them all as due", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(quickAddCard);
@@ -95,9 +116,7 @@ test("offers only the cards kept where purchases are allowed, while listing them
 	renderDashboardPage(repo, root);
 	await settle();
 
-	const quickAdd = root.querySelector("cc-quick-add");
-	await quickAdd?.updateComplete;
-	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+	const quickAdd = await openQuickAdd(root);
 
 	const options = [
 		...(quickAdd.shadowRoot?.querySelectorAll<HTMLOptionElement>(
@@ -124,10 +143,9 @@ test("turning a location on in settings opens its cards to purchases", async () 
 	renderDashboardPage(repo, root);
 	await settle();
 
-	const quickAdd = root.querySelector("cc-quick-add");
-	await quickAdd?.updateComplete;
+	const quickAdd = await openQuickAdd(root);
 	const options = [
-		...(quickAdd?.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+		...(quickAdd.shadowRoot?.querySelectorAll<HTMLOptionElement>(
 			'[name="cardId"] option',
 		) ?? []),
 	];
@@ -141,9 +159,7 @@ test("a purchase dated on the close day lands on that statement", async () => {
 	renderDashboardPage(repo, root);
 	await settle();
 
-	const quickAdd = root.querySelector("cc-quick-add");
-	await quickAdd?.updateComplete;
-	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+	const quickAdd = await openQuickAdd(root);
 
 	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-18");
@@ -161,11 +177,11 @@ test("a purchase dated on the close day lands on that statement", async () => {
 		amount: 50_000,
 		note: "dinner",
 	});
-	expect(quickAdd.answer).toBe(
+	expect(answerText(root)).toBe(
 		"Lands on the statement closing 18 Sep 2026 — pay by 03 Oct 2026.",
 	);
-	await quickAdd.updateComplete;
-	expect(quickAdd.shadowRoot?.textContent).toContain("pay by 03 Oct 2026");
+	// Saved, the dialog closes: the answer is on the page, not in a form that is gone.
+	expect(root.querySelector("cc-modal")).toBeNull();
 });
 
 test("a purchase dated the day after the close day lands on the next statement", async () => {
@@ -175,9 +191,7 @@ test("a purchase dated the day after the close day lands on the next statement",
 	renderDashboardPage(repo, root);
 	await settle();
 
-	const quickAdd = root.querySelector("cc-quick-add");
-	await quickAdd?.updateComplete;
-	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+	const quickAdd = await openQuickAdd(root);
 
 	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-19");
@@ -188,7 +202,7 @@ test("a purchase dated the day after the close day lands on the next statement",
 	const purchases = await repo.listPurchases("scb");
 	expect(purchases).toHaveLength(1);
 	expect(purchases[0]?.date).toBe("2026-09-19");
-	expect(quickAdd.answer).toBe(
+	expect(answerText(root)).toBe(
 		"Lands on the statement closing 18 Oct 2026 — pay by 02 Nov 2026.",
 	);
 });
@@ -200,9 +214,7 @@ test("a failed purchase save leaves a message in the banner and stores nothing",
 	renderDashboardPage(repo, root);
 	await settle();
 
-	const quickAdd = root.querySelector("cc-quick-add");
-	await quickAdd?.updateComplete;
-	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+	const quickAdd = await openQuickAdd(root);
 
 	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-18");
@@ -212,7 +224,75 @@ test("a failed purchase save leaves a message in the banner and stores nothing",
 
 	expect(bannerMessage(root)).toContain("disk is full");
 	expect(await repo.listPurchases("scb")).toEqual([]);
-	expect(quickAdd.answer).toBe("");
+	expect(answerText(root)).toBe("");
+	// The dialog stays open on the typed purchase, with the failure shown inside it.
+	expect(modalBannerMessage(root)).toContain("disk is full");
+	expect(
+		root
+			.querySelector("cc-modal cc-quick-add")
+			?.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]')?.value,
+	).toBe("500");
+});
+
+test("shows no purchase form until asked, then opens it in a dialog", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	expect(root.querySelector("cc-quick-add")).toBeNull();
+	const button = root.querySelector<HTMLButtonElement>(
+		'button[data-action="add-purchase"]',
+	);
+	expect(button?.textContent?.trim()).toBe("Add a purchase");
+	expect(button?.closest(".page-title")?.querySelector("h1")).not.toBeNull();
+
+	await openQuickAdd(root);
+	expect(root.querySelector("cc-modal")?.heading).toBe("Add a purchase");
+});
+
+test("closes the purchase dialog without saving when the reader cancels or dismisses it", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = await openQuickAdd(root);
+	quickAdd.dispatchEvent(new CustomEvent("cancel"));
+	await settle();
+	expect(root.querySelector("cc-modal")).toBeNull();
+
+	await openQuickAdd(root);
+	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+	expect(root.querySelector("cc-modal")).toBeNull();
+	expect(await repo.listPurchases("scb")).toEqual([]);
+});
+
+test("lets the reader dismiss the purchase confirmation", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const quickAdd = await openQuickAdd(root);
+	fillQuickAdd(quickAdd, "date", "2026-09-18");
+	fillQuickAdd(quickAdd, "amount", "500");
+	submitQuickAdd(quickAdd);
+	await settle();
+	expect(answerText(root)).not.toBe("");
+
+	root.querySelector<HTMLButtonElement>(".purchase-status button")?.click();
+	await settle();
+
+	expect(answerText(root)).toBe("");
+	// The live region itself stays, so the next confirmation is still announced.
+	expect(root.querySelector(".purchase-status")?.getAttribute("role")).toBe(
+		"status",
+	);
 });
 
 test("a failed mark-paid keeps its error message after the refresh that follows it", async () => {
@@ -381,9 +461,7 @@ test("the purchase confirmation re-renders in the new language instead of freezi
 	renderDashboardPage(repo, root);
 	await settle();
 
-	const quickAdd = root.querySelector("cc-quick-add");
-	await quickAdd?.updateComplete;
-	if (!quickAdd) throw new Error("cc-quick-add did not mount");
+	const quickAdd = await openQuickAdd(root);
 
 	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-18");
@@ -391,7 +469,7 @@ test("the purchase confirmation re-renders in the new language instead of freezi
 	submitQuickAdd(quickAdd);
 	await settle();
 
-	expect(quickAdd.answer).toBe(
+	expect(answerText(root)).toBe(
 		"Lands on the statement closing 18 Sep 2026 — pay by 03 Oct 2026.",
 	);
 
@@ -399,7 +477,7 @@ test("the purchase confirmation re-renders in the new language instead of freezi
 	await settle();
 
 	// Same confirmation, re-resolved in the new language -- not cleared, not left in English.
-	expect(quickAdd.answer).toBe(
+	expect(answerText(root)).toBe(
 		"อยู่ในใบแจ้งยอดที่สรุปยอดวันที่ 18 ก.ย. 2026 — ชำระภายใน 03 ต.ค. 2026",
 	);
 });
@@ -417,7 +495,7 @@ test("confirms a purchase that goes over the limit, and still saves it", async (
 	renderDashboardPage(repo, root);
 	await settle();
 
-	root.querySelector("cc-quick-add")?.dispatchEvent(
+	(await openQuickAdd(root)).dispatchEvent(
 		new CustomEvent("add", {
 			detail: {
 				cardId: quickAddCard.id,
@@ -430,7 +508,7 @@ test("confirms a purchase that goes over the limit, and still saves it", async (
 	await settle();
 
 	expect(await repo.listPurchases(quickAddCard.id)).toHaveLength(1);
-	const answer = root.querySelector("cc-quick-add")?.answer ?? "";
+	const answer = answerText(root);
 	expect(answer).toContain("฿300.00");
 	expect(answer).toContain("KBank account");
 });

@@ -4,7 +4,6 @@ import "../styles/app.css";
 import "#components/cc-card-summary";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
-import "#components/cc-quick-add";
 import "#components/cc-statement-list";
 import { html, nothing, render } from "lit";
 import type { QuickAddDetail } from "#components/cc-quick-add";
@@ -33,6 +32,11 @@ import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
+import {
+	addPurchaseButton,
+	purchaseDialog,
+	purchaseStatus,
+} from "#lib/ui/purchase-dialog";
 
 const PAGE_SIZE = 12;
 
@@ -61,6 +65,9 @@ export function renderCardPage(
 		over: number;
 		groupName: string;
 	} | null = null;
+	let adding = false;
+	// Whether the open dialog has tried a save yet, so an older page error stays out of it.
+	let addSubmitted = false;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -139,8 +146,21 @@ export function renderCardPage(
 	const purchasable = (): boolean =>
 		card !== null && !card.archived && canPurchase(card, settings);
 
-	const onAdd = (event: CustomEvent<QuickAddDetail>) =>
-		state.guard(async () => {
+	const openAdd = () => {
+		adding = true;
+		addSubmitted = false;
+		paint();
+	};
+
+	const closeAdd = () => {
+		adding = false;
+		paint();
+	};
+
+	// Closes the dialog only once the purchase is stored, as on the dashboard.
+	const onAdd = (event: CustomEvent<QuickAddDetail>) => {
+		addSubmitted = true;
+		return state.guard(async () => {
 			const current = card;
 			const { cardId, date, amount, note } = event.detail;
 			if (!current || current.id !== cardId) return;
@@ -157,7 +177,9 @@ export function renderCardPage(
 				over: row ? Math.max(0, amount - row.available) : 0,
 				groupName: row?.group.name ?? "",
 			};
+			adding = false;
 		}, "card.error.addPurchase");
+	};
 
 	const answer = (): string => {
 		if (!card || !confirmedPurchase) return "";
@@ -209,7 +231,7 @@ export function renderCardPage(
 		const row = (label: string, value: string) =>
 			html`<div class="facts__row" row><dt>${label}</dt><dd>${value}</dd></div>`;
 		return html`
-			<article class="card-details">
+			<article class="card-details split__aside">
 				<h2>${t("card.details")}</h2>
 				<dl class="facts">
 					${row(t("card.group"), group ? groupLabel(group) : t("cards.unassigned"))}
@@ -239,15 +261,22 @@ export function renderCardPage(
 					card
 						? html`
 							<a class="back" href="/cards">${t("card.backShort")}</a>
-							<div class="page-heading">
-								<h1>
-									${card.name}
-									${card.archived ? html`<span class="badge">${t("cards.archived")}</span>` : nothing}
-									${card.supplementary ? html`<span class="badge">${t("form.supplementary")}</span>` : nothing}
-								</h1>
-								<p class="meta"><span class="mono">${card.id}</span> · ••••${card.last4} · ${locationText(card.location)} · ${describeCycleText(card.cycle)}</p>
-								${card.comment ? html`<p class="comment">${card.comment}</p>` : nothing}
+							<div class="page-title" row>
+								<div class="page-heading">
+									<h1>
+										${card.name}
+										${card.archived ? html`<span class="badge">${t("cards.archived")}</span>` : nothing}
+										${card.supplementary ? html`<span class="badge">${t("form.supplementary")}</span>` : nothing}
+									</h1>
+									<p class="meta"><span class="mono">${card.id}</span> · ••••${card.last4} · ${locationText(card.location)} · ${describeCycleText(card.cycle)}</p>
+									${card.comment ? html`<p class="comment">${card.comment}</p>` : nothing}
+								</div>
+								${purchasable() ? addPurchaseButton(openAdd) : nothing}
 							</div>
+							${purchaseStatus(answer(), () => {
+								confirmedPurchase = null;
+								paint();
+							})}
 							${summary(card)}
 							<div class="split">
 								<div class="card-statements">
@@ -263,20 +292,21 @@ export function renderCardPage(
 										paint();
 									}}>${t("card.showOlder")}</button>
 								</div>
-								<div class="split__aside card-aside">
-									${
-										purchasable()
-											? html`
-												<article>
-													<h2>${t("dashboard.addPurchase")}</h2>
-													<cc-quick-add .cards=${[card]} .rows=${spendable()} .today=${now} .answer=${answer()} @add=${onAdd}></cc-quick-add>
-												</article>
-											`
-											: nothing
-									}
-									${details(card)}
-								</div>
+								${details(card)}
 							</div>
+							${
+								adding && purchasable()
+									? purchaseDialog({
+											cards: [card],
+											rows: spendable(),
+											today: now,
+											error: addSubmitted ? state.error : "",
+											onAdd,
+											onClose: closeAdd,
+											onRetry: () => state.load(),
+										})
+									: nothing
+							}
 						`
 						: html`<p><a href="/cards">${t("card.back")}</a></p>`
 				}

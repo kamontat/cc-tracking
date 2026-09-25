@@ -93,6 +93,39 @@ test("says so, and offers no form, when no card may take a purchase", async () =
 	);
 });
 
+test("asks to be closed from its cancel button, beside the submit", async () => {
+	const element = await mount();
+	const cancelled: Event[] = [];
+	element.addEventListener("cancel", (event) => cancelled.push(event));
+
+	const cancel = element.shadowRoot?.querySelector<HTMLButtonElement>(
+		'button[data-action="cancel"]',
+	);
+	expect(cancel?.getAttribute("data-variant")).toBe("quiet");
+	expect(cancel?.type).toBe("button");
+	cancel?.click();
+
+	expect(cancelled).toHaveLength(1);
+});
+
+test("leaves the confirmation to the page, keeping no answer line of its own", async () => {
+	const element = await mount();
+	const add: Event[] = [];
+	element.addEventListener("add", (event) => add.push(event));
+
+	fill(element, "amount", "100");
+	submit(element);
+	await element.updateComplete;
+
+	expect(add).toHaveLength(1);
+	expect(element.shadowRoot?.querySelector(".answer")).toBeNull();
+	// No reset: the page closes the dialog on success, and a failed save keeps the typing.
+	expect(
+		element.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]')
+			?.value,
+	).toBe("100");
+});
+
 test("names each option by card id and card name", async () => {
 	const element = await mount();
 	const option = element.shadowRoot?.querySelector<HTMLOptionElement>(
@@ -191,45 +224,6 @@ test("accepts a purchase dated exactly today, the boundary", async () => {
 	await element.updateComplete;
 
 	expect(emitted).toBe(true);
-});
-
-test("keeps the date defaulted to today after a submit, so a second entry can follow immediately", async () => {
-	const element = await mount();
-	const details: Array<{
-		cardId: string;
-		date: string;
-		amount: number;
-		note: string;
-	}> = [];
-	element.addEventListener("add", (event) => {
-		details.push((event as CustomEvent<(typeof details)[number]>).detail);
-	});
-
-	fill(element, "amount", "100");
-	submit(element);
-
-	const date =
-		element.shadowRoot?.querySelector<HTMLInputElement>('[name="date"]');
-	expect(date?.value).toBe("2026-09-21");
-
-	fill(element, "amount", "200");
-	submit(element);
-
-	expect(details).toHaveLength(2);
-	expect(details[1]).toEqual({
-		cardId: "kbank",
-		date: "2026-09-21",
-		amount: 20_000,
-		note: "",
-	});
-});
-
-test("shows the answer the page gives it", async () => {
-	const element = await mount();
-	element.answer =
-		"Lands on the statement closing 18 Sep 2026 — pay by 3 Oct 2026.";
-	await element.updateComplete;
-	expect(element.shadowRoot?.textContent).toContain("pay by 3 Oct 2026");
 });
 
 test("renders its labels and submit button in the chosen language", async () => {

@@ -28,25 +28,15 @@ export class CcQuickAdd extends LitElement {
 				gap: var(--cc-space-3);
 			}
 
-			.answer {
-				padding: var(--cc-space-2) var(--cc-space-3);
-				font-size: var(--cc-text-sm);
-				color: var(--cc-success);
-				background: var(--cc-surface-sunken);
-				border-radius: var(--cc-radius-sm);
-			}
-
-			button[type="submit"] {
-				align-self: stretch;
-				text-align: center;
+			.form-actions {
+				flex-wrap: wrap;
+				gap: var(--cc-space-2);
 			}
 		`,
 	];
 
 	@property({ attribute: false }) cards: Card[] = [];
 	@property() today: PlainDate = "";
-	/** Set by the page after a successful save. */
-	@property() answer = "";
 	/** Rows for the cards above, from `spendableRows`. A card with no row shows no credit. */
 	@property({ attribute: false }) rows: SpendRow[] = [];
 
@@ -120,24 +110,15 @@ export class CcQuickAdd extends LitElement {
 			this.errorKey = "quickAdd.error.badAmount";
 			return;
 		}
+		// No reset after the add: the page renders this form only inside an open dialog and
+		// closes it once the save lands, so the next purchase gets a fresh form -- and a save
+		// that fails leaves the reader's typing in place to retry.
 		this.errorKey = "";
 		this.dispatchEvent(
 			new CustomEvent<QuickAddDetail>("add", {
 				detail: { cardId, date, amount, note: this.value("note") },
 			}),
 		);
-		const form = this.renderRoot.querySelector("form");
-		form?.reset();
-		// The date input is bound via the `.value` property, so `reset()` restores it to
-		// its never-set `defaultValue` (empty) rather than `this.today`, and Lit's dirty
-		// check then skips re-committing a binding whose value hasn't changed. Put it back
-		// explicitly so a required field doesn't block the very next entry.
-		const dateField = form?.querySelector<HTMLInputElement>('[name="date"]');
-		if (dateField) dateField.value = this.today;
-		// The card select also goes back to its first option on reset, so the tracked
-		// selection must follow -- otherwise the note keeps describing the card that was
-		// just used rather than the one now selected.
-		this.selectedId = "";
 	}
 
 	override render() {
@@ -175,8 +156,11 @@ export class CcQuickAdd extends LitElement {
 				<label>${t("quickAdd.date")} <input name="date" type="date" .value=${this.today} required /></label>
 				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")} required /></label>
 				<label>${t("quickAdd.note")} <input name="note" placeholder=${t("quickAdd.notePlaceholder")} /></label>
-				<button type="submit">${t("quickAdd.submit")}</button>
-				${this.answer ? html`<p class="answer">${this.answer}</p>` : nothing}
+				<div class="form-actions" row>
+					<button type="submit">${t("quickAdd.submit")}</button>
+					<button type="button" data-variant="quiet" data-action="cancel"
+						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
+				</div>
 			</form>
 		`;
 	}
