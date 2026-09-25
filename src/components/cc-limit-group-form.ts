@@ -148,8 +148,12 @@ export class CcLimitGroupForm extends LitElement {
 					</label>
 					<div class="form-actions" row>
 						<button type="submit" data-action="save">${group ? t("limits.save") : t("limits.add")}</button>
-						<button type="button" data-variant="quiet" data-action="cancel"
-							@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
+						${
+							group
+								? html`<button type="button" data-variant="quiet" data-action="cancel"
+							@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>`
+								: nothing
+						}
 					</div>
 				</form>
 			</details>

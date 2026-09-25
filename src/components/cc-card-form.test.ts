@@ -694,8 +694,23 @@ test("clears the supplementary box after a create", async () => {
 	).toBe("");
 });
 
-test("renders cancel as a quiet button beside the submit", async () => {
+test("offers no cancel while adding a card", async () => {
 	const element = await mount();
+
+	expect(
+		element.shadowRoot?.querySelector('button[data-action="cancel"]'),
+	).toBeNull();
+});
+
+test("renders cancel as a quiet button beside the submit", async () => {
+	const element = await mount({
+		id: "kbank",
+		name: "KBank Visa",
+		last4: "4821",
+		location: "krabi",
+		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+		archived: false,
+	});
 
 	expect(
 		element.shadowRoot?.querySelector('button[type="submit"]'),

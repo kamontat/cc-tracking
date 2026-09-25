@@ -164,8 +164,20 @@ test("clears itself after a create so the next group starts empty", async () => 
 	expect(field(element, "owner").value).toBe("KC");
 });
 
-test("asks to be closed away again", async () => {
+test("offers no cancel while adding a group", async () => {
 	const element = await mount();
+
+	expect(
+		element.shadowRoot?.querySelector('[data-action="cancel"]'),
+	).toBeNull();
+});
+
+test("asks to be closed away again", async () => {
+	const element = await mount({
+		id: "pool",
+		name: "KBank account",
+		limit: 500_000,
+	});
 	const cancelled: Event[] = [];
 	element.addEventListener("cancel", (event) => cancelled.push(event));
 
