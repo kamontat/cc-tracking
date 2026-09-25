@@ -1,9 +1,16 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import {
+	filterChip,
+	isDefault,
+	listSummary,
+	searchBox,
+	sortChip,
+	sortHeader,
+} from "#components/list-controls";
+import {
 	applyCardView,
 	byOwnerThenName,
-	CARD_SORTS,
 	type CardSort,
 	type CardView,
 	DEFAULT_CARD_VIEW,
@@ -16,18 +23,15 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
-import { badge, base, controls, dataTable, listToolbar } from "#styles/shared";
+import { badge, base, controls, dataTable, listControls } from "#styles/shared";
 
-const SORT_LABELS: Record<CardSort, MessageKey> = {
-	default: "list.sortDefault",
+/** What the narrow layout's sort chip calls each sort; the wide one uses the headings. */
+const SORT_LABELS: Record<Exclude<CardSort, "default">, MessageKey> = {
 	name: "cards.sort.name",
 	location: "cards.column.location",
 	group: "cards.column.limitGroup",
 	closeDay: "cards.sort.closeDay",
 };
-
-const sameView = (a: CardView, b: CardView) =>
-	(Object.keys(a) as (keyof CardView)[]).every((key) => a[key] === b[key]);
 
 @customElement("cc-card-table")
 export class CcCardTable extends LitElement {
@@ -36,7 +40,7 @@ export class CcCardTable extends LitElement {
 		controls,
 		dataTable,
 		badge,
-		listToolbar,
+		listControls,
 		css`
 			:host {
 				display: flex;
@@ -180,7 +184,7 @@ export class CcCardTable extends LitElement {
 					this.cards.length === 0
 						? html`<p>${t("cards.empty")}</p>`
 						: html`
-							${this.toolbar()}
+							${this.toolbar(visible.length)}
 							${
 								visible.length === 0
 									? html`<p>${t("cards.noMatch")}</p>`
@@ -204,96 +208,63 @@ export class CcCardTable extends LitElement {
 		`;
 	}
 
-	/**
-	 * Options mark themselves `.selected` rather than the select taking a `.value`: on the first
-	 * render the select's own binding is committed before its options exist, and would be lost.
-	 */
-	private toolbar() {
+	private toolbar(shown: number) {
 		const view = this.view;
-		const read = (event: Event) =>
-			(event.target as HTMLInputElement | HTMLSelectElement).value;
-		const sorted = [...this.groups].sort(byOwnerThenName);
+		const groups = [...this.groups].sort(byOwnerThenName);
 		return html`
 			<div class="toolbar" row>
-				<label class="search">
-					${t("list.search")}
-					<input type="search" name="q" .value=${view.q}
-						placeholder=${t("cards.searchPlaceholder")}
-						@input=${(event: Event) => this.change({ q: read(event) })} />
-				</label>
-				<label>
-					${t("cards.owner")}
-					<select name="owner"
-						@change=${(event: Event) => this.change({ owner: toOwner(read(event)) ?? "" })}>
-						<option value="" .selected=${view.owner === ""}>${t("list.anyOwner")}</option>
-						${OWNERS.map(
-							(owner) =>
-								html`<option value=${owner} .selected=${view.owner === owner}>${owner}</option>`,
-						)}
-					</select>
-				</label>
-				<label>
-					${t("cards.column.location")}
-					<select name="location"
-						@change=${(event: Event) => this.change({ location: toLocation(read(event)) ?? "" })}>
-						<option value="" .selected=${view.location === ""}>${t("list.anyLocation")}</option>
-						${LOCATIONS.map(
-							(location) =>
-								html`<option value=${location} .selected=${view.location === location}>${locationText(location)}</option>`,
-						)}
-					</select>
-				</label>
-				<label>
-					${t("cards.column.limitGroup")}
-					<select name="group" @change=${(event: Event) => this.change({ group: read(event) })}>
-						<option value="" .selected=${view.group === ""}>${t("list.anyGroup")}</option>
-						<option value=${UNASSIGNED} .selected=${view.group === UNASSIGNED}>${t("cards.unassigned")}</option>
-						${sorted.map(
-							(group) =>
-								html`<option value=${group.id} .selected=${view.group === group.id}>${groupLabel(group)}</option>`,
-						)}
-					</select>
-				</label>
-				<label>
-					${t("list.sort")}
-					<select name="sort"
-						@change=${(event: Event) => {
-							const value = read(event);
-							const sort = CARD_SORTS.find((one) => one === value);
-							if (sort) this.change({ sort });
-						}}>
-						${CARD_SORTS.map(
-							(sort) =>
-								html`<option value=${sort} .selected=${view.sort === sort}>${t(SORT_LABELS[sort])}</option>`,
-						)}
-					</select>
-				</label>
-				<div class="toolbar-actions" row>
-					<button type="button" data-variant="quiet" data-action="direction"
-						?disabled=${view.sort === "default"}
-						@click=${() => this.change({ dir: view.dir === "asc" ? "desc" : "asc" })}>
-						${view.dir === "asc" ? `↑ ${t("list.ascending")}` : `↓ ${t("list.descending")}`}
-					</button>
-					${
-						sameView(view, DEFAULT_CARD_VIEW)
-							? nothing
-							: html`<button type="button" data-variant="quiet" data-action="clear"
-								@click=${() => this.change(DEFAULT_CARD_VIEW)}>${t("list.clear")}</button>`
-					}
-				</div>
+				${searchBox(view.q, t("cards.searchPlaceholder"), (q) => this.change({ q }))}
+				${filterChip(
+					"owner",
+					t("cards.owner"),
+					view.owner,
+					OWNERS.map((owner) => ({ value: owner, text: owner })),
+					(value) => this.change({ owner: toOwner(value) ?? "" }),
+				)}
+				${filterChip(
+					"location",
+					t("cards.column.location"),
+					view.location,
+					LOCATIONS.map((location) => ({
+						value: location,
+						text: locationText(location),
+					})),
+					(value) => this.change({ location: toLocation(value) ?? "" }),
+				)}
+				${filterChip(
+					"group",
+					t("cards.column.limitGroup"),
+					view.group,
+					[
+						{ value: UNASSIGNED, text: t("cards.unassigned") },
+						...groups.map((group) => ({
+							value: group.id,
+							text: groupLabel(group),
+						})),
+					],
+					(group) => this.change({ group }),
+				)}
+				${sortChip(view, SORT_LABELS, (next) => this.change(next))}
+				${listSummary(
+					!isDefault(view, DEFAULT_CARD_VIEW),
+					t("cards.count", { shown, total: this.cards.length }),
+					() => this.change(DEFAULT_CARD_VIEW),
+				)}
 			</div>
 		`;
 	}
 
 	private table(cards: Card[]) {
+		const sort = (label: MessageKey, key: CardView["sort"]) =>
+			sortHeader(t(label), key, this.view, (next) => this.change(next));
 		return html`
 			<table>
 				<thead>
 					<tr>
-						<th>${t("cards.column.card")}</th>
-						<th>${t("cards.column.location")}</th>
-						<th>${t("cards.column.limitGroup")}</th>
-						<th>${t("cards.column.cycle")}</th>
+						${sort("cards.column.card", "name")}
+						${sort("cards.column.location", "location")}
+						${sort("cards.column.limitGroup", "group")}
+						${sort("cards.column.cycle", "closeDay")}
 						<th></th>
 					</tr>
 				</thead>

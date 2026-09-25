@@ -16,7 +16,9 @@ export type CardSort = (typeof CARD_SORTS)[number];
 export const GROUP_SORTS = [
 	"default",
 	"name",
+	"owner",
 	"limit",
+	"cards",
 	"used",
 	"available",
 ] as const;
@@ -153,11 +155,15 @@ export function applyCardView(
 	});
 }
 
-/** The groups `view` lets through, in the order it asks for. `usage` is satang spent per id. */
+/**
+ * The groups `view` lets through, in the order it asks for. `usage` is satang spent per id,
+ * `counts` the cards pointing at each id.
+ */
 export function applyGroupView(
 	groups: LimitGroup[],
 	usage: Record<string, number>,
 	view: GroupView,
+	counts: Record<string, number> = {},
 ): LimitGroup[] {
 	const used = (group: LimitGroup) => usage[group.id] ?? 0;
 	const kept = groups.filter(
@@ -170,7 +176,9 @@ export function applyGroupView(
 		(group: LimitGroup) => number
 	> = {
 		name: () => 0,
+		owner: (group) => OWNERS.indexOf(ownerOf(group)),
 		limit: (group) => group.limit,
+		cards: (group) => counts[group.id] ?? 0,
 		used,
 		available: (group) => group.limit - used(group),
 	};
@@ -178,4 +186,17 @@ export function applyGroupView(
 		const key = view.sort === "default" ? primary.name : primary[view.sort];
 		return key(a) - key(b) || byName(a, b);
 	});
+}
+
+/**
+ * The view after a click on the header that sorts by `key`: a fresh column starts ascending,
+ * a second click reverses it, and a third hands the list back to its saved order.
+ */
+export function nextSort<V extends { sort: string; dir: SortDirection }>(
+	view: V,
+	key: V["sort"],
+): V {
+	if (view.sort !== key) return { ...view, sort: key, dir: "asc" };
+	if (view.dir === "asc") return { ...view, dir: "desc" };
+	return { ...view, sort: "default", dir: "asc" };
 }

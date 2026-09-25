@@ -45,7 +45,7 @@ test("leaves defaults out of the query and keeps keys it does not own", () => {
 test("drops values it does not recognise", () => {
 	const views = readViews(
 		new URLSearchParams(
-			"owner=ZZ&loc=mars&sort=weird&dir=up&gowner=x&gsort=cards&gdir=down",
+			"owner=ZZ&loc=mars&sort=weird&dir=up&gowner=x&gsort=weird&gdir=down",
 		),
 	);
 	expect(views).toEqual({

@@ -179,7 +179,7 @@ test("says nothing matches when the view filters every group out", async () => {
 	expect(element.shadowRoot?.querySelector("table")).toBeNull();
 });
 
-test("emits the next view from its search, owner, sort, direction and clear", async () => {
+test("emits the next view from its search, owner chip, headings and clear", async () => {
 	const element = await mount({
 		view: { ...DEFAULT_GROUP_VIEW, sort: "limit" },
 	});
@@ -197,9 +197,10 @@ test("emits the next view from its search, owner, sort, direction and clear", as
 	search.dispatchEvent(new Event("input"));
 	owner.value = "RI";
 	owner.dispatchEvent(new Event("change"));
-	root
-		?.querySelector<HTMLButtonElement>('.toolbar [data-action="direction"]')
-		?.click();
+	const heading = (key: string) =>
+		root?.querySelector<HTMLButtonElement>(`th button[data-sort="${key}"]`);
+	heading("limit")?.click();
+	heading("cards")?.click();
 	root
 		?.querySelector<HTMLButtonElement>('.toolbar [data-action="clear"]')
 		?.click();
@@ -209,6 +210,44 @@ test("emits the next view from its search, owner, sort, direction and clear", as
 		{ ...sorted, q: "kbank" },
 		{ ...sorted, owner: "RI" },
 		{ ...sorted, dir: "desc" },
+		{ ...DEFAULT_GROUP_VIEW, sort: "cards" },
 		DEFAULT_GROUP_VIEW,
 	]);
+});
+
+test("sorts from every data heading, numeric ones right-aligned", async () => {
+	const element = await mount();
+	const headings = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>("th[aria-sort]") ??
+			[]),
+	].map((th) => [
+		th.querySelector("button")?.dataset["sort"],
+		th.hasAttribute("data-numeric"),
+	]);
+	expect(headings).toEqual([
+		["name", false],
+		["owner", false],
+		["limit", true],
+		["cards", true],
+		["used", true],
+		["available", true],
+	]);
+});
+
+test("sorts by card count with the counts it was handed", async () => {
+	const element = await mount({
+		counts: { pool: 0, solo: 4 },
+		view: { ...DEFAULT_GROUP_VIEW, sort: "cards", dir: "desc" },
+	});
+	expect(rowNames(element)).toEqual(["SCB", "KBank account"]);
+});
+
+test("counts the groups showing once the view has moved", async () => {
+	const element = await mount({
+		view: { ...DEFAULT_GROUP_VIEW, owner: "RI" },
+	});
+	expect(
+		element.shadowRoot?.querySelector('.toolbar [data-field="count"]')
+			?.textContent,
+	).toBe("1 of 2 groups");
 });

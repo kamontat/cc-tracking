@@ -1,10 +1,17 @@
-import { css, html, LitElement, nothing } from "lit";
+import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import {
+	filterChip,
+	isDefault,
+	listSummary,
+	searchBox,
+	sortChip,
+	sortHeader,
+} from "#components/list-controls";
 import { usageLevel, usageShare } from "#lib/domain/limit";
 import {
 	applyGroupView,
 	DEFAULT_GROUP_VIEW,
-	GROUP_SORTS,
 	type GroupSort,
 	type GroupView,
 } from "#lib/domain/list-view";
@@ -18,20 +25,19 @@ import {
 	base,
 	controls,
 	dataTable,
-	listToolbar,
+	listControls,
 	usageBar,
 } from "#styles/shared";
 
-const SORT_LABELS: Record<GroupSort, MessageKey> = {
-	default: "list.sortDefault",
+/** Each sort is named for the column heading that sets it, on every layout. */
+const SORT_LABELS: Record<Exclude<GroupSort, "default">, MessageKey> = {
 	name: "limits.column.name",
+	owner: "limits.column.owner",
 	limit: "limits.column.limit",
+	cards: "limits.column.cards",
 	used: "limits.column.used",
 	available: "limits.column.available",
 };
-
-const sameView = (a: GroupView, b: GroupView) =>
-	(Object.keys(a) as (keyof GroupView)[]).every((key) => a[key] === b[key]);
 
 @customElement("cc-limit-group-table")
 export class CcLimitGroupTable extends LitElement {
@@ -40,7 +46,7 @@ export class CcLimitGroupTable extends LitElement {
 		controls,
 		dataTable,
 		usageBar,
-		listToolbar,
+		listControls,
 		css`
 			details {
 				display: flex;
@@ -110,7 +116,12 @@ export class CcLimitGroupTable extends LitElement {
 	}
 
 	override render() {
-		const visible = applyGroupView(this.groups, this.usage, this.view);
+		const visible = applyGroupView(
+			this.groups,
+			this.usage,
+			this.view,
+			this.counts,
+		);
 		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
 		// reader has just closed.
 		return html`
@@ -120,7 +131,7 @@ export class CcLimitGroupTable extends LitElement {
 					this.groups.length === 0
 						? html`<p>${t("limits.empty")}</p>`
 						: html`
-							${this.toolbar()}
+							${this.toolbar(visible.length)}
 							${
 								visible.length === 0
 									? html`<p>${t("limits.noMatch")}</p>`
@@ -132,72 +143,47 @@ export class CcLimitGroupTable extends LitElement {
 		`;
 	}
 
-	/** Options mark themselves `.selected`, for the reason `cc-card-table`'s toolbar gives. */
-	private toolbar() {
+	private toolbar(shown: number) {
 		const view = this.view;
-		const read = (event: Event) =>
-			(event.target as HTMLInputElement | HTMLSelectElement).value;
 		return html`
 			<div class="toolbar" row>
-				<label class="search">
-					${t("list.search")}
-					<input type="search" name="q" .value=${view.q}
-						placeholder=${t("limits.searchPlaceholder")}
-						@input=${(event: Event) => this.change({ q: read(event) })} />
-				</label>
-				<label>
-					${t("limits.column.owner")}
-					<select name="owner"
-						@change=${(event: Event) => this.change({ owner: toOwner(read(event)) ?? "" })}>
-						<option value="" .selected=${view.owner === ""}>${t("list.anyOwner")}</option>
-						${OWNERS.map(
-							(owner) =>
-								html`<option value=${owner} .selected=${view.owner === owner}>${owner}</option>`,
-						)}
-					</select>
-				</label>
-				<label>
-					${t("list.sort")}
-					<select name="sort"
-						@change=${(event: Event) => {
-							const value = read(event);
-							const sort = GROUP_SORTS.find((one) => one === value);
-							if (sort) this.change({ sort });
-						}}>
-						${GROUP_SORTS.map(
-							(sort) =>
-								html`<option value=${sort} .selected=${view.sort === sort}>${t(SORT_LABELS[sort])}</option>`,
-						)}
-					</select>
-				</label>
-				<div class="toolbar-actions" row>
-					<button type="button" data-variant="quiet" data-action="direction"
-						?disabled=${view.sort === "default"}
-						@click=${() => this.change({ dir: view.dir === "asc" ? "desc" : "asc" })}>
-						${view.dir === "asc" ? `↑ ${t("list.ascending")}` : `↓ ${t("list.descending")}`}
-					</button>
-					${
-						sameView(view, DEFAULT_GROUP_VIEW)
-							? nothing
-							: html`<button type="button" data-variant="quiet" data-action="clear"
-								@click=${() => this.change(DEFAULT_GROUP_VIEW)}>${t("list.clear")}</button>`
-					}
-				</div>
+				${searchBox(view.q, t("limits.searchPlaceholder"), (q) => this.change({ q }))}
+				${filterChip(
+					"owner",
+					t("limits.column.owner"),
+					view.owner,
+					OWNERS.map((owner) => ({ value: owner, text: owner })),
+					(value) => this.change({ owner: toOwner(value) ?? "" }),
+				)}
+				${sortChip(view, SORT_LABELS, (next) => this.change(next))}
+				${listSummary(
+					!isDefault(view, DEFAULT_GROUP_VIEW),
+					t("limits.count", { shown, total: this.groups.length }),
+					() => this.change(DEFAULT_GROUP_VIEW),
+				)}
 			</div>
 		`;
 	}
 
 	private table(groups: LimitGroup[]) {
+		const sort = (key: Exclude<GroupSort, "default">, numeric = false) =>
+			sortHeader(
+				t(SORT_LABELS[key]),
+				key,
+				this.view,
+				(next) => this.change(next),
+				numeric,
+			);
 		return html`
 			<table>
 				<thead>
 					<tr>
-						<th>${t("limits.column.name")}</th>
-						<th>${t("limits.column.owner")}</th>
-						<th data-numeric>${t("limits.column.limit")}</th>
-						<th data-numeric>${t("limits.column.cards")}</th>
-						<th data-numeric>${t("limits.column.used")}</th>
-						<th data-numeric>${t("limits.column.available")}</th>
+						${sort("name")}
+						${sort("owner")}
+						${sort("limit", true)}
+						${sort("cards", true)}
+						${sort("used", true)}
+						${sort("available", true)}
 						<th></th>
 					</tr>
 				</thead>

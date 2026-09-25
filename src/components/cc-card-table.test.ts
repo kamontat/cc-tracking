@@ -293,14 +293,64 @@ test("emits the next view as the reader types or picks", async () => {
 	search.value = "visa";
 	search.dispatchEvent(new Event("input"));
 
+	const owner = toolbarField<HTMLSelectElement>(element, "owner");
+	if (!owner) throw new Error("no owner chip");
+	owner.value = "NT";
+	owner.dispatchEvent(new Event("change"));
+
+	// Narrow layouts sort through this chip, since their headings are hidden.
 	const sort = toolbarField<HTMLSelectElement>(element, "sort");
-	if (!sort) throw new Error("no sort field");
-	sort.value = "closeDay";
+	if (!sort) throw new Error("no sort chip");
+	sort.value = "closeDay:desc";
 	sort.dispatchEvent(new Event("change"));
 
 	expect(seen).toEqual([
 		{ ...DEFAULT_CARD_VIEW, q: "visa" },
-		{ ...DEFAULT_CARD_VIEW, sort: "closeDay" },
+		{ ...DEFAULT_CARD_VIEW, owner: "NT" },
+		{ ...DEFAULT_CARD_VIEW, sort: "closeDay", dir: "desc" },
+	]);
+});
+
+test("sorts from its column headings: ascending, descending, then the saved order", async () => {
+	const element = await mount([card]);
+	const seen: CardView[] = [];
+	element.addEventListener("view-change", (event) => {
+		const next = (event as CustomEvent<CardView>).detail;
+		seen.push(next);
+		element.view = next;
+	});
+	const heading = () =>
+		element.shadowRoot?.querySelector<HTMLButtonElement>(
+			'th button[data-sort="closeDay"]',
+		);
+	for (let click = 0; click < 3; click++) {
+		heading()?.click();
+		await element.updateComplete;
+	}
+	expect(seen).toEqual([
+		{ ...DEFAULT_CARD_VIEW, sort: "closeDay", dir: "asc" },
+		{ ...DEFAULT_CARD_VIEW, sort: "closeDay", dir: "desc" },
+		DEFAULT_CARD_VIEW,
+	]);
+});
+
+test("marks the sorted heading for assistive tech and every other one as unsorted", async () => {
+	const element = await mount([card]);
+	element.view = { ...DEFAULT_CARD_VIEW, sort: "location", dir: "desc" };
+	await element.updateComplete;
+	const sorts = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
+			"details.active th[aria-sort]",
+		) ?? []),
+	].map((th) => [
+		th.querySelector("button")?.dataset["sort"],
+		th.getAttribute("aria-sort"),
+	]);
+	expect(sorts).toEqual([
+		["name", "none"],
+		["location", "descending"],
+		["group", "none"],
+		["closeDay", "none"],
 	]);
 });
 
@@ -329,32 +379,31 @@ test("reflects the view in its controls", async () => {
 	await element.updateComplete;
 	expect(toolbarField<HTMLSelectElement>(element, "owner")?.value).toBe("NT");
 	expect(toolbarField<HTMLSelectElement>(element, "group")?.value).toBe("pool");
-	expect(toolbarField<HTMLSelectElement>(element, "sort")?.value).toBe("name");
+	expect(toolbarField<HTMLSelectElement>(element, "sort")?.value).toBe(
+		"name:asc",
+	);
+	const chips = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
+			".toolbar .chip[data-active]",
+		) ?? []),
+	].map((chip) => chip.querySelector("select")?.name);
+	expect(chips).toEqual(["owner", "group", "sort"]);
 });
 
-test("flips the direction only once a sort is picked, and clears back to the default", async () => {
-	const element = await mount([card]);
-	const direction = () =>
-		element.shadowRoot?.querySelector<HTMLButtonElement>(
-			'.toolbar [data-action="direction"]',
-		);
-	const clear = () =>
-		element.shadowRoot?.querySelector<HTMLButtonElement>(
-			'.toolbar [data-action="clear"]',
-		);
-	expect(direction()?.disabled).toBe(true);
-	expect(clear()).toBeNull();
+test("counts what is showing and offers a way back only once the view has moved", async () => {
+	const element = await mount([card, { ...card, id: "scb", name: "SCB" }]);
+	const summary = () => element.shadowRoot?.querySelector(".toolbar-summary");
+	expect(summary()).toBeNull();
 
-	element.view = { ...DEFAULT_CARD_VIEW, sort: "name" };
+	element.view = { ...DEFAULT_CARD_VIEW, q: "scb" };
 	await element.updateComplete;
+	expect(summary()?.querySelector('[data-field="count"]')?.textContent).toBe(
+		"1 of 2 cards",
+	);
 	const seen: CardView[] = [];
 	element.addEventListener("view-change", (event) =>
 		seen.push((event as CustomEvent<CardView>).detail),
 	);
-	direction()?.click();
-	clear()?.click();
-	expect(seen).toEqual([
-		{ ...DEFAULT_CARD_VIEW, sort: "name", dir: "desc" },
-		DEFAULT_CARD_VIEW,
-	]);
+	summary()?.querySelector<HTMLButtonElement>('[data-action="clear"]')?.click();
+	expect(seen).toEqual([DEFAULT_CARD_VIEW]);
 });

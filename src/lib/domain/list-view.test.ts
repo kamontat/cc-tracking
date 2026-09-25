@@ -3,8 +3,10 @@ import {
 	applyCardView,
 	applyGroupView,
 	byOwnerThenName,
+	type CardView,
 	DEFAULT_CARD_VIEW,
 	DEFAULT_GROUP_VIEW,
+	nextSort,
 	UNASSIGNED,
 } from "#lib/domain/list-view";
 import type { Card, LimitGroup } from "#lib/domain/types";
@@ -197,4 +199,47 @@ test("sorts groups by name, limit, used and available", () => {
 			}),
 		),
 	).toEqual(["c", "b", "a"]);
+});
+
+test("sorts groups by owner in owner order, then by name", () => {
+	const groups = [
+		group("r", "Alpha", "RI"),
+		group("kz", "Zulu", "KC"),
+		group("ka", "Alpha", "KC"),
+	];
+	expect(
+		ids(applyGroupView(groups, {}, { ...DEFAULT_GROUP_VIEW, sort: "owner" })),
+	).toEqual(["ka", "kz", "r"]);
+});
+
+test("sorts groups by how many cards use them", () => {
+	const groups = [group("a", "A"), group("b", "B"), group("c", "C")];
+	expect(
+		ids(
+			applyGroupView(
+				groups,
+				{},
+				{ ...DEFAULT_GROUP_VIEW, sort: "cards" },
+				{ a: 3, c: 1 },
+			),
+		),
+	).toEqual(["b", "c", "a"]);
+});
+
+test("a header click sorts ascending, then descending, then back to the saved order", () => {
+	const start = { ...DEFAULT_CARD_VIEW, q: "kept" };
+	const first = nextSort(start, "name");
+	expect(first).toEqual({ ...start, sort: "name", dir: "asc" });
+	const second = nextSort(first, "name");
+	expect(second).toEqual({ ...start, sort: "name", dir: "desc" });
+	expect(nextSort(second, "name")).toEqual(start);
+});
+
+test("a click on another header starts that column ascending", () => {
+	const view: CardView = { ...DEFAULT_CARD_VIEW, sort: "name", dir: "desc" };
+	expect(nextSort(view, "location")).toEqual({
+		...DEFAULT_CARD_VIEW,
+		sort: "location",
+		dir: "asc",
+	});
 });
