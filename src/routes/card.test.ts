@@ -484,10 +484,12 @@ test("adds a purchase against this card and says which statement it lands on", a
 
 	const form = await openQuickAdd(root);
 	expect(root.querySelector("cc-modal")?.heading).toBe("Add a purchase");
-	const options = [...(form.shadowRoot?.querySelectorAll("option") ?? [])].map(
-		(option) => option.value,
-	);
-	expect(options).toEqual(["kbank"]);
+	// Locked to this page's card, named as a field rather than offered as a one-option picker.
+	expect(form.cards.map((entry) => entry.id)).toEqual(["kbank"]);
+	expect(form.shadowRoot?.querySelector("select")).toBeNull();
+	expect(
+		form.shadowRoot?.querySelector('[data-field="card"]')?.textContent,
+	).toContain("kbank — KBank Visa");
 	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
 	await settle();
 	expect(root.querySelector("cc-modal")).toBeNull();

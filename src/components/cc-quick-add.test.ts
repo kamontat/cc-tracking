@@ -126,8 +126,27 @@ test("leaves the confirmation to the page, keeping no answer line of its own", a
 	).toBe("100");
 });
 
+test("names its only card as a plain field rather than a one-option picker", async () => {
+	const element = await mount();
+	let detail: { cardId: string } | undefined;
+	element.addEventListener("add", (event) => {
+		detail = (event as CustomEvent<typeof detail>).detail;
+	});
+
+	expect(element.shadowRoot?.querySelector('[name="cardId"]')).toBeNull();
+	const field = element.shadowRoot?.querySelector('[data-field="card"]');
+	expect(field?.textContent).toContain("Card");
+	expect(field?.textContent).toContain("kbank — KBank Visa");
+
+	fill(element, "amount", "100");
+	submit(element);
+	expect(detail?.cardId).toBe("kbank");
+});
+
 test("names each option by card id and card name", async () => {
 	const element = await mount();
+	element.cards = [cards[0] as Card, otherCard];
+	await element.updateComplete;
 	const option = element.shadowRoot?.querySelector<HTMLOptionElement>(
 		'[name="cardId"] option',
 	);

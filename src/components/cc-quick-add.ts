@@ -32,6 +32,25 @@ export class CcQuickAdd extends LitElement {
 				flex-wrap: wrap;
 				gap: var(--cc-space-2);
 			}
+
+			/*
+			 * The one card there is to add against, shown as a field rather than a picker with a
+			 * single option -- the same treatment cc-card-form gives a saved card's locked id: a
+			 * label's muted type above a value carrying an input's padding, with no box.
+			 */
+			.readonly {
+				gap: var(--cc-space-1);
+			}
+
+			.readonly__label {
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.readonly__value {
+				padding-block: var(--cc-space-2);
+				border-block: var(--cc-border-width) solid transparent;
+			}
 		`,
 	];
 
@@ -79,6 +98,11 @@ export class CcQuickAdd extends LitElement {
 		return this.rows.find((row) => row.card.id === id) ?? null;
 	}
 
+	/** The card, when there is only one to choose -- the card page's own. Nothing to pick then. */
+	private get onlyCard(): Card | null {
+		return this.cards.length === 1 ? (this.cards[0] ?? null) : null;
+	}
+
 	private value(name: string): string {
 		return (
 			this.renderRoot
@@ -89,7 +113,8 @@ export class CcQuickAdd extends LitElement {
 
 	private onSubmit(event: Event) {
 		event.preventDefault();
-		const cardId = this.value("cardId");
+		const only = this.onlyCard;
+		const cardId = only ? only.id : this.value("cardId");
 		const date = this.value("date");
 		if (!cardId) {
 			this.errorKey = "quickAdd.error.noCard";
@@ -127,24 +152,36 @@ export class CcQuickAdd extends LitElement {
 		if (this.cards.length === 0) {
 			return html`<p>${t("quickAdd.noEligible")}</p>`;
 		}
+		const only = this.onlyCard;
 		return html`
 			<form @submit=${this.onSubmit}>
 				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
-				<label>
-					${t("quickAdd.card")}
-					<select
-						name="cardId"
-						required
-						@change=${(event: Event) => {
-							this.selectedId = (event.target as HTMLSelectElement).value;
-						}}
-					>
-						${this.cards.map(
-							(card) =>
-								html`<option value=${card.id}>${card.id} — ${card.name}</option>`,
-						)}
-					</select>
-				</label>
+				${
+					only
+						? html`
+							<div class="readonly" data-field="card">
+								<span class="readonly__label">${t("quickAdd.card")}</span>
+								<span class="readonly__value">${only.id} — ${only.name}</span>
+							</div>
+						`
+						: html`
+							<label>
+								${t("quickAdd.card")}
+								<select
+									name="cardId"
+									required
+									@change=${(event: Event) => {
+										this.selectedId = (event.target as HTMLSelectElement).value;
+									}}
+								>
+									${this.cards.map(
+										(card) =>
+											html`<option value=${card.id}>${card.id} — ${card.name}</option>`,
+									)}
+								</select>
+							</label>
+						`
+				}
 				${
 					this.selected
 						? html`<p data-testid="available"><small>${t("quickAdd.available", {

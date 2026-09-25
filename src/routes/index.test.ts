@@ -117,13 +117,7 @@ test("offers only the cards kept where purchases are allowed, while listing them
 	await settle();
 
 	const quickAdd = await openQuickAdd(root);
-
-	const options = [
-		...(quickAdd.shadowRoot?.querySelectorAll<HTMLOptionElement>(
-			'[name="cardId"] option',
-		) ?? []),
-	];
-	expect(options.map((option) => option.value)).toEqual(["scb"]);
+	expect(quickAdd.cards.map((entry) => entry.id)).toEqual(["scb"]);
 
 	const dueList = root.querySelector("cc-due-list");
 	await dueList?.updateComplete;
@@ -144,12 +138,7 @@ test("turning a location on in settings opens its cards to purchases", async () 
 	await settle();
 
 	const quickAdd = await openQuickAdd(root);
-	const options = [
-		...(quickAdd.shadowRoot?.querySelectorAll<HTMLOptionElement>(
-			'[name="cardId"] option',
-		) ?? []),
-	];
-	expect(options.map((option) => option.value)).toEqual(["ktb"]);
+	expect(quickAdd.cards.map((entry) => entry.id)).toEqual(["ktb"]);
 });
 
 test("a purchase dated on the close day lands on that statement", async () => {
@@ -161,7 +150,6 @@ test("a purchase dated on the close day lands on that statement", async () => {
 
 	const quickAdd = await openQuickAdd(root);
 
-	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-18");
 	fillQuickAdd(quickAdd, "amount", "500");
 	fillQuickAdd(quickAdd, "note", "dinner");
@@ -193,7 +181,6 @@ test("a purchase dated the day after the close day lands on the next statement",
 
 	const quickAdd = await openQuickAdd(root);
 
-	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-19");
 	fillQuickAdd(quickAdd, "amount", "500");
 	submitQuickAdd(quickAdd);
@@ -216,7 +203,6 @@ test("a failed purchase save leaves a message in the banner and stores nothing",
 
 	const quickAdd = await openQuickAdd(root);
 
-	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-18");
 	fillQuickAdd(quickAdd, "amount", "500");
 	submitQuickAdd(quickAdd);
@@ -463,7 +449,6 @@ test("the purchase confirmation re-renders in the new language instead of freezi
 
 	const quickAdd = await openQuickAdd(root);
 
-	fillQuickAdd(quickAdd, "cardId", "scb");
 	fillQuickAdd(quickAdd, "date", "2026-09-18");
 	fillQuickAdd(quickAdd, "amount", "500");
 	submitQuickAdd(quickAdd);
