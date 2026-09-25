@@ -11,7 +11,6 @@ const NAV_PATHS: readonly (readonly [id: string, path: string])[] = [
 	["nav-dashboard", "/"],
 	["nav-cards", "/cards"],
 	["nav-settings", "/settings"],
-	["nav-backup", "/backup"],
 ];
 
 /**
@@ -50,7 +49,6 @@ export function applyChrome(
 		setText(root, "nav-dashboard", "nav.dashboard");
 		setText(root, "nav-cards", "nav.cards");
 		setText(root, "nav-settings", "nav.settings");
-		setText(root, "nav-backup", "nav.backup");
 	};
 	apply();
 	markCurrentLink(root, location.pathname);
