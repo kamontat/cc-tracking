@@ -400,7 +400,7 @@ test("the purchase confirmation re-renders in the new language instead of freezi
 
 	// Same confirmation, re-resolved in the new language -- not cleared, not left in English.
 	expect(quickAdd.answer).toBe(
-		"อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ 18 ก.ย. 2026 — ชำระภายใน 03 ต.ค. 2026",
+		"อยู่ในใบแจ้งยอดที่สรุปยอดวันที่ 18 ก.ย. 2026 — ชำระภายใน 03 ต.ค. 2026",
 	);
 });
 

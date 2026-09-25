@@ -49,10 +49,11 @@ export const th: Catalog = {
 	// FLAG FOR OWNER REVIEW: "due date" -- ครบกำหนด, used throughout this catalog.
 	"dashboard.dueNext": "ครบกำหนดถัดไป",
 	"dashboard.addPurchase": "เพิ่มรายการใช้จ่าย",
-	// FLAG FOR OWNER REVIEW: "statement" -- ใบแจ้งยอด (also card.showOlder, statements.empty)
-	// and "close date" -- ปิดยอด (also due.column.closes, form.closeDay, statements.header,
-	// cycle.offset/fixed). This sentence also depends on Thai word order matching English.
-	"dashboard.answer": "อยู่ในใบแจ้งยอดที่ปิดยอดวันที่ {close} — ชำระภายใน {due}",
+	// FLAG FOR OWNER REVIEW: "statement" -- ใบแจ้งยอด (also card.showOlder, statements.empty).
+	// This sentence also depends on Thai word order matching English. "Close date" is settled:
+	// the owner chose สรุปยอด over ปิดยอด (also due.column.closes, form.closeDay,
+	// statements.header, cycle.offset/fixed).
+	"dashboard.answer": "อยู่ในใบแจ้งยอดที่สรุปยอดวันที่ {close} — ชำระภายใน {due}",
 	"dashboard.answerOver": "ยอดนี้เกินวงเงิน {name} อยู่ {over}",
 	"dashboard.error.read": "อ่านข้อมูลบัตรไม่สำเร็จ",
 	"dashboard.error.markPaid": "บันทึกการชำระเงินไม่สำเร็จ",
@@ -62,13 +63,13 @@ export const th: Catalog = {
 	"due.emptyAction": "เพิ่มบัตรได้ที่หน้าบัตร",
 	"due.column.card": "บัตร",
 	"due.column.where": "ที่อยู่",
-	"due.column.closes": "ปิดยอด",
+	"due.column.closes": "สรุปยอด",
 	"due.column.due": "ครบกำหนด",
 	"due.column.total": "รวม",
 	"due.overdue": "เกินกำหนด {days} วัน",
 	"due.today": "ครบกำหนดวันนี้",
 	"due.inDays": "อีก {days} วัน",
-	"due.stillOpen": "ยังไม่ปิดยอด",
+	"due.stillOpen": "ยังไม่สรุปยอด",
 	"due.markPaid": "บันทึกว่าชำระแล้ว",
 
 	"groups.title": "บัตรแยกตามที่อยู่",
@@ -131,9 +132,9 @@ export const th: Catalog = {
 	"form.limitGroup": "กลุ่มวงเงิน",
 	"form.limitGroupNone": "เลือกกลุ่มวงเงิน",
 	"form.cycle": "รอบบิล",
-	"form.cycleOffset": "ครบกำหนดหลังปิดยอดกี่วัน",
+	"form.cycleOffset": "ครบกำหนดหลังสรุปยอดกี่วัน",
 	"form.cycleFixed": "ครบกำหนดวันที่แน่นอนของเดือน",
-	"form.closeDay": "วันปิดยอด",
+	"form.closeDay": "วันสรุปยอด",
 	"form.dueOffsetDays": "จำนวนวันจนครบกำหนด",
 	"form.dueDay": "วันครบกำหนด",
 	"form.comment": "หมายเหตุ",
@@ -144,7 +145,7 @@ export const th: Catalog = {
 	"form.error.last4": "เลข 4 ตัวท้ายต้องเป็นตัวเลขสี่หลัก",
 	"form.error.location": "เลือกที่อยู่บัตร",
 	"form.error.limitGroup": "เลือกกลุ่มวงเงินที่บัตรใบนี้ใช้",
-	"form.error.closeDay": "วันปิดยอดต้องอยู่ระหว่าง 1 ถึง 31",
+	"form.error.closeDay": "วันสรุปยอดต้องอยู่ระหว่าง 1 ถึง 31",
 	"form.error.dueOffsetDays": "จำนวนวันจนครบกำหนดต้องอยู่ระหว่าง 1 ถึง 60",
 	"form.error.dueDay": "วันครบกำหนดต้องอยู่ระหว่าง 1 ถึง 31",
 
@@ -168,7 +169,7 @@ export const th: Catalog = {
 	"card.summary.owedHint": "ทุกใบแจ้งยอดที่ยังไม่ชำระ",
 	"card.summary.next": "ครบกำหนดถัดไป",
 	"card.summary.nextDate": "ครบกำหนด {date}",
-	"card.summary.nextOpen": "ยังเปิดอยู่ ปิดยอด {date}",
+	"card.summary.nextOpen": "ยังเปิดอยู่ สรุปยอด {date}",
 	"card.summary.nothing": "ไม่มียอดต้องชำระ",
 	"card.error.noSelection": "ยังไม่ได้เลือกบัตร",
 	"card.error.notFound": "ไม่พบบัตรรหัส {id}",
@@ -179,7 +180,7 @@ export const th: Catalog = {
 	"card.error.addPurchase": "บันทึกรายการใช้จ่ายไม่สำเร็จ",
 
 	"statements.empty": "ยังไม่มีใบแจ้งยอด เพิ่มรายการใช้จ่ายจากหน้ารวม",
-	"statements.header": "ปิดยอด {close} ครบกำหนด {due}",
+	"statements.header": "สรุปยอด {close} ครบกำหนด {due}",
 	"statements.paid": "ชำระแล้ว {date}",
 	"statements.unmark": "ยกเลิกเครื่องหมาย",
 	"statements.markPaid": "บันทึกว่าชำระแล้ว",
@@ -188,8 +189,8 @@ export const th: Catalog = {
 	"statements.quietRun": "{from} – {to} · ไม่มีรายการใช้จ่าย",
 	"statements.quietOne": "{period} · ไม่มีรายการใช้จ่าย",
 
-	"cycle.offset": "ปิดยอดวันที่ {closeDay} ครบกำหนดอีก {days} วัน",
-	"cycle.fixed": "ปิดยอดวันที่ {closeDay} ครบกำหนดวันที่ {dueDay}",
+	"cycle.offset": "สรุปยอดวันที่ {closeDay} ครบกำหนดอีก {days} วัน",
+	"cycle.fixed": "สรุปยอดวันที่ {closeDay} ครบกำหนดวันที่ {dueDay}",
 
 	"storage.unavailable":
 		"เบราว์เซอร์นี้ไม่อนุญาตให้หน้าเว็บเก็บข้อมูล หน้าต่างส่วนตัวและการบล็อกข้อมูลเว็บไซต์ทำให้เกิดปัญหานี้",
@@ -274,7 +275,7 @@ export const th: Catalog = {
 	"spendable.title": "รูดได้ตอนนี้",
 	"spendable.column.card": "บัตร",
 	"spendable.column.available": "คงเหลือ",
-	"spendable.column.closes": "ปิดยอด",
+	"spendable.column.closes": "สรุปยอด",
 	"spendable.column.due": "ครบกำหนด",
 	"spendable.of": "จาก {limit}",
 	"spendable.shared": "{name} ใช้ร่วมกับอีก {count} ใบ",
