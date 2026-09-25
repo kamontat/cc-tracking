@@ -356,5 +356,28 @@ export function repositoryContract(
 				purchaseLocations: ["krabi"],
 			});
 		});
+
+		test("clearing forgets every record and setting", async () => {
+			await repo.saveCard(sampleCard());
+			await repo.savePurchase(samplePurchase());
+			await repo.savePayment(samplePayment());
+			await repo.saveLimitGroup(sampleLimitGroup());
+			await repo.saveSettings({ purchaseLocations: [] });
+
+			await repo.clearAll();
+
+			expect(await repo.listCards()).toEqual([]);
+			expect(await repo.listPurchases("kbank")).toEqual([]);
+			expect(await repo.listPayments("kbank")).toEqual([]);
+			expect(await repo.listLimitGroups()).toEqual([]);
+			expect(await repo.getSettings()).toEqual(DEFAULT_SETTINGS);
+		});
+
+		test("stays usable after it is cleared", async () => {
+			await repo.saveCard(sampleCard());
+			await repo.clearAll();
+			await repo.saveCard(sampleCard({ id: "scb" }));
+			expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"]);
+		});
 	});
 }

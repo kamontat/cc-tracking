@@ -149,10 +149,11 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
-/* The settings page's confirmation after a backup import, matching cc-quick-add's `.answer`. The
-   element stays in the DOM so its live region is in place before the message arrives; it is
-   only hidden while empty, so it takes no gap in the article's flex column. */
-.import-status {
+/* The settings page's confirmations after a backup import or a reset, matching cc-quick-add's
+   `.answer`. Each element stays in the DOM so its live region is in place before the message
+   arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
+.import-status,
+.reset-status {
 	padding: var(--cc-space-2) var(--cc-space-3);
 	font-size: var(--cc-text-sm);
 	color: var(--cc-success);
@@ -160,15 +161,17 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
-.import-status:empty {
+.import-status:empty,
+.reset-status:empty {
 	display: none;
 }
 
 /*
  * The light-DOM mirror of `controls`' button rules in shared.ts, deliberately partial: it carries
- * only the variants the routes actually use (the base button and `data-variant="quiet"`), not
- * `white-space: nowrap`, `:disabled`, or `data-variant="danger"`. `controls` is the full contract
- * -- check there before assuming a variant is unsupported.
+ * only the variants the routes actually use (the base button, `data-variant="quiet"`, and
+ * `data-variant="danger"` for the settings page's reset), not `white-space: nowrap` or
+ * `:disabled`. `controls` is the full contract -- check there before assuming a variant is
+ * unsupported.
  */
 .page button {
 	align-self: flex-start;
@@ -195,6 +198,23 @@ a:any-link:hover {
 
 .page button[data-variant="quiet"]:hover {
 	background: var(--cc-border);
+}
+
+.page button[data-variant="danger"] {
+	color: var(--cc-danger);
+	background: transparent;
+	border-color: var(--cc-danger);
+}
+
+.page button[data-variant="danger"]:hover {
+	background: var(--cc-danger-surface);
+}
+
+/* The reset question's answer: the destructive choice first, the way out beside it. */
+.reset__actions {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
 }
 
 .page label {

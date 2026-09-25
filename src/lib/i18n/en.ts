@@ -199,6 +199,16 @@ export const en = {
 	"backup.error.export": "Could not export a backup.",
 	"backup.error.import": "Could not import that backup.",
 
+	"reset.title": "Reset",
+	"reset.warning":
+		"Deletes every card, purchase, payment, limit group and setting in this browser. Export a backup first if you may want them back.",
+	"reset.start": "Reset…",
+	"reset.confirm":
+		"This deletes {cards} cards, {purchases} purchases, {payments} payments and {limitGroups} limit groups.",
+	"reset.delete": "Delete all data",
+	"reset.done": "All data deleted.",
+	"reset.error": "Could not reset your data.",
+
 	"backup.unreadable": "That file is not a readable backup.",
 	"backup.version":
 		"That backup is version {found}, and this app reads version {expected}.",
