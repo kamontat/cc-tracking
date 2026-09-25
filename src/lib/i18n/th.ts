@@ -72,9 +72,6 @@ export const th: Catalog = {
 	"due.stillOpen": "ยังไม่สรุปยอด",
 	"due.markPaid": "บันทึกว่าชำระแล้ว",
 
-	"groups.title": "บัตรแยกตามที่อยู่",
-	"groups.nextDue": "ครบกำหนดถัดไป {date}",
-
 	"quickAdd.card": "บัตร",
 	"quickAdd.date": "วันที่",
 	"quickAdd.amount": "จำนวนเงิน (บาท)",

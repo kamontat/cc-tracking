@@ -55,9 +55,6 @@ export const en = {
 	"due.stillOpen": "still open",
 	"due.markPaid": "Mark paid",
 
-	"groups.title": "Cards by location",
-	"groups.nextDue": "Next due {date}",
-
 	"quickAdd.card": "Card",
 	"quickAdd.date": "Date",
 	"quickAdd.amount": "Amount (THB)",

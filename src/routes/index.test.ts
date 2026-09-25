@@ -434,3 +434,14 @@ test("confirms a purchase that goes over the limit, and still saves it", async (
 	expect(answer).toContain("฿300.00");
 	expect(answer).toContain("KBank account");
 });
+
+test("leaves where each card is kept to the card list, which filters by location", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	expect(root.querySelector("cc-location-groups")).toBeNull();
+	expect(root.textContent).not.toContain("Cards by location");
+});

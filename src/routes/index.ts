@@ -4,7 +4,6 @@ import "../styles/app.css";
 import "#components/cc-due-list";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
-import "#components/cc-location-groups";
 import "#components/cc-quick-add";
 import "#components/cc-spendable";
 import { html, render } from "lit";
@@ -166,9 +165,6 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 						<cc-quick-add .cards=${visible().filter((entry) => canPurchase(entry, settings))} .rows=${spendable} .today=${now} .answer=${answer} @add=${onAdd}></cc-quick-add>
 					</article>
 				</div>
-				<article>
-					<cc-location-groups .rows=${rows()}></cc-location-groups>
-				</article>
 			`,
 			root,
 		);
