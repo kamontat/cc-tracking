@@ -79,7 +79,6 @@ export class CcLimitGroupTable extends LitElement {
 		return html`
 			<details open>
 				<summary>${t("limits.title")}</summary>
-				<p><small>${t("limits.explain")}</small></p>
 				${this.groups.length === 0 ? html`<p>${t("limits.empty")}</p>` : this.table()}
 			</details>
 		`;

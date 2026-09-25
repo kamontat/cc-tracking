@@ -139,13 +139,25 @@ test("keeps the chosen limit group in place when the group list reshapes under t
 	).toBe("");
 });
 
-test("disables the selector and says where to go when no group exists", async () => {
+test("disables the selector, without a note, when no group exists", async () => {
 	const element = await mount(null, []);
 	const field = element.shadowRoot?.querySelector<HTMLSelectElement>(
 		'[name="limitGroupId"]',
 	);
 	expect(field?.disabled).toBe(true);
-	expect(element.shadowRoot?.textContent).toContain("Add a limit group");
+	expect(field?.closest("label")?.querySelector("small")).toBeNull();
+});
+
+test("keeps the holder with the supplementary box, the box standing as its label", async () => {
+	const element = await mount();
+	tickSupplementary(element);
+	await element.updateComplete;
+
+	const field = element.shadowRoot?.querySelector(".supplementary-field");
+	expect(field?.querySelector('[name="supplementary"]')).not.toBeNull();
+	const owner = field?.querySelector<HTMLSelectElement>('[name="owner"]');
+	expect(owner?.getAttribute("aria-label")).toBe("Card holder");
+	expect(field?.querySelector("small")).toBeNull();
 });
 
 test("emits a complete card with an offset rule", async () => {

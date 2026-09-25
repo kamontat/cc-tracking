@@ -51,11 +51,28 @@ export class CcCardForm extends LitElement {
 				 * own vertical padding and a transparent border in place of its box, its text
 				 * lands on exactly the line the input's text sits on.
 				 */
-				label:has(input[type="checkbox"]) {
+				.supplementary-field {
 					align-self: end;
+				}
+
+				label:has(input[type="checkbox"]) {
 					padding-block: var(--cc-space-2);
 					border-block: var(--cc-border-width) solid transparent;
 				}
+			}
+
+			/*
+			 * The supplementary box and, once it is ticked, the holder it asks for share one cell
+			 * beside the limit group. Ticked, the box stands where a label would and drops the
+			 * input-line padding above, so the holder's select lines up with the group's select.
+			 */
+			.supplementary-field {
+				gap: var(--cc-space-1);
+			}
+
+			.supplementary-field:has(select) label:has(input[type="checkbox"]) {
+				padding-block: 0;
+				border-block-width: 0;
 			}
 
 			/*
@@ -295,15 +312,6 @@ export class CcCardForm extends LitElement {
 				</label>
 
 				<label>
-					<input type="checkbox" name="supplementary"
-						.checked=${this.supplementary}
-						@change=${(event: Event) => {
-							this.supplementary = (event.target as HTMLInputElement).checked;
-						}} />
-					${t("form.supplementary")}
-				</label>
-
-				<label>
 					${t("form.limitGroup")}
 					<select name="limitGroupId" required ?disabled=${this.groups.length === 0}
 						@change=${(event: Event) => {
@@ -315,17 +323,21 @@ export class CcCardForm extends LitElement {
 								html`<option value=${group.id}>${groupLabel(group)}</option>`,
 						)}
 					</select>
-					${this.groups.length === 0 ? html`<small>${t("form.limitGroupEmpty")}</small>` : nothing}
 				</label>
 
-				${
-					// After the group, not beside the box: the hint explains the holder against the
-					// account the group names, so it reads best right after that choice.
-					this.supplementary
-						? html`
-							<label>
-								${t("form.owner")}
-								<select name="owner" required
+				<div class="supplementary-field">
+					<label>
+						<input type="checkbox" name="supplementary"
+							.checked=${this.supplementary}
+							@change=${(event: Event) => {
+								this.supplementary = (event.target as HTMLInputElement).checked;
+							}} />
+						${t("form.supplementary")}
+					</label>
+					${
+						this.supplementary
+							? html`
+								<select name="owner" required aria-label=${t("form.owner")}
 									@change=${(event: Event) => {
 										this.owner =
 											toOwner((event.target as HTMLSelectElement).value) ?? "";
@@ -335,11 +347,10 @@ export class CcCardForm extends LitElement {
 										(value) => html`<option value=${value}>${value}</option>`,
 									)}
 								</select>
-								<small>${t("form.ownerHint")}</small>
-							</label>
-						`
-						: nothing
-				}
+							`
+							: nothing
+					}
+				</div>
 
 				<fieldset>
 					<legend>${t("form.cycle")}</legend>

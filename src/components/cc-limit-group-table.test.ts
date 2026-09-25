@@ -125,6 +125,11 @@ test("draws each group's usage as a bar, tinted as it runs out", async () => {
 	);
 });
 
+test("heads the table with no explanatory note", async () => {
+	const element = await mount();
+	expect(element.shadowRoot?.querySelector("details > p")).toBeNull();
+});
+
 test("says one card, not one cards", async () => {
 	const element = await mount({ counts: { pool: 1, solo: 0 } });
 	expect(element.shadowRoot?.textContent).toContain("1 card uses this group");

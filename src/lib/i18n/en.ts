@@ -111,12 +111,9 @@ export const en = {
 	"form.supplementary": "Supplementary card",
 	"form.owner": "Card holder",
 	"form.ownerNone": "Choose who holds it",
-	"form.ownerHint": "The limit group's owner holds the account.",
 	"form.error.owner": "Choose who holds this supplementary card.",
 	"form.limitGroup": "Limit group",
 	"form.limitGroupNone": "Choose a limit group",
-	"form.limitGroupEmpty":
-		"Add a limit group with the Add limit group form first.",
 	"form.cycle": "Billing cycle",
 	"form.cycleOffset": "Due a number of days after closing",
 	"form.cycleFixed": "Due on a fixed day of the month",
@@ -222,8 +219,6 @@ export const en = {
 	"backup.problem.badLimit": "has a limit that is not a whole number of satang",
 
 	"limits.title": "Limit groups",
-	"limits.explain":
-		"A group is a pool of credit. Cards that share a limit share a group.",
 	"limits.empty": "No limit group yet. Add one before adding a card.",
 	"limits.column.name": "Name",
 	"limits.column.owner": "Owner",
