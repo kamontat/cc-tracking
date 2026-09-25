@@ -1,4 +1,7 @@
 import { expect, test } from "bun:test";
+import type { CcCardForm } from "#components/cc-card-form";
+import type { CcErrorBanner } from "#components/cc-error-banner";
+import type { CcLimitGroupForm } from "#components/cc-limit-group-form";
 import { today } from "#lib/domain/date";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
@@ -35,6 +38,22 @@ const submit = (root: HTMLElement) => {
 const bannerMessage = (root: HTMLElement): string =>
 	root.querySelector("cc-error-banner")?.message ?? "";
 
+/** The error shown inside the open dialog, where the reader can see it over the backdrop. */
+const modalBannerMessage = (root: HTMLElement): string =>
+	root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message ?? "";
+
+const press = async (root: HTMLElement, action: string) => {
+	const button = root.querySelector<HTMLButtonElement>(
+		`button[data-action="${action}"]`,
+	);
+	if (!button) throw new Error(`no ${action} button`);
+	button.click();
+	await settle();
+};
+
+const openAddCard = (root: HTMLElement) => press(root, "add-card");
+const openAddGroup = (root: HTMLElement) => press(root, "add-group");
+
 const sampleCard: Card = {
 	id: "kbank",
 	name: "KBank Visa",
@@ -62,6 +81,7 @@ test("a failed save keeps its error message after the refresh that follows it", 
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
+	await openAddCard(root);
 
 	fill(root, "id", "kbank");
 	fill(root, "name", "KBank Visa");
@@ -76,6 +96,9 @@ test("a failed save keeps its error message after the refresh that follows it", 
 	// The write failed, but the read that follows it (to refresh the table) succeeds:
 	// the banner must still show the failure, not be wiped by that successful read.
 	expect(bannerMessage(root)).toContain("disk is full");
+	// ...and the dialog stays open with the failure in it, not hidden behind its backdrop.
+	expect(modalBannerMessage(root)).toContain("disk is full");
+	expect(root.querySelector("cc-modal cc-card-form")).not.toBeNull();
 });
 
 test("creating a card with an id that already exists does not overwrite it", async () => {
@@ -89,6 +112,7 @@ test("creating a card with an id that already exists does not overwrite it", asy
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
+	await openAddCard(root);
 
 	fill(root, "id", "kbank");
 	fill(root, "name", "A completely different card");
@@ -101,9 +125,14 @@ test("creating a card with an id that already exists does not overwrite it", asy
 	await settle();
 
 	expect(await repo.getCard("kbank")).toEqual(sampleCard);
-	const message = bannerMessage(root);
+	const message = modalBannerMessage(root);
 	expect(message).toContain("kbank");
 	expect(message.toLowerCase()).toContain("unique");
+	// Refused, the dialog stays open on what the reader typed, so only the id needs changing.
+	const name = root
+		.querySelector("cc-card-form")
+		?.shadowRoot?.querySelector<HTMLInputElement>('[name="name"]');
+	expect(name?.value).toBe("A completely different card");
 });
 
 test("a successful save clears the banner and the card appears in the table", async () => {
@@ -116,6 +145,7 @@ test("a successful save clears the banner and the card appears in the table", as
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
+	await openAddCard(root);
 
 	fill(root, "id", "scb");
 	fill(root, "name", "SCB Mastercard");
@@ -128,6 +158,7 @@ test("a successful save clears the banner and the card appears in the table", as
 	await settle();
 
 	expect(bannerMessage(root)).toBe("");
+	expect(root.querySelector("cc-modal")).toBeNull();
 
 	const table = root.querySelector("cc-card-table");
 	await table?.updateComplete;
@@ -210,7 +241,11 @@ test("saves a new limit group", async () => {
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
+	await openAddGroup(root);
 
+	expect(
+		root.querySelector<CcLimitGroupForm>("cc-modal cc-limit-group-form")?.group,
+	).toBeNull();
 	root.querySelector("cc-limit-group-form")?.dispatchEvent(
 		new CustomEvent("save-group", {
 			detail: { id: "pool", name: "KBank account", limit: 500_000 },
@@ -221,6 +256,7 @@ test("saves a new limit group", async () => {
 	expect(await repo.listLimitGroups()).toEqual([
 		{ id: "pool", name: "KBank account", limit: 500_000 },
 	]);
+	expect(root.querySelector("cc-modal")).toBeNull();
 });
 
 test("deletes a limit group", async () => {
@@ -242,7 +278,7 @@ test("deletes a limit group", async () => {
 	expect(await repo.listLimitGroups()).toEqual([]);
 });
 
-test("feeds the group being edited to the form, and lets go once it is saved", async () => {
+test("opens the group being edited in a dialog, and closes it once it is saved", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveLimitGroup({
 		id: "pool",
@@ -258,7 +294,11 @@ test("feeds the group being edited to the form, and lets go once it is saved", a
 		?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
 	await settle();
 
-	expect(root.querySelector("cc-limit-group-form")?.group?.id).toBe("pool");
+	expect(
+		root.querySelector<CcLimitGroupForm>("cc-modal cc-limit-group-form")?.group
+			?.id,
+	).toBe("pool");
+	expect(root.querySelector("cc-modal")?.heading).toBe("Edit KBank account");
 
 	root.querySelector("cc-limit-group-form")?.dispatchEvent(
 		new CustomEvent("save-group", {
@@ -272,7 +312,7 @@ test("feeds the group being edited to the form, and lets go once it is saved", a
 	);
 	await settle();
 
-	expect(root.querySelector("cc-limit-group-form")?.group).toBeNull();
+	expect(root.querySelector("cc-limit-group-form")).toBeNull();
 	expect(await repo.listLimitGroups()).toEqual([
 		{ id: "pool", name: "KBank account", limit: 700_000, owner: "NT" },
 	]);
@@ -298,8 +338,8 @@ test("lets go of a group that is deleted while it is being edited", async () => 
 		?.dispatchEvent(new CustomEvent("remove-group", { detail: "pool" }));
 	await settle();
 
-	// Still loaded, a Save would write the deleted group straight back.
-	expect(root.querySelector("cc-limit-group-form")?.group).toBeNull();
+	// Still open, a Save would write the deleted group straight back.
+	expect(root.querySelector("cc-limit-group-form")).toBeNull();
 });
 
 test("lets go of a card that is deleted while it is being edited", async () => {
@@ -318,60 +358,76 @@ test("lets go of a card that is deleted while it is being edited", async () => {
 		?.dispatchEvent(new CustomEvent("remove", { detail: sampleCard.id }));
 	await settle();
 
-	expect(root.querySelector("cc-card-form")?.card).toBeNull();
+	expect(root.querySelector("cc-card-form")).toBeNull();
 });
 
-test("reopens a hand-collapsed form when the same group is picked again", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	const table = root.querySelector("cc-limit-group-table");
-	table?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
-	await settle();
-
-	const form = root.querySelector("cc-limit-group-form");
-	const section = form?.shadowRoot?.querySelector("details");
-	if (!section) throw new Error("no details element");
-	section.open = false;
-	section.dispatchEvent(new Event("toggle"));
-	await settle();
-
-	// Picking the same row again is the reader asking for it back.
-	table?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
-	await settle();
-
-	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
-});
-
-test("reopens a hand-collapsed card form when the same card is picked again", async () => {
+test("opens the card being edited in a dialog titled with its name", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard);
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
 
-	const table = root.querySelector("cc-card-table");
-	table?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	root
+		.querySelector("cc-card-table")
+		?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
 	await settle();
 
-	const form = root.querySelector("cc-card-form");
-	const section = form?.shadowRoot?.querySelector("details");
-	if (!section) throw new Error("no details element");
-	section.open = false;
-	section.dispatchEvent(new Event("toggle"));
+	expect(
+		root.querySelector<CcCardForm>("cc-modal cc-card-form")?.card?.id,
+	).toBe("kbank");
+	expect(root.querySelector("cc-modal")?.heading).toBe("Edit KBank Visa");
+});
+
+test("closes a dialog without saving when the reader cancels or dismisses it", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderCardsPage(repo, root);
 	await settle();
 
-	table?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
+	await openAddCard(root);
+	expect(root.querySelector("cc-modal")?.heading).toBe("Add a card");
+	root.querySelector("cc-card-form")?.dispatchEvent(new CustomEvent("cancel"));
+	await settle();
+	expect(root.querySelector("cc-modal")).toBeNull();
+
+	await openAddGroup(root);
+	expect(root.querySelector("cc-modal")?.heading).toBe("Add limit group");
+	// Escape, the backdrop and the close button all arrive as the dialog's own `close`.
+	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+	expect(root.querySelector("cc-modal")).toBeNull();
+
+	expect(await repo.listLimitGroups()).toEqual([]);
+	expect(await repo.listCards()).toEqual([sampleCard]);
+});
+
+test("starts each add on a blank form, even after the last one was saved", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 });
+	const root = mount();
+	renderCardsPage(repo, root);
 	await settle();
 
-	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
+	await openAddCard(root);
+	fill(root, "id", "scb");
+	fill(root, "name", "SCB Mastercard");
+	fill(root, "last4", "1234");
+	fill(root, "closeDay", "18");
+	fill(root, "dueOffsetDays", "15");
+	fill(root, "limitGroupId", "pool");
+	submit(root);
+	await settle();
+	expect(root.querySelector("cc-modal")).toBeNull();
+
+	await openAddCard(root);
+	const value = (name: string) =>
+		root
+			.querySelector("cc-card-form")
+			?.shadowRoot?.querySelector<HTMLInputElement>(`[name="${name}"]`)?.value;
+	expect(value("id")).toBe("");
+	expect(value("name")).toBe("");
 });
 
 test("says so when a limit group cannot be saved", async () => {
@@ -383,6 +439,7 @@ test("says so when a limit group cannot be saved", async () => {
 	const root = mount();
 	renderCardsPage(new Rejecting(), root);
 	await settle();
+	await openAddGroup(root);
 
 	root.querySelector("cc-limit-group-form")?.dispatchEvent(
 		new CustomEvent("save-group", {
@@ -391,7 +448,8 @@ test("says so when a limit group cannot be saved", async () => {
 	);
 	await settle();
 
-	expect(bannerMessage(root)).toContain("disk is full");
+	expect(modalBannerMessage(root)).toContain("disk is full");
+	expect(root.querySelector("cc-modal cc-limit-group-form")).not.toBeNull();
 });
 
 test("opens the form on the card a link asked to edit", async () => {
@@ -404,7 +462,7 @@ test("opens the form on the card a link asked to edit", async () => {
 	const form = root.querySelector("cc-card-form");
 	await form?.updateComplete;
 	expect(form?.card?.id).toBe("kbank");
-	expect(form?.shadowRoot?.querySelector("details")?.open).toBe(true);
+	expect(form?.closest("cc-modal")).not.toBeNull();
 });
 
 test("ignores an edit link to a card that is not there", async () => {
@@ -414,27 +472,28 @@ test("ignores an edit link to a card that is not there", async () => {
 	renderCardsPage(repo, root, globalThis.localStorage, "gone");
 	await settle();
 
-	expect(root.querySelector("cc-card-form")?.card).toBeNull();
+	expect(root.querySelector("cc-modal")).toBeNull();
 });
 
-test("keeps both forms together above the lists rather than between them", async () => {
+test("shows no form until asked, offering one add button beside each list", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();
 	renderCardsPage(repo, root);
 	await settle();
 
-	const forms = root.querySelector(".registry-forms");
-	expect(forms?.querySelector("cc-card-form")).not.toBeNull();
-	expect(forms?.querySelector("cc-limit-group-form")).not.toBeNull();
-	expect(forms?.querySelector("cc-card-table")).toBeNull();
-	const tags = [...root.children].map(
-		(child) =>
-			child.querySelector("cc-card-table, cc-limit-group-table")?.localName ??
-			child.className,
-	);
-	expect(tags.indexOf("registry-forms")).toBeLessThan(
-		tags.indexOf("cc-card-table"),
-	);
+	expect(root.querySelector("cc-modal")).toBeNull();
+	expect(root.querySelector("cc-card-form")).toBeNull();
+	expect(root.querySelector("cc-limit-group-form")).toBeNull();
+
+	const sectionOf = (action: string) =>
+		root.querySelector(`button[data-action="${action}"]`)?.closest("article");
+	expect(sectionOf("add-card")?.querySelector("cc-card-table")).not.toBeNull();
+	expect(
+		sectionOf("add-group")?.querySelector("cc-limit-group-table"),
+	).not.toBeNull();
+	expect(
+		root.querySelector('button[data-action="add-card"]')?.textContent?.trim(),
+	).toBe("Add a card");
 });
 
 test("opens both lists on the view its query names", async () => {

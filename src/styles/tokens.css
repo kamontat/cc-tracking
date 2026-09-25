@@ -29,10 +29,11 @@
 	   keep this in step if the header's padding or brand type size ever changes. */
 	--cc-header-height: 3.5rem;
 
-	/* The narrowest a card-page summary tile or a registry form panel gets before its row
-	   wraps to one per line. A tile holds one large figure; a form holds labelled inputs. */
+	/* The narrowest a card-page summary tile gets before its row wraps to one per line. */
 	--cc-tile-min: 14rem;
-	--cc-form-min: 22rem;
+
+	/* The widest a modal dialog grows: room for the card form's two columns of labelled inputs. */
+	--cc-modal-max: 40rem;
 
 	/* A `select` left at `appearance: auto` reserves its own arrow area — about 20px in Chrome,
 	   more in Safari — inside the border box and on top of whatever padding we set, so its right
@@ -46,6 +47,8 @@
 	--cc-surface-sunken: #eef0f3;
 	--cc-border: #d6dae0;
 	--cc-shadow-sm: 0 1px 2px rgb(16 24 40 / 0.06);
+	--cc-shadow-lg: 0 12px 32px rgb(16 24 40 / 0.18);
+	--cc-backdrop: rgb(16 24 40 / 0.45);
 
 	--cc-text: #1b1f24;
 	--cc-text-muted: #5b6472;
@@ -77,6 +80,8 @@
 		--cc-surface-sunken: #23272f;
 		--cc-border: #333a44;
 		--cc-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+		--cc-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
+		--cc-backdrop: rgb(0 0 0 / 0.6);
 
 		--cc-text: #e7eaee;
 		--cc-text-muted: #a2acba;

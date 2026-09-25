@@ -137,8 +137,7 @@ a:any-link:hover {
 
 .page > article,
 .page .split > article,
-.page .split__aside > article,
-.page .registry-forms > article {
+.page .split__aside > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -296,19 +295,17 @@ a:any-link:hover {
 	min-width: 0;
 }
 
-/*
- * The registry's two forms, side by side above the lists. Collapsed they are one line each,
- * so they cost a single row instead of two full-width panels wedged between the lists; the
- * lists below keep the whole width their columns need. Each form opens in its own cell.
- */
-.registry-forms {
-	display: grid;
-	grid-template-columns: repeat(
-			auto-fit,
-			minmax(min(100%, var(--cc-form-min)), 1fr)
-		);
-	align-items: start;
-	gap: var(--cc-space-4);
+/* A registry list's add button, lifted onto its list's title line at the panel's top right rather
+   than costing a row of its own. The title lives in the table's shadow root, so the button cannot
+   join it there; the titles are short words in both languages, so the corner is always clear. */
+.page > article:has(> .list-actions) {
+	position: relative;
+}
+
+.list-actions {
+	position: absolute;
+	top: var(--cc-space-3);
+	right: var(--cc-space-4);
 }
 
 /* The card page's statement column: the list, then its "show older" button beneath it. */

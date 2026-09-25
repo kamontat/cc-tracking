@@ -14,18 +14,6 @@ export class CcLimitGroupForm extends LitElement {
 		base,
 		controls,
 		css`
-			details {
-				display: flex;
-				flex-direction: column;
-				gap: var(--cc-space-3);
-			}
-
-			summary {
-				font-size: var(--cc-text-lg);
-				font-weight: 600;
-				cursor: pointer;
-			}
-
 			form {
 				display: flex;
 				flex-wrap: wrap;
@@ -47,10 +35,6 @@ export class CcLimitGroupForm extends LitElement {
 
 	@property({ attribute: false }) group: LimitGroup | null = null;
 
-	// The reader's own answer to "is this section open", not a mirror of `group`: it is forced
-	// open when an edit target arrives, and otherwise follows the element's own toggle event, so
-	// a section closed by hand stays closed through every later repaint.
-	@state() private open = false;
 	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
 	// language switch while an error is on screen re-renders it in the new language too.
 	@state() private errorKey: MessageKey | "" = "";
@@ -58,10 +42,6 @@ export class CcLimitGroupForm extends LitElement {
 	constructor() {
 		super();
 		new LocaleController(this);
-	}
-
-	override willUpdate(changed: Map<string, unknown>) {
-		if (changed.has("group") && this.group) this.open = true;
 	}
 
 	override updated(changed: Map<string, unknown>) {
@@ -101,8 +81,10 @@ export class CcLimitGroupForm extends LitElement {
 		const owner = toOwner(this.value("owner"));
 		if (!owner) return this.fail("limits.error.owner");
 
+		// No reset after a create: the page renders this form only inside an open dialog and
+		// closes it once the save lands, so the next add gets a fresh form -- and a save the page
+		// refuses (or storage rejects) leaves the reader's typing in place to fix and retry.
 		this.errorKey = "";
-		const wasCreate = this.group === null;
 		this.dispatchEvent(
 			new CustomEvent<LimitGroup>("save-group", {
 				detail: {
@@ -113,26 +95,11 @@ export class CcLimitGroupForm extends LitElement {
 				},
 			}),
 		);
-
-		if (wasCreate) {
-			// Bindings re-evaluate to the same "" they last committed after a create, so Lit's
-			// dirty check skips the DOM write and the typed text stays put. A native reset
-			// bypasses it, the same trick cc-card-form and cc-quick-add use. A <select>'s value
-			// is not restored by reset() either, so it is written back by hand.
-			const form = this.renderRoot.querySelector("form");
-			form?.reset();
-			const owned = form?.querySelector<HTMLSelectElement>('[name="owner"]');
-			if (owned) owned.value = DEFAULT_OWNER;
-		}
 	}
 
 	override render() {
 		const group = this.group;
 		return html`
-			<details ?open=${this.open} @toggle=${(event: Event) => {
-				this.open = (event.target as HTMLDetailsElement).open;
-			}}>
-				<summary>${group ? t("limits.edit", { name: group.name }) : t("limits.add")}</summary>
 				<form @submit=${this.onSubmit}>
 					${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 					<label>${t("limits.name")} <input name="name" .value=${group?.name ?? ""}
@@ -148,15 +115,10 @@ export class CcLimitGroupForm extends LitElement {
 					</label>
 					<div class="form-actions" row>
 						<button type="submit" data-action="save">${group ? t("limits.save") : t("limits.add")}</button>
-						${
-							group
-								? html`<button type="button" data-variant="quiet" data-action="cancel"
-							@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>`
-								: nothing
-						}
+						<button type="button" data-variant="quiet" data-action="cancel"
+							@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
 					</div>
 				</form>
-			</details>
 		`;
 	}
 }

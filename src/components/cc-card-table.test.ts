@@ -235,13 +235,13 @@ test("renders its column headings and empty state in the chosen language", async
 	setLocale("en");
 	const element = await mount([]);
 	expect(element.shadowRoot?.textContent).toContain(
-		"No cards yet. Add the first one with the Add a card form.",
+		"No cards yet. Add the first one with the Add a card button.",
 	);
 
 	setLocale("th");
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain(
-		"ยังไม่มีบัตร เพิ่มใบแรกด้วยแบบฟอร์มเพิ่มบัตร",
+		"ยังไม่มีบัตร เพิ่มใบแรกด้วยปุ่มเพิ่มบัตร",
 	);
 });
 
