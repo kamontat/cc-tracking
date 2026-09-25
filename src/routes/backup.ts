@@ -3,10 +3,15 @@ import "../styles/tokens.css";
 import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
+import {
+	exportBackup,
+	type ImportCounts,
+	importBackup,
+	parseBackup,
+} from "#lib/storage/transfer";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -52,13 +57,19 @@ export function renderBackupPage(repo: Repository, root: HTMLElement): void {
 			setTimeout(() => URL.revokeObjectURL(url), 0);
 		}, "backup.error.export");
 
+	// Holds the counts and filename rather than a resolved sentence, so a language switch
+	// re-renders the confirmation in the new language.
+	let imported: ({ file: string } & ImportCounts) | null = null;
+
 	const onImport = (event: Event) => {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
 		input.value = "";
+		imported = null;
 		return state.guard(async () => {
-			await importBackup(repo, parseBackup(await file.text()));
+			const counts = await importBackup(repo, parseBackup(await file.text()));
+			imported = { file: file.name, ...counts };
 		}, "backup.error.import");
 	};
 
@@ -71,6 +82,7 @@ export function renderBackupPage(repo: Repository, root: HTMLElement): void {
 					<p><small>${t("backup.warning")}</small></p>
 					<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
 					<label>${t("backup.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
+					<p class="import-status" role="status">${imported ? t("backup.imported", imported) : nothing}</p>
 				</article>
 			`,
 			root,

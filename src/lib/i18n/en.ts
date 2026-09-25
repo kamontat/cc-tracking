@@ -184,6 +184,8 @@ export const en = {
 		"Data lives in this browser only. Export regularly; clearing site data erases everything.",
 	"backup.export": "Export JSON",
 	"backup.import": "Import JSON",
+	"backup.imported":
+		"Imported {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
 	"backup.error.read": "Could not read your data.",
 	"backup.error.export": "Could not export a backup.",
 	"backup.error.import": "Could not import that backup.",

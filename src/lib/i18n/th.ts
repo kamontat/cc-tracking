@@ -201,6 +201,8 @@ export const th: Catalog = {
 		"ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น ส่งออกเป็นประจำ การล้างข้อมูลเว็บไซต์จะลบทั้งหมด",
 	"backup.export": "ส่งออก JSON",
 	"backup.import": "นำเข้า JSON",
+	"backup.imported":
+		"นำเข้า {file} แล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
 	"backup.error.read": "อ่านข้อมูลไม่สำเร็จ",
 	"backup.error.export": "ส่งออกข้อมูลสำรองไม่สำเร็จ",
 	"backup.error.import": "นำเข้าข้อมูลสำรองไม่สำเร็จ",
