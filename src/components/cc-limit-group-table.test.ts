@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import "#components/cc-limit-group-table";
+import { DEFAULT_GROUP_VIEW, type GroupView } from "#lib/domain/list-view";
 import type { LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
@@ -142,4 +143,111 @@ test("renders its headings in the chosen language", async () => {
 	setLocale("th");
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("กลุ่มวงเงิน");
+});
+
+const rowNames = (element: HTMLElement) =>
+	[
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>(
+			'td[data-label="Name"]',
+		) ?? []),
+	].map((cell) => cell.textContent?.trim());
+
+test("has no toolbar while there are no groups", async () => {
+	const element = await mount({ groups: [] });
+	expect(element.shadowRoot?.querySelector(".toolbar")).toBeNull();
+});
+
+test("lists the groups its view lets through, in the view's order", async () => {
+	const element = await mount({
+		view: { ...DEFAULT_GROUP_VIEW, sort: "available", dir: "desc" },
+	});
+	// available: pool 3,000.00, solo 1,000.00
+	expect(rowNames(element)).toEqual(["KBank account", "SCB"]);
+
+	element.view = { ...DEFAULT_GROUP_VIEW, owner: "KC" };
+	await element.updateComplete;
+	expect(rowNames(element)).toEqual(["SCB"]);
+});
+
+test("says nothing matches when the view filters every group out", async () => {
+	const element = await mount({
+		view: { ...DEFAULT_GROUP_VIEW, q: "nothing like this" },
+	});
+	expect(element.shadowRoot?.textContent).toContain(
+		"No limit groups match these filters.",
+	);
+	expect(element.shadowRoot?.querySelector("table")).toBeNull();
+});
+
+test("emits the next view from its search, owner chip, headings and clear", async () => {
+	const element = await mount({
+		view: { ...DEFAULT_GROUP_VIEW, sort: "limit" },
+	});
+	const seen: GroupView[] = [];
+	element.addEventListener("view-change", (event) =>
+		seen.push((event as CustomEvent<GroupView>).detail),
+	);
+	const root = element.shadowRoot;
+	const search = root?.querySelector<HTMLInputElement>('.toolbar [name="q"]');
+	const owner = root?.querySelector<HTMLSelectElement>(
+		'.toolbar [name="owner"]',
+	);
+	if (!search || !owner) throw new Error("toolbar fields missing");
+	search.value = "kbank";
+	search.dispatchEvent(new Event("input"));
+	owner.value = "RI";
+	owner.dispatchEvent(new Event("change"));
+	const heading = (key: string) =>
+		root?.querySelector<HTMLButtonElement>(`th button[data-sort="${key}"]`);
+	heading("limit")?.click();
+	heading("cards")?.click();
+	root
+		?.querySelector<HTMLButtonElement>('.toolbar [data-action="clear"]')
+		?.click();
+
+	const sorted = { ...DEFAULT_GROUP_VIEW, sort: "limit" as const };
+	expect(seen).toEqual([
+		{ ...sorted, q: "kbank" },
+		{ ...sorted, owner: "RI" },
+		{ ...sorted, dir: "desc" },
+		{ ...DEFAULT_GROUP_VIEW, sort: "cards" },
+		DEFAULT_GROUP_VIEW,
+	]);
+});
+
+test("sorts from every data heading, numeric ones right-aligned", async () => {
+	const element = await mount();
+	const headings = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>("th[aria-sort]") ??
+			[]),
+	].map((th) => [
+		th.querySelector("button")?.dataset["sort"],
+		th.hasAttribute("data-numeric"),
+	]);
+	expect(headings).toEqual([
+		["name", false],
+		["owner", false],
+		["limit", true],
+		["cards", true],
+		["used", true],
+		["available", true],
+	]);
+});
+
+test("sorts by card count with the counts it was handed", async () => {
+	const element = await mount({
+		counts: { pool: 0, solo: 4 },
+		view: { ...DEFAULT_GROUP_VIEW, sort: "cards", dir: "desc" },
+	});
+	expect(rowNames(element)).toEqual(["SCB", "KBank account"]);
+});
+
+test("counts the groups showing once the view has moved", async () => {
+	const element = await mount({
+		view: { ...DEFAULT_GROUP_VIEW, owner: "RI" },
+	});
+	expect(
+		element.shadowRoot?.querySelector('.toolbar [data-field="count"]')
+			?.textContent,
+	).toBe("1 of 2 groups");
 });

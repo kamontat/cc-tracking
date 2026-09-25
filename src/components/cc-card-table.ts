@@ -1,11 +1,37 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { cardOwnerOf, groupLabel } from "#lib/domain/owner";
+import {
+	filterChip,
+	isDefault,
+	listSummary,
+	searchBox,
+	sortChip,
+	sortHeader,
+} from "#components/list-controls";
+import {
+	applyCardView,
+	byOwnerThenName,
+	type CardSort,
+	type CardView,
+	DEFAULT_CARD_VIEW,
+	UNASSIGNED,
+} from "#lib/domain/list-view";
+import { LOCATIONS, toLocation } from "#lib/domain/location";
+import { cardOwnerOf, groupLabel, OWNERS, toOwner } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
-import { badge, base, controls, dataTable } from "#styles/shared";
+import { badge, base, controls, dataTable, listControls } from "#styles/shared";
+
+/** What the narrow layout's sort chip calls each sort; the wide one uses the headings. */
+const SORT_LABELS: Record<Exclude<CardSort, "default">, MessageKey> = {
+	name: "cards.sort.name",
+	location: "cards.column.location",
+	group: "cards.column.limitGroup",
+	closeDay: "cards.sort.closeDay",
+};
 
 @customElement("cc-card-table")
 export class CcCardTable extends LitElement {
@@ -14,6 +40,7 @@ export class CcCardTable extends LitElement {
 		controls,
 		dataTable,
 		badge,
+		listControls,
 		css`
 			:host {
 				display: flex;
@@ -124,6 +151,8 @@ export class CcCardTable extends LitElement {
 	@property({ attribute: false }) cards: Card[] = [];
 	@property({ attribute: false }) purchaseCounts: Record<string, number> = {};
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** Which cards to list and in what order. The table only asks for changes; see `view-change`. */
+	@property({ attribute: false }) view: CardView = DEFAULT_CARD_VIEW;
 
 	constructor() {
 		super();
@@ -134,9 +163,18 @@ export class CcCardTable extends LitElement {
 		this.dispatchEvent(new CustomEvent<string>(name, { detail: id }));
 	}
 
+	private change(patch: Partial<CardView>) {
+		this.dispatchEvent(
+			new CustomEvent<CardView>("view-change", {
+				detail: { ...this.view, ...patch },
+			}),
+		);
+	}
+
 	override render() {
-		const active = this.cards.filter((card) => !card.archived);
-		const archived = this.cards.filter((card) => card.archived);
+		const visible = applyCardView(this.cards, this.groups, this.view);
+		const active = visible.filter((card) => !card.archived);
+		const archived = visible.filter((card) => card.archived);
 		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
 		// reader has just closed, nor close one they opened.
 		return html`
@@ -145,9 +183,16 @@ export class CcCardTable extends LitElement {
 				${
 					this.cards.length === 0
 						? html`<p>${t("cards.empty")}</p>`
-						: active.length > 0
-							? this.table(active)
-							: nothing
+						: html`
+							${this.toolbar(visible.length)}
+							${
+								visible.length === 0
+									? html`<p>${t("cards.noMatch")}</p>`
+									: active.length > 0
+										? this.table(active)
+										: nothing
+							}
+						`
 				}
 			</details>
 			${
@@ -163,15 +208,63 @@ export class CcCardTable extends LitElement {
 		`;
 	}
 
+	private toolbar(shown: number) {
+		const view = this.view;
+		const groups = [...this.groups].sort(byOwnerThenName);
+		return html`
+			<div class="toolbar" row>
+				${searchBox(view.q, t("cards.searchPlaceholder"), (q) => this.change({ q }))}
+				${filterChip(
+					"owner",
+					t("cards.owner"),
+					view.owner,
+					OWNERS.map((owner) => ({ value: owner, text: owner })),
+					(value) => this.change({ owner: toOwner(value) ?? "" }),
+				)}
+				${filterChip(
+					"location",
+					t("cards.column.location"),
+					view.location,
+					LOCATIONS.map((location) => ({
+						value: location,
+						text: locationText(location),
+					})),
+					(value) => this.change({ location: toLocation(value) ?? "" }),
+				)}
+				${filterChip(
+					"group",
+					t("cards.column.limitGroup"),
+					view.group,
+					[
+						{ value: UNASSIGNED, text: t("cards.unassigned") },
+						...groups.map((group) => ({
+							value: group.id,
+							text: groupLabel(group),
+						})),
+					],
+					(group) => this.change({ group }),
+				)}
+				${sortChip(view, SORT_LABELS, (next) => this.change(next))}
+				${listSummary(
+					!isDefault(view, DEFAULT_CARD_VIEW),
+					t("cards.count", { shown, total: this.cards.length }),
+					() => this.change(DEFAULT_CARD_VIEW),
+				)}
+			</div>
+		`;
+	}
+
 	private table(cards: Card[]) {
+		const sort = (label: MessageKey, key: CardView["sort"]) =>
+			sortHeader(t(label), key, this.view, (next) => this.change(next));
 		return html`
 			<table>
 				<thead>
 					<tr>
-						<th>${t("cards.column.card")}</th>
-						<th>${t("cards.column.location")}</th>
-						<th>${t("cards.column.limitGroup")}</th>
-						<th>${t("cards.column.cycle")}</th>
+						${sort("cards.column.card", "name")}
+						${sort("cards.column.location", "location")}
+						${sort("cards.column.limitGroup", "group")}
+						${sort("cards.column.cycle", "closeDay")}
 						<th></th>
 					</tr>
 				</thead>

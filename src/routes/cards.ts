@@ -10,6 +10,7 @@ import "#components/cc-limit-group-table";
 import { html, nothing, render } from "lit";
 import { today } from "#lib/domain/date";
 import { groupUsage } from "#lib/domain/limit";
+import type { CardView, GroupView } from "#lib/domain/list-view";
 import type {
 	Card,
 	LimitGroup,
@@ -20,19 +21,24 @@ import { MessageError } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
+import { readViews, type Views, writeViews } from "#lib/ui/list-view-query";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
 /**
  * Renders the card registry page into `root`, wiring it to `repo`. `editId` is the card a link
  * from its detail page asked to edit (`/cards?edit=<id>`): loaded into the form once the list
- * arrives, and ignored when no such card exists. Exported for tests.
+ * arrives, and ignored when no such card exists. `query` seeds both lists' search, filter and
+ * sort; every change to them is handed back through `onQuery` as the next query string, so a
+ * reload or a shared link reopens the same view. Exported for tests.
  */
 export function renderCardsPage(
 	repo: Repository,
 	root: HTMLElement,
 	storage: Storage = globalThis.localStorage,
 	editId: string | null = null,
+	query: URLSearchParams = new URLSearchParams(),
+	onQuery: (query: URLSearchParams) => void = () => {},
 ): void {
 	let cards: Card[] = [];
 	let purchases: Purchase[] = [];
@@ -46,7 +52,15 @@ export function renderCardsPage(
 	// Taken on the first load only: a later refresh must not drag the form back to this card
 	// after the reader has saved it or moved on to another.
 	let pendingEdit = editId;
+	let views = readViews(query);
 	const now = today();
+
+	const onViewChange = (next: Partial<Views>) => {
+		views = { ...views, ...next };
+		query = writeViews(query, views);
+		onQuery(query);
+		paint();
+	};
 
 	/** Brings the form into view -- picked from far down the list, it is out of sight above. */
 	const revealForm = () =>
@@ -203,6 +217,8 @@ export function renderCardsPage(
 						.cards=${cards}
 						.purchaseCounts=${counts}
 						.groups=${groups}
+						.view=${views.cards}
+						@view-change=${(event: CustomEvent<CardView>) => onViewChange({ cards: event.detail })}
 						@edit=${onEdit}
 						@archive=${onArchive}
 						@remove=${onRemove}
@@ -213,6 +229,8 @@ export function renderCardsPage(
 						.groups=${groups}
 						.usage=${usage()}
 						.counts=${groupCounts()}
+						.view=${views.groups}
+						@view-change=${(event: CustomEvent<GroupView>) => onViewChange({ groups: event.detail })}
 						@edit-group=${onEditGroup}
 						@remove-group=${onRemoveGroup}
 					></cc-limit-group-table>
@@ -228,6 +246,21 @@ export function renderCardsPage(
 bootstrap("title.cards", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (!root) return;
-	const editId = new URLSearchParams(location.search).get("edit");
-	renderCardsPage(repo, root, globalThis.localStorage, editId);
+	const query = new URLSearchParams(location.search);
+	renderCardsPage(
+		repo,
+		root,
+		globalThis.localStorage,
+		query.get("edit"),
+		query,
+		// Replaced, not pushed: every keystroke in a search box is not a step Back should retrace.
+		(next) => {
+			const search = next.toString();
+			history.replaceState(
+				history.state,
+				"",
+				`${location.pathname}${search ? `?${search}` : ""}${location.hash}`,
+			);
+		},
+	);
 });

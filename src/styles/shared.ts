@@ -395,3 +395,114 @@ export const usageBar = css`
 		}
 	}
 `;
+
+/**
+ * A list's own controls, from `#components/list-controls`: one row above the table holding
+ * the search box, filter chips and a count, and sorting column headings in the table itself.
+ * Layered over `controls` and `dataTable`, whose label, select and button rules it bends.
+ */
+export const listControls = css`
+	.toolbar {
+		flex-wrap: wrap;
+		gap: var(--cc-space-2);
+		align-items: center;
+	}
+
+	/* Sized like a chip, so the row reads as one strip of controls rather than a form. */
+	.toolbar > .search {
+		flex: 1 1 calc(var(--cc-space-7) * 5);
+		width: auto;
+		padding: var(--cc-space-1) var(--cc-space-3);
+		font-size: var(--cc-text-sm);
+		border-radius: var(--cc-radius-md);
+	}
+
+	/* A filter as a pill: its name, then a select stripped of its own box. */
+	.chip {
+		flex-direction: row;
+		gap: var(--cc-space-1);
+		align-items: center;
+		padding-left: var(--cc-space-3);
+		color: var(--cc-text-muted);
+		white-space: nowrap;
+		background: var(--cc-surface-sunken);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+	}
+
+	.chip[data-active] {
+		color: var(--cc-link);
+		border-color: var(--cc-accent);
+	}
+
+	/* background-color, not the shorthand: the chevron is a background-image. */
+	.chip select {
+		width: auto;
+		padding-block: var(--cc-space-1);
+		padding-left: var(--cc-space-1);
+		font-size: var(--cc-text-sm);
+		color: var(--cc-text);
+		background-color: transparent;
+		border: 0;
+	}
+
+	/* The headings sort on the wide layout; stacked, they are hidden, and this stands in. */
+	.sort-chip {
+		display: none;
+	}
+
+	@media (max-width: 639px) {
+		.sort-chip {
+			display: flex;
+		}
+	}
+
+	.toolbar-summary {
+		display: inline-flex;
+		gap: var(--cc-space-2);
+		align-items: center;
+		margin-left: auto;
+		font-size: var(--cc-text-sm);
+		color: var(--cc-text-muted);
+		white-space: nowrap;
+	}
+
+	/* A heading's sort button reads as the heading itself, not as one of the three variants. */
+	th > button.sort {
+		display: inline-flex;
+		gap: var(--cc-space-1);
+		align-items: center;
+		padding: 0;
+		font: inherit;
+		letter-spacing: inherit;
+		text-transform: inherit;
+		color: inherit;
+		background: transparent;
+		border: 0;
+		border-radius: var(--cc-radius-sm);
+	}
+
+	th > button.sort:hover {
+		color: var(--cc-text);
+		background: transparent;
+	}
+
+	th > button.sort:focus-visible {
+		outline: none;
+		box-shadow: var(--cc-focus-ring);
+	}
+
+	th[aria-sort="ascending"],
+	th[aria-sort="descending"] {
+		color: var(--cc-link);
+	}
+
+	.sort-arrow {
+		color: var(--cc-border);
+	}
+
+	th[aria-sort="ascending"] .sort-arrow,
+	th[aria-sort="descending"] .sort-arrow {
+		color: inherit;
+	}
+`;

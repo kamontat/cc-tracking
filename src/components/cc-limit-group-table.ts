@@ -1,12 +1,43 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import {
+	filterChip,
+	isDefault,
+	listSummary,
+	searchBox,
+	sortChip,
+	sortHeader,
+} from "#components/list-controls";
 import { usageLevel, usageShare } from "#lib/domain/limit";
+import {
+	applyGroupView,
+	DEFAULT_GROUP_VIEW,
+	type GroupSort,
+	type GroupView,
+} from "#lib/domain/list-view";
 import { formatAmount } from "#lib/domain/money";
-import { ownerOf } from "#lib/domain/owner";
+import { OWNERS, ownerOf, toOwner } from "#lib/domain/owner";
 import type { LimitGroup } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { base, controls, dataTable, usageBar } from "#styles/shared";
+import {
+	base,
+	controls,
+	dataTable,
+	listControls,
+	usageBar,
+} from "#styles/shared";
+
+/** Each sort is named for the column heading that sets it, on every layout. */
+const SORT_LABELS: Record<Exclude<GroupSort, "default">, MessageKey> = {
+	name: "limits.column.name",
+	owner: "limits.column.owner",
+	limit: "limits.column.limit",
+	cards: "limits.column.cards",
+	used: "limits.column.used",
+	available: "limits.column.available",
+};
 
 @customElement("cc-limit-group-table")
 export class CcLimitGroupTable extends LitElement {
@@ -15,6 +46,7 @@ export class CcLimitGroupTable extends LitElement {
 		controls,
 		dataTable,
 		usageBar,
+		listControls,
 		css`
 			details {
 				display: flex;
@@ -63,6 +95,8 @@ export class CcLimitGroupTable extends LitElement {
 	@property({ attribute: false }) usage: Record<string, number> = {};
 	/** How many cards point at each group id. */
 	@property({ attribute: false }) counts: Record<string, number> = {};
+	/** Which groups to list and in what order. The table only asks for changes; see `view-change`. */
+	@property({ attribute: false }) view: GroupView = DEFAULT_GROUP_VIEW;
 
 	constructor() {
 		super();
@@ -73,33 +107,88 @@ export class CcLimitGroupTable extends LitElement {
 		this.dispatchEvent(new CustomEvent<string>(name, { detail: id }));
 	}
 
+	private change(patch: Partial<GroupView>) {
+		this.dispatchEvent(
+			new CustomEvent<GroupView>("view-change", {
+				detail: { ...this.view, ...patch },
+			}),
+		);
+	}
+
 	override render() {
+		const visible = applyGroupView(
+			this.groups,
+			this.usage,
+			this.view,
+			this.counts,
+		);
 		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
 		// reader has just closed.
 		return html`
 			<details open>
 				<summary>${t("limits.title")}</summary>
-				${this.groups.length === 0 ? html`<p>${t("limits.empty")}</p>` : this.table()}
+				${
+					this.groups.length === 0
+						? html`<p>${t("limits.empty")}</p>`
+						: html`
+							${this.toolbar(visible.length)}
+							${
+								visible.length === 0
+									? html`<p>${t("limits.noMatch")}</p>`
+									: this.table(visible)
+							}
+						`
+				}
 			</details>
 		`;
 	}
 
-	private table() {
+	private toolbar(shown: number) {
+		const view = this.view;
+		return html`
+			<div class="toolbar" row>
+				${searchBox(view.q, t("limits.searchPlaceholder"), (q) => this.change({ q }))}
+				${filterChip(
+					"owner",
+					t("limits.column.owner"),
+					view.owner,
+					OWNERS.map((owner) => ({ value: owner, text: owner })),
+					(value) => this.change({ owner: toOwner(value) ?? "" }),
+				)}
+				${sortChip(view, SORT_LABELS, (next) => this.change(next))}
+				${listSummary(
+					!isDefault(view, DEFAULT_GROUP_VIEW),
+					t("limits.count", { shown, total: this.groups.length }),
+					() => this.change(DEFAULT_GROUP_VIEW),
+				)}
+			</div>
+		`;
+	}
+
+	private table(groups: LimitGroup[]) {
+		const sort = (key: Exclude<GroupSort, "default">, numeric = false) =>
+			sortHeader(
+				t(SORT_LABELS[key]),
+				key,
+				this.view,
+				(next) => this.change(next),
+				numeric,
+			);
 		return html`
 			<table>
 				<thead>
 					<tr>
-						<th>${t("limits.column.name")}</th>
-						<th>${t("limits.column.owner")}</th>
-						<th data-numeric>${t("limits.column.limit")}</th>
-						<th data-numeric>${t("limits.column.cards")}</th>
-						<th data-numeric>${t("limits.column.used")}</th>
-						<th data-numeric>${t("limits.column.available")}</th>
+						${sort("name")}
+						${sort("owner")}
+						${sort("limit", true)}
+						${sort("cards", true)}
+						${sort("used", true)}
+						${sort("available", true)}
 						<th></th>
 					</tr>
 				</thead>
 				<tbody>
-					${this.groups.map((group) => this.row(group))}
+					${groups.map((group) => this.row(group))}
 				</tbody>
 			</table>
 		`;

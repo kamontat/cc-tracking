@@ -70,9 +70,6 @@ export const th: Catalog = {
 	"due.stillOpen": "ยังไม่สรุปยอด",
 	"due.markPaid": "บันทึกว่าชำระแล้ว",
 
-	"groups.title": "บัตรแยกตามที่อยู่",
-	"groups.nextDue": "ครบกำหนดถัดไป {date}",
-
 	"quickAdd.card": "บัตร",
 	"quickAdd.date": "วันที่",
 	"quickAdd.amount": "จำนวนเงิน (บาท)",
@@ -87,6 +84,20 @@ export const th: Catalog = {
 	"quickAdd.error.futureDate": "วันที่อยู่ในอนาคต รายการบัตรเครดิตลงวันที่ล่วงหน้าไม่ได้",
 	"quickAdd.error.badAmount": "กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
 	"quickAdd.available": "คงเหลือ {available} จาก {limit}",
+
+	"list.search": "ค้นหา",
+	"list.sort": "เรียง",
+	"list.sortDefault": "ลำดับที่บันทึก",
+	"list.clear": "ล้าง",
+	"list.any": "ทั้งหมด",
+	"cards.count": "{shown} จาก {total} บัตร",
+	"limits.count": "{shown} จาก {total} กลุ่ม",
+	"cards.searchPlaceholder": "ชื่อ รหัส เลขท้าย 4 หลัก หรือหมายเหตุ",
+	"cards.sort.name": "ชื่อ",
+	"cards.sort.closeDay": "วันสรุปยอด",
+	"cards.noMatch": "ไม่มีบัตรที่ตรงกับตัวกรอง",
+	"limits.searchPlaceholder": "ชื่อกลุ่ม",
+	"limits.noMatch": "ไม่มีกลุ่มวงเงินที่ตรงกับตัวกรอง",
 
 	"cards.title": "บัตร",
 	"cards.list": "รายการบัตร",

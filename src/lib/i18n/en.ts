@@ -53,9 +53,6 @@ export const en = {
 	"due.stillOpen": "still open",
 	"due.markPaid": "Mark paid",
 
-	"groups.title": "Cards by location",
-	"groups.nextDue": "Next due {date}",
-
 	"quickAdd.card": "Card",
 	"quickAdd.date": "Date",
 	"quickAdd.amount": "Amount (THB)",
@@ -71,6 +68,20 @@ export const en = {
 		"That date is in the future. A credit-card purchase cannot be dated ahead.",
 	"quickAdd.error.badAmount": "Enter the amount in baht, like 1234.56.",
 	"quickAdd.available": "Available {available} of {limit}",
+
+	"list.search": "Search",
+	"list.sort": "Sort",
+	"list.sortDefault": "Saved order",
+	"list.clear": "Clear",
+	"list.any": "Any",
+	"cards.count": "{shown} of {total} cards",
+	"limits.count": "{shown} of {total} groups",
+	"cards.searchPlaceholder": "Name, ID, last 4 or comment",
+	"cards.sort.name": "Name",
+	"cards.sort.closeDay": "Close day",
+	"cards.noMatch": "No cards match these filters.",
+	"limits.searchPlaceholder": "Group name",
+	"limits.noMatch": "No limit groups match these filters.",
 
 	"cards.title": "Cards",
 	"cards.list": "Card list",
