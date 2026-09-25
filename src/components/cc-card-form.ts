@@ -390,8 +390,12 @@ export class CcCardForm extends LitElement {
 
 				<div class="form-actions" row>
 					<button type="submit">${card ? t("form.save") : t("form.add")}</button>
-					<button type="button" data-variant="quiet"
-						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
+					${
+						card
+							? html`<button type="button" data-variant="quiet" data-action="cancel"
+						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>`
+							: nothing
+					}
 				</div>
 				</form>
 			</details>
