@@ -149,7 +149,7 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
-/* The backup page's confirmation after an import, matching cc-quick-add's `.answer`. The
+/* The settings page's confirmation after a backup import, matching cc-quick-add's `.answer`. The
    element stays in the DOM so its live region is in place before the message arrives; it is
    only hidden while empty, so it takes no gap in the article's flex column. */
 .import-status {

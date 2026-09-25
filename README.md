@@ -32,7 +32,8 @@ nothing, so the footer there reads `dev` and the time the page was opened.
   already stored in this browser from before the locations were fixed are reset
   to Bangkok once at startup; the page then names those cards, once, with a
   Dismiss button, so you can pick the correct location by hand.
-- `/backup` — JSON backup export and import.
+- `/settings` — where new purchases can be recorded, plus JSON backup export
+  and import. The old `/backup` address redirects here.
 - `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
   paging. A month with no purchases in it starts collapsed, so a long run of
   unused months stays one line each. There is no in-place edit for a purchase:
@@ -118,7 +119,7 @@ A card's location is stored as one of three lowercase keys: `bangkok`,
 shown on screen or in the UI, the location goes through a display function
 that renders them as "Bangkok", "Phichit", and "Krabi".
 
-Use the Export JSON button on `/backup` as your backup — importing merges a
+Use the Export JSON button on `/settings` as your backup — importing merges a
 backup's limit groups, cards, purchases, and payments back in without
 deleting anything already there. Backups are now version 2 and carry
 `limitGroups` alongside the three lists that were already there; a version 1

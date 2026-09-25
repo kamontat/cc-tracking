@@ -156,7 +156,7 @@ test("names the cards whose location was reset, once", async () => {
 	expect(second.querySelector('[data-testid="location-reset"]')).toBeNull();
 });
 
-test("leaves backup to the backup page, offering no export or import of its own", async () => {
+test("leaves backup to the settings page, offering no export or import of its own", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard);
 	const root = mount();
