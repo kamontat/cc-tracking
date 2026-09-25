@@ -408,6 +408,23 @@ describe("importBackup", () => {
 		expect(await restored.listPayments("kbank")).toHaveLength(1);
 	});
 
+	test("reports how many of each record it wrote", async () => {
+		const repo = await populated();
+		await repo.saveLimitGroup({ id: "pool", name: "KBank", limit: 500_000 });
+
+		const counts = await importBackup(
+			new InMemoryRepository(),
+			await exportBackup(repo),
+		);
+
+		expect(counts).toEqual({
+			cards: 2,
+			purchases: 2,
+			payments: 1,
+			limitGroups: 1,
+		});
+	});
+
 	test("merges over existing records rather than wiping them", async () => {
 		const target = new InMemoryRepository();
 		await target.saveCard(

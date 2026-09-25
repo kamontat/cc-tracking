@@ -218,14 +218,28 @@ export function parseBackup(text: string): Backup {
 	return parsed;
 }
 
+/** How many of each record an import wrote. */
+export type ImportCounts = {
+	cards: number;
+	purchases: number;
+	payments: number;
+	limitGroups: number;
+};
+
 /** Additive: writes every record over whatever shares its key, and deletes nothing. */
 export async function importBackup(
 	repo: Repository,
 	backup: Backup,
-): Promise<void> {
+): Promise<ImportCounts> {
 	for (const group of backup.limitGroups) await repo.saveLimitGroup(group);
 	for (const card of backup.cards) await repo.saveCard(card);
 	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
 	for (const payment of backup.payments) await repo.savePayment(payment);
 	if (backup.settings) await repo.saveSettings(backup.settings);
+	return {
+		cards: backup.cards.length,
+		purchases: backup.purchases.length,
+		payments: backup.payments.length,
+		limitGroups: backup.limitGroups.length,
+	};
 }

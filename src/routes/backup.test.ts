@@ -18,12 +18,15 @@ const mount = (): HTMLElement => {
 const bannerMessage = (root: HTMLElement): string =>
 	root.querySelector("cc-error-banner")?.message ?? "";
 
+const importStatus = (root: HTMLElement): string =>
+	root.querySelector(".import-status")?.textContent?.trim() ?? "";
+
 /** Simulates picking `text` as the file for the page's Import JSON input. */
-const chooseFile = (root: HTMLElement, text: string) => {
+const chooseFile = (root: HTMLElement, text: string, name = "backup.json") => {
 	const input = root.querySelector<HTMLInputElement>('input[type="file"]');
 	if (!input) throw new Error("no file input");
 	input.files = [
-		new File([text], "backup.json", { type: "application/json" }),
+		new File([text], name, { type: "application/json" }),
 	] as unknown as FileList;
 	input.dispatchEvent(new Event("change", { bubbles: true }));
 };
@@ -157,4 +160,69 @@ test("renders its heading and warning in the chosen language", async () => {
 	setLocale("th");
 	await settle();
 	expect(root.querySelector("h1")?.textContent).toBe("สำรองข้อมูล");
+});
+
+const oneCardBackup = async (): Promise<string> => {
+	const source = new InMemoryRepository();
+	await source.saveCard(sampleCard);
+	await source.savePurchase({
+		id: "p1",
+		cardId: "kbank",
+		date: "2026-09-05",
+		amount: 10_000,
+		note: "fuel",
+	});
+	return JSON.stringify(await exportBackup(source));
+};
+
+test("a successful import names the file and counts what it brought in", async () => {
+	setLocale("en");
+	const root = mount();
+	renderBackupPage(new InMemoryRepository(), root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup(), "cc-tracking-2026-09-21.json");
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
+	expect(importStatus(root)).toBe(
+		"Imported cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
+	);
+	expect(root.querySelector(".import-status")?.getAttribute("role")).toBe(
+		"status",
+	);
+});
+
+test("a failed import clears the success message from an earlier one", async () => {
+	setLocale("en");
+	const root = mount();
+	renderBackupPage(new InMemoryRepository(), root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup());
+	await settle();
+	expect(importStatus(root)).not.toBe("");
+
+	chooseFile(root, "{ this is not json");
+	await settle();
+
+	expect(importStatus(root)).toBe("");
+	expect(bannerMessage(root)).toContain("Could not import that backup.");
+});
+
+test("the success message follows a language switch", async () => {
+	setLocale("en");
+	const root = mount();
+	renderBackupPage(new InMemoryRepository(), root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup());
+	await settle();
+	const english = importStatus(root);
+
+	setLocale("th");
+	await settle();
+	expect(importStatus(root)).toContain("backup.json");
+	expect(importStatus(root)).not.toBe(english);
+	setLocale("en");
 });
