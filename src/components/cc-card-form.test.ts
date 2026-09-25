@@ -36,6 +36,11 @@ const fill = (element: HTMLElement, name: string, value: string) => {
 	field.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
+const tickSupplementary = (element: HTMLElement) =>
+	element.shadowRoot
+		?.querySelector<HTMLInputElement>('[name="supplementary"]')
+		?.click();
+
 const submit = (element: HTMLElement) =>
 	element.shadowRoot
 		?.querySelector("form")
@@ -200,9 +205,100 @@ test("starts closed and titles itself, opening when a card arrives to edit", asy
 	);
 });
 
-test("no longer asks whose card it is -- that answer lives on the limit group", async () => {
+test("asks whose card it is only for a supplementary card -- otherwise the group answers", async () => {
 	const element = await mount();
 	expect(element.shadowRoot?.querySelector('[name="owner"]')).toBeNull();
+
+	tickSupplementary(element);
+	await element.updateComplete;
+	const options = [
+		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="owner"] option',
+		) ?? []),
+	].map((option) => option.value);
+	expect(options).toEqual(["", "KC", "NT", "RI"]);
+
+	tickSupplementary(element);
+	await element.updateComplete;
+	expect(element.shadowRoot?.querySelector('[name="owner"]')).toBeNull();
+});
+
+test("refuses a supplementary card with no owner chosen", async () => {
+	const element = await mount();
+	let emitted = false;
+	element.addEventListener("save", () => {
+		emitted = true;
+	});
+
+	tickSupplementary(element);
+	await element.updateComplete;
+	fillCard(element);
+	fill(element, "limitGroupId", "pool");
+	submit(element);
+	await element.updateComplete;
+
+	expect(emitted).toBe(false);
+	expect(element.shadowRoot?.textContent).toContain(
+		"Choose who holds this supplementary card.",
+	);
+});
+
+test("saves the holder of a supplementary card", async () => {
+	const element = await mount();
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	tickSupplementary(element);
+	await element.updateComplete;
+	fillCard(element);
+	fill(element, "limitGroupId", "pool");
+	fill(element, "owner", "NT");
+	submit(element);
+
+	expect(saved?.supplementary).toBe(true);
+	expect(saved?.owner).toBe("NT");
+});
+
+test("drops the owner once the card is no longer supplementary", async () => {
+	const element = await mount({
+		id: "a2",
+		name: "Card A",
+		last4: "2222",
+		location: "krabi",
+		supplementary: true,
+		owner: "NT",
+		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+		archived: false,
+		limitGroupId: "pool",
+	});
+	let saved: Card | undefined;
+	element.addEventListener("save", (event) => {
+		saved = (event as CustomEvent<Card>).detail;
+	});
+
+	tickSupplementary(element);
+	await element.updateComplete;
+	submit(element);
+
+	expect(saved?.supplementary).toBe(false);
+	expect(saved && "owner" in saved).toBe(false);
+});
+
+test("names each group with its owner in the picker", async () => {
+	const element = await mount(null, [
+		{ id: "pool", name: "KBank account", limit: 500_000, owner: "NT" },
+		{ id: "solo", name: "SCB", limit: 100_000 },
+	]);
+	const labels = [
+		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="limitGroupId"] option',
+		) ?? []),
+	]
+		.slice(1)
+		.map((option) => option.textContent?.trim());
+	expect(labels).toEqual(["KBank account (NT)", "SCB (KC)"]);
 });
 
 test("saves a card with no owner field at all", async () => {
@@ -498,18 +594,20 @@ test("saves a card as supplementary only when the box is ticked", async () => {
 	await element.updateComplete;
 	fillCard(element);
 	fill(element, "limitGroupId", "pool");
+	fill(element, "owner", "NT");
 	submit(element);
 
 	expect(saves[1]?.supplementary).toBe(true);
 });
 
-test("shows the edited card's supplementary answer, and saves it back untouched", async () => {
+test("shows the edited card's supplementary answer and holder, and saves them back untouched", async () => {
 	const element = await mount({
 		id: "scb",
 		name: "SCB",
 		last4: "1234",
 		location: "bangkok",
 		supplementary: true,
+		owner: "RI",
 		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
 		archived: false,
 	});
@@ -524,9 +622,15 @@ test("shows the edited card's supplementary answer, and saves it back untouched"
 		)?.checked,
 	).toBe(true);
 
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
+			?.value,
+	).toBe("RI");
+
 	fill(element, "limitGroupId", "pool");
 	submit(element);
 	expect(saved?.supplementary).toBe(true);
+	expect(saved?.owner).toBe("RI");
 });
 
 test("clears the supplementary box after a create", async () => {
@@ -542,14 +646,25 @@ test("clears the supplementary box after a create", async () => {
 	await element.updateComplete;
 	fillCard(element);
 	fill(element, "limitGroupId", "pool");
+	fill(element, "owner", "NT");
 	submit(element);
 	await element.updateComplete;
 
+	expect(saves).toHaveLength(1);
 	expect(
 		element.shadowRoot?.querySelector<HTMLInputElement>(
 			'[name="supplementary"]',
 		)?.checked,
 	).toBe(false);
+	expect(element.shadowRoot?.querySelector('[name="owner"]')).toBeNull();
+
+	// Ticked again for the next card, the holder starts blank rather than carrying NT over.
+	tickSupplementary(element);
+	await element.updateComplete;
+	expect(
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
+			?.value,
+	).toBe("");
 });
 
 test("renders cancel as a quiet button beside the submit", async () => {

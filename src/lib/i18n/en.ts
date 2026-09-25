@@ -84,6 +84,7 @@ export const en = {
 	"cards.column.cycle": "Cycle",
 	"cards.column.limitGroup": "Limit group",
 	"cards.unassigned": "Not assigned",
+	"cards.owner": "Owner",
 	"cards.archived": "Archived",
 	"cards.archivedList": "Archived ({count})",
 	"cards.archive": "Archive",
@@ -108,6 +109,10 @@ export const en = {
 	"form.last4": "Last 4",
 	"form.location": "Location",
 	"form.supplementary": "Supplementary card",
+	"form.owner": "Card holder",
+	"form.ownerNone": "Choose who holds it",
+	"form.ownerHint": "The limit group's owner holds the account.",
+	"form.error.owner": "Choose who holds this supplementary card.",
 	"form.limitGroup": "Limit group",
 	"form.limitGroupNone": "Choose a limit group",
 	"form.limitGroupEmpty":

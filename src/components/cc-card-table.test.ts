@@ -132,6 +132,34 @@ test("names whose card each one is through the group it draws on", async () => {
 	expect(group(rows[3])).toBe("Not assigned");
 });
 
+test("names the account's owner beside the group, and a supplementary card's own holder beneath", async () => {
+	const element = await mount(
+		[
+			{ ...card, id: "a1", limitGroupId: "pool" },
+			{
+				...card,
+				id: "a2",
+				limitGroupId: "pool",
+				supplementary: true,
+				owner: "NT",
+			},
+		],
+		{},
+		[{ id: "pool", name: "Card A pool", limit: 500_000, owner: "KC" }],
+	);
+	const rows = [
+		...(element.shadowRoot?.querySelectorAll<HTMLElement>("tbody tr") ?? []),
+	];
+	const text = (row: HTMLElement | undefined, field: string) =>
+		row?.querySelector(`[data-field="${field}"]`)?.textContent?.trim();
+
+	expect(text(rows[0], "limit-group")).toBe("Card A pool (KC)");
+	expect(text(rows[0], "owner")).toBe("KC");
+	expect(text(rows[1], "limit-group")).toBe("Card A pool (KC)");
+	expect(text(rows[1], "owner")).toBe("NT");
+	expect(rows[1]?.querySelector(".owner")?.textContent).toContain("Owner");
+});
+
 test("marks a supplementary card and leaves an ordinary one unmarked", async () => {
 	const element = await mount([
 		{ ...card, id: "kbank", supplementary: true },

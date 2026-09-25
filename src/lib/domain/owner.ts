@@ -1,4 +1,4 @@
-import type { LimitGroup } from "#lib/domain/types";
+import type { Card, LimitGroup } from "#lib/domain/types";
 
 /** The three people an account can belong to. Stored as these initials, which are not translated. */
 export const OWNERS = ["KC", "NT", "RI"] as const;
@@ -31,4 +31,26 @@ export function toOwner(value: unknown): Owner | null {
  */
 export function ownerOf(group: LimitGroup): Owner {
 	return toOwner(group.owner) ?? DEFAULT_OWNER;
+}
+
+/**
+ * Who holds this card. A supplementary card (บัตรเสริม) is issued to someone other than the
+ * account's owner -- KC's account, NT's card -- so it answers with its own `owner`. Every other
+ * card, and a supplementary one saved before the field existed, belongs to whoever owns the
+ * group it draws on. `null` only for a card with neither: no owner of its own and no group.
+ */
+export function cardOwnerOf(
+	card: Card,
+	group: LimitGroup | null,
+): Owner | null {
+	const own = card.supplementary ? toOwner(card.owner) : null;
+	return own ?? (group ? ownerOf(group) : null);
+}
+
+/**
+ * A group as a picker names it: `KBank pool (KC)`. The owner's initials are not translated,
+ * so neither is the pattern.
+ */
+export function groupLabel(group: LimitGroup): string {
+	return `${group.name} (${ownerOf(group)})`;
 }

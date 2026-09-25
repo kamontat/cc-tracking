@@ -1,6 +1,6 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { ownerOf } from "#lib/domain/owner";
+import { cardOwnerOf, groupLabel } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
@@ -184,7 +184,9 @@ export class CcCardTable extends LitElement {
 
 	private row(card: Card) {
 		const count = this.purchaseCounts[card.id] ?? 0;
-		const group = this.groups.find(({ id }) => id === card.limitGroupId);
+		const group =
+			this.groups.find(({ id }) => id === card.limitGroupId) ?? null;
+		const owner = cardOwnerOf(card, group);
 		const meta = [
 			html`<span class="card-id">${card.id}</span>`,
 			html`••••${card.last4}`,
@@ -214,8 +216,8 @@ export class CcCardTable extends LitElement {
 				<td class="location" data-label=${t("cards.column.location")}>${locationText(card.location)}</td>
 				<td class="group" data-label=${t("cards.column.limitGroup")}>
 					<span class="group-value">
-						<span data-field="limit-group">${group?.name ?? t("cards.unassigned")}</span>
-						${group ? html`<span class="owner" data-field="owner">${ownerOf(group)}</span>` : nothing}
+						<span data-field="limit-group">${group ? groupLabel(group) : t("cards.unassigned")}</span>
+						${owner ? html`<span class="owner">${t("cards.owner")} <span data-field="owner">${owner}</span></span>` : nothing}
 					</span>
 				</td>
 				<td class="cycle" data-label=${t("cards.column.cycle")}>${describeCycleText(card.cycle)}</td>

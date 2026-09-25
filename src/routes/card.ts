@@ -13,7 +13,7 @@ import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { groupUsage, outstandingOf, spendableRows } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
-import { ownerOf } from "#lib/domain/owner";
+import { cardOwnerOf, groupLabel } from "#lib/domain/owner";
 import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
 import {
 	buildStatement,
@@ -205,14 +205,15 @@ export function renderCardPage(
 	/** The card's own facts beside its history, and the one way off this page to change them. */
 	const details = (current: Card) => {
 		const group = groupOf(current);
+		const owner = cardOwnerOf(current, group);
 		const row = (label: string, value: string) =>
 			html`<div class="facts__row" row><dt>${label}</dt><dd>${value}</dd></div>`;
 		return html`
 			<article class="card-details">
 				<h2>${t("card.details")}</h2>
 				<dl class="facts">
-					${row(t("card.group"), group?.name ?? t("cards.unassigned"))}
-					${group ? row(t("card.owner"), ownerOf(group)) : nothing}
+					${row(t("card.group"), group ? groupLabel(group) : t("cards.unassigned"))}
+					${owner ? row(t("card.owner"), owner) : nothing}
 					${row(t("card.location"), locationText(current.location))}
 					${row(t("card.cycle"), describeCycleText(current.cycle))}
 				</dl>

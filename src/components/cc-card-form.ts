@@ -1,6 +1,7 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
+import { groupLabel, OWNERS, type Owner, toOwner } from "#lib/domain/owner";
 import type { Card, CycleRule, LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
@@ -99,6 +100,9 @@ export class CcCardForm extends LitElement {
 	// a section closed by hand stays closed through every later repaint.
 	@state() private open = false;
 	@state() private supplementary = false;
+	// Who holds a supplementary card. Kept while the box is unticked, so ticking it straight back
+	// does not lose the choice, but only written into the saved card while the box is ticked.
+	@state() private owner: Owner | "" = "";
 	// Tracked independently of the DOM so a `groups` reshape can be checked against the user's
 	// actual choice -- see willUpdate below.
 	@state() private selectedGroupId = "";
@@ -118,6 +122,7 @@ export class CcCardForm extends LitElement {
 				this.open = true;
 			}
 			this.supplementary = this.card?.supplementary ?? false;
+			this.owner = toOwner(this.card?.owner) ?? "";
 			this.selectedGroupId = this.card?.limitGroupId ?? "";
 			return;
 		}
@@ -140,6 +145,13 @@ export class CcCardForm extends LitElement {
 			const select =
 				this.renderRoot.querySelector<HTMLSelectElement>('[name="location"]');
 			if (select) select.value = this.card?.location ?? DEFAULT_LOCATION;
+		}
+		// The owner select comes and goes with the supplementary box, so it is freshly created
+		// whenever the box is ticked; point it at the tracked choice then, and on a new edit target.
+		if (changed.has("card") || changed.has("supplementary")) {
+			const owner =
+				this.renderRoot.querySelector<HTMLSelectElement>('[name="owner"]');
+			if (owner) owner.value = this.owner;
 		}
 		if (!changed.has("card") && !changed.has("groups")) return;
 		const limitGroup = this.renderRoot.querySelector<HTMLSelectElement>(
@@ -196,6 +208,9 @@ export class CcCardForm extends LitElement {
 		const limitGroupId = this.value("limitGroupId");
 		if (!limitGroupId) return this.fail("form.error.limitGroup");
 
+		const owner = this.supplementary ? toOwner(this.value("owner")) : null;
+		if (this.supplementary && !owner) return this.fail("form.error.owner");
+
 		this.errorKey = "";
 		const wasCreate = this.card === null;
 		const card: Card = {
@@ -204,6 +219,8 @@ export class CcCardForm extends LitElement {
 			last4,
 			location,
 			supplementary: this.supplementary,
+			// Left off entirely for a primary card: whoever owns its group owns it.
+			...(owner ? { owner } : {}),
 			cycle,
 			comment: this.value("comment"),
 			archived: this.card?.archived ?? false,
@@ -223,6 +240,7 @@ export class CcCardForm extends LitElement {
 			form?.reset();
 			this.kind = "offset";
 			this.supplementary = false;
+			this.owner = "";
 			const offsetRadio = form?.querySelector<HTMLInputElement>(
 				'[name="kind"][value="offset"]',
 			);
@@ -293,11 +311,35 @@ export class CcCardForm extends LitElement {
 						}}>
 						<option value="">${t("form.limitGroupNone")}</option>
 						${this.groups.map(
-							(group) => html`<option value=${group.id}>${group.name}</option>`,
+							(group) =>
+								html`<option value=${group.id}>${groupLabel(group)}</option>`,
 						)}
 					</select>
 					${this.groups.length === 0 ? html`<small>${t("form.limitGroupEmpty")}</small>` : nothing}
 				</label>
+
+				${
+					// After the group, not beside the box: the hint explains the holder against the
+					// account the group names, so it reads best right after that choice.
+					this.supplementary
+						? html`
+							<label>
+								${t("form.owner")}
+								<select name="owner" required
+									@change=${(event: Event) => {
+										this.owner =
+											toOwner((event.target as HTMLSelectElement).value) ?? "";
+									}}>
+									<option value="">${t("form.ownerNone")}</option>
+									${OWNERS.map(
+										(value) => html`<option value=${value}>${value}</option>`,
+									)}
+								</select>
+								<small>${t("form.ownerHint")}</small>
+							</label>
+						`
+						: nothing
+				}
 
 				<fieldset>
 					<legend>${t("form.cycle")}</legend>

@@ -23,6 +23,11 @@ export type Card = {
 	 * cards saved before the field existed, which reads the same as not being one.
 	 */
 	supplementary?: boolean;
+	/**
+	 * Who holds a supplementary card, which is not whoever owns the account it draws on. Only
+	 * read while `supplementary` is set; see `cardOwnerOf` in `#lib/domain/owner`.
+	 */
+	owner?: Owner;
 	cycle: CycleRule;
 	comment?: string;
 	archived: boolean;

@@ -192,6 +192,34 @@ test("describes the card beside its history, with a way to edit it", async () =>
 	).toBe("/cards?edit=k%20b");
 });
 
+test("names a supplementary card's own holder, and the account's owner on its group", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({
+		id: "pool",
+		name: "Card A pool",
+		limit: 500_000,
+		owner: "KC",
+	});
+	await repo.saveCard({
+		...card,
+		limitGroupId: "pool",
+		supplementary: true,
+		owner: "NT",
+	});
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const facts = [...root.querySelectorAll(".card-details .facts__row")].map(
+		(row) => [
+			row.querySelector("dt")?.textContent?.trim(),
+			row.querySelector("dd")?.textContent?.trim(),
+		],
+	);
+	expect(facts).toContainEqual(["Limit group", "Card A pool (KC)"]);
+	expect(facts).toContainEqual(["Owner", "NT"]);
+});
+
 test("says why a card kept somewhere that takes no purchases has no purchase form", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard({ ...card, location: "bangkok" });
