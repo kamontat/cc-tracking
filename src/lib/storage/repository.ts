@@ -40,6 +40,9 @@ export interface Repository {
 	/** The stored settings, or `DEFAULT_SETTINGS` when nothing has been saved yet. */
 	getSettings(): Promise<Settings>;
 	saveSettings(settings: Settings): Promise<void>;
+
+	/** Forgets every card, purchase, payment, limit group and setting. Cannot be undone. */
+	clearAll(): Promise<void>;
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -136,5 +139,13 @@ export class InMemoryRepository implements Repository {
 
 	async saveSettings(settings: Settings): Promise<void> {
 		this.settings = clone(settings);
+	}
+
+	async clearAll(): Promise<void> {
+		this.cards.clear();
+		this.purchases.clear();
+		this.payments.clear();
+		this.limitGroups.clear();
+		this.settings = null;
 	}
 }

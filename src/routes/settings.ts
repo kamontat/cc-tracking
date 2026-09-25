@@ -69,6 +69,10 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language.
 	let imported: ({ file: string } & ImportCounts) | null = null;
+	// Counts rather than a sentence, for the same reason: the reset question must re-render in
+	// the new language if the reader switches while it is on screen.
+	let resetCounts: ImportCounts | null = null;
+	let resetDone = false;
 
 	const onImport = (event: Event) => {
 		const input = event.target as HTMLInputElement;
@@ -76,11 +80,50 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		if (!file) return;
 		input.value = "";
 		imported = null;
+		resetDone = false;
 		return state.guard(async () => {
 			const counts = await importBackup(repo, parseBackup(await file.text()));
 			imported = { file: file.name, ...counts };
 		}, "backup.error.import");
 	};
+
+	const onStartReset = () => {
+		resetDone = false;
+		return state.guard(async () => {
+			const backup = await exportBackup(repo);
+			resetCounts = {
+				cards: backup.cards.length,
+				purchases: backup.purchases.length,
+				payments: backup.payments.length,
+				limitGroups: backup.limitGroups.length,
+			};
+		}, "reset.error");
+	};
+
+	const onCancelReset = () => {
+		resetCounts = null;
+		paint();
+	};
+
+	const onConfirmReset = () => {
+		imported = null;
+		return state.guard(async () => {
+			resetCounts = null;
+			await repo.clearAll();
+			resetDone = true;
+		}, "reset.error");
+	};
+
+	const resetPanel = () =>
+		resetCounts
+			? html`
+				<p><strong>${t("reset.confirm", resetCounts)}</strong></p>
+				<div class="reset__actions">
+					<button data-variant="danger" type="button" data-action="confirm-reset" @click=${onConfirmReset}>${t("reset.delete")}</button>
+					<button data-variant="quiet" type="button" data-action="cancel-reset" @click=${onCancelReset}>${t("common.cancel")}</button>
+				</div>
+			`
+			: html`<button data-variant="danger" type="button" data-action="reset" @click=${onStartReset}>${t("reset.start")}</button>`;
 
 	const paint = () =>
 		render(
@@ -96,6 +139,12 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 					<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
 					<label>${t("backup.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
 					<p class="import-status" role="status">${imported ? t("backup.imported", imported) : nothing}</p>
+				</article>
+				<article class="reset">
+					<h2>${t("reset.title")}</h2>
+					<p><small>${t("reset.warning")}</small></p>
+					${resetPanel()}
+					<p class="reset-status" role="status">${resetDone ? t("reset.done") : nothing}</p>
 				</article>
 			`,
 			root,

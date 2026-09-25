@@ -35,6 +35,23 @@ describe("LocalStorageRepository key layout", () => {
 		expect(await repo.listCards()).toEqual([]);
 	});
 
+	test("clearing leaves the language choice and other apps' keys alone", async () => {
+		const repo = new LocalStorageRepository(freshStorage());
+		await repo.saveCard(sampleCard());
+		await repo.savePurchase(samplePurchase());
+		await repo.saveSettings({ purchaseLocations: [] });
+		localStorage.setItem("cc:migration:location", '["Old card"]');
+		localStorage.setItem("cc:lang", "th");
+		localStorage.setItem("some-other-app", "hello");
+
+		await repo.clearAll();
+
+		const left = Array.from({ length: localStorage.length }, (_, index) =>
+			localStorage.key(index),
+		).sort();
+		expect(left).toEqual(["cc:lang", "some-other-app"]);
+	});
+
 	test("moves the key when a purchase date is edited", async () => {
 		const repo = new LocalStorageRepository(freshStorage());
 		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }));

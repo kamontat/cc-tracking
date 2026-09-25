@@ -216,6 +216,16 @@ export const th: Catalog = {
 	"backup.error.export": "ส่งออกข้อมูลสำรองไม่สำเร็จ",
 	"backup.error.import": "นำเข้าข้อมูลสำรองไม่สำเร็จ",
 
+	"reset.title": "รีเซ็ต",
+	"reset.warning":
+		"ลบบัตร รายการซื้อ การชำระ กลุ่มวงเงิน และการตั้งค่าทั้งหมดในเบราว์เซอร์นี้ ส่งออกข้อมูลสำรองก่อนหากอาจต้องการกู้คืน",
+	"reset.start": "รีเซ็ต…",
+	"reset.confirm":
+		"จะลบบัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ และกลุ่มวงเงิน {limitGroups} กลุ่ม",
+	"reset.delete": "ลบข้อมูลทั้งหมด",
+	"reset.done": "ลบข้อมูลทั้งหมดแล้ว",
+	"reset.error": "รีเซ็ตข้อมูลไม่สำเร็จ",
+
 	"backup.unreadable": "ไฟล์นี้ไม่ใช่ข้อมูลสำรองที่อ่านได้",
 	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
 	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.payment are each

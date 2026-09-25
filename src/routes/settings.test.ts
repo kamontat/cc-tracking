@@ -2,7 +2,8 @@ import { expect, test } from "bun:test";
 import type { Settings } from "#lib/domain/settings";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
-import { InMemoryRepository } from "#lib/storage/repository";
+import { LocalStorageRepository } from "#lib/storage/local";
+import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { exportBackup, parseBackup } from "#lib/storage/transfer";
 import { prepareBackupFile, renderSettingsPage } from "./settings";
 
@@ -332,4 +333,158 @@ test("importing a backup that carries settings shows them in the settings panel"
 	expect(root.querySelector("cc-settings")?.settings.purchaseLocations).toEqual(
 		["bangkok", "phichit"],
 	);
+});
+
+const click = (root: HTMLElement, action: string) => {
+	const button = root.querySelector<HTMLButtonElement>(
+		`.reset [data-action="${action}"]`,
+	);
+	if (!button) throw new Error(`no ${action} button`);
+	button.click();
+};
+
+const resetText = (root: HTMLElement): string =>
+	root.querySelector(".reset")?.textContent?.replace(/\s+/g, " ") ?? "";
+
+const resetStatus = (root: HTMLElement): string =>
+	root.querySelector(".reset-status")?.textContent?.trim() ?? "";
+
+/** A card, its group, two purchases and a setting: something for a reset to count and delete. */
+const populated = async <R extends Repository>(repo: R): Promise<R> => {
+	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 });
+	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" });
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "kbank",
+		date: "2026-09-05",
+		amount: 100,
+		note: "",
+	});
+	await repo.savePurchase({
+		id: "p2",
+		cardId: "kbank",
+		date: "2026-09-06",
+		amount: 100,
+		note: "",
+	});
+	await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+	return repo;
+};
+
+test("asks before resetting, counting what it would delete", async () => {
+	setLocale("en");
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	expect(root.querySelector('.reset [data-action="confirm-reset"]')).toBeNull();
+	click(root, "reset");
+	await settle();
+
+	expect(resetText(root)).toContain(
+		"This deletes 1 cards, 2 purchases, 0 payments and 1 limit groups.",
+	);
+	expect(root.querySelector('.reset [data-action="reset"]')).toBeNull();
+	expect(await repo.listCards()).toHaveLength(1);
+});
+
+test("backing out of a reset deletes nothing", async () => {
+	setLocale("en");
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	click(root, "reset");
+	await settle();
+	click(root, "cancel-reset");
+	await settle();
+
+	expect(root.querySelector('.reset [data-action="reset"]')).not.toBeNull();
+	expect(await repo.listCards()).toHaveLength(1);
+	expect(await repo.listPurchases("kbank")).toHaveLength(2);
+});
+
+test("confirming a reset deletes every record and setting, and says so", async () => {
+	setLocale("en");
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	click(root, "reset");
+	await settle();
+	click(root, "confirm-reset");
+	await settle();
+
+	expect(await repo.listCards()).toEqual([]);
+	expect(await repo.listPurchases("kbank")).toEqual([]);
+	expect(await repo.listLimitGroups()).toEqual([]);
+	expect(await repo.getSettings()).toEqual({ purchaseLocations: ["krabi"] });
+	// The page reloads what is left, so the panel shows the defaults, not the old choice.
+	expect(root.querySelector("cc-settings")?.settings.purchaseLocations).toEqual(
+		["krabi"],
+	);
+	expect(resetStatus(root)).toBe("All data deleted.");
+	expect(root.querySelector('.reset [data-action="reset"]')).not.toBeNull();
+});
+
+test("a reset keeps the reader's language", async () => {
+	localStorage.clear();
+	setLocale("th");
+	const repo = await populated(new LocalStorageRepository(localStorage));
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	click(root, "reset");
+	await settle();
+	click(root, "confirm-reset");
+	await settle();
+
+	expect(await repo.listCards()).toEqual([]);
+	expect(localStorage.getItem("cc:lang")).toBe("th");
+	setLocale("en");
+});
+
+test("a failed reset says so and keeps the data", async () => {
+	class RejectingClear extends InMemoryRepository {
+		override clearAll(): Promise<void> {
+			return Promise.reject(new Error("disk is locked"));
+		}
+	}
+	setLocale("en");
+	const repo = await populated(new RejectingClear());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	click(root, "reset");
+	await settle();
+	click(root, "confirm-reset");
+	await settle();
+
+	expect(bannerMessage(root)).toContain("disk is locked");
+	expect(resetStatus(root)).toBe("");
+	expect(await repo.listCards()).toHaveLength(1);
+});
+
+test("the reset question follows a language switch", async () => {
+	setLocale("en");
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	click(root, "reset");
+	await settle();
+	setLocale("th");
+	await settle();
+
+	expect(resetText(root)).not.toContain("This deletes");
+	expect(
+		root.querySelector('.reset [data-action="confirm-reset"]'),
+	).not.toBeNull();
+	setLocale("en");
 });

@@ -13,6 +13,8 @@ const PURCHASE = `${PREFIX}purchase:`;
 const PAYMENT = `${PREFIX}payment:`;
 const LIMIT_GROUP = `${PREFIX}limitgroup:`;
 const SETTINGS = `${PREFIX}settings`;
+/** One-off notices a data migration leaves for the next page load; see `migrate-locations`. */
+const MIGRATION = `${PREFIX}migration:`;
 
 export const cardKey = (cardId: string): string =>
 	`${CARD}${encodeURIComponent(cardId)}`;
@@ -154,5 +156,20 @@ export class LocalStorageRepository implements Repository {
 
 	async saveSettings(settings: Settings): Promise<void> {
 		this.write(SETTINGS, settings);
+	}
+
+	/**
+	 * Names each kind of record rather than sweeping every `cc:` key: the language choice
+	 * (`cc:lang`) is the reader's, not the data's, and a reset must not flip the page they are
+	 * reading into another language. A pending migration notice goes too -- it names cards that
+	 * no longer exist.
+	 */
+	async clearAll(): Promise<void> {
+		for (const prefix of [CARD, PURCHASE, PAYMENT, LIMIT_GROUP, MIGRATION]) {
+			for (const key of this.keysWithPrefix(prefix)) {
+				this.storage.removeItem(key);
+			}
+		}
+		this.storage.removeItem(SETTINGS);
 	}
 }
