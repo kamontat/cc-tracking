@@ -122,10 +122,10 @@ export class CcLimitGroupTable extends LitElement {
 			this.view,
 			this.counts,
 		);
-		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
-		// reader has just closed.
+		// Closed by default, and no `open` binding at all: a repaint must never close a section the
+		// reader has just opened.
 		return html`
-			<details open>
+			<details>
 				<summary>${t("limits.title")}</summary>
 				${
 					this.groups.length === 0
