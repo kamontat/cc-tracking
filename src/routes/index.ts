@@ -25,6 +25,7 @@ import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
+import { panelOpen, rememberPanel } from "#lib/ui/panel";
 import {
 	addPurchaseButton,
 	purchaseDialog,
@@ -179,7 +180,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					paint();
 				})}
 				<article>
-					<details class="panel" data-panel="spendable" open>
+					<details class="panel" data-panel="spendable" ?open=${panelOpen("spendable", true)} @toggle=${rememberPanel("spendable")}>
 						<summary><h2>${t("spendable.title")}</h2></summary>
 						<cc-spendable
 							.rows=${spendable}
@@ -189,7 +190,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					</details>
 				</article>
 				<article>
-					<details class="panel" data-panel="due">
+					<details class="panel" data-panel="due" ?open=${panelOpen("due", false)} @toggle=${rememberPanel("due")}>
 						<summary><h2>${t("dashboard.dueNext")}</h2></summary>
 						<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
 					</details>

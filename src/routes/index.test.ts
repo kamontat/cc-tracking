@@ -467,6 +467,26 @@ test("folds each panel under its heading, spend open and due closed at first, th
 	expect(panel("due")?.open).toBe(true);
 });
 
+test("reopens each panel as the reader left it after a reload", async () => {
+	const repo = new InMemoryRepository();
+	const first = mount();
+	renderDashboardPage(repo, first);
+	await settle();
+	const panel = (root: HTMLElement, name: string) =>
+		root.querySelector<HTMLDetailsElement>(`details[data-panel="${name}"]`);
+	const [spend, due] = [panel(first, "spendable"), panel(first, "due")];
+	if (!spend || !due) throw new Error("no panels");
+	spend.open = false;
+	due.open = true;
+	await settle();
+
+	const reloaded = mount();
+	renderDashboardPage(repo, reloaded);
+	await settle();
+	expect(panel(reloaded, "spendable")?.open).toBe(false);
+	expect(panel(reloaded, "due")?.open).toBe(true);
+});
+
 test("the purchase confirmation re-renders in the new language instead of freezing or clearing", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(quickAddCard);

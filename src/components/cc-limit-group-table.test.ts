@@ -107,6 +107,20 @@ test("starts closed, and stays open once the reader opens it", async () => {
 	).toBe(true);
 });
 
+test("reopens as the reader left it after a reload", async () => {
+	const first = await mount();
+	const section =
+		first.shadowRoot?.querySelector<HTMLDetailsElement>("details");
+	if (!section) throw new Error("no details element");
+	section.open = true;
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	const reloaded = await mount();
+	expect(
+		reloaded.shadowRoot?.querySelector<HTMLDetailsElement>("details")?.open,
+	).toBe(true);
+});
+
 test("draws each group's usage as a bar, tinted as it runs out", async () => {
 	const element = await mount({
 		usage: { pool: 450_000, solo: 150_000 },

@@ -21,6 +21,7 @@ import type { LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
+import { panelOpen, rememberPanel } from "#lib/ui/panel";
 import {
 	base,
 	controls,
@@ -122,10 +123,10 @@ export class CcLimitGroupTable extends LitElement {
 			this.view,
 			this.counts,
 		);
-		// Closed by default, and no `open` binding at all: a repaint must never close a section the
-		// reader has just opened.
+		// The saved state, read on every paint: it only changes when the reader toggles it,
+		// and by then the section already matches it, so a repaint never reopens or closes it.
 		return html`
-			<details>
+			<details ?open=${panelOpen("limit-groups", false)} @toggle=${rememberPanel("limit-groups")}>
 				<summary>${t("limits.title")}</summary>
 				${
 					this.groups.length === 0

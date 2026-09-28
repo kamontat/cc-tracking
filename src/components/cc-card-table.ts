@@ -23,6 +23,7 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
+import { panelOpen, rememberPanel } from "#lib/ui/panel";
 import { badge, base, controls, dataTable, listControls } from "#styles/shared";
 
 /** What the narrow layout's sort chip calls each sort; the wide one uses the headings. */
@@ -176,10 +177,10 @@ export class CcCardTable extends LitElement {
 		const visible = applyCardView(this.cards, this.groups, this.view);
 		const active = visible.filter((card) => !card.archived);
 		const archived = visible.filter((card) => card.archived);
-		// `open` is a plain attribute, not a binding: a repaint must never reopen a section the
-		// reader has just closed, nor close one they opened.
+		// The saved state, read on every paint: it only changes when the reader toggles a section,
+		// and by then the section already matches it, so a repaint never reopens or closes one.
 		return html`
-			<details class="active" open>
+			<details class="active" ?open=${panelOpen("cards", true)} @toggle=${rememberPanel("cards")}>
 				<summary>${t("cards.list")}</summary>
 				${
 					this.cards.length === 0
@@ -199,7 +200,7 @@ export class CcCardTable extends LitElement {
 			${
 				archived.length > 0
 					? html`
-						<details class="archived-list">
+						<details class="archived-list" ?open=${panelOpen("cards-archived", false)} @toggle=${rememberPanel("cards-archived")}>
 							<summary>${t("cards.archivedList", { count: archived.length })}</summary>
 							${this.table(archived)}
 						</details>
