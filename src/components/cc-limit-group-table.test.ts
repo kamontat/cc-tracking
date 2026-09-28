@@ -86,14 +86,14 @@ test("says so when there is no group yet", async () => {
 	expect(element.shadowRoot?.textContent).toContain("No limit group yet");
 });
 
-test("starts open, and stays closed once the reader closes it", async () => {
+test("starts closed, and stays open once the reader opens it", async () => {
 	const element = await mount();
 	const section =
 		element.shadowRoot?.querySelector<HTMLDetailsElement>("details");
 	if (!section) throw new Error("no details element");
-	expect(section.open).toBe(true);
+	expect(section.open).toBe(false);
 
-	section.open = false;
+	section.open = true;
 	// Round-tripping through empty is what catches an `?open=${...}` binding: a binding whose
 	// value never changes is dirty-checked away and reads exactly like the static attribute,
 	// so only a render where the bound value would differ tells the two apart.
@@ -104,7 +104,21 @@ test("starts open, and stays closed once the reader closes it", async () => {
 
 	expect(
 		element.shadowRoot?.querySelector<HTMLDetailsElement>("details")?.open,
-	).toBe(false);
+	).toBe(true);
+});
+
+test("reopens as the reader left it after a reload", async () => {
+	const first = await mount();
+	const section =
+		first.shadowRoot?.querySelector<HTMLDetailsElement>("details");
+	if (!section) throw new Error("no details element");
+	section.open = true;
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
+	const reloaded = await mount();
+	expect(
+		reloaded.shadowRoot?.querySelector<HTMLDetailsElement>("details")?.open,
+	).toBe(true);
 });
 
 test("draws each group's usage as a bar, tinted as it runs out", async () => {

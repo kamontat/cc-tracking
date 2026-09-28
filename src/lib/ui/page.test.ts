@@ -54,7 +54,7 @@ test("applies chrome in the current language even when storage is unavailable an
 		expect(called).toBe(false);
 		expect(document.title).toBe("ทะเบียนบัตร — cc-tracking");
 		expect(document.querySelector("#nav-dashboard")?.textContent).toBe(
-			"หน้ารวม",
+			"หน้าหลัก",
 		);
 		expect(document.querySelector("#nav-cards")?.textContent).toBe("บัตร");
 		expect(document.documentElement.lang).toBe("th");

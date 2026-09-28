@@ -83,6 +83,9 @@ test("names the card by both its name and its id", async () => {
 		"kbank card",
 	);
 	expect(cell?.querySelector(".card-id")?.textContent).toContain("kbank");
+	expect(
+		cell?.querySelector(".card-line")?.textContent?.replace(/\s+/g, " ").trim(),
+	).toBe("kbank) kbank card");
 });
 
 test("marks a shared group and says how many other cards hold it", async () => {
@@ -116,8 +119,8 @@ test("says so when no card can take a purchase", async () => {
 
 test("renders in the chosen language", async () => {
 	const element = await mount();
-	expect(element.shadowRoot?.textContent).toContain("Can spend now");
+	expect(element.shadowRoot?.querySelector("th")?.textContent).toBe("Card");
 	setLocale("th");
 	await element.updateComplete;
-	expect(element.shadowRoot?.textContent).toContain("รูดได้ตอนนี้");
+	expect(element.shadowRoot?.querySelector("th")?.textContent).toBe("บัตร");
 });

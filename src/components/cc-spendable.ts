@@ -15,13 +15,11 @@ export class CcSpendable extends LitElement {
 		base,
 		dataTable,
 		css`
-			h2 {
-				font-size: var(--cc-text-lg);
-				font-weight: 600;
+			.card-line {
+				display: block;
 			}
 
 			.card-name {
-				display: block;
 				font-weight: 600;
 			}
 
@@ -92,10 +90,9 @@ export class CcSpendable extends LitElement {
 
 	override render() {
 		if (this.rows.length === 0) {
-			return html`<h2>${t("spendable.title")}</h2><p>${t("spendable.empty")}</p>${this.notice()}`;
+			return html`<p>${t("spendable.empty")}</p>${this.notice()}`;
 		}
 		return html`
-			<h2>${t("spendable.title")}</h2>
 			<table>
 				<thead>
 					<tr>
@@ -110,8 +107,7 @@ export class CcSpendable extends LitElement {
 						(row) => html`
 							<tr data-shared=${row.sharedWith > 0 ? "true" : "false"}>
 								<td data-label=${t("spendable.column.card")}>
-									<a class="card-name" href=${`/card?id=${encodeURIComponent(row.card.id)}`}>${row.card.name}</a>
-									<small class="card-id">${row.card.id}</small>
+									<span class="card-line"><small class="card-id">${row.card.id})</small> <a class="card-name" href=${`/card?id=${encodeURIComponent(row.card.id)}`}>${row.card.name}</a></span>
 									${
 										row.sharedWith > 0
 											? html`<small class="group">${t("spendable.shared", {
