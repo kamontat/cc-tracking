@@ -437,7 +437,33 @@ test("renders its heading in the chosen language", async () => {
 
 	setLocale("th");
 	await settle();
-	expect(root.textContent).toContain("หน้ารวม");
+	expect(root.textContent).toContain("หน้าหลัก");
+});
+
+test("folds each panel under its heading, open at first and left as the reader sets it", async () => {
+	const repo = new InMemoryRepository();
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+	const panel = (name: string) =>
+		root.querySelector<HTMLDetailsElement>(`details[data-panel="${name}"]`);
+	expect(panel("spendable")?.open).toBe(true);
+	expect(panel("spendable")?.querySelector("summary")?.textContent).toContain(
+		"Can spend now",
+	);
+	expect(panel("spendable")?.querySelector("cc-spendable")).not.toBeNull();
+	expect(panel("due")?.open).toBe(true);
+	expect(panel("due")?.querySelector("summary")?.textContent).toContain(
+		"Due next",
+	);
+	expect(panel("due")?.querySelector("cc-due-list")).not.toBeNull();
+
+	const due = panel("due");
+	if (due) due.open = false;
+	setLocale("th");
+	await settle();
+	expect(panel("due")?.open).toBe(false);
+	expect(panel("spendable")?.open).toBe(true);
 });
 
 test("the purchase confirmation re-renders in the new language instead of freezing or clearing", async () => {

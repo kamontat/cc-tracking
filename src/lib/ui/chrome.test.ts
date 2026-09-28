@@ -75,7 +75,7 @@ test("refills them when the language changes", () => {
 	setLocale("th");
 
 	expect(document.title).toBe("ทะเบียนบัตร — cc-tracking");
-	expect(document.querySelector("#nav-dashboard")?.textContent).toBe("หน้ารวม");
+	expect(document.querySelector("#nav-dashboard")?.textContent).toBe("หน้าหลัก");
 	expect(document.querySelector("#nav-settings")?.textContent).toBe("ตั้งค่า");
 	expect(document.documentElement.lang).toBe("th");
 });

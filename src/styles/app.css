@@ -135,6 +135,22 @@ a:any-link:hover {
 	font-weight: 600;
 }
 
+/* A dashboard panel the reader can fold away. The heading is the toggle, so it keeps its
+   size and weight and sits inline beside the disclosure marker. */
+.page details.panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+}
+
+.page details.panel > summary {
+	cursor: pointer;
+}
+
+.page details.panel > summary > h2 {
+	display: inline;
+}
+
 .page > article,
 .page .split > article {
 	display: flex;

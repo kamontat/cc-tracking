@@ -10,10 +10,10 @@ import type { Catalog } from "#lib/i18n/catalog";
  */
 export const th: Catalog = {
 	"nav.brand": "cc-tracking",
-	"nav.dashboard": "หน้ารวม",
+	"nav.dashboard": "หน้าหลัก",
 	"nav.cards": "บัตร",
 	"nav.settings": "ตั้งค่า",
-	"title.dashboard": "หน้ารวม — cc-tracking",
+	"title.dashboard": "หน้าหลัก — cc-tracking",
 	"title.cards": "ทะเบียนบัตร — cc-tracking",
 	"title.card": "บัตร — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",
@@ -44,7 +44,7 @@ export const th: Catalog = {
 	"location.phichit": "พิจิตร",
 	"location.krabi": "กระบี่",
 
-	"dashboard.title": "หน้ารวม",
+	"dashboard.title": "หน้าหลัก",
 	// FLAG FOR OWNER REVIEW: "due date" -- ครบกำหนด, used throughout this catalog.
 	"dashboard.dueNext": "ครบกำหนดถัดไป",
 	"dashboard.addPurchase": "เพิ่มรายการใช้จ่าย",
@@ -189,7 +189,7 @@ export const th: Catalog = {
 	"card.error.deletePurchase": "ลบรายการใช้จ่ายไม่สำเร็จ",
 	"card.error.addPurchase": "บันทึกรายการใช้จ่ายไม่สำเร็จ",
 
-	"statements.empty": "ยังไม่มีใบแจ้งยอด เพิ่มรายการใช้จ่ายจากหน้ารวม",
+	"statements.empty": "ยังไม่มีใบแจ้งยอด เพิ่มรายการใช้จ่ายจากหน้าหลัก",
 	"statements.header": "สรุปยอด {close} ครบกำหนด {due}",
 	"statements.paid": "ชำระแล้ว {date}",
 	"statements.unmark": "ยกเลิกเครื่องหมาย",

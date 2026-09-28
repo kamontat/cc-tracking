@@ -15,11 +15,6 @@ export class CcSpendable extends LitElement {
 		base,
 		dataTable,
 		css`
-			h2 {
-				font-size: var(--cc-text-lg);
-				font-weight: 600;
-			}
-
 			.card-line {
 				display: block;
 			}
@@ -95,10 +90,9 @@ export class CcSpendable extends LitElement {
 
 	override render() {
 		if (this.rows.length === 0) {
-			return html`<h2>${t("spendable.title")}</h2><p>${t("spendable.empty")}</p>${this.notice()}`;
+			return html`<p>${t("spendable.empty")}</p>${this.notice()}`;
 		}
 		return html`
-			<h2>${t("spendable.title")}</h2>
 			<table>
 				<thead>
 					<tr>

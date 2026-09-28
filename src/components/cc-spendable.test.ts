@@ -119,8 +119,8 @@ test("says so when no card can take a purchase", async () => {
 
 test("renders in the chosen language", async () => {
 	const element = await mount();
-	expect(element.shadowRoot?.textContent).toContain("Can spend now");
+	expect(element.shadowRoot?.querySelector("th")?.textContent).toBe("Card");
 	setLocale("th");
 	await element.updateComplete;
-	expect(element.shadowRoot?.textContent).toContain("รูดได้ตอนนี้");
+	expect(element.shadowRoot?.querySelector("th")?.textContent).toBe("บัตร");
 });

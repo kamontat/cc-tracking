@@ -179,15 +179,20 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					paint();
 				})}
 				<article>
-					<cc-spendable
-						.rows=${spendable}
-						.unassigned=${unassignedCards(cards, groups).length}
-						.today=${now}
-					></cc-spendable>
+					<details class="panel" data-panel="spendable" open>
+						<summary><h2>${t("spendable.title")}</h2></summary>
+						<cc-spendable
+							.rows=${spendable}
+							.unassigned=${unassignedCards(cards, groups).length}
+							.today=${now}
+						></cc-spendable>
+					</details>
 				</article>
 				<article>
-					<h2>${t("dashboard.dueNext")}</h2>
-					<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
+					<details class="panel" data-panel="due" open>
+						<summary><h2>${t("dashboard.dueNext")}</h2></summary>
+						<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
+					</details>
 				</article>
 				${
 					adding
