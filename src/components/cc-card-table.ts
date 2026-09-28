@@ -91,8 +91,9 @@ export class CcCardTable extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			.meta .card-id {
+			.card-id {
 				font-family: var(--cc-font-mono);
+				font-size: var(--cc-text-xs);
 			}
 
 			.comment {
@@ -281,7 +282,6 @@ export class CcCardTable extends LitElement {
 			this.groups.find(({ id }) => id === card.limitGroupId) ?? null;
 		const owner = cardOwnerOf(card, group);
 		const meta = [
-			html`<span class="card-id">${card.id}</span>`,
 			html`••••${card.last4}`,
 			...(count > 0
 				? [
@@ -295,7 +295,7 @@ export class CcCardTable extends LitElement {
 			<tr>
 				<td class="card">
 					<span class="name-line">
-						<a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
+						<span class="card-line"><span class="card-id">${card.id})</span> <a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a></span>
 						${card.archived ? html`<span class="badge archived">${t("cards.archived")}</span>` : nothing}
 						${
 							card.supplementary
