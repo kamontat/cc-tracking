@@ -20,8 +20,11 @@ export class CcSpendable extends LitElement {
 				font-weight: 600;
 			}
 
-			.card-name {
+			.card-line {
 				display: block;
+			}
+
+			.card-name {
 				font-weight: 600;
 			}
 
@@ -110,8 +113,7 @@ export class CcSpendable extends LitElement {
 						(row) => html`
 							<tr data-shared=${row.sharedWith > 0 ? "true" : "false"}>
 								<td data-label=${t("spendable.column.card")}>
-									<a class="card-name" href=${`/card?id=${encodeURIComponent(row.card.id)}`}>${row.card.name}</a>
-									<small class="card-id">${row.card.id}</small>
+									<span class="card-line"><small class="card-id">${row.card.id})</small> <a class="card-name" href=${`/card?id=${encodeURIComponent(row.card.id)}`}>${row.card.name}</a></span>
 									${
 										row.sharedWith > 0
 											? html`<small class="group">${t("spendable.shared", {

@@ -83,6 +83,9 @@ test("names the card by both its name and its id", async () => {
 		"kbank card",
 	);
 	expect(cell?.querySelector(".card-id")?.textContent).toContain("kbank");
+	expect(
+		cell?.querySelector(".card-line")?.textContent?.replace(/\s+/g, " ").trim(),
+	).toBe("kbank) kbank card");
 });
 
 test("marks a shared group and says how many other cards hold it", async () => {

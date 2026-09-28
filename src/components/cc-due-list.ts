@@ -62,8 +62,11 @@ export class CcDueList extends LitElement {
 				background: var(--cc-warning-surface);
 			}
 
-			.card-name {
+			.card-line {
 				display: block;
+			}
+
+			.card-name {
 				font-weight: 600;
 			}
 
@@ -72,7 +75,7 @@ export class CcDueList extends LitElement {
 				font-size: var(--cc-text-xs);
 			}
 
-			td.card-cell small {
+			td.card-cell > small {
 				display: block;
 			}
 
@@ -136,8 +139,7 @@ export class CcDueList extends LitElement {
 						return html`
 							<tr data-urgency=${urgency}>
 								<td class="card-cell" data-label=${t("due.column.card")}>
-									<a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a>
-									<small class="card-id">${card.id}</small>
+									<span class="card-line"><small class="card-id">${card.id})</small> <a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a></span>
 								</td>
 								<td data-label=${t("due.column.where")}>${locationText(card.location)}</td>
 								<td class="date" data-label=${t("due.column.closes")}>${displayDate(statement.closeDate, getLocale())}</td>
