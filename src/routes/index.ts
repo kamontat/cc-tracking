@@ -189,7 +189,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					</details>
 				</article>
 				<article>
-					<details class="panel" data-panel="due" open>
+					<details class="panel" data-panel="due">
 						<summary><h2>${t("dashboard.dueNext")}</h2></summary>
 						<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
 					</details>

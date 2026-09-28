@@ -440,7 +440,7 @@ test("renders its heading in the chosen language", async () => {
 	expect(root.textContent).toContain("หน้าหลัก");
 });
 
-test("folds each panel under its heading, open at first and left as the reader sets it", async () => {
+test("folds each panel under its heading, spend open and due closed at first, then left as the reader sets it", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();
 	renderDashboardPage(repo, root);
@@ -452,18 +452,19 @@ test("folds each panel under its heading, open at first and left as the reader s
 		"Can spend now",
 	);
 	expect(panel("spendable")?.querySelector("cc-spendable")).not.toBeNull();
-	expect(panel("due")?.open).toBe(true);
+	expect(panel("due")?.open).toBe(false);
 	expect(panel("due")?.querySelector("summary")?.textContent).toContain(
 		"Due next",
 	);
 	expect(panel("due")?.querySelector("cc-due-list")).not.toBeNull();
 
-	const due = panel("due");
-	if (due) due.open = false;
+	const [spend, due] = [panel("spendable"), panel("due")];
+	if (spend) spend.open = false;
+	if (due) due.open = true;
 	setLocale("th");
 	await settle();
-	expect(panel("due")?.open).toBe(false);
-	expect(panel("spendable")?.open).toBe(true);
+	expect(panel("spendable")?.open).toBe(false);
+	expect(panel("due")?.open).toBe(true);
 });
 
 test("the purchase confirmation re-renders in the new language instead of freezing or clearing", async () => {
