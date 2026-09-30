@@ -35,6 +35,16 @@ test("links the changelog on the main branch", async () => {
 	);
 });
 
+test("opens the repository and changelog in a new tab", async () => {
+	const element = await mount(SHA, "2026-09-24T13:12:00Z");
+
+	for (const selector of [".site-footer__repo", ".site-footer__changelog"]) {
+		const link = element.shadowRoot?.querySelector(selector);
+		expect(link?.getAttribute("target")).toBe("_blank");
+		expect(link?.getAttribute("rel")).toBe("noreferrer");
+	}
+});
+
 test("links the commit by its full sha and shows the short one", async () => {
 	const element = await mount(SHA, "2026-09-24T13:12:00Z");
 

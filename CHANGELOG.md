@@ -13,6 +13,10 @@ reasons don't show up in the code.
   readers at the latest entries.
 - Messages added: `footer.changelog`.
 
+### Improvements
+
+- The footer's repository and changelog links open in a new tab.
+
 ## 2026-09-24: Limit group owner, and a split, collapsible `/cards` page
 
 ### BREAKING CHANGES

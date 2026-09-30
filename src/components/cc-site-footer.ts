@@ -88,9 +88,9 @@ export class CcSiteFooter extends LitElement {
 		const built = parseBuiltAt(this.builtAt) ?? new Date();
 		return html`
 			<footer>
-				<a class="site-footer__repo" href=${REPO_URL} rel="noreferrer">${t("footer.repo")}</a>
+				<a class="site-footer__repo" href=${REPO_URL} target="_blank" rel="noreferrer">${t("footer.repo")}</a>
 				<span class="site-footer__sep" aria-hidden="true">·</span>
-				<a class="site-footer__changelog" href=${CHANGELOG_URL} rel="noreferrer">${t("footer.changelog")}</a>
+				<a class="site-footer__changelog" href=${CHANGELOG_URL} target="_blank" rel="noreferrer">${t("footer.changelog")}</a>
 				<span class="site-footer__sep" aria-hidden="true">·</span>
 				${this.renderCommit()}
 				<span class="site-footer__sep" aria-hidden="true">·</span>
