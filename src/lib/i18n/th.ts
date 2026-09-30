@@ -1,8 +1,7 @@
 import type { Catalog } from "#lib/i18n/catalog";
 
 /**
- * Pending owner review (Task 8 Step 3 of
- * docs/superpowers/plans/2026-09-21-english-thai.md, not yet done as of this comment):
+ * Pending owner review (not yet done as of this comment):
  * a handful of terms were machine-translated without a native speaker's eye and are flagged
  * below, at their first appearance, for the repository owner to confirm or correct. Nothing
  * else in this file has been reviewed either, but these specifically depend on getting a

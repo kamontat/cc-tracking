@@ -173,7 +173,6 @@ than a bug: fixing it needs `Intl.Collator`, and using any `Intl` API on `th-TH`
 pulling in the same Buddhist-era year handling the date rendering above exists to
 avoid.
 
-## Design and plans
+## Changelog
 
-- `docs/superpowers/specs/2026-09-15-cc-tracking-design.md`
-- `docs/superpowers/plans/2026-09-21-cc-tracking-phase-1.md`
+What changed at each stage, and the decisions behind it, is in [`CHANGELOG.md`](CHANGELOG.md).
