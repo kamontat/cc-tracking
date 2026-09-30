@@ -105,6 +105,13 @@ bun --hot ./index.ts
 
 For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
 
+## Change workflow
+
+- Every change: follow `.claude/skills/shipping-a-change` (worktree and branch, test first,
+  check/format/test, commit, push, pull request, preview URL).
+- After the user approves: follow `.claude/skills/landing-a-change` (dated changelog entry,
+  merge to main, delete the worktree, back on main).
+
 ## Design system conventions
 
 - Values live once, in `src/styles/tokens.css`. Shadow CSS (`src/styles/shared.ts`, and any
