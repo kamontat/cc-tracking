@@ -21,6 +21,7 @@ export const en = {
 	"common.none": "—",
 
 	"footer.repo": "Source on GitHub",
+	"footer.changelog": "Changelog",
 	"footer.commit": "Commit {sha}",
 	"footer.built": "Built {at}",
 

@@ -4,6 +4,15 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-09-30: Changelog link in the site footer
+
+### Features
+
+- `cc-site-footer` links `CHANGELOG.md` on the `main` branch, between the repository and the
+  commit. The link targets `main` rather than the built commit, so an old deploy still points
+  readers at the latest entries.
+- Messages added: `footer.changelog`.
+
 ## 2026-09-24: Limit group owner, and a split, collapsible `/cards` page
 
 ### BREAKING CHANGES

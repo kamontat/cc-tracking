@@ -35,6 +35,9 @@ export function shortCommit(sha: string): string {
 	return sha.slice(0, 7);
 }
 
+/** The changelog as it stands on main, rather than as of the built commit. */
+export const CHANGELOG_URL = `${REPO_URL}/blob/main/CHANGELOG.md`;
+
 export function commitUrl(sha: string): string {
 	return `${REPO_URL}/commit/${sha}`;
 }

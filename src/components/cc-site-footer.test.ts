@@ -27,6 +27,14 @@ test("links the repository the page was built from", async () => {
 	expect(hrefOf(element, ".site-footer__repo")).toBe(REPO_URL);
 });
 
+test("links the changelog on the main branch", async () => {
+	const element = await mount(SHA, "2026-09-24T13:12:00Z");
+
+	expect(hrefOf(element, ".site-footer__changelog")).toBe(
+		`${REPO_URL}/blob/main/CHANGELOG.md`,
+	);
+});
+
 test("links the commit by its full sha and shows the short one", async () => {
 	const element = await mount(SHA, "2026-09-24T13:12:00Z");
 
@@ -63,8 +71,10 @@ test("repaints its wording when the language changes", async () => {
 	setLocale("en");
 	const element = await mount(SHA, "2026-09-24T13:12:00Z");
 	expect(textOf(element, ".site-footer__repo")).toBe("Source on GitHub");
+	expect(textOf(element, ".site-footer__changelog")).toBe("Changelog");
 
 	setLocale("th");
 	await element.updateComplete;
 	expect(textOf(element, ".site-footer__repo")).toBe("ซอร์สโค้ดบน GitHub");
+	expect(textOf(element, ".site-footer__changelog")).toBe("บันทึกการเปลี่ยนแปลง");
 });

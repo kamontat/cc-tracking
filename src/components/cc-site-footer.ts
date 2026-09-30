@@ -4,6 +4,7 @@ import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import {
 	buildInfo,
+	CHANGELOG_URL,
 	commitUrl,
 	formatBuiltAt,
 	parseBuiltAt,
@@ -88,6 +89,8 @@ export class CcSiteFooter extends LitElement {
 		return html`
 			<footer>
 				<a class="site-footer__repo" href=${REPO_URL} rel="noreferrer">${t("footer.repo")}</a>
+				<span class="site-footer__sep" aria-hidden="true">·</span>
+				<a class="site-footer__changelog" href=${CHANGELOG_URL} rel="noreferrer">${t("footer.changelog")}</a>
 				<span class="site-footer__sep" aria-hidden="true">·</span>
 				${this.renderCommit()}
 				<span class="site-footer__sep" aria-hidden="true">·</span>
