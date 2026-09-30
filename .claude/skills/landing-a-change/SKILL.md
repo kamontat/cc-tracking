@@ -16,23 +16,9 @@ commit: changelog entry first, then merge, then cleanup, ending back on an up-to
 1. **Catch up with main, in the worktree.** `git fetch origin` then
    `git merge origin/main`, so the changelog edit sees entries other PRs landed. Resolve
    conflicts, rerun `bun run check` and `bun run test`.
-2. **Changelog entry, on the PR branch.** Edit `CHANGELOG.md`. The version is today's date.
-   Add a new section at the top, under the intro paragraph (entries are newest first):
-   ```markdown
-   ## YYYY-MM-DD: <short title of the change>
-
-   ### Added / ### Changed / ### Fixed   (only the ones that apply)
-
-   - What changed, naming the files, components, types and message keys involved.
-
-   ### Decisions
-
-   - Why it was done this way, and the alternatives that were rejected.
-   ```
-   Leave out `### Decisions` when nothing was decided (a typo fix). If a section for today
-   already exists, add bullets to its subsections and extend its title with `, and <this
-   change>` instead of adding a second heading with the same date. Wrap lines at about 90
-   characters, like the existing entries.
+2. **Changelog entry, on the PR branch.** Edit `CHANGELOG.md` following
+   `.claude/skills/changelog`, which owns the entry format (`## YYYY-MM-DD: <title>` with
+   BREAKING CHANGES, Features, Improvements, Bug fixes and Decisions). The date is today's.
 3. **Commit and push.** `docs(changelog): <title>`, then `git push`. Wait for checks:
    `GH_TOKEN=$(gh auth token --user kamontat) gh pr checks <number> --watch`. A failing
    check stops the landing — fix it on the branch first.

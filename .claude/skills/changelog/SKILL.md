@@ -106,8 +106,9 @@ Match the voice of the existing file:
    one improvement, not three.
 4. Sort each change into Features, Improvements or Bug fixes, then ask separately whether it
    also breaks anything and, if so, add it to BREAKING CHANGES too.
-5. If the date matches an existing entry's date, ask whether to extend that entry or add a
-   separate one on the same date, unless the user already said.
+5. If an entry for the same date already exists, extend it instead of adding a second heading
+   with that date: add bullets to its sections and extend its title with `, and <this
+   change>`.
 6. Insert the entry above the current newest entry and show the user the result.
 
 ### Updating an existing entry
