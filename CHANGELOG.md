@@ -4,6 +4,56 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace
+
+### Features
+
+- The backup can be copied as text: `Copy text` writes the same JSON the downloaded file
+  holds to the clipboard and confirms in its own status line.
+- A backup can be restored from pasted text: `Paste text…` opens a text area with `Restore`,
+  `Paste from clipboard` and `Cancel`.
+- Restoring into a browser that already holds cards, purchases, payments or limit groups now
+  asks first. It shows what is in this browser next to what is in the copy, then offers
+  `Merge` (the old additive import) or `Replace` (delete everything, settings too, then
+  restore). An empty browser restores straight away.
+- `countRecords` and `replaceWithBackup` in `transfer.ts`; the reset question reuses
+  `countRecords`.
+- Messages added: `backup.save.title`, `backup.save.hint`, `backup.restore.title`,
+  `backup.restore.hint`, `backup.copy`, `backup.copied`, `backup.paste`, `backup.pasteLabel`,
+  `backup.fromClipboard`, `backup.importText`, `backup.question.file`,
+  `backup.question.pasted`, `backup.here`, `backup.incoming`, `backup.counts`,
+  `backup.merge`, `backup.mergeHint`, `backup.replace`, `backup.replaceHint`,
+  `backup.importedText`, `backup.error.clipboard`, `backup.error.copy`.
+
+### Improvements
+
+- The Backup panel is split into two outlined halves, *Save a copy* (`Download file`,
+  `Copy text`) and *Restore a copy* (`Choose file…`, `Paste text…`), side by side from
+  640px and stacked on a phone. Restore runs one step at a time inside its own half, and
+  cancelling a pasted restore returns to the text so it can be fixed.
+- One verb, *restore*, runs from the button to the confirmation ("Restored …") and the error
+  ("Could not restore that copy."). `backup.unreadable` no longer says "file".
+- The file picker is styled as a quiet button instead of the browser's default control.
+- Upgraded `@kcstyles/reset.css` 1.0.13, `@kctools/bun-server` 0.3.4, `@biomejs/biome`
+  2.5.15, `typescript-language-server` 6.0.1 and `wrangler` 4.147.0.
+
+### Bug fixes
+
+- The pasted-backup text area's monospace size now applies; `.backup__text` had lost to
+  `.page textarea` on specificity.
+
+### Decisions
+
+- Merge or Replace is asked only when records exist. Settings alone don't count, so a fresh
+  browser never sees the question.
+- Each answer is a full button that states its consequence, and Replace uses the danger
+  variant, so nobody wipes their data without reading what the button does.
+- Copy and paste-from-clipboard buttons are hidden where `navigator.clipboard` lacks
+  `writeText` or `readText`, rather than shown and failing.
+- Importing straight from another deploy's origin (a preview pulling from production) was
+  left out. Storage is per origin, and an iframe gets partitioned storage, so it would need a
+  confirmed popup-and-`postMessage` bridge on production; copy and paste covers it for now.
+
 ## 2026-09-30: Changelog link in the site footer
 
 ### Features
