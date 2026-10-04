@@ -197,9 +197,20 @@ export const en = {
 	"backup.import": "Import JSON",
 	"backup.imported":
 		"Imported {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
+	"backup.importedText":
+		"Imported pasted text: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
+	"backup.paste": "Paste JSON…",
+	"backup.pasteLabel": "Backup JSON",
+	"backup.fromClipboard": "Paste from clipboard",
+	"backup.importText": "Import",
+	"backup.existing":
+		"This browser already holds {cards} cards, {purchases} purchases, {payments} payments and {limitGroups} limit groups. Merge the backup into them, or replace them with it?",
+	"backup.merge": "Merge",
+	"backup.replace": "Replace",
 	"backup.error.read": "Could not read your data.",
 	"backup.error.export": "Could not export a backup.",
 	"backup.error.import": "Could not import that backup.",
+	"backup.error.clipboard": "Could not read the clipboard.",
 
 	"reset.title": "Reset",
 	"reset.warning":
@@ -211,7 +222,7 @@ export const en = {
 	"reset.done": "All data deleted.",
 	"reset.error": "Could not reset your data.",
 
-	"backup.unreadable": "That file is not a readable backup.",
+	"backup.unreadable": "That is not a readable backup.",
 	"backup.version":
 		"That backup is version {found}, and this app reads version {expected}.",
 	"backup.card": "That backup's card #{index} {problem}.",

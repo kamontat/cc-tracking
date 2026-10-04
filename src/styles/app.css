@@ -224,8 +224,10 @@ a:any-link:hover {
 	background: var(--cc-danger-surface);
 }
 
-/* The reset question's answer: the destructive choice first, the way out beside it. */
-.reset__actions {
+/* The reset question's answer: the destructive choice first, the way out beside it. The
+   backup's paste and merge-or-replace buttons sit in the same kind of row. */
+.reset__actions,
+.backup__actions {
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: var(--cc-space-2);
@@ -239,7 +241,8 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
-.page input {
+.page input,
+.page textarea {
 	padding: var(--cc-space-2);
 	font: inherit;
 	font-size: var(--cc-text-md);
@@ -247,6 +250,13 @@ a:any-link:hover {
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-sm);
+}
+
+/* Pasted backup JSON: monospace so its structure reads, resizable only downwards. */
+.backup__text {
+	font-family: var(--cc-font-mono);
+	font-size: var(--cc-text-xs);
+	resize: vertical;
 }
 
 /* A file input ships its own button; without this it is the one browser-default

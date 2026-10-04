@@ -9,10 +9,13 @@ import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import {
+	type Backup,
+	countRecords,
 	exportBackup,
 	type ImportCounts,
 	importBackup,
 	parseBackup,
+	replaceWithBackup,
 } from "#lib/storage/transfer";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -67,36 +70,96 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		}, "backup.error.export");
 
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
-	// re-renders the confirmation in the new language.
-	let imported: ({ file: string } & ImportCounts) | null = null;
+	// re-renders the confirmation in the new language. No filename means the text was pasted.
+	let imported: ({ file?: string } & ImportCounts) | null = null;
 	// Counts rather than a sentence, for the same reason: the reset question must re-render in
 	// the new language if the reader switches while it is on screen.
 	let resetCounts: ImportCounts | null = null;
 	let resetDone = false;
 
-	const onImport = (event: Event) => {
+	// A parsed backup waiting on the reader's merge-or-replace answer, because this browser
+	// already holds records it would land on top of.
+	let pending: {
+		file: string | undefined;
+		backup: Backup;
+		existing: ImportCounts;
+	} | null = null;
+	let pasteOpen = false;
+	let pasteText = "";
+
+	const finishImport = async (
+		file: string | undefined,
+		backup: Backup,
+		write: typeof importBackup,
+	) => {
+		const counts = await write(repo, backup);
+		imported = file === undefined ? counts : { file, ...counts };
+		pending = null;
+		if (file === undefined) {
+			pasteOpen = false;
+			pasteText = "";
+		}
+	};
+
+	/** Parses `text`, then imports it at once into an empty browser or asks first otherwise. */
+	const startImport = (file: string | undefined, text: string) => {
+		imported = null;
+		pending = null;
+		resetDone = false;
+		return state.guard(async () => {
+			const backup = parseBackup(text);
+			const existing = await countRecords(repo);
+			if (Object.values(existing).some((count) => count > 0)) {
+				pending = { file, backup, existing };
+			} else {
+				await finishImport(file, backup, importBackup);
+			}
+		}, "backup.error.import");
+	};
+
+	const onImport = async (event: Event) => {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (!file) return;
 		input.value = "";
-		imported = null;
-		resetDone = false;
-		return state.guard(async () => {
-			const counts = await importBackup(repo, parseBackup(await file.text()));
-			imported = { file: file.name, ...counts };
-		}, "backup.error.import");
+		return startImport(file.name, await file.text());
 	};
+
+	const onImportText = () => startImport(undefined, pasteText);
+
+	const answerImport = (write: typeof importBackup) => () => {
+		const waiting = pending;
+		if (!waiting) return;
+		return state.guard(
+			() => finishImport(waiting.file, waiting.backup, write),
+			"backup.error.import",
+		);
+	};
+
+	const onCancelImport = () => {
+		pending = null;
+		paint();
+	};
+
+	const onTogglePaste = (open: boolean) => () => {
+		pasteOpen = open;
+		if (!open) pasteText = "";
+		paint();
+	};
+
+	const onPasteInput = (event: Event) => {
+		pasteText = (event.target as HTMLTextAreaElement).value;
+	};
+
+	const onReadClipboard = () =>
+		state.guard(async () => {
+			pasteText = await navigator.clipboard.readText();
+		}, "backup.error.clipboard");
 
 	const onStartReset = () => {
 		resetDone = false;
 		return state.guard(async () => {
-			const backup = await exportBackup(repo);
-			resetCounts = {
-				cards: backup.cards.length,
-				purchases: backup.purchases.length,
-				payments: backup.payments.length,
-				limitGroups: backup.limitGroups.length,
-			};
+			resetCounts = await countRecords(repo);
 		}, "reset.error");
 	};
 
@@ -125,6 +188,47 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			`
 			: html`<button data-variant="danger" type="button" data-action="reset" @click=${onStartReset}>${t("reset.start")}</button>`;
 
+	// Only offered where the browser exposes it: older Firefox and plain-http pages do not.
+	const canReadClipboard = () =>
+		typeof navigator.clipboard?.readText === "function";
+
+	const pastePanel = () =>
+		pasteOpen
+			? html`
+				<label>${t("backup.pasteLabel")}
+					<textarea class="backup__text" rows="6" spellcheck="false" .value=${pasteText} @input=${onPasteInput}></textarea>
+				</label>
+				<div class="backup__actions">
+					<button type="button" data-action="import-text" @click=${onImportText}>${t("backup.importText")}</button>
+					${
+						canReadClipboard()
+							? html`<button data-variant="quiet" type="button" data-action="read-clipboard" @click=${onReadClipboard}>${t("backup.fromClipboard")}</button>`
+							: nothing
+					}
+					<button data-variant="quiet" type="button" data-action="close-paste" @click=${onTogglePaste(false)}>${t("common.cancel")}</button>
+				</div>
+			`
+			: html`<button data-variant="quiet" type="button" data-action="open-paste" @click=${onTogglePaste(true)}>${t("backup.paste")}</button>`;
+
+	const importQuestion = () =>
+		pending
+			? html`
+				<p><strong>${t("backup.existing", pending.existing)}</strong></p>
+				<div class="backup__actions">
+					<button type="button" data-action="merge-import" @click=${answerImport(importBackup)}>${t("backup.merge")}</button>
+					<button data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWithBackup)}>${t("backup.replace")}</button>
+					<button data-variant="quiet" type="button" data-action="cancel-import" @click=${onCancelImport}>${t("common.cancel")}</button>
+				</div>
+			`
+			: nothing;
+
+	const importedMessage = () => {
+		if (!imported) return nothing;
+		return imported.file === undefined
+			? t("backup.importedText", imported)
+			: t("backup.imported", { ...imported, file: imported.file });
+	};
+
 	const paint = () =>
 		render(
 			html`
@@ -138,7 +242,9 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 					<p><small>${t("backup.warning")}</small></p>
 					<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
 					<label>${t("backup.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
-					<p class="import-status" role="status">${imported ? t("backup.imported", imported) : nothing}</p>
+					${pastePanel()}
+					${importQuestion()}
+					<p class="import-status" role="status">${importedMessage()}</p>
 				</article>
 				<article class="reset">
 					<h2>${t("reset.title")}</h2>

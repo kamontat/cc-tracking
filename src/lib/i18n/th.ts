@@ -213,9 +213,20 @@ export const th: Catalog = {
 	"backup.import": "นำเข้า JSON",
 	"backup.imported":
 		"นำเข้า {file} แล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+	"backup.importedText":
+		"นำเข้าข้อความที่วางแล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+	"backup.paste": "วาง JSON…",
+	"backup.pasteLabel": "JSON ข้อมูลสำรอง",
+	"backup.fromClipboard": "วางจากคลิปบอร์ด",
+	"backup.importText": "นำเข้า",
+	"backup.existing":
+		"เบราว์เซอร์นี้มีบัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ และกลุ่มวงเงิน {limitGroups} กลุ่มอยู่แล้ว จะรวมข้อมูลสำรองเข้าไป หรือแทนที่ข้อมูลเดิมทั้งหมด?",
+	"backup.merge": "รวม",
+	"backup.replace": "แทนที่",
 	"backup.error.read": "อ่านข้อมูลไม่สำเร็จ",
 	"backup.error.export": "ส่งออกข้อมูลสำรองไม่สำเร็จ",
 	"backup.error.import": "นำเข้าข้อมูลสำรองไม่สำเร็จ",
+	"backup.error.clipboard": "อ่านคลิปบอร์ดไม่สำเร็จ",
 
 	"reset.title": "รีเซ็ต",
 	"reset.warning":
@@ -227,7 +238,7 @@ export const th: Catalog = {
 	"reset.done": "ลบข้อมูลทั้งหมดแล้ว",
 	"reset.error": "รีเซ็ตข้อมูลไม่สำเร็จ",
 
-	"backup.unreadable": "ไฟล์นี้ไม่ใช่ข้อมูลสำรองที่อ่านได้",
+	"backup.unreadable": "นี่ไม่ใช่ข้อมูลสำรองที่อ่านได้",
 	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
 	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.payment are each
 	// assembled with one of the backup.problem.* fragments below (backup.card + " " +
