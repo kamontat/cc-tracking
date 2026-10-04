@@ -163,9 +163,10 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
-/* The settings page's confirmations after a backup import or a reset, matching the purchase
+/* The settings page's confirmations after a backup copy, import or reset, matching the purchase
    confirmation's `.purchase-status`. Each element stays in the DOM so its live region is in place before the message
    arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
+.export-status,
 .import-status,
 .reset-status {
 	padding: var(--cc-space-2) var(--cc-space-3);
@@ -175,6 +176,7 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
+.export-status:empty,
 .import-status:empty,
 .reset-status:empty {
 	display: none;
@@ -224,8 +226,10 @@ a:any-link:hover {
 	background: var(--cc-danger-surface);
 }
 
-/* The reset question's answer: the destructive choice first, the way out beside it. */
-.reset__actions {
+/* The reset question's answer: the destructive choice first, the way out beside it. The
+   backup's paste and merge-or-replace buttons sit in the same kind of row. */
+.reset__actions,
+.backup__actions {
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: var(--cc-space-2);
@@ -239,7 +243,8 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
-.page input {
+.page input,
+.page textarea {
 	padding: var(--cc-space-2);
 	font: inherit;
 	font-size: var(--cc-text-md);
@@ -247,6 +252,126 @@ a:any-link:hover {
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-sm);
+}
+
+/* Pasted backup JSON: monospace so its structure reads, resizable only downwards. Scoped
+   under `.page` so it outranks `.page textarea` above. */
+.page .backup__text {
+	font-family: var(--cc-font-mono);
+	font-size: var(--cc-text-xs);
+	resize: vertical;
+}
+
+/* The backup's two directions, saving a copy and restoring one, side by side once there is
+   room and stacked on a phone. Each is outlined rather than filled, so the quiet buttons
+   inside keep their contrast. */
+.backup__ways {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+}
+
+@media (min-width: 640px) {
+	.backup__ways {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-items: start;
+	}
+}
+
+.backup__way {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-3) var(--cc-space-4) var(--cc-space-4);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+}
+
+.page .backup__way h3 {
+	font-size: var(--cc-text-md);
+	font-weight: 600;
+}
+
+/* The file picker, dressed as a quiet button. The input itself is clipped out of sight but
+   kept in the layout and the tab order, so the label's focus ring follows the keyboard. */
+.page .backup__file {
+	position: relative;
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 550;
+	line-height: 1.2;
+	color: var(--cc-text);
+	cursor: pointer;
+	background: var(--cc-surface-sunken);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page .backup__file:hover {
+	background: var(--cc-border);
+}
+
+.page .backup__file:focus-within {
+	box-shadow: var(--cc-focus-ring);
+}
+
+.page .backup__file input {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	padding: 0;
+	cursor: pointer;
+	opacity: 0;
+}
+
+/* What is here against what is coming in, so the merge-or-replace choice is an informed one. */
+.backup__compare {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	margin: 0;
+	padding: var(--cc-space-2) var(--cc-space-3);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
+}
+
+.backup__compare dt {
+	font-size: var(--cc-text-xs);
+	color: var(--cc-text-muted);
+}
+
+.backup__compare dd {
+	margin: 0;
+	font-size: var(--cc-text-sm);
+}
+
+/* Each answer is a whole button carrying its consequence, so nobody picks Replace without
+   reading what it does. */
+.backup__choices {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+}
+
+.page .backup__choice {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-1);
+	align-self: stretch;
+	text-align: start;
+}
+
+.page .backup__choice span {
+	font-weight: 400;
+}
+
+.page .backup__choice[data-variant="quiet"] span {
+	color: var(--cc-text-muted);
 }
 
 /* A file input ships its own button; without this it is the one browser-default

@@ -248,3 +248,23 @@ export async function importBackup(
 		limitGroups: backup.limitGroups.length,
 	};
 }
+
+/** How many of each record `repo` holds now, in the same shape an import reports. */
+export async function countRecords(repo: Repository): Promise<ImportCounts> {
+	const backup = await exportBackup(repo);
+	return {
+		cards: backup.cards.length,
+		purchases: backup.purchases.length,
+		payments: backup.payments.length,
+		limitGroups: backup.limitGroups.length,
+	};
+}
+
+/** Destructive: forgets everything stored, then writes the backup, so only its records remain. */
+export async function replaceWithBackup(
+	repo: Repository,
+	backup: Backup,
+): Promise<ImportCounts> {
+	await repo.clearAll();
+	return importBackup(repo, backup);
+}

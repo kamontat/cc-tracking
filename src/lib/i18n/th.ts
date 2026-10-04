@@ -208,14 +208,38 @@ export const th: Catalog = {
 
 	"backup.title": "สำรองข้อมูล",
 	"backup.warning":
-		"ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น ส่งออกเป็นประจำ การล้างข้อมูลเว็บไซต์จะลบทั้งหมด",
-	"backup.export": "ส่งออก JSON",
-	"backup.import": "นำเข้า JSON",
+		"ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น การล้างข้อมูลเว็บไซต์จะลบทั้งหมด จึงควรเก็บสำเนาไว้ในที่ปลอดภัย",
+	"backup.save.title": "บันทึกสำเนา",
+	"backup.save.hint": "ดาวน์โหลดเป็นไฟล์ หรือคัดลอกข้อความไปเก็บไว้ที่อื่น",
+	"backup.export": "ดาวน์โหลดไฟล์",
+	"backup.copy": "คัดลอกข้อความ",
+	"backup.copied": "คัดลอกไปยังคลิปบอร์ดแล้ว",
+	"backup.restore.title": "กู้คืนสำเนา",
+	"backup.restore.hint": "นำสำเนาที่บันทึกไว้กลับมา จากไฟล์หรือข้อความที่วาง",
+	"backup.import": "เลือกไฟล์…",
+	"backup.paste": "วางข้อความ…",
+	"backup.pasteLabel": "ข้อความสำรองที่คัดลอกไว้",
+	"backup.fromClipboard": "วางจากคลิปบอร์ด",
+	"backup.importText": "กู้คืน",
+	"backup.question.file": "กู้คืน {file}?",
+	"backup.question.pasted": "กู้คืนข้อความที่วาง?",
+	"backup.here": "ในเบราว์เซอร์นี้",
+	"backup.incoming": "ในสำเนา",
+	"backup.counts":
+		"บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+	"backup.merge": "รวม",
+	"backup.mergeHint": "เก็บข้อมูลเดิมไว้ เพิ่มรายการจากสำเนา และอัปเดตรายการที่ซ้ำกัน",
+	"backup.replace": "แทนที่",
+	"backup.replaceHint": "ลบข้อมูลเดิมก่อน ให้เหลือเฉพาะรายการจากสำเนา",
 	"backup.imported":
-		"นำเข้า {file} แล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+		"กู้คืน {file} แล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+	"backup.importedText":
+		"กู้คืนข้อความที่วางแล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
 	"backup.error.read": "อ่านข้อมูลไม่สำเร็จ",
-	"backup.error.export": "ส่งออกข้อมูลสำรองไม่สำเร็จ",
-	"backup.error.import": "นำเข้าข้อมูลสำรองไม่สำเร็จ",
+	"backup.error.export": "ดาวน์โหลดสำเนาไม่สำเร็จ",
+	"backup.error.import": "กู้คืนสำเนานี้ไม่สำเร็จ",
+	"backup.error.clipboard": "อ่านคลิปบอร์ดไม่สำเร็จ",
+	"backup.error.copy": "คัดลอกข้อความไม่สำเร็จ",
 
 	"reset.title": "รีเซ็ต",
 	"reset.warning":
@@ -227,7 +251,7 @@ export const th: Catalog = {
 	"reset.done": "ลบข้อมูลทั้งหมดแล้ว",
 	"reset.error": "รีเซ็ตข้อมูลไม่สำเร็จ",
 
-	"backup.unreadable": "ไฟล์นี้ไม่ใช่ข้อมูลสำรองที่อ่านได้",
+	"backup.unreadable": "นี่ไม่ใช่ข้อมูลสำรองที่อ่านได้",
 	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
 	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.payment are each
 	// assembled with one of the backup.problem.* fragments below (backup.card + " " +
