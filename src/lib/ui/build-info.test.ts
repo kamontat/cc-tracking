@@ -66,7 +66,7 @@ test("carries empty values when nothing was inlined, as in a dev server", () => 
 });
 
 test("marks text with the pull request a preview was built from", () => {
-	expect(withPrSuffix("cc-tracking", "42")).toBe("cc-tracking (PR 42)");
+	expect(withPrSuffix("cc-tracking", "42")).toBe("cc-tracking pr-42");
 });
 
 test("leaves text alone on a build that came from no pull request", () => {
