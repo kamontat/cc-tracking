@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace
+## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, and sortable dashboard panels
 
 ### Features
 
@@ -24,6 +24,11 @@ reasons don't show up in the code.
   `backup.question.pasted`, `backup.here`, `backup.incoming`, `backup.counts`,
   `backup.merge`, `backup.mergeHint`, `backup.replace`, `backup.replaceHint`,
   `backup.importedText`, `backup.error.clipboard`, `backup.error.copy`.
+- The dashboard's *Can spend now* and *Due next* panels sort from their column headings, and
+  from a sort chip on the narrow layout, the same way the cards page does. *Can spend now*
+  sorts by card, available, closes or due; *Due next* by card, where, closes, due or total.
+- `applySpendView`, `applyDueView` and `nextPanelSort` in `list-view.ts`; `sortChip` takes an
+  optional fallback view and `sortHeader` an optional next-sort function.
 
 ### Improvements
 
@@ -36,6 +41,8 @@ reasons don't show up in the code.
 - The file picker is styled as a quiet button instead of the browser's default control.
 - Upgraded `@kcstyles/reset.css` 1.0.13, `@kctools/bun-server` 0.3.4, `@biomejs/biome`
   2.5.15, `typescript-language-server` 6.0.1 and `wrangler` 4.147.0.
+- Both dashboard panels start soonest close date first. Before, *Can spend now* listed the
+  most room first and *Due next* the soonest due date.
 
 ### Bug fixes
 
@@ -53,6 +60,10 @@ reasons don't show up in the code.
 - Importing straight from another deploy's origin (a preview pulling from production) was
   left out. Storage is per origin, and an iframe gets partitioned storage, so it would need a
   confirmed popup-and-`postMessage` bridge on production; copy and paste covers it for now.
+- The dashboard panels have no saved order, so a third click on a heading returns to closes first
+  instead of to "Saved order", and their sort chip has no "Saved order" option.
+- The dashboard panel sort is kept on the component only and resets on reload, not written to the
+  query string like the cards page's view.
 
 ## 2026-09-30: Changelog link in the site footer
 
