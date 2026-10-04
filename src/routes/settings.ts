@@ -74,8 +74,10 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	const onCopyExport = () => {
 		copied = false;
 		return state.guard(async () => {
-			const { text } = await prepareBackupFile(repo);
-			await navigator.clipboard.writeText(text);
+			// Compact, unlike the file: pasted text is carried around, not read, so skip the indent.
+			await navigator.clipboard.writeText(
+				JSON.stringify(await exportBackup(repo)),
+			);
 			copied = true;
 		}, "backup.error.copy");
 	};
