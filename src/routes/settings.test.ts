@@ -563,6 +563,25 @@ test("importing into a browser that already holds data asks to merge or replace,
 	expect(await repo.listPurchases("kbank")).toHaveLength(2);
 });
 
+test("the merge-or-replace question shows merge as the primary button and replace as danger", async () => {
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup(), "b.json");
+	await settle();
+
+	// No variant is the filled primary button, so merge reads as a button, not a panel.
+	const merge = root.querySelector('.backup [data-action="merge-import"]');
+	expect(merge?.hasAttribute("data-variant")).toBe(false);
+	expect(
+		root
+			.querySelector('.backup [data-action="replace-import"]')
+			?.getAttribute("data-variant"),
+	).toBe("danger");
+});
+
 test("importing into an empty browser asks nothing", async () => {
 	const root = mount();
 	renderSettingsPage(new InMemoryRepository(), root);

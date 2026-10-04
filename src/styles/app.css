@@ -351,7 +351,7 @@ a:any-link:hover {
 }
 
 /* Each answer is a whole button carrying its consequence, so nobody picks Replace without
-   reading what it does. */
+   reading what it does. Merge is the filled primary, the safe default; Replace is danger. */
 .backup__choices {
 	display: flex;
 	flex-direction: column;
@@ -368,10 +368,6 @@ a:any-link:hover {
 
 .page .backup__choice span {
 	font-weight: 400;
-}
-
-.page .backup__choice[data-variant="quiet"] span {
-	color: var(--cc-text-muted);
 }
 
 /* A file input ships its own button; without this it is the one browser-default
