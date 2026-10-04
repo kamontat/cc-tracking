@@ -27,6 +27,24 @@ test("fills the title and the nav in the current language", () => {
 	expect(document.querySelector("#nav-settings")?.textContent).toBe("Settings");
 });
 
+test("suffixes the title and the brand with the pull request on a preview build", () => {
+	mountNav();
+	applyChrome("title.cards", document, "42");
+
+	expect(document.title).toBe("Card registry — cc-tracking (pr-42)");
+	expect(document.querySelector("#nav-brand")?.textContent).toBe(
+		"cc-tracking (pr-42)",
+	);
+});
+
+test("leaves the title and the brand bare on a production build", () => {
+	mountNav();
+	applyChrome("title.cards", document, "");
+
+	expect(document.title).toBe("Card registry — cc-tracking");
+	expect(document.querySelector("#nav-brand")?.textContent).toBe("cc-tracking");
+});
+
 test("marks the settings link as the current page on the settings path", () => {
 	mountNav();
 	markCurrentLink(document, "/settings");
