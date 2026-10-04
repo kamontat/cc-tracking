@@ -100,6 +100,9 @@ const openQuickAdd = async (root: HTMLElement) => {
 const answerText = (root: HTMLElement): string =>
 	root.querySelector(".purchase-status p")?.textContent?.trim() ?? "";
 
+/** The due list's own "Mark paid" button, not one of its sorting headings. */
+const MARK_PAID = 'button[data-action="mark-paid"]';
+
 const modalBannerMessage = (root: HTMLElement): string =>
 	root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message ?? "";
 
@@ -291,7 +294,7 @@ test("a failed mark-paid keeps its error message after the refresh that follows 
 
 	const list = root.querySelector("cc-due-list");
 	await list?.updateComplete;
-	list?.shadowRoot?.querySelector<HTMLButtonElement>("button")?.click();
+	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
 	await settle();
 
 	expect(bannerMessage(root)).toContain("disk is full");
@@ -308,7 +311,7 @@ test("marking a statement paid records the payment and clears it from the due li
 
 	const list = root.querySelector("cc-due-list");
 	await list?.updateComplete;
-	list?.shadowRoot?.querySelector<HTMLButtonElement>("button")?.click();
+	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
 	await settle();
 
 	expect(bannerMessage(root)).toBe("");
@@ -318,7 +321,7 @@ test("marking a statement paid records the payment and clears it from the due li
 
 	const listAfter = root.querySelector("cc-due-list");
 	await listAfter?.updateComplete;
-	expect(listAfter?.shadowRoot?.querySelector("button")).toBeNull();
+	expect(listAfter?.shadowRoot?.querySelector(MARK_PAID)).toBeNull();
 	expect(
 		listAfter?.shadowRoot?.querySelector("[data-urgency='overdue']"),
 	).toBeNull();

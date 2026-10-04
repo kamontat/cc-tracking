@@ -1,6 +1,7 @@
+import type { SpendRow } from "#lib/domain/limit";
 import { LOCATIONS, type Location } from "#lib/domain/location";
 import { cardOwnerOf, OWNERS, type Owner, ownerOf } from "#lib/domain/owner";
-import type { Card, LimitGroup } from "#lib/domain/types";
+import type { Card, LimitGroup, Statement } from "#lib/domain/types";
 
 export type SortDirection = "asc" | "desc";
 
@@ -199,4 +200,108 @@ export function nextSort<V extends { sort: string; dir: SortDirection }>(
 	if (view.sort !== key) return { ...view, sort: key, dir: "asc" };
 	if (view.dir === "asc") return { ...view, dir: "desc" };
 	return { ...view, sort: "default", dir: "asc" };
+}
+
+/** One card on the dashboard's due panel, with the statement it must settle next. */
+export type DueRow = { card: Card; statement: Statement };
+
+export const SPEND_SORTS = ["card", "available", "closes", "due"] as const;
+export type SpendSort = (typeof SPEND_SORTS)[number];
+
+export const DUE_SORTS = [
+	"card",
+	"location",
+	"closes",
+	"due",
+	"total",
+] as const;
+export type DueSort = (typeof DUE_SORTS)[number];
+
+/**
+ * The order a dashboard panel lists its rows in. Unlike the cards page there is no saved
+ * order to fall back to: a panel always sorts, soonest close date first unless told otherwise.
+ */
+export type PanelView<S extends string> = { sort: S; dir: SortDirection };
+
+export const DEFAULT_SPEND_VIEW: PanelView<SpendSort> = {
+	sort: "closes",
+	dir: "asc",
+};
+
+export const DEFAULT_DUE_VIEW: PanelView<DueSort> = {
+	sort: "closes",
+	dir: "asc",
+};
+
+// Plain dates are ISO strings, so their text order is their calendar order.
+const byText = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
+const byCardName = (a: { card: Card }, b: { card: Card }) =>
+	byName(a.card, b.card);
+
+/** Sorts a copy of `rows` by the view's key, ties broken by close date, then card name. */
+const sortRows = <R extends { card: Card }, S extends string>(
+	rows: R[],
+	view: PanelView<S>,
+	keys: Record<S, (a: R, b: R) => number>,
+	closes: (row: R) => string,
+): R[] =>
+	[...rows].sort(
+		(a, b) =>
+			(view.dir === "desc" ? -1 : 1) * keys[view.sort](a, b) ||
+			byText(closes(a), closes(b)) ||
+			byCardName(a, b),
+	);
+
+/** The spendable panel's rows in the order `view` asks for. Never mutates `rows`. */
+export function applySpendView(
+	rows: SpendRow[],
+	view: PanelView<SpendSort>,
+): SpendRow[] {
+	return sortRows(
+		rows,
+		view,
+		{
+			card: byCardName,
+			available: (a, b) => a.available - b.available,
+			closes: (a, b) => byText(a.closeDate, b.closeDate),
+			due: (a, b) => byText(a.dueDate, b.dueDate),
+		},
+		(row) => row.closeDate,
+	);
+}
+
+/** The due panel's rows in the order `view` asks for. Never mutates `rows`. */
+export function applyDueView(
+	rows: DueRow[],
+	view: PanelView<DueSort>,
+): DueRow[] {
+	return sortRows(
+		rows,
+		view,
+		{
+			card: byCardName,
+			location: (a, b) =>
+				LOCATIONS.indexOf(a.card.location) - LOCATIONS.indexOf(b.card.location),
+			closes: (a, b) => byText(a.statement.closeDate, b.statement.closeDate),
+			due: (a, b) => byText(a.statement.dueDate, b.statement.dueDate),
+			total: (a, b) => a.statement.total - b.statement.total,
+		},
+		(row) => row.statement.closeDate,
+	);
+}
+
+/**
+ * `nextSort` for a panel: a fresh column starts ascending and a second click reverses it, but
+ * a third returns to `fallback` rather than to a saved order the panel does not have. On the
+ * fallback's own column that makes the heading a plain two-way toggle.
+ */
+export function nextPanelSort<S extends string>(
+	view: PanelView<S>,
+	key: S,
+	fallback: PanelView<S>,
+): PanelView<S> {
+	if (view.sort !== key) return { sort: key, dir: "asc" };
+	if (view.dir === "asc") return { sort: key, dir: "desc" };
+	return fallback;
 }

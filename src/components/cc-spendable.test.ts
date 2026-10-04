@@ -119,8 +119,69 @@ test("says so when no card can take a purchase", async () => {
 
 test("renders in the chosen language", async () => {
 	const element = await mount();
-	expect(element.shadowRoot?.querySelector("th")?.textContent).toBe("Card");
+	// The heading's sort arrow sits beside its label, so drop it before comparing.
+	const heading = () =>
+		element.shadowRoot
+			?.querySelector("th button")
+			?.textContent?.replace(/[↕▲▼]/g, "")
+			.trim();
+	expect(heading()).toBe("Card");
 	setLocale("th");
 	await element.updateComplete;
-	expect(element.shadowRoot?.querySelector("th")?.textContent).toBe("บัตร");
+	expect(heading()).toBe("บัตร");
+});
+
+const order = (element: HTMLElement) =>
+	[...(element.shadowRoot?.querySelectorAll("a.card-name") ?? [])].map(
+		(link) => link.textContent,
+	);
+
+const threeRows = () => [
+	row({ card: card("late"), closeDate: "2026-10-28", available: 300_000 }),
+	row({ card: card("soon"), closeDate: "2026-10-05", available: 100_000 }),
+	row({ card: card("mid"), closeDate: "2026-10-18", available: 200_000 }),
+];
+
+test("lists the soonest close date first", async () => {
+	const element = await mount({ rows: threeRows() });
+	expect(order(element)).toEqual(["soon card", "mid card", "late card"]);
+	expect(
+		element.shadowRoot
+			?.querySelector('th button[data-sort="closes"]')
+			?.closest("th")
+			?.getAttribute("aria-sort"),
+	).toBe("ascending");
+});
+
+test("sorts from its column headings: ascending, descending, then closes first again", async () => {
+	const element = await mount({ rows: threeRows() });
+	const heading = () =>
+		element.shadowRoot?.querySelector<HTMLButtonElement>(
+			'th button[data-sort="available"]',
+		);
+	const seen: (string | null)[][] = [];
+	for (let click = 0; click < 3; click++) {
+		heading()?.click();
+		await element.updateComplete;
+		seen.push(order(element));
+	}
+	expect(seen).toEqual([
+		["soon card", "mid card", "late card"],
+		["late card", "mid card", "soon card"],
+		["soon card", "mid card", "late card"],
+	]);
+	expect(heading()?.closest("th")?.getAttribute("aria-sort")).toBe("none");
+});
+
+test("sorts from the narrow layout's sort chip, which has no saved order to offer", async () => {
+	const element = await mount({ rows: threeRows() });
+	const sort = element.shadowRoot?.querySelector<HTMLSelectElement>(
+		'select[name="sort"]',
+	);
+	if (!sort) throw new Error("no sort chip");
+	expect(sort.querySelector('option[value=""]')).toBeNull();
+	sort.value = "closes:desc";
+	sort.dispatchEvent(new Event("change"));
+	await element.updateComplete;
+	expect(order(element)).toEqual(["late card", "mid card", "soon card"]);
 });
