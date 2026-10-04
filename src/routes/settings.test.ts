@@ -33,6 +33,31 @@ const chooseFile = (root: HTMLElement, text: string, name = "backup.json") => {
 	input.dispatchEvent(new Event("change", { bubbles: true }));
 };
 
+const clickBackup = (root: HTMLElement, action: string) => {
+	const button = root.querySelector<HTMLButtonElement>(
+		`.backup [data-action="${action}"]`,
+	);
+	if (!button) throw new Error(`no ${action} button`);
+	button.click();
+};
+
+const backupText = (root: HTMLElement): string =>
+	root.querySelector(".backup")?.textContent?.replace(/\s+/g, " ") ?? "";
+
+const pasteArea = (root: HTMLElement): HTMLTextAreaElement | null =>
+	root.querySelector<HTMLTextAreaElement>(".backup textarea");
+
+/** Opens the paste panel, types `text` into it and presses its Import button. */
+const pasteBackup = async (root: HTMLElement, text: string) => {
+	clickBackup(root, "open-paste");
+	await settle();
+	const area = pasteArea(root);
+	if (!area) throw new Error("no paste area");
+	area.value = text;
+	area.dispatchEvent(new Event("input", { bubbles: true }));
+	clickBackup(root, "import-text");
+};
+
 const sampleCard: Card = {
 	id: "kbank",
 	name: "KBank Visa",
@@ -156,6 +181,8 @@ test("importing a backup merges it into a populated repository without wiping wh
 
 	chooseFile(root, backupText);
 	await settle();
+	clickBackup(root, "merge-import");
+	await settle();
 
 	expect(bannerMessage(root)).toBe("");
 	expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank", "scb"]);
@@ -174,7 +201,7 @@ test("importing a malformed file leaves a message in the banner and changes noth
 	chooseFile(root, "{ this is not json");
 	await settle();
 
-	expect(bannerMessage(root)).toContain("Could not import that backup.");
+	expect(bannerMessage(root)).toContain("Could not restore that copy.");
 	expect(await repo.listCards()).toEqual([sampleCard]);
 });
 
@@ -238,7 +265,7 @@ test("renders the backup section's heading and warning in the chosen language", 
 	renderSettingsPage(repo, root);
 	await settle();
 	expect(root.querySelector("article.backup h2")?.textContent).toBe("Backup");
-	expect(root.textContent).toContain("Export regularly");
+	expect(root.textContent).toContain("keep a copy somewhere safe");
 
 	setLocale("th");
 	await settle();
@@ -246,6 +273,21 @@ test("renders the backup section's heading and warning in the chosen language", 
 		"สำรองข้อมูล",
 	);
 	setLocale("en");
+});
+
+test("splits the backup into saving a copy and restoring one, each with its own actions", async () => {
+	setLocale("en");
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	const save = root.querySelector(".backup__way--save");
+	const restore = root.querySelector(".backup__way--restore");
+	expect(save?.querySelector("h3")?.textContent).toBe("Save a copy");
+	expect(restore?.querySelector("h3")?.textContent).toBe("Restore a copy");
+	expect(save?.textContent).toContain("Download file");
+	expect(restore?.querySelector('input[type="file"]')).not.toBeNull();
+	expect(restore?.querySelector('[data-action="open-paste"]')).not.toBeNull();
 });
 
 const oneCardBackup = async (): Promise<string> => {
@@ -272,7 +314,7 @@ test("a successful import names the file and counts what it brought in", async (
 
 	expect(bannerMessage(root)).toBe("");
 	expect(importStatus(root)).toBe(
-		"Imported cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
+		"Restored cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
 	);
 	expect(root.querySelector(".import-status")?.getAttribute("role")).toBe(
 		"status",
@@ -293,7 +335,7 @@ test("a failed import clears the success message from an earlier one", async () 
 	await settle();
 
 	expect(importStatus(root)).toBe("");
-	expect(bannerMessage(root)).toContain("Could not import that backup.");
+	expect(bannerMessage(root)).toContain("Could not restore that copy.");
 });
 
 test("the success message follows a language switch", async () => {
@@ -487,4 +529,290 @@ test("the reset question follows a language switch", async () => {
 		root.querySelector('.reset [data-action="confirm-reset"]'),
 	).not.toBeNull();
 	setLocale("en");
+});
+
+test("importing into a browser that already holds data asks to merge or replace, counting both sides", async () => {
+	setLocale("en");
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup(), "cc-tracking-2026-09-21.json");
+	await settle();
+
+	expect(backupText(root)).toContain("Restore cc-tracking-2026-09-21.json?");
+	const rows = [...root.querySelectorAll(".backup__compare > div")].map(
+		(row) => [
+			row.querySelector("dt")?.textContent,
+			row.querySelector("dd")?.textContent,
+		],
+	);
+	expect(rows).toEqual([
+		["In this browser", "1 cards, 2 purchases, 0 payments, 1 limit groups"],
+		["In the copy", "1 cards, 1 purchases, 0 payments, 0 limit groups"],
+	]);
+	expect(root.querySelector('.backup [data-action="open-paste"]')).toBeNull();
+	expect(
+		root.querySelector('.backup [data-action="merge-import"]'),
+	).not.toBeNull();
+	expect(
+		root.querySelector('.backup [data-action="replace-import"]'),
+	).not.toBeNull();
+	expect(importStatus(root)).toBe("");
+	expect(await repo.listPurchases("kbank")).toHaveLength(2);
+});
+
+test("importing into an empty browser asks nothing", async () => {
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup());
+	await settle();
+
+	expect(root.querySelector('.backup [data-action="merge-import"]')).toBeNull();
+	expect(importStatus(root)).not.toBe("");
+});
+
+test("choosing replace leaves only what the backup carries", async () => {
+	setLocale("en");
+	const source = new InMemoryRepository();
+	await source.saveCard({ ...sampleCard, id: "scb", name: "SCB" });
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	chooseFile(root, JSON.stringify(await exportBackup(source)), "b.json");
+	await settle();
+	clickBackup(root, "replace-import");
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
+	expect((await repo.listCards()).map((c) => c.id)).toEqual(["scb"]);
+	expect(await repo.listLimitGroups()).toEqual([]);
+	expect(importStatus(root)).toBe(
+		"Restored b.json: 1 cards, 0 purchases, 0 payments, 0 limit groups.",
+	);
+	expect(
+		root.querySelector('.backup [data-action="replace-import"]'),
+	).toBeNull();
+});
+
+test("cancelling the merge-or-replace question imports nothing", async () => {
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup());
+	await settle();
+	clickBackup(root, "cancel-import");
+	await settle();
+
+	expect(root.querySelector('.backup [data-action="merge-import"]')).toBeNull();
+	expect(importStatus(root)).toBe("");
+	expect(await repo.listPurchases("kbank")).toHaveLength(2);
+	expect(await repo.listLimitGroups()).toHaveLength(1);
+});
+
+test("the paste panel stays closed until asked for", async () => {
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	expect(pasteArea(root)).toBeNull();
+	clickBackup(root, "open-paste");
+	await settle();
+	expect(pasteArea(root)).not.toBeNull();
+	clickBackup(root, "close-paste");
+	await settle();
+	expect(pasteArea(root)).toBeNull();
+});
+
+test("importing pasted text brings it in and closes the panel", async () => {
+	setLocale("en");
+	const repo = new InMemoryRepository();
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	await pasteBackup(root, await oneCardBackup());
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
+	expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank"]);
+	expect(importStatus(root)).toBe(
+		"Restored pasted text: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
+	);
+	expect(pasteArea(root)).toBeNull();
+});
+
+test("pasted text into a browser that holds data asks to merge or replace too", async () => {
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	setLocale("en");
+	await pasteBackup(root, await oneCardBackup());
+	await settle();
+	expect(backupText(root)).toContain("Restore pasted text");
+	expect(pasteArea(root)).toBeNull();
+	clickBackup(root, "merge-import");
+	await settle();
+
+	expect(await repo.listPurchases("kbank")).toHaveLength(2);
+	expect(await repo.listLimitGroups()).toHaveLength(1);
+	expect(importStatus(root)).not.toBe("");
+});
+
+test("malformed pasted text leaves a message, keeps the text, and changes nothing", async () => {
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+
+	await pasteBackup(root, "{ not json");
+	await settle();
+
+	expect(bannerMessage(root)).toContain("Could not restore that copy.");
+	expect(pasteArea(root)?.value).toBe("{ not json");
+	expect(root.querySelector('.backup [data-action="merge-import"]')).toBeNull();
+	expect(await repo.listPurchases("kbank")).toHaveLength(2);
+});
+
+/** Swaps in a stub `navigator.clipboard` for the length of `run`. */
+const withClipboard = async (
+	clipboard: Partial<Pick<Clipboard, "readText" | "writeText">>,
+	run: () => Promise<void>,
+) => {
+	const original = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+	Object.defineProperty(navigator, "clipboard", {
+		configurable: true,
+		value: clipboard,
+	});
+	try {
+		await run();
+	} finally {
+		if (original) Object.defineProperty(navigator, "clipboard", original);
+		else delete (navigator as { clipboard?: unknown }).clipboard;
+	}
+};
+
+test("paste from clipboard fills the text area", async () => {
+	await withClipboard({ readText: async () => '{"version":2}' }, async () => {
+		const root = mount();
+		renderSettingsPage(new InMemoryRepository(), root);
+		await settle();
+
+		clickBackup(root, "open-paste");
+		await settle();
+		clickBackup(root, "read-clipboard");
+		await settle();
+
+		expect(pasteArea(root)?.value).toBe('{"version":2}');
+	});
+});
+
+test("a clipboard the browser will not read leaves a message", async () => {
+	setLocale("en");
+	await withClipboard(
+		{ readText: () => Promise.reject(new Error("denied")) },
+		async () => {
+			const root = mount();
+			renderSettingsPage(new InMemoryRepository(), root);
+			await settle();
+
+			clickBackup(root, "open-paste");
+			await settle();
+			clickBackup(root, "read-clipboard");
+			await settle();
+
+			expect(bannerMessage(root)).toContain("Could not read the clipboard.");
+		},
+	);
+});
+
+test("the merge-or-replace question follows a language switch", async () => {
+	setLocale("en");
+	const root = mount();
+	renderSettingsPage(await populated(new InMemoryRepository()), root);
+	await settle();
+
+	chooseFile(root, await oneCardBackup());
+	await settle();
+	expect(backupText(root)).toContain("In this browser");
+
+	setLocale("th");
+	await settle();
+	expect(backupText(root)).not.toContain("In this browser");
+	expect(
+		root.querySelector('.backup [data-action="merge-import"]'),
+	).not.toBeNull();
+	setLocale("en");
+});
+
+const exportStatus = (root: HTMLElement): string =>
+	root.querySelector(".export-status")?.textContent?.trim() ?? "";
+
+test("copy to clipboard writes the same backup Export JSON would, and says so", async () => {
+	setLocale("en");
+	const repo = await populated(new InMemoryRepository());
+	let written = "";
+	await withClipboard(
+		{
+			writeText: async (text) => {
+				written = text;
+			},
+		},
+		async () => {
+			const root = mount();
+			renderSettingsPage(repo, root);
+			await settle();
+
+			clickBackup(root, "copy-export");
+			await settle();
+
+			expect(bannerMessage(root)).toBe("");
+			const copied = parseBackup(written);
+			expect(copied.cards).toEqual(await repo.listCards());
+			expect(copied.purchases).toHaveLength(2);
+			expect(exportStatus(root)).toBe("Copied to the clipboard.");
+			expect(root.querySelector(".export-status")?.getAttribute("role")).toBe(
+				"status",
+			);
+		},
+	);
+});
+
+test("a clipboard the browser will not write leaves a message", async () => {
+	setLocale("en");
+	await withClipboard(
+		{ writeText: () => Promise.reject(new Error("denied")) },
+		async () => {
+			const root = mount();
+			renderSettingsPage(new InMemoryRepository(), root);
+			await settle();
+
+			clickBackup(root, "copy-export");
+			await settle();
+
+			expect(bannerMessage(root)).toContain("Could not copy the text.");
+			expect(exportStatus(root)).toBe("");
+		},
+	);
+});
+
+test("copy to clipboard is not offered where the browser cannot write to it", async () => {
+	await withClipboard({}, async () => {
+		const root = mount();
+		renderSettingsPage(new InMemoryRepository(), root);
+		await settle();
+
+		expect(
+			root.querySelector('.backup [data-action="copy-export"]'),
+		).toBeNull();
+	});
 });

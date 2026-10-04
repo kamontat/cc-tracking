@@ -192,14 +192,42 @@ export const en = {
 
 	"backup.title": "Backup",
 	"backup.warning":
-		"Data lives in this browser only. Export regularly; clearing site data erases everything.",
-	"backup.export": "Export JSON",
-	"backup.import": "Import JSON",
+		"Your data lives only in this browser. Clearing site data erases it, so keep a copy somewhere safe.",
+	"backup.save.title": "Save a copy",
+	"backup.save.hint":
+		"Download a file, or copy the text to keep it somewhere else.",
+	"backup.export": "Download file",
+	"backup.copy": "Copy text",
+	"backup.copied": "Copied to the clipboard.",
+	"backup.restore.title": "Restore a copy",
+	"backup.restore.hint":
+		"Bring back a copy you saved earlier, from a file or pasted text.",
+	"backup.import": "Choose file…",
+	"backup.paste": "Paste text…",
+	"backup.pasteLabel": "Copied backup text",
+	"backup.fromClipboard": "Paste from clipboard",
+	"backup.importText": "Restore",
+	"backup.question.file": "Restore {file}?",
+	"backup.question.pasted": "Restore pasted text?",
+	"backup.here": "In this browser",
+	"backup.incoming": "In the copy",
+	"backup.counts":
+		"{cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups",
+	"backup.merge": "Merge",
+	"backup.mergeHint":
+		"Keep what is here, add the copy's records, and update any it shares.",
+	"backup.replace": "Replace",
+	"backup.replaceHint":
+		"Delete what is here first, so only the copy's records remain.",
 	"backup.imported":
-		"Imported {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
+		"Restored {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
+	"backup.importedText":
+		"Restored pasted text: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
 	"backup.error.read": "Could not read your data.",
-	"backup.error.export": "Could not export a backup.",
-	"backup.error.import": "Could not import that backup.",
+	"backup.error.export": "Could not download a copy.",
+	"backup.error.import": "Could not restore that copy.",
+	"backup.error.clipboard": "Could not read the clipboard.",
+	"backup.error.copy": "Could not copy the text.",
 
 	"reset.title": "Reset",
 	"reset.warning":
@@ -211,7 +239,7 @@ export const en = {
 	"reset.done": "All data deleted.",
 	"reset.error": "Could not reset your data.",
 
-	"backup.unreadable": "That file is not a readable backup.",
+	"backup.unreadable": "That is not a readable backup.",
 	"backup.version":
 		"That backup is version {found}, and this app reads version {expected}.",
 	"backup.card": "That backup's card #{index} {problem}.",

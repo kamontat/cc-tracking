@@ -8,7 +8,13 @@ import {
 } from "#lib/storage/contract";
 import type { Repository } from "#lib/storage/repository";
 import { InMemoryRepository } from "#lib/storage/repository";
-import { exportBackup, importBackup, parseBackup } from "#lib/storage/transfer";
+import {
+	countRecords,
+	exportBackup,
+	importBackup,
+	parseBackup,
+	replaceWithBackup,
+} from "#lib/storage/transfer";
 
 /** Runs `fn`, expecting it to throw, and returns what it threw. */
 function captureThrow(fn: () => unknown): unknown {
@@ -570,5 +576,47 @@ describe("importBackup", () => {
 			payments: [],
 		});
 		expect(parseBackup(text).cards).toHaveLength(1);
+	});
+});
+
+describe("countRecords", () => {
+	test("counts every card, purchase, payment and limit group", async () => {
+		expect(await countRecords(await populated())).toEqual({
+			cards: 2,
+			purchases: 2,
+			payments: 1,
+			limitGroups: 0,
+		});
+	});
+
+	test("counts nothing in an empty repository", async () => {
+		expect(await countRecords(new InMemoryRepository())).toEqual({
+			cards: 0,
+			purchases: 0,
+			payments: 0,
+			limitGroups: 0,
+		});
+	});
+});
+
+describe("replaceWithBackup", () => {
+	test("drops every record and setting the backup does not carry", async () => {
+		const source = new InMemoryRepository();
+		await source.saveCard(sampleCard({ id: "ktc", name: "KTC" }));
+		const repo = await populated();
+		await repo.saveSettings({ purchaseLocations: ["phichit"] });
+
+		const counts = await replaceWithBackup(repo, await exportBackup(source));
+
+		expect(counts).toEqual({
+			cards: 1,
+			purchases: 0,
+			payments: 0,
+			limitGroups: 0,
+		});
+		expect((await repo.listCards()).map((c) => c.id)).toEqual(["ktc"]);
+		expect(await repo.listPurchases("kbank")).toEqual([]);
+		expect(await repo.listPayments("kbank")).toEqual([]);
+		expect(await repo.getSettings()).toEqual(await source.getSettings());
 	});
 });
