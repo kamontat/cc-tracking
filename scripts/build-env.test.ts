@@ -7,7 +7,16 @@ test("stamps the commit git reports and the moment of the build", () => {
 	expect(resolveBuildEnv({ sha: "7ba698c\n", now, env: {} })).toEqual({
 		BUN_PUBLIC_COMMIT_SHA: "7ba698c",
 		BUN_PUBLIC_BUILT_AT: "2026-09-24T13:12:00.000Z",
+		BUN_PUBLIC_PR_NUMBER: "",
 	});
+});
+
+test("keeps the pull request number a preview deploy carries", () => {
+	const env = { BUN_PUBLIC_PR_NUMBER: "42" };
+
+	expect(
+		resolveBuildEnv({ sha: "7ba698c", now, env }).BUN_PUBLIC_PR_NUMBER,
+	).toBe("42");
 });
 
 test("keeps a commit the environment already carries, as CI may know better than git", () => {

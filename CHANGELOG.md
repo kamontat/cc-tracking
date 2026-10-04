@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, and sortable dashboard panels
+## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, sortable dashboard panels, and a preview marker
 
 ### Features
 
@@ -29,6 +29,9 @@ reasons don't show up in the code.
   sorts by card, available, closes or due; *Due next* by card, where, closes, due or total.
 - `applySpendView`, `applyDueView` and `nextPanelSort` in `list-view.ts`; `sortChip` takes an
   optional fallback view and `sortHeader` an optional next-sort function.
+- A preview deploy suffixes the page title and the header brand with `(pr-<n>)`, so it can't
+  be mistaken for production. The deploy preview workflow passes the number as
+  `BUN_PUBLIC_PR_NUMBER`; production shows no suffix.
 
 ### Improvements
 
@@ -64,6 +67,10 @@ reasons don't show up in the code.
   instead of to "Saved order", and their sort chip has no "Saved order" option.
 - The dashboard panel sort is kept on the component only and resets on reload, not written to the
   query string like the cards page's view.
+- `BUN_PUBLIC_PR_NUMBER` is always stamped at build time, empty outside previews. The bundler
+  only inlines variables that exist, and an unset one would stay a `process.env` read that
+  throws in the browser and blanks the footer's commit and build time.
+- The `(pr-<n>)` marker is not translated; it reads the same in English and Thai.
 
 ## 2026-09-30: Changelog link in the site footer
 
