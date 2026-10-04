@@ -4,7 +4,7 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { t } from "#lib/i18n/index";
 
 /**
- * The search, filter and sort pieces `cc-card-table` and `cc-limit-group-table` share. Plain
+ * The search, filter and sort pieces the list tables and dashboard panels share. Plain
  * template functions, not elements: each table renders them into its own shadow root, where
  * `listControls` from `#styles/shared` styles them.
  *
@@ -64,17 +64,22 @@ const arrow = (dir: SortDirection) => (dir === "asc" ? "▲" : "▼");
 
 /**
  * The sort a stacked table cannot offer through its headers, which it hides. Only shown on
- * the narrow layout; every key comes twice, once each way.
+ * the narrow layout; every key comes twice, once each way. A list that always sorts passes
+ * `fallback`, its own default view, and gets no "saved order" option.
  */
 export function sortChip<V extends Sortable>(
 	view: V,
 	labels: Record<Exclude<V["sort"], "default">, MessageKey>,
 	onChange: (view: V) => void,
+	fallback?: V,
 ): TemplateResult {
 	const keys = Object.keys(labels) as Exclude<V["sort"], "default">[];
 	const current = view.sort === "default" ? "" : `${view.sort}:${view.dir}`;
+	const active = fallback
+		? current !== `${fallback.sort}:${fallback.dir}`
+		: current !== "";
 	return html`
-		<label class="chip sort-chip" ?data-active=${current !== ""}>
+		<label class="chip sort-chip" ?data-active=${active}>
 			${t("list.sort")}
 			<select name="sort"
 				@change=${(event: Event) => {
@@ -83,10 +88,10 @@ export function sortChip<V extends Sortable>(
 					onChange(
 						key && (dir === "asc" || dir === "desc")
 							? { ...view, sort: key, dir }
-							: { ...view, sort: "default", dir: "asc" },
+							: (fallback ?? { ...view, sort: "default", dir: "asc" }),
 					);
 				}}>
-				<option value="" .selected=${current === ""}>${t("list.sortDefault")}</option>
+				${fallback ? nothing : html`<option value="" .selected=${current === ""}>${t("list.sortDefault")}</option>`}
 				${keys.flatMap((key) =>
 					(["asc", "desc"] as const).map(
 						(dir) =>
@@ -100,7 +105,8 @@ export function sortChip<V extends Sortable>(
 
 /**
  * A column heading that sorts by `key`. The button carries the click; `aria-sort` on the
- * heading carries the state, and a faint ↕ marks a column that is not the sort.
+ * heading carries the state, and a faint ↕ marks a column that is not the sort. `next` decides
+ * what a click does; a list with no saved order passes its own.
  */
 export function sortHeader<V extends Sortable>(
 	label: string,
@@ -108,13 +114,14 @@ export function sortHeader<V extends Sortable>(
 	view: V,
 	onSort: (view: V) => void,
 	numeric = false,
+	next: (view: V, key: V["sort"]) => V = nextSort,
 ): TemplateResult {
 	const active = view.sort === key;
 	return html`
 		<th ?data-numeric=${numeric}
 			aria-sort=${active ? (view.dir === "asc" ? "ascending" : "descending") : "none"}>
 			<button type="button" class="sort" data-sort=${key}
-				@click=${() => onSort(nextSort(view, key))}>
+				@click=${() => onSort(next(view, key))}>
 				${label}<span class="sort-arrow" aria-hidden="true">${active ? arrow(view.dir) : "↕"}</span>
 			</button>
 		</th>

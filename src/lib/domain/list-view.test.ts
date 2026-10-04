@@ -1,11 +1,18 @@
 import { expect, test } from "bun:test";
+import type { SpendRow } from "#lib/domain/limit";
 import {
 	applyCardView,
+	applyDueView,
 	applyGroupView,
+	applySpendView,
 	byOwnerThenName,
 	type CardView,
 	DEFAULT_CARD_VIEW,
+	DEFAULT_DUE_VIEW,
 	DEFAULT_GROUP_VIEW,
+	DEFAULT_SPEND_VIEW,
+	type DueRow,
+	nextPanelSort,
 	nextSort,
 	UNASSIGNED,
 } from "#lib/domain/list-view";
@@ -242,4 +249,144 @@ test("a click on another header starts that column ascending", () => {
 		sort: "location",
 		dir: "asc",
 	});
+});
+
+const spendRow = (
+	id: string,
+	closeDate: string,
+	dueDate: string,
+	available: number,
+): SpendRow => ({
+	card: card(id),
+	group: group("pool", "Pool"),
+	used: 0,
+	available,
+	closeDate,
+	dueDate,
+	sharedWith: 0,
+});
+
+const rowIds = (rows: { card: Card }[]) => rows.map(({ card }) => card.id);
+
+test("the spendable panel lists the soonest close date first by default", () => {
+	const rows = [
+		spendRow("late", "2026-10-28", "2026-11-12", 100),
+		spendRow("soon", "2026-10-05", "2026-10-20", 300),
+		spendRow("mid", "2026-10-18", "2026-11-02", 200),
+	];
+	expect(rowIds(applySpendView(rows, DEFAULT_SPEND_VIEW))).toEqual([
+		"soon",
+		"mid",
+		"late",
+	]);
+});
+
+test("sorts the spendable panel by card, available and dates, either way", () => {
+	const rows = [
+		spendRow("b", "2026-10-05", "2026-11-12", 100),
+		spendRow("c", "2026-10-28", "2026-10-20", 300),
+		spendRow("a", "2026-10-18", "2026-11-02", 200),
+	];
+	expect(rowIds(applySpendView(rows, { sort: "card", dir: "asc" }))).toEqual([
+		"a",
+		"b",
+		"c",
+	]);
+	expect(
+		rowIds(applySpendView(rows, { sort: "available", dir: "desc" })),
+	).toEqual(["c", "a", "b"]);
+	expect(rowIds(applySpendView(rows, { sort: "due", dir: "asc" }))).toEqual([
+		"c",
+		"a",
+		"b",
+	]);
+	expect(rowIds(applySpendView(rows, { sort: "closes", dir: "desc" }))).toEqual(
+		["c", "a", "b"],
+	);
+});
+
+test("spendable rows closing the same day fall back to the card name", () => {
+	const rows = [
+		spendRow("b", "2026-10-05", "2026-10-20", 100),
+		spendRow("a", "2026-10-05", "2026-10-20", 100),
+	];
+	expect(rowIds(applySpendView(rows, DEFAULT_SPEND_VIEW))).toEqual(["a", "b"]);
+});
+
+const dueRow = (
+	id: string,
+	closeDate: string,
+	dueDate: string,
+	total: number,
+	location: Card["location"] = "bangkok",
+): DueRow => ({
+	card: card(id, { location }),
+	statement: {
+		cardId: id,
+		period: "2026-09",
+		closeDate,
+		dueDate,
+		purchases: [],
+		total,
+		paid: false,
+		payment: null,
+	},
+});
+
+test("the due panel lists the soonest close date first by default", () => {
+	const rows = [
+		dueRow("late", "2026-10-28", "2026-10-30", 100),
+		dueRow("soon", "2026-10-05", "2026-11-20", 300),
+		dueRow("mid", "2026-10-18", "2026-11-02", 200),
+	];
+	expect(rowIds(applyDueView(rows, DEFAULT_DUE_VIEW))).toEqual([
+		"soon",
+		"mid",
+		"late",
+	]);
+});
+
+test("sorts the due panel by card, location, due date and total, either way", () => {
+	const rows = [
+		dueRow("b", "2026-10-05", "2026-11-12", 100, "krabi"),
+		dueRow("c", "2026-10-28", "2026-10-20", 300, "bangkok"),
+		dueRow("a", "2026-10-18", "2026-11-02", 200, "krabi"),
+	];
+	expect(rowIds(applyDueView(rows, { sort: "card", dir: "desc" }))).toEqual([
+		"c",
+		"b",
+		"a",
+	]);
+	// Both Krabi cards tie on location, so the sooner close date leads.
+	expect(rowIds(applyDueView(rows, { sort: "location", dir: "asc" }))).toEqual([
+		"c",
+		"b",
+		"a",
+	]);
+	expect(rowIds(applyDueView(rows, { sort: "due", dir: "asc" }))).toEqual([
+		"c",
+		"a",
+		"b",
+	]);
+	expect(rowIds(applyDueView(rows, { sort: "total", dir: "desc" }))).toEqual([
+		"c",
+		"a",
+		"b",
+	]);
+});
+
+test("a panel header click sorts ascending, then descending, then back to closes first", () => {
+	let view = nextPanelSort(DEFAULT_SPEND_VIEW, "available", DEFAULT_SPEND_VIEW);
+	expect(view).toEqual({ sort: "available", dir: "asc" });
+	view = nextPanelSort(view, "available", DEFAULT_SPEND_VIEW);
+	expect(view).toEqual({ sort: "available", dir: "desc" });
+	view = nextPanelSort(view, "available", DEFAULT_SPEND_VIEW);
+	expect(view).toEqual(DEFAULT_SPEND_VIEW);
+});
+
+test("a click on the closes header flips the default order, and a second flips it back", () => {
+	let view = nextPanelSort(DEFAULT_DUE_VIEW, "closes", DEFAULT_DUE_VIEW);
+	expect(view).toEqual({ sort: "closes", dir: "desc" });
+	view = nextPanelSort(view, "closes", DEFAULT_DUE_VIEW);
+	expect(view).toEqual(DEFAULT_DUE_VIEW);
 });
