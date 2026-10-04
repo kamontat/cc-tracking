@@ -4,12 +4,13 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, sortable dashboard panels, a preview marker, and a primary Merge button
+## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, sortable dashboard panels, a preview marker, a primary Merge button, and compact copied text
 
 ### Features
 
-- The backup can be copied as text: `Copy text` writes the same JSON the downloaded file
-  holds to the clipboard and confirms in its own status line.
+- The backup can be copied as text: `Copy text` writes the backup's JSON to the clipboard,
+  compact rather than indented like the downloaded file so it takes less space, and confirms
+  in its own status line.
 - A backup can be restored from pasted text: `Paste text…` opens a text area with `Restore`,
   `Paste from clipboard` and `Cancel`.
 - Restoring into a browser that already holds cards, purchases, payments or limit groups now

@@ -776,7 +776,7 @@ test("the merge-or-replace question follows a language switch", async () => {
 const exportStatus = (root: HTMLElement): string =>
 	root.querySelector(".export-status")?.textContent?.trim() ?? "";
 
-test("copy to clipboard writes the same backup Export JSON would, and says so", async () => {
+test("copy to clipboard writes the backup as compact JSON, and says so", async () => {
 	setLocale("en");
 	const repo = await populated(new InMemoryRepository());
 	let written = "";
@@ -798,6 +798,8 @@ test("copy to clipboard writes the same backup Export JSON would, and says so", 
 			const copied = parseBackup(written);
 			expect(copied.cards).toEqual(await repo.listCards());
 			expect(copied.purchases).toHaveLength(2);
+			// Compact, not pretty-printed: pasted text is carried around, not read.
+			expect(written).toBe(JSON.stringify(JSON.parse(written)));
 			expect(exportStatus(root)).toBe("Copied to the clipboard.");
 			expect(root.querySelector(".export-status")?.getAttribute("role")).toBe(
 				"status",
