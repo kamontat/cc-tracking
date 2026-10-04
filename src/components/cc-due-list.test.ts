@@ -24,6 +24,9 @@ const purchases: Purchase[] = [
 	},
 ];
 
+/** The row's own "Mark paid" button, not one of the sorting headings. */
+const MARK_PAID = 'button[data-action="mark-paid"]';
+
 const mount = async (rows: DueRow[], today: string) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-due-list");
@@ -69,7 +72,7 @@ test("emits mark-paid with the card and period", async () => {
 	element.addEventListener("mark-paid", (event) => {
 		detail = (event as CustomEvent<{ cardId: string; period: string }>).detail;
 	});
-	element.shadowRoot?.querySelector<HTMLButtonElement>("button")?.click();
+	element.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
 	expect(detail).toEqual({ cardId: "kbank", period: "2026-09" });
 });
 
@@ -128,4 +131,68 @@ test("keeps the card cell's layout hook when the locale changes", async () => {
 	const cell = element.shadowRoot?.querySelector("td.card-cell");
 	expect(cell).not.toBeNull();
 	expect(cell?.getAttribute("data-label")).toBe("บัตร");
+});
+
+const dueRows = (): DueRow[] =>
+	// Due dates run the other way (late 29 Sep, mid 03 Oct, soon 05 Oct), so close order
+	// cannot pass for the old due-first order.
+	(
+		[
+			["late", 28, 1],
+			["soon", 5, 30],
+			["mid", 18, 15],
+		] as const
+	).map(([id, closeDay, dueOffsetDays]) => {
+		const entry: Card = {
+			...card,
+			id,
+			name: `${id} card`,
+			cycle: { kind: "offset", closeDay, dueOffsetDays },
+		};
+		return { card: entry, statement: buildStatement(entry, "2026-09", []) };
+	});
+
+const order = (element: HTMLElement) =>
+	[...(element.shadowRoot?.querySelectorAll("a.card-name") ?? [])].map(
+		(link) => link.textContent,
+	);
+
+test("lists the soonest close date first", async () => {
+	setLocale("en");
+	const element = await mount(dueRows(), "2026-09-01");
+	expect(order(element)).toEqual(["soon card", "mid card", "late card"]);
+});
+
+test("sorts from its column headings: ascending, descending, then closes first again", async () => {
+	setLocale("en");
+	const element = await mount(dueRows(), "2026-09-01");
+	const heading = () =>
+		element.shadowRoot?.querySelector<HTMLButtonElement>(
+			'th button[data-sort="card"]',
+		);
+	const seen: (string | null)[][] = [];
+	for (let click = 0; click < 3; click++) {
+		heading()?.click();
+		await element.updateComplete;
+		seen.push(order(element));
+	}
+	expect(seen).toEqual([
+		["late card", "mid card", "soon card"],
+		["soon card", "mid card", "late card"],
+		["soon card", "mid card", "late card"],
+	]);
+	expect(heading()?.closest("th")?.getAttribute("aria-sort")).toBe("none");
+});
+
+test("sorts from the narrow layout's sort chip", async () => {
+	setLocale("en");
+	const element = await mount(dueRows(), "2026-09-01");
+	const sort = element.shadowRoot?.querySelector<HTMLSelectElement>(
+		'select[name="sort"]',
+	);
+	if (!sort) throw new Error("no sort chip");
+	sort.value = "closes:desc";
+	sort.dispatchEvent(new Event("change"));
+	await element.updateComplete;
+	expect(order(element)).toEqual(["late card", "mid card", "soon card"]);
 });

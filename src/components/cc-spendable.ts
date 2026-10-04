@@ -1,20 +1,46 @@
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
+import { sortChip, sortHeader } from "#components/list-controls";
 import { displayDate } from "#lib/domain/date";
 import type { SpendRow } from "#lib/domain/limit";
+import {
+	applySpendView,
+	DEFAULT_SPEND_VIEW,
+	nextPanelSort,
+	type PanelView,
+	type SpendSort,
+} from "#lib/domain/list-view";
 import { formatAmount } from "#lib/domain/money";
 import type { PlainDate } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { base, dataTable } from "#styles/shared";
+import { base, controls, dataTable, listControls } from "#styles/shared";
+
+/** What the narrow layout's sort chip calls each sort; the wide one uses the headings. */
+const SORT_LABELS: Record<SpendSort, MessageKey> = {
+	card: "spendable.column.card",
+	available: "spendable.column.available",
+	closes: "spendable.column.closes",
+	due: "spendable.column.due",
+};
 
 @customElement("cc-spendable")
 export class CcSpendable extends LitElement {
 	static override styles = [
 		base,
+		controls,
 		dataTable,
+		listControls,
 		css`
+			/* Only the sort chip lives here, and it only shows once stacked. */
+			@media (max-width: 639px) {
+				.toolbar {
+					margin-block-end: var(--cc-space-3);
+				}
+			}
+
 			.card-line {
 				display: block;
 			}
@@ -67,6 +93,8 @@ export class CcSpendable extends LitElement {
 	@property({ type: Number }) unassigned = 0;
 	/** Today in Asia/Bangkok. Empty means the caller gave none, and the badges stay off. */
 	@property() today: PlainDate = "";
+	/** The reader's chosen order. Lives only as long as the page; a reload starts closes first. */
+	@state() private view: PanelView<SpendSort> = DEFAULT_SPEND_VIEW;
 
 	constructor() {
 		super();
@@ -92,18 +120,33 @@ export class CcSpendable extends LitElement {
 		if (this.rows.length === 0) {
 			return html`<p>${t("spendable.empty")}</p>${this.notice()}`;
 		}
+		const onSort = (view: PanelView<SpendSort>) => {
+			this.view = view;
+		};
+		const sort = (key: SpendSort, numeric = false) =>
+			sortHeader(
+				t(SORT_LABELS[key]),
+				key,
+				this.view,
+				onSort,
+				numeric,
+				(view, next) => nextPanelSort(view, next, DEFAULT_SPEND_VIEW),
+			);
 		return html`
+			<div class="toolbar" row>
+				${sortChip(this.view, SORT_LABELS, onSort, DEFAULT_SPEND_VIEW)}
+			</div>
 			<table>
 				<thead>
 					<tr>
-						<th>${t("spendable.column.card")}</th>
-						<th data-numeric>${t("spendable.column.available")}</th>
-						<th>${t("spendable.column.closes")}</th>
-						<th>${t("spendable.column.due")}</th>
+						${sort("card")}
+						${sort("available", true)}
+						${sort("closes")}
+						${sort("due")}
 					</tr>
 				</thead>
 				<tbody>
-					${this.rows.map(
+					${applySpendView(this.rows, this.view).map(
 						(row) => html`
 							<tr data-shared=${row.sharedWith > 0 ? "true" : "false"}>
 								<td data-label=${t("spendable.column.card")}>

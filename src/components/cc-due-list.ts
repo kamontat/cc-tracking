@@ -1,15 +1,34 @@
 import { css, html, LitElement } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
+import { sortChip, sortHeader } from "#components/list-controls";
 import { daysBetween, displayDate } from "#lib/domain/date";
+import {
+	applyDueView,
+	DEFAULT_DUE_VIEW,
+	type DueRow,
+	type DueSort,
+	nextPanelSort,
+	type PanelView,
+} from "#lib/domain/list-view";
 import { formatAmount } from "#lib/domain/money";
 import { urgencyOf } from "#lib/domain/statement";
-import type { Card, PlainDate, Statement } from "#lib/domain/types";
+import type { PlainDate, Statement } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { base, controls, dataTable } from "#styles/shared";
+import { base, controls, dataTable, listControls } from "#styles/shared";
 
-export type DueRow = { card: Card; statement: Statement };
+export type { DueRow };
+
+/** What the narrow layout's sort chip calls each sort; the wide one uses the headings. */
+const SORT_LABELS: Record<DueSort, MessageKey> = {
+	card: "due.column.card",
+	location: "due.column.where",
+	closes: "due.column.closes",
+	due: "due.column.due",
+	total: "due.column.total",
+};
 
 @customElement("cc-due-list")
 export class CcDueList extends LitElement {
@@ -17,7 +36,15 @@ export class CcDueList extends LitElement {
 		base,
 		controls,
 		dataTable,
+		listControls,
 		css`
+			/* Only the sort chip lives here, and it only shows once stacked. */
+			@media (max-width: 639px) {
+				.toolbar {
+					margin-block-end: var(--cc-space-3);
+				}
+			}
+
 			tbody tr {
 				border-left: var(--cc-space-1) solid transparent;
 			}
@@ -97,6 +124,8 @@ export class CcDueList extends LitElement {
 
 	@property({ attribute: false }) rows: DueRow[] = [];
 	@property() today: PlainDate = "";
+	/** The reader's chosen order. Lives only as long as the page; a reload starts closes first. */
+	@state() private view: PanelView<DueSort> = DEFAULT_DUE_VIEW;
 
 	constructor() {
 		super();
@@ -114,27 +143,35 @@ export class CcDueList extends LitElement {
 		if (this.rows.length === 0) {
 			return html`<p>${t("due.empty")} <a href="/cards">${t("due.emptyAction")}</a></p>`;
 		}
-		const sorted = [...this.rows].sort((a, b) =>
-			a.statement.dueDate < b.statement.dueDate
-				? -1
-				: a.statement.dueDate > b.statement.dueDate
-					? 1
-					: 0,
-		);
+		const onSort = (view: PanelView<DueSort>) => {
+			this.view = view;
+		};
+		const sort = (key: DueSort, numeric = false) =>
+			sortHeader(
+				t(SORT_LABELS[key]),
+				key,
+				this.view,
+				onSort,
+				numeric,
+				(view, next) => nextPanelSort(view, next, DEFAULT_DUE_VIEW),
+			);
 		return html`
+			<div class="toolbar" row>
+				${sortChip(this.view, SORT_LABELS, onSort, DEFAULT_DUE_VIEW)}
+			</div>
 			<table>
 				<thead>
 					<tr>
-						<th>${t("due.column.card")}</th>
-						<th>${t("due.column.where")}</th>
-						<th>${t("due.column.closes")}</th>
-						<th>${t("due.column.due")}</th>
-						<th data-numeric>${t("due.column.total")}</th>
+						${sort("card")}
+						${sort("location")}
+						${sort("closes")}
+						${sort("due")}
+						${sort("total", true)}
 						<th></th>
 					</tr>
 				</thead>
 				<tbody>
-					${sorted.map(({ card, statement }) => {
+					${applyDueView(this.rows, this.view).map(({ card, statement }) => {
 						const urgency = urgencyOf(statement, this.today);
 						return html`
 							<tr data-urgency=${urgency}>
@@ -152,7 +189,7 @@ export class CcDueList extends LitElement {
 									${
 										urgency === "future"
 											? html`<small>${t("due.stillOpen")}</small>`
-											: html`<button @click=${() =>
+											: html`<button data-action="mark-paid" @click=${() =>
 													this.dispatchEvent(
 														new CustomEvent("mark-paid", {
 															detail: {
