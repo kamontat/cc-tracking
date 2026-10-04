@@ -6,6 +6,7 @@ import {
 	parseBuiltAt,
 	REPO_URL,
 	shortCommit,
+	withPrSuffix,
 } from "#lib/ui/build-info";
 
 const SHA = "7ba698c1d4f0a2b3c4d5e6f708192a3b4c5d6e7f";
@@ -13,6 +14,7 @@ const SHA = "7ba698c1d4f0a2b3c4d5e6f708192a3b4c5d6e7f";
 afterEach(() => {
 	delete process.env.BUN_PUBLIC_COMMIT_SHA;
 	delete process.env.BUN_PUBLIC_BUILT_AT;
+	delete process.env.BUN_PUBLIC_PR_NUMBER;
 });
 
 test("shortens a commit sha to the seven characters GitHub shows", () => {
@@ -50,13 +52,23 @@ test("reads no timestamp from an empty or unparsable value", () => {
 test("carries the commit and build time the bundler inlined", () => {
 	process.env.BUN_PUBLIC_COMMIT_SHA = SHA;
 	process.env.BUN_PUBLIC_BUILT_AT = "2026-09-24T13:12:00Z";
+	process.env.BUN_PUBLIC_PR_NUMBER = "42";
 
 	expect(buildInfo()).toEqual({
 		commit: SHA,
 		builtAt: "2026-09-24T13:12:00Z",
+		pr: "42",
 	});
 });
 
 test("carries empty values when nothing was inlined, as in a dev server", () => {
-	expect(buildInfo()).toEqual({ commit: "", builtAt: "" });
+	expect(buildInfo()).toEqual({ commit: "", builtAt: "", pr: "" });
+});
+
+test("marks text with the pull request a preview was built from", () => {
+	expect(withPrSuffix("cc-tracking", "42")).toBe("cc-tracking (PR 42)");
+});
+
+test("leaves text alone on a build that came from no pull request", () => {
+	expect(withPrSuffix("cc-tracking", "")).toBe("cc-tracking");
 });

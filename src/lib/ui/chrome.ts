@@ -1,5 +1,6 @@
 import type { MessageKey } from "#lib/i18n/catalog";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
+import { buildInfo, withPrSuffix } from "#lib/ui/build-info";
 
 const setText = (root: ParentNode, id: string, key: MessageKey): void => {
 	const element = root.querySelector(`#${id}`);
@@ -41,11 +42,13 @@ export function markCurrentLink(root: ParentNode, path: string): void {
 export function applyChrome(
 	titleKey: MessageKey,
 	root: ParentNode = document,
+	pr: string = buildInfo().pr,
 ): void {
 	const apply = () => {
-		document.title = t(titleKey);
+		document.title = withPrSuffix(t(titleKey), pr);
 		document.documentElement.lang = getLocale();
-		setText(root, "nav-brand", "nav.brand");
+		const brand = root.querySelector("#nav-brand");
+		if (brand) brand.textContent = withPrSuffix(t("nav.brand"), pr);
 		setText(root, "nav-dashboard", "nav.dashboard");
 		setText(root, "nav-cards", "nav.cards");
 		setText(root, "nav-settings", "nav.settings");

@@ -6,9 +6,11 @@ export type BuildInfo = {
 	commit: string;
 	/** An ISO timestamp of the build, or `""` when nothing was inlined. */
 	builtAt: string;
+	/** The pull request number a preview was built from, or `""` on any other build. */
+	pr: string;
 };
 
-const EMPTY: BuildInfo = { commit: "", builtAt: "" };
+const EMPTY: BuildInfo = { commit: "", builtAt: "", pr: "" };
 
 /**
  * The commit and build time the bundler inlined, empty on a dev server.
@@ -24,10 +26,19 @@ export function buildInfo(): BuildInfo {
 		return {
 			commit: process.env.BUN_PUBLIC_COMMIT_SHA ?? "",
 			builtAt: process.env.BUN_PUBLIC_BUILT_AT ?? "",
+			pr: process.env.BUN_PUBLIC_PR_NUMBER ?? "",
 		};
 	} catch {
 		return EMPTY;
 	}
+}
+
+/**
+ * Appends ` (PR <n>)` so a preview deploy can't be mistaken for production. Not translated:
+ * "PR" is read the same way in either language.
+ */
+export function withPrSuffix(text: string, pr: string): string {
+	return pr ? `${text} (PR ${pr})` : text;
 }
 
 /** The seven-character prefix GitHub itself shows for a commit. */
