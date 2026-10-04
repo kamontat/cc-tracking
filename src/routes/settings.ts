@@ -264,7 +264,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			<div><dt>${t("backup.incoming")}</dt><dd>${t("backup.counts", waiting.incoming)}</dd></div>
 		</dl>
 		<div class="backup__choices">
-			<button class="backup__choice" data-variant="quiet" type="button" data-action="merge-import" @click=${answerImport(importBackup)}>
+			<button class="backup__choice" type="button" data-action="merge-import" @click=${answerImport(importBackup)}>
 				<strong>${t("backup.merge")}</strong>
 				<span>${t("backup.mergeHint")}</span>
 			</button>

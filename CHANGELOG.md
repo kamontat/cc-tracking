@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, sortable dashboard panels, and a preview marker
+## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, sortable dashboard panels, a preview marker, and a primary Merge button
 
 ### Features
 
@@ -42,6 +42,8 @@ reasons don't show up in the code.
 - One verb, *restore*, runs from the button to the confirmation ("Restored …") and the error
   ("Could not restore that copy."). `backup.unreadable` no longer says "file".
 - The file picker is styled as a quiet button instead of the browser's default control.
+- `Merge` in the restore question is the filled primary button. As a quiet button its
+  sunken grey matched the counts panel above it, so it read as a panel, not a button.
 - Upgraded `@kcstyles/reset.css` 1.0.13, `@kctools/bun-server` 0.3.4, `@biomejs/biome`
   2.5.15, `typescript-language-server` 6.0.1 and `wrangler` 4.147.0.
 - Both dashboard panels start soonest close date first. Before, *Can spend now* listed the
