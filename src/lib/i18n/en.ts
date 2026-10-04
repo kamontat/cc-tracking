@@ -194,6 +194,8 @@ export const en = {
 	"backup.warning":
 		"Data lives in this browser only. Export regularly; clearing site data erases everything.",
 	"backup.export": "Export JSON",
+	"backup.copy": "Copy to clipboard",
+	"backup.copied": "Backup copied to the clipboard.",
 	"backup.import": "Import JSON",
 	"backup.imported":
 		"Imported {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
@@ -211,6 +213,7 @@ export const en = {
 	"backup.error.export": "Could not export a backup.",
 	"backup.error.import": "Could not import that backup.",
 	"backup.error.clipboard": "Could not read the clipboard.",
+	"backup.error.copy": "Could not copy the backup.",
 
 	"reset.title": "Reset",
 	"reset.warning":

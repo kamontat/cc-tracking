@@ -69,6 +69,17 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			setTimeout(() => URL.revokeObjectURL(url), 0);
 		}, "backup.error.export");
 
+	let copied = false;
+
+	const onCopyExport = () => {
+		copied = false;
+		return state.guard(async () => {
+			const { text } = await prepareBackupFile(repo);
+			await navigator.clipboard.writeText(text);
+			copied = true;
+		}, "backup.error.copy");
+	};
+
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language. No filename means the text was pasted.
 	let imported: ({ file?: string } & ImportCounts) | null = null;
@@ -188,9 +199,11 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			`
 			: html`<button data-variant="danger" type="button" data-action="reset" @click=${onStartReset}>${t("reset.start")}</button>`;
 
-	// Only offered where the browser exposes it: older Firefox and plain-http pages do not.
+	// Only offered where the browser exposes them: older Firefox and plain-http pages do not.
 	const canReadClipboard = () =>
 		typeof navigator.clipboard?.readText === "function";
+	const canWriteClipboard = () =>
+		typeof navigator.clipboard?.writeText === "function";
 
 	const pastePanel = () =>
 		pasteOpen
@@ -240,7 +253,15 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 				<article class="backup">
 					<h2>${t("backup.title")}</h2>
 					<p><small>${t("backup.warning")}</small></p>
-					<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
+					<div class="backup__actions">
+						<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
+						${
+							canWriteClipboard()
+								? html`<button data-variant="quiet" type="button" data-action="copy-export" @click=${onCopyExport}>${t("backup.copy")}</button>`
+								: nothing
+						}
+					</div>
+					<p class="export-status" role="status">${copied ? t("backup.copied") : nothing}</p>
 					<label>${t("backup.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
 					${pastePanel()}
 					${importQuestion()}

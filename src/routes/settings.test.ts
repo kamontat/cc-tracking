@@ -658,13 +658,13 @@ test("malformed pasted text leaves a message, keeps the text, and changes nothin
 
 /** Swaps in a stub `navigator.clipboard` for the length of `run`. */
 const withClipboard = async (
-	readText: () => Promise<string>,
+	clipboard: Partial<Pick<Clipboard, "readText" | "writeText">>,
 	run: () => Promise<void>,
 ) => {
 	const original = Object.getOwnPropertyDescriptor(navigator, "clipboard");
 	Object.defineProperty(navigator, "clipboard", {
 		configurable: true,
-		value: { readText },
+		value: clipboard,
 	});
 	try {
 		await run();
@@ -675,27 +675,24 @@ const withClipboard = async (
 };
 
 test("paste from clipboard fills the text area", async () => {
-	await withClipboard(
-		async () => '{"version":2}',
-		async () => {
-			const root = mount();
-			renderSettingsPage(new InMemoryRepository(), root);
-			await settle();
+	await withClipboard({ readText: async () => '{"version":2}' }, async () => {
+		const root = mount();
+		renderSettingsPage(new InMemoryRepository(), root);
+		await settle();
 
-			clickBackup(root, "open-paste");
-			await settle();
-			clickBackup(root, "read-clipboard");
-			await settle();
+		clickBackup(root, "open-paste");
+		await settle();
+		clickBackup(root, "read-clipboard");
+		await settle();
 
-			expect(pasteArea(root)?.value).toBe('{"version":2}');
-		},
-	);
+		expect(pasteArea(root)?.value).toBe('{"version":2}');
+	});
 });
 
 test("a clipboard the browser will not read leaves a message", async () => {
 	setLocale("en");
 	await withClipboard(
-		() => Promise.reject(new Error("denied")),
+		{ readText: () => Promise.reject(new Error("denied")) },
 		async () => {
 			const root = mount();
 			renderSettingsPage(new InMemoryRepository(), root);
@@ -728,4 +725,67 @@ test("the merge-or-replace question follows a language switch", async () => {
 		root.querySelector('.backup [data-action="merge-import"]'),
 	).not.toBeNull();
 	setLocale("en");
+});
+
+const exportStatus = (root: HTMLElement): string =>
+	root.querySelector(".export-status")?.textContent?.trim() ?? "";
+
+test("copy to clipboard writes the same backup Export JSON would, and says so", async () => {
+	setLocale("en");
+	const repo = await populated(new InMemoryRepository());
+	let written = "";
+	await withClipboard(
+		{
+			writeText: async (text) => {
+				written = text;
+			},
+		},
+		async () => {
+			const root = mount();
+			renderSettingsPage(repo, root);
+			await settle();
+
+			clickBackup(root, "copy-export");
+			await settle();
+
+			expect(bannerMessage(root)).toBe("");
+			const copied = parseBackup(written);
+			expect(copied.cards).toEqual(await repo.listCards());
+			expect(copied.purchases).toHaveLength(2);
+			expect(exportStatus(root)).toBe("Backup copied to the clipboard.");
+			expect(root.querySelector(".export-status")?.getAttribute("role")).toBe(
+				"status",
+			);
+		},
+	);
+});
+
+test("a clipboard the browser will not write leaves a message", async () => {
+	setLocale("en");
+	await withClipboard(
+		{ writeText: () => Promise.reject(new Error("denied")) },
+		async () => {
+			const root = mount();
+			renderSettingsPage(new InMemoryRepository(), root);
+			await settle();
+
+			clickBackup(root, "copy-export");
+			await settle();
+
+			expect(bannerMessage(root)).toContain("Could not copy the backup.");
+			expect(exportStatus(root)).toBe("");
+		},
+	);
+});
+
+test("copy to clipboard is not offered where the browser cannot write to it", async () => {
+	await withClipboard({}, async () => {
+		const root = mount();
+		renderSettingsPage(new InMemoryRepository(), root);
+		await settle();
+
+		expect(
+			root.querySelector('.backup [data-action="copy-export"]'),
+		).toBeNull();
+	});
 });

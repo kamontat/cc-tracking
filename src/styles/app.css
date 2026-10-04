@@ -163,9 +163,10 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
-/* The settings page's confirmations after a backup import or a reset, matching the purchase
+/* The settings page's confirmations after a backup copy, import or reset, matching the purchase
    confirmation's `.purchase-status`. Each element stays in the DOM so its live region is in place before the message
    arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
+.export-status,
 .import-status,
 .reset-status {
 	padding: var(--cc-space-2) var(--cc-space-3);
@@ -175,6 +176,7 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
+.export-status:empty,
 .import-status:empty,
 .reset-status:empty {
 	display: none;
