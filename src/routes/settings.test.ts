@@ -201,7 +201,7 @@ test("importing a malformed file leaves a message in the banner and changes noth
 	chooseFile(root, "{ this is not json");
 	await settle();
 
-	expect(bannerMessage(root)).toContain("Could not import that backup.");
+	expect(bannerMessage(root)).toContain("Could not restore that copy.");
 	expect(await repo.listCards()).toEqual([sampleCard]);
 });
 
@@ -265,7 +265,7 @@ test("renders the backup section's heading and warning in the chosen language", 
 	renderSettingsPage(repo, root);
 	await settle();
 	expect(root.querySelector("article.backup h2")?.textContent).toBe("Backup");
-	expect(root.textContent).toContain("Export regularly");
+	expect(root.textContent).toContain("keep a copy somewhere safe");
 
 	setLocale("th");
 	await settle();
@@ -273,6 +273,21 @@ test("renders the backup section's heading and warning in the chosen language", 
 		"สำรองข้อมูล",
 	);
 	setLocale("en");
+});
+
+test("splits the backup into saving a copy and restoring one, each with its own actions", async () => {
+	setLocale("en");
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	const save = root.querySelector(".backup__way--save");
+	const restore = root.querySelector(".backup__way--restore");
+	expect(save?.querySelector("h3")?.textContent).toBe("Save a copy");
+	expect(restore?.querySelector("h3")?.textContent).toBe("Restore a copy");
+	expect(save?.textContent).toContain("Download file");
+	expect(restore?.querySelector('input[type="file"]')).not.toBeNull();
+	expect(restore?.querySelector('[data-action="open-paste"]')).not.toBeNull();
 });
 
 const oneCardBackup = async (): Promise<string> => {
@@ -299,7 +314,7 @@ test("a successful import names the file and counts what it brought in", async (
 
 	expect(bannerMessage(root)).toBe("");
 	expect(importStatus(root)).toBe(
-		"Imported cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
+		"Restored cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
 	);
 	expect(root.querySelector(".import-status")?.getAttribute("role")).toBe(
 		"status",
@@ -320,7 +335,7 @@ test("a failed import clears the success message from an earlier one", async () 
 	await settle();
 
 	expect(importStatus(root)).toBe("");
-	expect(bannerMessage(root)).toContain("Could not import that backup.");
+	expect(bannerMessage(root)).toContain("Could not restore that copy.");
 });
 
 test("the success message follows a language switch", async () => {
@@ -516,19 +531,28 @@ test("the reset question follows a language switch", async () => {
 	setLocale("en");
 });
 
-test("importing into a browser that already holds data asks to merge or replace, counting what is there", async () => {
+test("importing into a browser that already holds data asks to merge or replace, counting both sides", async () => {
 	setLocale("en");
 	const repo = await populated(new InMemoryRepository());
 	const root = mount();
 	renderSettingsPage(repo, root);
 	await settle();
 
-	chooseFile(root, await oneCardBackup());
+	chooseFile(root, await oneCardBackup(), "cc-tracking-2026-09-21.json");
 	await settle();
 
-	expect(backupText(root)).toContain(
-		"This browser already holds 1 cards, 2 purchases, 0 payments and 1 limit groups.",
+	expect(backupText(root)).toContain("Restore cc-tracking-2026-09-21.json?");
+	const rows = [...root.querySelectorAll(".backup__compare > div")].map(
+		(row) => [
+			row.querySelector("dt")?.textContent,
+			row.querySelector("dd")?.textContent,
+		],
 	);
+	expect(rows).toEqual([
+		["In this browser", "1 cards, 2 purchases, 0 payments, 1 limit groups"],
+		["In the copy", "1 cards, 1 purchases, 0 payments, 0 limit groups"],
+	]);
+	expect(root.querySelector('.backup [data-action="open-paste"]')).toBeNull();
 	expect(
 		root.querySelector('.backup [data-action="merge-import"]'),
 	).not.toBeNull();
@@ -569,7 +593,7 @@ test("choosing replace leaves only what the backup carries", async () => {
 	expect((await repo.listCards()).map((c) => c.id)).toEqual(["scb"]);
 	expect(await repo.listLimitGroups()).toEqual([]);
 	expect(importStatus(root)).toBe(
-		"Imported b.json: 1 cards, 0 purchases, 0 payments, 0 limit groups.",
+		"Restored b.json: 1 cards, 0 purchases, 0 payments, 0 limit groups.",
 	);
 	expect(
 		root.querySelector('.backup [data-action="replace-import"]'),
@@ -620,7 +644,7 @@ test("importing pasted text brings it in and closes the panel", async () => {
 	expect(bannerMessage(root)).toBe("");
 	expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank"]);
 	expect(importStatus(root)).toBe(
-		"Imported pasted text: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
+		"Restored pasted text: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
 	);
 	expect(pasteArea(root)).toBeNull();
 });
@@ -631,8 +655,11 @@ test("pasted text into a browser that holds data asks to merge or replace too", 
 	renderSettingsPage(repo, root);
 	await settle();
 
+	setLocale("en");
 	await pasteBackup(root, await oneCardBackup());
 	await settle();
+	expect(backupText(root)).toContain("Restore pasted text");
+	expect(pasteArea(root)).toBeNull();
 	clickBackup(root, "merge-import");
 	await settle();
 
@@ -650,7 +677,7 @@ test("malformed pasted text leaves a message, keeps the text, and changes nothin
 	await pasteBackup(root, "{ not json");
 	await settle();
 
-	expect(bannerMessage(root)).toContain("Could not import that backup.");
+	expect(bannerMessage(root)).toContain("Could not restore that copy.");
 	expect(pasteArea(root)?.value).toBe("{ not json");
 	expect(root.querySelector('.backup [data-action="merge-import"]')).toBeNull();
 	expect(await repo.listPurchases("kbank")).toHaveLength(2);
@@ -716,11 +743,11 @@ test("the merge-or-replace question follows a language switch", async () => {
 
 	chooseFile(root, await oneCardBackup());
 	await settle();
-	expect(backupText(root)).toContain("already holds");
+	expect(backupText(root)).toContain("In this browser");
 
 	setLocale("th");
 	await settle();
-	expect(backupText(root)).not.toContain("already holds");
+	expect(backupText(root)).not.toContain("In this browser");
 	expect(
 		root.querySelector('.backup [data-action="merge-import"]'),
 	).not.toBeNull();
@@ -752,7 +779,7 @@ test("copy to clipboard writes the same backup Export JSON would, and says so", 
 			const copied = parseBackup(written);
 			expect(copied.cards).toEqual(await repo.listCards());
 			expect(copied.purchases).toHaveLength(2);
-			expect(exportStatus(root)).toBe("Backup copied to the clipboard.");
+			expect(exportStatus(root)).toBe("Copied to the clipboard.");
 			expect(root.querySelector(".export-status")?.getAttribute("role")).toBe(
 				"status",
 			);
@@ -772,7 +799,7 @@ test("a clipboard the browser will not write leaves a message", async () => {
 			clickBackup(root, "copy-export");
 			await settle();
 
-			expect(bannerMessage(root)).toContain("Could not copy the backup.");
+			expect(bannerMessage(root)).toContain("Could not copy the text.");
 			expect(exportStatus(root)).toBe("");
 		},
 	);

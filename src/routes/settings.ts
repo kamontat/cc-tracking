@@ -94,6 +94,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		file: string | undefined;
 		backup: Backup;
 		existing: ImportCounts;
+		incoming: ImportCounts;
 	} | null = null;
 	let pasteOpen = false;
 	let pasteText = "";
@@ -121,7 +122,13 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			const backup = parseBackup(text);
 			const existing = await countRecords(repo);
 			if (Object.values(existing).some((count) => count > 0)) {
-				pending = { file, backup, existing };
+				const incoming = {
+					cards: backup.cards.length,
+					purchases: backup.purchases.length,
+					payments: backup.payments.length,
+					limitGroups: backup.limitGroups.length,
+				};
+				pending = { file, backup, existing, incoming };
 			} else {
 				await finishImport(file, backup, importBackup);
 			}
@@ -205,35 +212,77 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	const canWriteClipboard = () =>
 		typeof navigator.clipboard?.writeText === "function";
 
-	const pastePanel = () =>
-		pasteOpen
-			? html`
-				<label>${t("backup.pasteLabel")}
-					<textarea class="backup__text" rows="6" spellcheck="false" .value=${pasteText} @input=${onPasteInput}></textarea>
-				</label>
-				<div class="backup__actions">
-					<button type="button" data-action="import-text" @click=${onImportText}>${t("backup.importText")}</button>
-					${
-						canReadClipboard()
-							? html`<button data-variant="quiet" type="button" data-action="read-clipboard" @click=${onReadClipboard}>${t("backup.fromClipboard")}</button>`
-							: nothing
-					}
-					<button data-variant="quiet" type="button" data-action="close-paste" @click=${onTogglePaste(false)}>${t("common.cancel")}</button>
-				</div>
-			`
-			: html`<button data-variant="quiet" type="button" data-action="open-paste" @click=${onTogglePaste(true)}>${t("backup.paste")}</button>`;
+	const saveWay = () => html`
+		<section class="backup__way backup__way--save">
+			<h3>${t("backup.save.title")}</h3>
+			<p><small>${t("backup.save.hint")}</small></p>
+			<div class="backup__actions">
+				<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
+				${
+					canWriteClipboard()
+						? html`<button data-variant="quiet" type="button" data-action="copy-export" @click=${onCopyExport}>${t("backup.copy")}</button>`
+						: nothing
+				}
+			</div>
+			<p class="export-status" role="status">${copied ? t("backup.copied") : nothing}</p>
+		</section>
+	`;
 
-	const importQuestion = () =>
-		pending
-			? html`
-				<p><strong>${t("backup.existing", pending.existing)}</strong></p>
-				<div class="backup__actions">
-					<button type="button" data-action="merge-import" @click=${answerImport(importBackup)}>${t("backup.merge")}</button>
-					<button data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWithBackup)}>${t("backup.replace")}</button>
-					<button data-variant="quiet" type="button" data-action="cancel-import" @click=${onCancelImport}>${t("common.cancel")}</button>
-				</div>
-			`
-			: nothing;
+	// The restore side is one step at a time: pick a source, then (only when this browser
+	// already holds records) say how the copy should land. Each step replaces the last.
+	const restoreStart = () => html`
+		<p><small>${t("backup.restore.hint")}</small></p>
+		<div class="backup__actions">
+			<label class="backup__file">${t("backup.import")}<input type="file" accept="application/json" @change=${onImport} /></label>
+			<button data-variant="quiet" type="button" data-action="open-paste" @click=${onTogglePaste(true)}>${t("backup.paste")}</button>
+		</div>
+	`;
+
+	const restorePaste = () => html`
+		<label>${t("backup.pasteLabel")}
+			<textarea class="backup__text" rows="6" spellcheck="false" .value=${pasteText} @input=${onPasteInput}></textarea>
+		</label>
+		<div class="backup__actions">
+			<button type="button" data-action="import-text" @click=${onImportText}>${t("backup.importText")}</button>
+			${
+				canReadClipboard()
+					? html`<button data-variant="quiet" type="button" data-action="read-clipboard" @click=${onReadClipboard}>${t("backup.fromClipboard")}</button>`
+					: nothing
+			}
+			<button data-variant="quiet" type="button" data-action="close-paste" @click=${onTogglePaste(false)}>${t("common.cancel")}</button>
+		</div>
+	`;
+
+	const restoreQuestion = (waiting: NonNullable<typeof pending>) => html`
+		<p><strong>${
+			waiting.file === undefined
+				? t("backup.question.pasted")
+				: t("backup.question.file", { file: waiting.file })
+		}</strong></p>
+		<dl class="backup__compare">
+			<div><dt>${t("backup.here")}</dt><dd>${t("backup.counts", waiting.existing)}</dd></div>
+			<div><dt>${t("backup.incoming")}</dt><dd>${t("backup.counts", waiting.incoming)}</dd></div>
+		</dl>
+		<div class="backup__choices">
+			<button class="backup__choice" data-variant="quiet" type="button" data-action="merge-import" @click=${answerImport(importBackup)}>
+				<strong>${t("backup.merge")}</strong>
+				<span>${t("backup.mergeHint")}</span>
+			</button>
+			<button class="backup__choice" data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWithBackup)}>
+				<strong>${t("backup.replace")}</strong>
+				<span>${t("backup.replaceHint")}</span>
+			</button>
+		</div>
+		<button data-variant="quiet" type="button" data-action="cancel-import" @click=${onCancelImport}>${t("common.cancel")}</button>
+	`;
+
+	const restoreWay = () => html`
+		<section class="backup__way backup__way--restore">
+			<h3>${t("backup.restore.title")}</h3>
+			${pending ? restoreQuestion(pending) : pasteOpen ? restorePaste() : restoreStart()}
+			<p class="import-status" role="status">${importedMessage()}</p>
+		</section>
+	`;
 
 	const importedMessage = () => {
 		if (!imported) return nothing;
@@ -253,19 +302,10 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 				<article class="backup">
 					<h2>${t("backup.title")}</h2>
 					<p><small>${t("backup.warning")}</small></p>
-					<div class="backup__actions">
-						<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
-						${
-							canWriteClipboard()
-								? html`<button data-variant="quiet" type="button" data-action="copy-export" @click=${onCopyExport}>${t("backup.copy")}</button>`
-								: nothing
-						}
+					<div class="backup__ways">
+						${saveWay()}
+						${restoreWay()}
 					</div>
-					<p class="export-status" role="status">${copied ? t("backup.copied") : nothing}</p>
-					<label>${t("backup.import")} <input type="file" accept="application/json" @change=${onImport} /></label>
-					${pastePanel()}
-					${importQuestion()}
-					<p class="import-status" role="status">${importedMessage()}</p>
 				</article>
 				<article class="reset">
 					<h2>${t("reset.title")}</h2>
