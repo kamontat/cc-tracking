@@ -31,9 +31,9 @@ test("suffixes the title and the brand with the pull request on a preview build"
 	mountNav();
 	applyChrome("title.cards", document, "42");
 
-	expect(document.title).toBe("Card registry — cc-tracking pr-42");
+	expect(document.title).toBe("Card registry — cc-tracking (pr-42)");
 	expect(document.querySelector("#nav-brand")?.textContent).toBe(
-		"cc-tracking pr-42",
+		"cc-tracking (pr-42)",
 	);
 });
 

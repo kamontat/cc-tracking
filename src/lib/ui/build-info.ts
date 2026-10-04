@@ -34,11 +34,11 @@ export function buildInfo(): BuildInfo {
 }
 
 /**
- * Appends ` pr-<n>` so a preview deploy can't be mistaken for production. Not translated:
+ * Appends ` (pr-<n>)` so a preview deploy can't be mistaken for production. Not translated:
  * "pr" is read the same way in either language.
  */
 export function withPrSuffix(text: string, pr: string): string {
-	return pr ? `${text} pr-${pr}` : text;
+	return pr ? `${text} (pr-${pr})` : text;
 }
 
 /** The seven-character prefix GitHub itself shows for a commit. */

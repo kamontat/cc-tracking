@@ -28,7 +28,7 @@ jobs:
       - uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         id: deploy
         env:
-          ## Inlined by the bundler; the pages suffix their title and brand with `pr-<n>`
+          ## Inlined by the bundler; the pages suffix their title and brand with `(pr-<n>)`
           BUN_PUBLIC_PR_NUMBER: ${{ github.event.number }}
         with:
           command: versions upload --preview-alias pr-${{ github.event.number }}
