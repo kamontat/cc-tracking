@@ -183,6 +183,7 @@ export const en = {
 	"statements.paid": "Paid {date}",
 	"statements.unmark": "Unmark",
 	"statements.markPaid": "Mark paid",
+	"statements.current": "Current",
 	"statements.noPurchases": "No purchases in this period.",
 	"statements.total": "Total {amount}",
 	"statements.quietRun": "{from} – {to} · no purchases",

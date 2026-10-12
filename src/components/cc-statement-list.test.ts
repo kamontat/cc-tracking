@@ -289,6 +289,40 @@ test("emits edit-purchase with the purchase id", async () => {
 	expect(detail).toEqual({ cardId: "kbank", purchaseId: "a" });
 });
 
+test("marks the statement still open today as the current one, and only that one", async () => {
+	const element = await mount();
+	// 2026-09 closes on the 18th, so it is the open statement on the 10th.
+	element.today = "2026-09-10";
+	// A statement ahead of the open one, as a purchase dated into the future makes.
+	element.statements = [
+		buildStatement(card, "2026-10", purchases),
+		...element.statements,
+	];
+	await element.updateComplete;
+
+	const current = [
+		...(element.shadowRoot?.querySelectorAll("article[data-current]") ?? []),
+	];
+	expect(current).toHaveLength(1);
+	expect(current[0]?.querySelector(".period")?.textContent).toBe("2026-09");
+	expect(current[0]?.querySelector(".badge")?.textContent).toBe("Current");
+
+	setLocale("th");
+	await element.updateComplete;
+	expect(
+		element.shadowRoot?.querySelector("article[data-current] .badge")
+			?.textContent,
+	).toBe("รอบปัจจุบัน");
+	setLocale("en");
+});
+
+test("marks no statement current when every one has closed", async () => {
+	const element = await mount();
+	element.today = "2026-12-01";
+	await element.updateComplete;
+	expect(element.shadowRoot?.querySelector("article[data-current]")).toBeNull();
+});
+
 test("holds a purchase's edit and delete buttons together in one actions row", async () => {
 	const element = await mount();
 	const group = element.shadowRoot?.querySelector(

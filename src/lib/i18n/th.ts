@@ -200,6 +200,7 @@ export const th: Catalog = {
 	"statements.paid": "ชำระแล้ว {date}",
 	"statements.unmark": "ยกเลิกเครื่องหมาย",
 	"statements.markPaid": "บันทึกว่าชำระแล้ว",
+	"statements.current": "รอบปัจจุบัน",
 	"statements.noPurchases": "ไม่มีรายการใช้จ่ายในรอบนี้",
 	"statements.total": "รวม {amount}",
 	"statements.quietRun": "{from} – {to} · ไม่มีรายการใช้จ่าย",
