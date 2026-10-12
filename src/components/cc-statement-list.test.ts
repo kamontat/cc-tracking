@@ -273,3 +273,18 @@ test("says so when there are no statements, in the chosen language", async () =>
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("ยังไม่มีใบแจ้งยอด");
 });
+
+test("emits edit-purchase with the purchase id", async () => {
+	const element = await mount();
+	let detail: { cardId: string; purchaseId: string } | undefined;
+	element.addEventListener("edit-purchase", (event) => {
+		detail = (event as CustomEvent<{ cardId: string; purchaseId: string }>)
+			.detail;
+	});
+	const edit = element.shadowRoot?.querySelector<HTMLButtonElement>(
+		"[data-action='edit-purchase']",
+	);
+	expect(edit?.getAttribute("data-variant")).toBe("quiet");
+	edit?.click();
+	expect(detail).toEqual({ cardId: "kbank", purchaseId: "a" });
+});

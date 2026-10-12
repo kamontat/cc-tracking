@@ -37,6 +37,14 @@ export function periodOfPurchase(rule: CycleRule, date: PlainDate): Period {
 		: addPeriods(candidate, 1);
 }
 
+/**
+ * Whether `date` is the day a statement closes. A purchase made that day may be posted on
+ * either side of the close, depending on when the bank clears it, so the form warns about it.
+ */
+export function isCloseDate(rule: CycleRule, date: PlainDate): boolean {
+	return date === closeDateOf(rule, periodOf(date));
+}
+
 export type CycleDescription =
 	| { key: "cycle.offset"; params: { closeDay: number; days: number } }
 	| { key: "cycle.fixed"; params: { closeDay: number; dueDay: number } };

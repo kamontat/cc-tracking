@@ -557,3 +557,69 @@ test("a failed purchase leaves a message in the banner and writes nothing", asyn
 	).toContain("disk is full");
 	expect(root.querySelector("cc-modal cc-quick-add")).not.toBeNull();
 });
+
+test("edits a purchase's date, amount, and note in place", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	list?.shadowRoot
+		?.querySelector<HTMLButtonElement>("[data-action='edit-purchase']")
+		?.click();
+	await settle();
+
+	expect(root.querySelector("cc-modal")?.heading).toBe("Edit purchase");
+	const form = root.querySelector<CcQuickAdd>("cc-modal cc-quick-add");
+	if (!form) throw new Error("the edit dialog did not open");
+	await form.updateComplete;
+	expect(form.purchase?.id).toBe("a");
+
+	const newDate = addDays(purchaseDate, 1);
+	const shadow = form.shadowRoot;
+	for (const [name, value] of Object.entries({
+		date: newDate,
+		amount: "500",
+		note: "tyres",
+	})) {
+		const input = shadow?.querySelector<HTMLInputElement>(`[name="${name}"]`);
+		if (input) input.value = value;
+	}
+	shadow?.querySelector("form")?.requestSubmit();
+	await settle();
+
+	expect(bannerMessage(root)).toBe("");
+	expect(root.querySelector("cc-modal")).toBeNull();
+	expect(await repo.listPurchases("kbank")).toEqual([
+		{ id: "a", cardId: "kbank", date: newDate, amount: 50_000, note: "tyres" },
+	]);
+});
+
+test("a failed edit keeps the dialog open with the message and the old purchase", async () => {
+	const repo = new RejectingPurchaseRepository();
+	await repo.saveCard(card);
+	await InMemoryRepository.prototype.savePurchase.call(repo, purchase);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	list?.shadowRoot
+		?.querySelector<HTMLButtonElement>("[data-action='edit-purchase']")
+		?.click();
+	await settle();
+	const form = root.querySelector<CcQuickAdd>("cc-modal cc-quick-add");
+	await form?.updateComplete;
+	form?.shadowRoot?.querySelector("form")?.requestSubmit();
+	await settle();
+
+	expect(
+		root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message,
+	).toContain("disk is full");
+	expect(await repo.listPurchases("kbank")).toEqual([purchase]);
+});

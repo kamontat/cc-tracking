@@ -3,6 +3,7 @@ import {
 	closeDateOf,
 	describeCycle,
 	dueDateOf,
+	isCloseDate,
 	periodOfPurchase,
 } from "#lib/domain/cycle";
 import type { CycleRule } from "#lib/domain/types";
@@ -94,5 +95,22 @@ describe("describeCycle", () => {
 			key: "cycle.fixed",
 			params: { closeDay: 18, dueDay: 5 },
 		});
+	});
+});
+
+describe("isCloseDate", () => {
+	test("is true on the close date itself", () => {
+		expect(isCloseDate(offset, "2026-09-18")).toBe(true);
+	});
+
+	test("is false the day before and the day after", () => {
+		expect(isCloseDate(offset, "2026-09-17")).toBe(false);
+		expect(isCloseDate(offset, "2026-09-19")).toBe(false);
+	});
+
+	test("follows a close day clamped to a short month", () => {
+		const late: CycleRule = { kind: "offset", closeDay: 31, dueOffsetDays: 15 };
+		expect(isCloseDate(late, "2026-02-28")).toBe(true);
+		expect(isCloseDate(late, "2026-03-30")).toBe(false);
 	});
 });

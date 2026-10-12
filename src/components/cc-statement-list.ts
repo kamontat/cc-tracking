@@ -110,6 +110,15 @@ export class CcStatementList extends LitElement {
 			.note {
 				width: 100%;
 			}
+
+			/* Edit and delete side by side, never wrapped under each other. */
+			.purchase-actions {
+				white-space: nowrap;
+			}
+
+			.purchase-actions button + button {
+				margin-left: var(--cc-space-2);
+			}
 		`,
 	];
 
@@ -202,7 +211,13 @@ export class CcStatementList extends LitElement {
 															<td class="date">${displayDate(purchase.date, getLocale())}</td>
 															<td class="note">${purchase.note}</td>
 															<td data-numeric>${formatAmount(purchase.amount)}</td>
-															<td>
+															<td class="purchase-actions">
+																<button data-action="edit-purchase" data-variant="quiet"
+																	@click=${() =>
+																		this.emit("edit-purchase", {
+																			cardId: purchase.cardId,
+																			purchaseId: purchase.id,
+																		})}>${t("common.edit")}</button>
 																<button data-action="delete-purchase" data-variant="danger"
 																	@click=${() =>
 																		this.emit("delete-purchase", {

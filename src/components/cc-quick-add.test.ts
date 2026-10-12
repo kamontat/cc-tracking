@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import "#components/cc-quick-add";
 import type { SpendRow } from "#lib/domain/limit";
-import type { Card } from "#lib/domain/types";
+import type { Card, Purchase } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
 const cards: Card[] = [
@@ -352,4 +352,126 @@ test("keeps the note and the select in agreement when the selected card drops ou
 	expect(selectAfter?.value).toBe("kbank");
 	expect(note?.textContent).toContain("฿3,000.00");
 	expect(note?.textContent).toContain("฿5,000.00");
+});
+
+const warning = (element: HTMLElement) =>
+	element.shadowRoot?.querySelector('[data-testid="close-date-warning"]');
+
+test("warns, without refusing, when the date is the card's statement close date", async () => {
+	const element = await mount();
+	expect(warning(element)).toBeNull();
+
+	fill(element, "date", "2026-09-18");
+	await element.updateComplete;
+	expect(warning(element)?.textContent).toContain("statement closes");
+
+	let added = false;
+	element.addEventListener("add", () => {
+		added = true;
+	});
+	fill(element, "amount", "100");
+	submit(element);
+	expect(added).toBe(true);
+
+	fill(element, "date", "2026-09-19");
+	await element.updateComplete;
+	expect(warning(element)).toBeNull();
+});
+
+test("checks the close date against the selected card's own cycle", async () => {
+	const element = await mount();
+	element.cards = [
+		...cards,
+		{
+			...otherCard,
+			cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 15 },
+		},
+	];
+	await element.updateComplete;
+	fill(element, "date", "2026-08-25");
+	await element.updateComplete;
+	expect(warning(element)).toBeNull();
+
+	const select =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	if (!select) throw new Error("no card picker");
+	select.value = "scb";
+	select.dispatchEvent(new Event("change"));
+	await element.updateComplete;
+	expect(warning(element)).not.toBeNull();
+});
+
+test("warns about the close date in the chosen language", async () => {
+	setLocale("th");
+	try {
+		const element = await mount();
+		fill(element, "date", "2026-09-18");
+		await element.updateComplete;
+		expect(warning(element)?.textContent).toContain("วันตัดรอบบัญชี");
+	} finally {
+		setLocale("en");
+	}
+});
+
+const existing: Purchase = {
+	id: "p1",
+	cardId: "kbank",
+	date: "2026-09-05",
+	amount: 123_450,
+	note: "fuel",
+};
+
+const mountEditing = async () => {
+	const element = await mount();
+	element.purchase = existing;
+	await element.updateComplete;
+	return element;
+};
+
+const field = (element: HTMLElement, name: string) =>
+	element.shadowRoot?.querySelector<HTMLInputElement>(`[name="${name}"]`)
+		?.value;
+
+test("fills its fields from the purchase being edited", async () => {
+	const element = await mountEditing();
+	expect(field(element, "date")).toBe("2026-09-05");
+	expect(field(element, "amount")).toBe("1234.50");
+	expect(field(element, "note")).toBe("fuel");
+	expect(
+		element.shadowRoot?.querySelector('button[type="submit"]')?.textContent,
+	).toBe("Save changes");
+});
+
+test("emits the edited purchase with its own id and card", async () => {
+	const element = await mountEditing();
+	let detail: unknown;
+	element.addEventListener("add", (event) => {
+		detail = (event as CustomEvent).detail;
+	});
+
+	fill(element, "date", "2026-09-10");
+	fill(element, "amount", "99");
+	fill(element, "note", "parts");
+	submit(element);
+
+	expect(detail).toEqual({
+		id: "p1",
+		cardId: "kbank",
+		date: "2026-09-10",
+		amount: 9_900,
+		note: "parts",
+	});
+});
+
+test("still refuses a bad amount while editing", async () => {
+	const element = await mountEditing();
+	let added = false;
+	element.addEventListener("add", () => {
+		added = true;
+	});
+	fill(element, "amount", "abc");
+	submit(element);
+	await element.updateComplete;
+	expect(added).toBe(false);
+	expect(element.shadowRoot?.querySelector('[role="alert"]')).not.toBeNull();
 });
