@@ -1,15 +1,22 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { isCloseDate } from "#lib/domain/cycle";
 import { compareDates, isValidDate } from "#lib/domain/date";
 import type { SpendRow } from "#lib/domain/limit";
-import { formatAmount, parseAmount } from "#lib/domain/money";
-import type { Card, PlainDate } from "#lib/domain/types";
+import {
+	formatAmount,
+	formatAmountInput,
+	parseAmount,
+} from "#lib/domain/money";
+import type { Card, PlainDate, Purchase } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { base, controls } from "#styles/shared";
 
 export type QuickAddDetail = {
+	/** Set only when the form edits a saved purchase: the id to save over. */
+	id?: string;
 	cardId: string;
 	date: PlainDate;
 	amount: number;
@@ -51,6 +58,15 @@ export class CcQuickAdd extends LitElement {
 				padding-block: var(--cc-space-2);
 				border-block: var(--cc-border-width) solid transparent;
 			}
+
+			/* A caution, not a refusal: the same amber the card page gives its own notes. */
+			.warning {
+				padding: var(--cc-space-2) var(--cc-space-3);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-warning);
+				background: var(--cc-warning-surface);
+				border-radius: var(--cc-radius-sm);
+			}
 		`,
 	];
 
@@ -58,11 +74,18 @@ export class CcQuickAdd extends LitElement {
 	@property() today: PlainDate = "";
 	/** Rows for the cards above, from `spendableRows`. A card with no row shows no credit. */
 	@property({ attribute: false }) rows: SpendRow[] = [];
+	/**
+	 * The saved purchase this form edits, or null to add a new one. Its card must be among
+	 * `cards`; the page hands over that card alone, so the card is shown, not picked.
+	 */
+	@property({ attribute: false }) purchase: Purchase | null = null;
 
 	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
 	// language switch while an error is on screen re-renders it in the new language too.
 	@state() private errorKey: MessageKey | "" = "";
 	@state() private selectedId = "";
+	// Tracked as the reader types, so the close-date warning follows the field live.
+	@state() private date: PlainDate = "";
 
 	constructor() {
 		super();
@@ -77,6 +100,9 @@ export class CcQuickAdd extends LitElement {
 		// selection against the new list here, before render, falling back to the first card
 		// when the old one is gone -- a property set in willUpdate is folded into this same
 		// render pass rather than scheduling a second one.
+		if (changed.has("today") || changed.has("purchase")) {
+			this.date = this.purchase?.date ?? this.today;
+		}
 		if (!changed.has("cards")) return;
 		if (!this.cards.some((card) => card.id === this.selectedId)) {
 			this.selectedId = this.cards[0]?.id ?? "";
@@ -96,6 +122,25 @@ export class CcQuickAdd extends LitElement {
 	private get selected(): SpendRow | null {
 		const id = this.selectedId || this.cards[0]?.id;
 		return this.rows.find((row) => row.card.id === id) ?? null;
+	}
+
+	/** Whether the date in the field is the chosen card's statement close date. */
+	private get onCloseDate(): boolean {
+		const id = this.selectedId || this.cards[0]?.id;
+		const card = this.cards.find((entry) => entry.id === id);
+		return (
+			card !== undefined &&
+			isValidDate(this.date) &&
+			isCloseDate(card.cycle, this.date)
+		);
+	}
+
+	/**
+	 * Whether the date in the field is after today. Warned about, not refused: a booking or an
+	 * instalment can be entered ahead of the day it posts.
+	 */
+	private get inFuture(): boolean {
+		return isValidDate(this.date) && compareDates(this.date, this.today) > 0;
 	}
 
 	/** The card, when there is only one to choose -- the card page's own. Nothing to pick then. */
@@ -124,10 +169,6 @@ export class CcQuickAdd extends LitElement {
 			this.errorKey = "quickAdd.error.badDate";
 			return;
 		}
-		if (compareDates(date, this.today) > 0) {
-			this.errorKey = "quickAdd.error.futureDate";
-			return;
-		}
 		let amount: number;
 		try {
 			amount = parseAmount(this.value("amount"));
@@ -141,7 +182,13 @@ export class CcQuickAdd extends LitElement {
 		this.errorKey = "";
 		this.dispatchEvent(
 			new CustomEvent<QuickAddDetail>("add", {
-				detail: { cardId, date, amount, note: this.value("note") },
+				detail: {
+					...(this.purchase ? { id: this.purchase.id } : {}),
+					cardId,
+					date,
+					amount,
+					note: this.value("note"),
+				},
 			}),
 		);
 	}
@@ -190,11 +237,26 @@ export class CcQuickAdd extends LitElement {
 							})}</small></p>`
 						: nothing
 				}
-				<label>${t("quickAdd.date")} <input name="date" type="date" .value=${this.today} required /></label>
-				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")} required /></label>
-				<label>${t("quickAdd.note")} <input name="note" placeholder=${t("quickAdd.notePlaceholder")} /></label>
+				<label>${t("quickAdd.date")} <input name="date" type="date" .value=${this.date} required
+					@input=${(event: Event) => {
+						this.date = (event.target as HTMLInputElement).value;
+					}} /></label>
+				${
+					this.inFuture
+						? html`<p class="warning" data-testid="future-date-warning">${t("quickAdd.futureDateWarning")}</p>`
+						: nothing
+				}
+				${
+					this.onCloseDate
+						? html`<p class="warning" data-testid="close-date-warning">${t("quickAdd.closeDateWarning")}</p>`
+						: nothing
+				}
+				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")}
+					.value=${this.purchase ? formatAmountInput(this.purchase.amount) : ""} required /></label>
+				<label>${t("quickAdd.note")} <input name="note" placeholder=${t("quickAdd.notePlaceholder")}
+					.value=${this.purchase?.note ?? ""} /></label>
 				<div class="form-actions" row>
-					<button type="submit">${t("quickAdd.submit")}</button>
+					<button type="submit">${t(this.purchase ? "quickAdd.save" : "quickAdd.submit")}</button>
 					<button type="button" data-variant="quiet" data-action="cancel"
 						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
 				</div>

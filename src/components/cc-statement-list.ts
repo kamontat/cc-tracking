@@ -1,13 +1,13 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { displayDate } from "#lib/domain/date";
+import { compareDates, displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { urgencyOf } from "#lib/domain/statement";
 import type { PlainDate, Statement } from "#lib/domain/types";
 
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { base, controls, dataTable, panel } from "#styles/shared";
+import { badge, base, controls, dataTable, panel } from "#styles/shared";
 
 @customElement("cc-statement-list")
 export class CcStatementList extends LitElement {
@@ -16,6 +16,7 @@ export class CcStatementList extends LitElement {
 		controls,
 		panel,
 		dataTable,
+		badge,
 		css`
 			:host {
 				display: flex;
@@ -43,6 +44,16 @@ export class CcStatementList extends LitElement {
 
 			article[data-urgency="soon"] {
 				border-left: var(--cc-space-1) solid var(--cc-urgency-soon);
+			}
+
+			/* The statement today's spending lands on, ruled in the accent so it is found at a glance. */
+			article[data-current] {
+				border-left: var(--cc-space-1) solid var(--cc-accent);
+			}
+
+			article[data-current] .badge {
+				color: var(--cc-accent);
+				border-color: var(--cc-accent);
 			}
 
 			details {
@@ -96,9 +107,14 @@ export class CcStatementList extends LitElement {
 				border-left: var(--cc-border-width) dashed var(--cc-border);
 			}
 
-			/* In step with the tighter panel above. */
+			/*
+			 * In step with the tighter panel above. Centred, not top-aligned: a row carries
+			 * buttons, and a button is taller than a line of text, so top alignment leaves the
+			 * date, note and amount riding high beside them.
+			 */
 			td {
 				padding: var(--cc-space-2);
+				vertical-align: middle;
 			}
 
 			/*
@@ -109,6 +125,19 @@ export class CcStatementList extends LitElement {
 			 */
 			.note {
 				width: 100%;
+			}
+
+			/*
+			 * Edit and delete side by side as one flex row, so they line up with each other
+			 * rather than with the text baseline, and never wrap under each other.
+			 */
+			.purchase-actions .actions {
+				gap: var(--cc-space-2);
+				align-items: center;
+			}
+
+			.purchase-actions button {
+				align-self: auto;
 			}
 		`,
 	];
@@ -169,14 +198,30 @@ export class CcStatementList extends LitElement {
 		}</p>`;
 	}
 
+	/**
+	 * The statement a purchase made today lands on: the earliest one not yet closed. Later ones
+	 * exist only when a purchase is dated ahead, and are not current.
+	 */
+	private get currentPeriod(): string | null {
+		let current: Statement | null = null;
+		for (const statement of this.statements) {
+			if (compareDates(this.today, statement.closeDate) > 0) continue;
+			if (!current || compareDates(statement.closeDate, current.closeDate) < 0)
+				current = statement;
+		}
+		return current?.period ?? null;
+	}
+
 	private statement(statement: Statement) {
 		const urgency = urgencyOf(statement, this.today);
+		const current = statement.period === this.currentPeriod;
 		return html`
-					<article data-urgency=${urgency}>
+					<article data-urgency=${urgency} ?data-current=${current}>
 						<details ?open=${statement.purchases.length > 0}>
 							<summary>
 								<div class="summary-line" row>
 									<span class="period">${statement.period}</span>
+									${current ? html`<span class="badge">${t("statements.current")}</span>` : nothing}
 									<span class="dates">${t("statements.header", {
 										close: displayDate(statement.closeDate, getLocale()),
 										due: displayDate(statement.dueDate, getLocale()),
@@ -202,14 +247,20 @@ export class CcStatementList extends LitElement {
 															<td class="date">${displayDate(purchase.date, getLocale())}</td>
 															<td class="note">${purchase.note}</td>
 															<td data-numeric>${formatAmount(purchase.amount)}</td>
-															<td>
+															<td class="purchase-actions"><div class="actions" row>
+																<button data-action="edit-purchase" data-variant="quiet"
+																	@click=${() =>
+																		this.emit("edit-purchase", {
+																			cardId: purchase.cardId,
+																			purchaseId: purchase.id,
+																		})}>${t("common.edit")}</button>
 																<button data-action="delete-purchase" data-variant="danger"
 																	@click=${() =>
 																		this.emit("delete-purchase", {
 																			cardId: purchase.cardId,
 																			purchaseId: purchase.id,
 																		})}>${t("common.delete")}</button>
-															</td>
+															</div></td>
 														</tr>
 													`,
 												)}

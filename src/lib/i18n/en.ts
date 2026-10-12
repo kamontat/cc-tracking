@@ -36,6 +36,7 @@ export const en = {
 	"dashboard.title": "Dashboard",
 	"dashboard.dueNext": "Due next",
 	"dashboard.addPurchase": "Add a purchase",
+	"dashboard.editPurchase": "Edit purchase",
 	"dashboard.answer": "Lands on the statement closing {close} — pay by {due}.",
 	"dashboard.answerOver": "That is {over} over the {name} limit.",
 	"dashboard.error.read": "Could not read your cards.",
@@ -62,12 +63,15 @@ export const en = {
 	"quickAdd.note": "Note",
 	"quickAdd.notePlaceholder": "office supplies",
 	"quickAdd.submit": "Add purchase",
+	"quickAdd.save": "Save changes",
+	"quickAdd.futureDateWarning":
+		"This date is in the future. The purchase will count against your limit now, on the statement it falls in.",
+	"quickAdd.closeDateWarning":
+		"This is the day the statement closes. The bank may put this purchase on this statement or the next one -- check it against your statement.",
 	"quickAdd.noEligible":
 		"No card here can take a purchase. Tick the place you spend from under Purchases, on the Settings page.",
 	"quickAdd.error.noCard": "Choose a card first.",
 	"quickAdd.error.badDate": "That date does not exist. Use YYYY-MM-DD.",
-	"quickAdd.error.futureDate":
-		"That date is in the future. A credit-card purchase cannot be dated ahead.",
 	"quickAdd.error.badAmount": "Enter the amount in baht, like 1234.56.",
 	"quickAdd.available": "Available {available} of {limit}",
 
@@ -172,12 +176,14 @@ export const en = {
 	"card.error.unmarkPaid": "Could not undo the payment.",
 	"card.error.deletePurchase": "Could not delete the purchase.",
 	"card.error.addPurchase": "Could not save the purchase.",
+	"card.error.editPurchase": "Could not save the changes to the purchase.",
 
 	"statements.empty": "No statements yet. Add a purchase from the dashboard.",
 	"statements.header": "closes {close}, due {due}",
 	"statements.paid": "Paid {date}",
 	"statements.unmark": "Unmark",
 	"statements.markPaid": "Mark paid",
+	"statements.current": "Current",
 	"statements.noPurchases": "No purchases in this period.",
 	"statements.total": "Total {amount}",
 	"statements.quietRun": "{from} – {to} · no purchases",

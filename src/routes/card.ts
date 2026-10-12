@@ -9,7 +9,7 @@ import { html, nothing, render } from "lit";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import { displayDate, today } from "#lib/domain/date";
+import { compareDates, displayDate, today } from "#lib/domain/date";
 import { groupUsage, outstandingOf, spendableRows } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
 import { cardOwnerOf, groupLabel } from "#lib/domain/owner";
@@ -66,6 +66,8 @@ export function renderCardPage(
 		groupName: string;
 	} | null = null;
 	let adding = false;
+	// The saved purchase the dialog is open to edit, or null when it adds a new one.
+	let editing: Purchase | null = null;
 	// Whether the open dialog has tried a save yet, so an older page error stays out of it.
 	let addSubmitted = false;
 
@@ -98,7 +100,14 @@ export function renderCardPage(
 	const statements = (): Statement[] => {
 		if (!card) return [];
 		const current = card;
-		return recentPeriods(current, now, shown).map((period) =>
+		// Counted back from the latest purchase when one is dated past today, so a purchase
+		// entered ahead still has a statement on the page to edit or delete it from.
+		const latest = purchases.reduce(
+			(date, purchase) =>
+				compareDates(purchase.date, date) > 0 ? purchase.date : date,
+			now,
+		);
+		return recentPeriods(current, latest, shown).map((period) =>
 			buildStatement(
 				current,
 				period,
@@ -148,37 +157,59 @@ export function renderCardPage(
 
 	const openAdd = () => {
 		adding = true;
+		editing = null;
+		addSubmitted = false;
+		paint();
+	};
+
+	// Editing is open to any purchase on the page, an archived card's included: it corrects
+	// history rather than adding to it.
+	const onEditPurchase = (
+		event: CustomEvent<{ cardId: string; purchaseId: string }>,
+	) => {
+		editing =
+			purchases.find((entry) => entry.id === event.detail.purchaseId) ?? null;
+		adding = false;
 		addSubmitted = false;
 		paint();
 	};
 
 	const closeAdd = () => {
 		adding = false;
+		editing = null;
 		paint();
 	};
 
 	// Closes the dialog only once the purchase is stored, as on the dashboard.
 	const onAdd = (event: CustomEvent<QuickAddDetail>) => {
 		addSubmitted = true;
-		return state.guard(async () => {
-			const current = card;
-			const { cardId, date, amount, note } = event.detail;
-			if (!current || current.id !== cardId) return;
-			const row = spendable().find((candidate) => candidate.card.id === cardId);
-			await repo.savePurchase({
-				id: crypto.randomUUID(),
-				cardId,
-				date,
-				amount,
-				note,
-			});
-			confirmedPurchase = {
-				period: periodOfPurchase(current.cycle, date),
-				over: row ? Math.max(0, amount - row.available) : 0,
-				groupName: row?.group.name ?? "",
-			};
-			adding = false;
-		}, "card.error.addPurchase");
+		const { id, cardId, date, amount, note } = event.detail;
+		return state.guard(
+			async () => {
+				const current = card;
+				if (!current || current.id !== cardId) return;
+				const row = spendable().find(
+					(candidate) => candidate.card.id === cardId,
+				);
+				await repo.savePurchase({
+					id: id ?? crypto.randomUUID(),
+					cardId,
+					date,
+					amount,
+					note,
+				});
+				confirmedPurchase = {
+					period: periodOfPurchase(current.cycle, date),
+					// What is left already counts an edited purchase's old amount, so only a new
+					// purchase is weighed against it.
+					over: row && !id ? Math.max(0, amount - row.available) : 0,
+					groupName: row?.group.name ?? "",
+				};
+				adding = false;
+				editing = null;
+			},
+			id ? "card.error.editPurchase" : "card.error.addPurchase",
+		);
 	};
 
 	const answer = (): string => {
@@ -285,6 +316,7 @@ export function renderCardPage(
 										.today=${now}
 										@mark-paid=${onMarkPaid}
 										@unmark-paid=${onUnmarkPaid}
+										@edit-purchase=${onEditPurchase}
 										@delete-purchase=${onDeletePurchase}
 									></cc-statement-list>
 									<button data-variant="quiet" data-action="show-older" @click=${() => {
@@ -295,12 +327,13 @@ export function renderCardPage(
 								${details(card)}
 							</div>
 							${
-								adding && purchasable()
+								editing || (adding && purchasable())
 									? purchaseDialog({
 											cards: [card],
 											rows: spendable(),
 											today: now,
 											error: addSubmitted ? state.error : "",
+											purchase: editing,
 											onAdd,
 											onClose: closeAdd,
 											onRetry: () => state.load(),

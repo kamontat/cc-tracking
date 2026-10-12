@@ -4,7 +4,7 @@ import "#components/cc-quick-add";
 import { html, nothing, type TemplateResult } from "lit";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import type { SpendRow } from "#lib/domain/limit";
-import type { Card, PlainDate } from "#lib/domain/types";
+import type { Card, PlainDate, Purchase } from "#lib/domain/types";
 import { t } from "#lib/i18n/index";
 
 /**
@@ -20,21 +20,25 @@ export const addPurchaseButton = (onOpen: () => void): TemplateResult =>
 /**
  * The dialog around the quick-add form. `error` is shown inside it, where the reader can see it
  * over the backdrop; pass "" until the dialog has tried a save, so an older page error does not
- * greet a reader who has only just opened it.
+ * greet a reader who has only just opened it. Pass `purchase` to edit that saved purchase
+ * instead of adding one.
  */
 export const purchaseDialog = (options: {
 	cards: Card[];
 	rows: SpendRow[];
 	today: PlainDate;
 	error: string;
+	purchase?: Purchase | null;
 	onAdd: (event: CustomEvent<QuickAddDetail>) => void;
 	onClose: () => void;
 	onRetry: () => void;
 }): TemplateResult => html`
-	<cc-modal heading=${t("dashboard.addPurchase")} @close=${options.onClose}>
+	<cc-modal heading=${t(options.purchase ? "dashboard.editPurchase" : "dashboard.addPurchase")}
+		@close=${options.onClose}>
 		<cc-error-banner .message=${options.error} retry-label=${t("common.reload")}
 			@retry=${options.onRetry}></cc-error-banner>
 		<cc-quick-add .cards=${options.cards} .rows=${options.rows} .today=${options.today}
+			.purchase=${options.purchase ?? null}
 			@add=${options.onAdd} @cancel=${options.onClose}></cc-quick-add>
 	</cc-modal>
 `;

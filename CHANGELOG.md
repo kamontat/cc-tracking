@@ -4,7 +4,29 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-10-12: Dependency bump
+## 2026-10-12: Dependency bump, and editing purchases with close-date and future-date warnings
+
+### BREAKING CHANGES
+
+- The purchase form no longer refuses a date after today; it saves the purchase and warns.
+  The message key `quickAdd.error.futureDate` is removed.
+
+### Features
+
+- Each purchase on the card page's statement list has an `Edit` button. It opens the purchase
+  dialog, titled "Edit purchase", with the date, amount and note filled in; the card stays
+  fixed, and saving writes over the same purchase id. Archived cards' purchases can be edited
+  too, since that corrects history rather than adding to it.
+- The purchase form warns, in amber, when the date is the selected card's statement close
+  date: the bank may post such a purchase on this statement or the next one. The warning
+  follows the date and card as they change and never blocks the save.
+- The purchase form warns, in amber, when the date is in the future, and saves it anyway.
+- The card page marks the current statement -- the earliest one not yet closed, where a
+  purchase made today lands -- with a `Current` badge and an accent left rule.
+- `isCloseDate` in `cycle.ts`; `cc-quick-add` takes a `purchase` to edit and adds its `id` to
+  the `add` event; `cc-statement-list` emits `edit-purchase`.
+- Messages added: `dashboard.editPurchase`, `quickAdd.save`, `quickAdd.closeDateWarning`,
+  `quickAdd.futureDateWarning`, `card.error.editPurchase`, `statements.current`.
 
 ### Improvements
 
@@ -12,6 +34,18 @@ reasons don't show up in the code.
   `@kcconfigs/tsconfig` 2.0.0 and `@happy-dom/global-registrator` 21.0.1 move a major version;
   `@kctools/bun-server` 0.4.0, `typescript-language-server` 6.0.2 and `wrangler` 4.149.0 are
   minor or patch bumps. No code changes were needed, and the existing tests pass unchanged.
+- The card page counts its statements back from the latest purchase when one is dated past
+  today, so a purchase dated beyond the open period still has a statement to edit or delete
+  it from.
+- Statement table rows are centred vertically, with `Edit` and `Delete` held together in one
+  row, so the date, note and amount line up with the buttons.
+
+### Decisions
+
+- Both date checks warn rather than refuse. A purchase on the close date is valid, only its
+  statement is uncertain; a future date can be a booking or an instalment entered ahead.
+- An edited purchase shows no "over the limit" note: the remaining credit already counts its
+  old amount, so weighing the new amount against it would count the purchase twice.
 
 ## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, sortable dashboard panels, a preview marker, a primary Merge button, and compact copied text
 

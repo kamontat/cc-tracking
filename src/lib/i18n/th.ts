@@ -48,6 +48,7 @@ export const th: Catalog = {
 	// FLAG FOR OWNER REVIEW: "due date" -- ครบกำหนด, used throughout this catalog.
 	"dashboard.dueNext": "ครบกำหนดถัดไป",
 	"dashboard.addPurchase": "เพิ่มรายการใช้จ่าย",
+	"dashboard.editPurchase": "แก้ไขรายการใช้จ่าย",
 	// FLAG FOR OWNER REVIEW: "statement" -- ใบแจ้งยอด (also card.showOlder, statements.empty).
 	// This sentence also depends on Thai word order matching English. "Close date" is settled:
 	// the owner chose สรุปยอด over ปิดยอด (also due.column.closes, form.closeDay,
@@ -78,11 +79,15 @@ export const th: Catalog = {
 	"quickAdd.note": "หมายเหตุ",
 	"quickAdd.notePlaceholder": "เครื่องเขียนสำนักงาน",
 	"quickAdd.submit": "เพิ่มรายการ",
+	"quickAdd.save": "บันทึกการแก้ไข",
+	"quickAdd.futureDateWarning":
+		"วันที่นี้อยู่ในอนาคต รายการนี้จะนับรวมในวงเงินตั้งแต่ตอนนี้ และอยู่ในรอบบัญชีของวันที่นั้น",
+	"quickAdd.closeDateWarning":
+		"วันนี้เป็นวันตัดรอบบัญชี ธนาคารอาจนำรายการนี้ไปรวมในรอบบัญชีนี้หรือรอบถัดไป โปรดตรวจสอบกับใบแจ้งยอดของคุณ",
 	"quickAdd.noEligible":
 		"ไม่มีบัตรใบใดบันทึกรายการใหม่ได้ ไปที่หน้าตั้งค่าแล้วติ๊กที่ที่ใช้จ่ายใต้หัวข้อการใช้จ่าย",
 	"quickAdd.error.noCard": "เลือกบัตรก่อน",
 	"quickAdd.error.badDate": "ไม่มีวันที่นี้ ใช้รูปแบบ YYYY-MM-DD",
-	"quickAdd.error.futureDate": "วันที่อยู่ในอนาคต รายการบัตรเครดิตลงวันที่ล่วงหน้าไม่ได้",
 	"quickAdd.error.badAmount": "กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
 	"quickAdd.available": "คงเหลือ {available} จาก {limit}",
 
@@ -188,12 +193,14 @@ export const th: Catalog = {
 	"card.error.unmarkPaid": "ยกเลิกการชำระเงินไม่สำเร็จ",
 	"card.error.deletePurchase": "ลบรายการใช้จ่ายไม่สำเร็จ",
 	"card.error.addPurchase": "บันทึกรายการใช้จ่ายไม่สำเร็จ",
+	"card.error.editPurchase": "บันทึกการแก้ไขรายการใช้จ่ายไม่สำเร็จ",
 
 	"statements.empty": "ยังไม่มีใบแจ้งยอด เพิ่มรายการใช้จ่ายจากหน้าหลัก",
 	"statements.header": "สรุปยอด {close} ครบกำหนด {due}",
 	"statements.paid": "ชำระแล้ว {date}",
 	"statements.unmark": "ยกเลิกเครื่องหมาย",
 	"statements.markPaid": "บันทึกว่าชำระแล้ว",
+	"statements.current": "รอบปัจจุบัน",
 	"statements.noPurchases": "ไม่มีรายการใช้จ่ายในรอบนี้",
 	"statements.total": "รวม {amount}",
 	"statements.quietRun": "{from} – {to} · ไม่มีรายการใช้จ่าย",
