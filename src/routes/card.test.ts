@@ -623,3 +623,24 @@ test("a failed edit keeps the dialog open with the message and the old purchase"
 	).toContain("disk is full");
 	expect(await repo.listPurchases("kbank")).toEqual([purchase]);
 });
+
+test("lists a statement ahead of the open one when a purchase is dated into it", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const aheadPeriod = addPeriods(periodOfPurchase(card.cycle, today()), 2);
+	await repo.savePurchase({
+		...purchase,
+		id: "ahead",
+		date: closeDateOf(card.cycle, aheadPeriod),
+		note: "booked ahead",
+	});
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	expect(list?.statements[0]?.period).toBe(aheadPeriod);
+	expect(list?.statements).toHaveLength(12);
+	expect(articleFor(list, aheadPeriod).textContent).toContain("booked ahead");
+});

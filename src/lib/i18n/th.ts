@@ -80,13 +80,14 @@ export const th: Catalog = {
 	"quickAdd.notePlaceholder": "เครื่องเขียนสำนักงาน",
 	"quickAdd.submit": "เพิ่มรายการ",
 	"quickAdd.save": "บันทึกการแก้ไข",
+	"quickAdd.futureDateWarning":
+		"วันที่นี้อยู่ในอนาคต รายการนี้จะนับรวมในวงเงินตั้งแต่ตอนนี้ และอยู่ในรอบบัญชีของวันที่นั้น",
 	"quickAdd.closeDateWarning":
 		"วันนี้เป็นวันตัดรอบบัญชี ธนาคารอาจนำรายการนี้ไปรวมในรอบบัญชีนี้หรือรอบถัดไป โปรดตรวจสอบกับใบแจ้งยอดของคุณ",
 	"quickAdd.noEligible":
 		"ไม่มีบัตรใบใดบันทึกรายการใหม่ได้ ไปที่หน้าตั้งค่าแล้วติ๊กที่ที่ใช้จ่ายใต้หัวข้อการใช้จ่าย",
 	"quickAdd.error.noCard": "เลือกบัตรก่อน",
 	"quickAdd.error.badDate": "ไม่มีวันที่นี้ ใช้รูปแบบ YYYY-MM-DD",
-	"quickAdd.error.futureDate": "วันที่อยู่ในอนาคต รายการบัตรเครดิตลงวันที่ล่วงหน้าไม่ได้",
 	"quickAdd.error.badAmount": "กรอกจำนวนเงินเป็นบาท เช่น 1234.56",
 	"quickAdd.available": "คงเหลือ {available} จาก {limit}",
 

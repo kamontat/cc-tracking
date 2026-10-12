@@ -64,14 +64,14 @@ export const en = {
 	"quickAdd.notePlaceholder": "office supplies",
 	"quickAdd.submit": "Add purchase",
 	"quickAdd.save": "Save changes",
+	"quickAdd.futureDateWarning":
+		"This date is in the future. The purchase will count against your limit now, on the statement it falls in.",
 	"quickAdd.closeDateWarning":
 		"This is the day the statement closes. The bank may put this purchase on this statement or the next one -- check it against your statement.",
 	"quickAdd.noEligible":
 		"No card here can take a purchase. Tick the place you spend from under Purchases, on the Settings page.",
 	"quickAdd.error.noCard": "Choose a card first.",
 	"quickAdd.error.badDate": "That date does not exist. Use YYYY-MM-DD.",
-	"quickAdd.error.futureDate":
-		"That date is in the future. A credit-card purchase cannot be dated ahead.",
 	"quickAdd.error.badAmount": "Enter the amount in baht, like 1234.56.",
 	"quickAdd.available": "Available {available} of {limit}",
 

@@ -60,7 +60,7 @@ export class CcQuickAdd extends LitElement {
 			}
 
 			/* A caution, not a refusal: the same amber the card page gives its own notes. */
-			.close-date-warning {
+			.warning {
 				padding: var(--cc-space-2) var(--cc-space-3);
 				font-size: var(--cc-text-sm);
 				color: var(--cc-warning);
@@ -135,6 +135,14 @@ export class CcQuickAdd extends LitElement {
 		);
 	}
 
+	/**
+	 * Whether the date in the field is after today. Warned about, not refused: a booking or an
+	 * instalment can be entered ahead of the day it posts.
+	 */
+	private get inFuture(): boolean {
+		return isValidDate(this.date) && compareDates(this.date, this.today) > 0;
+	}
+
 	/** The card, when there is only one to choose -- the card page's own. Nothing to pick then. */
 	private get onlyCard(): Card | null {
 		return this.cards.length === 1 ? (this.cards[0] ?? null) : null;
@@ -159,10 +167,6 @@ export class CcQuickAdd extends LitElement {
 		}
 		if (!isValidDate(date)) {
 			this.errorKey = "quickAdd.error.badDate";
-			return;
-		}
-		if (compareDates(date, this.today) > 0) {
-			this.errorKey = "quickAdd.error.futureDate";
 			return;
 		}
 		let amount: number;
@@ -238,8 +242,13 @@ export class CcQuickAdd extends LitElement {
 						this.date = (event.target as HTMLInputElement).value;
 					}} /></label>
 				${
+					this.inFuture
+						? html`<p class="warning" data-testid="future-date-warning">${t("quickAdd.futureDateWarning")}</p>`
+						: nothing
+				}
+				${
 					this.onCloseDate
-						? html`<p class="close-date-warning" data-testid="close-date-warning">${t("quickAdd.closeDateWarning")}</p>`
+						? html`<p class="warning" data-testid="close-date-warning">${t("quickAdd.closeDateWarning")}</p>`
 						: nothing
 				}
 				<label>${t("quickAdd.amount")} <input name="amount" inputmode="decimal" placeholder=${t("quickAdd.amountPlaceholder")}
