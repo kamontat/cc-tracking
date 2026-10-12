@@ -96,9 +96,14 @@ export class CcStatementList extends LitElement {
 				border-left: var(--cc-border-width) dashed var(--cc-border);
 			}
 
-			/* In step with the tighter panel above. */
+			/*
+			 * In step with the tighter panel above. Centred, not top-aligned: a row carries
+			 * buttons, and a button is taller than a line of text, so top alignment leaves the
+			 * date, note and amount riding high beside them.
+			 */
 			td {
 				padding: var(--cc-space-2);
+				vertical-align: middle;
 			}
 
 			/*
@@ -111,13 +116,17 @@ export class CcStatementList extends LitElement {
 				width: 100%;
 			}
 
-			/* Edit and delete side by side, never wrapped under each other. */
-			.purchase-actions {
-				white-space: nowrap;
+			/*
+			 * Edit and delete side by side as one flex row, so they line up with each other
+			 * rather than with the text baseline, and never wrap under each other.
+			 */
+			.purchase-actions .actions {
+				gap: var(--cc-space-2);
+				align-items: center;
 			}
 
-			.purchase-actions button + button {
-				margin-left: var(--cc-space-2);
+			.purchase-actions button {
+				align-self: auto;
 			}
 		`,
 	];
@@ -211,7 +220,7 @@ export class CcStatementList extends LitElement {
 															<td class="date">${displayDate(purchase.date, getLocale())}</td>
 															<td class="note">${purchase.note}</td>
 															<td data-numeric>${formatAmount(purchase.amount)}</td>
-															<td class="purchase-actions">
+															<td class="purchase-actions"><div class="actions" row>
 																<button data-action="edit-purchase" data-variant="quiet"
 																	@click=${() =>
 																		this.emit("edit-purchase", {
@@ -224,7 +233,7 @@ export class CcStatementList extends LitElement {
 																			cardId: purchase.cardId,
 																			purchaseId: purchase.id,
 																		})}>${t("common.delete")}</button>
-															</td>
+															</div></td>
 														</tr>
 													`,
 												)}

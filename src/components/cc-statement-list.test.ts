@@ -288,3 +288,15 @@ test("emits edit-purchase with the purchase id", async () => {
 	edit?.click();
 	expect(detail).toEqual({ cardId: "kbank", purchaseId: "a" });
 });
+
+test("holds a purchase's edit and delete buttons together in one actions row", async () => {
+	const element = await mount();
+	const group = element.shadowRoot?.querySelector(
+		"td.purchase-actions > .actions[row]",
+	);
+	expect(
+		[...(group?.querySelectorAll("button") ?? [])].map((button) =>
+			button.getAttribute("data-action"),
+		),
+	).toEqual(["edit-purchase", "delete-purchase"]);
+});
