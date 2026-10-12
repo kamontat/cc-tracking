@@ -4,6 +4,15 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-12: Dependency bump
+
+### Improvements
+
+- Dependencies are up to date: `@kcstyles/reset.css` 2.0.0, `@kcconfigs/biome` 3.0.0,
+  `@kcconfigs/tsconfig` 2.0.0 and `@happy-dom/global-registrator` 21.0.1 move a major version;
+  `@kctools/bun-server` 0.4.0, `typescript-language-server` 6.0.2 and `wrangler` 4.149.0 are
+  minor or patch bumps. No code changes were needed, and the existing tests pass unchanged.
+
 ## 2026-10-04: Backup save and restore, with clipboard and merge-or-replace, sortable dashboard panels, a preview marker, a primary Merge button, and compact copied text
 
 ### Features
