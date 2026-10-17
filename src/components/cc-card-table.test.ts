@@ -171,7 +171,13 @@ test("names the account's owner beside the group, and a supplementary card's own
 	expect(text(rows[0], "owner")).toBe("KC");
 	expect(text(rows[1], "limit-group")).toBe("Card A pool (KC)");
 	expect(text(rows[1], "owner")).toBe("NT");
-	expect(rows[1]?.querySelector(".owner")?.textContent).toContain("Owner");
+	expect(rows[1]?.querySelector(".owner")?.textContent).toContain("Cardholder");
+
+	setLocale("th");
+	await element.updateComplete;
+	const thaiRow = element.shadowRoot?.querySelectorAll("tbody tr")[1];
+	expect(thaiRow?.querySelector(".owner")?.textContent).toContain("หน้าบัตร");
+	setLocale("en");
 });
 
 test("marks a supplementary card and leaves an ordinary one unmarked", async () => {

@@ -230,7 +230,7 @@ test("names a supplementary card's own holder, and the account's owner on its gr
 		],
 	);
 	expect(facts).toContainEqual(["Limit group", "Card A pool (KC)"]);
-	expect(facts).toContainEqual(["Owner", "NT"]);
+	expect(facts).toContainEqual(["Cardholder", "NT"]);
 });
 
 test("says why a card kept somewhere that takes no purchases has no purchase form", async () => {
