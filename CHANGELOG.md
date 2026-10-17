@@ -4,6 +4,22 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-17: Clearer names for card and limit group owners
+
+### Improvements
+
+- The person on a card -- the card list's filter and row, and the card page -- is labelled
+  `หน้าบัตร` in Thai and "Cardholder" in English, instead of `เจ้าของ` and "Owner".
+- A limit group's owner -- the limit group table's column and the limit group form's field --
+  is labelled `เจ้าของบัตร` in Thai and "Account holder" in English, and its missing-owner
+  error reads "Choose the account holder for this limit group."
+
+### Decisions
+
+- English uses "Cardholder" for the card, because it names whoever is printed on the card
+  face, and "Account holder" for the group, because a limit group stands for a bank account.
+  Both used to read "Owner", which didn't tell them apart.
+
 ## 2026-10-12: Dependency bump, and editing purchases with close-date and future-date warnings
 
 ### BREAKING CHANGES

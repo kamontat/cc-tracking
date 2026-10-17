@@ -41,6 +41,15 @@ test("names the owner of each group, falling back to KC", async () => {
 	expect(cells).toHaveLength(2);
 	expect(cells[0]?.textContent?.trim()).toBe("RI");
 	expect(cells[1]?.textContent?.trim()).toBe("KC");
+	expect(cells[0]?.getAttribute("data-label")).toBe("Account holder");
+
+	setLocale("th");
+	await element.updateComplete;
+	const thai = element.shadowRoot?.querySelector<HTMLElement>(
+		'td[data-field="owner"]',
+	);
+	expect(thai?.getAttribute("data-label")).toBe("เจ้าของบัตร");
+	setLocale("en");
 });
 
 test("asks the page to edit the group whose button was pressed", async () => {
