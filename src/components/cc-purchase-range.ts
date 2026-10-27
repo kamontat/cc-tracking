@@ -92,6 +92,20 @@ export class CcPurchaseRange extends LitElement {
 			.empty {
 				color: var(--cc-text-muted);
 			}
+
+			/* A card is named as the due list and spendable panels name it. */
+			.card-line {
+				display: inline;
+			}
+
+			.card-name {
+				font-weight: 600;
+			}
+
+			.card-id {
+				font-family: var(--cc-font-mono);
+				font-size: var(--cc-text-xs);
+			}
 		`,
 	];
 
@@ -156,7 +170,11 @@ export class CcPurchaseRange extends LitElement {
 			return [
 				...heading,
 				html`<tr data-testid="range-row">
-					<td>${card ? `${card.id} — ${card.name}` : entry.cardId}
+					<td>${
+						card
+							? html`<span class="card-line"><small class="card-id">${card.id})</small> <a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a></span>`
+							: entry.cardId
+					}
 						${card?.archived ? html`<span class="badge" data-testid="archived-tag">${t("range.archived")}</span>` : nothing}</td>
 					<td>${entry.note || nothing}</td>
 					<td data-numeric>${formatAmount(entry.amount)}</td>

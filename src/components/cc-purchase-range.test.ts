@@ -149,6 +149,19 @@ test("tags a purchase on an archived card", async () => {
 	expect(tagged[0]?.textContent).toContain("Old Amex");
 });
 
+test("names each card as the other panels do, linked to its page", async () => {
+	const element = await mount([
+		purchase({ cardId: "k b", date: "2026-10-05" }),
+	]);
+	element.cards = [card({ id: "k b", name: "KBank Visa" })];
+	await element.updateComplete;
+	const row = all(element, '[data-testid="range-row"]')[0];
+	expect(row?.querySelector(".card-id")?.textContent).toBe("k b)");
+	const link = row?.querySelector<HTMLAnchorElement>("a.card-name");
+	expect(link?.textContent).toBe("KBank Visa");
+	expect(link?.getAttribute("href")).toBe("/card?id=k%20b");
+});
+
 test("says so when the range is empty", async () => {
 	const element = await mount([]);
 	expect(tile(element, "count")).toBe("0");
