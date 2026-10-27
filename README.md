@@ -32,30 +32,34 @@ nothing, so the footer there reads `dev` and the time the page was opened.
   entry times were recorded never show there. Beside it, *Purchases by date*
   counts purchases, their total and the cards used across every card (archived
   ones included) for a preset or custom range of purchase dates, then *Due next*
-  and *Spendable*.
-- `/cards` — the card registry. When adding or editing a card, you choose its
-  physical location from a dropdown: one of Bangkok, Phichit, or Krabi. Cards
+  and *Can spend now*.
+- `/cards` — the card registry and the limit groups, each list searchable,
+  filterable and sortable, and each section foldable. When adding or editing a
+  card, you choose its physical location from a dropdown: one of Bangkok,
+  Phichit, or Krabi, and can mark it as a supplementary card (บัตรเสริม) with its
+  own cardholder. Cards
   already stored in this browser from before the locations were fixed are reset
   to Bangkok once at startup; the page then names those cards, once, with a
   Dismiss button, so you can pick the correct location by hand.
-- `/settings` — where new purchases can be recorded, plus JSON backup export
-  and import. The old `/backup` address redirects here.
+- `/settings` — which places take new purchases, saving and restoring a backup,
+  and resetting all data. The old `/backup` address redirects here.
 - `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
   paging. A month with no purchases in it starts collapsed, so a long run of
-  unused months stays one line each. There is no in-place edit for a purchase:
-  changing one means deleting it and adding a new one.
+  unused months stays one line each. Each purchase can be edited in place (date,
+  amount and note; the card stays fixed) or deleted.
 
 ## Which cards can take a purchase
 
-Each card carries its own answer, ticked on the card form as *Can be used for
-new purchases*. Only those cards appear in the dashboard's purchase form; every
-card still appears everywhere else, including the due list.
+The answer belongs to where a card is kept, not to the card. The *Purchases*
+section on `/settings` ticks the places that take new purchases; only unarchived
+cards kept in a ticked place appear in the dashboard's purchase form and in
+*Can spend now*. Every card still appears everywhere else, including the due
+list.
 
-A card saved before this flag existed has no answer stored, and falls back to
-where it is kept: Krabi yes, anywhere else no. That reproduces the rule that was
-in force before — purchases were only ever entered against the Krabi cards —
-without rewriting a single stored card. Editing and saving any card writes an
-explicit answer for it, and the fallback then no longer applies to it.
+Out of the box only Krabi is ticked, which reproduces the rule that was in force
+before: purchases were only ever entered against the Krabi cards. Unticking every
+place is kept as a real answer, and the purchase form then says that no card can
+take a purchase and points at Settings.
 
 ## Limit groups and how much room is left
 
@@ -110,24 +114,31 @@ next one.
 
 ## Where the data lives
 
-Phase 1 keeps everything in this browser's `localStorage`, under keys shaped
-like `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
-`cc:payment:<cardId>:<period>`, and `cc:limitgroup:<id>`. Those shapes hold
+Everything lives in this browser's `localStorage`, under keys shaped like
+`cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
+`cc:payment:<cardId>:<period>`, and `cc:limitgroup:<id>`, plus `cc:settings`
+for the purchase places and `cc:batch-start` for when *This sitting* began. The
+batch start is working state for this browser, so backups leave it out. Those shapes hold
 as written for an ordinary card id, date, and uuid; each segment is actually
 percent-encoded, so a card id containing `:` or other reserved characters
 produces a key that looks a little different from the documented shape,
-though it still round-trips correctly. Those are the same shapes the planned
-Cloudflare KV namespace uses, so phase 2 swaps the repository implementation
-and nothing else.
+though it still round-trips correctly. Nothing is sent to a server: the
+Cloudflare Worker only serves the built pages, so data is not shared between
+browsers or devices except through a backup.
 
 A card's location is stored as one of three lowercase keys: `bangkok`,
 `phichit`, or `krabi`. These are the display-neutral keys; when a card is
 shown on screen or in the UI, the location goes through a display function
 that renders them as "Bangkok", "Phichit", and "Krabi".
 
-Use the Export JSON button on `/settings` as your backup — importing merges a
-backup's limit groups, cards, purchases, and payments back in without
-deleting anything already there. Backups are now version 2 and carry
+Use *Save a copy* on `/settings` as your backup: *Download file* saves indented
+JSON, and *Copy text* puts the same backup on the clipboard as compact JSON.
+*Restore a copy* takes a file or pasted text. If this browser already holds
+records, it shows what is here next to what is in the copy and asks: *Merge*
+keeps what is here and adds the copy's records, updating any it shares, while
+*Replace* deletes everything here first, settings included. An empty browser
+restores straight away. *Reset* on the same page deletes every record and
+setting after showing how many of each will go. Backups are version 2 and carry
 `limitGroups` alongside the three lists that were already there; a version 1
 file — one written before limit groups existed — is rejected outright, since
 there is no code to invent groups for it. A file that is not valid JSON, is
@@ -178,6 +189,12 @@ were added whose name has this shape. This is a known, deliberate trade-off rath
 than a bug: fixing it needs `Intl.Collator`, and using any `Intl` API on `th-TH` risks
 pulling in the same Buddhist-era year handling the date rendering above exists to
 avoid.
+
+## Features
+
+The business requirements, functional requirements and user stories for
+everything shipped so far are in [`FEATURES.md`](FEATURES.md), and in Thai in
+[`FEATURES_TH.md`](FEATURES_TH.md).
 
 ## Changelog
 
