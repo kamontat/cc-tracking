@@ -6,6 +6,7 @@ import {
 } from "#lib/storage/contract";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { StorageError } from "#lib/storage/repository";
+import { exportBackup } from "#lib/storage/transfer";
 
 const freshStorage = (): Storage => {
 	localStorage.clear();
@@ -27,6 +28,21 @@ describe("LocalStorageRepository key layout", () => {
 		expect(
 			localStorage.getItem("cc:purchase:kbank:2026-09-05:p1"),
 		).not.toBeNull();
+	});
+
+	test("stores the batch start under cc:batch-start", async () => {
+		const repo = new LocalStorageRepository(freshStorage());
+		await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
+		expect(localStorage.getItem("cc:batch-start")).toBe(
+			JSON.stringify("2026-10-27T03:00:00.000Z"),
+		);
+	});
+
+	test("keeps the batch start out of a backup export", async () => {
+		const repo = new LocalStorageRepository(freshStorage());
+		await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
+		const text = JSON.stringify(await exportBackup(repo));
+		expect(text).not.toContain("2026-10-27T03:00:00.000Z");
 	});
 
 	test("ignores unrelated keys in the same origin", async () => {
