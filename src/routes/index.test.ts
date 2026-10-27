@@ -84,16 +84,37 @@ const submitQuickAdd = (quickAdd: HTMLElement) =>
 		?.querySelector("form")
 		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
 
-/** Presses the page's Add a purchase button and hands back the form it opens in a dialog. */
+/** The purchase form, always on the dashboard rather than behind a dialog. */
 const openQuickAdd = async (root: HTMLElement) => {
-	root
-		.querySelector<HTMLButtonElement>('button[data-action="add-purchase"]')
-		?.click();
-	await settle();
-	const quickAdd = root.querySelector<CcQuickAdd>("cc-modal cc-quick-add");
-	if (!quickAdd) throw new Error("the add-purchase dialog did not open");
+	const quickAdd = root.querySelector<CcQuickAdd>("cc-quick-add[inline]");
+	if (!quickAdd) throw new Error("the dashboard has no purchase form");
 	await quickAdd.updateComplete;
 	return quickAdd;
+};
+
+const formValue = (quickAdd: HTMLElement, name: string) =>
+	quickAdd.shadowRoot?.querySelector<HTMLInputElement | HTMLSelectElement>(
+		`[name="${name}"]`,
+	)?.value;
+
+const sittingRows = async (root: HTMLElement) => {
+	const list = root.querySelector("cc-sitting-list");
+	await list?.updateComplete;
+	return [
+		...(list?.shadowRoot?.querySelectorAll('[data-testid="sitting-row"]') ??
+			[]),
+	];
+};
+
+/** A clock the test can move, fixed at 10:00 Bangkok on 27 Oct 2026 to start. */
+const fixedClock = (iso = "2026-10-27T03:00:00.000Z") => {
+	let at = new Date(iso);
+	return {
+		clock: () => at,
+		set: (next: string) => {
+			at = new Date(next);
+		},
+	};
 };
 
 /** The confirmation the page shows under its heading once a purchase is saved. */
@@ -103,8 +124,9 @@ const answerText = (root: HTMLElement): string =>
 /** The due list's own "Mark paid" button, not one of its sorting headings. */
 const MARK_PAID = 'button[data-action="mark-paid"]';
 
-const modalBannerMessage = (root: HTMLElement): string =>
-	root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message ?? "";
+const formBannerMessage = (root: HTMLElement): string =>
+	root.querySelector<CcErrorBanner>('[data-panel="add"] cc-error-banner')
+		?.message ?? "";
 
 test("offers only the cards kept where purchases are allowed, while listing them all as due", async () => {
 	const repo = new InMemoryRepository();
@@ -171,8 +193,6 @@ test("a purchase dated on the close day lands on that statement", async () => {
 	expect(answerText(root)).toBe(
 		"Lands on the statement closing 18 Sep 2026 — pay by 03 Oct 2026.",
 	);
-	// Saved, the dialog closes: the answer is on the page, not in a form that is gone.
-	expect(root.querySelector("cc-modal")).toBeNull();
 });
 
 test("a purchase dated the day after the close day lands on the next statement", async () => {
@@ -197,7 +217,7 @@ test("a purchase dated the day after the close day lands on the next statement",
 	);
 });
 
-test("a failed purchase save leaves a message in the banner and stores nothing", async () => {
+test("a failed add keeps the typing and shows the error in the form panel", async () => {
 	const repo = new RejectingPurchaseRepository();
 	await repo.saveCard(quickAddCard);
 	const root = mount();
@@ -208,56 +228,226 @@ test("a failed purchase save leaves a message in the banner and stores nothing",
 
 	fillQuickAdd(quickAdd, "date", "2026-09-18");
 	fillQuickAdd(quickAdd, "amount", "500");
+	fillQuickAdd(quickAdd, "note", "dinner");
 	submitQuickAdd(quickAdd);
 	await settle();
 
-	expect(bannerMessage(root)).toContain("disk is full");
 	expect(await repo.listPurchases("scb")).toEqual([]);
 	expect(answerText(root)).toBe("");
-	// The dialog stays open on the typed purchase, with the failure shown inside it.
-	expect(modalBannerMessage(root)).toContain("disk is full");
-	expect(
-		root
-			.querySelector("cc-modal cc-quick-add")
-			?.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]')?.value,
-	).toBe("500");
+	expect(formBannerMessage(root)).toContain("disk is full");
+	expect(formValue(quickAdd, "amount")).toBe("500");
+	expect(formValue(quickAdd, "note")).toBe("dinner");
 });
 
-test("shows no purchase form until asked, then opens it in a dialog", async () => {
+test("shows the add form without opening a dialog", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(quickAddCard);
 	const root = mount();
 	renderDashboardPage(repo, root);
 	await settle();
 
-	expect(root.querySelector("cc-quick-add")).toBeNull();
-	const button = root.querySelector<HTMLButtonElement>(
-		'button[data-action="add-purchase"]',
+	expect(root.querySelector("cc-quick-add[inline]")).not.toBeNull();
+	expect(root.querySelector("cc-modal")).toBeNull();
+	expect(root.querySelector('button[data-action="add-purchase"]')).toBeNull();
+	expect(root.querySelector('[data-panel="add"] h2')?.textContent?.trim()).toBe(
+		"Add a purchase",
 	);
-	expect(button?.textContent?.trim()).toBe("Add a purchase");
-	expect(button?.closest(".page-title")?.querySelector("h1")).not.toBeNull();
-
-	await openQuickAdd(root);
-	expect(root.querySelector("cc-modal")?.heading).toBe("Add a purchase");
 });
 
-test("closes the purchase dialog without saving when the reader cancels or dismisses it", async () => {
+test("an added purchase records addedAt and appears in This sitting", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(quickAddCard);
+	const { clock } = fixedClock();
 	const root = mount();
-	renderDashboardPage(repo, root);
+	renderDashboardPage(repo, root, { clock });
 	await settle();
 
 	const quickAdd = await openQuickAdd(root);
-	quickAdd.dispatchEvent(new CustomEvent("cancel"));
+	fillQuickAdd(quickAdd, "date", "2026-10-20");
+	fillQuickAdd(quickAdd, "amount", "500");
+	submitQuickAdd(quickAdd);
 	await settle();
-	expect(root.querySelector("cc-modal")).toBeNull();
 
-	await openQuickAdd(root);
-	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
+	const [stored] = await repo.listPurchases("scb");
+	expect(stored?.addedAt).toBe("2026-10-27T03:00:00.000Z");
+	expect(await sittingRows(root)).toHaveLength(1);
+	expect(answerText(root)).not.toBe("");
+});
+
+test("a successful add clears amount and note, keeps card and date", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	await repo.saveCard({ ...quickAddCard, id: "ktb", name: "KTB Debit" });
+	const root = mount();
+	renderDashboardPage(repo, root, { clock: fixedClock().clock });
 	await settle();
-	expect(root.querySelector("cc-modal")).toBeNull();
-	expect(await repo.listPurchases("scb")).toEqual([]);
+
+	const quickAdd = await openQuickAdd(root);
+	const select =
+		quickAdd.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	if (!select) throw new Error("no card picker");
+	select.value = "scb";
+	select.dispatchEvent(new Event("change"));
+	fillQuickAdd(quickAdd, "date", "2026-10-20");
+	fillQuickAdd(quickAdd, "amount", "500");
+	fillQuickAdd(quickAdd, "note", "dinner");
+	submitQuickAdd(quickAdd);
+	await settle();
+	await quickAdd.updateComplete;
+
+	expect(formValue(quickAdd, "amount")).toBe("");
+	expect(formValue(quickAdd, "note")).toBe("");
+	expect(formValue(quickAdd, "cardId")).toBe("scb");
+	expect(formValue(quickAdd, "date")).toBe("2026-10-20");
+});
+
+test("first load with no batch start saves one, so This sitting starts empty", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	await repo.savePurchase({
+		id: "earlier",
+		cardId: "scb",
+		date: "2026-10-26",
+		amount: 100,
+		note: "",
+		addedAt: "2026-10-27T02:00:00.000Z",
+	});
+	const root = mount();
+	renderDashboardPage(repo, root, { clock: fixedClock().clock });
+	await settle();
+
+	expect(await repo.getBatchStart()).toBe("2026-10-27T03:00:00.000Z");
+	expect(await sittingRows(root)).toHaveLength(0);
+});
+
+test("This sitting survives a reload", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const { clock, set } = fixedClock();
+	const root = mount();
+	renderDashboardPage(repo, root, { clock });
+	await settle();
+	set("2026-10-27T03:05:00.000Z");
+	const quickAdd = await openQuickAdd(root);
+	fillQuickAdd(quickAdd, "amount", "500");
+	submitQuickAdd(quickAdd);
+	await settle();
+
+	set("2026-10-28T03:00:00.000Z");
+	const again = mount();
+	renderDashboardPage(repo, again, { clock });
+	await settle();
+	expect(await sittingRows(again)).toHaveLength(1);
+});
+
+test("Start new batch, confirmed, empties This sitting", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	await repo.saveBatchStart("2026-10-27T01:00:00.000Z");
+	await repo.savePurchase({
+		id: "a",
+		cardId: "scb",
+		date: "2026-10-26",
+		amount: 100,
+		note: "",
+		addedAt: "2026-10-27T02:00:00.000Z",
+	});
+	const { clock } = fixedClock();
+	const root = mount();
+	renderDashboardPage(repo, root, { clock });
+	await settle();
+	expect(await sittingRows(root)).toHaveLength(1);
+
+	root
+		.querySelector("cc-sitting-list")
+		?.dispatchEvent(new CustomEvent("start-batch"));
+	await settle();
+
+	expect(await repo.getBatchStart()).toBe("2026-10-27T03:00:00.000Z");
+	expect(await sittingRows(root)).toHaveLength(0);
+});
+
+test("purchases from before addedAt existed do not show in This sitting", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	await repo.saveBatchStart("2026-10-01T00:00:00.000Z");
+	await repo.savePurchase({
+		id: "legacy",
+		cardId: "scb",
+		date: "2026-10-26",
+		amount: 100,
+		note: "",
+	});
+	const root = mount();
+	renderDashboardPage(repo, root, { clock: fixedClock().clock });
+	await settle();
+	expect(await sittingRows(root)).toHaveLength(0);
+});
+
+test("Purchases by date counts across cards, archived included", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	await repo.saveCard({ ...quickAddCard, id: "old", archived: true });
+	for (const [id, cardId] of [
+		["a", "scb"],
+		["b", "old"],
+	] as const) {
+		await repo.savePurchase({
+			id,
+			cardId,
+			date: "2026-10-10",
+			amount: 100,
+			note: "",
+		});
+	}
+	const root = mount();
+	renderDashboardPage(repo, root, { clock: fixedClock().clock });
+	await settle();
+
+	const range = root.querySelector("cc-purchase-range");
+	await range?.updateComplete;
+	expect(
+		range?.shadowRoot
+			?.querySelector('[data-testid="range-count"]')
+			?.textContent?.trim(),
+	).toBe("2");
+	expect(range?.today).toBe("2026-10-27");
+});
+
+test("midnight keeps a purchase date the reader picked", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const { clock, set } = fixedClock("2026-10-27T16:59:00.000Z");
+	const root = mount();
+	renderDashboardPage(repo, root, { clock, tickMs: 5 });
+	await settle();
+	fillQuickAdd(await openQuickAdd(root), "date", "2026-10-25");
+
+	set("2026-10-27T17:01:00.000Z");
+	await new Promise((resolve) => setTimeout(resolve, 25));
+
+	expect(formValue(await openQuickAdd(root), "date")).toBe("2026-10-25");
+	root.remove();
+});
+
+test("today rolls over at midnight", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	// 23:59 in Bangkok on the 27th.
+	const { clock, set } = fixedClock("2026-10-27T16:59:00.000Z");
+	const root = mount();
+	renderDashboardPage(repo, root, { clock, tickMs: 5 });
+	await settle();
+	expect((await openQuickAdd(root)).today).toBe("2026-10-27");
+
+	set("2026-10-27T17:01:00.000Z");
+	await new Promise((resolve) => setTimeout(resolve, 25));
+
+	const form = await openQuickAdd(root);
+	expect(form.today).toBe("2026-10-28");
+	expect(formValue(form, "date")).toBe("2026-10-28");
+	expect(root.querySelector("cc-purchase-range")?.today).toBe("2026-10-28");
+	root.remove();
 });
 
 test("lets the reader dismiss the purchase confirmation", async () => {

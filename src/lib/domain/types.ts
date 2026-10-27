@@ -52,6 +52,11 @@ export type Purchase = {
 	/** Satang. 1 THB = 100 satang. Always an integer. */
 	amount: number;
 	note: string;
+	/**
+	 * When the purchase was first entered, as an ISO 8601 instant. Absent on purchases saved
+	 * before entry times were recorded; an edit carries the original over.
+	 */
+	addedAt?: string;
 };
 
 export type StatementPayment = {

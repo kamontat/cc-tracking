@@ -13,6 +13,7 @@ const PURCHASE = `${PREFIX}purchase:`;
 const PAYMENT = `${PREFIX}payment:`;
 const LIMIT_GROUP = `${PREFIX}limitgroup:`;
 const SETTINGS = `${PREFIX}settings`;
+const BATCH_START = `${PREFIX}batch-start`;
 /** One-off notices a data migration leaves for the next page load; see `migrate-locations`. */
 const MIGRATION = `${PREFIX}migration:`;
 
@@ -158,11 +159,20 @@ export class LocalStorageRepository implements Repository {
 		this.write(SETTINGS, settings);
 	}
 
+	async getBatchStart(): Promise<string | null> {
+		const value = this.read<unknown>(BATCH_START);
+		return typeof value === "string" ? value : null;
+	}
+
+	async saveBatchStart(at: string): Promise<void> {
+		this.write(BATCH_START, at);
+	}
+
 	/**
 	 * Names each kind of record rather than sweeping every `cc:` key: the language choice
 	 * (`cc:lang`) is the reader's, not the data's, and a reset must not flip the page they are
 	 * reading into another language. A pending migration notice goes too -- it names cards that
-	 * no longer exist.
+	 * no longer exist -- and so does the batch start, which would otherwise outlive its entries.
 	 */
 	async clearAll(): Promise<void> {
 		for (const prefix of [CARD, PURCHASE, PAYMENT, LIMIT_GROUP, MIGRATION]) {
@@ -171,5 +181,6 @@ export class LocalStorageRepository implements Repository {
 			}
 		}
 		this.storage.removeItem(SETTINGS);
+		this.storage.removeItem(BATCH_START);
 	}
 }

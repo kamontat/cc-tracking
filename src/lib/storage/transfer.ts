@@ -118,6 +118,12 @@ function purchaseProblem(value: unknown): MessageKey | null {
 		return "backup.problem.missingCardId";
 	if (!isPlainDate(prop(value, "date"))) return "backup.problem.badDate";
 	if (!isInteger(prop(value, "amount"))) return "backup.problem.badAmount";
+	const addedAt = prop(value, "addedAt");
+	if (
+		addedAt !== undefined &&
+		(typeof addedAt !== "string" || Number.isNaN(Date.parse(addedAt)))
+	)
+		return "backup.problem.badAddedAt";
 	return null;
 }
 

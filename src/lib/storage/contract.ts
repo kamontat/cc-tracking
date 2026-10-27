@@ -379,5 +379,32 @@ export function repositoryContract(
 			await repo.saveCard(sampleCard({ id: "scb" }));
 			expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"]);
 		});
+
+		test("keeps a purchase's entry time, through an edit too", async () => {
+			const entered = samplePurchase({ addedAt: "2026-10-27T03:00:00.000Z" });
+			await repo.savePurchase(entered);
+			expect(await repo.listPurchases("kbank")).toEqual([entered]);
+
+			const edited = { ...entered, date: "2026-09-07", amount: 20_000 };
+			await repo.savePurchase(edited);
+			expect(await repo.listPurchases("kbank")).toEqual([edited]);
+		});
+
+		test("has no batch start before one is saved", async () => {
+			expect(await repo.getBatchStart()).toBeNull();
+		});
+
+		test("saves and reads the batch start back", async () => {
+			await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
+			expect(await repo.getBatchStart()).toBe("2026-10-27T03:00:00.000Z");
+			await repo.saveBatchStart("2026-10-28T01:00:00.000Z");
+			expect(await repo.getBatchStart()).toBe("2026-10-28T01:00:00.000Z");
+		});
+
+		test("clearAll forgets the batch start", async () => {
+			await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
+			await repo.clearAll();
+			expect(await repo.getBatchStart()).toBeNull();
+		});
 	});
 }

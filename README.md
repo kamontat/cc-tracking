@@ -24,9 +24,15 @@ nothing, so the footer there reads `dev` and the time the page was opened.
 
 ## Pages
 
-- `/` — statements due next, quick purchase entry, cards grouped by location.
-  The purchase form offers only the cards that may take one; see *Which cards
-  can take a purchase* below.
+- `/` — a workspace for entering a pile of receipts. The purchase form is always
+  open, and offers only the cards that may take one; see *Which cards can take a
+  purchase* below. After each add it keeps the card and date and clears the
+  rest. Under it, *This sitting* lists what was entered since *Start new batch*
+  was last pressed, latest first, and survives reloads; purchases saved before
+  entry times were recorded never show there. Beside it, *Purchases by date*
+  counts purchases, their total and the cards used across every card (archived
+  ones included) for a preset or custom range of purchase dates, then *Due next*
+  and *Spendable*.
 - `/cards` — the card registry. When adding or editing a card, you choose its
   physical location from a dropdown: one of Bangkok, Phichit, or Krabi. Cards
   already stored in this browser from before the locations were fixed are reset

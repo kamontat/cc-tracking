@@ -4,8 +4,11 @@ import "../styles/app.css";
 import "#components/cc-due-list";
 import "#components/cc-error-banner";
 import "#components/cc-lang-switch";
+import "#components/cc-purchase-range";
+import "#components/cc-quick-add";
+import "#components/cc-sitting-list";
 import "#components/cc-spendable";
-import { html, nothing, render } from "lit";
+import { html, render } from "lit";
 import type { DueRow } from "#components/cc-due-list";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
@@ -13,6 +16,7 @@ import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { spendableRows, unassignedCards } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
+import { sittingPurchases } from "#lib/domain/purchase-range";
 import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
 import { buildStatement, nextActionable } from "#lib/domain/statement";
 import type {
@@ -26,20 +30,32 @@ import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
-import {
-	addPurchaseButton,
-	purchaseDialog,
-	purchaseStatus,
-} from "#lib/ui/purchase-dialog";
+import { purchaseStatus } from "#lib/ui/purchase-dialog";
 
-/** Renders the dashboard page into `root`, wiring it to `repo`. Exported for tests and for Tasks 11-12 to extend. */
-export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
-	const now = today();
+export type DashboardOptions = {
+	/** The page's only clock reading: today's date, entry times, the batch start and "ago". */
+	clock?: () => Date;
+	/** How often the page re-reads the clock, so a tab left open past midnight moves on. */
+	tickMs?: number;
+};
+
+/**
+ * Renders the dashboard into `root`, wiring it to `repo`: a workspace for entering a pile of
+ * receipts, with the purchase form always open, what this sitting has entered beside it, and
+ * purchases by date, due statements and spendable room alongside.
+ */
+export function renderDashboardPage(
+	repo: Repository,
+	root: HTMLElement,
+	{ clock = () => new Date(), tickMs = 60_000 }: DashboardOptions = {},
+): void {
+	let now = today(clock());
 	let cards: Card[] = [];
 	let groups: LimitGroup[] = [];
 	let purchases: Purchase[] = [];
 	let payments: StatementPayment[] = [];
 	let settings: Settings = DEFAULT_SETTINGS;
+	let batchStart = clock().toISOString();
 	// Carries the card and period a purchase landed on, not a resolved sentence: paint()
 	// resolves it every time, so a language switch re-renders the confirmation instead of
 	// leaving it frozen in whatever language it was written in (or clearing it outright).
@@ -49,9 +65,11 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 		over: number;
 		groupName: string;
 	} | null = null;
-	let adding = false;
-	// Whether the open dialog has tried a save yet, so an older page error stays out of it.
-	let addSubmitted = false;
+	// Bumped once a purchase is stored, which readies the form for the next receipt.
+	let cleared = 0;
+	// Whether the last write was an add, so its failure shows beside the form the reader is
+	// typing in rather than at the top of the page, possibly a screen away.
+	let lastWriteWasAdd = false;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -64,13 +82,21 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 			payments = (
 				await Promise.all(cards.map((card) => repo.listPayments(card.id)))
 			).flat();
+			const stored = await repo.getBatchStart();
+			// A first visit starts a batch then and there, so the list opens empty rather than
+			// counting whatever was entered before it existed.
+			if (stored === null) await repo.saveBatchStart(batchStart);
+			batchStart = stored ?? batchStart;
 		},
 		fallbackKey: "dashboard.error.read",
 		paint: () => paint(),
 	});
 
-	const onMarkPaid = (event: CustomEvent<{ cardId: string; period: string }>) =>
-		state.guard(async () => {
+	const onMarkPaid = (
+		event: CustomEvent<{ cardId: string; period: string }>,
+	) => {
+		lastWriteWasAdd = false;
+		return state.guard(async () => {
 			const { cardId, period } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
 			if (!card) return;
@@ -85,22 +111,12 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				dueDate: statement.dueDate,
 			});
 		}, "dashboard.error.markPaid");
-
-	const openAdd = () => {
-		adding = true;
-		addSubmitted = false;
-		paint();
 	};
 
-	const closeAdd = () => {
-		adding = false;
-		paint();
-	};
-
-	// Closes the dialog only once the purchase is stored; a failed save leaves it open, with the
-	// reason inside it and the reader's typing intact.
+	// The form is cleared only once the purchase is stored; a failed save leaves the reader's
+	// typing in place, with the reason beside it.
 	const onAdd = (event: CustomEvent<QuickAddDetail>) => {
-		addSubmitted = true;
+		lastWriteWasAdd = true;
 		return state.guard(async () => {
 			const { cardId, date, amount, note } = event.detail;
 			const card = cards.find((c) => c.id === cardId);
@@ -119,6 +135,7 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				date,
 				amount,
 				note,
+				addedAt: clock().toISOString(),
 			});
 			const period = periodOfPurchase(card.cycle, date);
 			confirmedPurchase = {
@@ -127,8 +144,17 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 				over: row ? Math.max(0, amount - row.available) : 0,
 				groupName: row?.group.name ?? "",
 			};
-			adding = false;
+			cleared += 1;
 		}, "dashboard.error.addPurchase");
+	};
+
+	const onStartBatch = () => {
+		lastWriteWasAdd = false;
+		return state.guard(async () => {
+			const at = clock().toISOString();
+			await repo.saveBatchStart(at);
+			batchStart = at;
+		}, "dashboard.error.startBatch");
 	};
 
 	/** Cards the page shows. Archived ones are still loaded: they weigh on a shared limit. */
@@ -168,52 +194,84 @@ export function renderDashboardPage(repo: Repository, root: HTMLElement): void {
 					),
 				})}${over}`
 			: "";
+		const pageError = lastWriteWasAdd ? "" : state.error;
+		const formError = lastWriteWasAdd ? state.error : "";
 		render(
 			html`
 				<div class="page-title" row>
 					<h1>${t("dashboard.title")}</h1>
-					${addPurchaseButton(openAdd)}
 				</div>
-				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+				<cc-error-banner .message=${pageError} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				${purchaseStatus(answer, () => {
 					confirmedPurchase = null;
 					paint();
 				})}
-				<article>
-					<details class="panel" data-panel="spendable" ?open=${panelOpen("spendable", true)} @toggle=${rememberPanel("spendable")}>
-						<summary><h2>${t("spendable.title")}</h2></summary>
-						<cc-spendable
-							.rows=${spendable}
-							.unassigned=${unassignedCards(cards, groups).length}
-							.today=${now}
-						></cc-spendable>
-					</details>
-				</article>
-				<article>
-					<details class="panel" data-panel="due" ?open=${panelOpen("due", false)} @toggle=${rememberPanel("due")}>
-						<summary><h2>${t("dashboard.dueNext")}</h2></summary>
-						<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
-					</details>
-				</article>
-				${
-					adding
-						? purchaseDialog({
-								cards: visible().filter((entry) =>
-									canPurchase(entry, settings),
-								),
-								rows: spendable,
-								today: now,
-								error: addSubmitted ? state.error : "",
-								onAdd,
-								onClose: closeAdd,
-								onRetry: () => state.load(),
-							})
-						: nothing
-				}
+				<div class="split split--workspace">
+					<div class="split__column">
+						<article>
+							<section class="panel" data-panel="add">
+								<h2>${t("dashboard.addPurchase")}</h2>
+								<cc-error-banner .message=${formError} retry-label=${t("common.reload")}
+									@retry=${() => state.load()}></cc-error-banner>
+								<cc-quick-add inline
+									.cards=${visible().filter((entry) => canPurchase(entry, settings))}
+									.rows=${spendable}
+									.today=${now}
+									.cleared=${cleared}
+									@add=${onAdd}></cc-quick-add>
+							</section>
+						</article>
+						<article>
+							<section class="panel" data-panel="sitting">
+								<h2>${t("sitting.title")}</h2>
+								<cc-sitting-list
+									.purchases=${sittingPurchases(purchases, batchStart)}
+									.cards=${cards}
+									.now=${clock().getTime()}
+									@start-batch=${onStartBatch}></cc-sitting-list>
+							</section>
+						</article>
+					</div>
+					<div class="split__column split__aside">
+						<article>
+							<details class="panel" data-panel="range" ?open=${panelOpen("range", true)} @toggle=${rememberPanel("range")}>
+								<summary><h2>${t("range.title")}</h2></summary>
+								<cc-purchase-range .purchases=${purchases} .cards=${cards} .today=${now}></cc-purchase-range>
+							</details>
+						</article>
+						<article>
+							<details class="panel" data-panel="due" ?open=${panelOpen("due", false)} @toggle=${rememberPanel("due")}>
+								<summary><h2>${t("dashboard.dueNext")}</h2></summary>
+								<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
+							</details>
+						</article>
+						<article>
+							<details class="panel" data-panel="spendable" ?open=${panelOpen("spendable", true)} @toggle=${rememberPanel("spendable")}>
+								<summary><h2>${t("spendable.title")}</h2></summary>
+								<cc-spendable
+									.rows=${spendable}
+									.unassigned=${unassignedCards(cards, groups).length}
+									.today=${now}
+								></cc-spendable>
+							</details>
+						</article>
+					</div>
+				</div>
 			`,
 			root,
 		);
 	};
+
+	// Re-reads the clock now and then: "how long ago" keeps up, and a tab left open past
+	// midnight moves its default date and presets on to the new day. Stops once the page is gone.
+	const timer = setInterval(() => {
+		if (!root.isConnected) {
+			clearInterval(timer);
+			return;
+		}
+		now = today(clock());
+		paint();
+	}, tickMs);
 
 	subscribe(() => paint());
 	void state.load();

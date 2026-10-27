@@ -41,7 +41,14 @@ export interface Repository {
 	getSettings(): Promise<Settings>;
 	saveSettings(settings: Settings): Promise<void>;
 
-	/** Forgets every card, purchase, payment, limit group and setting. Cannot be undone. */
+	/**
+	 * When the dashboard's current batch of entries started, as an ISO 8601 instant, or null
+	 * when none has been started. Working state for this browser, not a record: no backup.
+	 */
+	getBatchStart(): Promise<string | null>;
+	saveBatchStart(at: string): Promise<void>;
+
+	/** Forgets every card, purchase, payment, limit group, setting and the batch start. Cannot be undone. */
 	clearAll(): Promise<void>;
 }
 
@@ -54,6 +61,7 @@ export class InMemoryRepository implements Repository {
 	private payments = new Map<string, StatementPayment>();
 	private limitGroups = new Map<string, LimitGroup>();
 	private settings: Settings | null = null;
+	private batchStart: string | null = null;
 
 	async listCards(): Promise<Card[]> {
 		return [...this.cards.values()]
@@ -141,11 +149,20 @@ export class InMemoryRepository implements Repository {
 		this.settings = clone(settings);
 	}
 
+	async getBatchStart(): Promise<string | null> {
+		return this.batchStart;
+	}
+
+	async saveBatchStart(at: string): Promise<void> {
+		this.batchStart = at;
+	}
+
 	async clearAll(): Promise<void> {
 		this.cards.clear();
 		this.purchases.clear();
 		this.payments.clear();
 		this.limitGroups.clear();
 		this.settings = null;
+		this.batchStart = null;
 	}
 }
