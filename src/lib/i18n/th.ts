@@ -348,6 +348,11 @@ export const th: Catalog = {
 	"limits.error.owner": "เลือกเจ้าของบัตรของกลุ่มวงเงินนี้",
 
 	"settings.title": "ตั้งค่า",
+	"settings.display.title": "การแสดงผล",
+	"theme.label": "ธีม",
+	"theme.system": "ตามอุปกรณ์",
+	"theme.light": "สว่าง",
+	"theme.dark": "มืด",
 	"settings.purchases.title": "การใช้จ่าย",
 	"settings.purchases.explain": "บันทึกรายการใหม่ได้กับบัตรทุกใบที่เก็บไว้ในที่ที่ติ๊กไว้ตรงนี้",
 	"settings.purchases.legend": "ที่ที่บันทึกรายการใหม่ได้",

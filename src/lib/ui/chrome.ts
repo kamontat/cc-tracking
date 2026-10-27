@@ -1,6 +1,7 @@
 import type { MessageKey } from "#lib/i18n/catalog";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import { buildInfo, withPrSuffix } from "#lib/ui/build-info";
+import { applyTheme } from "#lib/ui/theme";
 
 const setText = (root: ParentNode, id: string, key: MessageKey): void => {
 	const element = root.querySelector(`#${id}`);
@@ -33,7 +34,8 @@ export function markCurrentLink(root: ParentNode, path: string): void {
 
 /**
  * Fills the parts of the page that live in static HTML rather than in a Lit template —
- * the document title and the nav — and keeps them in step with the language picker.
+ * the document title and the nav — and keeps them in step with the language picker. Also
+ * restores the reader's saved colour theme, since every page passes through here first.
  *
  * The current-page marker is set once rather than on every locale change: these are plain
  * `<a href>` navigations with no client-side router, so the path cannot change without a
@@ -53,6 +55,7 @@ export function applyChrome(
 		setText(root, "nav-cards", "nav.cards");
 		setText(root, "nav-settings", "nav.settings");
 	};
+	applyTheme();
 	apply();
 	markCurrentLink(root, location.pathname);
 	subscribe(apply);

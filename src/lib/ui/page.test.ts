@@ -82,7 +82,7 @@ test("the storage-unavailable banner follows a locale switch instead of freezing
 		);
 		expect(banner?.retryLabel).toBe("Reload");
 
-		// The language picker beside this banner works via the same subscribe mechanism --
+		// A locale change reaches every page through the same subscribe mechanism --
 		// the banner must follow it too, not freeze in whatever language start-up failed in.
 		setLocale("th");
 
