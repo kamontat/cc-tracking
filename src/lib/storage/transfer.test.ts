@@ -438,6 +438,54 @@ describe("owner in a backup", () => {
 	});
 });
 
+describe("entry time in a backup", () => {
+	const withPurchase = (purchase: Record<string, unknown>) =>
+		JSON.stringify({
+			version: 2,
+			exportedAt: "2026-10-27T00:00:00.000Z",
+			limitGroups: [],
+			cards: [],
+			purchases: [
+				{
+					id: "p1",
+					cardId: "kbank",
+					date: "2026-10-20",
+					amount: 100,
+					note: "",
+					...purchase,
+				},
+			],
+			payments: [],
+		});
+
+	test("imports a purchase with addedAt and keeps it", async () => {
+		const repo = new InMemoryRepository();
+		await importBackup(
+			repo,
+			parseBackup(withPurchase({ addedAt: "2026-10-27T03:15:00.000Z" })),
+		);
+		const [stored] = await repo.listPurchases("kbank");
+		expect(stored?.addedAt).toBe("2026-10-27T03:15:00.000Z");
+	});
+
+	test("imports a purchase without addedAt", () => {
+		expect(parseBackup(withPurchase({})).purchases[0]?.addedAt).toBeUndefined();
+	});
+
+	test("rejects a purchase whose addedAt is not an ISO instant", () => {
+		for (const addedAt of [123, "yesterday"]) {
+			const failure = captureThrow(() =>
+				parseBackup(withPurchase({ addedAt })),
+			);
+			expect(failure).toBeInstanceOf(MessageError);
+			expect((failure as MessageError).params).toEqual({
+				index: 1,
+				problem: "backup.problem.badAddedAt",
+			});
+		}
+	});
+});
+
 describe("importBackup", () => {
 	test("restores everything into an empty repository", async () => {
 		const backup = await exportBackup(await populated());

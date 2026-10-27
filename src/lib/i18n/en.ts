@@ -269,6 +269,8 @@ export const en = {
 	"backup.problem.missingCardId": "is missing a cardId",
 	"backup.problem.badDate": "has an invalid date",
 	"backup.problem.badAmount": "has a non-integer amount",
+	"backup.problem.badAddedAt":
+		"has an entry time that is not a valid date and time",
 	"backup.problem.missingPeriod": "is missing a period",
 	"backup.problem.badPaidAt": "has an invalid paidAt date",
 	"backup.problem.badCloseDate": "has an invalid closeDate",

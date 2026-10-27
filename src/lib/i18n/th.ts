@@ -286,6 +286,7 @@ export const th: Catalog = {
 	"backup.problem.missingCardId": "ไม่มี cardId",
 	"backup.problem.badDate": "วันที่ไม่ถูกต้อง",
 	"backup.problem.badAmount": "จำนวนเงินไม่ใช่จำนวนเต็ม",
+	"backup.problem.badAddedAt": "เวลาที่บันทึกไม่ใช่วันเวลาที่ถูกต้อง",
 	// See the noCycle comment above -- same collision, same "ไม่มีรอบบิล" text.
 	"backup.problem.missingPeriod": "ไม่มีรอบบิล",
 	"backup.problem.badPaidAt": "วันที่ paidAt ไม่ถูกต้อง",
