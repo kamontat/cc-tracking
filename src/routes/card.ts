@@ -184,6 +184,10 @@ export function renderCardPage(
 	const onAdd = (event: CustomEvent<QuickAddDetail>) => {
 		addSubmitted = true;
 		const { id, cardId, date, amount, note } = event.detail;
+		// An edit keeps when the purchase was first entered; only a new one is stamped now.
+		const addedAt = id
+			? purchases.find((entry) => entry.id === id)?.addedAt
+			: new Date().toISOString();
 		return state.guard(
 			async () => {
 				const current = card;
@@ -197,6 +201,7 @@ export function renderCardPage(
 					date,
 					amount,
 					note,
+					...(addedAt ? { addedAt } : {}),
 				});
 				confirmedPurchase = {
 					period: periodOfPurchase(current.cycle, date),

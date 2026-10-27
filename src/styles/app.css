@@ -137,10 +137,18 @@ a:any-link:hover {
 
 /* A dashboard panel the reader can fold away. The heading is the toggle, so it keeps its
    size and weight and sits inline beside the disclosure marker. */
-.page details.panel {
+.page details.panel,
+.page section.panel {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
+}
+
+/* A column of panels inside `.split`, such as the dashboard's form and its sitting list. */
+.split__column {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-5);
 }
 
 .page details.panel > summary {
@@ -152,7 +160,8 @@ a:any-link:hover {
 }
 
 .page > article,
-.page .split > article {
+.page .split > article,
+.page .split__column > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -403,6 +412,11 @@ a:any-link:hover {
 		display: grid;
 		grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
 		align-items: start;
+	}
+
+	/* The dashboard's form is the narrow side; due list and spendable need the width. */
+	.split.split--workspace {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
 	}
 
 	.split > .split__aside {

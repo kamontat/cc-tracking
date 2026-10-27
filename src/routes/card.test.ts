@@ -599,6 +599,47 @@ test("edits a purchase's date, amount, and note in place", async () => {
 	]);
 });
 
+test("a new purchase from the card page records addedAt", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const before = Date.now();
+	await submitPurchase(root, { date: purchaseDate, amount: "100", note: "" });
+
+	const [saved] = await repo.listPurchases("kbank");
+	expect(Date.parse(saved?.addedAt ?? "")).toBeGreaterThanOrEqual(before);
+});
+
+test("editing keeps the original addedAt", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase({ ...purchase, addedAt: "2026-10-01T00:00:00.000Z" });
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	list?.shadowRoot
+		?.querySelector<HTMLButtonElement>("[data-action='edit-purchase']")
+		?.click();
+	await settle();
+	const form = root.querySelector<CcQuickAdd>("cc-modal cc-quick-add");
+	await form?.updateComplete;
+	const amount =
+		form?.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]');
+	if (amount) amount.value = "500";
+	form?.shadowRoot?.querySelector("form")?.requestSubmit();
+	await settle();
+
+	const [saved] = await repo.listPurchases("kbank");
+	expect(saved?.amount).toBe(50_000);
+	expect(saved?.addedAt).toBe("2026-10-01T00:00:00.000Z");
+});
+
 test("a failed edit keeps the dialog open with the message and the old purchase", async () => {
 	const repo = new RejectingPurchaseRepository();
 	await repo.saveCard(card);

@@ -58,6 +58,7 @@ export const th: Catalog = {
 	"dashboard.error.read": "อ่านข้อมูลบัตรไม่สำเร็จ",
 	"dashboard.error.markPaid": "บันทึกการชำระเงินไม่สำเร็จ",
 	"dashboard.error.addPurchase": "บันทึกรายการใช้จ่ายไม่สำเร็จ",
+	"dashboard.error.startBatch": "เริ่มรอบใหม่ไม่สำเร็จ",
 
 	"due.empty": "ยังไม่มีบัตร",
 	"due.emptyAction": "เพิ่มบัตรได้ที่หน้าบัตร",

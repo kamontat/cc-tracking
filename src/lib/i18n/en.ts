@@ -42,6 +42,7 @@ export const en = {
 	"dashboard.error.read": "Could not read your cards.",
 	"dashboard.error.markPaid": "Could not record the payment.",
 	"dashboard.error.addPurchase": "Could not save the purchase.",
+	"dashboard.error.startBatch": "Could not start a new batch.",
 
 	"due.empty": "No cards yet.",
 	"due.emptyAction": "Add one on the Cards page.",
