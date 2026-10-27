@@ -118,7 +118,6 @@ export const th: Catalog = {
 	"sitting.ago.days": "{n} วันที่แล้ว",
 	"sitting.column.added": "เพิ่มเมื่อ",
 	"sitting.column.card": "บัตร",
-	"sitting.column.note": "บันทึก",
 	"sitting.column.date": "วันที่ซื้อ",
 	"sitting.column.amount": "จำนวนเงิน",
 

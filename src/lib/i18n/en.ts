@@ -102,7 +102,6 @@ export const en = {
 	"sitting.ago.days": "{n} d ago",
 	"sitting.column.added": "Added",
 	"sitting.column.card": "Card",
-	"sitting.column.note": "Note",
 	"sitting.column.date": "Bought",
 	"sitting.column.amount": "Amount",
 

@@ -1,4 +1,4 @@
-import { css, html, LitElement, nothing } from "lit";
+import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { displayDate } from "#lib/domain/date";
 import { formatAmount, sumAmounts } from "#lib/domain/money";
@@ -47,6 +47,16 @@ export class CcSittingList extends LitElement {
 			.empty {
 				color: var(--cc-text-muted);
 			}
+
+			/* A card is named as the due list and spendable panels name it. */
+			.card-name {
+				font-weight: 600;
+			}
+
+			.card-id {
+				font-family: var(--cc-font-mono);
+				font-size: var(--cc-text-xs);
+			}
 		`,
 	];
 
@@ -73,9 +83,12 @@ export class CcSittingList extends LitElement {
 		return t("sitting.ago.days", { n: Math.floor(elapsed / DAY) });
 	}
 
-	private cardLabel(cardId: string): string {
+	/** Named as the other panels name a card, but not linked: this list is for checking, not going. */
+	private cardLabel(cardId: string) {
 		const card = this.cards.find((entry) => entry.id === cardId);
-		return card ? `${card.id} — ${card.name}` : cardId;
+		return card
+			? html`<small class="card-id">${card.id})</small> <span class="card-name">${card.name}</span>`
+			: cardId;
 	}
 
 	private batchControls() {
@@ -117,7 +130,6 @@ export class CcSittingList extends LitElement {
 							<tr>
 								<th>${t("sitting.column.added")}</th>
 								<th>${t("sitting.column.card")}</th>
-								<th>${t("sitting.column.note")}</th>
 								<th>${t("sitting.column.date")}</th>
 								<th data-numeric>${t("sitting.column.amount")}</th>
 							</tr>
@@ -127,7 +139,6 @@ export class CcSittingList extends LitElement {
 								(entry) => html`<tr data-testid="sitting-row">
 									<td class="ago" data-testid="sitting-ago">${this.ago(entry.addedAt)}</td>
 									<td data-label=${t("sitting.column.card")}>${this.cardLabel(entry.cardId)}</td>
-									<td data-label=${t("sitting.column.note")}>${entry.note || nothing}</td>
 									<td class="date" data-label=${t("sitting.column.date")}>${displayDate(entry.date, getLocale())}</td>
 									<td data-numeric data-label=${t("sitting.column.amount")}>${formatAmount(entry.amount)}</td>
 								</tr>`,

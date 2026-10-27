@@ -50,18 +50,32 @@ const click = async (element: HTMLElement, selector: string) => {
 		.updateComplete;
 };
 
-test("lists the purchases in the order given, with card, note, date and amount", async () => {
+test("lists the purchases in the order given, with added, card, date and amount only", async () => {
 	const element = await mount([
-		purchase({ id: "b", note: "taxi", amount: 48_000 }),
+		purchase({ id: "b", note: "taxi", amount: 48_000, date: "2026-10-21" }),
 		purchase({ id: "a", note: "hotel" }),
 	]);
 	const listed = rows(element);
 	expect(listed).toHaveLength(2);
-	expect(listed[0]?.textContent).toContain("taxi");
-	expect(listed[0]?.textContent).toContain("480");
-	expect(listed[0]?.textContent).toContain("kbank — KBank Visa");
-	expect(listed[0]?.textContent).toContain("20 Oct 2026");
-	expect(listed[1]?.textContent).toContain("hotel");
+	expect(
+		[...(listed[0]?.querySelectorAll("td") ?? [])].map((cell) =>
+			cell.textContent?.replace(/\s+/g, " ").trim(),
+		),
+	).toEqual(["5 min ago", "kbank) KBank Visa", "21 Oct 2026", "฿480.00"]);
+	expect(listed[0]?.textContent).not.toContain("taxi");
+	expect(
+		[...(element.shadowRoot?.querySelectorAll("th") ?? [])].map((cell) =>
+			cell.textContent?.trim(),
+		),
+	).toEqual(["Added", "Card", "Bought", "Amount"]);
+});
+
+test("names the card as the other panels do, without a link", async () => {
+	const element = await mount([purchase()]);
+	const row = rows(element)[0];
+	expect(row?.querySelector(".card-id")?.textContent).toBe("kbank)");
+	expect(row?.querySelector(".card-name")?.textContent).toBe("KBank Visa");
+	expect(row?.querySelector("a")).toBeNull();
 });
 
 test("sums up how many were added and their total", async () => {
