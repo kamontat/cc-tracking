@@ -4,6 +4,34 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-27: Friendlier look and limit usage bars
+
+### Features
+
+- *Can spend now* shows a bar under each card's available amount, with "N% of the limit used"
+  in words beside it. The bar tints amber from 80% and red once the group is over its limit.
+- `--cc-radius-pill`, `--cc-accent-surface` and `--cc-panel-padding` tokens.
+
+### Improvements
+
+- Warm paper neutrals and a teal accent replace the cool grey and blue, in light and dark.
+  Corners and shadows are softer, and panels get more room from 640px wide.
+- The header has a small accent mark before the brand, and the nav links are pill tabs with
+  the current page filled.
+
+### Bug fixes
+
+- *Purchases by date*'s tiles wrap on a phone instead of clipping a six-figure total.
+
+### Decisions
+
+- Teal, because it stays clearly apart from the danger red and warning amber that sit beside
+  it in the due list and the usage bars.
+- The bar measures everything still unpaid against the limit, the figure *Can spend now*
+  already uses, so it says "of the limit used" rather than "used this cycle".
+- The flows were left alone: redesigning them needs the reader's own walk-throughs, so they
+  stay in `TODO.md`.
+
 ## 2026-10-27: Dashboard as a workspace for entering receipts
 
 ### BREAKING CHANGES

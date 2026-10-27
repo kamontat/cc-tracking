@@ -102,6 +102,29 @@ test("marks a row that is over its limit", async () => {
 	expect(cell?.textContent).toContain("-฿500.00");
 });
 
+test("shows how much of the limit is used, as a bar and in words", async () => {
+	const element = await mount();
+	const usage = element.shadowRoot?.querySelector(".usage");
+	expect(usage?.getAttribute("data-level")).toBe("within");
+	expect(usage?.querySelector("span")?.getAttribute("style")).toContain(
+		"inline-size: 40%",
+	);
+	expect(element.shadowRoot?.querySelector(".used")?.textContent).toContain(
+		"40% of the limit used",
+	);
+});
+
+test("fills and tints the bar once the group is over its limit", async () => {
+	const element = await mount({
+		rows: [row({ used: 600_000, available: -100_000 })],
+	});
+	const usage = element.shadowRoot?.querySelector(".usage");
+	expect(usage?.getAttribute("data-level")).toBe("over");
+	expect(usage?.querySelector("span")?.getAttribute("style")).toContain(
+		"inline-size: 100%",
+	);
+});
+
 test("counts the cards with no limit group and points at the registry", async () => {
 	const element = await mount({ unassigned: 2 });
 	const notice = element.shadowRoot?.querySelector(

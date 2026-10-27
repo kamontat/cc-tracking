@@ -1,5 +1,5 @@
 # TODO
 
-- Redesign the UX/UI, flows and colouring. Starting points from the 2026-10-27 dashboard
-  mockups: friendlier colours, and a "used this cycle" progress bar per limit group in
-  Spendable.
+- Rework the flows (how pages lead into one another, what each page asks of the reader). The
+  palette, shape and the "used this cycle" bar in Spendable shipped with the visual redesign;
+  the flows were left alone because they need the reader's own walk-throughs to redesign.
