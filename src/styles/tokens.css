@@ -92,8 +92,20 @@
 	}
 }
 
+/* An explicit pick pins the colour scheme too, so native controls and scrollbars follow the
+   page rather than the device. */
+:root[data-theme="light"] {
+	color-scheme: light;
+}
+
+/* The dark palette is written twice: once for a device in dark mode with no explicit pick,
+   once for an explicit dark pick (`cc-display-settings` stamps `data-theme` on `<html>`). CSS
+   cannot share one declaration block between a media query and a plain selector, so
+   src/routes/chrome.test.ts fails if the two copies drift apart. */
 @media (prefers-color-scheme: dark) {
-	:root {
+	:root:not([data-theme="light"]) {
+		color-scheme: dark;
+
 		--cc-bg: #161412;
 		--cc-surface: #201d1a;
 		--cc-surface-sunken: #2a2622;
@@ -123,4 +135,37 @@
 
 		--cc-focus-ring: 0 0 0 3px rgb(45 191 174 / 0.45);
 	}
+}
+
+:root[data-theme="dark"] {
+	color-scheme: dark;
+
+	--cc-bg: #161412;
+	--cc-surface: #201d1a;
+	--cc-surface-sunken: #2a2622;
+	--cc-border: #3b352f;
+	--cc-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+	--cc-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
+	--cc-backdrop: rgb(0 0 0 / 0.6);
+
+	--cc-text: #efebe6;
+	--cc-text-muted: #b0a89d;
+	--cc-link: #5fd3c4;
+
+	/* Same chevron, stroked in the dark theme's muted text colour. An SVG in a data URI
+	   cannot read `currentColor`, so the whole value is redeclared rather than tinted. */
+	--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23b0a89d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+
+	--cc-accent: #2dbfae;
+	--cc-accent-hover: #5fd3c4;
+	--cc-accent-text: #08201d;
+	--cc-accent-surface: #173431;
+
+	--cc-danger: #f2837c;
+	--cc-danger-surface: #3a1d1b;
+	--cc-success: #5bc98d;
+	--cc-warning: #e0a458;
+	--cc-warning-surface: #3a2a14;
+
+	--cc-focus-ring: 0 0 0 3px rgb(45 191 174 / 0.45);
 }

@@ -3,7 +3,6 @@ import "../styles/tokens.css";
 import "../styles/app.css";
 import "#components/cc-due-list";
 import "#components/cc-error-banner";
-import "#components/cc-lang-switch";
 import "#components/cc-purchase-range";
 import "#components/cc-quick-add";
 import "#components/cc-sitting-list";

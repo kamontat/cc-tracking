@@ -4,13 +4,23 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-10-27: Friendlier look and limit usage bars
+## 2026-10-27: Friendlier look and limit usage bars, and language and theme in Settings
+
+### BREAKING CHANGES
+
+- The language picker is no longer in the page header; change the language from the new
+  *Display* panel on the settings page. The `cc-lang-switch` element is removed.
+- A reader who never picked a language and whose browser lists Thai before English now gets
+  Thai rather than English. Pick English on the settings page to keep it.
 
 ### Features
 
 - *Can spend now* shows a bar under each card's available amount, with "N% of the limit used"
   in words beside it. The bar tints amber from 80% and red once the group is over its limit.
 - `--cc-radius-pill`, `--cc-accent-surface` and `--cc-panel-padding` tokens.
+- A *Display* panel at the top of the settings page holds the language picker and a new theme
+  picker: Match device, Light or Dark. The theme is saved in this browser under `cc:theme` and
+  stamped on `<html data-theme>` on every page.
 
 ### Improvements
 
@@ -22,8 +32,18 @@ reasons don't show up in the code.
 ### Bug fixes
 
 - *Purchases by date*'s tiles wrap on a phone instead of clipping a six-figure total.
+- With no saved language, the app follows the first of the browser's languages it speaks, in
+  the browser's own order, and falls back to Thai. Before, any English entry in the list won.
 
 ### Decisions
+
+- Language and theme stay in this browser's local storage, not the repository, so they apply
+  before any data loads and are not carried in a backup.
+- `tokens.css` writes the dark palette twice, for a dark device and for an explicit Dark pick,
+  because CSS cannot share one block between a media query and a selector. A test fails if the
+  two copies drift apart.
+- The theme is applied from the page script rather than an inline `<head>` script, so a saved
+  theme that differs from the device can flash briefly on load; accepted for now.
 
 - Teal, because it stays clearly apart from the danger red and warning amber that sit beside
   it in the due list and the usage bars.

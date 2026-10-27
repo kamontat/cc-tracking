@@ -4,7 +4,6 @@ import "../styles/app.css";
 import "#components/cc-card-form";
 import "#components/cc-card-table";
 import "#components/cc-error-banner";
-import "#components/cc-lang-switch";
 import "#components/cc-limit-group-form";
 import "#components/cc-limit-group-table";
 import "#components/cc-modal";

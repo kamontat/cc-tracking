@@ -49,12 +49,13 @@ test("a saved choice wins over the browser's languages", () => {
 	expect(detectLocale("th", ["en-GB"])).toBe("th");
 });
 
-test("an English browser gets English when nothing is saved", () => {
+test("follows the browser's first supported language when nothing is saved", () => {
 	expect(detectLocale(null, ["en-GB", "th-TH"])).toBe("en");
+	expect(detectLocale(null, ["th-TH", "en-US"])).toBe("th");
+	expect(detectLocale(null, ["ja-JP", "EN"])).toBe("en");
 });
 
-test("everything else falls back to Thai", () => {
-	expect(detectLocale(null, ["th-TH"])).toBe("th");
+test("falls back to Thai when the browser names no supported language", () => {
 	expect(detectLocale(null, ["ja-JP"])).toBe("th");
 	expect(detectLocale(null, [])).toBe("th");
 	expect(detectLocale("de", ["ja-JP"])).toBe("th");

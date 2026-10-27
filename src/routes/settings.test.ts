@@ -86,6 +86,14 @@ test("shows the stored settings", async () => {
 	expect(panel?.settings.purchaseLocations).toEqual(["bangkok"]);
 });
 
+test("offers the language and theme pickers in a display panel", async () => {
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	expect(root.querySelector(".display cc-display-settings")).not.toBeNull();
+});
+
 test("shows Krabi alone before anything has been saved", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();

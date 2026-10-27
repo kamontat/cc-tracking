@@ -2,7 +2,7 @@ import "@kcstyles/reset.css";
 import "../styles/tokens.css";
 import "../styles/app.css";
 import "#components/cc-error-banner";
-import "#components/cc-lang-switch";
+import "#components/cc-display-settings";
 import "#components/cc-settings";
 import { html, nothing, render } from "lit";
 import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
@@ -298,6 +298,9 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			html`
 				<h1>${t("settings.title")}</h1>
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+				<article class="display">
+					<cc-display-settings></cc-display-settings>
+				</article>
 				<article>
 					<cc-settings .settings=${settings} @save-settings=${onSave}></cc-settings>
 				</article>

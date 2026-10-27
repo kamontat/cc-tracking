@@ -13,17 +13,20 @@ const listeners = new Set<() => void>();
 let current: Locale | null = null;
 
 /**
- * Thai is the fallback, not English: the cards are Thai company cards in baht on
- * Asia/Bangkok dates, so Thai is the likely daily language and English is opted into.
+ * A saved pick wins; otherwise the first of the browser's languages that the app speaks,
+ * in the browser's own order of preference. Thai is the fallback: the cards are Thai
+ * company cards in baht on Asia/Bangkok dates, so Thai is the likely daily language.
  */
 export function detectLocale(
 	saved: string | null,
 	languages: readonly string[],
 ): Locale {
 	if (saved === "en" || saved === "th") return saved;
-	return languages.some((language) => language.toLowerCase().startsWith("en"))
-		? "en"
-		: "th";
+	for (const language of languages) {
+		const primary = language.toLowerCase().split("-")[0];
+		if (primary === "en" || primary === "th") return primary;
+	}
+	return "th";
 }
 
 function readSaved(): string | null {

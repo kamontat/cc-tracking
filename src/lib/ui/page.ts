@@ -35,8 +35,8 @@ export function bootstrap(
 		console.error(error);
 		const banner = document.createElement("cc-error-banner");
 		// Mirrors applyChrome above: re-render this banner's text on every locale switch,
-		// not just once at the moment startup failed. Without this the language picker
-		// sitting right beside the banner would work while the banner itself stayed frozen
+		// not just once at the moment startup failed. Without this a locale change would
+		// rewrite the title and nav while the banner itself stayed frozen
 		// in whichever language `createRepository` happened to fail in -- the same class of
 		// bug 094668d already fixed for cc-card-form and cc-quick-add.
 		const paintBanner = () => {

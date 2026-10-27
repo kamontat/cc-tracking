@@ -331,6 +331,11 @@ export const en = {
 	"limits.error.owner": "Choose the account holder for this limit group.",
 
 	"settings.title": "Settings",
+	"settings.display.title": "Display",
+	"theme.label": "Theme",
+	"theme.system": "Match device",
+	"theme.light": "Light",
+	"theme.dark": "Dark",
 	"settings.purchases.title": "Purchases",
 	"settings.purchases.explain":
 		"A new purchase can be entered against any card kept in a place ticked here.",

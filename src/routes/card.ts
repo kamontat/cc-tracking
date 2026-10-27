@@ -3,7 +3,6 @@ import "../styles/tokens.css";
 import "../styles/app.css";
 import "#components/cc-card-summary";
 import "#components/cc-error-banner";
-import "#components/cc-lang-switch";
 import "#components/cc-statement-list";
 import { html, nothing, render } from "lit";
 import type { QuickAddDetail } from "#components/cc-quick-add";
