@@ -4,6 +4,55 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-27: Dashboard as a workspace for entering receipts
+
+### BREAKING CHANGES
+
+- The dashboard has no Add a purchase button or dialog any more; the purchase form is always
+  open in its left column. The card page keeps its dialog.
+
+### Features
+
+- The dashboard's purchase form is always open. After each add it keeps the card and date and
+  clears amount and note, ready for the next receipt from the same card or day.
+- *This sitting* lists the purchases entered since *Start new batch* was last pressed, latest
+  first, with how long ago each was entered, the card (id then name, as other panels name it),
+  the purchase date and the amount. It survives reloads, closing the tab and the next day, and
+  is read-only. *Start new batch* asks for a second click before it clears the list.
+- *Purchases by date* counts purchases, their total and the cards used across every card for
+  Today, This week (Monday to Sunday), This month, Last month or a custom range of purchase
+  dates, with a card filter. Archived cards count and are tagged. The list stays folded until
+  opened, grouped by day, each card linked to its page.
+- Purchases record `addedAt`, when they were first entered, from the dashboard and the card
+  page; an edit keeps the original. Backup import accepts it and rejects a malformed one with
+  `backup.problem.badAddedAt`.
+- `Repository.getBatchStart` and `saveBatchStart`, stored under `cc:batch-start`; `clearAll`
+  forgets it. New `purchase-range.ts` helpers, `cc-sitting-list`, `cc-purchase-range`, and an
+  `inline` mode with a `cleared` counter on `cc-quick-add`.
+- `TODO.md` records the deferred UX/UI and colour redesign.
+
+### Improvements
+
+- On desktop the dashboard is two columns: the form and *This sitting* on the narrower left,
+  *Purchases by date*, *Due next* and *Spendable* on the right. On a phone they stack in that
+  order.
+- A failed add shows its error beside the form, with the typing left in place to retry.
+- The dashboard re-reads the clock each minute, so a tab left open past midnight moves its
+  default date and presets to the new day, without touching a date the reader picked.
+
+### Decisions
+
+- Built for one person working through a pile of receipts who gets distracted mid-pile: the
+  sitting list is how they find their place, so it must outlive reloads and only clears on
+  purpose.
+- The range filters on the purchase date, not the entry time: it answers "what was bought
+  then", and archiving a card later must not change that answer.
+- Purchases saved before entry times existed are not backfilled and never appear in *This
+  sitting*; guessing an entry time would put them in the wrong batch.
+- The batch start is working state for one browser, not a record, so it stays out of backups.
+- A friendlier visual redesign, including a "used this cycle" bar in *Spendable*, was mocked
+  up and deliberately deferred to `TODO.md`.
+
 ## 2026-10-17: Clearer names for card and limit group owners
 
 ### Improvements
