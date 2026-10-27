@@ -56,7 +56,12 @@ export class CcPurchaseRange extends LitElement {
 
 			.tiles {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(var(--cc-space-7), 1fr));
+				/* Wide enough for a six-figure baht total, so on a phone the tiles wrap rather
+				   than clip it. */
+				grid-template-columns: repeat(
+					auto-fit,
+					minmax(calc(var(--cc-space-7) * 2.5), 1fr)
+				);
 				gap: var(--cc-space-3);
 				margin-block: var(--cc-space-4);
 			}
