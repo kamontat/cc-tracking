@@ -79,6 +79,14 @@ export class CcQuickAdd extends LitElement {
 	 * `cards`; the page hands over that card alone, so the card is shown, not picked.
 	 */
 	@property({ attribute: false }) purchase: Purchase | null = null;
+	/** Set when the form lives on the page rather than in a dialog: there is nothing to cancel. */
+	@property({ type: Boolean, reflect: true }) inline = false;
+	/**
+	 * Bumped by the page once a purchase is stored, to ready the form for the next receipt: the
+	 * amount and note empty and the amount takes focus, while the card and date stay, since
+	 * receipts come in runs from one card or one day.
+	 */
+	@property({ type: Number }) cleared = 0;
 
 	// Carries the catalog key, not a resolved sentence: render() resolves it every time, so a
 	// language switch while an error is on screen re-renders it in the new language too.
@@ -110,6 +118,15 @@ export class CcQuickAdd extends LitElement {
 	}
 
 	override updated(changed: Map<string, unknown>) {
+		if (changed.has("cleared") && changed.get("cleared") !== undefined) {
+			const amount =
+				this.renderRoot.querySelector<HTMLInputElement>('[name="amount"]');
+			const note =
+				this.renderRoot.querySelector<HTMLInputElement>('[name="note"]');
+			if (amount) amount.value = "";
+			if (note) note.value = "";
+			amount?.focus();
+		}
 		// The select's actual selection is native DOM state that render() alone doesn't drive,
 		// so once willUpdate has settled `selectedId` against the current `cards`, write it onto
 		// the element explicitly to bring the DOM in line with it.
@@ -176,9 +193,9 @@ export class CcQuickAdd extends LitElement {
 			this.errorKey = "quickAdd.error.badAmount";
 			return;
 		}
-		// No reset after the add: the page renders this form only inside an open dialog and
-		// closes it once the save lands, so the next purchase gets a fresh form -- and a save
-		// that fails leaves the reader's typing in place to retry.
+		// No reset after the add: a dialog closes once the save lands, so the next purchase gets
+		// a fresh form, and an inline form waits for the page to bump `cleared` -- either way a
+		// save that fails leaves the reader's typing in place to retry.
 		this.errorKey = "";
 		this.dispatchEvent(
 			new CustomEvent<QuickAddDetail>("add", {
@@ -257,8 +274,12 @@ export class CcQuickAdd extends LitElement {
 					.value=${this.purchase?.note ?? ""} /></label>
 				<div class="form-actions" row>
 					<button type="submit">${t(this.purchase ? "quickAdd.save" : "quickAdd.submit")}</button>
-					<button type="button" data-variant="quiet" data-action="cancel"
-						@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>
+					${
+						this.inline
+							? nothing
+							: html`<button type="button" data-variant="quiet" data-action="cancel"
+								@click=${() => this.dispatchEvent(new CustomEvent("cancel"))}>${t("common.cancel")}</button>`
+					}
 				</div>
 			</form>
 		`;

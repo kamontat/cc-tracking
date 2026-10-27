@@ -481,3 +481,52 @@ test("still refuses a bad amount while editing", async () => {
 	expect(added).toBe(false);
 	expect(element.shadowRoot?.querySelector('[role="alert"]')).not.toBeNull();
 });
+
+const mountInline = async () => {
+	const element = await mount();
+	element.inline = true;
+	element.cards = [...cards, otherCard];
+	await element.updateComplete;
+	return element;
+};
+
+test("inline form has no cancel button", async () => {
+	const element = await mountInline();
+	expect(
+		element.shadowRoot?.querySelector('[data-action="cancel"]'),
+	).toBeNull();
+});
+
+test("bumping cleared empties amount and note but keeps card and date", async () => {
+	const element = await mountInline();
+	const select =
+		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
+	if (!select) throw new Error("no card picker");
+	select.value = "scb";
+	select.dispatchEvent(new Event("change"));
+	fill(element, "date", "2026-09-20");
+	fill(element, "amount", "120.50");
+	fill(element, "note", "taxi");
+	await element.updateComplete;
+
+	element.cleared = 1;
+	await element.updateComplete;
+
+	expect(field(element, "amount")).toBe("");
+	expect(field(element, "note")).toBe("");
+	expect(field(element, "cardId")).toBe("scb");
+	expect(field(element, "date")).toBe("2026-09-20");
+	expect(
+		(element.shadowRoot?.activeElement as HTMLInputElement | null)?.name,
+	).toBe("amount");
+});
+
+test("without a cleared bump the typing stays after an add", async () => {
+	const element = await mountInline();
+	fill(element, "amount", "120.50");
+	fill(element, "note", "taxi");
+	submit(element);
+	await element.updateComplete;
+	expect(field(element, "amount")).toBe("120.50");
+	expect(field(element, "note")).toBe("taxi");
+});
