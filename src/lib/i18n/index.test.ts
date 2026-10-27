@@ -44,20 +44,14 @@ test("every Thai entry substitutes the same placeholders as its English counterp
 	}
 });
 
-test("a saved choice wins over the browser's languages", () => {
-	expect(detectLocale("en", ["th-TH"])).toBe("en");
-	expect(detectLocale("th", ["en-GB"])).toBe("th");
+test("a saved choice wins", () => {
+	expect(detectLocale("en")).toBe("en");
+	expect(detectLocale("th")).toBe("th");
 });
 
-test("an English browser gets English when nothing is saved", () => {
-	expect(detectLocale(null, ["en-GB", "th-TH"])).toBe("en");
-});
-
-test("everything else falls back to Thai", () => {
-	expect(detectLocale(null, ["th-TH"])).toBe("th");
-	expect(detectLocale(null, ["ja-JP"])).toBe("th");
-	expect(detectLocale(null, [])).toBe("th");
-	expect(detectLocale("de", ["ja-JP"])).toBe("th");
+test("English is the default when nothing usable is saved", () => {
+	expect(detectLocale(null)).toBe("en");
+	expect(detectLocale("de")).toBe("en");
 });
 
 test("setting a locale persists it and notifies subscribers", () => {
@@ -78,24 +72,13 @@ test("setting a locale persists it and notifies subscribers", () => {
 
 test("the resolved locale survives a storage that throws", () => {
 	const original = globalThis.localStorage.getItem;
-	const originalLanguages = globalThis.navigator.languages;
 	try {
 		globalThis.localStorage.getItem = () => {
 			throw new Error("blocked");
 		};
-		// Isolate the behaviour under test (a blocked store must not throw or crash
-		// resolution) from browser-language detection, which is covered separately above.
-		Object.defineProperty(globalThis.navigator, "languages", {
-			value: [],
-			configurable: true,
-		});
-		expect(getLocale()).toBe("th");
+		expect(getLocale()).toBe("en");
 	} finally {
 		globalThis.localStorage.getItem = original;
-		Object.defineProperty(globalThis.navigator, "languages", {
-			value: originalLanguages,
-			configurable: true,
-		});
 	}
 });
 

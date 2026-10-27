@@ -13,17 +13,11 @@ const listeners = new Set<() => void>();
 let current: Locale | null = null;
 
 /**
- * Thai is the fallback, not English: the cards are Thai company cards in baht on
- * Asia/Bangkok dates, so Thai is the likely daily language and English is opted into.
+ * English until the reader picks otherwise on the settings page. The browser's own
+ * languages are not consulted, so every new reader sees the same page.
  */
-export function detectLocale(
-	saved: string | null,
-	languages: readonly string[],
-): Locale {
-	if (saved === "en" || saved === "th") return saved;
-	return languages.some((language) => language.toLowerCase().startsWith("en"))
-		? "en"
-		: "th";
+export function detectLocale(saved: string | null): Locale {
+	return saved === "en" || saved === "th" ? saved : "en";
 }
 
 function readSaved(): string | null {
@@ -37,7 +31,7 @@ function readSaved(): string | null {
 
 export function getLocale(): Locale {
 	if (current === null) {
-		current = detectLocale(readSaved(), globalThis.navigator?.languages ?? []);
+		current = detectLocale(readSaved());
 	}
 	return current;
 }
