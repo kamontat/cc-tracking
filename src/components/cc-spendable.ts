@@ -2,7 +2,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { sortChip, sortHeader } from "#components/list-controls";
 import { displayDate } from "#lib/domain/date";
-import type { SpendRow } from "#lib/domain/limit";
+import { type SpendRow, usageLevel, usageShare } from "#lib/domain/limit";
 import {
 	applySpendView,
 	DEFAULT_SPEND_VIEW,
@@ -16,7 +16,13 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { base, controls, dataTable, listControls } from "#styles/shared";
+import {
+	base,
+	controls,
+	dataTable,
+	listControls,
+	usageBar,
+} from "#styles/shared";
 
 /** What the narrow layout's sort chip calls each sort; the wide one uses the headings. */
 const SORT_LABELS: Record<SpendSort, MessageKey> = {
@@ -33,6 +39,7 @@ export class CcSpendable extends LitElement {
 		controls,
 		dataTable,
 		listControls,
+		usageBar,
 		css`
 			/* Only the sort chip lives here, and it only shows once stacked. */
 			@media (max-width: 639px) {
@@ -60,6 +67,31 @@ export class CcSpendable extends LitElement {
 			}
 
 			.limit {
+				display: block;
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
+			}
+
+			/* One column, figure first, so the stacked phone layout keeps the bar under the
+			   figure instead of laying them out side by side with the cell's label. */
+			.available {
+				align-items: flex-end;
+				min-inline-size: calc(var(--cc-space-7) * 2.5);
+			}
+
+			/* The bar sits under the figure, as wide as the cell, so a glance down the column
+			   compares how full each pool is. */
+			.usage {
+				margin-block-start: var(--cc-space-1);
+				block-size: var(--cc-space-2);
+				border-radius: var(--cc-radius-pill);
+			}
+
+			.usage > span {
+				border-radius: var(--cc-radius-pill);
+			}
+
+			.used {
 				display: block;
 				font-size: var(--cc-text-xs);
 				color: var(--cc-text-muted);
@@ -104,6 +136,17 @@ export class CcSpendable extends LitElement {
 	private relative(date: PlainDate) {
 		if (!this.today) return nothing;
 		return html`<small class="badge">${relativeDayText(this.today, date)}</small>`;
+	}
+
+	/** The bar and its share in words, so the level is never told by colour alone. */
+	private usage(row: SpendRow) {
+		const share = usageShare(row.used, row.group.limit);
+		return html`
+			<span class="usage" data-level=${usageLevel(row.used, row.group.limit)}>
+				<span style=${`inline-size: ${share}%`}></span>
+			</span>
+			<small class="used">${t("limits.usage", { share })}</small>
+		`;
 	}
 
 	private notice() {
@@ -162,8 +205,11 @@ export class CcSpendable extends LitElement {
 								</td>
 								<td data-label=${t("spendable.column.available")} data-numeric
 									data-state=${row.available < 0 ? "over" : "within"}>
-									${formatAmount(row.available)}
-									<small class="limit">${t("spendable.of", { limit: formatAmount(row.group.limit) })}</small>
+									<div class="available">
+										<span>${formatAmount(row.available)}</span>
+										<small class="limit">${t("spendable.of", { limit: formatAmount(row.group.limit) })}</small>
+										${this.usage(row)}
+									</div>
 								</td>
 								<td class="date" data-field="closes" data-label=${t("spendable.column.closes")}>
 									${displayDate(row.closeDate, getLocale())}${this.relative(row.closeDate)}
