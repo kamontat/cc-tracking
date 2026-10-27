@@ -34,15 +34,15 @@ nothing, so the footer there reads `dev` and the time the page was opened.
   ones included) for a preset or custom range of purchase dates, then *Due next*
   and *Can spend now*.
 - `/cards` — the card registry and the limit groups, each list searchable,
-  filterable and sortable, and each section foldable. When adding or editing a
-  card, you choose its physical location from a dropdown: one of Bangkok,
+  filterable, sortable and foldable. Cards and limit groups are added and edited
+  in a dialog. When adding or editing a card, you choose its physical location from a dropdown: one of Bangkok,
   Phichit, or Krabi, and can mark it as a supplementary card (บัตรเสริม) with its
   own cardholder. Cards
   already stored in this browser from before the locations were fixed are reset
   to Bangkok once at startup; the page then names those cards, once, with a
   Dismiss button, so you can pick the correct location by hand.
-- `/settings` — which places take new purchases, saving and restoring a backup,
-  and resetting all data. The old `/backup` address redirects here.
+- `/settings` — language and theme, which places take new purchases, saving and
+  restoring a backup, and resetting all data. The old `/backup` address redirects here.
 - `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
   paging. A month with no purchases in it starts collapsed, so a long run of
   unused months stays one line each. Each purchase can be edited in place (date,
@@ -157,13 +157,15 @@ leave some records imported and others not.
 
 ## Language
 
-The interface is available in English and Thai. The picker sits in the nav on every
-page; switching it re-renders the current page in place — no reload, and nothing typed
-into an open form is lost. The choice is remembered in this browser's `localStorage`
-under `cc:lang`, so it survives a reload and future visits. A first visit with nothing
-saved yet defaults to Thai, unless the browser's own language list asks for English —
-these are Thai company cards in baht on Asia/Bangkok dates, so Thai is the more likely
-daily language and English is opted into, not the other way around.
+The interface is available in English and Thai. The picker is in the *Display*
+panel on `/settings`, next to the theme picker (Match device, Light or Dark);
+switching language re-renders the page in place — no reload, and nothing typed
+into an open form is lost. Both choices are remembered in this browser's
+`localStorage`, under `cc:lang` and `cc:theme`, so they survive a reload and future
+visits; they are not part of a backup, and a reset leaves them alone. A first
+visit with nothing saved follows the first of the browser's own languages that the
+app speaks, in the browser's order, and falls back to Thai — these are Thai company
+cards in baht on Asia/Bangkok dates, so Thai is the more likely daily language.
 
 Dates render as `dd MMM yyyy` — a zero-padded day and a Gregorian year — in both
 languages, for example `05 Sep 2026` and `05 ก.ย. 2026`. This is deliberately not
