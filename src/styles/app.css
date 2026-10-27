@@ -64,6 +64,9 @@ a:any-link:hover {
    class-level specificity, so a bare `.site-header__brand` loses to them and the brand renders
    in link blue with a hover underline. */
 .site-header__brand:any-link {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cc-space-2);
 	margin-inline-end: auto;
 	font-size: var(--cc-text-lg);
 	font-weight: 600;
@@ -74,31 +77,42 @@ a:any-link:hover {
 	text-decoration: none;
 }
 
+/* A small accent card shape before the name, so the brand has a mark without an image. */
+.site-header__brand::before {
+	content: "";
+	inline-size: var(--cc-space-5);
+	block-size: var(--cc-space-4);
+	background: linear-gradient(135deg, var(--cc-accent), var(--cc-accent-hover));
+	border-radius: var(--cc-radius-sm);
+}
+
 .site-header__nav {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	gap: var(--cc-space-4);
+	gap: var(--cc-space-1);
 }
 
-.site-header__nav a {
+/* Each link a soft tab, so the nav reads as a set of places rather than a line of text. */
+.site-header__nav a:any-link {
+	padding: var(--cc-space-1) var(--cc-space-3);
 	color: var(--cc-text-muted);
 	font-weight: 500;
+	border-radius: var(--cc-radius-pill);
 }
 
-.site-header__nav a:hover {
+.site-header__nav a:any-link:hover {
 	color: var(--cc-text);
+	text-decoration: none;
+	background: var(--cc-surface-sunken);
 }
 
-/* Weight and colour alongside the underline, so the current page is not signalled by colour
-   alone — the same rule the urgency badges follow. */
-.site-header__nav a[aria-current="page"] {
-	color: var(--cc-text);
+/* Weight and a filled tab alongside the colour, so the current page is not signalled by
+   colour alone -- the same rule the urgency badges follow. */
+.site-header__nav a[aria-current="page"]:any-link {
+	color: var(--cc-link);
 	font-weight: 600;
-	text-decoration: underline;
-	text-decoration-color: var(--cc-accent);
-	text-decoration-thickness: calc(var(--cc-border-width) * 2);
-	text-underline-offset: var(--cc-space-1);
+	background: var(--cc-accent-surface);
 }
 
 .page {
@@ -165,7 +179,7 @@ a:any-link:hover {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
-	padding: var(--cc-space-4);
+	padding: var(--cc-space-4) var(--cc-panel-padding) var(--cc-panel-padding);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
@@ -465,7 +479,7 @@ a:any-link:hover {
 .list-actions {
 	position: absolute;
 	top: var(--cc-space-3);
-	right: var(--cc-space-4);
+	right: var(--cc-panel-padding);
 }
 
 /* The card page's statement column: the list, then its "show older" button beneath it. */

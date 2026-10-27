@@ -211,7 +211,7 @@ export const panel = css`
 		display: flex;
 		flex-direction: column;
 		gap: var(--cc-space-3);
-		padding: var(--cc-space-4);
+		padding: var(--cc-space-4) var(--cc-panel-padding) var(--cc-panel-padding);
 		background: var(--cc-surface);
 		border: var(--cc-border-width) solid var(--cc-border);
 		border-radius: var(--cc-radius-md);
