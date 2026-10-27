@@ -521,6 +521,23 @@ test("bumping cleared empties amount and note but keeps card and date", async ()
 	).toBe("amount");
 });
 
+test("a new day keeps a date the reader picked", async () => {
+	const element = await mountInline();
+	fill(element, "date", "2026-09-15");
+	await element.updateComplete;
+	element.today = "2026-09-22";
+	await element.updateComplete;
+	expect(field(element, "date")).toBe("2026-09-15");
+});
+
+test("a new day moves a date still on the old today", async () => {
+	const element = await mountInline();
+	expect(field(element, "date")).toBe("2026-09-21");
+	element.today = "2026-09-22";
+	await element.updateComplete;
+	expect(field(element, "date")).toBe("2026-09-22");
+});
+
 test("without a cleared bump the typing stays after an add", async () => {
 	const element = await mountInline();
 	fill(element, "amount", "120.50");

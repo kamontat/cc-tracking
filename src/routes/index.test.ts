@@ -414,6 +414,22 @@ test("Purchases by date counts across cards, archived included", async () => {
 	expect(range?.today).toBe("2026-10-27");
 });
 
+test("midnight keeps a purchase date the reader picked", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(quickAddCard);
+	const { clock, set } = fixedClock("2026-10-27T16:59:00.000Z");
+	const root = mount();
+	renderDashboardPage(repo, root, { clock, tickMs: 5 });
+	await settle();
+	fillQuickAdd(await openQuickAdd(root), "date", "2026-10-25");
+
+	set("2026-10-27T17:01:00.000Z");
+	await new Promise((resolve) => setTimeout(resolve, 25));
+
+	expect(formValue(await openQuickAdd(root), "date")).toBe("2026-10-25");
+	root.remove();
+});
+
 test("today rolls over at midnight", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(quickAddCard);
@@ -427,7 +443,9 @@ test("today rolls over at midnight", async () => {
 	set("2026-10-27T17:01:00.000Z");
 	await new Promise((resolve) => setTimeout(resolve, 25));
 
-	expect((await openQuickAdd(root)).today).toBe("2026-10-28");
+	const form = await openQuickAdd(root);
+	expect(form.today).toBe("2026-10-28");
+	expect(formValue(form, "date")).toBe("2026-10-28");
 	expect(root.querySelector("cc-purchase-range")?.today).toBe("2026-10-28");
 	root.remove();
 });

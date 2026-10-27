@@ -108,8 +108,13 @@ export class CcQuickAdd extends LitElement {
 		// selection against the new list here, before render, falling back to the first card
 		// when the old one is gone -- a property set in willUpdate is folded into this same
 		// render pass rather than scheduling a second one.
-		if (changed.has("today") || changed.has("purchase")) {
+		if (changed.has("purchase")) {
 			this.date = this.purchase?.date ?? this.today;
+		} else if (changed.has("today")) {
+			// A new day moves only a date still on the old one: an inline form stays open past
+			// midnight, and a date the reader picked for a run of receipts must not shift under them.
+			const previous = changed.get("today");
+			if (!this.date || this.date === previous) this.date = this.today;
 		}
 		if (!changed.has("cards")) return;
 		if (!this.cards.some((card) => card.id === this.selectedId)) {
