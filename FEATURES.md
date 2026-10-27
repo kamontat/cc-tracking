@@ -3,7 +3,8 @@
 What cc-tracking does and why, written as business requirements, functional requirements and
 user stories. It covers every feature shipped up to 2026-10-27. [`CHANGELOG.md`](CHANGELOG.md)
 records when each one shipped and the decisions behind it; [`README.md`](README.md) explains
-how statements, limits and storage work.
+how statements, limits and storage work. A Thai translation is in
+[`FEATURES_TH.md`](FEATURES_TH.md).
 
 IDs are stable: add new ones at the end of their list rather than renumbering. Each functional
 requirement names the business requirements it serves, and each user story names the
