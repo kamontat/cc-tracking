@@ -252,7 +252,7 @@ test("renders its statement text and buttons in the chosen language", async () =
 	setLocale("th");
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("บันทึกว่าชำระแล้ว");
-	expect(element.shadowRoot?.textContent).toContain("ยกเลิกเครื่องหมาย");
+	expect(element.shadowRoot?.textContent).toContain("ยกเลิกชำระ");
 	expect(element.shadowRoot?.textContent).toContain("ลบ");
 	expect(element.shadowRoot?.textContent).toContain("รวม");
 });

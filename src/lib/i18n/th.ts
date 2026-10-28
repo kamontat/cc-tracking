@@ -238,7 +238,7 @@ export const th: Catalog = {
 	"statements.left": "เหลือ {amount}",
 	"statements.payment": "ชำระเงิน",
 	"statements.leftToPay": "ยอดคงเหลือ",
-	"statements.unmark": "ยกเลิกเครื่องหมาย",
+	"statements.unmark": "ยกเลิกชำระ",
 	"statements.markPaid": "บันทึกว่าชำระแล้ว",
 	"statements.current": "รอบปัจจุบัน",
 	"statements.noPurchases": "ไม่มีรายการใช้จ่ายในรอบนี้",
