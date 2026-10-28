@@ -165,7 +165,7 @@ const partlyPaid = () =>
 		],
 	});
 
-test("a partly paid statement shows what is paid and what is left, and can still be paid", async () => {
+const mountPartlyPaid = async () => {
 	setLocale("en");
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-statement-list");
@@ -173,32 +173,50 @@ test("a partly paid statement shows what is paid and what is left, and can still
 	element.today = "2026-10-01";
 	document.body.append(element);
 	await element.updateComplete;
+	return element;
+};
 
-	const summary =
-		detailsFor(element, "2026-09").querySelector("summary")?.textContent ?? "";
-	expect(summary).toContain("฿150.00 paid");
-	expect(summary).toContain("฿200.00 left");
+test("a partly paid statement shows what is left beside its total, and can still be paid", async () => {
+	const element = await mountPartlyPaid();
+	const total =
+		detailsFor(element, "2026-09").querySelector("summary .total")
+			?.textContent ?? "";
+	expect(total).toContain("Total ฿350.00");
+	expect(total).toContain("฿200.00 left");
 	expect(
 		element.shadowRoot?.querySelector("[data-action='mark-paid']"),
 	).not.toBeNull();
 });
 
-test("lists each partial payment with its own undo", async () => {
-	setLocale("en");
-	document.body.innerHTML = "";
-	const element = document.createElement("cc-statement-list");
-	element.statements = [partlyPaid()];
-	element.today = "2026-10-01";
-	document.body.append(element);
-	await element.updateComplete;
-
-	const rows = [
-		...(element.shadowRoot?.querySelectorAll(".payment") ?? []),
-	].map((row) => row.textContent ?? "");
+test("lists payments in the purchase table, as amounts taken off the total", async () => {
+	const element = await mountPartlyPaid();
+	// One table, so payment amounts and buttons share the purchases' columns.
+	const tables = element.shadowRoot?.querySelectorAll("table") ?? [];
+	expect(tables).toHaveLength(1);
+	const rows = [...(tables[0]?.querySelectorAll("tr.payment") ?? [])];
 	expect(rows).toHaveLength(2);
-	expect(rows[0]).toContain("฿50.00");
-	expect(rows[0]).toContain("25 Sep 2026");
-	expect(rows[1]).toContain("฿100.00");
+	const cells = (row: Element | undefined) =>
+		[...(row?.querySelectorAll("td") ?? [])].map(
+			(cell) => cell.textContent?.trim() ?? "",
+		);
+	expect(cells(rows[0]).slice(0, 3)).toEqual([
+		"25 Sep 2026",
+		"Payment",
+		"-฿50.00",
+	]);
+	expect(cells(rows[1])[2]).toBe("-฿100.00");
+});
+
+test("closes the table with what is still left to pay", async () => {
+	const element = await mountPartlyPaid();
+	const foot =
+		element.shadowRoot?.querySelector("table tfoot")?.textContent ?? "";
+	expect(foot).toContain("Left to pay");
+	expect(foot).toContain("฿200.00");
+});
+
+test("lists each partial payment with its own undo", async () => {
+	const element = await mountPartlyPaid();
 
 	let detail: { index: number } | undefined;
 	element.addEventListener("unmark-paid", (event) => {
