@@ -4,6 +4,14 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-28: Browser storage usage planned
+
+### Improvements
+
+- `TODO.md` plans a settings-page bar showing how much of the browser's `localStorage` (about
+  5 MB per site) the app's `cc:` data uses, split by cards, purchases, payments, limit groups
+  and settings, so a full store shows up before a save fails.
+
 ## 2026-10-27: Friendlier look and limit usage bars, and language and theme in Settings
 
 ### BREAKING CHANGES
