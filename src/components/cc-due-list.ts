@@ -1,4 +1,4 @@
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { sortChip, sortHeader } from "#components/list-controls";
 import { daysBetween, displayDate } from "#lib/domain/date";
@@ -106,6 +106,12 @@ export class CcDueList extends LitElement {
 				display: block;
 			}
 
+			/* Under what is left on a partly paid statement, so the column still reads as amounts owed. */
+			.of-total {
+				display: block;
+				color: var(--cc-text-muted);
+			}
+
 			/*
 			 * Only once stacked. A flex cell stops being a table cell, and the
 			 * column then draws its row rule at its own content height rather
@@ -184,7 +190,14 @@ export class CcDueList extends LitElement {
 									${displayDate(statement.dueDate, getLocale())}
 									<span class="badge">${this.when(statement)}</span>
 								</td>
-								<td data-label=${t("due.column.total")} data-numeric>${formatAmount(statement.total)}</td>
+								<td data-label=${t("due.column.total")} data-numeric>
+									${formatAmount(statement.remaining)}
+									${
+										statement.paidAmount > 0
+											? html`<small class="of-total">${t("due.ofTotal", { total: formatAmount(statement.total) })}</small>`
+											: nothing
+									}
+								</td>
 								<td>
 									${
 										urgency === "future"

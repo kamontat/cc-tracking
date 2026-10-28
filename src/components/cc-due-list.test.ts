@@ -53,6 +53,23 @@ test("shows the card, its total, and both dates", async () => {
 	expect(text).toContain("03 Oct 2026");
 });
 
+test("a partly paid statement shows what is left, out of its total", async () => {
+	setLocale("en");
+	const statement = buildStatement(card, "2026-09", purchases, {
+		cardId: "kbank",
+		period: "2026-09",
+		paidAt: "2026-09-25",
+		closeDate: "2026-09-18",
+		dueDate: "2026-10-03",
+		parts: [{ paidAt: "2026-09-25", amount: 15_000 }],
+	});
+	const element = await mount([{ card, statement }], "2026-09-26");
+	const cell =
+		element.shadowRoot?.querySelector("td[data-numeric]")?.textContent ?? "";
+	expect(cell).toContain("฿200.00");
+	expect(cell).toContain("of ฿350.00");
+});
+
 test("marks an overdue statement", async () => {
 	const element = await mount(
 		[{ card, statement: buildStatement(card, "2026-09", purchases) }],

@@ -96,6 +96,20 @@ test("shows the next statement due, its amount, and how urgent it is", async () 
 	expect(next?.dataset["urgency"]).toBe("soon");
 });
 
+test("shows only what is left on a partly paid next statement", async () => {
+	const element = await mount({
+		next: buildStatement(card, "2026-08", [purchase], {
+			cardId: "kbank",
+			period: "2026-08",
+			paidAt: "2026-08-25",
+			closeDate: "2026-08-18",
+			dueDate: "2026-09-02",
+			parts: [{ paidAt: "2026-08-25", amount: 35_000 }],
+		}),
+	});
+	expect(tile(element, "next")?.textContent).toContain("฿500.00");
+});
+
 test("names the closing date of a statement that is still open", async () => {
 	const element = await mount({ today: "2026-08-12" });
 	const next = tile(element, "next");

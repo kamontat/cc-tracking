@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { CcErrorBanner } from "#components/cc-error-banner";
+import type { CcPaymentForm } from "#components/cc-payment-form";
 import type { CcQuickAdd } from "#components/cc-quick-add";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
@@ -123,6 +124,18 @@ const answerText = (root: HTMLElement): string =>
 
 /** The due list's own "Mark paid" button, not one of its sorting headings. */
 const MARK_PAID = 'button[data-action="mark-paid"]';
+
+/** Submits the open payment dialog, with `amount` typed over the default when given. */
+const submitPayment = async (root: HTMLElement, amount?: string) => {
+	const form = root.querySelector<CcPaymentForm>("cc-modal cc-payment-form");
+	if (!form) throw new Error("the payment dialog did not open");
+	await form.updateComplete;
+	const input =
+		form.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]');
+	if (input && amount !== undefined) input.value = amount;
+	form.shadowRoot?.querySelector("form")?.requestSubmit();
+	await settle();
+};
 
 const formBannerMessage = (root: HTMLElement): string =>
 	root.querySelector<CcErrorBanner>('[data-panel="add"] cc-error-banner')
@@ -486,6 +499,7 @@ test("a failed mark-paid keeps its error message after the refresh that follows 
 	await list?.updateComplete;
 	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
 	await settle();
+	await submitPayment(root);
 
 	expect(bannerMessage(root)).toContain("disk is full");
 	expect(await repo.listPayments("kbank")).toEqual([]);
@@ -503,8 +517,10 @@ test("marking a statement paid records the payment and clears it from the due li
 	await list?.updateComplete;
 	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
 	await settle();
+	await submitPayment(root);
 
 	expect(bannerMessage(root)).toBe("");
+	expect(root.querySelector("cc-modal")).toBeNull();
 	const payments = await repo.listPayments("kbank");
 	expect(payments).toHaveLength(1);
 	expect(payments[0]?.period).toBe(period);
@@ -515,6 +531,26 @@ test("marking a statement paid records the payment and clears it from the due li
 	expect(
 		listAfter?.shadowRoot?.querySelector("[data-urgency='overdue']"),
 	).toBeNull();
+});
+
+test("paying part of a statement keeps it in the due list with what is left", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	const root = mount();
+	renderDashboardPage(repo, root);
+	await settle();
+
+	const list = root.querySelector("cc-due-list");
+	await list?.updateComplete;
+	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
+	await settle();
+	await submitPayment(root, "100");
+
+	const listAfter = root.querySelector("cc-due-list");
+	await listAfter?.updateComplete;
+	expect(listAfter?.rows[0]?.statement.remaining).toBe(25_000);
+	expect(listAfter?.shadowRoot?.querySelector(MARK_PAID)).not.toBeNull();
 });
 
 test("marking paid freezes the dates of the event's own period, not whatever nextActionable recomputes", async () => {
@@ -545,6 +581,7 @@ test("marking paid freezes the dates of the event's own period, not whatever nex
 		}),
 	);
 	await settle();
+	await submitPayment(root);
 
 	expect(bannerMessage(root)).toBe("");
 	const payments = await repo.listPayments("kbank");

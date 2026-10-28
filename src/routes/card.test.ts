@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { CcErrorBanner } from "#components/cc-error-banner";
+import type { CcPaymentForm } from "#components/cc-payment-form";
 import type { CcQuickAdd } from "#components/cc-quick-add";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
@@ -90,6 +91,31 @@ const submitPurchase = async (
 		if (input) input.value = value;
 	}
 	shadow?.querySelector("form")?.requestSubmit();
+	await settle();
+};
+
+/**
+ * Presses Mark paid on `targetPeriod`'s statement, then submits the payment dialog it opens --
+ * with `amount` typed over the default, when given.
+ */
+const payStatement = async (
+	root: HTMLElement,
+	targetPeriod: string,
+	amount?: string,
+) => {
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	articleFor(list, targetPeriod)
+		.querySelector<HTMLButtonElement>("[data-action='mark-paid']")
+		?.click();
+	await settle();
+	const form = root.querySelector<CcPaymentForm>("cc-modal cc-payment-form");
+	if (!form) throw new Error("the payment dialog did not open");
+	await form.updateComplete;
+	const input =
+		form.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]');
+	if (input && amount !== undefined) input.value = amount;
+	form.shadowRoot?.querySelector("form")?.requestSubmit();
 	await settle();
 };
 
@@ -329,20 +355,72 @@ test("marking a statement paid records a payment whose frozen dates match that s
 	renderCardPage(repo, "kbank", root);
 	await settle();
 
+	await payStatement(root, period);
+
+	expect(bannerMessage(root)).toBe("");
+	expect(root.querySelector("cc-modal")).toBeNull();
+	const payments = await repo.listPayments("kbank");
+	expect(payments).toHaveLength(1);
+	expect(payments[0]?.period).toBe(period);
+	expect(payments[0]?.parts).toEqual([{ paidAt: today(), amount: 35_000 }]);
+	// The payment freezes the statement's own close/due dates at the moment it was paid.
+	expect(payments[0]?.closeDate).toBe(closeDateOf(card.cycle, period));
+	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, period));
+});
+
+test("paying part of a statement leaves it owing, and a second payment settles it", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	await payStatement(root, period, "150");
 	const list = root.querySelector("cc-statement-list");
 	await list?.updateComplete;
-	articleFor(list, period)
-		.querySelector<HTMLButtonElement>("[data-action='mark-paid']")
+	expect(list?.statements.find((s) => s.period === period)?.remaining).toBe(
+		20_000,
+	);
+
+	await payStatement(root, period);
+	const [payment] = await repo.listPayments("kbank");
+	expect(payment?.parts?.map((part) => part.amount)).toEqual([15_000, 20_000]);
+	await list?.updateComplete;
+	expect(list?.statements.find((s) => s.period === period)?.paid).toBe(true);
+});
+
+test("unmarking one partial payment keeps the others", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	await repo.savePayment({
+		cardId: "kbank",
+		period,
+		paidAt: today(),
+		closeDate: "2020-01-18",
+		dueDate: "2020-02-02",
+		parts: [
+			{ paidAt: addDays(today(), -1), amount: 10_000 },
+			{ paidAt: today(), amount: 5_000 },
+		],
+	});
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	list?.shadowRoot
+		?.querySelectorAll<HTMLButtonElement>("[data-action='unmark-paid']")[1]
 		?.click();
 	await settle();
 
 	expect(bannerMessage(root)).toBe("");
 	const payments = await repo.listPayments("kbank");
-	expect(payments).toHaveLength(1);
-	expect(payments[0]?.period).toBe(period);
-	// The payment freezes the statement's own close/due dates at the moment it was paid.
-	expect(payments[0]?.closeDate).toBe(closeDateOf(card.cycle, period));
-	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, period));
+	expect(payments[0]?.parts).toEqual([
+		{ paidAt: addDays(today(), -1), amount: 10_000 },
+	]);
 });
 
 test("unmarking a paid statement removes its payment", async () => {
@@ -398,14 +476,14 @@ test("a failed mark-paid leaves a message in the banner and writes nothing", asy
 	renderCardPage(repo, "kbank", root);
 	await settle();
 
-	const list = root.querySelector("cc-statement-list");
-	await list?.updateComplete;
-	list?.shadowRoot
-		?.querySelector<HTMLButtonElement>("[data-action='mark-paid']")
-		?.click();
-	await settle();
+	await payStatement(root, period);
 
 	expect(bannerMessage(root)).toContain("disk is full");
+	// The dialog stays open with the reason in it, so the reader can retry.
+	expect(
+		root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message ??
+			"",
+	).toContain("disk is full");
 	expect(await repo.listPayments("kbank")).toEqual([]);
 });
 

@@ -56,6 +56,13 @@ export const en = {
 	"due.inDays": "in {days} days",
 	"due.stillOpen": "still open",
 	"due.markPaid": "Mark paid",
+	"due.ofTotal": "of {total}",
+
+	"payment.heading": "Record a payment",
+	"payment.balance":
+		"Statement {period}: total {total}, paid {paid}, {left} left.",
+	"payment.date": "Paid on",
+	"payment.submit": "Record payment",
 
 	"quickAdd.card": "Card",
 	"quickAdd.date": "Date",
@@ -211,6 +218,8 @@ export const en = {
 	"statements.empty": "No statements yet. Add a purchase from the dashboard.",
 	"statements.header": "closes {close}, due {due}",
 	"statements.paid": "Paid {date}",
+	"statements.partlyPaid": "{paid} paid · {left} left",
+	"statements.part": "Paid {amount} on {date}",
 	"statements.unmark": "Unmark",
 	"statements.markPaid": "Mark paid",
 	"statements.current": "Current",
@@ -305,6 +314,8 @@ export const en = {
 	"backup.problem.badPaidAt": "has an invalid paidAt date",
 	"backup.problem.badCloseDate": "has an invalid closeDate",
 	"backup.problem.badDueDate": "has an invalid dueDate",
+	"backup.problem.badParts":
+		"has partial payments that are not a list of dated, positive whole-satang amounts",
 	"backup.problem.badLimit": "has a limit that is not a whole number of satang",
 
 	"limits.title": "Limit groups",

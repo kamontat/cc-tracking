@@ -140,14 +140,74 @@ test("offers no mark-paid on the still-open statement, but keeps it on a closed 
 
 test("emits unmark-paid for a paid statement", async () => {
 	const element = await mount();
-	let detail: { cardId: string; period: string } | undefined;
+	let detail: { cardId: string; period: string; index: number } | undefined;
 	element.addEventListener("unmark-paid", (event) => {
-		detail = (event as CustomEvent<{ cardId: string; period: string }>).detail;
+		detail = (
+			event as CustomEvent<{ cardId: string; period: string; index: number }>
+		).detail;
 	});
 	element.shadowRoot
 		?.querySelector<HTMLButtonElement>("[data-action='unmark-paid']")
 		?.click();
-	expect(detail).toEqual({ cardId: "kbank", period: "2026-08" });
+	expect(detail).toEqual({ cardId: "kbank", period: "2026-08", index: 0 });
+});
+
+const partlyPaid = () =>
+	buildStatement(card, "2026-09", purchases, {
+		cardId: "kbank",
+		period: "2026-09",
+		paidAt: "2026-09-30",
+		closeDate: "2026-09-18",
+		dueDate: "2026-10-03",
+		parts: [
+			{ paidAt: "2026-09-25", amount: 5_000 },
+			{ paidAt: "2026-09-30", amount: 10_000 },
+		],
+	});
+
+test("a partly paid statement shows what is paid and what is left, and can still be paid", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-statement-list");
+	element.statements = [partlyPaid()];
+	element.today = "2026-10-01";
+	document.body.append(element);
+	await element.updateComplete;
+
+	const summary =
+		detailsFor(element, "2026-09").querySelector("summary")?.textContent ?? "";
+	expect(summary).toContain("฿150.00 paid");
+	expect(summary).toContain("฿200.00 left");
+	expect(
+		element.shadowRoot?.querySelector("[data-action='mark-paid']"),
+	).not.toBeNull();
+});
+
+test("lists each partial payment with its own undo", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-statement-list");
+	element.statements = [partlyPaid()];
+	element.today = "2026-10-01";
+	document.body.append(element);
+	await element.updateComplete;
+
+	const rows = [
+		...(element.shadowRoot?.querySelectorAll(".payment") ?? []),
+	].map((row) => row.textContent ?? "");
+	expect(rows).toHaveLength(2);
+	expect(rows[0]).toContain("฿50.00");
+	expect(rows[0]).toContain("25 Sep 2026");
+	expect(rows[1]).toContain("฿100.00");
+
+	let detail: { index: number } | undefined;
+	element.addEventListener("unmark-paid", (event) => {
+		detail = (event as CustomEvent<{ index: number }>).detail;
+	});
+	element.shadowRoot
+		?.querySelectorAll<HTMLButtonElement>("[data-action='unmark-paid']")[1]
+		?.click();
+	expect(detail?.index).toBe(1);
 });
 
 test("emits delete-purchase with the purchase id", async () => {

@@ -2,6 +2,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { compareDates, displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
+import { partsOf } from "#lib/domain/payment";
 import { urgencyOf } from "#lib/domain/statement";
 import type { PlainDate, Statement } from "#lib/domain/types";
 
@@ -150,7 +151,7 @@ export class CcStatementList extends LitElement {
 		new LocaleController(this);
 	}
 
-	private emit(name: string, detail: Record<string, string>) {
+	private emit(name: string, detail: Record<string, string | number>) {
 		this.dispatchEvent(new CustomEvent(name, { detail }));
 	}
 
@@ -177,7 +178,7 @@ export class CcStatementList extends LitElement {
 		for (const statement of this.statements) {
 			const quiet =
 				statement.purchases.length === 0 &&
-				!statement.paid &&
+				statement.payment === null &&
 				urgencyOf(statement, this.today) !== "future";
 			const last = segments.at(-1);
 			if (!quiet) segments.push(statement);
@@ -229,7 +230,12 @@ export class CcStatementList extends LitElement {
 									${
 										statement.paid && statement.payment
 											? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>`
-											: nothing
+											: statement.paidAmount > 0
+												? html`<small>${t("statements.partlyPaid", {
+														paid: formatAmount(statement.paidAmount),
+														left: formatAmount(statement.remaining),
+													})}</small>`
+												: nothing
 									}
 									<strong class="total">${t("statements.total", { amount: formatAmount(statement.total) })}</strong>
 								</div>
@@ -269,15 +275,28 @@ export class CcStatementList extends LitElement {
 									`
 							}
 
+							${partsOf(statement.payment, statement.total).map(
+								(part, index) => html`
+									<div class="payment statement-actions" row>
+										<small>${t("statements.part", {
+											amount: formatAmount(part.amount),
+											date: displayDate(part.paidAt, getLocale()),
+										})}</small>
+										<button data-action="unmark-paid" data-variant="quiet"
+											@click=${() =>
+												this.emit("unmark-paid", {
+													cardId: statement.cardId,
+													period: statement.period,
+													index,
+												})}>${t("statements.unmark")}</button>
+									</div>
+								`,
+							)}
+
 							<div class="statement-actions" row>
 								${
 									statement.paid
-										? html`<button data-action="unmark-paid" data-variant="quiet"
-												@click=${() =>
-													this.emit("unmark-paid", {
-														cardId: statement.cardId,
-														period: statement.period,
-													})}>${t("statements.unmark")}</button>`
+										? nothing
 										: urgency === "future"
 											? html`<small>${t("due.stillOpen")}</small>`
 											: html`<button data-action="mark-paid"

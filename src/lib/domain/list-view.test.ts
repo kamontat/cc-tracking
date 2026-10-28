@@ -328,9 +328,22 @@ const dueRow = (
 		dueDate,
 		purchases: [],
 		total,
+		paidAmount: 0,
+		remaining: total,
 		paid: false,
 		payment: null,
 	},
+});
+
+test("the due panel's total sort reads what is still owed, not the statement total", () => {
+	const part = dueRow("part", "2026-10-05", "2026-11-12", 500);
+	part.statement.paidAmount = 450;
+	part.statement.remaining = 50;
+	const rows = [part, dueRow("whole", "2026-10-05", "2026-11-12", 100)];
+	expect(rowIds(applyDueView(rows, { sort: "total", dir: "desc" }))).toEqual([
+		"whole",
+		"part",
+	]);
 });
 
 test("the due panel lists the soonest close date first by default", () => {

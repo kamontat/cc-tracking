@@ -59,13 +59,27 @@ export type Purchase = {
 	addedAt?: string;
 };
 
+/** One payment toward a statement. */
+export type PaymentPart = {
+	paidAt: PlainDate;
+	/** Satang. Always a positive integer, like `Purchase.amount`. */
+	amount: number;
+};
+
 export type StatementPayment = {
 	cardId: string;
 	period: Period;
+	/** The latest payment's date. */
 	paidAt: PlainDate;
 	/** Frozen at payment time so a later cycle edit cannot rewrite history. */
 	closeDate: PlainDate;
 	dueDate: PlainDate;
+	/**
+	 * Every payment toward the statement, oldest first. Absent on records saved before partial
+	 * payments existed, which paid the whole total on `paidAt`; see `partsOf` in
+	 * `#lib/domain/payment`.
+	 */
+	parts?: PaymentPart[];
 };
 
 /** Derived on read, never stored. */
@@ -76,6 +90,11 @@ export type Statement = {
 	dueDate: PlainDate;
 	purchases: Purchase[];
 	total: number;
+	/** Sum of every payment toward the statement. */
+	paidAmount: number;
+	/** What is still owed: `total - paidAmount`, never below zero. */
+	remaining: number;
+	/** A payment exists and nothing remains. */
 	paid: boolean;
 	payment: StatementPayment | null;
 };
