@@ -72,6 +72,13 @@ export const th: Catalog = {
 	"due.inDays": "อีก {days} วัน",
 	"due.stillOpen": "ยังไม่สรุปยอด",
 	"due.markPaid": "บันทึกว่าชำระแล้ว",
+	"due.ofTotal": "จาก {total}",
+
+	"payment.heading": "บันทึกการชำระเงิน",
+	"payment.balance":
+		"ใบแจ้งยอด {period}: รวม {total} ชำระแล้ว {paid} เหลือ {left}",
+	"payment.date": "วันที่ชำระ",
+	"payment.submit": "บันทึกการชำระ",
 
 	"quickAdd.card": "บัตร",
 	"quickAdd.date": "วันที่",
@@ -228,7 +235,10 @@ export const th: Catalog = {
 	"statements.empty": "ยังไม่มีใบแจ้งยอด เพิ่มรายการใช้จ่ายจากหน้าหลัก",
 	"statements.header": "สรุปยอด {close} ครบกำหนด {due}",
 	"statements.paid": "ชำระแล้ว {date}",
-	"statements.unmark": "ยกเลิกเครื่องหมาย",
+	"statements.left": "เหลือ {amount}",
+	"statements.payment": "ชำระเงิน",
+	"statements.leftToPay": "ยอดคงเหลือ",
+	"statements.unmark": "ยกเลิกชำระ",
 	"statements.markPaid": "บันทึกว่าชำระแล้ว",
 	"statements.current": "รอบปัจจุบัน",
 	"statements.noPurchases": "ไม่มีรายการใช้จ่ายในรอบนี้",
@@ -322,6 +332,8 @@ export const th: Catalog = {
 	"backup.problem.badPaidAt": "วันที่ paidAt ไม่ถูกต้อง",
 	"backup.problem.badCloseDate": "วันที่ closeDate ไม่ถูกต้อง",
 	"backup.problem.badDueDate": "วันที่ dueDate ไม่ถูกต้อง",
+	"backup.problem.badParts":
+		"มีรายการชำระบางส่วนที่ไม่ใช่รายการวันที่และจำนวนเงินเต็มสตางค์ที่มากกว่าศูนย์",
 	"backup.problem.badLimit": "มีวงเงินที่ไม่ใช่จำนวนเต็มสตางค์",
 
 	"limits.title": "กลุ่มวงเงิน",

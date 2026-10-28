@@ -26,7 +26,7 @@ export type SpendRow = {
 };
 
 /**
- * What this card still owes: every purchase on a statement with no payment against it.
+ * What this card still owes: what remains on each statement after its payments.
  *
  * The open period always counts, payment or not: it is the cycle still being spent on, and
  * only once it closes -- becoming a past period -- does a payment against it return the
@@ -55,12 +55,15 @@ export function outstandingOf(
 
 	let total = 0;
 	for (const period of periods) {
-		const paid = payments.some(
-			(payment) => payment.cardId === card.id && payment.period === period,
-		);
-		if (period === open || !paid) {
+		if (period === open) {
 			total += buildStatement(card, period, mine).total;
+			continue;
 		}
+		const payment =
+			payments.find(
+				(entry) => entry.cardId === card.id && entry.period === period,
+			) ?? null;
+		total += buildStatement(card, period, mine, payment).remaining;
 	}
 	return total;
 }

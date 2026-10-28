@@ -138,6 +138,23 @@ function paymentProblem(value: unknown): MessageKey | null {
 	if (!isPlainDate(prop(value, "closeDate")))
 		return "backup.problem.badCloseDate";
 	if (!isPlainDate(prop(value, "dueDate"))) return "backup.problem.badDueDate";
+	// Absent is a payment from before partial payments, which paid the whole statement.
+	const parts = prop(value, "parts");
+	if (
+		parts !== undefined &&
+		!(
+			isList(parts) &&
+			parts.length > 0 &&
+			parts.every(
+				(part) =>
+					isPlainObject(part) &&
+					isPlainDate(prop(part, "paidAt")) &&
+					isInteger(prop(part, "amount")) &&
+					(prop(part, "amount") as number) > 0,
+			)
+		)
+	)
+		return "backup.problem.badParts";
 	return null;
 }
 

@@ -227,6 +227,52 @@ describe("parseBackup", () => {
 		expect(parsed.payments).toHaveLength(1);
 	});
 
+	const withPayment = (payment: Record<string, unknown>) =>
+		JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-21T00:00:00.000Z",
+			limitGroups: [],
+			cards: [],
+			purchases: [],
+			payments: [
+				{
+					cardId: "kbank",
+					period: "2026-09",
+					paidAt: "2026-10-01",
+					closeDate: "2026-09-18",
+					dueDate: "2026-10-03",
+					...payment,
+				},
+			],
+		});
+
+	test("keeps a payment's partial payments", () => {
+		const parts = [
+			{ paidAt: "2026-09-25", amount: 4_000_000 },
+			{ paidAt: "2026-10-01", amount: 6_000_000 },
+		];
+		expect(parseBackup(withPayment({ parts })).payments[0]?.parts).toEqual(
+			parts,
+		);
+	});
+
+	test("rejects a payment whose partial payments are malformed", () => {
+		for (const parts of [
+			"all",
+			[],
+			[{ paidAt: "soon", amount: 100 }],
+			[{ paidAt: "2026-10-01", amount: 0 }],
+			[{ paidAt: "2026-10-01", amount: 1.5 }],
+		]) {
+			const failure = captureThrow(() => parseBackup(withPayment({ parts })));
+			expect((failure as MessageError).key).toBe("backup.payment");
+			expect((failure as MessageError).params).toEqual({
+				index: 1,
+				problem: "backup.problem.badParts",
+			});
+		}
+	});
+
 	test("rejects a backup whose card has an unknown location", () => {
 		const backup = {
 			version: 2,

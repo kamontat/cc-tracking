@@ -163,7 +163,7 @@ export class CcCardSummary extends LitElement {
 		return html`
 			<section data-tile="next" data-urgency=${urgency}>
 				<h2>${t("card.summary.next")}</h2>
-				<p class="figure">${formatAmount(next.total)}</p>
+				<p class="figure">${formatAmount(next.remaining)}</p>
 				<p><small>${
 					urgency === "future"
 						? t("card.summary.nextOpen", {

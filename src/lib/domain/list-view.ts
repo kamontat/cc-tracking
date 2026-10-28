@@ -285,7 +285,7 @@ export function applyDueView(
 				LOCATIONS.indexOf(a.card.location) - LOCATIONS.indexOf(b.card.location),
 			closes: (a, b) => byText(a.statement.closeDate, b.statement.closeDate),
 			due: (a, b) => byText(a.statement.dueDate, b.statement.dueDate),
-			total: (a, b) => a.statement.total - b.statement.total,
+			total: (a, b) => a.statement.remaining - b.statement.remaining,
 		},
 		(row) => row.statement.closeDate,
 	);

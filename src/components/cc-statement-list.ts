@@ -2,6 +2,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { compareDates, displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
+import { partsOf } from "#lib/domain/payment";
 import { urgencyOf } from "#lib/domain/statement";
 import type { PlainDate, Statement } from "#lib/domain/types";
 
@@ -88,10 +89,105 @@ export class CcStatementList extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			/* Pushed to the end of the line, so every month's total reads down one column. */
+			/*
+			 * Pushed to the end of the line, so every month's total reads down one column. What is
+			 * left stacks under it rather than beside it, so a partly paid month keeps one line.
+			 */
 			.total {
+				display: inline-flex;
+				flex-direction: column;
+				align-items: flex-end;
 				margin-left: auto;
 				font-variant-numeric: tabular-nums;
+			}
+
+			.total .left {
+				color: var(--cc-text-muted);
+			}
+
+			/*
+			 * Payments share the purchases' columns, so every amount and button lines up, and are
+			 * ruled off from them and set muted: they come off the total rather than add to it.
+			 */
+			tbody.payments tr:first-child td {
+				border-top: var(--cc-border-width) solid var(--cc-border);
+			}
+
+			tr.payment td {
+				color: var(--cc-text-muted);
+			}
+
+			/* A payment's minus sign must not break away from its amount. */
+			td[data-numeric] {
+				white-space: nowrap;
+			}
+
+			/* Reads as a closing row of the table, not as a second set of column headings. */
+			tfoot th,
+			tfoot td {
+				padding: var(--cc-space-2);
+				font-size: inherit;
+				font-weight: 600;
+				color: inherit;
+				text-align: left;
+				text-transform: none;
+				letter-spacing: normal;
+				border-top: var(--cc-border-width) solid var(--cc-border);
+				border-bottom: 0;
+			}
+
+			/*
+			 * The details' flex gap does not reach its content in every browser, so the actions
+			 * under a table space themselves off it.
+			 */
+			table + .statement-actions {
+				margin-top: var(--cc-space-3);
+			}
+
+			tfoot td[data-numeric] {
+				text-align: right;
+			}
+
+			/*
+			 * Stacked, a payment would spend four lines on a date, one word and an amount. It
+			 * keeps one line instead -- date, amount, undo -- and the footer likewise reads as a
+			 * single "Left to pay ... amount" line under one rule, not one rule per cell.
+			 */
+			@media (max-width: 639px) {
+				tr.payment,
+				tfoot tr {
+					flex-direction: row;
+					align-items: center;
+				}
+
+				tr.payment .note {
+					display: none;
+				}
+
+				tr.payment td[data-numeric] {
+					margin-left: auto;
+				}
+
+				tbody.payments tr:first-child td,
+				tfoot th,
+				tfoot td {
+					border-top: 0;
+					border-bottom: 0;
+				}
+
+				tbody.payments tr:first-child,
+				tfoot tr {
+					border-top: var(--cc-border-width) solid var(--cc-border);
+				}
+
+				tfoot tr {
+					justify-content: space-between;
+					border-bottom: 0;
+				}
+
+				tfoot td:empty {
+					display: none;
+				}
 			}
 
 			.statement-actions {
@@ -150,7 +246,7 @@ export class CcStatementList extends LitElement {
 		new LocaleController(this);
 	}
 
-	private emit(name: string, detail: Record<string, string>) {
+	private emit(name: string, detail: Record<string, string | number>) {
 		this.dispatchEvent(new CustomEvent(name, { detail }));
 	}
 
@@ -177,7 +273,7 @@ export class CcStatementList extends LitElement {
 		for (const statement of this.statements) {
 			const quiet =
 				statement.purchases.length === 0 &&
-				!statement.paid &&
+				statement.payment === null &&
 				urgencyOf(statement, this.today) !== "future";
 			const last = segments.at(-1);
 			if (!quiet) segments.push(statement);
@@ -215,6 +311,7 @@ export class CcStatementList extends LitElement {
 	private statement(statement: Statement) {
 		const urgency = urgencyOf(statement, this.today);
 		const current = statement.period === this.currentPeriod;
+		const parts = partsOf(statement.payment, statement.total);
 		return html`
 					<article data-urgency=${urgency} ?data-current=${current}>
 						<details ?open=${statement.purchases.length > 0}>
@@ -231,13 +328,25 @@ export class CcStatementList extends LitElement {
 											? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>`
 											: nothing
 									}
-									<strong class="total">${t("statements.total", { amount: formatAmount(statement.total) })}</strong>
+									<span class="total">
+										<strong>${t("statements.total", { amount: formatAmount(statement.total) })}</strong>
+										${
+											!statement.paid && statement.paidAmount > 0
+												? html`<small class="left">${t("statements.left", { amount: formatAmount(statement.remaining) })}</small>`
+												: nothing
+										}
+									</span>
 								</div>
 							</summary>
 
 							${
 								statement.purchases.length === 0
 									? html`<p><small>${t("statements.noPurchases")}</small></p>`
+									: nothing
+							}
+							${
+								statement.purchases.length === 0 && parts.length === 0
+									? nothing
 									: html`
 										<table>
 											<tbody>
@@ -265,6 +374,40 @@ export class CcStatementList extends LitElement {
 													`,
 												)}
 											</tbody>
+											${
+												parts.length === 0
+													? nothing
+													: html`
+														<tbody class="payments">
+															${parts.map(
+																(part, index) => html`
+																	<tr class="payment">
+																		<td class="date">${displayDate(part.paidAt, getLocale())}</td>
+																		<td class="note">${t("statements.payment")}</td>
+																		<td data-numeric>${formatAmount(-part.amount)}</td>
+																		<td class="purchase-actions"><div class="actions" row>
+																			<button data-action="unmark-paid" data-variant="quiet"
+																				@click=${() =>
+																					this.emit("unmark-paid", {
+																						cardId: statement.cardId,
+																						period: statement.period,
+																						index,
+																					})}>${t("statements.unmark")}</button>
+																		</div></td>
+																	</tr>
+																`,
+															)}
+														</tbody>
+														<tfoot>
+															<tr>
+																<td></td>
+																<th scope="row" class="note">${t("statements.leftToPay")}</th>
+																<td data-numeric>${formatAmount(statement.remaining)}</td>
+																<td></td>
+															</tr>
+														</tfoot>
+													`
+											}
 										</table>
 									`
 							}
@@ -272,12 +415,7 @@ export class CcStatementList extends LitElement {
 							<div class="statement-actions" row>
 								${
 									statement.paid
-										? html`<button data-action="unmark-paid" data-variant="quiet"
-												@click=${() =>
-													this.emit("unmark-paid", {
-														cardId: statement.cardId,
-														period: statement.period,
-													})}>${t("statements.unmark")}</button>`
+										? nothing
 										: urgency === "future"
 											? html`<small>${t("due.stillOpen")}</small>`
 											: html`<button data-action="mark-paid"

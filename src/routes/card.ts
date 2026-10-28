@@ -5,6 +5,7 @@ import "#components/cc-card-summary";
 import "#components/cc-error-banner";
 import "#components/cc-statement-list";
 import { html, nothing, render } from "lit";
+import type { PaymentDetail } from "#components/cc-payment-form";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
@@ -12,6 +13,7 @@ import { compareDates, displayDate, today } from "#lib/domain/date";
 import { groupUsage, outstandingOf, spendableRows } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
 import { cardOwnerOf, groupLabel } from "#lib/domain/owner";
+import { removePart } from "#lib/domain/payment";
 import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
 import {
 	buildStatement,
@@ -31,6 +33,7 @@ import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
+import { paymentDialog, savePart } from "#lib/ui/payment-dialog";
 import {
 	addPurchaseButton,
 	purchaseDialog,
@@ -69,6 +72,9 @@ export function renderCardPage(
 	let editing: Purchase | null = null;
 	// Whether the open dialog has tried a save yet, so an older page error stays out of it.
 	let addSubmitted = false;
+	// The period the payment dialog is open for, or null when it is closed.
+	let paying: string | null = null;
+	let paySubmitted = false;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -116,28 +122,46 @@ export function renderCardPage(
 		);
 	};
 
-	const onMarkPaid = (event: CustomEvent<{ cardId: string; period: string }>) =>
-		state.guard(async () => {
-			const statement = statements().find(
-				(s) => s.period === event.detail.period,
-			);
+	const statementFor = (period: string): Statement | null =>
+		statements().find((s) => s.period === period) ?? null;
+
+	// Mark paid only opens the payment dialog; the payment is recorded once it is submitted.
+	const onMarkPaid = (
+		event: CustomEvent<{ cardId: string; period: string }>,
+	) => {
+		paying = event.detail.period;
+		paySubmitted = false;
+		paint();
+	};
+
+	const closePay = () => {
+		paying = null;
+		paint();
+	};
+
+	// Closes the dialog only once the payment is stored, so a failed save keeps the reader's typing.
+	const onPay = (event: CustomEvent<PaymentDetail>) => {
+		paySubmitted = true;
+		return state.guard(async () => {
+			const statement = statementFor(event.detail.period);
 			if (!statement) return;
-			await repo.savePayment({
-				cardId: event.detail.cardId,
-				period: event.detail.period,
-				paidAt: now,
-				closeDate: statement.closeDate,
-				dueDate: statement.dueDate,
-			});
+			await savePart(repo, statement, event.detail);
+			paying = null;
 		}, "card.error.markPaid");
+	};
 
 	const onUnmarkPaid = (
-		event: CustomEvent<{ cardId: string; period: string }>,
+		event: CustomEvent<{ cardId: string; period: string; index: number }>,
 	) =>
-		state.guard(
-			() => repo.deletePayment(event.detail.cardId, event.detail.period),
-			"card.error.unmarkPaid",
-		);
+		state.guard(async () => {
+			const { cardId, period, index } = event.detail;
+			const statement = statementFor(period);
+			if (!statement?.payment) return;
+			const left = removePart(statement.payment, index, statement.total);
+			await (left
+				? repo.savePayment(left)
+				: repo.deletePayment(cardId, period));
+		}, "card.error.unmarkPaid");
 
 	const onDeletePurchase = (
 		event: CustomEvent<{ cardId: string; purchaseId: string }>,
@@ -288,6 +312,19 @@ export function renderCardPage(
 		`;
 	};
 
+	const payingDialog = () => {
+		const statement = paying ? statementFor(paying) : null;
+		if (!statement) return nothing;
+		return paymentDialog({
+			statement,
+			today: now,
+			error: paySubmitted ? state.error : "",
+			onPay,
+			onClose: closePay,
+			onRetry: () => state.load(),
+		});
+	};
+
 	const paint = () =>
 		render(
 			html`
@@ -344,6 +381,7 @@ export function renderCardPage(
 										})
 									: nothing
 							}
+							${payingDialog()}
 						`
 						: html`<p><a href="/cards">${t("card.back")}</a></p>`
 				}

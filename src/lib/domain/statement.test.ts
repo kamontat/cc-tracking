@@ -62,6 +62,51 @@ describe("buildStatement", () => {
 		expect(statement.payment).toBe(payment);
 	});
 
+	test("a payment for part of the total leaves the rest owing", () => {
+		const payment: StatementPayment = {
+			cardId: "kbank",
+			period: "2026-09",
+			paidAt: "2026-10-01",
+			closeDate: "2026-09-18",
+			dueDate: "2026-10-03",
+			parts: [{ paidAt: "2026-10-01", amount: 15_000 }],
+		};
+		const statement = buildStatement(card, "2026-09", purchases, payment);
+		expect(statement.paid).toBe(false);
+		expect(statement.paidAmount).toBe(15_000);
+		expect(statement.remaining).toBe(20_000);
+	});
+
+	test("payments adding up to the total settle it", () => {
+		const payment: StatementPayment = {
+			cardId: "kbank",
+			period: "2026-09",
+			paidAt: "2026-10-02",
+			closeDate: "2026-09-18",
+			dueDate: "2026-10-03",
+			parts: [
+				{ paidAt: "2026-10-01", amount: 15_000 },
+				{ paidAt: "2026-10-02", amount: 20_000 },
+			],
+		};
+		const statement = buildStatement(card, "2026-09", purchases, payment);
+		expect(statement.paid).toBe(true);
+		expect(statement.remaining).toBe(0);
+	});
+
+	test("a payment from before partial payments covers the whole total", () => {
+		const payment: StatementPayment = {
+			cardId: "kbank",
+			period: "2026-09",
+			paidAt: "2026-10-01",
+			closeDate: "2026-09-18",
+			dueDate: "2026-10-03",
+		};
+		const statement = buildStatement(card, "2026-09", purchases, payment);
+		expect(statement.paidAmount).toBe(35_000);
+		expect(statement.remaining).toBe(0);
+	});
+
 	test("is empty, not broken, for a period with no purchases", () => {
 		const statement = buildStatement(card, "2026-07", purchases);
 		expect(statement.purchases).toEqual([]);

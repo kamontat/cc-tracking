@@ -75,6 +75,12 @@ test("marking the statement paid returns its credit", () => {
 	expect(outstandingOf(card(), [old], [payment()], TODAY)).toBe(0);
 });
 
+test("a partial payment returns only the credit it paid", () => {
+	const old = purchase({ id: "p0", date: "2026-08-10", amount: 25_000 });
+	const part = payment({ parts: [{ paidAt: "2026-09-02", amount: 10_000 }] });
+	expect(outstandingOf(card(), [old], [part], TODAY)).toBe(15_000);
+});
+
 test("a payment recorded against the still-open period does not hide its purchases", () => {
 	// The open period, given TODAY = 2026-09-23 and a close day of 18, is 2026-10 -- see the
 	// "still open" comment on the purchase-in-the-open-period test above.

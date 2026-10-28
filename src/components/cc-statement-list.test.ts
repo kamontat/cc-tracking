@@ -140,14 +140,92 @@ test("offers no mark-paid on the still-open statement, but keeps it on a closed 
 
 test("emits unmark-paid for a paid statement", async () => {
 	const element = await mount();
-	let detail: { cardId: string; period: string } | undefined;
+	let detail: { cardId: string; period: string; index: number } | undefined;
 	element.addEventListener("unmark-paid", (event) => {
-		detail = (event as CustomEvent<{ cardId: string; period: string }>).detail;
+		detail = (
+			event as CustomEvent<{ cardId: string; period: string; index: number }>
+		).detail;
 	});
 	element.shadowRoot
 		?.querySelector<HTMLButtonElement>("[data-action='unmark-paid']")
 		?.click();
-	expect(detail).toEqual({ cardId: "kbank", period: "2026-08" });
+	expect(detail).toEqual({ cardId: "kbank", period: "2026-08", index: 0 });
+});
+
+const partlyPaid = () =>
+	buildStatement(card, "2026-09", purchases, {
+		cardId: "kbank",
+		period: "2026-09",
+		paidAt: "2026-09-30",
+		closeDate: "2026-09-18",
+		dueDate: "2026-10-03",
+		parts: [
+			{ paidAt: "2026-09-25", amount: 5_000 },
+			{ paidAt: "2026-09-30", amount: 10_000 },
+		],
+	});
+
+const mountPartlyPaid = async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-statement-list");
+	element.statements = [partlyPaid()];
+	element.today = "2026-10-01";
+	document.body.append(element);
+	await element.updateComplete;
+	return element;
+};
+
+test("a partly paid statement shows what is left beside its total, and can still be paid", async () => {
+	const element = await mountPartlyPaid();
+	const total =
+		detailsFor(element, "2026-09").querySelector("summary .total")
+			?.textContent ?? "";
+	expect(total).toContain("Total ฿350.00");
+	expect(total).toContain("฿200.00 left");
+	expect(
+		element.shadowRoot?.querySelector("[data-action='mark-paid']"),
+	).not.toBeNull();
+});
+
+test("lists payments in the purchase table, as amounts taken off the total", async () => {
+	const element = await mountPartlyPaid();
+	// One table, so payment amounts and buttons share the purchases' columns.
+	const tables = element.shadowRoot?.querySelectorAll("table") ?? [];
+	expect(tables).toHaveLength(1);
+	const rows = [...(tables[0]?.querySelectorAll("tr.payment") ?? [])];
+	expect(rows).toHaveLength(2);
+	const cells = (row: Element | undefined) =>
+		[...(row?.querySelectorAll("td") ?? [])].map(
+			(cell) => cell.textContent?.trim() ?? "",
+		);
+	expect(cells(rows[0]).slice(0, 3)).toEqual([
+		"25 Sep 2026",
+		"Payment",
+		"-฿50.00",
+	]);
+	expect(cells(rows[1])[2]).toBe("-฿100.00");
+});
+
+test("closes the table with what is still left to pay", async () => {
+	const element = await mountPartlyPaid();
+	const foot =
+		element.shadowRoot?.querySelector("table tfoot")?.textContent ?? "";
+	expect(foot).toContain("Left to pay");
+	expect(foot).toContain("฿200.00");
+});
+
+test("lists each partial payment with its own undo", async () => {
+	const element = await mountPartlyPaid();
+
+	let detail: { index: number } | undefined;
+	element.addEventListener("unmark-paid", (event) => {
+		detail = (event as CustomEvent<{ index: number }>).detail;
+	});
+	element.shadowRoot
+		?.querySelectorAll<HTMLButtonElement>("[data-action='unmark-paid']")[1]
+		?.click();
+	expect(detail?.index).toBe(1);
 });
 
 test("emits delete-purchase with the purchase id", async () => {
@@ -174,7 +252,7 @@ test("renders its statement text and buttons in the chosen language", async () =
 	setLocale("th");
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("บันทึกว่าชำระแล้ว");
-	expect(element.shadowRoot?.textContent).toContain("ยกเลิกเครื่องหมาย");
+	expect(element.shadowRoot?.textContent).toContain("ยกเลิกชำระ");
 	expect(element.shadowRoot?.textContent).toContain("ลบ");
 	expect(element.shadowRoot?.textContent).toContain("รวม");
 });

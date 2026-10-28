@@ -7,8 +7,9 @@ import "#components/cc-purchase-range";
 import "#components/cc-quick-add";
 import "#components/cc-sitting-list";
 import "#components/cc-spendable";
-import { html, render } from "lit";
+import { html, nothing, render } from "lit";
 import type { DueRow } from "#components/cc-due-list";
+import type { PaymentDetail } from "#components/cc-payment-form";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
@@ -22,6 +23,7 @@ import type {
 	Card,
 	LimitGroup,
 	Purchase,
+	Statement,
 	StatementPayment,
 } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
@@ -29,6 +31,7 @@ import type { Repository } from "#lib/storage/repository";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
+import { paymentDialog, savePart } from "#lib/ui/payment-dialog";
 import { purchaseStatus } from "#lib/ui/purchase-dialog";
 
 export type DashboardOptions = {
@@ -69,6 +72,9 @@ export function renderDashboardPage(
 	// Whether the last write was an add, so its failure shows beside the form the reader is
 	// typing in rather than at the top of the page, possibly a screen away.
 	let lastWriteWasAdd = false;
+	// The statement the payment dialog is open for, or null when it is closed.
+	let paying: { cardId: string; period: string } | null = null;
+	let paySubmitted = false;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -91,25 +97,61 @@ export function renderDashboardPage(
 		paint: () => paint(),
 	});
 
+	/**
+	 * The statement the event names, not whatever nextActionable happens to recompute right
+	 * now -- those can disagree, and the payment must freeze the dates of the one asked for.
+	 */
+	const statementFor = (target: {
+		cardId: string;
+		period: string;
+	}): Statement | null => {
+		const card = cards.find((c) => c.id === target.cardId);
+		if (!card) return null;
+		const payment =
+			payments.find(
+				(entry) =>
+					entry.cardId === target.cardId && entry.period === target.period,
+			) ?? null;
+		return buildStatement(card, target.period, purchases, payment);
+	};
+
+	// Mark paid only opens the payment dialog; the payment is recorded once it is submitted.
 	const onMarkPaid = (
 		event: CustomEvent<{ cardId: string; period: string }>,
 	) => {
+		paying = event.detail;
+		paySubmitted = false;
+		paint();
+	};
+
+	const closePay = () => {
+		paying = null;
+		paint();
+	};
+
+	// Closes the dialog only once the payment is stored, so a failed save keeps the reader's typing.
+	const onPay = (event: CustomEvent<PaymentDetail>) => {
 		lastWriteWasAdd = false;
+		paySubmitted = true;
 		return state.guard(async () => {
-			const { cardId, period } = event.detail;
-			const card = cards.find((c) => c.id === cardId);
-			if (!card) return;
-			// Freeze the dates of the statement the event names, not whatever
-			// nextActionable happens to recompute right now -- those can disagree.
-			const statement = buildStatement(card, period, purchases);
-			await repo.savePayment({
-				cardId,
-				period,
-				paidAt: now,
-				closeDate: statement.closeDate,
-				dueDate: statement.dueDate,
-			});
+			const statement = statementFor(event.detail);
+			if (!statement) return;
+			await savePart(repo, statement, event.detail);
+			paying = null;
 		}, "dashboard.error.markPaid");
+	};
+
+	const payingDialog = () => {
+		const statement = paying ? statementFor(paying) : null;
+		if (!statement) return nothing;
+		return paymentDialog({
+			statement,
+			today: now,
+			error: paySubmitted ? state.error : "",
+			onPay,
+			onClose: closePay,
+			onRetry: () => state.load(),
+		});
 	};
 
 	// The form is cleared only once the purchase is stored; a failed save leaves the reader's
@@ -256,6 +298,7 @@ export function renderDashboardPage(
 						</article>
 					</div>
 				</div>
+				${payingDialog()}
 			`,
 			root,
 		);

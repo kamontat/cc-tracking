@@ -4,13 +4,40 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-10-28: Browser storage usage planned
+## 2026-10-28: Browser storage usage planned, and partial payments
+
+### Features
+
+- A statement can be paid in parts. *Mark paid*, on the card page and in the dashboard's due
+  list, opens a dialog for the amount and the date paid, starting at what is left and today,
+  so paying in full is still one click.
+- `StatementPayment` gains an optional `parts` list of `{ paidAt, amount }`, oldest first, and
+  `Statement` gains `paidAmount` and `remaining`. A statement counts as paid once its parts add
+  up to its total.
+- On the card page each payment is a row in the statement's table, under its purchases and in
+  the same columns, shown as an amount off the total with its own *Unmark*. A *Left to pay* row
+  closes the table, and what is left sits under the month's total on its summary line.
+- Backup import checks `parts`: a non-empty list of valid dates and positive whole-satang
+  amounts.
 
 ### Improvements
 
+- The due list's *Total* column, its sort, the card page's *Next due* tile, *Owed on this card*
+  and limit-group usage all count only what is left on a partly paid statement, so each payment
+  returns its own share of the credit.
+- The Thai label for *Unmark* is now ยกเลิกชำระ.
 - `TODO.md` plans a settings-page bar showing how much of the browser's `localStorage` (about
   5 MB per site) the app's `cc:` data uses, split by cards, purchases, payments, limit groups
   and settings, so a full store shows up before a save fails.
+
+### Decisions
+
+- Parts live inside the one payment record per card and period, under the same
+  `cc:payment:<card>:<period>` key, rather than as separate records with their own ids. That
+  keeps the storage layout and the backup's `payments` list unchanged, and a record saved
+  before parts existed reads as one payment of the whole total on its `paidAt`, so no
+  migration is needed.
+- The first payment freezes the statement's close and due dates; later payments keep them.
 
 ## 2026-10-27: Friendlier look and limit usage bars, and language and theme in Settings
 
