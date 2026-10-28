@@ -133,6 +133,15 @@ export class CcStatementList extends LitElement {
 				text-transform: none;
 				letter-spacing: normal;
 				border-top: var(--cc-border-width) solid var(--cc-border);
+				border-bottom: 0;
+			}
+
+			/*
+			 * The details' flex gap does not reach its content in every browser, so the actions
+			 * under a table space themselves off it.
+			 */
+			table + .statement-actions {
+				margin-top: var(--cc-space-3);
 			}
 
 			tfoot td[data-numeric] {
