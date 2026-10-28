@@ -1,15 +1,32 @@
-# Features
+# cc-tracking: product requirements
 
-What cc-tracking does, the rules it follows and the decisions behind them, covering every
-feature shipped up to 2026-10-27. It is the reference for refactoring or redesigning the site:
-whatever the new code and screens look like, nothing listed here should be lost by accident.
-[`CHANGELOG.md`](CHANGELOG.md) records when each feature shipped; [`README.md`](README.md)
-explains how statements, limits and storage work. A Thai translation is in
-[`FEATURES_TH.md`](FEATURES_TH.md).
+| | |
+|---|---|
+| **Status** | Draft for the refactor and redesign |
+| **Last updated** | 2026-10-28 |
+| **Baseline** | Everything shipped up to 2026-10-27 ([`CHANGELOG.md`](CHANGELOG.md)) |
+| **Thai translation** | [`PRD_TH.md`](PRD_TH.md), same IDs in the same order |
 
-## How to use this document
+## Summary
 
-| Section | IDs | In a redesign |
+cc-tracking tracks a small business's company credit cards: where each card is kept, when each
+statement closes and must be paid, how much credit is left on accounts that several cards
+share, and which statement a purchase lands on. It runs entirely in the browser, in Thai and
+English.
+
+The site is about to be refactored and redesigned. This document is the full context for that
+work. It says why the app exists, what it must keep doing, the exact rules behind its numbers,
+the data that existing browsers and backups already hold, and every decision made along the
+way, with the reason. It also says what is free to change, and lists what is still undecided
+as [open questions](#open-questions).
+
+## For agents: read this first
+
+1. **Read the whole document before planning.** Then read [`README.md`](README.md) for how
+   statements, limits and storage work, and `AGENTS.md` for the stack and conventions.
+2. **Know what you may change.** Each section's role in the redesign:
+
+| Section | IDs | In the redesign |
 |---|---|---|
 | [Business requirements](#business-requirements) | BR | Keep. These are why the app exists. |
 | [Functional requirements](#functional-requirements) | FR | Keep the behaviour. Where and how it is shown may change. |
@@ -22,13 +39,70 @@ explains how statements, limits and storage work. A Thai translation is in
 | [Current design](#current-design) | CD | Free to change. Listed so a change is a choice, not an accident. |
 | [Retired](#retired) | -- | Removed on purpose. Don't bring back by accident. |
 
-Before a redesign ships, go through the [redesign checklist](#redesign-checklist).
+3. **Settle the open questions with the user first.** Don't guess the answers to
+   [open questions](#open-questions); ask, then record the answer here.
+4. **Follow the change workflow.** Every change goes through
+   `.claude/skills/shipping-a-change` (worktree, test first, checks, pull request, preview URL)
+   and lands through `.claude/skills/landing-a-change` only after the user approves.
+5. **Finish with the [acceptance criteria](#acceptance-criteria-for-the-redesign)** and update
+   this document: a changed decision gets a new reason, a retired requirement is marked retired.
 
 IDs are stable: add new ones at the end of their list rather than renumbering, and mark a
 retired one as retired rather than deleting it. Each functional requirement names the business
 requirements it serves, and each user story names the functional requirements it covers.
 
-## Context
+### Where things live
+
+| Path | What |
+|---|---|
+| `src/lib/domain/` | Pure rules: dates, cycles, statements, limits, ranges, money. No storage, no UI. Tests beside each file. |
+| `src/lib/storage/` | `Repository` interface, the `localStorage` implementation, the contract suite, backup and restore, the location migration. |
+| `src/lib/i18n/` | The English and Thai catalogs (`en.ts`, `th.ts`), language detection and formatting. |
+| `src/lib/ui/` | Page plumbing shared by routes: load and save with error handling, panels, theme, list view in the address, build info. |
+| `src/components/` | Lit web components (`cc-*`), one per panel, form or table. They get data as properties and send events. |
+| `src/routes/` | One HTML page and script per address: `index` (`/`), `cards`, `card`, `settings`. |
+| `src/styles/` | `tokens.css` (every value), `app.css` (page shell), `shared.ts` (styles inside components). |
+
+Stack: Bun, TypeScript, Lit, `@kcstyles/reset.css`, happy-dom for tests, static pages on
+Cloudflare Workers. Commands: `bun run dev`, `bun run test`, `bun run check`,
+`bun run typecheck`, `bun run build`.
+
+## Problem
+
+The app works, and its rules are settled, but it grew one feature at a time over six weeks.
+Two things now call for a redesign:
+
+- **The flows.** How pages lead into one another, and what each page asks of the reader, were
+  never designed as a whole. `TODO.md` has carried this since the visual refresh on
+  2026-10-27, which changed the look and deliberately left the flows alone.
+- **The code.** A refactor alongside the redesign, so the structure matches the product as it
+  now is rather than the order it was built in.
+
+The specific pain points need the user's own walk-throughs and are not yet written down; see
+[open questions](#open-questions).
+
+## Goals
+
+- **G1. Keep everything that works.** Every requirement, user story, domain rule, data contract
+  and interface rule in this document still holds after the redesign, unless it is retired
+  here on purpose.
+- **G2. Flows designed as a whole**, around the three questions the app answers: what to pay
+  and when, how much room is left, and which statement a purchase lands on.
+- **G3. Entering a pile of receipts stays at least as fast** as today's always-open form and
+  *This sitting* list.
+- **G4. No one loses data.** Data saved in a browser today, and backups saved today, load
+  unchanged.
+- **G5. A codebase that is easy to change**, keeping the separation between pure rules,
+  storage and interface.
+
+## Non-goals of the redesign
+
+- New features that are not in this document. Anything in [Out of scope](#out-of-scope) stays
+  out unless decided separately.
+- Changing a domain rule or data contract as a side effect of a layout change.
+- Moving data to a server or adding accounts (see [Future work](#future-work)).
+
+## Background
 
 A small business holds a set of company credit cards. The cards are kept in three places
 (Bangkok, Phichit and Krabi), belong to accounts held by three people (KC, NT and RI), and
@@ -40,7 +114,7 @@ purchase lands on.
 The data is small: about a dozen cards and a few hundred purchases a year. Several choices
 below (full scans at startup, loading every purchase on a page) rely on that.
 
-### People
+### Users
 
 - **Bookkeeper** -- enters receipts in batches, marks statements paid, and reconciles the app
   against bank statements. The main user. Often interrupted halfway through a pile.
@@ -506,10 +580,11 @@ Removed on purpose; listed so a redesign doesn't think they were lost.
   only.
 - Backup format version 1.
 
-## Redesign checklist
+## Acceptance criteria for the redesign
 
-Before a refactor or redesign ships:
+The redesign is done when all of these hold.
 
+- [ ] The open questions it depends on are answered and recorded here.
 - [ ] Every user story (US-01 to US-24) can be walked through in the new design.
 - [ ] Every functional requirement is still met, or is retired here with a reason.
 - [ ] Domain rule tests in `src/lib/domain/` pass without changing what they expect.
@@ -522,6 +597,10 @@ Before a refactor or redesign ships:
 - [ ] Each decision that changed has a dated entry in `CHANGELOG.md` saying what replaced it
       and why, and is updated here.
 - [ ] Retired page addresses redirect.
+- [ ] Entering ten receipts in a row on the dashboard takes no more steps than today (G3):
+      pick card and date once, then amount, note and add for each.
+- [ ] The user has walked the main flows on the preview, on a phone and a desktop, and
+      approved them.
 
 ## Constraints and known limits
 
@@ -541,9 +620,74 @@ Before a refactor or redesign ships:
 - **Small data.** Pages load every card and purchase; fine at today's size, worth revisiting if
   it grows.
 
-## Not yet done
+## Risks
 
-- Redesign the flows between pages (tracked in [`TODO.md`](TODO.md)).
+| Risk | What protects against it |
+|---|---|
+| A layout change quietly changes a number (what's due, how much is left). | Domain rules live in `src/lib/domain/` with tests; keep them unchanged (DR). |
+| A refactor renames a storage key or field, and existing data stops loading. | Data contracts (DC) and the storage contract suite; migrate on purpose or not at all. |
+| Old backups stop restoring. | DC-05, DC-06 and DD-15; test a current backup against the new build. |
+| A shared link or the card page's *Edit card* breaks. | DC-15 and DC-16. |
+| Removing a delete button's condition lets a card with purchases be deleted, taking them with it. | DR-19 and DC-13; the storage layer does not guard. |
+| Thai is broken or untranslated in a new screen. | UI-03 to UI-06; the catalog coverage test; screenshots in Thai. |
+| A redesign hides *This sitting* or slows entry, and the bookkeeper loses their place. | G3, DD-20, DD-21. |
+| Something is dropped because no one knew it existed. | This document; the [Retired](#retired) list says what was removed on purpose. |
+
+## Open questions
+
+To settle with the user before the redesign is planned. Record each answer here, and move it
+into the matching section.
+
+1. **What hurts today?** Which flows feel slow, confusing or out of order, on a phone and on a
+   desktop? This needs the user's own walk-through of each page.
+2. **What else is driving the redesign** besides the flows and the code: the look, phone use,
+   or something new?
+3. **Pages.** Keep four pages (dashboard, cards, one card, settings), or reorganise? For
+   example, should paying statements, entering receipts and checking room be separate places?
+4. **Entering receipts.** Should the purchase form stay always open on the dashboard, and the
+   card page keep its own dialog? Should *This sitting* allow edit or delete (today it is
+   read-only by decision DD-21)?
+5. **Phone first?** Which tasks must be fastest on a phone: checking room before buying,
+   entering receipts, or marking paid?
+6. **Look.** Keep the warm neutrals and teal accent from 2026-10-27 (DD-32), or start again?
+7. **Refactor depth.** Keep Lit web components and the current folder split, or change the
+   stack? Is a framework change on the table?
+8. **Theme flash.** Fix the brief flash of the wrong theme on load (DD-28) as part of this work?
+9. **Restore checks.** Should restore start checking ranges (DC-06), now that the code is being
+   reworked anyway?
+10. **Delete guards.** Move the "no purchases" and "no cards" checks into the storage layer
+    (DC-13)?
+
+## Future work
+
+Not part of this redesign.
+
 - Shared storage across devices.
 - Staff accounts. The earlier design expected sign-in through Cloudflare Access and a
   "recorded by" field on each purchase.
+
+## Glossary
+
+| Term | Thai on screen | Meaning |
+|---|---|---|
+| Card | บัตร | A physical company credit card, identified by an id the user picks. |
+| Supplementary card | บัตรเสริม | A card issued on someone else's account, with its own cardholder. |
+| Cardholder | หน้าบัตร | The person on the card (DR-13). |
+| Account holder | เจ้าของบัตร | The owner of a limit group's account: KC, NT or RI. |
+| Location | ที่อยู่ | Where a card is kept: Bangkok, Phichit or Krabi. |
+| Limit group | กลุ่มวงเงิน | A pool of credit one or more cards draw on. |
+| Available | คงเหลือ | A group's limit less everything unpaid (DR-09). |
+| Billing cycle | รอบบิล | A card's rule for its close and due dates (DR-04). |
+| Statement | ใบแจ้งยอด | One period's purchases on one card, worked out from the cycle (DR-03, DR-05). |
+| Period | รอบ | A statement's month, `YYYY-MM`, named after its close date. |
+| Close date | วันสรุปยอด | The last day of a statement period. |
+| Due date | วันครบกำหนด | When a statement must be paid. |
+| Open period | รอบปัจจุบัน | The statement a purchase made today lands on (DR-08); marked *Current*. |
+| Due next | ครบกำหนดถัดไป | The statement that needs paying next on a card (DR-06). |
+| Mark paid | บันทึกว่าชำระแล้ว | Record that a closed statement was paid in full (DR-05). |
+| Archived | เก็บเข้าคลัง | A retired card: hidden from daily views, history kept, still counts against its group. |
+| Purchase places | ที่ที่บันทึกรายการใหม่ได้ | The locations whose cards can take a new purchase (DR-12). |
+| This sitting | รอบนี้ | Purchases entered since *Start new batch* was last pressed (DR-16). |
+| Batch start | เวลาเริ่มรอบ | When the current sitting began. |
+| Entry time | เวลาที่เพิ่ม | When a purchase was first entered (`addedAt`), as opposed to its purchase date. |
+| Satang | สตางค์ | 1/100 baht; how money is stored (DR-01). |

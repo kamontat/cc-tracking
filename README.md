@@ -192,11 +192,12 @@ than a bug: fixing it needs `Intl.Collator`, and using any `Intl` API on `th-TH`
 pulling in the same Buddhist-era year handling the date rendering above exists to
 avoid.
 
-## Features
+## Product requirements
 
-The business requirements, functional requirements and user stories for
-everything shipped so far are in [`FEATURES.md`](FEATURES.md), and in Thai in
-[`FEATURES_TH.md`](FEATURES_TH.md).
+What the app must keep doing, the rules behind its numbers, the data it already
+holds, the decisions made along the way, and what is still open for the coming
+redesign are in [`PRD.md`](PRD.md), and in Thai in [`PRD_TH.md`](PRD_TH.md).
+Read it before refactoring or redesigning anything.
 
 ## Changelog
 
