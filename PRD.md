@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Draft for the refactor and redesign |
 | **Last updated** | 2026-10-28 |
-| **Baseline** | Everything shipped up to 2026-10-27 ([`CHANGELOG.md`](CHANGELOG.md)) |
+| **Baseline** | Everything shipped up to 2026-10-28, including partial payments ([`CHANGELOG.md`](CHANGELOG.md)) |
 | **Thai translation** | [`PRD_TH.md`](PRD_TH.md), same IDs in the same order |
 
 ## Summary
@@ -164,16 +164,16 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 | FR-09 | A group's available credit is its limit less every purchase on a statement not yet marked paid, including the open period. Marking a statement paid gives back exactly that statement's total. See DR-09. | BR-02 |
 | FR-10 | The limit group list shows each group's owner, limit, cards, used and available amounts, and can be searched, filtered by owner and sorted. | BR-02 |
 | FR-11 | *Can spend now* lists each unarchived card that can take a purchase, with its available credit out of its limit, how much of the limit is used (DR-23), whether the limit is shared (DR-24), and the close and due dates a purchase made today would get, each with a relative date (DR-27). It counts cards with no group and links to assign them. It sorts by card, available, closes or due. | BR-02 |
-| FR-12 | The card page shows the card's available credit, what is owed on it across unpaid statements, and its next due date. | BR-01, BR-02 |
+| FR-12 | The card page shows the card's available credit, what is still owed on it (what is left on every statement not fully paid), and its next due date with what is left on it. | BR-01, BR-02 |
 
 ### Statements and payments
 
 | ID | Requirement | Serves |
 |---|---|---|
 | FR-13 | Statements are derived from the card's cycle and its purchases, never stored. See DR-03 to DR-05. | BR-03 |
-| FR-14 | A closed statement can be marked paid and unmarked. A payment records the day it was marked and freezes the close and due dates it was paid against. The open period has no Mark paid button; it reads "still open". | BR-01, BR-06 |
-| FR-15 | *Due next* lists, per unarchived card, what is due next (DR-06), with close date, due date, total, and an urgency label (DR-07). Rows can be marked paid from the list and sorted by card, location, closes, due or total. | BR-01 |
-| FR-16 | The card page lists statements newest first, marks the current one, folds runs of quiet months into one line (DR-22), and shows 12 periods at a time with *Show older statements* for 12 more. | BR-03 |
+| FR-14 | *Mark paid* on a closed statement opens a dialog for the amount and the date paid, starting at what is left and today, so paying in full is still one confirm. A statement can be paid in several parts and counts as paid once they cover its total. Each payment can be unmarked on its own. The first payment freezes the close and due dates. The open period has no *Mark paid* button; it reads "still open". | BR-01, BR-06 |
+| FR-15 | *Due next* lists, per unarchived card, what is due next (DR-06), with close date, due date, what is left to pay (with the full total under it), and an urgency label (DR-07). Rows can be marked paid from the list and sorted by card, location, closes, due or what is left. | BR-01 |
+| FR-16 | The card page lists statements newest first, marks the current one, folds runs of quiet months into one line (DR-22), and shows 12 periods at a time with *Show older statements* for 12 more. A statement with payments lists each one under its purchases, as an amount off the total with its own *Unmark*, and ends with what is left to pay. | BR-03 |
 
 ### Purchases
 
@@ -233,15 +233,27 @@ next, so that I never miss a due date.
 **US-02 -- Mark a statement paid.** As a bookkeeper, I want to mark a statement paid from the
 dashboard or the card page, so that the due list and available credit move on.
 - Only a closed statement can be marked paid.
-- Marking paid records the day and freezes the statement's close and due dates.
-- Available credit on the card's group rises by exactly that statement's total.
-- The card page can unmark it.
+- The payment dialog starts at what is left and today, so paying in full is one confirm.
+- The first payment freezes the statement's close and due dates.
+- Available credit on the card's group rises by exactly the amount paid.
+- The card page can unmark each payment.
 - *Covers FR-09, FR-14.*
 
 **US-03 -- Trust settled history.** As a bookkeeper, I want a paid statement to keep its dates
 when the card's cycle is edited later, so that past reconciliations stay true.
 - After a cycle edit, paid statements show the dates they were paid against.
 - *Covers FR-14.*
+
+**US-25 -- Pay a statement in parts.** As a bookkeeper, I want to record each payment toward a
+statement as it happens, so that a bill paid 40,000 one day and 60,000 another is tracked
+exactly.
+- Each payment has its own amount and date, and is listed on the card page with its own
+  *Unmark*.
+- The statement shows what was paid and what is left; it counts as paid once nothing is left.
+- *Due next*, the card page's *Next due* and *Owed*, and the group's available credit all use
+  what is left.
+- Unmarking the last payment returns the statement to unpaid.
+- *Covers FR-12, FR-14, FR-15, FR-16.*
 
 ### Knowing how much is left
 
@@ -413,11 +425,11 @@ in `src/lib/domain/`; a refactor should keep those tests passing unchanged.
 | DR-02 | **Dates** are plain `YYYY-MM-DD` strings in Asia/Bangkok. Reading the clock to get today is the only place a time zone enters; all date arithmetic uses `Date.UTC` and `getUTC*`, never local-time `Date`. |
 | DR-03 | **A statement period** is named `YYYY-MM` after the month its close date falls in, and runs from the day after the previous close to the close date, inclusive. A purchase on the close date belongs to that statement, not the next. |
 | DR-04 | **Due dates.** *Offset*: close date plus N days. *Fixed*: day M of the month; if M is not later than the close day, the due date is in the next month. A close or due day past the end of a month becomes its last day. |
-| DR-05 | **Statements are derived on read.** Only payments are stored. A payment's `paidAt` is the plain date it was marked (today), and it freezes the close and due dates it was paid against. |
+| DR-05 | **Statements are derived on read.** Only payments are stored, one record per card and period, holding every part paid toward that statement (DR-28). The first part freezes the close and due dates; later parts keep them. |
 | DR-06 | **What is due next** for a card: walking from the period of its earliest purchase up to the open period, the first closed statement that is unpaid and has a total above zero; if there is none, the open period. |
 | DR-07 | **Urgency**, in order: *future* while today is on or before the close date; *open* if paid or the total is zero; *overdue* once past the due date; *soon* within 7 days of it; otherwise *open*. A period with no spending can never be overdue. A *future* statement cannot be marked paid. |
 | DR-08 | **The open period** is the statement a purchase made today would land on. The card page marks it *Current*. |
-| DR-09 | **Available credit** for a group is its limit less every purchase, on every card in the group (archived ones included), that sits on a statement not marked paid, the open period included. It can go below zero. Marking a statement paid gives back exactly its total. |
+| DR-09 | **Available credit** for a group is its limit less, on every card in the group (archived ones included), what is left on each closed statement plus the whole of the open period. The open period counts in full even if stored data holds a payment against it. It can go below zero. Each payment gives back exactly its amount. |
 | DR-10 | **Can spend now** shows the open period's close and due dates (DR-08), not what is due next (DR-06). On a card with an overdue statement the two differ, and both are right for their question. |
 | DR-11 | **Over-limit note.** Adding a purchase above the available credit saves it and names the amount over and the group. Editing a purchase never shows the note, because available credit already counts the old amount. |
 | DR-12 | **Who can take a purchase**: an unarchived card whose location is in the Settings list. The default list is Krabi only. An empty list is a real answer (nobody can), not "unset". |
@@ -436,6 +448,10 @@ in `src/lib/domain/`; a refactor should keep those tests passing unchanged.
 | DR-25 | **Cycle inputs**: close day and due day 1 to 31, days until due 1 to 60. |
 | DR-26 | **Last 4** is exactly four digits in the card form. |
 | DR-27 | **Relative dates** in *Can spend now* read "today", "in N days" or "N days ago". A past date there is never called overdue; overdue is the due list's word. |
+| DR-28 | **Payments in parts.** A statement's paid amount is the sum of its parts; what is left is the total less that, never below zero, so paying more than is left is accepted and leaves nothing owed. A statement is paid when a payment record exists and nothing is left. A partly paid statement is unpaid for DR-06 and DR-07, so it stays due and can become overdue. |
+| DR-29 | **Old payment records.** A record without `parts` (saved before 2026-10-28) reads as one part for the statement's whole total, dated its `paidAt`. |
+| DR-30 | **Part order and undo.** Parts are kept oldest first, and the record's `paidAt` is the latest part's date. Unmarking removes one part; removing the last one deletes the record. |
+| DR-31 | **Payment input.** The amount follows DR-01 (above zero, up to two decimals); the date must be a real date. |
 
 ## Data contracts
 
@@ -449,8 +465,8 @@ these needs a migration, or it loses or misreads someone's data.
 | DC-03 | **Other keys**: `cc:settings`, `cc:batch-start` (start of *This sitting*, an ISO instant), `cc:lang` (`en` or `th`), `cc:theme` (theme pick), `cc:panel:<name>` (`open` or `closed`, for `range`, `due`, `spendable`, `cards`, `cards-archived`, `limit-groups`), `cc:migration:location` (cards reset by the location migration), `cc:probe` (storage check at startup). A failed read or write of language, theme or panel state falls back to the default and never breaks the page. |
 | DC-04 | **Reset** removes cards, purchases, payments, limit groups, settings, the batch start and any pending migration notice. It keeps language, theme and panel state, so the page doesn't change under the reader. |
 | DC-05 | **Backup format**, version 2: `{ version: 2, exportedAt, limitGroups, cards, purchases, payments, settings? }`. `settings` is optional, and a file without it leaves stored settings alone. The batch start, language, theme and panel state are never in a backup. A file of any other version is rejected. The download is named `cc-tracking-<exportedAt date>.json`. |
-| DC-06 | **Restore checks shapes only**: valid JSON, version 2, the four lists present; each record an object; ids, names, `last4` and `cardId` present; location and owner in their closed sets; cycle kind known with whole-number days; dates valid `YYYY-MM-DD`; amounts and limits whole numbers; `addedAt` a valid instant if present. It does not check ranges (a zero amount or a day of 40 passes), `limitGroupId`, `archived`, `comment` or `supplementary`. Unknown places inside `settings` are dropped, and a `settings` that is not an object is ignored. Restore then writes groups, cards, purchases and payments in that order. It is not atomic. A card whose group is not in the file is still imported. |
-| DC-07 | **Record shapes** (`src/lib/domain/types.ts`): `Card { id, name, last4, location, cycle, comment?, archived, supplementary?, owner?, limitGroupId? }`; `CycleRule` is `{ kind: "offset", closeDay, dueOffsetDays }` or `{ kind: "fixed", closeDay, dueDay }`; `Purchase { id, cardId, date, amount, note, addedAt? }`; `StatementPayment { cardId, period, paidAt, closeDate, dueDate }`; `LimitGroup { id, name, limit, owner? }`. Purchase and group ids are random UUIDs. Amounts and limits are satang. |
+| DC-06 | **Restore checks shapes only**: valid JSON, version 2, the four lists present; each record an object; ids, names, `last4` and `cardId` present; location and owner in their closed sets; cycle kind known with whole-number days; dates valid `YYYY-MM-DD`; amounts and limits whole numbers; `addedAt` a valid instant if present; a payment's `parts`, if present, a non-empty list of valid dates and whole-satang amounts above zero. It does not check ranges (a zero amount or a day of 40 passes), `limitGroupId`, `archived`, `comment` or `supplementary`. Unknown places inside `settings` are dropped, and a `settings` that is not an object is ignored. Restore then writes groups, cards, purchases and payments in that order. It is not atomic. A card whose group is not in the file is still imported. |
+| DC-07 | **Record shapes** (`src/lib/domain/types.ts`): `Card { id, name, last4, location, cycle, comment?, archived, supplementary?, owner?, limitGroupId? }`; `CycleRule` is `{ kind: "offset", closeDay, dueOffsetDays }` or `{ kind: "fixed", closeDay, dueDay }`; `Purchase { id, cardId, date, amount, note, addedAt? }`; `StatementPayment { cardId, period, paidAt, closeDate, dueDate, parts? }` with `PaymentPart { paidAt, amount }`; `LimitGroup { id, name, limit, owner? }`. Purchase and group ids are random UUIDs. Amounts and limits are satang. |
 | DC-08 | **Settings record** `cc:settings` is `{ purchaseLocations: Location[] }`. An empty list is kept as written; a missing or garbled record falls back to `["krabi"]`. |
 | DC-09 | **Stale fields.** Cards stored before 2026-09-24 carry an `owner` from when the owner was on the card; `Card.owner` is read only when `supplementary` is set, so those values are ignored. Some cards carry a per-card purchase flag from before purchase places moved to Settings; nothing reads it. Keep both guards, and don't reuse those field names for something else. |
 | DC-10 | **Location migration** runs at every startup, is safe to run twice, resets unknown locations to Bangkok, and records which cards it reset for a one-time notice. A failure on one card does not stop the page loading. |
@@ -502,7 +518,7 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-04 | Every unpaid baht counts against the limit, including the open period. | Counting only closed statements shows more room than the card really has. | Counting closed statements only. |
 | DD-05 | Every card belongs to exactly one limit group. | The sum is always per group; a lone card is a group of one. | Limits on cards, with sharing as a special case. |
 | DD-06 | Over-limit, close-date and future-date purchases are saved with a warning. | The app records what happened, and a stored limit can be out of date. A close-date purchase is valid, only its statement is uncertain; a future date can be a booking or instalment. | Refusing the entry. |
-| DD-07 | A payment records no amount, so it settles the whole statement. | Keeps the model simple; partial payments are a known limit. | Recording a paid amount. |
+| DD-07 | *Retired 2026-10-28, replaced by DD-37.* A payment recorded no amount and settled the whole statement. | Kept the model simple. | Recording a paid amount. |
 | DD-08 | The account holder is on the limit group, not the card; a supplementary card has its own cardholder. | A group stands for a bank account, and two cards on one account can't name different owners. A บัตรเสริม is the exception. | Owner on every card. |
 | DD-09 | A group without an owner reads as KC; no migration. | Copying each card's owner up to its group would need a rule for cards that disagree. | Migrating owners from cards. |
 | DD-10 | Purchase eligibility is set per place in Settings, default Krabi. | Purchases were only ever entered against the Krabi cards, and a place rule needs no edit per card. | A checkbox on each card (shipped, then replaced). |
@@ -532,6 +548,8 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-34 | Dashboard panels start sorted by soonest close date, and their sort resets on reload. | One shared default; panels have no saved order. The cards page keeps its view in the address instead. | Saving panel sort; most room first. |
 | DD-35 | The footer's changelog link points at `main`, not the built commit. | An old deploy still points readers at the latest entries. | Linking the built commit. |
 | DD-36 | "Cardholder" (หน้าบัตร) names the person on a card; "Account holder" (เจ้าของบัตร) names a group's owner. | Both used to read "Owner", which didn't tell them apart. | One word for both. |
+| DD-37 | Partial payments are parts inside the one payment record per card and period, not separate records. | The storage key and the backup's `payments` list stay unchanged, and an old record reads as one full payment, so no migration. | A separate record per payment, with its own id. |
+| DD-38 | The first payment freezes the statement's dates; later payments keep them. | Settled history must not move once anything is paid against it (DD-02). | Re-freezing on each payment. |
 
 ## Out of scope
 
@@ -561,9 +579,10 @@ that each change is a choice.
 | CD-07 | **Lists**: tables with sortable headings; below 640px they become stacked rows with a sort chip. Filters are pill chips with "Any". |
 | CD-08 | ***Due next***: a coloured left rule and text badge per urgency. ***Can spend now***: a usage bar under each available amount. |
 | CD-09 | **Registry page**: Add a card and Add limit group buttons open dialogs; the card list (open by default) with an archived list inside it (folded), and the limit group list (folded). |
-| CD-10 | **Card page**: summary (available, owed, next due), then statements newest first, with a *Current* badge and an accent left rule, quiet months folded into one line, Edit and Delete per purchase. |
+| CD-10 | **Card page**: summary (available, owed, next due), then statements newest first, with a *Current* badge and an accent left rule, quiet months folded into one line, Edit and Delete per purchase, payment rows in the same columns as purchases with their own *Unmark*, and a *Left to pay* row; what is left also sits under the month's total. |
 | CD-11 | **Settings page**: Display (language and theme), Purchases (place checkboxes), Backup split into *Save a copy* and *Restore a copy* side by side from 640px, then Reset. |
 | CD-12 | **Look**: warm paper neutrals, teal accent, soft corners and shadows. |
+| CD-13 | **Payments**: *Mark paid* opens a dialog with the balance ("paid · left"), the date paid and the amount. |
 
 ## Retired
 
@@ -579,17 +598,20 @@ Removed on purpose; listed so a redesign doesn't think they were lost.
 - The Cloudflare Worker with KV storage behind Cloudflare Access; the site is now static pages
   only.
 - Backup format version 1.
+- *Mark paid* as one click that settled the whole statement, replaced by the payment dialog and
+  partial payments (DD-37).
 
 ## Acceptance criteria for the redesign
 
 The redesign is done when all of these hold.
 
 - [ ] The open questions it depends on are answered and recorded here.
-- [ ] Every user story (US-01 to US-24) can be walked through in the new design.
+- [ ] Every user story (US-01 to US-25) can be walked through in the new design.
 - [ ] Every functional requirement is still met, or is retired here with a reason.
 - [ ] Domain rule tests in `src/lib/domain/` pass without changing what they expect.
 - [ ] The storage contract suite passes, and data saved by the current version loads unchanged.
-- [ ] A version 2 backup from the current version restores, with and without `settings`.
+- [ ] A version 2 backup from the current version restores, with and without `settings`, and
+      with payments both with and without `parts`.
 - [ ] `/cards` links with a query and `/cards?edit=<id>` still open the same view.
 - [ ] The delete guards in DR-19 still hold (DC-13).
 - [ ] Every interface rule (UI-01 to UI-21) holds, checked in English and Thai, light and dark,
@@ -606,8 +628,10 @@ The redesign is done when all of these hold.
 
 - **Single browser.** Data is not shared between browsers or people; moving it means a backup.
   There are no accounts.
-- **Full payments only.** A payment records no amount, so paying part of a statement can't be
-  recorded.
+- **Storage cap.** Browsers allow `localStorage` about 5 MB per site, and a full store only shows
+  up as a failed save.
+- **No overpayment record.** Paying more than is left is accepted, but the extra is not kept as
+  credit toward the next statement.
 - **Shared limits depend on every card.** A group's room is only as right as the payments
   marked on every card in it; one card left unmarked understates the room on all of them.
 - **Fixed sets.** Locations (Bangkok, Phichit, Krabi) and owners (KC, NT, RI) are closed lists
@@ -631,6 +655,7 @@ The redesign is done when all of these hold.
 | Removing a delete button's condition lets a card with purchases be deleted, taking them with it. | DR-19 and DC-13; the storage layer does not guard. |
 | Thai is broken or untranslated in a new screen. | UI-03 to UI-06; the catalog coverage test; screenshots in Thai. |
 | A redesign hides *This sitting* or slows entry, and the bookkeeper loses their place. | G3, DD-20, DD-21. |
+| A refactor drops the reading of old payment records without `parts`, and paid statements turn unpaid. | DR-29; the domain tests cover old records. |
 | Something is dropped because no one knew it existed. | This document; the [Retired](#retired) list says what was removed on purpose. |
 
 ## Open questions
@@ -662,6 +687,8 @@ into the matching section.
 
 Not part of this redesign.
 
+- Show how much browser storage the app uses: a bar of bytes used against the cap on the
+  settings page, split by kind (tracked in [`TODO.md`](TODO.md)).
 - Shared storage across devices.
 - Staff accounts. The earlier design expected sign-in through Cloudflare Access and a
   "recorded by" field on each purchase.
@@ -684,7 +711,10 @@ Not part of this redesign.
 | Due date | วันครบกำหนด | When a statement must be paid. |
 | Open period | รอบปัจจุบัน | The statement a purchase made today lands on (DR-08); marked *Current*. |
 | Due next | ครบกำหนดถัดไป | The statement that needs paying next on a card (DR-06). |
-| Mark paid | บันทึกว่าชำระแล้ว | Record that a closed statement was paid in full (DR-05). |
+| Mark paid | บันทึกว่าชำระแล้ว | Record a payment toward a closed statement; it is paid once payments cover the total (DR-28). |
+| Payment part | ชำระเงิน | One payment toward a statement: an amount and the date paid. |
+| Left to pay | ยอดคงเหลือ | A statement's total less what was paid, never below zero (DR-28). |
+| Unmark | ยกเลิกชำระ | Remove one payment from a statement (DR-30). |
 | Archived | เก็บเข้าคลัง | A retired card: hidden from daily views, history kept, still counts against its group. |
 | Purchase places | ที่ที่บันทึกรายการใหม่ได้ | The locations whose cards can take a new purchase (DR-12). |
 | This sitting | รอบนี้ | Purchases entered since *Start new batch* was last pressed (DR-16). |

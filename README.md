@@ -68,14 +68,14 @@ points at a group, and two cards that share a limit — one account with two
 physical cards, say — point at the same group, so there is one number to watch
 for both of them rather than two that would drift apart.
 
-A group's available credit is its limit less every purchase sitting on a
-statement that has not been marked paid, and that includes the open period —
-the cycle still being spent on right now. Money spent this cycle leaves the
-limit the moment it is spent; the only way it comes back is marking the
-statement it landed on as paid, and doing that returns exactly that
-statement's total. A payment records no amount of its own, so paying something
-other than the full statement is not representable — a known limit of this
-model, not an oversight.
+A group's available credit is its limit less what is still owed on every
+closed statement, plus the whole of the open period — the cycle still being
+spent on right now. Money spent this cycle leaves the limit the moment it is
+spent; it comes back only as payments are recorded against the statement it
+landed on, once that statement has closed. A statement can be paid in parts —
+*Mark paid* asks for the amount and the date, starting at what is left and
+today — and each payment returns exactly its own amount. The statement counts
+as paid once its payments cover its total.
 
 An archived card still weighs on the group it shares. Archiving a card retires
 it from new purchases and from the dashboard, not from what it already owes,
@@ -105,9 +105,12 @@ without one.
 Each card carries a billing cycle rule: either *closes on day N, due M days
 later* or *closes on day N, due on day M*. Statements are never stored — they
 are computed from that rule, so a period's close date, due date, purchases, and
-total are always derived from the card as it is now. Only a paid statement
-leaves a record behind, and that record freezes the close and due dates it was
-paid against, so editing a cycle rule can never rewrite settled history.
+total are always derived from the card as it is now. Only a statement with a
+payment against it leaves a record behind: one record per card and period,
+listing every payment toward it. The first payment freezes the close and due
+dates, so editing a cycle rule can never rewrite settled history. A record saved
+before partial payments existed has no list of payments and reads as one
+payment of the whole total.
 
 A purchase dated exactly on the close date belongs to that statement, not the
 next one.
