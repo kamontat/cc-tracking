@@ -70,16 +70,26 @@ Cloudflare Workers. Commands: `bun run dev`, `bun run test`, `bun run check`,
 ## Problem
 
 The app works, and its rules are settled, but it grew one feature at a time over six weeks.
-Two things now call for a redesign:
+These call for a redesign:
 
 - **The flows.** How pages lead into one another, and what each page asks of the reader, were
   never designed as a whole. `TODO.md` has carried this since the visual refresh on
   2026-10-27, which changed the look and deliberately left the flows alone.
 - **The code.** A refactor alongside the redesign, so the structure matches the product as it
   now is rather than the order it was built in.
+- **The look and phone use.** The visual style and how the app works on a phone are part of
+  the redesign too.
 
-The specific pain points need the user's own walk-throughs and are not yet written down; see
-[open questions](#open-questions).
+Pain points the user named (2026-10-29):
+
+- **The dashboard is too busy.** The purchase form, *This sitting*, *Purchases by date*, *Due
+  next* and *Can spend now* share one page, and what matters is hard to find.
+- **Paying is buried.** Recording a payment means hunting through *Due next* or each card's
+  page.
+- **The registry is clunky.** Adding and editing cards and limit groups, with their filters and
+  dialogs, feels heavy.
+- **Actions are split across pages.** Related actions live on different pages, so the user
+  keeps jumping between them.
 
 ## Goals
 
@@ -94,6 +104,10 @@ The specific pain points need the user's own walk-throughs and are not yet writt
   unchanged.
 - **G5. A codebase that is easy to change**, keeping the separation between pure rules,
   storage and interface.
+- **G6. Fewer page jumps.** Actions that belong to one task sit together, so a task doesn't
+  send the user across pages.
+- **G7. Checking room and viewing the numbers is fastest on a phone**: which card has credit,
+  what is due, and the spending totals, at a glance.
 
 ## Non-goals of the redesign
 
@@ -663,17 +677,17 @@ The redesign is done when all of these hold.
 To settle with the user before the redesign is planned. Record each answer here, and move it
 into the matching section.
 
-1. **What hurts today?** Which flows feel slow, confusing or out of order, on a phone and on a
-   desktop? This needs the user's own walk-through of each page.
-2. **What else is driving the redesign** besides the flows and the code: the look, phone use,
-   or something new?
+1. **What hurts today?** *Answered 2026-10-29*: a busy dashboard, paying buried, a clunky
+   registry, and actions split across pages. See [Problem](#problem) and G6.
+2. **What else is driving the redesign?** *Answered 2026-10-29*: the look and phone use, as well
+   as the flows and the code. See [Problem](#problem).
 3. **Pages.** Keep four pages (dashboard, cards, one card, settings), or reorganise? For
    example, should paying statements, entering receipts and checking room be separate places?
+   *To be decided in a brainstorm with mockups (2026-10-29).*
 4. **Entering receipts.** Should the purchase form stay always open on the dashboard, and the
    card page keep its own dialog? Should *This sitting* allow edit or delete (today it is
    read-only by decision DD-21)?
-5. **Phone first?** Which tasks must be fastest on a phone: checking room before buying,
-   entering receipts, or marking paid?
+5. **Phone first?** *Answered 2026-10-29*: checking room and viewing the numbers. See G7.
 6. **Look.** Keep the warm neutrals and teal accent from 2026-10-27 (DD-32), or start again?
 7. **Refactor depth.** Keep Lit web components and the current folder split, or change the
    stack? Is a framework change on the table?
