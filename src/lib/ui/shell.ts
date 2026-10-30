@@ -1,5 +1,5 @@
 import { html, nothing, render } from "lit";
-import { displayDate } from "#lib/domain/date";
+import { headerDate } from "#lib/domain/date";
 import type { PlainDate } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { getLocale, t } from "#lib/i18n/index";
@@ -51,9 +51,10 @@ const tabLink = (
 	>`;
 
 /**
- * Renders the header and the bottom tab bar into the page's `#site-header` and `#tabbar`
- * slots. Both navs are always in the document; the stylesheet shows the bottom bar on a phone
- * and the header tabs from 900px, so the current page is marked in both.
+ * Renders the header into `#site-header`, and the bottom tab bar and the floating Payment
+ * button into `#tabbar`. Both navs are always in the document; the stylesheet shows the bottom
+ * bar on a phone and the header tabs from 900px, so the current page is marked in both. The
+ * header date carries both of its forms, and the stylesheet shows one per screen size.
  */
 export function renderShell(
 	view: ShellView,
@@ -61,6 +62,7 @@ export function renderShell(
 ): void {
 	const current = currentTab(view.path);
 	const badge = envBadge(view.environment, view.pr);
+	const locale = getLocale();
 	const tab = ([name, path, label]: (typeof TABS)[number]) =>
 		tabLink(name, path, label, current);
 
@@ -68,25 +70,29 @@ export function renderShell(
 	if (header) {
 		render(
 			html`<div class="site-header__bar">
-				<a class="site-header__brand" href="/" aria-label=${t("nav.brand")}
-					><span class="site-header__mark">cc</span>tracking</a
-				>
-				${
-					badge === null
-						? nothing
-						: html`<span class="site-header__badge" data-testid="env-badge"
-								>${badge}</span
-							>`
-				}
-				<span class="site-header__date" data-testid="today"
-					>${displayDate(view.today, getLocale())}</span
-				>
-				<nav class="site-header__tabs" aria-label=${t("nav.pages")}>
-					${TABS.map(tab)}
-				</nav>
-				<a class="site-header__pay" data-action="payment" href="/transactions"
-					>${icons.plus}<span>${t("nav.payment")}</span></a
-				>
+				<div class="site-header__id">
+					<a class="site-header__brand" href="/" aria-label=${t("nav.brand")}
+						><span class="site-header__mark">cc</span>tracking</a
+					>${
+						badge === null
+							? nothing
+							: html`<span class="site-header__badge" data-testid="env-badge"
+									>${badge}</span
+								>`
+					}
+				</div>
+				<div class="site-header__end">
+					<nav class="site-header__tabs" aria-label=${t("nav.pages")}>
+						${TABS.map(tab)}
+					</nav>
+					<span class="site-header__date" data-testid="today"
+						><span class="site-header__date-short"
+							>${headerDate(view.today, locale, false)}</span
+						><span class="site-header__date-long"
+							>${headerDate(view.today, locale, true)}</span
+						></span
+					>
+				</div>
 			</div>`,
 			header,
 		);
@@ -94,17 +100,18 @@ export function renderShell(
 
 	const tabbar = root.querySelector<HTMLElement>("#tabbar");
 	if (tabbar) {
-		// The add button sits in the middle: home and transactions before it, the rest after.
+		// Payment floats over every page, so it lives outside the bar, which a desktop hides.
 		render(
 			html`<nav class="tabbar" aria-label=${t("nav.pages")}>
-				${TABS.slice(0, 2).map(tab)}<a
-					class="tabbar__add"
-					data-action="payment"
+					${TABS.map(tab)}
+				</nav>
+				<a
+					class="fab"
+					data-action="pay"
 					href="/transactions"
 					aria-label=${t("nav.payment")}
-					>${icons.plus}</a
-				>${TABS.slice(2).map(tab)}
-			</nav>`,
+					>${icons.plus}<span class="fab__label">${t("nav.payment")}</span></a
+				>`,
 			tabbar,
 		);
 	}

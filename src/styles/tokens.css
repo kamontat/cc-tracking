@@ -33,21 +33,23 @@
 	--cc-panel-padding: var(--cc-space-4);
 
 	/* Exists so the sticky aside (`.split__aside`) can clear the sticky `.site-header` when it
-	   parks, which happens from 900px, where the header carries its tabs and Payment button.
-	   Measured there at 59px: 2 × var(--cc-space-3) padding + the ~33px Payment button +
-	   the 2px rule. Keep this in step if the header's padding or contents ever change. */
-	--cc-header-height: 3.75rem;
+	   parks, which happens from 900px, where the header's right side stacks the tabs over the
+	   date. Measured there at 87px, with or without the build badge, in English and Thai:
+	   2 × var(--cc-space-3) padding + the 36px tab row + a var(--cc-space-1) gap + the ~21px
+	   date line + the 2px rule. Keep this in step if the header's padding or contents change. */
+	--cc-header-height: 5.5rem;
 
 	/* The narrowest a card-page summary tile gets before its row wraps to one per line. */
 	--cc-tile-min: 14rem;
 
 	--cc-icon-size: 1.375rem;
 	--cc-icon-size-sm: 1.0625rem;
-	/* A minimum: the measured bar is 68-84px, and `.page` bottom padding absorbs the difference. */
-	--cc-tabbar-height: 4rem;
-	--cc-add-size: 3.125rem;
-	--cc-add-lift: 1.5rem;
-	--cc-add-shadow: 0 8px 18px
+	/* The four-tab bar measured 69px at 390px in English and Thai (no label wraps), before the
+	   bottom safe-area inset. The floating Payment button sits this far up, plus a gap. */
+	--cc-tabbar-height: 4.375rem;
+	/* The floating Payment button: the round button's diameter and the pill's height. */
+	--cc-fab-size: 3.125rem;
+	--cc-fab-shadow: 0 8px 18px
 		color-mix(in oklab, var(--cc-accent) 40%, transparent);
 
 	/* How strongly a non-production build tints the page, and the width of its top rule. */

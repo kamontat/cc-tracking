@@ -50,8 +50,8 @@ a:any-link:hover {
 }
 
 .site-header__bar {
+	display: flex;
 	flex-direction: row;
-	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--cc-space-3);
 	width: 100%;
@@ -60,6 +60,15 @@ a:any-link:hover {
 	padding-block: var(--cc-space-3);
 	padding-inline: max(var(--cc-space-4), env(safe-area-inset-left, 0px))
 		max(var(--cc-space-4), env(safe-area-inset-right, 0px));
+}
+
+/* Left: the brand, and the build's badge on its own small line under it. */
+.site-header__id {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--cc-space-1);
+	min-width: 0;
 }
 
 /* `:any-link` to outweigh the generic `a:any-link` rules above: a pseudo-class carries
@@ -85,7 +94,7 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-xs);
 }
 
-/* Which build this is, beside the brand. Absent on production. */
+/* Which build this is, under the brand. Absent on production. */
 .site-header__badge {
 	padding-inline: var(--cc-space-2);
 	font-family: var(--cc-font-mono);
@@ -97,16 +106,28 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-xs);
 }
 
-.site-header__date {
+/* Right: the date on a phone; the tabs over the date on a wide window. */
+.site-header__end {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: var(--cc-space-1);
 	margin-inline-start: auto;
+}
+
+.site-header__date {
 	font-size: var(--cc-text-sm);
 	color: var(--cc-text-muted);
 	white-space: nowrap;
 }
 
-/* The header tabs and Payment belong to a wide window; a phone has the bottom bar instead. */
-.site-header__tabs,
-.site-header__pay:any-link {
+/* Both forms are in the document; a phone shows the short one, a wide window adds the year. */
+.site-header__date-long {
+	display: none;
+}
+
+/* The header tabs belong to a wide window; a phone has the bottom bar instead. */
+.site-header__tabs {
 	display: none;
 }
 
@@ -129,14 +150,14 @@ a:any-link:hover {
 	color: var(--cc-text);
 }
 
-/* The phone's bottom bar: four places and the raised add button between them. */
+/* The phone's bottom bar: the four places. */
 .tabbar {
 	position: fixed;
 	inset-inline: 0;
 	bottom: 0;
 	z-index: 10;
 	display: grid;
-	grid-template-columns: repeat(5, minmax(0, 1fr));
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 	align-items: end;
 	padding: var(--cc-space-2)
 		max(var(--cc-space-2), env(safe-area-inset-right, 0px))
@@ -181,25 +202,53 @@ a:any-link:hover {
 	background: var(--cc-accent-surface);
 }
 
-.tabbar .tabbar__add:any-link {
+/* Payment floats at the bottom right of every page: a round + over the bar on a phone, a pill
+   with its label from 900px. The primary button's colours, as `.page button` draws them. */
+.fab:any-link {
+	position: fixed;
+	z-index: 11;
+	right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
+	bottom: calc(
+		var(--cc-tabbar-height) +
+		var(--cc-space-4) +
+		env(safe-area-inset-bottom, 0px)
+	);
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
 	justify-content: center;
-	justify-self: center;
-	inline-size: var(--cc-add-size);
-	block-size: var(--cc-add-size);
-	margin-top: calc(var(--cc-add-lift) * -1);
+	gap: var(--cc-space-2);
+	inline-size: var(--cc-fab-size);
+	block-size: var(--cc-fab-size);
 	padding: 0;
+	font-weight: 650;
+	line-height: 1.2;
 	color: var(--cc-accent-text);
+	white-space: nowrap;
+	text-decoration: none;
 	background: var(--cc-accent);
-	border-radius: var(--cc-radius-md);
-	box-shadow: var(--cc-add-shadow);
+	border-radius: var(--cc-radius-pill);
+	box-shadow: var(--cc-fab-shadow);
 }
 
-.tabbar .tabbar__add:any-link:hover {
+.fab:any-link:hover {
+	text-decoration: none;
 	background: var(--cc-accent-hover);
 }
 
-.tabbar .tabbar__add:focus-visible {
-	box-shadow: var(--cc-focus-ring);
+/* The ring on top of the shadow: this rule outranks the global `:focus-visible` one. */
+.fab:any-link:focus-visible {
+	box-shadow: var(--cc-focus-ring), var(--cc-fab-shadow);
+}
+
+.fab .icon {
+	inline-size: var(--cc-icon-size);
+	block-size: var(--cc-icon-size);
+	flex: none;
+}
+
+.fab__label {
+	display: none;
 }
 
 @media (min-width: 900px) {
@@ -207,19 +256,23 @@ a:any-link:hover {
 		display: none;
 	}
 
-	/* The date goes from 900px to 1023px, where brand, badge, four tabs and Payment fill the bar. */
-	.site-header__date {
+	.site-header__date-short {
 		display: none;
+	}
+
+	.site-header__date-long {
+		display: inline;
+	}
+
+	/* In by a tab's own inline padding, so the date ends under the last tab's label. */
+	.site-header__date {
+		padding-inline-end: var(--cc-space-3);
 	}
 
 	.site-header__tabs {
 		display: flex;
 		flex-direction: row;
-		align-self: stretch;
 		gap: var(--cc-space-1);
-		margin-inline-start: auto;
-		/* Reach down through the bar's padding and the rule, so a tab's underline sits on it. */
-		margin-block-end: calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
 	}
 
 	.site-header__tabs a:any-link {
@@ -227,7 +280,7 @@ a:any-link:hover {
 		flex-direction: row;
 		align-items: center;
 		gap: var(--cc-space-2);
-		padding-inline: var(--cc-space-3);
+		padding: var(--cc-space-1) var(--cc-space-3);
 		color: var(--cc-text-muted);
 		text-decoration: none;
 		white-space: nowrap;
@@ -245,35 +298,26 @@ a:any-link:hover {
 		border-bottom-color: var(--cc-accent);
 	}
 
-	.site-header__tabs .icon,
-	.site-header__pay .icon {
+	.site-header__tabs .icon {
 		inline-size: var(--cc-icon-size-sm);
 		block-size: var(--cc-icon-size-sm);
 		flex: none;
 	}
 
-	/* The primary button's look, as `.page button` draws it. */
-	.site-header__pay:any-link {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--cc-space-2);
-		padding: var(--cc-space-2) var(--cc-space-3);
-		font-size: var(--cc-text-sm);
-		font-weight: 650;
-		line-height: 1.2;
-		color: var(--cc-accent-text);
-		white-space: nowrap;
-		text-decoration: none;
-		background: var(--cc-accent);
-		border-radius: var(--cc-radius-sm);
+	.fab:any-link {
+		right: calc(var(--cc-space-5) + env(safe-area-inset-right, 0px));
+		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+		inline-size: auto;
+		padding-inline: var(--cc-space-4) var(--cc-space-5);
 	}
 
-	.site-header__pay:any-link:hover {
-		text-decoration: none;
-		background: var(--cc-accent-hover);
+	.fab__label {
+		display: inline;
 	}
 }
 
+/* The bottom padding clears the bar and the floating button above it, so the last of a page
+   can always scroll out from under them. */
 .page {
 	display: flex;
 	flex-direction: column;
@@ -284,23 +328,23 @@ a:any-link:hover {
 	padding: var(--cc-space-5)
 		max(var(--cc-space-4), env(safe-area-inset-left, 0px))
 		calc(
-			var(--cc-space-7) +
 			var(--cc-tabbar-height) +
+			var(--cc-space-4) +
+			var(--cc-fab-size) +
+			var(--cc-space-5) +
 			env(safe-area-inset-bottom, 0px)
 		);
 }
 
-@media (min-width: 1024px) {
-	.site-header__date {
-		display: block;
-		margin-inline-start: 0;
-	}
-}
-
-/* The bottom bar is gone from 900px, so the page no longer needs to clear it. */
+/* From 900px the bar is gone; the page clears only the floating button. */
 @media (min-width: 900px) {
 	.page {
-		padding-bottom: calc(var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
+		padding-bottom: calc(
+			var(--cc-space-5) +
+			var(--cc-fab-size) +
+			var(--cc-space-7) +
+			env(safe-area-inset-bottom, 0px)
+		);
 	}
 }
 

@@ -33,14 +33,11 @@ test("current tab per path", () => {
 	expect(currentTab("/nope")).toBeNull();
 });
 
-test("header carries the mark, the date and the tabs", () => {
+test("header carries the mark, the date and the tabs, and no Payment", () => {
 	mount();
 	renderShell(view());
 
 	expect(document.querySelector(".site-header__mark")?.textContent).toBe("cc");
-	expect(
-		document.querySelector('[data-testid="today"]')?.textContent?.trim(),
-	).toBe("30 Oct 2026");
 	expect(
 		all(".site-header__tabs a").map((link) => link.getAttribute("href")),
 	).toEqual(["/", "/transactions", "/cards", "/settings"]);
@@ -50,27 +47,66 @@ test("header carries the mark, the date and the tabs", () => {
 		"Cards",
 		"Settings",
 	]);
-	const pay = document.querySelector(".site-header__pay");
-	expect(pay?.getAttribute("href")).toBe("/transactions");
-	expect(pay?.textContent?.trim()).toBe("Payment");
+	const header = document.querySelector("#site-header");
+	expect(header?.querySelector("[data-action]")).toBeNull();
+	expect(header?.textContent).not.toContain("Payment");
 });
 
-test("bottom bar is home, transactions, add, cards, settings", () => {
+test("the header date carries the phone and the desktop forms", () => {
+	mount();
+	renderShell(view({ today: "2026-11-05" }));
+
+	const date = document.querySelector('[data-testid="today"]');
+	expect(date?.querySelector(".site-header__date-short")?.textContent).toBe(
+		"Thu, 05 Nov",
+	);
+	expect(date?.querySelector(".site-header__date-long")?.textContent).toBe(
+		"Thu, 05 Nov 2026",
+	);
+	// The date sits with the tabs on the right, not in the brand column.
+	expect(date?.closest(".site-header__end")).not.toBeNull();
+	expect(
+		document.querySelector(".site-header__tabs")?.closest(".site-header__end"),
+	).not.toBeNull();
+});
+
+test("bottom bar is exactly the four tabs, with no add button", () => {
 	mount();
 	renderShell(view());
 
-	const links = all(".tabbar > a");
+	const links = all(".tabbar > *");
 	expect(links.map((link) => link.getAttribute("data-tab"))).toEqual([
 		"home",
 		"transactions",
-		null,
 		"cards",
 		"settings",
 	]);
-	const add = links[2];
-	expect(add?.classList.contains("tabbar__add")).toBe(true);
-	expect(add?.getAttribute("aria-label")).toBe("Payment");
-	expect(add?.getAttribute("href")).toBe("/transactions");
+	expect(document.querySelector(".tabbar [data-action]")).toBeNull();
+	expect(document.querySelector(".tabbar__add")).toBeNull();
+});
+
+test("one floating Payment button, outside both navs", () => {
+	mount();
+	renderShell(view());
+
+	const pay = all('[data-action="pay"]');
+	expect(pay).toHaveLength(1);
+	const [fab] = pay;
+	expect(fab?.classList.contains("fab")).toBe(true);
+	expect(fab?.getAttribute("href")).toBe("/transactions");
+	expect(fab?.getAttribute("aria-label")).toBe("Payment");
+	expect(fab?.querySelector(".fab__label")?.textContent).toBe("Payment");
+	expect(fab?.querySelector("svg")).not.toBeNull();
+	expect(fab?.closest("nav")).toBeNull();
+	expect(fab?.closest("#site-header")).toBeNull();
+});
+
+test("rendering again keeps one floating button", () => {
+	mount();
+	renderShell(view());
+	renderShell(view({ path: "/" }));
+
+	expect(all('[data-action="pay"]')).toHaveLength(1);
 });
 
 test("the current tab is marked in both navs", () => {
@@ -90,6 +126,17 @@ test("no badge in production", () => {
 	renderShell(view({ environment: "production" }));
 
 	expect(document.querySelector('[data-testid="env-badge"]')).toBeNull();
+	expect(document.querySelector(".site-header__id")?.children).toHaveLength(1);
+});
+
+test("the badge sits under the brand, in its column", () => {
+	mount();
+	renderShell(view({ environment: "preview", pr: "30" }));
+
+	const column = document.querySelector(".site-header__id");
+	expect([...(column?.children ?? [])].map((child) => child.className)).toEqual(
+		["site-header__brand", "site-header__badge"],
+	);
 });
 
 test("badge per build", () => {
@@ -119,7 +166,14 @@ test("Thai labels", () => {
 		"บัตร",
 		"ตั้งค่า",
 	]);
-	expect(document.querySelector(".site-header__pay")?.textContent?.trim()).toBe(
-		"ชำระ",
+	const fab = document.querySelector('[data-action="pay"]');
+	expect(fab?.getAttribute("aria-label")).toBe("ชำระ");
+	expect(fab?.querySelector(".fab__label")?.textContent).toBe("ชำระ");
+	const date = document.querySelector('[data-testid="today"]');
+	expect(date?.querySelector(".site-header__date-short")?.textContent).toBe(
+		"ศ., 30 ต.ค.",
+	);
+	expect(date?.querySelector(".site-header__date-long")?.textContent).toBe(
+		"ศ., 30 ต.ค. 2026",
 	);
 });
