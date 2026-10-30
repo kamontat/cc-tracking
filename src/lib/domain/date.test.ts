@@ -9,6 +9,7 @@ import {
 	daysInMonth,
 	displayDate,
 	formatDate,
+	headerDate,
 	isValidDate,
 	parseDate,
 	periodOf,
@@ -161,5 +162,32 @@ describe("periods", () => {
 		expect(comparePeriods("2026-09", "2026-10")).toBeLessThan(0);
 		expect(comparePeriods("2027-01", "2026-12")).toBeGreaterThan(0);
 		expect(comparePeriods("2026-09", "2026-09")).toBe(0);
+	});
+});
+
+describe("headerDate", () => {
+	test("English, short on a phone and with the year on a desktop", () => {
+		expect(headerDate("2026-10-30", "en", false)).toBe("Fri, 30 Oct");
+		expect(headerDate("2026-10-30", "en", true)).toBe("Fri, 30 Oct 2026");
+	});
+
+	test("Thai weekday and month abbreviations with a Gregorian year", () => {
+		expect(headerDate("2026-10-30", "th", false)).toBe("ศ., 30 ต.ค.");
+		expect(headerDate("2026-10-30", "th", true)).toBe("ศ., 30 ต.ค. 2026");
+	});
+
+	test("pads a single-digit day", () => {
+		expect(headerDate("2026-11-05", "en", false)).toBe("Thu, 05 Nov");
+		expect(headerDate("2026-11-05", "th", true)).toBe("พฤ., 05 พ.ย. 2026");
+	});
+
+	test("every weekday, Sunday to Saturday", () => {
+		const week = [1, 2, 3, 4, 5, 6, 7].map((day) => formatDate(2026, 11, day));
+		expect(
+			week.map((date) => headerDate(date, "en", false).split(",")[0]),
+		).toEqual(["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]);
+		expect(
+			week.map((date) => headerDate(date, "th", false).split(",")[0]),
+		).toEqual(["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."]);
 	});
 });
