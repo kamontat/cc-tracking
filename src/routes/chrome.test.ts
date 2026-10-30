@@ -33,31 +33,76 @@ test("no route page carries a language picker in its header", async () => {
  * explicit pick, once for an explicit dark pick -- because CSS cannot share one declaration
  * block between a media query and a plain selector. This keeps the two copies identical.
  */
-test("both dark palettes in the tokens declare the same values", async () => {
-	const source = await Bun.file("src/styles/tokens.css").text();
-	const blockAfter = (marker: string): string => {
-		const at = source.indexOf(marker);
-		if (at < 0) throw new Error(`no ${marker} in tokens.css`);
-		const start = source.indexOf("{", at);
-		let depth = 0;
-		for (let index = start; index < source.length; index++) {
-			if (source[index] === "{") depth++;
-			if (source[index] === "}" && --depth === 0) {
-				return source.slice(start + 1, index);
-			}
-		}
-		throw new Error(`unclosed block after ${marker}`);
-	};
-	const declarations = (block: string) =>
-		block
-			.replace(/\/\*[\s\S]*?\*\//g, "")
-			.split(";")
-			.map((line) => line.trim())
-			.filter(Boolean);
+const tokens = await Bun.file("src/styles/tokens.css").text();
 
+const blockAfter = (marker: string): string => {
+	const at = tokens.indexOf(marker);
+	if (at < 0) throw new Error(`no ${marker} in tokens.css`);
+	const start = tokens.indexOf("{", at);
+	let depth = 0;
+	for (let index = start; index < tokens.length; index++) {
+		if (tokens[index] === "{") depth++;
+		if (tokens[index] === "}" && --depth === 0) {
+			return tokens.slice(start + 1, index);
+		}
+	}
+	throw new Error(`unclosed block after ${marker}`);
+};
+
+const declarations = (block: string) =>
+	block
+		.replace(/\/\*[\s\S]*?\*\//g, "")
+		.split(";")
+		.map((line) => line.trim())
+		.filter(Boolean);
+
+const names = (block: string) =>
+	declarations(block).map((line) => line.slice(0, line.indexOf(":")).trim());
+
+test("both dark palettes in the tokens declare the same values", () => {
 	const system = declarations(blockAfter(':root:not([data-theme="light"])'));
 	const picked = declarations(blockAfter(':root[data-theme="dark"]'));
 
 	expect(system.length).toBeGreaterThan(0);
 	expect(picked).toEqual(system);
+});
+
+test("every build but production has a tint", () => {
+	for (const env of ["development", "local", "preview"]) {
+		const found = names(blockAfter(`:root[data-env="${env}"]`));
+		expect(found).toContain("--cc-env");
+		expect(found).toContain("--cc-env-text");
+	}
+});
+
+test("group pastels exist in both themes", () => {
+	const wanted = [1, 2, 3, 4].flatMap((n) => [
+		`--cc-group-${n}`,
+		`--cc-group-${n}-text`,
+	]);
+	for (const block of [
+		blockAfter(":root {"),
+		blockAfter(':root[data-theme="dark"]'),
+	]) {
+		expect(names(block)).toEqual(expect.arrayContaining(wanted));
+	}
+});
+
+test("dark palettes only override tokens the light palette defines", () => {
+	const light = names(blockAfter(":root {"));
+	for (const name of names(blockAfter(':root[data-theme="dark"]'))) {
+		if (name === "color-scheme") continue;
+		expect(light).toContain(name);
+	}
+});
+
+test("leading leaves room for Thai", () => {
+	const light = declarations(blockAfter(":root {"));
+	const value = (name: string) =>
+		light
+			.find((line) => line.startsWith(`${name}:`))
+			?.split(":")[1]
+			?.trim() ?? "";
+	expect(Number.parseFloat(value("--cc-leading"))).toBeGreaterThanOrEqual(1.65);
+	expect(value("--cc-font-sans")).toContain('"Noto Sans Thai"');
 });

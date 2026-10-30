@@ -20,11 +20,13 @@
 	--cc-space-5: 1.5rem;
 	--cc-space-7: 3rem;
 
-	--cc-radius-sm: 6px;
-	--cc-radius-md: 12px;
+	--cc-radius-xs: 6px;
+	--cc-radius-sm: 12px;
+	--cc-radius-md: 18px;
 	/* Fully rounded ends, for bars and nav tabs: larger than anything it rounds. */
 	--cc-radius-pill: 999px;
 	--cc-border-width: 1px;
+	--cc-rule-width: 2px;
 
 	/* A panel's side and bottom inset: tight on a phone, where every pixel of width counts,
 	   roomier from 640px (see the media query after this block). */
@@ -38,6 +40,18 @@
 	/* The narrowest a card-page summary tile gets before its row wraps to one per line. */
 	--cc-tile-min: 14rem;
 
+	--cc-icon-size: 1.375rem;
+	--cc-icon-size-sm: 1.0625rem;
+	--cc-tabbar-height: 4rem;
+	--cc-add-size: 3.125rem;
+	--cc-add-lift: 1.5rem;
+	--cc-add-shadow: 0 8px 18px
+		color-mix(in oklab, var(--cc-accent) 40%, transparent);
+
+	/* How strongly a non-production build tints the page, and the width of its top rule. */
+	--cc-env-tint: 16%;
+	--cc-env-rule-width: 3px;
+
 	/* The widest a modal dialog grows: room for the card form's two columns of labelled inputs. */
 	--cc-modal-max: 40rem;
 
@@ -46,44 +60,53 @@
 	   inset stops matching the inputs beside it and changes per browser. `controls` paints this
 	   chevron instead and sizes the padding from these two values. */
 	--cc-select-chevron-size: 0.75rem;
-	--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%236b645a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+	--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%235f6b65' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
 
-	/* Warm paper neutrals with a teal accent: calmer than the old cool grey and blue, and the
-	   teal stays clear of the danger red and warning amber it sits beside. */
-	--cc-bg: #f7f5f2;
+	/* Sage neutrals with a green accent: calm ground, and the green stays clear of the danger
+	   red and warning amber it sits beside. */
+	--cc-bg: #f6f7f3;
 	--cc-surface: #ffffff;
-	--cc-surface-sunken: #f1eee9;
-	--cc-border: #e3ded6;
-	--cc-shadow-sm:
-		0 1px 2px rgb(41 33 22 / 0.05), 0 2px 8px rgb(41 33 22 / 0.04);
-	--cc-shadow-lg: 0 16px 40px rgb(41 33 22 / 0.18);
-	--cc-backdrop: rgb(31 27 22 / 0.45);
+	--cc-surface-sunken: #eef1ea;
+	--cc-border: #e1e6de;
+	--cc-shadow-sm: 0 1px 2px rgb(34 48 42 / 0.04);
+	--cc-shadow-lg: 0 16px 40px rgb(34 48 42 / 0.18);
+	--cc-backdrop: rgb(10 20 15 / 0.42);
 
-	--cc-text: #1f1d1a;
-	/* 5.0:1 on --cc-surface-sunken, the darkest ground it sits on. */
-	--cc-text-muted: #6b645a;
-	--cc-link: #0f766e;
+	--cc-text: #22302a;
+	/* 4.9:1 on --cc-surface-sunken, the darkest ground it sits on. */
+	--cc-text-muted: #5f6b65;
+	--cc-link: #2f7457;
 
-	/* 5.4:1 against --cc-accent-text. */
-	--cc-accent: #0f766e;
-	--cc-accent-hover: #115e59;
+	/* 4.9:1 against --cc-accent-text. */
+	--cc-accent: #367d5f;
+	--cc-accent-hover: #2f7457;
 	--cc-accent-text: #ffffff;
 	/* A tint of the accent, for the current nav tab and other quiet highlights. */
-	--cc-accent-surface: #e3f4f1;
+	--cc-accent-surface: #e2f0e8;
 
-	--cc-danger: #b42318;
-	--cc-danger-surface: #fef0ee;
-	/* Darkened from #1b7f4b (4.40:1 on --cc-surface-sunken) to clear AA's 4.5:1 for normal text. */
-	--cc-success: #166b3f;
+	--cc-danger: #a8403d;
+	--cc-danger-surface: #f8e2e0;
+	/* 4.9:1 on --cc-surface-sunken, clearing AA's 4.5:1 for normal text. */
+	--cc-success: #2f7457;
 	/* Dark enough to stay readable on its own tint, not only on the surface. */
-	--cc-warning: #9a5b00;
-	--cc-warning-surface: #fdf2e0;
+	--cc-warning: #95591a;
+	--cc-warning-surface: #fbecd9;
+
+	/* Pastel pairs for grouping: a soft ground and the ink that reads on it. */
+	--cc-group-1: #e3e9fb;
+	--cc-group-1-text: #3552b8;
+	--cc-group-2: #dff1e7;
+	--cc-group-2-text: #2f7457;
+	--cc-group-3: #efe5f7;
+	--cc-group-3-text: #7a45a8;
+	--cc-group-4: #fbe6dd;
+	--cc-group-4-text: #b1532f;
 
 	/* Resolved at use, so the dark block below re-points these for free. */
 	--cc-urgency-overdue: var(--cc-danger);
 	--cc-urgency-soon: var(--cc-warning);
 
-	--cc-focus-ring: 0 0 0 3px rgb(15 118 110 / 0.35);
+	--cc-focus-ring: 0 0 0 3px rgb(54 125 95 / 0.4);
 }
 
 @media (min-width: 640px) {
@@ -106,66 +129,100 @@
 	:root:not([data-theme="light"]) {
 		color-scheme: dark;
 
-		--cc-bg: #161412;
-		--cc-surface: #201d1a;
-		--cc-surface-sunken: #2a2622;
-		--cc-border: #3b352f;
+		--cc-bg: #121815;
+		--cc-surface: #1b231f;
+		--cc-surface-sunken: #24302a;
+		--cc-border: #2c3832;
 		--cc-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
 		--cc-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
 		--cc-backdrop: rgb(0 0 0 / 0.6);
 
-		--cc-text: #efebe6;
-		--cc-text-muted: #b0a89d;
-		--cc-link: #5fd3c4;
+		--cc-text: #e6ede8;
+		--cc-text-muted: #9aa9a1;
+		--cc-link: #8ed7b4;
 
 		/* Same chevron, stroked in the dark theme's muted text colour. An SVG in a data URI
 		   cannot read `currentColor`, so the whole value is redeclared rather than tinted. */
-		--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23b0a89d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+		--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239aa9a1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
 
-		--cc-accent: #2dbfae;
-		--cc-accent-hover: #5fd3c4;
-		--cc-accent-text: #08201d;
-		--cc-accent-surface: #173431;
+		--cc-accent: #74c9a1;
+		--cc-accent-hover: #8ed7b4;
+		--cc-accent-text: #0f1a14;
+		--cc-accent-surface: #1f3b2f;
 
-		--cc-danger: #f2837c;
-		--cc-danger-surface: #3a1d1b;
-		--cc-success: #5bc98d;
-		--cc-warning: #e0a458;
-		--cc-warning-surface: #3a2a14;
+		--cc-danger: #ef8a86;
+		--cc-danger-surface: #3b1e1d;
+		--cc-success: #8ed7b4;
+		--cc-warning: #e7a55e;
+		--cc-warning-surface: #3a2a18;
 
-		--cc-focus-ring: 0 0 0 3px rgb(45 191 174 / 0.45);
+		--cc-group-1: #1f2944;
+		--cc-group-1-text: #9fb3f5;
+		--cc-group-2: #1b3328;
+		--cc-group-2-text: #8ed7b4;
+		--cc-group-3: #2e2240;
+		--cc-group-3-text: #cfa6ef;
+		--cc-group-4: #3a241b;
+		--cc-group-4-text: #f2a882;
+
+		--cc-focus-ring: 0 0 0 3px rgb(116 201 161 / 0.45);
 	}
 }
 
 :root[data-theme="dark"] {
 	color-scheme: dark;
 
-	--cc-bg: #161412;
-	--cc-surface: #201d1a;
-	--cc-surface-sunken: #2a2622;
-	--cc-border: #3b352f;
+	--cc-bg: #121815;
+	--cc-surface: #1b231f;
+	--cc-surface-sunken: #24302a;
+	--cc-border: #2c3832;
 	--cc-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
 	--cc-shadow-lg: 0 12px 32px rgb(0 0 0 / 0.6);
 	--cc-backdrop: rgb(0 0 0 / 0.6);
 
-	--cc-text: #efebe6;
-	--cc-text-muted: #b0a89d;
-	--cc-link: #5fd3c4;
+	--cc-text: #e6ede8;
+	--cc-text-muted: #9aa9a1;
+	--cc-link: #8ed7b4;
 
 	/* Same chevron, stroked in the dark theme's muted text colour. An SVG in a data URI
 	   cannot read `currentColor`, so the whole value is redeclared rather than tinted. */
-	--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23b0a89d' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
+	--cc-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%239aa9a1' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5'/%3E%3C/svg%3E");
 
-	--cc-accent: #2dbfae;
-	--cc-accent-hover: #5fd3c4;
-	--cc-accent-text: #08201d;
-	--cc-accent-surface: #173431;
+	--cc-accent: #74c9a1;
+	--cc-accent-hover: #8ed7b4;
+	--cc-accent-text: #0f1a14;
+	--cc-accent-surface: #1f3b2f;
 
-	--cc-danger: #f2837c;
-	--cc-danger-surface: #3a1d1b;
-	--cc-success: #5bc98d;
-	--cc-warning: #e0a458;
-	--cc-warning-surface: #3a2a14;
+	--cc-danger: #ef8a86;
+	--cc-danger-surface: #3b1e1d;
+	--cc-success: #8ed7b4;
+	--cc-warning: #e7a55e;
+	--cc-warning-surface: #3a2a18;
 
-	--cc-focus-ring: 0 0 0 3px rgb(45 191 174 / 0.45);
+	--cc-group-1: #1f2944;
+	--cc-group-1-text: #9fb3f5;
+	--cc-group-2: #1b3328;
+	--cc-group-2-text: #8ed7b4;
+	--cc-group-3: #2e2240;
+	--cc-group-3-text: #cfa6ef;
+	--cc-group-4: #3a241b;
+	--cc-group-4-text: #f2a882;
+
+	--cc-focus-ring: 0 0 0 3px rgb(116 201 161 / 0.45);
+}
+
+/* Build tints, the same in both themes: a non-production build stamps `data-env` on `<html>`. */
+:root[data-env="development"] {
+	--cc-env: #8a55d6;
+	--cc-env-text: #ffffff;
+}
+
+:root[data-env="local"] {
+	--cc-env: #2a72bd;
+	--cc-env-text: #ffffff;
+}
+
+:root[data-env="preview"] {
+	--cc-env: #d08a1c;
+	--cc-env-text: #22302a;
 }
