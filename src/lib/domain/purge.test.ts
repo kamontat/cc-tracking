@@ -7,7 +7,9 @@ import type {
 	Purchase,
 	PurchaseList,
 	StatementDates,
+	StatementPayment,
 } from "#lib/domain/types";
+import { convertPayments } from "#lib/storage/migrate-payments";
 
 const TODAY = "2026-10-30";
 // Six months back from TODAY: purchases on 2026-04-30 and later stay.
@@ -83,8 +85,12 @@ const apply = (
 ) => ({
 	purchases: purchases.filter((x) => !p.purchaseIds.includes(x.id)),
 	payments: payments
-		.filter((x) => !p.paymentIds.includes(x.id))
-		.map((x) => p.trimmed.find((t) => t.id === x.id) ?? x),
+		.filter(
+			(x) => !p.paymentIds.some((r) => r.cardId === x.cardId && r.id === x.id),
+		)
+		.map(
+			(x) => p.trimmed.find((t) => t.cardId === x.cardId && t.id === x.id) ?? x,
+		),
 	frozen: frozen.filter(
 		(f) =>
 			!p.frozenPeriods.some(
@@ -168,7 +174,10 @@ describe("planPurge", () => {
 		];
 		const p = plan(purchases, payments);
 		expect(p.purchaseIds).toEqual(["mar", "apr"]);
-		expect(p.paymentIds).toEqual(["p1", "p2"]);
+		expect(p.paymentIds).toEqual([
+			{ cardId: "kbank", id: "p1" },
+			{ cardId: "kbank", id: "p2" },
+		]);
 		expect(p.trimmed).toEqual([]);
 	});
 
@@ -185,7 +194,7 @@ describe("planPurge", () => {
 		];
 		const p = plan(purchases, payments);
 		expect(p.purchaseIds).toEqual(["mar", "apr"]);
-		expect(p.paymentIds).toEqual(["p1"]);
+		expect(p.paymentIds).toEqual([{ cardId: "kbank", id: "p1" }]);
 		// Same id, date, status and period; only the amount is cut to the overshoot.
 		expect(p.trimmed).toEqual([
 			payment("p2", "2026-04-20", 500, { period: "2026-04" }),
@@ -204,7 +213,7 @@ describe("planPurge", () => {
 		];
 		const p = plan(purchases, payments);
 		expect(p.purchaseIds).toEqual(["mar"]);
-		expect(p.paymentIds).toEqual(["p1"]);
+		expect(p.paymentIds).toEqual([{ cardId: "kbank", id: "p1" }]);
 		expect(p.trimmed).toEqual([]);
 
 		const none = plan(purchases, [payment("late", "2026-06-01", 3_000)]);
@@ -224,7 +233,7 @@ describe("planPurge", () => {
 		];
 		const p = plan(purchases, payments);
 		expect(p.purchaseIds).toEqual(["mar"]);
-		expect(p.paymentIds).toEqual(["pool"]);
+		expect(p.paymentIds).toEqual([{ cardId: "kbank", id: "pool" }]);
 		expect(p.trimmed).toEqual([]);
 	});
 
@@ -293,7 +302,7 @@ describe("planPurge", () => {
 		const frozen = [frozenFor("kbank", "2026-03"), frozenFor("scb", "2026-03")];
 		const p = plan(purchases, payments, { cards, frozen });
 		expect(p.purchaseIds).toEqual(["s-mar"]);
-		expect(p.paymentIds).toEqual(["s1"]);
+		expect(p.paymentIds).toEqual([{ cardId: "scb", id: "s1" }]);
 		expect(p.trimmed).toEqual([]);
 		expect(p.frozenPeriods).toEqual([{ cardId: "scb", period: "2026-03" }]);
 	});
@@ -327,12 +336,59 @@ describe("planPurge", () => {
 			payment("paid", "2026-03-20", 1_000),
 		];
 		const p = plan(purchases, payments);
-		expect(p.paymentIds).toEqual(["paid"]);
+		expect(p.paymentIds).toEqual([{ cardId: "kbank", id: "paid" }]);
 		expect(p.trimmed).toEqual([]);
 
 		// With only a planned payment the statement is unpaid, so nothing goes.
 		const unpaid = plan(purchases, [payments[0] as CardPayment]);
 		expect(unpaid.purchaseIds).toEqual([]);
 		expect(unpaid.paymentIds).toEqual([]);
+	});
+
+	test("two cards with converted payments for the same period both purge", () => {
+		const cards = [kbank, scb];
+		const purchases = [
+			purchase("k-jan", "2025-01-05", 1_000),
+			purchase("s-jan", "2025-01-05", 2_000, "scb"),
+		];
+		const old = (cardId: string): StatementPayment => ({
+			cardId,
+			period: "2025-01",
+			paidAt: "2025-02-01",
+			closeDate: "2025-01-10",
+			dueDate: "2025-02-04",
+		});
+		const converted = convertPayments(cards, purchases, [
+			old("kbank"),
+			old("scb"),
+		]);
+		const p = plan(purchases, converted.payments, {
+			cards,
+			frozen: converted.dates,
+		});
+		expect(p.purchaseIds).toEqual(["k-jan", "s-jan"]);
+		expect(p.paymentIds).toEqual(
+			converted.payments.map((x) => ({ cardId: x.cardId, id: x.id })),
+		);
+		expect(p.frozenPeriods).toEqual([
+			{ cardId: "kbank", period: "2025-01" },
+			{ cardId: "scb", period: "2025-01" },
+		]);
+	});
+
+	test("payments sharing an id on two cards are told apart by card", () => {
+		const cards = [kbank, scb];
+		const purchases = [
+			purchase("k-mar", "2026-03-05", 1_000),
+			purchase("s-mar", "2026-03-05", 2_000, "scb"),
+		];
+		const payments = [
+			payment("same", "2026-03-20", 1_500),
+			payment("same", "2026-03-20", 2_000, { cardId: "scb" }),
+		];
+		const p = plan(purchases, payments, { cards });
+		expect(p.purchaseIds).toEqual(["k-mar", "s-mar"]);
+		expect(p.paymentIds).toEqual([{ cardId: "scb", id: "same" }]);
+		expect(p.trimmed).toEqual([payment("same", "2026-03-20", 500)]);
 	});
 });

@@ -93,7 +93,7 @@ describe("backup version 3", () => {
 		expect(parsed.lists).toEqual([]);
 		expect(parsed.payments.length).toBe(1);
 		expect(parsed.payments[0]?.status).toBe("paid");
-		expect(parsed.payments[0]?.id).toBe("m:2026-09:0");
+		expect(parsed.payments[0]?.id).toBe("m:kbank:2026-09:0");
 		expect(parsed.statementDates).toEqual([
 			{
 				cardId: "kbank",

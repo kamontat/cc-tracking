@@ -36,9 +36,16 @@ export function purgeCutoff(age: PurgeAge, today: PlainDate): PlainDate {
 	return clampDay(Math.floor(total / 12), (total % 12) + 1, day);
 }
 
+/** A card payment, named the way storage keys it: an id is unique only within its card. */
+export type PaymentRef = { cardId: string; id: string };
+
+const refKey = (p: PaymentRef): string =>
+	`${encodeURIComponent(p.cardId)}:${encodeURIComponent(p.id)}`;
+
 export type PurgePlan = {
 	purchaseIds: string[];
-	paymentIds: string[];
+	/** Payment ids repeat across cards (converted ones do), so each names its card. */
+	paymentIds: PaymentRef[];
 	/** Payments that stay with a smaller amount. Every other field is unchanged. */
 	trimmed: CardPayment[];
 	listIds: string[];
@@ -68,7 +75,7 @@ const byDateThenId = (
  * statement that stays always stays. When the payments fall short, the newest statements stay
  * until they do not. Planned payments never go.
  *
- * As a last guard, each card's part is applied the way storage will apply it, by id, and the
+ * As a last guard, each card's part is applied the way storage will apply it, by card and id, and the
  * ledgers rebuilt: a part that would move any card's owed or credit is dropped entirely.
  */
 export function planPurge(
@@ -170,13 +177,13 @@ function planCard(
 			continue;
 		}
 
-		const paymentIds: string[] = [];
+		const paymentIds: PaymentRef[] = [];
 		const trimmed: CardPayment[] = [];
 		let taken = 0;
 		for (const p of candidates) {
 			if (taken === target) break;
 			if (taken + p.amount <= target) {
-				paymentIds.push(p.id);
+				paymentIds.push({ cardId: p.cardId, id: p.id });
 				taken += p.amount;
 			} else {
 				trimmed.push({ ...p, amount: taken + p.amount - target });
@@ -203,13 +210,13 @@ function applyPart(
 	frozen: StatementDates[],
 ) {
 	const purchaseIds = new Set(part.purchaseIds);
-	const paymentIds = new Set(part.paymentIds);
-	const trimmed = new Map(part.trimmed.map((p) => [p.id, p]));
+	const paymentKeys = new Set(part.paymentIds.map(refKey));
+	const trimmed = new Map(part.trimmed.map((p) => [refKey(p), p]));
 	return {
 		purchases: purchases.filter((p) => !purchaseIds.has(p.id)),
 		payments: payments
-			.filter((p) => !paymentIds.has(p.id))
-			.map((p) => trimmed.get(p.id) ?? p),
+			.filter((p) => !paymentKeys.has(refKey(p)))
+			.map((p) => trimmed.get(refKey(p)) ?? p),
 		frozen: frozen.filter(
 			(f) =>
 				!part.frozenPeriods.some(

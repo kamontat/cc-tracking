@@ -40,12 +40,17 @@ function capParts(parts: PaymentPart[], total: number): PaymentPart[] {
 export const PAYMENTS_MIGRATION_KEY = "cc:migration:payments";
 
 /**
- * The id a converted part gets: its record's period and its position after capping. Ids are
- * unique per card (storage keys include the card), and the same record always converts to
- * the same ids, so a rerun after a failed write overwrites rather than duplicates.
+ * The id a converted part gets: its card, its record's period and its position after capping.
+ * Naming the card keeps converted ids unique across cards, not only within one, so code that
+ * holds a bare id cannot mix up two cards' payments for the same period. The same record
+ * always converts to the same ids, so a rerun after a failed write overwrites rather than
+ * duplicates.
  */
-export const convertedId = (period: Period, index: number): string =>
-	`m:${period}:${index}`;
+export const convertedId = (
+	cardId: string,
+	period: Period,
+	index: number,
+): string => `m:${cardId}:${period}:${index}`;
 
 /**
  * Turns old per-statement records into card payments and kept statement dates.
@@ -73,7 +78,7 @@ export function convertPayments(
 			total,
 		).entries()) {
 			payments.push({
-				id: convertedId(record.period, index),
+				id: convertedId(record.cardId, record.period, index),
 				cardId: record.cardId,
 				date: part.paidAt,
 				amount: part.amount,

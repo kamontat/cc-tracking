@@ -38,7 +38,7 @@ test("one payment per part", () => {
 
 	expect(payments).toEqual([
 		{
-			id: "m:2026-09:0",
+			id: "m:kbank:2026-09:0",
 			cardId: "kbank",
 			date: "2026-09-25",
 			amount: 4_000,
@@ -46,7 +46,7 @@ test("one payment per part", () => {
 			period: "2026-09",
 		},
 		{
-			id: "m:2026-09:1",
+			id: "m:kbank:2026-09:1",
 			cardId: "kbank",
 			date: "2026-10-01",
 			amount: 6_000,
@@ -67,7 +67,7 @@ test("a record without parts pays the current total", () => {
 
 	expect(payments).toEqual([
 		{
-			id: "m:2026-09:0",
+			id: "m:kbank:2026-09:0",
 			cardId: "kbank",
 			date: "2026-10-01",
 			amount: 12_550,
@@ -213,8 +213,8 @@ test("an overpaid record converts to exactly the total and leaves no credit", ()
 
 	// The excess goes from the latest parts first; a part left at zero is dropped.
 	expect(payments.map((p) => [p.id, p.date, p.amount])).toEqual([
-		["m:2026-09:0", "2026-09-25", 7_000],
-		["m:2026-09:1", "2026-10-01", 3_000],
+		["m:kbank:2026-09:0", "2026-09-25", 7_000],
+		["m:kbank:2026-09:1", "2026-10-01", 3_000],
 	]);
 	expect(payments.reduce((sum, p) => sum + p.amount, 0)).toBe(10_000);
 
@@ -272,8 +272,8 @@ test("running twice converts once", async () => {
 
 	const kbank = await repo.listCardPayments("kbank");
 	expect(kbank.map((p) => [p.id, p.amount])).toEqual([
-		["m:2026-09:0", 4_000],
-		["m:2026-09:1", 6_000],
+		["m:kbank:2026-09:0", 4_000],
+		["m:kbank:2026-09:1", 6_000],
 	]);
 	expect((await repo.listCardPayments("scb")).map((p) => p.amount)).toEqual([
 		3_000,
