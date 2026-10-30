@@ -143,7 +143,7 @@ is used (see [Problem](#problem)), on a clickable prototype: <https://claude.ai/
 
 Phase 1 (rules and storage) shipped on 2026-10-30: the new rules and records sit beside the old ones, and no page uses them yet. See `docs/superpowers/plans/2026-10-30-redesign-roadmap.md`.
 
-Phase 2 (shell and look) shipped on 2026-10-30: the header, bottom bar, desktop tabs, build marks, the new palette, the early theme and About replacing the footer. Pages other than Home still show today's panels; `/transactions` is a placeholder.
+Phase 2 (shell and look) shipped on 2026-10-30: the header, bottom bar, desktop tabs, build marks, the new palette, the early theme and About replacing the footer. Every page still shows today's panels; `/transactions` is a placeholder.
 
 | ID | Change | Affects |
 |---|---|---|
@@ -631,7 +631,7 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-49 | Frozen statement dates are their own record (`cc:statementdates:<card>:<period>`), written the first time money reaches a statement. | Payments no longer belong to one statement, so they can't carry its dates (DD-02, DD-38). | Freezing dates on each payment. |
 | DD-50 | Only lists waiting for the spender hold room; drafts don't. | RD-09 says a waiting list holds its amounts. | Drafts holding room too. |
 | DD-51 | Bangkok, Phichit and Krabi keep the ids `bangkok`, `phichit`, `krabi`; a new location's id is a slug of its name (`-2`, `-3` on a clash, `location` when the name has no Latin letters or digits); renaming keeps the id. Deleting old purchases removes only purchases on closed, fully paid statements before the cutoff, with an equal amount of paid payments (trimming one if needed), and leaves a card out entirely if its owed or credit would change. | Cards and stored data refer to the id; RD-18 promises balances don't move. | Renaming ids; deleting whole statements only. |
-| DD-52 | In the light theme the warning, danger, muted and accent text colours are darker than the prototype's: `#95591a`, `#a8403d`, `#5f6b65`, `#367d5f`. | The prototype's colours fell short of WCAG AA contrast on the light panels (UI-21). | Keeping the prototype colours. |
+| DD-52 | In the light theme the warning, danger and muted text colours and the accent fill are darker than the prototype's: `#95591a`, `#a8403d`, `#5f6b65`, `#367d5f`. | The prototype's colours fell short of the contrast UI-21 requires on the light panels. `#367d5f` is the accent fill that white text sits on, not an accent text colour. | Keeping the prototype colours. |
 | DD-53 | The header date reads `dd MMM yyyy`, without the weekday. | Shorter, so the header fits a phone beside the mark and badge, in Thai too. | Showing the weekday. |
 | DD-54 | `/card?id=` marks the Cards tab as current. | A card belongs to Cards; no tab should look unselected on a card's page. | No tab marked on a card. |
 | DD-55 | A preview build without a PR number reads `preview` in its badge and `(preview)` in its title. | A preview can be built without a pull request; the mark must still say it isn't production (RD-20). | Hiding the mark; a made-up number. |
@@ -667,7 +667,7 @@ that each change is a choice.
 | CD-08 | ***Due next***: a coloured left rule and text badge per urgency. ***Can spend now***: a usage bar under each available amount. |
 | CD-09 | **Registry page**: Add a card and Add limit group buttons open dialogs; the card list (open by default) with an archived list inside it (folded), and the limit group list (folded). |
 | CD-10 | **Card page**: summary (available, owed, next due), then statements newest first, with a *Current* badge and an accent left rule, quiet months folded into one line, Edit and Delete per purchase, payment rows in the same columns as purchases with their own *Unmark*, and a *Left to pay* row; what is left also sits under the month's total. |
-| CD-11 | **Settings page**: Display (language and theme), Purchases (place checkboxes), Backup split into *Save a copy* and *Restore a copy* side by side from 640px, then Reset. |
+| CD-11 | **Settings page**: Display (language and theme), Purchases (place checkboxes), Backup split into *Save a copy* and *Restore a copy* side by side from 640px, then Reset, then About (RD-20). |
 | CD-12 | **Look**: sage neutrals, a green accent, pastel group colours, rounded shapes (radii 6, 12 and 18px). |
 | CD-13 | **Payments**: *Mark paid* opens a dialog with the balance ("paid · left"), the date paid and the amount. |
 
