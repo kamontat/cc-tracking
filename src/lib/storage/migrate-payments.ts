@@ -5,6 +5,7 @@ import type {
 	Card,
 	CardPayment,
 	PaymentPart,
+	Period,
 	Purchase,
 	StatementDates,
 	StatementPayment,
@@ -35,6 +36,17 @@ function capParts(parts: PaymentPart[], total: number): PaymentPart[] {
 	return kept;
 }
 
+/** Where `migratePayments` records that it finished, so it never runs again. */
+export const PAYMENTS_MIGRATION_KEY = "cc:migration:payments";
+
+/**
+ * The id a converted part gets: its record's period and its position after capping. Ids are
+ * unique per card (storage keys include the card), and the same record always converts to
+ * the same ids, so a rerun after a failed write overwrites rather than duplicates.
+ */
+export const convertedId = (period: Period, index: number): string =>
+	`m:${period}:${index}`;
+
 /**
  * Turns old per-statement records into card payments and kept statement dates.
  *
@@ -47,7 +59,6 @@ export function convertPayments(
 	cards: Card[],
 	purchases: Purchase[],
 	old: StatementPayment[],
-	newId: () => string,
 ): { payments: CardPayment[]; dates: StatementDates[] } {
 	const payments: CardPayment[] = [];
 	const dates: StatementDates[] = [];
@@ -57,9 +68,12 @@ export function convertPayments(
 		if (!card) continue;
 
 		const { total } = buildStatement(card, record.period, purchases, record);
-		for (const part of capParts(partsOf(record, total), total)) {
+		for (const [index, part] of capParts(
+			partsOf(record, total),
+			total,
+		).entries()) {
 			payments.push({
-				id: newId(),
+				id: convertedId(record.period, index),
 				cardId: record.cardId,
 				date: part.paidAt,
 				amount: part.amount,
@@ -79,22 +93,26 @@ export function convertPayments(
 }
 
 /**
- * Converts every stored statement payment once. Does nothing and returns 0 when any card
- * already has a card payment; otherwise saves the converted records and returns how many
- * payments it wrote. The old `cc:payment:` records stay where they are (DD-14).
+ * Converts every stored statement payment once, and returns how many payments it wrote.
  *
- * Dates are saved before payments: they do not count as "already converted", so a write
- * that fails part way through payments is the only way to leave a partial conversion.
+ * Finishing writes `PAYMENTS_MIGRATION_KEY`; while it is present this returns 0 without
+ * reading anything. The marker, not the presence of card payments, says "converted": a user
+ * who deletes every card payment must not see the old records come back, and someone whose
+ * old records give no payments must not convert again on every load.
+ *
+ * The marker is written only after every write succeeded. A write that throws leaves it
+ * unset and the error propagates; the next run converts again, and because converted ids are
+ * deterministic it overwrites what the failed run saved instead of duplicating it. The old
+ * `cc:payment:` records stay where they are (DD-14). `clearAll` removes the marker together
+ * with those records, so a reset leaves nothing to convert.
  */
 export async function migratePayments(
 	repo: Repository,
-	newId: () => string,
+	storage: Storage,
 ): Promise<number> {
-	const cards = await repo.listCards();
-	for (const card of cards) {
-		if ((await repo.listCardPayments(card.id)).length > 0) return 0;
-	}
+	if (storage.getItem(PAYMENTS_MIGRATION_KEY) !== null) return 0;
 
+	const cards = await repo.listCards();
 	const purchases: Purchase[] = [];
 	const old: StatementPayment[] = [];
 	for (const card of cards) {
@@ -102,8 +120,10 @@ export async function migratePayments(
 		old.push(...(await repo.listPayments(card.id)));
 	}
 
-	const { payments, dates } = convertPayments(cards, purchases, old, newId);
+	const { payments, dates } = convertPayments(cards, purchases, old);
 	for (const kept of dates) await repo.saveStatementDates(kept);
 	for (const payment of payments) await repo.saveCardPayment(payment);
+
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done");
 	return payments.length;
 }
