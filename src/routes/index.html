@@ -2,6 +2,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script data-theme-boot>
+    try {
+      const theme = localStorage.getItem("cc:theme");
+      if (theme === "light" || theme === "dark")
+        document.documentElement.setAttribute("data-theme", theme);
+    } catch {
+      // Storage blocked: leave the theme to the device, as getTheme() does.
+    }
+  </script>
   <title>Dashboard — cc-tracking</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   <!-- Google Tag Manager -->
