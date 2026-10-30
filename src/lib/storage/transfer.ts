@@ -55,22 +55,25 @@ export async function exportBackup(
 	};
 }
 
-const isList = (value: unknown): value is unknown[] => Array.isArray(value);
+export const isList = (value: unknown): value is unknown[] =>
+	Array.isArray(value);
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+export const isPlainObject = (
+	value: unknown,
+): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** A single indexed read, so callers never write a literal computed member biome would rather see as dot access -- `value` is untrusted JSON and may not have `key` at all. */
-const prop = (value: Record<string, unknown>, key: string): unknown =>
+export const prop = (value: Record<string, unknown>, key: string): unknown =>
 	value[key];
 
-const isNonEmptyString = (value: unknown): value is string =>
+export const isNonEmptyString = (value: unknown): value is string =>
 	typeof value === "string" && value.length > 0;
 
-const isInteger = (value: unknown): value is number =>
+export const isInteger = (value: unknown): value is number =>
 	typeof value === "number" && Number.isInteger(value);
 
-const isPlainDate = (value: unknown): value is string =>
+export const isPlainDate = (value: unknown): value is string =>
 	typeof value === "string" && isValidDate(value);
 
 /** `null` when the cycle is well-formed, otherwise which catalog key names what's wrong. */
@@ -93,7 +96,7 @@ function cycleProblem(value: unknown): MessageKey | null {
 }
 
 /** `null` when the card is well-formed, otherwise which catalog key names what's wrong. */
-function cardProblem(value: unknown): MessageKey | null {
+export function cardProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
 	if (!isNonEmptyString(prop(value, "name")))
@@ -111,7 +114,7 @@ function cardProblem(value: unknown): MessageKey | null {
 }
 
 /** `null` when the purchase is well-formed, otherwise which catalog key names what's wrong. */
-function purchaseProblem(value: unknown): MessageKey | null {
+export function purchaseProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
 	if (!isNonEmptyString(prop(value, "cardId")))
@@ -128,7 +131,7 @@ function purchaseProblem(value: unknown): MessageKey | null {
 }
 
 /** `null` when the payment is well-formed, otherwise which catalog key names what's wrong. */
-function paymentProblem(value: unknown): MessageKey | null {
+export function paymentProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "cardId")))
 		return "backup.problem.missingCardId";
@@ -159,7 +162,7 @@ function paymentProblem(value: unknown): MessageKey | null {
 }
 
 /** `null` when the limit group is well-formed, otherwise which catalog key names what's wrong. */
-function limitGroupProblem(value: unknown): MessageKey | null {
+export function limitGroupProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
 	if (!isNonEmptyString(prop(value, "name")))

@@ -1,6 +1,19 @@
 /** The repository these pages are built from, and the root of every link the footer makes. */
 export const REPO_URL = "https://github.com/kamontat/cc-tracking";
 
+export type Environment = "development" | "local" | "preview" | "production";
+
+const ENVIRONMENTS: readonly string[] = [
+	"development",
+	"local",
+	"preview",
+	"production",
+];
+
+function toEnvironment(value: string): Environment {
+	return ENVIRONMENTS.includes(value) ? (value as Environment) : "local";
+}
+
 export type BuildInfo = {
 	/** The full commit sha the bundle was built from, or `""` when nothing was inlined. */
 	commit: string;
@@ -8,9 +21,19 @@ export type BuildInfo = {
 	builtAt: string;
 	/** The pull request number a preview was built from, or `""` on any other build. */
 	pr: string;
+	/** Where the bundle runs: `development` on a dev server, `local` for an unknown stamp. */
+	environment: Environment;
+	/** The branch the bundle was built from, or `""` when nothing was inlined. */
+	branch: string;
 };
 
-const EMPTY: BuildInfo = { commit: "", builtAt: "", pr: "" };
+const EMPTY: BuildInfo = {
+	commit: "",
+	builtAt: "",
+	pr: "",
+	environment: "development",
+	branch: "",
+};
 
 /**
  * The commit and build time the bundler inlined, empty on a dev server.
@@ -27,6 +50,8 @@ export function buildInfo(): BuildInfo {
 			commit: process.env.BUN_PUBLIC_COMMIT_SHA ?? "",
 			builtAt: process.env.BUN_PUBLIC_BUILT_AT ?? "",
 			pr: process.env.BUN_PUBLIC_PR_NUMBER ?? "",
+			environment: toEnvironment(process.env.BUN_PUBLIC_ENVIRONMENT ?? ""),
+			branch: process.env.BUN_PUBLIC_BRANCH ?? "",
 		};
 	} catch {
 		return EMPTY;
@@ -39,6 +64,23 @@ export function buildInfo(): BuildInfo {
  */
 export function withPrSuffix(text: string, pr: string): string {
 	return pr ? `${text} (pr-${pr})` : text;
+}
+
+/**
+ * What the tab title and brand carry after the app name, so no environment is mistaken for
+ * production. Not translated: the marks read the same in either language.
+ */
+export function titleMark(environment: Environment, pr: string): string {
+	switch (environment) {
+		case "development":
+			return " (dev)";
+		case "local":
+			return " (local)";
+		case "preview":
+			return ` (pr-${pr})`;
+		case "production":
+			return "";
+	}
 }
 
 /** The seven-character prefix GitHub itself shows for a commit. */

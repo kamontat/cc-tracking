@@ -8,6 +8,8 @@ test("stamps the commit git reports and the moment of the build", () => {
 		BUN_PUBLIC_COMMIT_SHA: "7ba698c",
 		BUN_PUBLIC_BUILT_AT: "2026-09-24T13:12:00.000Z",
 		BUN_PUBLIC_PR_NUMBER: "",
+		BUN_PUBLIC_ENVIRONMENT: "local",
+		BUN_PUBLIC_BRANCH: "",
 	});
 });
 
@@ -39,4 +41,33 @@ test("stamps an empty commit when git had nothing to say, so the page reads dev"
 	expect(resolveBuildEnv({ sha: "", now, env: {} }).BUN_PUBLIC_COMMIT_SHA).toBe(
 		"",
 	);
+});
+
+test("environment defaults to local", () => {
+	expect(
+		resolveBuildEnv({ sha: "", now, env: {} }).BUN_PUBLIC_ENVIRONMENT,
+	).toBe("local");
+});
+
+test("keeps the environment a deploy workflow carries", () => {
+	const env = { BUN_PUBLIC_ENVIRONMENT: "preview" };
+
+	expect(resolveBuildEnv({ sha: "", now, env }).BUN_PUBLIC_ENVIRONMENT).toBe(
+		"preview",
+	);
+});
+
+test("branch comes from the checkout when the environment has none", () => {
+	expect(
+		resolveBuildEnv({ sha: "", branch: "feat/x\n", now, env: {} })
+			.BUN_PUBLIC_BRANCH,
+	).toBe("feat/x");
+});
+
+test("branch comes from the environment when set", () => {
+	const env = { BUN_PUBLIC_BRANCH: "main" };
+
+	expect(
+		resolveBuildEnv({ sha: "", branch: "HEAD", now, env }).BUN_PUBLIC_BRANCH,
+	).toBe("main");
 });
