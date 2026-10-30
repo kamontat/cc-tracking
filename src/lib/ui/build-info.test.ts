@@ -6,6 +6,7 @@ import {
 	parseBuiltAt,
 	REPO_URL,
 	shortCommit,
+	titleMark,
 	withPrSuffix,
 } from "#lib/ui/build-info";
 
@@ -15,6 +16,8 @@ afterEach(() => {
 	delete process.env.BUN_PUBLIC_COMMIT_SHA;
 	delete process.env.BUN_PUBLIC_BUILT_AT;
 	delete process.env.BUN_PUBLIC_PR_NUMBER;
+	delete process.env.BUN_PUBLIC_ENVIRONMENT;
+	delete process.env.BUN_PUBLIC_BRANCH;
 });
 
 test("shortens a commit sha to the seven characters GitHub shows", () => {
@@ -53,16 +56,64 @@ test("carries the commit and build time the bundler inlined", () => {
 	process.env.BUN_PUBLIC_COMMIT_SHA = SHA;
 	process.env.BUN_PUBLIC_BUILT_AT = "2026-09-24T13:12:00Z";
 	process.env.BUN_PUBLIC_PR_NUMBER = "42";
+	process.env.BUN_PUBLIC_ENVIRONMENT = "preview";
+	process.env.BUN_PUBLIC_BRANCH = "feat/x";
 
 	expect(buildInfo()).toEqual({
 		commit: SHA,
 		builtAt: "2026-09-24T13:12:00Z",
 		pr: "42",
+		environment: "preview",
+		branch: "feat/x",
 	});
 });
 
 test("carries empty values when nothing was inlined, as in a dev server", () => {
-	expect(buildInfo()).toEqual({ commit: "", builtAt: "", pr: "" });
+	expect(buildInfo().commit).toBe("");
+	expect(buildInfo().builtAt).toBe("");
+	expect(buildInfo().pr).toBe("");
+});
+
+test("dev server reads as development", () => {
+	const real = globalThis.process;
+	// @ts-expect-error simulate the browser, where `process` does not exist
+	globalThis.process = undefined;
+	try {
+		expect(buildInfo()).toEqual({
+			commit: "",
+			builtAt: "",
+			pr: "",
+			environment: "development",
+			branch: "",
+		});
+	} finally {
+		globalThis.process = real;
+	}
+});
+
+test("unset environment reads as local", () => {
+	expect(buildInfo().environment).toBe("local");
+});
+
+test("unknown environment reads as local", () => {
+	process.env.BUN_PUBLIC_ENVIRONMENT = "staging";
+	expect(buildInfo().environment).toBe("local");
+});
+
+test("titleMark marks development", () => {
+	expect(titleMark("development", "")).toBe(" (dev)");
+});
+
+test("titleMark marks local", () => {
+	expect(titleMark("local", "")).toBe(" (local)");
+});
+
+test("titleMark marks a preview with its pull request", () => {
+	expect(titleMark("preview", "42")).toBe(" (pr-42)");
+});
+
+test("titleMark leaves production unmarked", () => {
+	expect(titleMark("production", "")).toBe("");
 });
 
 test("marks text with the pull request a preview was built from", () => {
