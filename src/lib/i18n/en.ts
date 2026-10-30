@@ -328,6 +328,10 @@ export const en = {
 		"has an amount that is not a whole number of satang above zero",
 	"backup.problem.badLineAmount":
 		"has a line whose amount is not a whole number of satang above zero",
+	"backup.problem.badLineActual":
+		"has a line whose amount actually spent is not a whole number of satang above zero",
+	"backup.problem.badLineMade":
+		"has a line whose made answer is not true or false",
 	"backup.problem.badLines":
 		"has lines that are not a list of cards and amounts",
 	"backup.problem.badLast4": "has a last4 that is not exactly four digits",

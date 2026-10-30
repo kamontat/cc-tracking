@@ -342,6 +342,9 @@ export const th: Catalog = {
 	"backup.problem.badLimitRange": "มีวงเงินที่ไม่ใช่จำนวนเต็มสตางค์ที่มากกว่าศูนย์",
 	"backup.problem.badAmountRange": "มีจำนวนเงินที่ไม่ใช่จำนวนเต็มสตางค์ที่มากกว่าศูนย์",
 	"backup.problem.badLineAmount": "มีรายการที่จำนวนเงินไม่ใช่จำนวนเต็มสตางค์ที่มากกว่าศูนย์",
+	"backup.problem.badLineActual":
+		"มีรายการที่ยอดใช้จ่ายจริงไม่ใช่จำนวนเต็มสตางค์ที่มากกว่าศูนย์",
+	"backup.problem.badLineMade": "มีรายการที่คำตอบว่าซื้อแล้วหรือไม่ ไม่ได้เป็นค่าจริงหรือเท็จ",
 	"backup.problem.badLines": "มีรายการที่ไม่ใช่รายการของบัตรและจำนวนเงิน",
 	"backup.problem.badLast4": "มีเลขท้ายบัตรที่ไม่ใช่ตัวเลขสี่หลักพอดี",
 	"backup.problem.badCloseDay": "มีวันตัดรอบที่ไม่อยู่ระหว่าง 1 ถึง 31",

@@ -102,12 +102,21 @@ describe("backup version 3", () => {
 				dueDate: "2026-10-03",
 			},
 		]);
-		// No settings: the default purchase location.
-		expect(parsed.locations.map((l) => [l.id, l.takesPurchases])).toEqual([
-			["bangkok", false],
-			["phichit", false],
-			["krabi", true],
-		]);
+		// No settings: stored locations are left alone (DC-05).
+		expect(parsed.locations).toEqual([]);
+	});
+
+	test("restoring a version 2 file without settings keeps stored locations", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveLocation(
+			sampleLocation({ id: "krabi", takesPurchases: false }),
+		);
+		await repo.saveLocation(
+			sampleLocation({ id: "bangkok", takesPurchases: true }),
+		);
+		const before = await repo.listLocations();
+		await importBackupV3(repo, parseAnyBackup(v2()));
+		expect(await repo.listLocations()).toEqual(before);
 	});
 
 	test("a version 2 file with settings takes its locations from them", () => {
@@ -253,6 +262,40 @@ describe("backup version 3", () => {
 			rejects(text, key, 1);
 		});
 	}
+
+	const badLines: [string, Record<string, unknown>, string][] = [
+		["a zero actual", { actual: 0 }, "backup.problem.badLineActual"],
+		["a negative actual", { actual: -100 }, "backup.problem.badLineActual"],
+		["a fractional actual", { actual: 1.5 }, "backup.problem.badLineActual"],
+		["a text actual", { actual: "100" }, "backup.problem.badLineActual"],
+		["a text made", { made: "yes" }, "backup.problem.badLineMade"],
+		["a numeric made", { made: 1 }, "backup.problem.badLineMade"],
+	];
+	for (const [name, patch, problem] of badLines) {
+		test(`rejects a list line with ${name}, naming the problem`, () => {
+			const text = v3({
+				lists: [
+					samplePurchaseList({
+						lines: [{ cardId: "kbank", amount: 1_000, ...patch } as never],
+					}),
+				],
+			});
+			rejects(text, "backup.list", 1);
+			const error = captureThrow(() => parseAnyBackup(text)) as MessageError;
+			expect(Reflect.get(error.params ?? {}, "problem")).toBe(problem);
+		});
+	}
+
+	test("accepts list lines with a positive actual and a boolean made", () => {
+		const lines = [
+			{ cardId: "kbank", amount: 1_000, made: true, actual: 900 },
+			{ cardId: "kbank", amount: 2_000, made: false },
+		];
+		const parsed = parseAnyBackup(
+			v3({ lists: [samplePurchaseList({ lines })] }),
+		);
+		expect(parsed.lists[0]?.lines).toEqual(lines);
+	});
 
 	test("the rejection names which record is wrong", () => {
 		rejects(

@@ -1,5 +1,5 @@
 import { defaultLocations } from "#lib/domain/locations";
-import { DEFAULT_SETTINGS, toSettings } from "#lib/domain/settings";
+import { toSettings } from "#lib/domain/settings";
 import type {
 	Card,
 	CardPayment,
@@ -158,9 +158,12 @@ function listProblem(value: unknown): MessageKey | null {
 			return "backup.problem.badLines";
 		if (!isPositiveAmount(prop(line, "amount")))
 			return "backup.problem.badLineAmount";
+		const made = prop(line, "made");
+		if (made !== undefined && typeof made !== "boolean")
+			return "backup.problem.badLineMade";
 		const actual = prop(line, "actual");
-		if (actual !== undefined && !isInteger(actual))
-			return "backup.problem.badLines";
+		if (actual !== undefined && !isPositiveAmount(actual))
+			return "backup.problem.badLineActual";
 	}
 	return null;
 }
@@ -189,8 +192,8 @@ function check(
 /**
  * Reads a version 2 or version 3 file as version 3, rejecting the whole file before
  * anything is written when any record breaks a shape or range rule (RD-06). A version 2
- * file's payments convert to card payments, its locations come from its settings (or the
- * default settings), and it has no lists.
+ * file's payments convert to card payments, its locations come from its settings (none when
+ * it has no settings, so stored locations are left alone, DC-05), and it has no lists.
  */
 export function parseAnyBackup(text: string): BackupV3 {
 	let value: unknown;
@@ -234,10 +237,12 @@ export function parseAnyBackup(text: string): BackupV3 {
 
 	if (version === 2) {
 		check(payments, "backup.payment", paymentProblem);
+		// A file without settings leaves stored settings alone (DC-05), so it brings no
+		// locations either: only a file that carries settings may say where purchases happen.
 		const settings = prop(value, "settings");
-		const kept = isPlainObject(settings)
-			? toSettings(settings)
-			: DEFAULT_SETTINGS;
+		const locations = isPlainObject(settings)
+			? defaultLocations(toSettings(settings))
+			: [];
 		const converted = convertPayments(
 			cards as Card[],
 			purchases as Purchase[],
@@ -252,7 +257,7 @@ export function parseAnyBackup(text: string): BackupV3 {
 			payments: converted.payments,
 			statementDates: converted.dates,
 			lists: [],
-			locations: defaultLocations(kept),
+			locations,
 		};
 	}
 
