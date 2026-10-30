@@ -158,7 +158,7 @@ is used (see [Problem](#problem)), on a clickable prototype: <https://claude.ai/
 | RD-13 | **Transactions is one ledger.** Purchases (−) and payments (+) by day, with sign and word marking direction; a month summary (purchases, payments, owed now); *Upcoming* on top, with lists waiting for the spender and planned payments. Search, filter by type, card and date, and sort; filters show as removable chips, and the filter sheet counts matches before applying. On a desktop, what each card owes sits beside the ledger. Replaces *Purchases by date* and *Due next*. | FR-15, FR-25, US-01, US-13, CD-06, CD-08, DD-43 |
 | RD-14 | **The payment form.** + first asks *Which card?*: every card with what it owes, overdue and soon-due first, with a search box. The form then shows the card large at the top with *Change*, what it owes, its next bill and its credit, chips for *Next bill* and *Everything owed*, the amount and the date. The button names the amount, the card and, for a plan, the date: "Record ฿41,230 to SCB-K", "Plan ฿10,000 to UOB-K on Thu 5 Nov". | FR-14, CD-13, DD-44 |
 | RD-15 | **Home.** *Needs you* first: lists waiting for the spender, overdue bills, planned payments in the next three days and drafts, each opening its task. Then *Ready to use*: the cards in places that take purchases, with room, close date and due date for buying today, sortable by most room, longest to close or latest due, and selectable for a list. A quiet day reads "All caught up". Replaces the dashboard panels. | FR-11, FR-15, US-04, CD-03, DD-34 |
-| RD-16 | **Cards page.** Grouped by location by default; search; filter by location and account holder; sort by place, most room, name or close day, where any sort but place gives one flat list. Limit groups sit beside the list on a desktop. A card's page shows room, owed, next bill, *Use on a list*, *Make a payment* and statements; *Edit* opens a full edit screen instead of a dialog. Address queries and `/cards?edit=<id>` keep working or redirect. | FR-06, FR-07, FR-38, US-16, US-18, CD-09, CD-10, DC-15, DC-16 |
+| RD-16 | **Cards page.** Grouped by location by default; search; filter by location and account holder; sort by place, most room, name or close day, where any sort but place gives one flat list. Limit groups sit beside the list on a desktop. A card's page shows room, owed, next bill, *Use on a list*, *Make a payment* and statements; *Edit* opens a full edit screen instead of a dialog. Old addresses need not keep working (question 15). | FR-06, FR-07, FR-38, US-16, US-18, CD-09, CD-10, DC-15, DC-16 |
 | RD-17 | **Locations can be managed** at `/settings/locations`: add, rename, delete (only a location with no cards), and tick *Takes purchases* per location, which replaces *Purchase places*. Needs a stored list of locations and a migration from the fixed three. | FR-02, FR-22, US-11, DR-12, DR-14, DC-07, DC-08, DC-10, DD-10, DD-11, out of scope, known limits |
 | RD-18 | **Delete old purchases.** Settings › Reset offers deleting purchases older than 6 months, 1, 2 or 3 years. Only purchases on fully paid statements go, so what each card owes and its room don't change. It says how many will go and asks a second time. *Delete all data* stays (FR-32). | FR-32, US-21, new |
 | RD-19 | **Settings layout.** Display (language, theme); Locations (one row into RD-17); Backup (download, copy as text, restore a copy); Reset (delete old purchases, delete all data); About (RD-20). | CD-11, FR-29 to FR-34 |
@@ -685,13 +685,14 @@ The redesign is done when all of these hold.
 - [ ] The storage contract suite passes, and data saved by the current version loads unchanged.
 - [ ] A version 2 backup from the current version restores, with and without `settings`, and
       with payments both with and without `parts`.
-- [ ] `/cards` links with a query and `/cards?edit=<id>` still open the same view.
+- [ ] *(Dropped 2026-10-30, question 15.)* `/cards` links with a query and `/cards?edit=<id>`
+      still open the same view.
 - [ ] The delete guards in DR-19 still hold (DC-13).
 - [ ] Every interface rule (UI-01 to UI-21) holds, checked in English and Thai, light and dark,
       at phone and desktop widths.
 - [ ] Each decision that changed has a dated entry in `CHANGELOG.md` saying what replaced it
       and why, and is updated here.
-- [ ] Retired page addresses redirect.
+- [ ] *(Dropped 2026-10-30, question 15.)* Retired page addresses redirect.
 - [ ] A purchase list for three cards takes no more than: tick the cards, enter the amounts,
       review, mark sent; then *Made* or *Not made* per line and save (G3).
 - [ ] Payment records saved before RD-11 load as card payments, and every statement's paid
@@ -776,15 +777,19 @@ into the matching section.
     screen, sorted by when each purchase was added (RD-02). *Superseded by RD-09: a list waiting
     for the spender's reply is how the bookkeeper keeps their place.*
 12. **Footer.** About in Settings now shows the build details (RD-20). Drop the page footer
-    (FR-37), or keep a slim one?
+    (FR-37), or keep a slim one? *Answered 2026-10-30*: drop it; About replaces it.
 13. **A single purchase outside a list.** Is it still needed for an odd receipt, or does every
-    purchase come from a list (RD-09)?
+    purchase come from a list (RD-09)? *Answered 2026-10-30*: not needed; every purchase
+    comes from a list.
 14. **Backup format.** Lists, planned payments, credit and the list of locations are new
     records. Add them as optional lists in version 2 (DD-15), or move to version 3 with a
-    migration?
+    migration? *Answered 2026-10-30*: version 3. A version 2 backup still restores, migrated
+    on the way in (G4).
 15. **Page addresses.** Choose addresses for Transactions, a card, its edit screen and
     `/settings/locations`, and keep `/card?id=`, `/cards?…` and `/cards?edit=<id>` working
-    (DC-15 to DC-17).
+    (DC-15 to DC-17). *Answered 2026-10-30*: old links need not keep working, and retired
+    addresses need no redirect. DC-15 to DC-17 retire with the redesign; the new addresses are
+    the builder's call.
 16. **Credit on statements.** How credit shows on a card's statements and in *Owed*, and
     whether it can be refunded or moved to another card.
 17. **Delete old purchases.** Confirm the age choices (6 months, 1, 2, 3 years), and whether
