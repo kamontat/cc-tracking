@@ -24,7 +24,7 @@ so About there reads as a development build with no build time.
 
 ## Pages
 
-- `/` — a workspace for entering a pile of receipts. The purchase form is always
+- `/` — Home, a workspace for entering a pile of receipts. The purchase form is always
   open, and offers only the cards that may take one; see *Which cards can take a
   purchase* below. After each add it keeps the card and date and clears the
   rest. Under it, *This sitting* lists what was entered since *Start new batch*
@@ -33,6 +33,8 @@ so About there reads as a development build with no build time.
   counts purchases, their total and the cards used across every card (archived
   ones included) for a preset or custom range of purchase dates, then *Due next*
   and *Can spend now*.
+- `/transactions` — a placeholder until the Transactions page arrives; the + and
+  Payment buttons open it for now.
 - `/cards` — the card registry and the limit groups, each list searchable,
   filterable, sortable and foldable. Cards and limit groups are added and edited
   in a dialog. When adding or editing a card, you choose its physical location from a dropdown: one of Bangkok,

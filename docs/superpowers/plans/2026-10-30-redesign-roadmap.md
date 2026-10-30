@@ -48,6 +48,13 @@ moved to the phase that builds what needs them.
   record that now converts to fewer parts leaves the old higher-index ones behind). Before
   writing, delete each card's converted payments for every period the file holds.
 
+### Phase 5
+
+- Before group colour chips ship with Cards, darken the light `--cc-group-4-text` (4.21:1 on
+  `--cc-group-4`) so it passes AA.
+- The `data-env` tint is applied after first paint; it could be folded into the head theme
+  script later.
+
 ### Phase 6
 
 - Widen `Card.location` to any location id, and make backup version 3 check each card's

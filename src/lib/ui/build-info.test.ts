@@ -37,10 +37,6 @@ test("links a commit by its full sha under the repository", () => {
 	expect(commitUrl(SHA)).toBe(`${REPO_URL}/commit/${SHA}`);
 });
 
-/**
- * Built in UTC on purpose: a deploy timestamp is compared against other deploys, not
- * against the reader's day, so it must read the same wherever it is opened.
- */
 test("reads an ISO build timestamp", () => {
 	expect(parseBuiltAt("2026-09-24T13:12:00Z")?.getTime()).toBe(
 		Date.UTC(2026, 8, 24, 13, 12),
