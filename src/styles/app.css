@@ -62,14 +62,15 @@ a:any-link:hover {
 		max(var(--cc-space-4), env(safe-area-inset-right, 0px));
 }
 
-/* One row. On the left one run of text: the brand, the build's mark, a dot, the date. From
-   900px the tabs sit at the right end. */
+/* One row. On a phone the brand and the build's mark sit left and the date at the right
+   edge, so the group fills the row and the separating dot is hidden. From 900px they are one
+   run of text on the left -- brand, mark, dot, date -- and the tabs sit at the right end. */
 .site-header__id {
 	display: flex;
 	flex-direction: row;
 	align-items: baseline;
 	gap: var(--cc-space-2);
-	flex: none;
+	flex: 1 1 auto;
 }
 
 /* `:any-link` to outweigh the generic `a:any-link` rules above: a pseudo-class carries
@@ -108,6 +109,14 @@ a:any-link:hover {
 	font-size: var(--cc-text-sm);
 	color: var(--cc-text-muted);
 	white-space: nowrap;
+}
+
+.site-header__sep {
+	display: none;
+}
+
+.site-header__date {
+	margin-inline-start: auto;
 }
 
 /* Both forms are in the document; a phone shows the short one, a wide window adds the year. */
@@ -244,6 +253,18 @@ a:any-link:hover {
 @media (min-width: 900px) {
 	.tabbar {
 		display: none;
+	}
+
+	.site-header__id {
+		flex: none;
+	}
+
+	.site-header__sep {
+		display: inline;
+	}
+
+	.site-header__date {
+		margin-inline-start: 0;
 	}
 
 	.site-header__date-short {
