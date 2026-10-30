@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Draft for the refactor and redesign |
-| **Last updated** | 2026-10-28 |
+| **Last updated** | 2026-10-30 |
 | **Baseline** | Everything shipped up to 2026-10-28, including partial payments ([`CHANGELOG.md`](CHANGELOG.md)) |
 | **Thai translation** | [`PRD_TH.md`](PRD_TH.md), same IDs in the same order |
 
@@ -92,6 +92,20 @@ Pain points the user named (2026-10-29):
 - **Actions are split across pages.** Related actions live on different pages, so the user
   keeps jumping between them.
 
+How the app is really used (corrected by the user, 2026-10-30). Purchases are planned, not
+entered from receipts, and payments are made whenever room is needed:
+
+- **Buying.** The bookkeeper picks one or more cards and an amount for each, weighing room,
+  close date and due date. They send the spender a dated list (card id, name, last 4,
+  amount), wait for the spender to say which purchases were made, then reconcile and save.
+- **Paying.** The bookkeeper plans payments per card ahead of time, and pays on any day of
+  the month, often before a purchase that would go over a limit. A payment can be more than
+  is owed, and the app should say so.
+- **How often.** Always (more than half of visits): build a purchase list, find a card to
+  use, record a payment. Usually (10-40%): change a card's location or limit, check room,
+  find cards with something unpaid. Rarely (under 10%): add and set up a card, find where a
+  card is kept, back up, change settings. A visit lasts about ten minutes.
+
 ## Goals
 
 - **G1. Keep everything that works.** Every requirement, user story, domain rule, data contract
@@ -99,8 +113,9 @@ Pain points the user named (2026-10-29):
   here on purpose.
 - **G2. Flows designed as a whole**, around the three questions the app answers: what to pay
   and when, how much room is left, and which statement a purchase lands on.
-- **G3. Entering a pile of receipts stays at least as fast** as today's always-open form, and
-  after an interruption the bookkeeper can still find their place (RD-01, RD-02).
+- **G3. Building, sending and confirming a purchase list is quick**, and a list waiting for
+  the spender's reply is never lost (RD-09). *(Until 2026-10-30: entering a pile of receipts
+  stays at least as fast as today's always-open form; RD-01, RD-02.)*
 - **G4. No one loses data.** Data saved in a browser today, and backups saved today, load
   unchanged.
 - **G5. A codebase that is easy to change**, keeping the separation between pure rules,
@@ -109,6 +124,8 @@ Pain points the user named (2026-10-29):
   send the user across pages.
 - **G7. Checking room and viewing the numbers is fastest on a phone**: which card has credit,
   what is due, and the spending totals, at a glance.
+- **G8. Calm to use for a ten-minute visit**: soft colours, plenty of room, and the next thing to
+  do shown first (RD-15, RD-21).
 
 ## Non-goals of the redesign
 
@@ -121,17 +138,32 @@ Pain points the user named (2026-10-29):
 
 Settled with the user on 2026-10-30. Build these. Each overrides the rows it names elsewhere in
 this document; those rows describe today's app until the change ships, and are then updated or
-retired.
+retired. RD-08 to RD-21 were settled later the same day, after the user corrected how the app
+is used (see [Problem](#problem)), on a clickable prototype: <https://claude.ai/code/artifact/a290fd13-81d8-483a-9968-8b16e953ca6c> (private).
 
 | ID | Change | Affects |
 |---|---|---|
-| RD-01 | **Entering receipts gets its own screen**, off the dashboard. It keeps today's speed: card and date stay between adds, amount and note clear, a failed add keeps what was typed. | FR-23, FR-27, DD-20, CD-03, CD-04, G3 |
-| RD-02 | **Recent entries replace *This sitting*.** The batch list with *Start new batch* doesn't fit and is not carried over as it is. The need stays: after an interruption the bookkeeper can see what they already entered, and doesn't skip or double-enter a receipt (BR-04, US-08). Replaced by a **recent entries** list on the entry screen: purchases sorted by when they were added (`addedAt`), newest first, grouped as today and earlier, with no batch to start or clear. Purchases without an entry time (DR-15) don't appear. `cc:batch-start` is no longer read and may stay on disk (DD-14). | FR-24, US-08, DR-16, DD-21, DD-22, DC-03, CD-05 |
+| RD-01 | *(Replaced by RD-09.)* **Entering receipts gets its own screen**, off the dashboard. It keeps today's speed: card and date stay between adds, amount and note clear, a failed add keeps what was typed. | FR-23, FR-27, DD-20, CD-03, CD-04, G3 |
+| RD-02 | *(Replaced by RD-09.)* **Recent entries replace *This sitting*.** The batch list with *Start new batch* doesn't fit and is not carried over as it is. The need stays: after an interruption the bookkeeper can see what they already entered, and doesn't skip or double-enter a receipt (BR-04, US-08). Replaced by a **recent entries** list on the entry screen: purchases sorted by when they were added (`addedAt`), newest first, grouped as today and earlier, with no batch to start or clear. Purchases without an entry time (DR-15) don't appear. `cc:batch-start` is no longer read and may stay on disk (DD-14). | FR-24, US-08, DR-16, DD-21, DD-22, DC-03, CD-05 |
 | RD-03 | **A new visual direction.** Palette, type, shape and density start again. The interface rules (UI-01 to UI-21) still hold: tokens only, three button variants, never colour alone, room for Thai, both themes. | DD-32, CD-02, CD-07, CD-08, CD-12 |
 | RD-04 | **Same stack.** Bun, TypeScript, Lit web components, `@kcstyles/reset.css`, happy-dom for tests, static pages on Cloudflare Workers. The refactor restructures modules and folders only. | G5 |
 | RD-05 | **No theme flash.** The saved theme is applied before the first paint, so a page never shows the wrong theme on load. | DD-28, known limits |
 | RD-06 | **Restore checks ranges** with the same rules as the forms: amounts and limits above zero, last 4 exactly four digits, cycle days in range (DR-25), and payment parts as today. A file that breaks one is rejected before anything is written, naming the record and the problem. | DC-06, FR-31, known limits |
 | RD-07 | **Delete guards move into storage.** The repository refuses to delete a card that has purchases or a limit group that cards use, and the contract suite tests it. The interface keeps hiding the buttons as well. | DR-19, DC-13 |
+| RD-08 | **Pages and navigation.** Four pages: Home, Transactions, Cards and Settings. On a phone a bottom bar holds Home, Transactions, **+**, Cards and Settings; + opens the payment form (RD-14). On a desktop the tabs sit on the right of the header, followed by a **Payment** button. The header keeps the boxed `cc` mark with a bold rule under it. Sub-screens (entering amounts, a card, its edit form, locations) open with a back button. | CD-01, CD-02, FR-27, DD-19, DD-45, question 3 |
+| RD-09 | **Purchase lists replace receipt entry.** (1) On Home, tick cards under *Ready to use*. (2) Enter an amount for each card on its own screen, with the purchase date. (3) Review the dated table, with the columns *Card* (id), *Name (last 4)* and *Amount*; copy it as text or save it as an image for the chat, then mark it sent. (4) When the spender replies, mark each line *Made* or *Not made* and correct the real amount. (5) Save: made lines become purchases on the list's date; not-made lines can move to a draft for the next day. A list is a draft, waiting for the spender, or saved. A waiting list holds its amounts against each group's room until it is saved. | RD-01, RD-02, FR-17, FR-18, FR-23, FR-24, US-07, US-08, DD-20 to DD-23, DD-39, DD-40, CD-03 to CD-05 |
+| RD-10 | **Warnings while entering amounts.** None blocks the list. Each sits under its line with the reason in words, the line gets an amber outline, and a count shows above *Review*. *Over the room*, explaining any room held by a waiting list and any planned payment that would make room, with one action: *Lower to* the room. *Shared limit*: cards on one list that share a group go over its room together. *Overdue bill* on the card. *Close date*: the purchase date is the card's close date. *Date has passed*: shown once, at the date, with *Change to today*. Dropped: the future-date warning, since lists are planned ahead, and a warning for a card already on another list. | FR-19, FR-20, US-09, DR-11, DD-41 |
+| RD-11 | **Payments belong to a card and can be made on any day.** A payment has a card, a date and an amount. Paid money settles the card's oldest statement first, the open period included. Paying more than is owed is accepted and said in words; the extra stays on the card as **credit**, used by its next purchases, so room can go above the limit. Existing per-statement records migrate without changing any total. | FR-09, FR-12, FR-14, FR-16, US-02, US-25, DR-05 to DR-09, DR-28 to DR-31, DC-02, DC-05 to DC-07, DD-07, DD-37, DD-38, DD-42, known limits |
+| RD-12 | **Planned payments.** A payment dated later than today is a plan. It shows under *Upcoming* with *Mark paid*, and changes nothing until it is marked paid. | new |
+| RD-13 | **Transactions is one ledger.** Purchases (−) and payments (+) by day, with sign and word marking direction; a month summary (purchases, payments, owed now); *Upcoming* on top, with lists waiting for the spender and planned payments. Search, filter by type, card and date, and sort; filters show as removable chips, and the filter sheet counts matches before applying. On a desktop, what each card owes sits beside the ledger. Replaces *Purchases by date* and *Due next*. | FR-15, FR-25, US-01, US-13, CD-06, CD-08, DD-43 |
+| RD-14 | **The payment form.** + first asks *Which card?*: every card with what it owes, overdue and soon-due first, with a search box. The form then shows the card large at the top with *Change*, what it owes, its next bill and its credit, chips for *Next bill* and *Everything owed*, the amount and the date. The button names the amount, the card and, for a plan, the date: "Record ฿41,230 to SCB-K", "Plan ฿10,000 to UOB-K on Thu 5 Nov". | FR-14, CD-13, DD-44 |
+| RD-15 | **Home.** *Needs you* first: lists waiting for the spender, overdue bills, planned payments in the next three days and drafts, each opening its task. Then *Ready to use*: the cards in places that take purchases, with room, close date and due date for buying today, sortable by most room, longest to close or latest due, and selectable for a list. A quiet day reads "All caught up". Replaces the dashboard panels. | FR-11, FR-15, US-04, CD-03, DD-34 |
+| RD-16 | **Cards page.** Grouped by location by default; search; filter by location and account holder; sort by place, most room, name or close day, where any sort but place gives one flat list. Limit groups sit beside the list on a desktop. A card's page shows room, owed, next bill, *Use on a list*, *Make a payment* and statements; *Edit* opens a full edit screen instead of a dialog. Old addresses need not keep working (question 15). | FR-06, FR-07, FR-38, US-16, US-18, CD-09, CD-10, DC-15, DC-16 |
+| RD-17 | **Locations can be managed** at `/settings/locations`: add, rename, delete (only a location with no cards), and tick *Takes purchases* per location, which replaces *Purchase places*. Needs a stored list of locations and a migration from the fixed three. | FR-02, FR-22, US-11, DR-12, DR-14, DC-07, DC-08, DC-10, DD-10, DD-11, out of scope, known limits |
+| RD-18 | **Delete old purchases.** Settings › Reset offers deleting purchases older than 6 months, 1 year or 3 years, or all of them. Saved lists and payments from the same time go with them. Only purchases on fully paid statements go, with the payments that settled them, so what each card owes, its credit and its room don't change. It says how many will go and asks a second time. *Delete all data* stays (FR-32). | FR-32, US-21, new |
+| RD-19 | **Settings layout.** Display (language, theme); Locations (one row into RD-17); Backup (download, copy as text, restore a copy); Reset (delete old purchases, delete all data); About (RD-20). | CD-11, FR-29 to FR-34 |
+| RD-20 | **About, and marking a build that isn't production.** About lists *Environment* as one word (Development, Local, Preview, Production); *Built*, in the viewer's time zone, hidden in development; *Source on GitHub*, the branch with the PR number on a preview, linking the repository; *Commit*, linking it, on preview and production only; and *Changelog*, on production only. Any other build tints the header and the phone's bottom bar in its own colour, shows a badge after the mark (`development`, `local`, `preview · pr-<n>`), and marks the tab title `(dev)`, `(local)` or `(pr-<n>)`. Needs build stamps for the environment and the branch. | FR-37, UI-20, DC-11, DD-35, DD-46, CD-02 |
+| RD-21 | **The look.** Calm for a ten-minute visit: soft sage neutrals, a gentle green accent, a pastel colour per limit group on card chips, rounded shapes and generous spacing, in both themes. Amber and rose tints mark warnings and overdue, always with words. | RD-03, G8 |
 
 ## Background
 
@@ -582,6 +614,14 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-36 | "Cardholder" (หน้าบัตร) names the person on a card; "Account holder" (เจ้าของบัตร) names a group's owner. | Both used to read "Owner", which didn't tell them apart. | One word for both. |
 | DD-37 | Partial payments are parts inside the one payment record per card and period, not separate records. | The storage key and the backup's `payments` list stay unchanged, and an old record reads as one full payment, so no migration. | A separate record per payment, with its own id. |
 | DD-38 | The first payment freezes the statement's dates; later payments keep them. | Settled history must not move once anything is paid against it (DD-02). | Re-freezing on each payment. |
+| DD-39 | Purchases are planned as lists and confirmed by the spender, not entered from receipts. | That is how buying works: the bookkeeper chooses cards and amounts before anything is bought, and the spender confirms afterwards (2026-10-30). | A receipt entry screen (RD-01) with recent entries (RD-02). |
+| DD-40 | Pick cards first on Home, then enter amounts on their own screen. | With several cards ready, picking from a list is easier than scanning a form, and one amount per block isn't cramped on a phone. | One form with an amount field on every card row. |
+| DD-41 | Going over the room offers one action, *Lower to* the room. | Simple to read and act on. Paying first stays one tap away on +. | *Pay first* in the warning; moving the extra onto another card. |
+| DD-42 | A payment belongs to a card, settles the oldest statement first, and any extra becomes credit. | Payments are made on any day, often to make room, not one per statement. | Payments per statement (DD-37); only flagging an overpayment. |
+| DD-43 | Transactions is one ledger of purchases (−) and payments (+). | One place to look; sign and word show direction, never colour alone. | Separate *Purchase lists* and *Payments* tabs. |
+| DD-44 | The + in the bottom bar opens the payment form, and asks for the card first. | Paying is frequent, and the form must know the card. A separate *+ Plan* button did the same job. | + starting a purchase list; a *+ Plan* button on the payments view. |
+| DD-45 | Navigation is Home, Transactions, +, Cards and Settings; on a desktop the tabs sit on the right of the header. | Matches how often each task happens, with Settings one tap away. | A cog in the top-right corner for Settings; a three-tab bar. |
+| DD-46 | Every build other than production is tinted, badged and marked in the tab title. | Nobody should mistake a test build for the real data. | Marking previews only, with `(pr-<n>)` on the brand. |
 
 ## Out of scope
 
@@ -592,7 +632,8 @@ Not built, on purpose. Adding any of these is a new decision.
   and company spending, multi-currency.
 - Interest, fees and minimum payments; different limits for cards inside one shared group;
   a history of limit changes.
-- Adding or renaming locations or owners in the interface; a third language.
+- Adding or renaming owners in the interface; a third language. *(Locations become editable:
+  RD-17.)*
 - Edit, delete or undo in *This sitting*.
 
 ## Current design
@@ -644,16 +685,19 @@ The redesign is done when all of these hold.
 - [ ] The storage contract suite passes, and data saved by the current version loads unchanged.
 - [ ] A version 2 backup from the current version restores, with and without `settings`, and
       with payments both with and without `parts`.
-- [ ] `/cards` links with a query and `/cards?edit=<id>` still open the same view.
+- [ ] *(Dropped 2026-10-30, question 15.)* `/cards` links with a query and `/cards?edit=<id>`
+      still open the same view.
 - [ ] The delete guards in DR-19 still hold (DC-13).
 - [ ] Every interface rule (UI-01 to UI-21) holds, checked in English and Thai, light and dark,
       at phone and desktop widths.
 - [ ] Each decision that changed has a dated entry in `CHANGELOG.md` saying what replaced it
       and why, and is updated here.
-- [ ] Retired page addresses redirect.
-- [ ] Entering ten receipts in a row on the entry screen takes no more steps than today (G3):
-      pick card and date once, then amount, note and add for each.
-- [ ] Every decided change (RD-01 to RD-07) is built, and the rows it names are updated or
+- [ ] *(Dropped 2026-10-30, question 15.)* Retired page addresses redirect.
+- [ ] A purchase list for three cards takes no more than: tick the cards, enter the amounts,
+      review, mark sent; then *Made* or *Not made* per line and save (G3).
+- [ ] Payment records saved before RD-11 load as card payments, and every statement's paid
+      and left amounts stay the same.
+- [ ] Every decided change (RD-03 to RD-21) is built, and the rows it names are updated or
       retired.
 - [ ] The user has walked the main flows on the preview, on a phone and a desktop, and
       approved them.
@@ -665,11 +709,11 @@ The redesign is done when all of these hold.
 - **Storage cap.** Browsers allow `localStorage` about 5 MB per site, and a full store only shows
   up as a failed save.
 - **No overpayment record.** Paying more than is left is accepted, but the extra is not kept as
-  credit toward the next statement.
+  credit toward the next statement. *(Changed by RD-11: the extra becomes credit.)*
 - **Shared limits depend on every card.** A group's room is only as right as the payments
   marked on every card in it; one card left unmarked understates the room on all of them.
 - **Fixed sets.** Locations (Bangkok, Phichit, Krabi) and owners (KC, NT, RI) are closed lists
-  in the code.
+  in the code. *(Locations become editable: RD-17.)*
 - **Backup version 2 only.** Older backups are rejected.
 - **Restore is shallow and not atomic.** It checks shapes, not ranges (DC-06), and a failure
   partway can leave some records restored.
@@ -692,6 +736,9 @@ The redesign is done when all of these hold.
 | Replacing *This sitting* drops the need with the mechanism, and the bookkeeper loses their place after an interruption. | G3, RD-02, US-08. |
 | Stricter restore checks reject an old backup the user relies on. | RD-06 only rejects values the forms never allowed; check a real backup before shipping. |
 | A refactor drops the reading of old payment records without `parts`, and paid statements turn unpaid. | DR-29; the domain tests cover old records. |
+| Moving payments from statements to cards changes what was paid or is left on an old statement. | RD-11 requires a migration that keeps every total; test it on a real backup. |
+| A list waiting for the spender holds room and is forgotten. | Waiting lists stay at the top of Home and Transactions until saved (RD-13, RD-15). |
+| Deleting old purchases changes what a card owes. | RD-18 deletes only purchases on fully paid statements, after a count and a second confirmation. |
 | Something is dropped because no one knew it existed. | This document; the [Retired](#retired) list says what was removed on purpose. |
 
 ## Open questions
@@ -705,7 +752,9 @@ into the matching section.
    as the flows and the code. See [Problem](#problem).
 3. **Pages.** Keep four pages (dashboard, cards, one card, settings), or reorganise? For
    example, should paying statements, entering receipts and checking room be separate places?
-   *2026-10-30: build clickable mockups of these three in the brainstorm, then choose:*
+   *Answered 2026-10-30*: none of the three as drawn. Four pages, Home, Transactions, Cards and
+   Settings, with + for payments (RD-08), after the user corrected how the app is used. The
+   mockups first offered:
    - **A. Task tabs.** One place per task: Overview (read-only numbers), Add receipts, Pay
      (every unpaid statement across cards), Cards (registry, limit groups, card detail),
      Settings. Bottom tabs on a phone, top tabs on a desktop.
@@ -716,7 +765,8 @@ into the matching section.
      paying, purchases, editing) lives on its page. Add receipts is its own screen. Paying
      several cards means visiting each.
 4. **Entering receipts.** *Answered 2026-10-30*: entering receipts gets its own screen (RD-01).
-   *This sitting* doesn't fit as it is and is replaced (RD-02, question 11).
+   *This sitting* doesn't fit as it is and is replaced (RD-02, question 11). *Superseded by
+   RD-09: purchases come from purchase lists.*
 5. **Phone first?** *Answered 2026-10-29*: checking room and viewing the numbers. See G7.
 6. **Look.** *Answered 2026-10-30*: start again (RD-03).
 7. **Refactor depth.** *Answered 2026-10-30*: keep the same stack (RD-04).
@@ -724,7 +774,29 @@ into the matching section.
 9. **Restore checks.** *Answered 2026-10-30*: check ranges (RD-06).
 10. **Delete guards.** *Answered 2026-10-30*: move them into storage (RD-07).
 11. **What replaces *This sitting*?** *Answered 2026-10-30*: a recent entries list on the entry
-    screen, sorted by when each purchase was added (RD-02).
+    screen, sorted by when each purchase was added (RD-02). *Superseded by RD-09: a list waiting
+    for the spender's reply is how the bookkeeper keeps their place.*
+12. **Footer.** About in Settings now shows the build details (RD-20). Drop the page footer
+    (FR-37), or keep a slim one? *Answered 2026-10-30*: drop it; About replaces it.
+13. **A single purchase outside a list.** Is it still needed for an odd receipt, or does every
+    purchase come from a list (RD-09)? *Answered 2026-10-30*: not needed; every purchase
+    comes from a list.
+14. **Backup format.** Lists, planned payments, credit and the list of locations are new
+    records. Add them as optional lists in version 2 (DD-15), or move to version 3 with a
+    migration? *Answered 2026-10-30*: version 3. A version 2 backup still restores, migrated
+    on the way in (G4).
+15. **Page addresses.** Choose addresses for Transactions, a card, its edit screen and
+    `/settings/locations`, and keep `/card?id=`, `/cards?…` and `/cards?edit=<id>` working
+    (DC-15 to DC-17). *Answered 2026-10-30*: old links need not keep working, and retired
+    addresses need no redirect. DC-15 to DC-17 retire with the redesign; the new addresses are
+    the builder's call.
+16. **Credit on statements.** How credit shows on a card's statements and in *Owed*, and
+    whether it can be refunded or moved to another card. *Answered 2026-10-30*: it stays on the
+    card and its next purchases use it up; no refunds or moves.
+17. **Delete old purchases.** Confirm the age choices (6 months, 1, 2, 3 years), and whether
+    saved lists and payments that old go too (RD-18). *Answered 2026-10-30*: 6 months, 1 year,
+    3 years, or all; lists and payments from the same time go too.
+18. **Thai words** for the new terms in the glossary. *Answered 2026-10-30*: use them as written.
 
 ## Future work
 
@@ -744,7 +816,7 @@ Not part of this redesign.
 | Supplementary card | บัตรเสริม | A card issued on someone else's account, with its own cardholder. |
 | Cardholder | หน้าบัตร | The person on the card (DR-13). |
 | Account holder | เจ้าของบัตร | The owner of a limit group's account: KC, NT or RI. |
-| Location | ที่อยู่ | Where a card is kept: Bangkok, Phichit or Krabi. |
+| Location | ที่อยู่ | Where a card is kept: Bangkok, Phichit or Krabi, editable from RD-17. |
 | Limit group | กลุ่มวงเงิน | A pool of credit one or more cards draw on. |
 | Available | คงเหลือ | A group's limit less everything unpaid (DR-09). |
 | Billing cycle | รอบบิล | A card's rule for its close and due dates (DR-04). |
@@ -764,3 +836,11 @@ Not part of this redesign.
 | Batch start | เวลาเริ่มรอบ | When the current sitting began. |
 | Entry time | เวลาที่เพิ่ม | When a purchase was first entered (`addedAt`), as opposed to its purchase date. |
 | Satang | สตางค์ | 1/100 baht; how money is stored (DR-01). |
+| Purchase list | ใบรายการซื้อ | A dated list of cards and amounts sent to the spender before buying (RD-09). |
+| Spender's reply | คำตอบของผู้ใช้บัตร | Which lines on a list were made, with the real amounts. |
+| Ready to use | พร้อมใช้ | Cards in places that take purchases, shown on Home to pick for a list (RD-15). |
+| Planned payment | การชำระที่วางแผนไว้ | A payment dated later than today; it counts once marked paid (RD-12). |
+| Credit | เครดิต | Money paid beyond what a card owes, used by its next purchases (RD-11). |
+| Upcoming | กำลังจะมาถึง | Waiting lists and planned payments, not counted yet (RD-13). |
+| Transactions | รายการเคลื่อนไหว | The ledger of purchases (−) and payments (+) (RD-13). |
+| Environment | สภาพแวดล้อม | Which build is running: development, local, preview or production (RD-20). |
