@@ -33,11 +33,11 @@
 	--cc-panel-padding: var(--cc-space-4);
 
 	/* Exists so the sticky aside (`.split__aside`) can clear the sticky `.site-header` when it
-	   parks, which happens from 900px, where the header's right side stacks the tabs over the
-	   date. Measured there at 87px, with or without the build badge, in English and Thai:
-	   2 × var(--cc-space-3) padding + the 36px tab row + a var(--cc-space-1) gap + the ~21px
-	   date line + the 2px rule. Keep this in step if the header's padding or contents change. */
-	--cc-header-height: 5.5rem;
+	   parks, which happens from 900px. The header is one row on every width. Measured at 51px
+	   (390, 900 and 1280px, English and Thai, with the `(pr-30)` badge): 2 × var(--cc-space-3)
+	   padding + the 25px brand line + the 2px rule; the tabs reach down into the padding and
+	   add nothing. Keep this in step if the header's padding or contents change. */
+	--cc-header-height: 3.25rem;
 
 	/* The narrowest a card-page summary tile gets before its row wraps to one per line. */
 	--cc-tile-min: 14rem;

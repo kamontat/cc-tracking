@@ -98,16 +98,12 @@ export function parseBuiltAt(value: string): Date | null {
 
 const pad = (value: number): string => String(value).padStart(2, "0");
 
-/** The pill beside the brand, or null on production where nothing is shown. */
+/**
+ * The pill beside the brand: the tab title's mark without its leading space, so the two always
+ * say the same thing. Null on production, where nothing is shown.
+ */
 export function envBadge(environment: Environment, pr: string): string | null {
-	switch (environment) {
-		case "production":
-			return null;
-		case "preview":
-			return pr ? `preview · pr-${pr}` : "preview";
-		default:
-			return environment;
-	}
+	return titleMark(environment, pr).trim() || null;
 }
 
 /**

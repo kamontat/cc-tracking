@@ -62,13 +62,14 @@ a:any-link:hover {
 		max(var(--cc-space-4), env(safe-area-inset-right, 0px));
 }
 
-/* Left: the brand, and the build's badge on its own small line under it. */
+/* One row: the brand and the build's badge on the left, then (from 900px) the tabs, then the
+   date at the right end. */
 .site-header__id {
 	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	gap: var(--cc-space-1);
-	min-width: 0;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-2);
+	flex: none;
 }
 
 /* `:any-link` to outweigh the generic `a:any-link` rules above: a pseudo-class carries
@@ -94,7 +95,7 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-xs);
 }
 
-/* Which build this is, under the brand. Absent on production. */
+/* Which build this is, beside the brand, in the tab title's words. Absent on production. */
 .site-header__badge {
 	padding-inline: var(--cc-space-2);
 	font-family: var(--cc-font-mono);
@@ -106,16 +107,8 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-xs);
 }
 
-/* Right: the date on a phone; the tabs over the date on a wide window. */
-.site-header__end {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: var(--cc-space-1);
-	margin-inline-start: auto;
-}
-
 .site-header__date {
+	margin-inline-start: auto;
 	font-size: var(--cc-text-sm);
 	color: var(--cc-text-muted);
 	white-space: nowrap;
@@ -264,15 +257,19 @@ a:any-link:hover {
 		display: inline;
 	}
 
-	/* In by a tab's own inline padding, so the date ends under the last tab's label. */
+	/* The tabs take the free space's left edge, so they sit right-aligned next to the date. */
 	.site-header__date {
-		padding-inline-end: var(--cc-space-3);
+		margin-inline-start: 0;
 	}
 
 	.site-header__tabs {
 		display: flex;
 		flex-direction: row;
+		align-self: stretch;
 		gap: var(--cc-space-1);
+		margin-inline-start: auto;
+		/* Reach down through the bar's padding and the rule, so a tab's underline sits on it. */
+		margin-block-end: calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
 	}
 
 	.site-header__tabs a:any-link {
@@ -280,7 +277,7 @@ a:any-link:hover {
 		flex-direction: row;
 		align-items: center;
 		gap: var(--cc-space-2);
-		padding: var(--cc-space-1) var(--cc-space-3);
+		padding-inline: var(--cc-space-3);
 		color: var(--cc-text-muted);
 		text-decoration: none;
 		white-space: nowrap;

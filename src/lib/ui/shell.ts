@@ -81,18 +81,16 @@ export function renderShell(
 								>`
 					}
 				</div>
-				<div class="site-header__end">
-					<nav class="site-header__tabs" aria-label=${t("nav.pages")}>
-						${TABS.map(tab)}
-					</nav>
-					<span class="site-header__date" data-testid="today"
-						><span class="site-header__date-short"
-							>${headerDate(view.today, locale, false)}</span
-						><span class="site-header__date-long"
-							>${headerDate(view.today, locale, true)}</span
-						></span
-					>
-				</div>
+				<nav class="site-header__tabs" aria-label=${t("nav.pages")}>
+					${TABS.map(tab)}
+				</nav>
+				<span class="site-header__date" data-testid="today"
+					><span class="site-header__date-short"
+						>${headerDate(view.today, locale, false)}</span
+					><span class="site-header__date-long"
+						>${headerDate(view.today, locale, true)}</span
+					></span
+				>
 			</div>`,
 			header,
 		);

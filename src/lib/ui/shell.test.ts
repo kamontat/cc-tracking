@@ -63,11 +63,18 @@ test("the header date carries the phone and the desktop forms", () => {
 	expect(date?.querySelector(".site-header__date-long")?.textContent).toBe(
 		"Thu, 05 Nov 2026",
 	);
-	// The date sits with the tabs on the right, not in the brand column.
-	expect(date?.closest(".site-header__end")).not.toBeNull();
-	expect(
-		document.querySelector(".site-header__tabs")?.closest(".site-header__end"),
-	).not.toBeNull();
+});
+
+test("the header is one row: brand and badge, the tabs, then the date", () => {
+	mount();
+	renderShell(view({ environment: "preview", pr: "30" }));
+
+	const bar = document.querySelector(".site-header__bar");
+	expect([...(bar?.children ?? [])].map((child) => child.className)).toEqual([
+		"site-header__id",
+		"site-header__tabs",
+		"site-header__date",
+	]);
 });
 
 test("bottom bar is exactly the four tabs, with no add button", () => {
@@ -129,7 +136,7 @@ test("no badge in production", () => {
 	expect(document.querySelector(".site-header__id")?.children).toHaveLength(1);
 });
 
-test("the badge sits under the brand, in its column", () => {
+test("the badge sits right after the brand, in its group", () => {
 	mount();
 	renderShell(view({ environment: "preview", pr: "30" }));
 
@@ -141,10 +148,10 @@ test("the badge sits under the brand, in its column", () => {
 
 test("badge per build", () => {
 	const cases: [Environment, string, string][] = [
-		["development", "", "development"],
-		["local", "", "local"],
-		["preview", "7", "preview · pr-7"],
-		["preview", "", "preview"],
+		["development", "", "(dev)"],
+		["local", "", "(local)"],
+		["preview", "7", "(pr-7)"],
+		["preview", "", "(preview)"],
 	];
 	for (const [environment, pr, expected] of cases) {
 		mount();

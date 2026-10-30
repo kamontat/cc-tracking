@@ -116,12 +116,12 @@ test("titleMark leaves production unmarked", () => {
 	expect(titleMark("production", "")).toBe("");
 });
 
-test("badge per environment", () => {
+test("badge per environment reads as the title mark", () => {
 	expect(envBadge("production", "")).toBeNull();
-	expect(envBadge("development", "")).toBe("development");
-	expect(envBadge("local", "")).toBe("local");
-	expect(envBadge("preview", "42")).toBe("preview · pr-42");
-	expect(envBadge("preview", "")).toBe("preview");
+	expect(envBadge("development", "")).toBe("(dev)");
+	expect(envBadge("local", "")).toBe("(local)");
+	expect(envBadge("preview", "42")).toBe("(pr-42)");
+	expect(envBadge("preview", "")).toBe("(preview)");
 });
 
 test("built time reads in the viewer's zone", () => {
