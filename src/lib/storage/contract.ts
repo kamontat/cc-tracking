@@ -590,6 +590,43 @@ export function repositoryContract(
 			expect(await repo.listStatementDates("abc:def")).toHaveLength(1);
 		});
 
+		test("a card id containing ':' does not collide with another card's records", async () => {
+			await repo.saveCard(sampleCard({ id: "a:b" }));
+			await repo.saveCard(sampleCard({ id: "a" }));
+			await repo.savePurchase(samplePurchase({ id: "c", cardId: "a:b" }));
+			await repo.savePurchase(samplePurchase({ id: "b:c", cardId: "a" }));
+			await repo.saveCardPayment(sampleCardPayment({ id: "c", cardId: "a:b" }));
+			await repo.saveCardPayment(sampleCardPayment({ id: "b:c", cardId: "a" }));
+			await repo.saveStatementDates(
+				sampleStatementDates({ cardId: "a:b", period: "x" }),
+			);
+			await repo.saveStatementDates(
+				sampleStatementDates({ cardId: "a", period: "b:x" }),
+			);
+			await repo.savePayment(samplePayment({ cardId: "a:b", period: "x" }));
+			await repo.savePayment(samplePayment({ cardId: "a", period: "b:x" }));
+			expect((await repo.listPurchases("a:b")).map((p) => p.id)).toEqual(["c"]);
+			expect((await repo.listPurchases("a")).map((p) => p.id)).toEqual(["b:c"]);
+			expect((await repo.listCardPayments("a:b")).map((p) => p.id)).toEqual([
+				"c",
+			]);
+			expect((await repo.listCardPayments("a")).map((p) => p.id)).toEqual([
+				"b:c",
+			]);
+			expect(
+				(await repo.listStatementDates("a:b")).map((d) => d.period),
+			).toEqual(["x"]);
+			expect((await repo.listStatementDates("a")).map((d) => d.period)).toEqual(
+				["b:x"],
+			);
+			expect((await repo.listPayments("a:b")).map((p) => p.period)).toEqual([
+				"x",
+			]);
+			expect((await repo.listPayments("a")).map((p) => p.period)).toEqual([
+				"b:x",
+			]);
+		});
+
 		test("clearAll removes the new records", async () => {
 			await repo.saveCardPayment(sampleCardPayment());
 			await repo.saveStatementDates(sampleStatementDates());

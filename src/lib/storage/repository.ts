@@ -85,6 +85,13 @@ const byDateThenId = <T extends { date: string; id: string }>(a: T, b: T) =>
 
 const clone = <T>(value: T): T => structuredClone(value);
 
+/**
+ * A map key for a record owned by a card. Each part is encoded so a ':' inside an id cannot
+ * make card `a:b` + `c` and card `a` + `b:c` share a key.
+ */
+const pairKey = (cardId: string, part: string): string =>
+	`${encodeURIComponent(cardId)}:${encodeURIComponent(part)}`;
+
 /** Reference implementation. Used by tests and as the contract's baseline. */
 export class InMemoryRepository implements Repository {
 	private cards = new Map<string, Card>();
@@ -148,11 +155,11 @@ export class InMemoryRepository implements Repository {
 	}
 
 	async savePurchase(purchase: Purchase): Promise<void> {
-		this.purchases.set(`${purchase.cardId}:${purchase.id}`, clone(purchase));
+		this.purchases.set(pairKey(purchase.cardId, purchase.id), clone(purchase));
 	}
 
 	async deletePurchase(cardId: string, id: string): Promise<void> {
-		this.purchases.delete(`${cardId}:${id}`);
+		this.purchases.delete(pairKey(cardId, id));
 	}
 
 	async listPayments(cardId: string): Promise<StatementPayment[]> {
@@ -163,11 +170,11 @@ export class InMemoryRepository implements Repository {
 	}
 
 	async savePayment(payment: StatementPayment): Promise<void> {
-		this.payments.set(`${payment.cardId}:${payment.period}`, clone(payment));
+		this.payments.set(pairKey(payment.cardId, payment.period), clone(payment));
 	}
 
 	async deletePayment(cardId: string, period: string): Promise<void> {
-		this.payments.delete(`${cardId}:${period}`);
+		this.payments.delete(pairKey(cardId, period));
 	}
 
 	async listLimitGroups(): Promise<LimitGroup[]> {
@@ -195,11 +202,11 @@ export class InMemoryRepository implements Repository {
 	}
 
 	async saveCardPayment(payment: CardPayment): Promise<void> {
-		this.cardPayments.set(`${payment.cardId}:${payment.id}`, clone(payment));
+		this.cardPayments.set(pairKey(payment.cardId, payment.id), clone(payment));
 	}
 
 	async deleteCardPayment(cardId: string, id: string): Promise<void> {
-		this.cardPayments.delete(`${cardId}:${id}`);
+		this.cardPayments.delete(pairKey(cardId, id));
 	}
 
 	async listStatementDates(cardId: string): Promise<StatementDates[]> {
@@ -210,11 +217,11 @@ export class InMemoryRepository implements Repository {
 	}
 
 	async saveStatementDates(dates: StatementDates): Promise<void> {
-		this.statementDates.set(`${dates.cardId}:${dates.period}`, clone(dates));
+		this.statementDates.set(pairKey(dates.cardId, dates.period), clone(dates));
 	}
 
 	async deleteStatementDates(cardId: string, period: string): Promise<void> {
-		this.statementDates.delete(`${cardId}:${period}`);
+		this.statementDates.delete(pairKey(cardId, period));
 	}
 
 	async listPurchaseLists(): Promise<PurchaseList[]> {
