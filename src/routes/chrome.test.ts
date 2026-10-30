@@ -1,19 +1,16 @@
 import { expect, test } from "bun:test";
 import { Glob } from "bun";
 
-/**
- * The footer lives in each route's static HTML, the way the header and nav already do, so a
- * new route added without it is caught here rather than shipping a page that names no build.
- */
-test("every route page carries the site footer", async () => {
-	const missing: string[] = [];
+/** Build details live in Settings > About, so no page carries a footer of its own. */
+test("no route page carries a footer", async () => {
+	const offenders: string[] = [];
 
 	for await (const path of new Glob("src/routes/*.html").scan(".")) {
 		const source = await Bun.file(path).text();
-		if (!source.includes("<cc-site-footer>")) missing.push(path);
+		if (source.includes("<cc-site-footer")) offenders.push(path);
 	}
 
-	expect(missing).toEqual([]);
+	expect(offenders).toEqual([]);
 });
 
 /** The shell renders into these three slots, so every route page must carry all of them. */

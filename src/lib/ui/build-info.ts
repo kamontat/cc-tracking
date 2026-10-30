@@ -1,7 +1,7 @@
 import { displayDate, formatDate } from "#lib/domain/date";
 import type { Locale } from "#lib/i18n/index";
 
-/** The repository these pages are built from, and the root of every link the footer makes. */
+/** The repository these pages are built from, and the root of every link About makes. */
 export const REPO_URL = "https://github.com/kamontat/cc-tracking";
 
 export type Environment = "development" | "local" | "preview" | "production";
@@ -45,7 +45,7 @@ const EMPTY: BuildInfo = {
  * member expressions into a string literal, so `process` itself is never evaluated in a
  * built page. A page served without that rewrite -- the dev server -- evaluates it and
  * throws `ReferenceError` in the browser, which is what the catch is for: the caller then
- * gets the empty pair and shows the dev fallback rather than losing the whole footer.
+ * gets the empty pair and shows the dev fallback rather than losing the whole About panel.
  */
 export function buildInfo(): BuildInfo {
 	try {
@@ -59,14 +59,6 @@ export function buildInfo(): BuildInfo {
 	} catch {
 		return EMPTY;
 	}
-}
-
-/**
- * Appends ` (pr-<n>)` so a preview deploy can't be mistaken for production. Not translated:
- * "pr" is read the same way in either language.
- */
-export function withPrSuffix(text: string, pr: string): string {
-	return pr ? `${text} (pr-${pr})` : text;
 }
 
 /**
@@ -105,15 +97,6 @@ export function parseBuiltAt(value: string): Date | null {
 }
 
 const pad = (value: number): string => String(value).padStart(2, "0");
-
-/**
- * `yyyy-MM-dd HH:mm UTC`. Deliberately not localised: a deploy time is read against other
- * deploys rather than against the reader's day, so it should say the same thing everywhere.
- */
-export function formatBuiltAt(when: Date): string {
-	const date = `${when.getUTCFullYear()}-${pad(when.getUTCMonth() + 1)}-${pad(when.getUTCDate())}`;
-	return `${date} ${pad(when.getUTCHours())}:${pad(when.getUTCMinutes())} UTC`;
-}
 
 /** The pill beside the brand, or null on production where nothing is shown. */
 export function envBadge(environment: Environment, pr: string): string | null {

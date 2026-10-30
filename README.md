@@ -17,10 +17,10 @@ bun run check      # biome check
 
 `bun run build` goes through `scripts/build.ts`, which stamps
 `BUN_PUBLIC_COMMIT_SHA` and `BUN_PUBLIC_BUILT_AT` into the environment before
-handing over to `bun-server build`; the bundler inlines both, and the footer on
-every page shows them alongside a link to the repository and to the commit. Set
-either variable yourself to override what git reports. A dev server inlines
-nothing, so the footer there reads `dev` and the time the page was opened.
+handing over to `bun-server build`; the bundler inlines both, and Settings > About
+shows them alongside a link to the repository and to the commit. Set either
+variable yourself to override what git reports. A dev server inlines nothing,
+so About there reads as a development build with no build time.
 
 ## Pages
 

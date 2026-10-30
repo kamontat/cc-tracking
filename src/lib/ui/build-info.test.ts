@@ -6,7 +6,6 @@ import {
 	buildInfo,
 	commitUrl,
 	envBadge,
-	formatBuiltAt,
 	formatBuiltLocal,
 	parseBuiltAt,
 	REPO_URL,
@@ -14,7 +13,6 @@ import {
 	sourceLabel,
 	titleMark,
 	viewerTimeZone,
-	withPrSuffix,
 } from "#lib/ui/build-info";
 
 const SHA = "7ba698c1d4f0a2b3c4d5e6f708192a3b4c5d6e7f";
@@ -43,11 +41,6 @@ test("links a commit by its full sha under the repository", () => {
  * Built in UTC on purpose: a deploy timestamp is compared against other deploys, not
  * against the reader's day, so it must read the same wherever it is opened.
  */
-test("prints the build time in UTC, padded, whatever the reader's timezone", () => {
-	const when = new Date(Date.UTC(2026, 8, 24, 6, 5));
-	expect(formatBuiltAt(when)).toBe("2026-09-24 06:05 UTC");
-});
-
 test("reads an ISO build timestamp", () => {
 	expect(parseBuiltAt("2026-09-24T13:12:00Z")?.getTime()).toBe(
 		Date.UTC(2026, 8, 24, 13, 12),
@@ -125,14 +118,6 @@ test("titleMark marks a preview with its pull request", () => {
 
 test("titleMark leaves production unmarked", () => {
 	expect(titleMark("production", "")).toBe("");
-});
-
-test("marks text with the pull request a preview was built from", () => {
-	expect(withPrSuffix("cc-tracking", "42")).toBe("cc-tracking (pr-42)");
-});
-
-test("leaves text alone on a build that came from no pull request", () => {
-	expect(withPrSuffix("cc-tracking", "")).toBe("cc-tracking");
 });
 
 test("badge per environment", () => {
