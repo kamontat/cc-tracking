@@ -1,3 +1,6 @@
+import { displayDate, formatDate } from "#lib/domain/date";
+import type { Locale } from "#lib/i18n/index";
+
 /** The repository these pages are built from, and the root of every link the footer makes. */
 export const REPO_URL = "https://github.com/kamontat/cc-tracking";
 
@@ -77,7 +80,7 @@ export function titleMark(environment: Environment, pr: string): string {
 		case "local":
 			return " (local)";
 		case "preview":
-			return ` (pr-${pr})`;
+			return pr ? ` (pr-${pr})` : " (preview)";
 		case "production":
 			return "";
 	}
@@ -110,4 +113,50 @@ const pad = (value: number): string => String(value).padStart(2, "0");
 export function formatBuiltAt(when: Date): string {
 	const date = `${when.getUTCFullYear()}-${pad(when.getUTCMonth() + 1)}-${pad(when.getUTCDate())}`;
 	return `${date} ${pad(when.getUTCHours())}:${pad(when.getUTCMinutes())} UTC`;
+}
+
+/** The pill beside the brand, or null on production where nothing is shown. */
+export function envBadge(environment: Environment, pr: string): string | null {
+	switch (environment) {
+		case "production":
+			return null;
+		case "preview":
+			return pr ? `preview · pr-${pr}` : "preview";
+		default:
+			return environment;
+	}
+}
+
+/**
+ * `dd MMM yyyy, HH:mm (<zone>)` on the viewer's own clock. `Intl` is not used to format
+ * the date, so the year stays Gregorian in Thai.
+ */
+export function formatBuiltLocal(
+	when: Date,
+	locale: Locale,
+	timeZone: string,
+): string {
+	const date = displayDate(
+		formatDate(when.getFullYear(), when.getMonth() + 1, when.getDate()),
+		locale,
+	);
+	const time = `${pad(when.getHours())}:${pad(when.getMinutes())}`;
+	return `${date}, ${time}${timeZone ? ` (${timeZone})` : ""}`;
+}
+
+/** Where the build came from: `#<pr> · <branch>` on a preview, else the branch, else the repo. */
+export function sourceLabel(build: BuildInfo): string {
+	if (!build.branch) return new URL(REPO_URL).pathname.slice(1);
+	return build.environment === "preview" && build.pr
+		? `#${build.pr} · ${build.branch}`
+		: build.branch;
+}
+
+/** The viewer's IANA time zone name, or `""` when it can't be read. */
+export function viewerTimeZone(): string {
+	try {
+		return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+	} catch {
+		return "";
+	}
 }
