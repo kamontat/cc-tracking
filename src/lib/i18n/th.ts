@@ -9,10 +9,13 @@ import type { Catalog } from "#lib/i18n/catalog";
  */
 export const th: Catalog = {
 	"nav.brand": "cc-tracking",
-	"nav.dashboard": "หน้าหลัก",
+	"nav.home": "หน้าหลัก",
+	"nav.transactions": "รายการเคลื่อนไหว",
+	"nav.payment": "ชำระ",
+	"nav.pages": "หน้า",
 	"nav.cards": "บัตร",
 	"nav.settings": "ตั้งค่า",
-	"title.dashboard": "หน้าหลัก — cc-tracking",
+	"title.home": "หน้าหลัก — cc-tracking",
 	"title.cards": "ทะเบียนบัตร — cc-tracking",
 	"title.card": "บัตร — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",

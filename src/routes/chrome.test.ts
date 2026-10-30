@@ -16,6 +16,23 @@ test("every route page carries the site footer", async () => {
 	expect(missing).toEqual([]);
 });
 
+/** The shell renders into these three slots, so every route page must carry all of them. */
+test("every route page carries the shell slots", async () => {
+	const problems: string[] = [];
+
+	for await (const path of new Glob("src/routes/*.html").scan(".")) {
+		const source = await Bun.file(path).text();
+		for (const id of ["site-header", "page", "tabbar"]) {
+			if (!source.includes(`id="${id}"`)) problems.push(`${path}: no #${id}`);
+		}
+		if (source.includes("site-header__nav")) {
+			problems.push(`${path}: old site-header__nav`);
+		}
+	}
+
+	expect(problems).toEqual([]);
+});
+
 /** Language and theme are picked on the settings page, not in every page's header. */
 test("no route page carries a language picker in its header", async () => {
 	const offenders: string[] = [];
