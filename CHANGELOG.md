@@ -4,6 +4,67 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-30: Redesign decided from a clickable prototype
+
+### BREAKING CHANGES
+
+- These are decided for the build, not built yet. When they ship:
+  - backups move to version 3, and a version 2 backup still restores, converted on the way
+    in
+  - payment records move from statements to cards, keeping every total
+  - old page addresses and `/cards` links stop working, with no redirects
+  - the page footer goes, replaced by About in Settings
+
+### Features
+
+- `PRD.md` and `PRD_TH.md` record how the app is really used, as the user corrected it.
+  Purchases are planned as dated lists that the spender confirms. Payments are made on any
+  day, often to make room. The documents also say how often each task happens.
+- The PRD adds decided changes RD-08 to RD-21, each naming the rows it overrides:
+  - four pages (Home, Transactions, Cards, Settings), with a + in the phone's bottom bar
+    that opens the payment form
+  - purchase lists: pick cards on Home, enter amounts, send a dated table, record the
+    spender's reply, then save
+  - warnings while entering amounts, none of which blocks the list
+  - payments that belong to a card, settle the oldest statement first, and turn any extra
+    into credit
+  - planned payments, and one Transactions ledger of purchases (−) and payments (+)
+  - a payment form that asks for the card first
+  - a Home that shows what needs you, then the cards ready to use
+  - a Cards page with search, filters and sorting
+  - locations you can add, rename and delete
+  - deleting old purchases
+  - a Settings layout with an About section
+  - non-production builds tinted, badged and marked in the tab title
+  - a calm look for ten-minute visits
+- Decisions DD-39 to DD-46, a new goal G8, new risks, glossary terms in both languages, and a
+  link to the prototype.
+
+### Improvements
+
+- Every open question is answered. Question 3 (pages) settles on the four pages above. The
+  new questions 12 to 18 cover:
+  - the footer, which goes
+  - a purchase outside a list, which isn't needed
+  - the backup version, which moves to 3
+  - old links, which don't need to keep working
+  - credit, which the card's next purchases use up
+  - the ages for deleting old purchases: 6 months, 1 year, 3 years or all
+  - the Thai words, kept as written
+
+### Decisions
+
+- Purchase lists replace receipt entry (RD-09 replaces RD-01 and RD-02). Buying starts with
+  choosing cards and amounts, not with receipts after the fact.
+- Going over a card's room offers one action, *Lower to* the room. *Pay first* and moving the
+  extra onto another card were tried in the prototype and dropped as too complicated.
+- Transactions is one ledger rather than separate list and payment tabs. The + opens the
+  payment form, so a separate *+ Plan* button was dropped.
+- Deleting old purchases removes only what is fully paid, with its payments and lists, so no
+  card's balance moves.
+- Locations become editable, which reverses DD-11 and an out-of-scope item. They need a stored
+  list and a migration.
+
 ## 2026-10-30: Product requirements for the refactor and redesign
 
 ### Features
