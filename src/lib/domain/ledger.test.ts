@@ -1,9 +1,15 @@
 import { describe, expect, test } from "bun:test";
-import { cardLedger, newlyFrozen } from "#lib/domain/ledger";
+import {
+	cardLedger,
+	ledgerUrgency,
+	newlyFrozen,
+	nextBill,
+} from "#lib/domain/ledger";
 import type {
 	Card,
 	CardLedger,
 	CardPayment,
+	LedgerStatement,
 	Purchase,
 	StatementDates,
 } from "#lib/domain/types";
@@ -168,5 +174,84 @@ describe("newlyFrozen", () => {
 		const l = ledger(augSep, [payment("p", 500)]);
 		const frozen = newlyFrozen(card, l, []);
 		expect(newlyFrozen(card, l, frozen)).toEqual([]);
+	});
+});
+
+const stmt = (
+	period: string,
+	extra: Partial<LedgerStatement> = {},
+): LedgerStatement => ({
+	cardId: "kbank",
+	period,
+	closeDate: "2026-09-10",
+	dueDate: "2026-10-05",
+	purchases: [],
+	total: 1_000,
+	paidAmount: 0,
+	remaining: 1_000,
+	paid: false,
+	open: false,
+	...extra,
+});
+
+describe("ledgerUrgency", () => {
+	test("overdue after the due date", () => {
+		expect(ledgerUrgency(stmt("2026-08"), TODAY)).toBe("overdue");
+	});
+
+	test("soon within 7 days", () => {
+		const s = stmt("2026-09", { dueDate: "2026-11-04" });
+		expect(ledgerUrgency(s, TODAY)).toBe("soon");
+	});
+
+	test("due further out", () => {
+		const s = stmt("2026-09", { dueDate: "2026-11-20" });
+		expect(ledgerUrgency(s, TODAY)).toBe("due");
+	});
+
+	test("open period is open even when owed", () => {
+		const s = stmt("2026-10", {
+			open: true,
+			closeDate: "2026-11-10",
+			dueDate: "2026-12-05",
+		});
+		expect(ledgerUrgency(s, TODAY)).toBe("open");
+	});
+
+	test("empty statement is never overdue", () => {
+		const s = stmt("2026-08", { total: 0, remaining: 0 });
+		expect(ledgerUrgency(s, TODAY)).toBe("paid");
+	});
+
+	test("a settled statement is paid", () => {
+		const s = stmt("2026-08", { paidAmount: 1_000, remaining: 0, paid: true });
+		expect(ledgerUrgency(s, TODAY)).toBe("paid");
+	});
+});
+
+describe("nextBill", () => {
+	test("nextBill skips the open period", () => {
+		const l: CardLedger = {
+			statements: [
+				stmt("2026-10", { open: true }),
+				stmt("2026-09"),
+				stmt("2026-08"),
+			],
+			owed: 3_000,
+			credit: 0,
+		};
+		expect(nextBill(l)?.period).toBe("2026-08");
+	});
+
+	test("nextBill is null when nothing closed is owed", () => {
+		const l: CardLedger = {
+			statements: [
+				stmt("2026-10", { open: true }),
+				stmt("2026-09", { remaining: 0, paid: true }),
+			],
+			owed: 1_000,
+			credit: 0,
+		};
+		expect(nextBill(l)).toBeNull();
 	});
 });

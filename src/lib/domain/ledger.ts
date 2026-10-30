@@ -1,5 +1,5 @@
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import { compareDates, comparePeriods } from "#lib/domain/date";
+import { compareDates, comparePeriods, daysBetween } from "#lib/domain/date";
 import { sumAmounts } from "#lib/domain/money";
 import { openPeriod } from "#lib/domain/statement";
 import type {
@@ -124,4 +124,34 @@ export function newlyFrozen(
 			closeDate: s.closeDate,
 			dueDate: s.dueDate,
 		}));
+}
+
+export type LedgerUrgency = "overdue" | "soon" | "due" | "open" | "paid";
+
+const SOON_DAYS = 7;
+
+/**
+ * How pressing a statement is. The open period, and any statement not yet closed, is
+ * `open`. A statement with nothing left to pay (including an empty one) is `paid`, so it is
+ * never overdue.
+ */
+export function ledgerUrgency(
+	statement: LedgerStatement,
+	today: PlainDate,
+): LedgerUrgency {
+	if (statement.open || compareDates(statement.closeDate, today) >= 0)
+		return "open";
+	if (statement.remaining === 0) return "paid";
+	const daysLeft = daysBetween(today, statement.dueDate);
+	if (daysLeft < 0) return "overdue";
+	return daysLeft <= SOON_DAYS ? "soon" : "due";
+}
+
+/** The oldest closed statement that still owes money, or null. */
+export function nextBill(ledger: CardLedger): LedgerStatement | null {
+	for (let i = ledger.statements.length - 1; i >= 0; i--) {
+		const s = ledger.statements[i];
+		if (s && !s.open && s.remaining > 0) return s;
+	}
+	return null;
 }
