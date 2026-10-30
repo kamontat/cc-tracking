@@ -59,9 +59,9 @@ requirements it serves, and each user story names the functional requirements it
 | `src/lib/domain/` | Pure rules: dates, cycles, statements, limits, ranges, money; and the phase 1 rules `ledger.ts`, `room.ts`, `purchase-list.ts`, `amount-warnings.ts`, `locations.ts`, `purge.ts`. No storage, no UI. Tests beside each file. |
 | `src/lib/storage/` | `Repository` interface, the `localStorage` implementation, the contract suite, backup and restore, the location migration, the payment conversion (`migrate-payments.ts`) and backup version 3 (`transfer-v3.ts`). |
 | `src/lib/i18n/` | The English and Thai catalogs (`en.ts`, `th.ts`), language detection and formatting. |
-| `src/lib/ui/` | Page plumbing shared by routes: load and save with error handling, panels, theme, list view in the address, build info. |
+| `src/lib/ui/` | Page plumbing shared by routes: load and save with error handling, panels, theme, list view in the address, build info, and the shell (`shell.ts`, `chrome.ts`, `icons.ts`: header, bottom bar, tabs, build marks). |
 | `src/components/` | Lit web components (`cc-*`), one per panel, form or table. They get data as properties and send events. |
-| `src/routes/` | One HTML page and script per address: `index` (`/`), `cards`, `card`, `settings`. |
+| `src/routes/` | One HTML page and script per address: `index` (`/`), `transactions`, `cards`, `card`, `settings`. |
 | `src/styles/` | `tokens.css` (every value), `app.css` (page shell), `shared.ts` (styles inside components). |
 
 Stack: Bun, TypeScript, Lit, `@kcstyles/reset.css`, happy-dom for tests, static pages on
@@ -143,16 +143,18 @@ is used (see [Problem](#problem)), on a clickable prototype: <https://claude.ai/
 
 Phase 1 (rules and storage) shipped on 2026-10-30: the new rules and records sit beside the old ones, and no page uses them yet. See `docs/superpowers/plans/2026-10-30-redesign-roadmap.md`.
 
+Phase 2 (shell and look) shipped on 2026-10-30: the header, bottom bar, desktop tabs, build marks, the new palette, the early theme and About replacing the footer. Pages other than Home still show today's panels; `/transactions` is a placeholder.
+
 | ID | Change | Affects |
 |---|---|---|
 | RD-01 | *(Replaced by RD-09.)* **Entering receipts gets its own screen**, off the dashboard. It keeps today's speed: card and date stay between adds, amount and note clear, a failed add keeps what was typed. | FR-23, FR-27, DD-20, CD-03, CD-04, G3 |
 | RD-02 | *(Replaced by RD-09.)* **Recent entries replace *This sitting*.** The batch list with *Start new batch* doesn't fit and is not carried over as it is. The need stays: after an interruption the bookkeeper can see what they already entered, and doesn't skip or double-enter a receipt (BR-04, US-08). Replaced by a **recent entries** list on the entry screen: purchases sorted by when they were added (`addedAt`), newest first, grouped as today and earlier, with no batch to start or clear. Purchases without an entry time (DR-15) don't appear. `cc:batch-start` is no longer read and may stay on disk (DD-14). | FR-24, US-08, DR-16, DD-21, DD-22, DC-03, CD-05 |
-| RD-03 | **A new visual direction.** Palette, type, shape and density start again. The interface rules (UI-01 to UI-21) still hold: tokens only, three button variants, never colour alone, room for Thai, both themes. | DD-32, CD-02, CD-07, CD-08, CD-12 |
+| RD-03 | **A new visual direction.** Palette, type, shape and density start again. The interface rules (UI-01 to UI-21) still hold: tokens only, three button variants, never colour alone, room for Thai, both themes. *Shipped in phase 2.* | DD-32, CD-02, CD-07, CD-08, CD-12 |
 | RD-04 | **Same stack.** Bun, TypeScript, Lit web components, `@kcstyles/reset.css`, happy-dom for tests, static pages on Cloudflare Workers. The refactor restructures modules and folders only. | G5 |
-| RD-05 | **No theme flash.** The saved theme is applied before the first paint, so a page never shows the wrong theme on load. | DD-28, known limits |
+| RD-05 | **No theme flash.** The saved theme is applied before the first paint, so a page never shows the wrong theme on load. *Shipped in phase 2.* | DD-28, known limits |
 | RD-06 | **Restore checks ranges** with the same rules as the forms: amounts and limits above zero, last 4 exactly four digits, cycle days in range (DR-25), and payment parts as today. A file that breaks one is rejected before anything is written, naming the record and the problem. | DC-06, FR-31, known limits |
 | RD-07 | **Delete guards move into storage.** The repository refuses to delete a card that has purchases or a limit group that cards use, and the contract suite tests it. The interface keeps hiding the buttons as well. | DR-19, DC-13 |
-| RD-08 | **Pages and navigation.** Four pages: Home, Transactions, Cards and Settings. On a phone a bottom bar holds Home, Transactions, **+**, Cards and Settings; + opens the payment form (RD-14). On a desktop the tabs sit on the right of the header, followed by a **Payment** button. The header keeps the boxed `cc` mark with a bold rule under it. Sub-screens (entering amounts, a card, its edit form, locations) open with a back button. | CD-01, CD-02, FR-27, DD-19, DD-45, question 3 |
+| RD-08 | **Pages and navigation.** Four pages: Home, Transactions, Cards and Settings. On a phone a bottom bar holds Home, Transactions, **+**, Cards and Settings; + opens the payment form (RD-14). On a desktop the tabs sit on the right of the header, followed by a **Payment** button. The header keeps the boxed `cc` mark with a bold rule under it. Sub-screens (entering amounts, a card, its edit form, locations) open with a back button. *Shipped in part in phase 2: the shell; + and Payment open a placeholder until the payment form in phase 4.* | CD-01, CD-02, FR-27, DD-19, DD-45, question 3 |
 | RD-09 | **Purchase lists replace receipt entry.** (1) On Home, tick cards under *Ready to use*. (2) Enter an amount for each card on its own screen, with the purchase date. (3) Review the dated table, with the columns *Card* (id), *Name (last 4)* and *Amount*; copy it as text or save it as an image for the chat, then mark it sent. (4) When the spender replies, mark each line *Made* or *Not made* and correct the real amount. (5) Save: made lines become purchases on the list's date; not-made lines can move to a draft for the next day. A list is a draft, waiting for the spender, or saved. A waiting list holds its amounts against each group's room until it is saved. | RD-01, RD-02, FR-17, FR-18, FR-23, FR-24, US-07, US-08, DD-20 to DD-23, DD-39, DD-40, CD-03 to CD-05 |
 | RD-10 | **Warnings while entering amounts.** None blocks the list. Each sits under its line with the reason in words, the line gets an amber outline, and a count shows above *Review*. *Over the room*, explaining any room held by a waiting list and any planned payment that would make room, with one action: *Lower to* the room. *Shared limit*: cards on one list that share a group go over its room together. *Overdue bill* on the card. *Close date*: the purchase date is the card's close date. *Date has passed*: shown once, at the date, with *Change to today*. Dropped: the future-date warning, since lists are planned ahead, and a warning for a card already on another list. | FR-19, FR-20, US-09, DR-11, DD-41 |
 | RD-11 | **Payments belong to a card and can be made on any day.** A payment has a card, a date and an amount. Paid money settles the card's oldest statement first, the open period included. Paying more than is owed is accepted and said in words; the extra stays on the card as **credit**, used by its next purchases, so room can go above the limit. Existing per-statement records migrate without changing any total. | FR-09, FR-12, FR-14, FR-16, US-02, US-25, DR-05 to DR-09, DR-28 to DR-31, DC-02, DC-05 to DC-07, DD-07, DD-37, DD-38, DD-42, known limits |
@@ -164,8 +166,8 @@ Phase 1 (rules and storage) shipped on 2026-10-30: the new rules and records sit
 | RD-17 | **Locations can be managed** at `/settings/locations`: add, rename, delete (only a location with no cards), and tick *Takes purchases* per location, which replaces *Purchase places*. Needs a stored list of locations and a migration from the fixed three. | FR-02, FR-22, US-11, DR-12, DR-14, DC-07, DC-08, DC-10, DD-10, DD-11, out of scope, known limits |
 | RD-18 | **Delete old purchases.** Settings › Reset offers deleting purchases older than 6 months, 1 year or 3 years, or all of them. Saved lists and payments from the same time go with them. Only purchases on fully paid statements go, with the payments that settled them, so what each card owes, its credit and its room don't change. It says how many will go and asks a second time. *Delete all data* stays (FR-32). | FR-32, US-21, new |
 | RD-19 | **Settings layout.** Display (language, theme); Locations (one row into RD-17); Backup (download, copy as text, restore a copy); Reset (delete old purchases, delete all data); About (RD-20). | CD-11, FR-29 to FR-34 |
-| RD-20 | **About, and marking a build that isn't production.** About lists *Environment* as one word (Development, Local, Preview, Production); *Built*, in the viewer's time zone, hidden in development; *Source on GitHub*, the branch with the PR number on a preview, linking the repository; *Commit*, linking it, on preview and production only; and *Changelog*, on production only. Any other build tints the header and the phone's bottom bar in its own colour, shows a badge after the mark (`development`, `local`, `preview · pr-<n>`), and marks the tab title `(dev)`, `(local)` or `(pr-<n>)`. Needs build stamps for the environment and the branch. | FR-37, UI-20, DC-11, DD-35, DD-46, CD-02 |
-| RD-21 | **The look.** Calm for a ten-minute visit: soft sage neutrals, a gentle green accent, a pastel colour per limit group on card chips, rounded shapes and generous spacing, in both themes. Amber and rose tints mark warnings and overdue, always with words. | RD-03, G8 |
+| RD-20 | **About, and marking a build that isn't production.** About lists *Environment* as one word (Development, Local, Preview, Production); *Built*, in the viewer's time zone, hidden in development; *Source on GitHub*, the branch with the PR number on a preview, linking the repository; *Commit*, linking it, on preview and production only; and *Changelog*, on production only. Any other build tints the header and the phone's bottom bar in its own colour, shows a badge after the mark (`development`, `local`, `preview · pr-<n>`), and marks the tab title `(dev)`, `(local)` or `(pr-<n>)`. Needs build stamps for the environment and the branch. *Shipped in phase 2.* | FR-37, UI-20, DC-11, DD-35, DD-46, CD-02 |
+| RD-21 | **The look.** Calm for a ten-minute visit: soft sage neutrals, a gentle green accent, a pastel colour per limit group on card chips, rounded shapes and generous spacing, in both themes. Amber and rose tints mark warnings and overdue, always with words. *Shipped in phase 2 (pastel card chips arrive with the Cards page).* | RD-03, G8 |
 
 ## Background
 
@@ -279,7 +281,7 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 | FR-34 | The interface is in Thai and English, picked under *Display* in Settings. Switching re-renders in place without losing typed input, and the choice is remembered. With nothing saved, the app follows the first of the browser's languages that it speaks, in the browser's order, else Thai. | BR-09 |
 | FR-35 | Dates read `dd MMM yyyy`, zero-padded, with Gregorian years in both languages; amounts read `฿1,234.56` in both. Text the user typed is never translated. | BR-09 |
 | FR-36 | The theme is picked under *Display* in Settings: Match device, Light or Dark, remembered per browser. Urgency and limit usage are shown in words as well as colour. Every table stays readable on a phone. | BR-10 |
-| FR-37 | Every page's footer shows the commit and build time and links the source and the changelog. A preview deploy marks its title and brand with `(pr-<n>)`. | -- |
+| FR-37 | *(Retired: the footer.)* The footer is gone; the commit, build time and links now live in Settings › About, and a non-production build is marked in the header (RD-20, UI-20). | -- |
 
 ## User stories
 
@@ -569,7 +571,7 @@ Rules that hold whatever the screens look like.
 | UI-17 | **Numbers line up.** Numeric cells carry `data-numeric`: right-aligned, tabular figures. On a phone, tables become stacked rows using each cell's `data-label`, from the same markup. |
 | UI-18 | **The reset's `div` convention.** `@kcstyles/reset.css` makes every `div` a flex column, with `<div row>` and `<div block>` as the alternatives, and the shared shadow styles copy it. Dropping or swapping the reset changes every layout `div`. |
 | UI-19 | **Phone safe areas.** The page shell pads for `env(safe-area-inset-*)`. |
-| UI-20 | **A preview is marked.** A preview deploy adds `(pr-<n>)` to the title and brand, so it can't be mistaken for production. |
+| UI-20 | **A non-production build is marked.** It is tinted, badged and marked in the tab title (RD-20), so it can't be mistaken for production. |
 | UI-21 | **Appearance is checked by eye.** happy-dom computes no styles, so layout and colour are checked with screenshots at 390px and 1280px, in English and Thai, light and dark. |
 
 ## Decisions
@@ -629,6 +631,11 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-49 | Frozen statement dates are their own record (`cc:statementdates:<card>:<period>`), written the first time money reaches a statement. | Payments no longer belong to one statement, so they can't carry its dates (DD-02, DD-38). | Freezing dates on each payment. |
 | DD-50 | Only lists waiting for the spender hold room; drafts don't. | RD-09 says a waiting list holds its amounts. | Drafts holding room too. |
 | DD-51 | Bangkok, Phichit and Krabi keep the ids `bangkok`, `phichit`, `krabi`; a new location's id is a slug of its name (`-2`, `-3` on a clash, `location` when the name has no Latin letters or digits); renaming keeps the id. Deleting old purchases removes only purchases on closed, fully paid statements before the cutoff, with an equal amount of paid payments (trimming one if needed), and leaves a card out entirely if its owed or credit would change. | Cards and stored data refer to the id; RD-18 promises balances don't move. | Renaming ids; deleting whole statements only. |
+| DD-52 | In the light theme the warning, danger, muted and accent text colours are darker than the prototype's: `#95591a`, `#a8403d`, `#5f6b65`, `#367d5f`. | The prototype's colours fell short of WCAG AA contrast on the light panels (UI-21). | Keeping the prototype colours. |
+| DD-53 | The header date reads `dd MMM yyyy`, without the weekday. | Shorter, so the header fits a phone beside the mark and badge, in Thai too. | Showing the weekday. |
+| DD-54 | `/card?id=` marks the Cards tab as current. | A card belongs to Cards; no tab should look unselected on a card's page. | No tab marked on a card. |
+| DD-55 | A preview build without a PR number reads `preview` in its badge and `(preview)` in its title. | A preview can be built without a pull request; the mark must still say it isn't production (RD-20). | Hiding the mark; a made-up number. |
+| DD-56 | The desktop layout starts at 900px. | Below it the five-item bar fits a phone or small tablet; from it the tabs and Payment fit the header. | 640px or 960px. |
 
 ## Out of scope
 
@@ -650,8 +657,8 @@ that each change is a choice.
 
 | ID | Today |
 |---|---|
-| CD-01 | **Pages**: `/` dashboard, `/cards` registry and limit groups, `/card?id=<id>` one card, `/settings` display, purchase places, backup and reset. Nav: Dashboard, Cards, Settings. (Keep redirects, DC-17.) |
-| CD-02 | **Page shell**: sticky header with an accent mark, the brand and pill-tab nav with the current page filled; content up to `72rem` wide; footer with source, changelog, commit and build time. |
+| CD-01 | **Pages**: `/` Home (today's dashboard panels for now), `/transactions` (a placeholder until phase 4), `/cards` registry and limit groups, `/card?id=<id>` one card, `/settings` display, purchase places, backup, reset and About. Nav: Home, Transactions, +, Cards, Settings. (Keep redirects, DC-17.) |
+| CD-02 | **Page shell**: sticky header with the boxed `cc` mark, the date and a bold rule; on a phone a bottom bar with a raised +; from 900px the tabs sit on the right of the header, followed by a Payment button; content up to `72rem` wide; no footer; a non-production build is tinted and badged (RD-20). |
 | CD-03 | **Dashboard layout**: at 960px and wider, two columns, the purchase form and *This sitting* on the narrower left and *Purchases by date*, *Due next* and *Can spend now* on the right. Narrower, one column in that order. The "lands on" confirmation sits above both columns. |
 | CD-04 | **Purchase entry**: always-open form on the dashboard; a dialog on the card page for adding and editing. |
 | CD-05 | ***This sitting*** columns: added, card, bought, amount. *Start new batch* turns into a confirm and Keep pair in place. |
@@ -661,7 +668,7 @@ that each change is a choice.
 | CD-09 | **Registry page**: Add a card and Add limit group buttons open dialogs; the card list (open by default) with an archived list inside it (folded), and the limit group list (folded). |
 | CD-10 | **Card page**: summary (available, owed, next due), then statements newest first, with a *Current* badge and an accent left rule, quiet months folded into one line, Edit and Delete per purchase, payment rows in the same columns as purchases with their own *Unmark*, and a *Left to pay* row; what is left also sits under the month's total. |
 | CD-11 | **Settings page**: Display (language and theme), Purchases (place checkboxes), Backup split into *Save a copy* and *Restore a copy* side by side from 640px, then Reset. |
-| CD-12 | **Look**: warm paper neutrals, teal accent, soft corners and shadows. |
+| CD-12 | **Look**: sage neutrals, a green accent, pastel group colours, rounded shapes (radii 6, 12 and 18px). |
 | CD-13 | **Payments**: *Mark paid* opens a dialog with the balance ("paid · left"), the date paid and the amount. |
 
 ## Retired
@@ -677,6 +684,7 @@ Removed on purpose; listed so a redesign doesn't think they were lost.
 - Pico CSS, replaced by `@kcstyles/reset.css` and tokens (DD-31).
 - The Cloudflare Worker with KV storage behind Cloudflare Access; the site is now static pages
   only.
+- The page footer (FR-37), replaced by Settings › About and the build marks (RD-20).
 - Backup format version 1.
 - *Mark paid* as one click that settled the whole statement, replaced by the payment dialog and
   partial payments (DD-37).
@@ -724,8 +732,6 @@ The redesign is done when all of these hold.
 - **Backup version 2 only.** Older backups are rejected.
 - **Restore is shallow and not atomic.** It checks shapes, not ranges (DC-06), and a failure
   partway can leave some records restored.
-- **Theme flash.** A saved theme that differs from the device can flash briefly on load (fixed
-  by RD-05).
 - **Thai sorting** uses code-unit order, not Thai collation; it matches for today's locations.
 - **Small data.** Pages load every card and purchase; fine at today's size, worth revisiting if
   it grows.
