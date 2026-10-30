@@ -137,3 +137,27 @@ export type CardLedger = {
 	owed: number;
 	credit: number;
 };
+
+export type ListStatus = "draft" | "sent" | "saved";
+
+export type ListLine = {
+	cardId: string;
+	/** Satang planned. A positive integer. */
+	amount: number;
+	/** Absent until the spender answers. */
+	made?: boolean;
+	/** Satang really spent, when it differs from the plan. */
+	actual?: number;
+};
+
+export type PurchaseList = {
+	id: string;
+	date: PlainDate;
+	status: ListStatus;
+	lines: ListLine[];
+	/** ISO 8601 instants. */
+	sentAt?: string;
+	savedAt?: string;
+	/** Id of the draft that took this list's not-made lines. */
+	movedTo?: string;
+};
