@@ -383,4 +383,8 @@ export const th: Catalog = {
 	"spendable.empty": "ไม่มีบัตรที่รูดได้",
 	"spendable.unassigned": "มีบัตร {count} ใบยังไม่ผูกกลุ่มวงเงิน",
 	"spendable.unassignedAction": "ไปผูกกลุ่ม",
+
+	"guard.cardHasPurchases": "บัตรนี้มีรายการซื้อ จึงลบไม่ได้ เก็บเข้าคลังแทน",
+	"guard.groupInUse": "ยังมีบัตรใช้กลุ่มวงเงินนี้ ย้ายบัตรไปกลุ่มอื่นก่อน",
+	"guard.locationInUse": "ยังมีบัตรเก็บไว้ที่นี่ ย้ายบัตรไปที่อื่นก่อน",
 };

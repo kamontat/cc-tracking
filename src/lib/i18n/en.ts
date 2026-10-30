@@ -367,4 +367,11 @@ export const en = {
 	"spendable.empty": "No card here can take a purchase.",
 	"spendable.unassigned": "{count} cards have no limit group yet.",
 	"spendable.unassignedAction": "Assign them",
+
+	"guard.cardHasPurchases":
+		"This card has purchases, so it can't be deleted. Archive it instead.",
+	"guard.groupInUse":
+		"Cards still use this limit group. Move them to another group first.",
+	"guard.locationInUse":
+		"Cards are still kept here. Move them to another location first.",
 } as const;

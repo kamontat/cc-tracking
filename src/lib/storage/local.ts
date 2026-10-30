@@ -1,10 +1,15 @@
 import { type Settings, toSettings } from "#lib/domain/settings";
 import type {
 	Card,
+	CardPayment,
 	LimitGroup,
+	LocationRecord,
 	Purchase,
+	PurchaseList,
+	StatementDates,
 	StatementPayment,
 } from "#lib/domain/types";
+import { MessageError } from "#lib/i18n/error";
 import { type Repository, StorageError } from "#lib/storage/repository";
 
 const PREFIX = "cc:";
@@ -12,6 +17,10 @@ const CARD = `${PREFIX}card:`;
 const PURCHASE = `${PREFIX}purchase:`;
 const PAYMENT = `${PREFIX}payment:`;
 const LIMIT_GROUP = `${PREFIX}limitgroup:`;
+const CARD_PAYMENT = `${PREFIX}cardpayment:`;
+const STATEMENT_DATES = `${PREFIX}statementdates:`;
+const LIST = `${PREFIX}list:`;
+const LOCATION = `${PREFIX}location:`;
 const SETTINGS = `${PREFIX}settings`;
 const BATCH_START = `${PREFIX}batch-start`;
 /** One-off notices a data migration leaves for the next page load; see `migrate-locations`. */
@@ -25,6 +34,15 @@ export const paymentKey = (cardId: string, period: string): string =>
 	`${PAYMENT}${encodeURIComponent(cardId)}:${encodeURIComponent(period)}`;
 export const limitGroupKey = (id: string): string =>
 	`${LIMIT_GROUP}${encodeURIComponent(id)}`;
+
+export const cardPaymentKey = (cardId: string, id: string): string =>
+	`${CARD_PAYMENT}${encodeURIComponent(cardId)}:${encodeURIComponent(id)}`;
+export const statementDatesKey = (cardId: string, period: string): string =>
+	`${STATEMENT_DATES}${encodeURIComponent(cardId)}:${encodeURIComponent(period)}`;
+export const listKey = (id: string): string =>
+	`${LIST}${encodeURIComponent(id)}`;
+export const locationKey = (id: string): string =>
+	`${LOCATION}${encodeURIComponent(id)}`;
 
 /** Phase 1 store. Key shapes match the Cloudflare KV layout so phase 2 is a drop-in. */
 export class LocalStorageRepository implements Repository {
@@ -82,16 +100,17 @@ export class LocalStorageRepository implements Repository {
 	}
 
 	async deleteCard(id: string): Promise<void> {
-		this.storage.removeItem(cardKey(id));
-		// Cascade: delete all purchases and payments for this card
 		const encodedCardId = encodeURIComponent(id);
-		const purchasePrefix = `${PURCHASE}${encodedCardId}:`;
-		const paymentPrefix = `${PAYMENT}${encodedCardId}:`;
-		for (const key of this.keysWithPrefix(purchasePrefix)) {
-			this.storage.removeItem(key);
+		if (this.keysWithPrefix(`${PURCHASE}${encodedCardId}:`).length > 0) {
+			throw new MessageError("guard.cardHasPurchases");
 		}
-		for (const key of this.keysWithPrefix(paymentPrefix)) {
-			this.storage.removeItem(key);
+		this.storage.removeItem(cardKey(id));
+		// Cascade: delete the card's payments, card payments and statement dates.
+		// The trailing colon keeps a card whose id merely starts the same untouched.
+		for (const kind of [PAYMENT, CARD_PAYMENT, STATEMENT_DATES]) {
+			for (const key of this.keysWithPrefix(`${kind}${encodedCardId}:`)) {
+				this.storage.removeItem(key);
+			}
 		}
 	}
 
@@ -146,7 +165,69 @@ export class LocalStorageRepository implements Repository {
 	}
 
 	async deleteLimitGroup(id: string): Promise<void> {
+		if ((await this.listCards()).some((card) => card.limitGroupId === id)) {
+			throw new MessageError("guard.groupInUse");
+		}
 		this.storage.removeItem(limitGroupKey(id));
+	}
+
+	async listCardPayments(cardId: string): Promise<CardPayment[]> {
+		return this.readAll<CardPayment>(
+			`${CARD_PAYMENT}${encodeURIComponent(cardId)}:`,
+		).sort((a, b) =>
+			a.date === b.date ? (a.id < b.id ? -1 : 1) : a.date < b.date ? -1 : 1,
+		);
+	}
+
+	async saveCardPayment(payment: CardPayment): Promise<void> {
+		this.write(cardPaymentKey(payment.cardId, payment.id), payment);
+	}
+
+	async deleteCardPayment(cardId: string, id: string): Promise<void> {
+		this.storage.removeItem(cardPaymentKey(cardId, id));
+	}
+
+	async listStatementDates(cardId: string): Promise<StatementDates[]> {
+		return this.readAll<StatementDates>(
+			`${STATEMENT_DATES}${encodeURIComponent(cardId)}:`,
+		);
+	}
+
+	async saveStatementDates(dates: StatementDates): Promise<void> {
+		this.write(statementDatesKey(dates.cardId, dates.period), dates);
+	}
+
+	async deleteStatementDates(cardId: string, period: string): Promise<void> {
+		this.storage.removeItem(statementDatesKey(cardId, period));
+	}
+
+	async listPurchaseLists(): Promise<PurchaseList[]> {
+		return this.readAll<PurchaseList>(LIST).sort((a, b) =>
+			a.date === b.date ? (a.id < b.id ? -1 : 1) : a.date < b.date ? -1 : 1,
+		);
+	}
+
+	async savePurchaseList(list: PurchaseList): Promise<void> {
+		this.write(listKey(list.id), list);
+	}
+
+	async deletePurchaseList(id: string): Promise<void> {
+		this.storage.removeItem(listKey(id));
+	}
+
+	async listLocations(): Promise<LocationRecord[]> {
+		return this.readAll<LocationRecord>(LOCATION);
+	}
+
+	async saveLocation(location: LocationRecord): Promise<void> {
+		this.write(locationKey(location.id), location);
+	}
+
+	async deleteLocation(id: string): Promise<void> {
+		if ((await this.listCards()).some((card) => String(card.location) === id)) {
+			throw new MessageError("guard.locationInUse");
+		}
+		this.storage.removeItem(locationKey(id));
 	}
 
 	async getSettings(): Promise<Settings> {
@@ -175,7 +256,17 @@ export class LocalStorageRepository implements Repository {
 	 * no longer exist -- and so does the batch start, which would otherwise outlive its entries.
 	 */
 	async clearAll(): Promise<void> {
-		for (const prefix of [CARD, PURCHASE, PAYMENT, LIMIT_GROUP, MIGRATION]) {
+		for (const prefix of [
+			CARD,
+			PURCHASE,
+			PAYMENT,
+			LIMIT_GROUP,
+			CARD_PAYMENT,
+			STATEMENT_DATES,
+			LIST,
+			LOCATION,
+			MIGRATION,
+		]) {
 			for (const key of this.keysWithPrefix(prefix)) {
 				this.storage.removeItem(key);
 			}
