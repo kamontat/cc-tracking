@@ -160,7 +160,7 @@ is used (see [Problem](#problem)), on a clickable prototype: <https://claude.ai/
 | RD-15 | **Home.** *Needs you* first: lists waiting for the spender, overdue bills, planned payments in the next three days and drafts, each opening its task. Then *Ready to use*: the cards in places that take purchases, with room, close date and due date for buying today, sortable by most room, longest to close or latest due, and selectable for a list. A quiet day reads "All caught up". Replaces the dashboard panels. | FR-11, FR-15, US-04, CD-03, DD-34 |
 | RD-16 | **Cards page.** Grouped by location by default; search; filter by location and account holder; sort by place, most room, name or close day, where any sort but place gives one flat list. Limit groups sit beside the list on a desktop. A card's page shows room, owed, next bill, *Use on a list*, *Make a payment* and statements; *Edit* opens a full edit screen instead of a dialog. Old addresses need not keep working (question 15). | FR-06, FR-07, FR-38, US-16, US-18, CD-09, CD-10, DC-15, DC-16 |
 | RD-17 | **Locations can be managed** at `/settings/locations`: add, rename, delete (only a location with no cards), and tick *Takes purchases* per location, which replaces *Purchase places*. Needs a stored list of locations and a migration from the fixed three. | FR-02, FR-22, US-11, DR-12, DR-14, DC-07, DC-08, DC-10, DD-10, DD-11, out of scope, known limits |
-| RD-18 | **Delete old purchases.** Settings › Reset offers deleting purchases older than 6 months, 1, 2 or 3 years. Only purchases on fully paid statements go, so what each card owes and its room don't change. It says how many will go and asks a second time. *Delete all data* stays (FR-32). | FR-32, US-21, new |
+| RD-18 | **Delete old purchases.** Settings › Reset offers deleting purchases older than 6 months, 1 year or 3 years, or all of them. Saved lists and payments from the same time go with them. Only purchases on fully paid statements go, with the payments that settled them, so what each card owes, its credit and its room don't change. It says how many will go and asks a second time. *Delete all data* stays (FR-32). | FR-32, US-21, new |
 | RD-19 | **Settings layout.** Display (language, theme); Locations (one row into RD-17); Backup (download, copy as text, restore a copy); Reset (delete old purchases, delete all data); About (RD-20). | CD-11, FR-29 to FR-34 |
 | RD-20 | **About, and marking a build that isn't production.** About lists *Environment* as one word (Development, Local, Preview, Production); *Built*, in the viewer's time zone, hidden in development; *Source on GitHub*, the branch with the PR number on a preview, linking the repository; *Commit*, linking it, on preview and production only; and *Changelog*, on production only. Any other build tints the header and the phone's bottom bar in its own colour, shows a badge after the mark (`development`, `local`, `preview · pr-<n>`), and marks the tab title `(dev)`, `(local)` or `(pr-<n>)`. Needs build stamps for the environment and the branch. | FR-37, UI-20, DC-11, DD-35, DD-46, CD-02 |
 | RD-21 | **The look.** Calm for a ten-minute visit: soft sage neutrals, a gentle green accent, a pastel colour per limit group on card chips, rounded shapes and generous spacing, in both themes. Amber and rose tints mark warnings and overdue, always with words. | RD-03, G8 |
@@ -791,10 +791,12 @@ into the matching section.
     addresses need no redirect. DC-15 to DC-17 retire with the redesign; the new addresses are
     the builder's call.
 16. **Credit on statements.** How credit shows on a card's statements and in *Owed*, and
-    whether it can be refunded or moved to another card.
+    whether it can be refunded or moved to another card. *Answered 2026-10-30*: it stays on the
+    card and its next purchases use it up; no refunds or moves.
 17. **Delete old purchases.** Confirm the age choices (6 months, 1, 2, 3 years), and whether
-    saved lists and payments that old go too (RD-18).
-18. **Thai words** for the new terms in the glossary, which are marked as proposed.
+    saved lists and payments that old go too (RD-18). *Answered 2026-10-30*: 6 months, 1 year,
+    3 years, or all; lists and payments from the same time go too.
+18. **Thai words** for the new terms in the glossary. *Answered 2026-10-30*: use them as written.
 
 ## Future work
 
@@ -834,11 +836,11 @@ Not part of this redesign.
 | Batch start | เวลาเริ่มรอบ | When the current sitting began. |
 | Entry time | เวลาที่เพิ่ม | When a purchase was first entered (`addedAt`), as opposed to its purchase date. |
 | Satang | สตางค์ | 1/100 baht; how money is stored (DR-01). |
-| Purchase list | ใบรายการซื้อ (proposed) | A dated list of cards and amounts sent to the spender before buying (RD-09). |
-| Spender's reply | คำตอบของผู้ใช้บัตร (proposed) | Which lines on a list were made, with the real amounts. |
-| Ready to use | พร้อมใช้ (proposed) | Cards in places that take purchases, shown on Home to pick for a list (RD-15). |
-| Planned payment | การชำระที่วางแผนไว้ (proposed) | A payment dated later than today; it counts once marked paid (RD-12). |
-| Credit | เครดิต (proposed) | Money paid beyond what a card owes, used by its next purchases (RD-11). |
-| Upcoming | กำลังจะมาถึง (proposed) | Waiting lists and planned payments, not counted yet (RD-13). |
-| Transactions | รายการเคลื่อนไหว (proposed) | The ledger of purchases (−) and payments (+) (RD-13). |
-| Environment | สภาพแวดล้อม (proposed) | Which build is running: development, local, preview or production (RD-20). |
+| Purchase list | ใบรายการซื้อ | A dated list of cards and amounts sent to the spender before buying (RD-09). |
+| Spender's reply | คำตอบของผู้ใช้บัตร | Which lines on a list were made, with the real amounts. |
+| Ready to use | พร้อมใช้ | Cards in places that take purchases, shown on Home to pick for a list (RD-15). |
+| Planned payment | การชำระที่วางแผนไว้ | A payment dated later than today; it counts once marked paid (RD-12). |
+| Credit | เครดิต | Money paid beyond what a card owes, used by its next purchases (RD-11). |
+| Upcoming | กำลังจะมาถึง | Waiting lists and planned payments, not counted yet (RD-13). |
+| Transactions | รายการเคลื่อนไหว | The ledger of purchases (−) and payments (+) (RD-13). |
+| Environment | สภาพแวดล้อม | Which build is running: development, local, preview or production (RD-20). |
