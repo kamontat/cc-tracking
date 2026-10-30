@@ -85,7 +85,6 @@ test("every build but production has a tint", () => {
 	for (const env of ["development", "local", "preview"]) {
 		const found = names(blockAfter(`:root[data-env="${env}"]`));
 		expect(found).toContain("--cc-env");
-		expect(found).toContain("--cc-env-text");
 	}
 });
 

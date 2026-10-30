@@ -5,7 +5,7 @@ import { displayDate } from "#lib/domain/date";
 import {
 	buildInfo,
 	commitUrl,
-	envBadge,
+	envMark,
 	formatBuiltLocal,
 	parseBuiltAt,
 	REPO_URL,
@@ -116,12 +116,12 @@ test("titleMark leaves production unmarked", () => {
 	expect(titleMark("production", "")).toBe("");
 });
 
-test("badge per environment reads as the title mark", () => {
-	expect(envBadge("production", "")).toBeNull();
-	expect(envBadge("development", "")).toBe("(dev)");
-	expect(envBadge("local", "")).toBe("(local)");
-	expect(envBadge("preview", "42")).toBe("(pr-42)");
-	expect(envBadge("preview", "")).toBe("(preview)");
+test("header mark per environment reads as the title mark", () => {
+	expect(envMark("production", "")).toBeNull();
+	expect(envMark("development", "")).toBe("(dev)");
+	expect(envMark("local", "")).toBe("(local)");
+	expect(envMark("preview", "42")).toBe("(pr-42)");
+	expect(envMark("preview", "")).toBe("(preview)");
 });
 
 test("built time reads in the viewer's zone", () => {

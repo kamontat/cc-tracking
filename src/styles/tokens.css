@@ -34,9 +34,9 @@
 
 	/* Exists so the sticky aside (`.split__aside`) can clear the sticky `.site-header` when it
 	   parks, which happens from 900px. The header is one row on every width. Measured at 51px
-	   (390, 900 and 1280px, English and Thai, with the `(pr-30)` badge): 2 × var(--cc-space-3)
-	   padding + the 25px brand line + the 2px rule; the tabs reach down into the padding and
-	   add nothing. Keep this in step if the header's padding or contents change. */
+	   (390, 900 and 1280px, English and Thai, brand, `(pr-30)` and date in one run):
+	   2 × var(--cc-space-3) padding + the 25px brand line + the 2px rule; the tabs reach down
+	   into the padding and add nothing. Keep this in step if the header's padding or contents change. */
 	--cc-header-height: 3.25rem;
 
 	/* The narrowest a card-page summary tile gets before its row wraps to one per line. */
@@ -218,15 +218,12 @@
 /* Build tints, the same in both themes: a non-production build stamps `data-env` on `<html>`. */
 :root[data-env="development"] {
 	--cc-env: #8a55d6;
-	--cc-env-text: #ffffff;
 }
 
 :root[data-env="local"] {
 	--cc-env: #2a72bd;
-	--cc-env-text: #ffffff;
 }
 
 :root[data-env="preview"] {
 	--cc-env: #d08a1c;
-	--cc-env-text: #22302a;
 }

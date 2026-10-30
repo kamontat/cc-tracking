@@ -62,12 +62,12 @@ a:any-link:hover {
 		max(var(--cc-space-4), env(safe-area-inset-right, 0px));
 }
 
-/* One row: the brand and the build's badge on the left, then (from 900px) the tabs, then the
-   date at the right end. */
+/* One row. On the left one run of text: the brand, the build's mark, a dot, the date. From
+   900px the tabs sit at the right end. */
 .site-header__id {
 	display: flex;
 	flex-direction: row;
-	align-items: center;
+	align-items: baseline;
 	gap: var(--cc-space-2);
 	flex: none;
 }
@@ -95,20 +95,16 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-xs);
 }
 
-/* Which build this is, beside the brand, in the tab title's words. Absent on production. */
-.site-header__badge {
-	padding-inline: var(--cc-space-2);
-	font-family: var(--cc-font-mono);
-	font-size: var(--cc-text-xs);
-	font-weight: 700;
-	color: var(--cc-env-text);
+/* Which build this is, in the tab title's words, as plain text: the header's tint marks the
+   build alongside it. Absent on production. */
+.site-header__env {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text);
 	white-space: nowrap;
-	background: var(--cc-env);
-	border-radius: var(--cc-radius-xs);
 }
 
+.site-header__sep,
 .site-header__date {
-	margin-inline-start: auto;
 	font-size: var(--cc-text-sm);
 	color: var(--cc-text-muted);
 	white-space: nowrap;
@@ -136,6 +132,7 @@ a:any-link:hover {
 }
 
 /* Muted text is 4.2:1 on the tint in the light theme, short of AA; use full text colour. */
+:root[data-env]:not([data-env="production"]) .site-header__sep,
 :root[data-env]:not([data-env="production"]) .site-header__date,
 :root[data-env]:not([data-env="production"])
 	.site-header__tabs
@@ -255,11 +252,6 @@ a:any-link:hover {
 
 	.site-header__date-long {
 		display: inline;
-	}
-
-	/* The tabs take the free space's left edge, so they sit right-aligned next to the date. */
-	.site-header__date {
-		margin-inline-start: 0;
 	}
 
 	.site-header__tabs {

@@ -65,7 +65,7 @@ test("the header date carries the phone and the desktop forms", () => {
 	);
 });
 
-test("the header is one row: brand and badge, the tabs, then the date", () => {
+test("the header is one row: the brand run, then the tabs", () => {
 	mount();
 	renderShell(view({ environment: "preview", pr: "30" }));
 
@@ -73,8 +73,27 @@ test("the header is one row: brand and badge, the tabs, then the date", () => {
 	expect([...(bar?.children ?? [])].map((child) => child.className)).toEqual([
 		"site-header__id",
 		"site-header__tabs",
+	]);
+});
+
+test("brand, build mark, a hidden dot, then the date, as one run", () => {
+	mount();
+	renderShell(view({ environment: "preview", pr: "30" }));
+
+	const run = document.querySelector(".site-header__id");
+	expect([...(run?.children ?? [])].map((child) => child.className)).toEqual([
+		"site-header__brand",
+		"site-header__env",
+		"site-header__sep",
 		"site-header__date",
 	]);
+	const dot = run?.querySelector(".site-header__sep");
+	expect(dot?.textContent).toBe("·");
+	expect(dot?.getAttribute("aria-hidden")).toBe("true");
+	// The brand link wraps only the mark and the name, never the build mark or the date.
+	expect(document.querySelector(".site-header__brand")?.textContent).toBe(
+		"cctracking",
+	);
 });
 
 test("bottom bar is exactly the four tabs, with no add button", () => {
@@ -128,25 +147,20 @@ test("the current tab is marked in both navs", () => {
 	expect(all('[data-tab="cards"]')).toHaveLength(2);
 });
 
-test("no badge in production", () => {
+test("no build mark in production", () => {
 	mount();
 	renderShell(view({ environment: "production" }));
 
-	expect(document.querySelector('[data-testid="env-badge"]')).toBeNull();
-	expect(document.querySelector(".site-header__id")?.children).toHaveLength(1);
+	expect(document.querySelector('[data-testid="env-mark"]')).toBeNull();
+	const run = document.querySelector(".site-header__id");
+	expect([...(run?.children ?? [])].map((child) => child.className)).toEqual([
+		"site-header__brand",
+		"site-header__sep",
+		"site-header__date",
+	]);
 });
 
-test("the badge sits right after the brand, in its group", () => {
-	mount();
-	renderShell(view({ environment: "preview", pr: "30" }));
-
-	const column = document.querySelector(".site-header__id");
-	expect([...(column?.children ?? [])].map((child) => child.className)).toEqual(
-		["site-header__brand", "site-header__badge"],
-	);
-});
-
-test("badge per build", () => {
+test("build mark per build, as plain text", () => {
 	const cases: [Environment, string, string][] = [
 		["development", "", "(dev)"],
 		["local", "", "(local)"],
@@ -157,7 +171,7 @@ test("badge per build", () => {
 		mount();
 		renderShell(view({ environment, pr }));
 		expect(
-			document.querySelector('[data-testid="env-badge"]')?.textContent?.trim(),
+			document.querySelector('[data-testid="env-mark"]')?.textContent?.trim(),
 		).toBe(expected);
 	}
 });

@@ -3,7 +3,7 @@ import { headerDate } from "#lib/domain/date";
 import type { PlainDate } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { getLocale, t } from "#lib/i18n/index";
-import { type Environment, envBadge } from "#lib/ui/build-info";
+import { type Environment, envMark } from "#lib/ui/build-info";
 import { icons } from "#lib/ui/icons";
 
 export type Tab = "home" | "transactions" | "cards" | "settings";
@@ -61,7 +61,7 @@ export function renderShell(
 	root: ParentNode = document,
 ): void {
 	const current = currentTab(view.path);
-	const badge = envBadge(view.environment, view.pr);
+	const mark = envMark(view.environment, view.pr);
 	const locale = getLocale();
 	const tab = ([name, path, label]: (typeof TABS)[number]) =>
 		tabLink(name, path, label, current);
@@ -74,23 +74,23 @@ export function renderShell(
 					<a class="site-header__brand" href="/" aria-label=${t("nav.brand")}
 						><span class="site-header__mark">cc</span>tracking</a
 					>${
-						badge === null
+						mark === null
 							? nothing
-							: html`<span class="site-header__badge" data-testid="env-badge"
-									>${badge}</span
+							: html`<span class="site-header__env" data-testid="env-mark"
+									>${mark}</span
 								>`
-					}
+					}<span class="site-header__sep" aria-hidden="true">·</span
+					><span class="site-header__date" data-testid="today"
+						><span class="site-header__date-short"
+							>${headerDate(view.today, locale, false)}</span
+						><span class="site-header__date-long"
+							>${headerDate(view.today, locale, true)}</span
+						></span
+					>
 				</div>
 				<nav class="site-header__tabs" aria-label=${t("nav.pages")}>
 					${TABS.map(tab)}
 				</nav>
-				<span class="site-header__date" data-testid="today"
-					><span class="site-header__date-short"
-						>${headerDate(view.today, locale, false)}</span
-					><span class="site-header__date-long"
-						>${headerDate(view.today, locale, true)}</span
-					></span
-				>
 			</div>`,
 			header,
 		);
