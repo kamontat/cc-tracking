@@ -16,3 +16,24 @@ before it lands, so it can build on the real code rather than on guesses.
 
 Each phase updates `PRD.md` and `PRD_TH.md` for what it ships (the overridden rows are updated
 or retired) and adds a dated changelog entry when it lands.
+
+## Notes for phase 2
+
+Left by the final review of phase 1, for the plan that wires its code in.
+
+- Run `migratePayments(repo, localStorage)` at startup and handle a rejection (a failed write
+  leaves the marker unset, so the page must say so and the next load retries).
+- Switch restore to `transfer-v3` at the same time. The old `transfer.ts` writes
+  `cc:payment:` records, which never convert once `cc:migration:payments` is set.
+- Widen `Card.location` to any location id, and make backup version 3 check each card's
+  location against the file's location ids (RD-17).
+- Restoring a version 2 file over already-converted data can leave extra converted parts (a
+  record that now converts to fewer parts leaves the old higher-index ones behind). Before
+  writing, delete each card's converted payments for every period the file holds.
+- Default location records are stored with English names. While a record still has its
+  default name, show the catalog name in the reader's language (Thai or English), or seed the
+  records in the reader's language.
+- `saveReply` does not refuse a list that is already saved; the caller must.
+- `heldBy` must be given sent lists only.
+- Guard `titleMark("preview", "")`: a preview build without a PR number must not mark the
+  title `(pr-)`.
