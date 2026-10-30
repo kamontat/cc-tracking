@@ -98,3 +98,42 @@ export type Statement = {
 	paid: boolean;
 	payment: StatementPayment | null;
 };
+
+export type PaymentStatus = "planned" | "paid";
+
+/** Money paid toward a card. `period` is set only on records converted from the old model. */
+export type CardPayment = {
+	id: string;
+	cardId: string;
+	date: PlainDate;
+	amount: number;
+	status: PaymentStatus;
+	period?: Period;
+};
+
+/** Close and due dates kept once money first reached a statement. */
+export type StatementDates = {
+	cardId: string;
+	period: Period;
+	closeDate: PlainDate;
+	dueDate: PlainDate;
+};
+
+export type LedgerStatement = {
+	cardId: string;
+	period: Period;
+	closeDate: PlainDate;
+	dueDate: PlainDate;
+	purchases: Purchase[];
+	total: number;
+	paidAmount: number;
+	remaining: number;
+	paid: boolean;
+	open: boolean;
+};
+
+export type CardLedger = {
+	statements: LedgerStatement[];
+	owed: number;
+	credit: number;
+};
