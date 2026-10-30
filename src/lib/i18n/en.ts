@@ -10,6 +10,10 @@ export const en = {
 	"title.cards": "Card registry — cc-tracking",
 	"title.card": "Card — cc-tracking",
 	"title.settings": "Settings — cc-tracking",
+	"title.transactions": "Transactions — cc-tracking",
+	"transactions.soon":
+		"Every purchase and payment in one list is coming in a later update. Until then, record a payment from the card's own page.",
+	"transactions.toCards": "Go to Cards",
 	"lang.label": "Language",
 	"lang.en": "English",
 	"lang.th": "ไทย",

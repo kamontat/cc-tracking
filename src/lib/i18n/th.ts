@@ -19,6 +19,10 @@ export const th: Catalog = {
 	"title.cards": "ทะเบียนบัตร — cc-tracking",
 	"title.card": "บัตร — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",
+	"title.transactions": "รายการเคลื่อนไหว — cc-tracking",
+	"transactions.soon":
+		"รายการซื้อและการชำระทั้งหมดในรายการเดียวจะมาในการอัปเดตครั้งถัดไป ระหว่างนี้บันทึกการชำระได้ที่หน้าของบัตรแต่ละใบ",
+	"transactions.toCards": "ไปที่บัตร",
 	"lang.label": "ภาษา",
 	"lang.en": "English",
 	"lang.th": "ไทย",
