@@ -126,7 +126,7 @@ retired.
 | ID | Change | Affects |
 |---|---|---|
 | RD-01 | **Entering receipts gets its own screen**, off the dashboard. It keeps today's speed: card and date stay between adds, amount and note clear, a failed add keeps what was typed. | FR-23, FR-27, DD-20, CD-03, CD-04, G3 |
-| RD-02 | **Rethink *This sitting*.** The batch list with *Start new batch* doesn't fit and is not carried over as it is. The need stays: after an interruption the bookkeeper can see what they already entered, and doesn't skip or double-enter a receipt (BR-04, US-08). The new way is settled in the brainstorm; see open question 11. Whatever replaces it decides what happens to `cc:batch-start`. | FR-24, US-08, DR-16, DD-21, DD-22, DC-03, CD-05 |
+| RD-02 | **Recent entries replace *This sitting*.** The batch list with *Start new batch* doesn't fit and is not carried over as it is. The need stays: after an interruption the bookkeeper can see what they already entered, and doesn't skip or double-enter a receipt (BR-04, US-08). Replaced by a **recent entries** list on the entry screen: purchases sorted by when they were added (`addedAt`), newest first, grouped as today and earlier, with no batch to start or clear. Purchases without an entry time (DR-15) don't appear. `cc:batch-start` is no longer read and may stay on disk (DD-14). | FR-24, US-08, DR-16, DD-21, DD-22, DC-03, CD-05 |
 | RD-03 | **A new visual direction.** Palette, type, shape and density start again. The interface rules (UI-01 to UI-21) still hold: tokens only, three button variants, never colour alone, room for Thai, both themes. | DD-32, CD-02, CD-07, CD-08, CD-12 |
 | RD-04 | **Same stack.** Bun, TypeScript, Lit web components, `@kcstyles/reset.css`, happy-dom for tests, static pages on Cloudflare Workers. The refactor restructures modules and folders only. | G5 |
 | RD-05 | **No theme flash.** The saved theme is applied before the first paint, so a page never shows the wrong theme on load. | DD-28, known limits |
@@ -222,7 +222,7 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 | ID | Requirement | Serves |
 |---|---|---|
 | FR-23 | *(Moves to its own screen: RD-01.)* The dashboard's purchase form is always open. After each add it keeps the card and date and clears amount and note. A failed add keeps what was typed and shows the error beside the form. With exactly one eligible card, the card is shown as text rather than a list to pick from. | BR-04 |
-| FR-24 | *(Being rethought: RD-02.)* *This sitting* lists purchases entered since *Start new batch* was last pressed (DR-16), with how long ago, card, purchase date and amount, and a count and total. It survives reloads, closing the tab and the next day. *Start new batch* asks for a second click before clearing. | BR-04 |
+| FR-24 | *(Replaced by RD-02.)* *This sitting* lists purchases entered since *Start new batch* was last pressed (DR-16), with how long ago, card, purchase date and amount, and a count and total. It survives reloads, closing the tab and the next day. *Start new batch* asks for a second click before clearing. | BR-04 |
 | FR-25 | *Purchases by date* counts purchases, their total and the cards used, across every card (archived ones tagged), for Today, This week, This month, Last month or a custom range of purchase dates (DR-17), with a card filter. The list is folded until opened and grouped by day, each card linked to its page. | BR-12 |
 | FR-26 | The dashboard re-reads the clock each minute, so a tab left open past midnight moves its default date and presets to the new day, without changing a date the user picked. | BR-04 |
 | FR-27 | *(Replaced by RD-01.)* The purchase form and *This sitting* are the first things on the dashboard, beside or above the overview panels, on desktop and on a phone. (Today's layout is CD-03.) | BR-04, BR-10 |
@@ -319,8 +319,8 @@ open and ready for the next receipt, so that I can work through a pile without e
 - A failed add keeps what I typed and shows why.
 - *Covers FR-17, FR-18, FR-23.*
 
-**US-08 -- Pick up where I left off.** *(The need stays; the way it is met is being rethought,
-RD-02. The criteria below describe today's app.)* As a bookkeeper who gets interrupted, I want to see what
+**US-08 -- Pick up where I left off.** *(The need stays; RD-02 replaces how it is met with a recent entries
+list. The criteria below describe today's app.)* As a bookkeeper who gets interrupted, I want to see what
 I already entered this sitting, so that I don't skip or double-enter a receipt.
 - *This sitting* lists purchases entered since the batch started, latest first, with count and
   total.
@@ -564,8 +564,8 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-18 | Moving data between deploys (preview to production) is copy and paste. | Storage is per origin, and an iframe gets partitioned storage. | A popup and `postMessage` bridge. |
 | DD-19 | Limit groups live on the registry page, edited through the same dialog pattern as cards. | They belong to the registry and are rarely edited, so no fourth page; one editing pattern per page. | A separate limit groups page; inline editing in table rows. |
 | DD-20 | *(Replaced by RD-01.)* The dashboard is a workspace for entering receipts: the form is always open and *This sitting* lists the current batch. | The bookkeeper works through a pile and is often interrupted; the list is how they find their place. | A dialog per purchase; a separate purchases page. |
-| DD-21 | *(Being rethought: RD-02.)* *This sitting* survives reloads and the next day, clears only on a confirmed *Start new batch*, and is read-only. | Losing it to a reload or a stray click is exactly the failure it exists to prevent. Editing stays on the card page. | Clearing on reload; edit or undo in the list. |
-| DD-22 | *(Being rethought: RD-02.)* The batch start is per browser and stays out of backups. | It is working state, not a record. | Storing it in Settings. |
+| DD-21 | *(Replaced by RD-02.)* *This sitting* survives reloads and the next day, clears only on a confirmed *Start new batch*, and is read-only. | Losing it to a reload or a stray click is exactly the failure it exists to prevent. Editing stays on the card page. | Clearing on reload; edit or undo in the list. |
+| DD-22 | *(Replaced by RD-02.)* The batch start is per browser and stays out of backups. | It is working state, not a record. | Storing it in Settings. |
 | DD-23 | After an add, the form keeps the card and date and clears amount and note. | Receipts come in runs from one card or one day. | Clearing everything. |
 | DD-24 | Ranges filter on purchase date, and archived cards count (tagged). | A range answers "what was bought then"; archiving later must not change it. | Filtering on entry time; hiding archived cards. |
 | DD-25 | Old purchases get no entry time. | A guessed time would put them in the wrong batch. | Backfilling. |
@@ -689,7 +689,7 @@ The redesign is done when all of these hold.
 | A shared link or the card page's *Edit card* breaks. | DC-15 and DC-16. |
 | Removing a delete button's condition lets a card with purchases be deleted, taking them with it. | DR-19 and DC-13; the storage layer does not guard. |
 | Thai is broken or untranslated in a new screen. | UI-03 to UI-06; the catalog coverage test; screenshots in Thai. |
-| The rethink of *This sitting* drops the need with the mechanism, and the bookkeeper loses their place after an interruption. | G3, RD-02, US-08. |
+| Replacing *This sitting* drops the need with the mechanism, and the bookkeeper loses their place after an interruption. | G3, RD-02, US-08. |
 | Stricter restore checks reject an old backup the user relies on. | RD-06 only rejects values the forms never allowed; check a real backup before shipping. |
 | A refactor drops the reading of old payment records without `parts`, and paid statements turn unpaid. | DR-29; the domain tests cover old records. |
 | Something is dropped because no one knew it existed. | This document; the [Retired](#retired) list says what was removed on purpose. |
@@ -705,25 +705,26 @@ into the matching section.
    as the flows and the code. See [Problem](#problem).
 3. **Pages.** Keep four pages (dashboard, cards, one card, settings), or reorganise? For
    example, should paying statements, entering receipts and checking room be separate places?
-   *To be decided in a brainstorm with mockups (2026-10-29).*
+   *2026-10-30: build clickable mockups of these three in the brainstorm, then choose:*
+   - **A. Task tabs.** One place per task: Overview (read-only numbers), Add receipts, Pay
+     (every unpaid statement across cards), Cards (registry, limit groups, card detail),
+     Settings. Bottom tabs on a phone, top tabs on a desktop.
+   - **B. Hub and sheets.** One Overview page; adding receipts, paying, editing a card and
+     card history open as sheets over it and return to the same spot. Cards and Settings stay
+     separate pages.
+   - **C. Card-centric.** Overview lists cards; everything about one card (room, statements,
+     paying, purchases, editing) lives on its page. Add receipts is its own screen. Paying
+     several cards means visiting each.
 4. **Entering receipts.** *Answered 2026-10-30*: entering receipts gets its own screen (RD-01).
-   *This sitting* doesn't fit as it is and is to be rethought (RD-02, question 11).
+   *This sitting* doesn't fit as it is and is replaced (RD-02, question 11).
 5. **Phone first?** *Answered 2026-10-29*: checking room and viewing the numbers. See G7.
 6. **Look.** *Answered 2026-10-30*: start again (RD-03).
 7. **Refactor depth.** *Answered 2026-10-30*: keep the same stack (RD-04).
 8. **Theme flash.** *Answered 2026-10-30*: fix it (RD-05).
 9. **Restore checks.** *Answered 2026-10-30*: check ranges (RD-06).
 10. **Delete guards.** *Answered 2026-10-30*: move them into storage (RD-07).
-11. **What replaces *This sitting*?** The need: after an interruption, see what is already
-    entered and avoid skipping or double-entering a receipt. Directions to try in the
-    brainstorm, none decided:
-    - The entry screen lists recent entries by entry time, grouped as today and earlier, with
-      no batch to start or clear.
-    - A warning when a purchase matches one already entered (same card, date and amount).
-    - Counting against the pile: the user says how many receipts they have, and the screen
-      shows how many are done.
-
-    Settle together with the entry screen (RD-01) and the pages (question 3).
+11. **What replaces *This sitting*?** *Answered 2026-10-30*: a recent entries list on the entry
+    screen, sorted by when each purchase was added (RD-02).
 
 ## Future work
 
