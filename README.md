@@ -32,30 +32,34 @@ nothing, so the footer there reads `dev` and the time the page was opened.
   entry times were recorded never show there. Beside it, *Purchases by date*
   counts purchases, their total and the cards used across every card (archived
   ones included) for a preset or custom range of purchase dates, then *Due next*
-  and *Spendable*.
-- `/cards` — the card registry. When adding or editing a card, you choose its
-  physical location from a dropdown: one of Bangkok, Phichit, or Krabi. Cards
+  and *Can spend now*.
+- `/cards` — the card registry and the limit groups, each list searchable,
+  filterable, sortable and foldable. Cards and limit groups are added and edited
+  in a dialog. When adding or editing a card, you choose its physical location from a dropdown: one of Bangkok,
+  Phichit, or Krabi, and can mark it as a supplementary card (บัตรเสริม) with its
+  own cardholder. Cards
   already stored in this browser from before the locations were fixed are reset
   to Bangkok once at startup; the page then names those cards, once, with a
   Dismiss button, so you can pick the correct location by hand.
-- `/settings` — where new purchases can be recorded, plus JSON backup export
-  and import. The old `/backup` address redirects here.
+- `/settings` — language and theme, which places take new purchases, saving and
+  restoring a backup, and resetting all data. The old `/backup` address redirects here.
 - `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
   paging. A month with no purchases in it starts collapsed, so a long run of
-  unused months stays one line each. There is no in-place edit for a purchase:
-  changing one means deleting it and adding a new one.
+  unused months stays one line each. Each purchase can be edited in place (date,
+  amount and note; the card stays fixed) or deleted.
 
 ## Which cards can take a purchase
 
-Each card carries its own answer, ticked on the card form as *Can be used for
-new purchases*. Only those cards appear in the dashboard's purchase form; every
-card still appears everywhere else, including the due list.
+The answer belongs to where a card is kept, not to the card. The *Purchases*
+section on `/settings` ticks the places that take new purchases; only unarchived
+cards kept in a ticked place appear in the dashboard's purchase form and in
+*Can spend now*. Every card still appears everywhere else, including the due
+list.
 
-A card saved before this flag existed has no answer stored, and falls back to
-where it is kept: Krabi yes, anywhere else no. That reproduces the rule that was
-in force before — purchases were only ever entered against the Krabi cards —
-without rewriting a single stored card. Editing and saving any card writes an
-explicit answer for it, and the fallback then no longer applies to it.
+Out of the box only Krabi is ticked, which reproduces the rule that was in force
+before: purchases were only ever entered against the Krabi cards. Unticking every
+place is kept as a real answer, and the purchase form then says that no card can
+take a purchase and points at Settings.
 
 ## Limit groups and how much room is left
 
@@ -64,14 +68,14 @@ points at a group, and two cards that share a limit — one account with two
 physical cards, say — point at the same group, so there is one number to watch
 for both of them rather than two that would drift apart.
 
-A group's available credit is its limit less every purchase sitting on a
-statement that has not been marked paid, and that includes the open period —
-the cycle still being spent on right now. Money spent this cycle leaves the
-limit the moment it is spent; the only way it comes back is marking the
-statement it landed on as paid, and doing that returns exactly that
-statement's total. A payment records no amount of its own, so paying something
-other than the full statement is not representable — a known limit of this
-model, not an oversight.
+A group's available credit is its limit less what is still owed on every
+closed statement, plus the whole of the open period — the cycle still being
+spent on right now. Money spent this cycle leaves the limit the moment it is
+spent; it comes back only as payments are recorded against the statement it
+landed on, once that statement has closed. A statement can be paid in parts —
+*Mark paid* asks for the amount and the date, starting at what is left and
+today — and each payment returns exactly its own amount. The statement counts
+as paid once its payments cover its total.
 
 An archived card still weighs on the group it shares. Archiving a card retires
 it from new purchases and from the dashboard, not from what it already owes,
@@ -101,33 +105,43 @@ without one.
 Each card carries a billing cycle rule: either *closes on day N, due M days
 later* or *closes on day N, due on day M*. Statements are never stored — they
 are computed from that rule, so a period's close date, due date, purchases, and
-total are always derived from the card as it is now. Only a paid statement
-leaves a record behind, and that record freezes the close and due dates it was
-paid against, so editing a cycle rule can never rewrite settled history.
+total are always derived from the card as it is now. Only a statement with a
+payment against it leaves a record behind: one record per card and period,
+listing every payment toward it. The first payment freezes the close and due
+dates, so editing a cycle rule can never rewrite settled history. A record saved
+before partial payments existed has no list of payments and reads as one
+payment of the whole total.
 
 A purchase dated exactly on the close date belongs to that statement, not the
 next one.
 
 ## Where the data lives
 
-Phase 1 keeps everything in this browser's `localStorage`, under keys shaped
-like `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
-`cc:payment:<cardId>:<period>`, and `cc:limitgroup:<id>`. Those shapes hold
+Everything lives in this browser's `localStorage`, under keys shaped like
+`cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
+`cc:payment:<cardId>:<period>`, and `cc:limitgroup:<id>`, plus `cc:settings`
+for the purchase places and `cc:batch-start` for when *This sitting* began. The
+batch start is working state for this browser, so backups leave it out. Those shapes hold
 as written for an ordinary card id, date, and uuid; each segment is actually
 percent-encoded, so a card id containing `:` or other reserved characters
 produces a key that looks a little different from the documented shape,
-though it still round-trips correctly. Those are the same shapes the planned
-Cloudflare KV namespace uses, so phase 2 swaps the repository implementation
-and nothing else.
+though it still round-trips correctly. Nothing is sent to a server: the
+Cloudflare Worker only serves the built pages, so data is not shared between
+browsers or devices except through a backup.
 
 A card's location is stored as one of three lowercase keys: `bangkok`,
 `phichit`, or `krabi`. These are the display-neutral keys; when a card is
 shown on screen or in the UI, the location goes through a display function
 that renders them as "Bangkok", "Phichit", and "Krabi".
 
-Use the Export JSON button on `/settings` as your backup — importing merges a
-backup's limit groups, cards, purchases, and payments back in without
-deleting anything already there. Backups are now version 2 and carry
+Use *Save a copy* on `/settings` as your backup: *Download file* saves indented
+JSON, and *Copy text* puts the same backup on the clipboard as compact JSON.
+*Restore a copy* takes a file or pasted text. If this browser already holds
+records, it shows what is here next to what is in the copy and asks: *Merge*
+keeps what is here and adds the copy's records, updating any it shares, while
+*Replace* deletes everything here first, settings included. An empty browser
+restores straight away. *Reset* on the same page deletes every record and
+setting after showing how many of each will go. Backups are version 2 and carry
 `limitGroups` alongside the three lists that were already there; a version 1
 file — one written before limit groups existed — is rejected outright, since
 there is no code to invent groups for it. A file that is not valid JSON, is
@@ -146,13 +160,15 @@ leave some records imported and others not.
 
 ## Language
 
-The interface is available in English and Thai. The picker sits in the nav on every
-page; switching it re-renders the current page in place — no reload, and nothing typed
-into an open form is lost. The choice is remembered in this browser's `localStorage`
-under `cc:lang`, so it survives a reload and future visits. A first visit with nothing
-saved yet defaults to Thai, unless the browser's own language list asks for English —
-these are Thai company cards in baht on Asia/Bangkok dates, so Thai is the more likely
-daily language and English is opted into, not the other way around.
+The interface is available in English and Thai. The picker is in the *Display*
+panel on `/settings`, next to the theme picker (Match device, Light or Dark);
+switching language re-renders the page in place — no reload, and nothing typed
+into an open form is lost. Both choices are remembered in this browser's
+`localStorage`, under `cc:lang` and `cc:theme`, so they survive a reload and future
+visits; they are not part of a backup, and a reset leaves them alone. A first
+visit with nothing saved follows the first of the browser's own languages that the
+app speaks, in the browser's order, and falls back to Thai — these are Thai company
+cards in baht on Asia/Bangkok dates, so Thai is the more likely daily language.
 
 Dates render as `dd MMM yyyy` — a zero-padded day and a Gregorian year — in both
 languages, for example `05 Sep 2026` and `05 ก.ย. 2026`. This is deliberately not
@@ -178,6 +194,13 @@ were added whose name has this shape. This is a known, deliberate trade-off rath
 than a bug: fixing it needs `Intl.Collator`, and using any `Intl` API on `th-TH` risks
 pulling in the same Buddhist-era year handling the date rendering above exists to
 avoid.
+
+## Product requirements
+
+What the app must keep doing, the rules behind its numbers, the data it already
+holds, the decisions made along the way, and what is still open for the coming
+redesign are in [`PRD.md`](PRD.md), and in Thai in [`PRD_TH.md`](PRD_TH.md).
+Read it before refactoring or redesigning anything.
 
 ## Changelog
 

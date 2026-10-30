@@ -123,3 +123,10 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
   classes or locale-invariant attributes instead.
 - `#styles/*` maps to `.ts` only, so the route modules import `tokens.css` and `app.css` by
   relative path, not through the alias.
+
+## Product requirements
+
+- Before planning a refactor, a redesign or any change to behaviour, read `PRD.md`. It holds
+  the requirements, the domain rules and data contracts to keep, the decisions and their
+  reasons, and the open questions to settle with the user first.
+- When a change ships, update `PRD.md` and `PRD_TH.md` together, keeping the IDs in step.

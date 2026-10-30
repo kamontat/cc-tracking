@@ -4,6 +4,53 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-10-30: Product requirements for the refactor and redesign
+
+### Features
+
+- `PRD.md` is the full context to read before refactoring or redesigning the site. It covers:
+  - business and functional requirements, and user stories with acceptance criteria
+  - the domain rules, data contracts and interface rules a rewrite must keep
+  - every decision so far with its reason and what was rejected
+  - what is out of scope, today's design (free to change) and what was retired
+  - the decided changes for the redesign (RD-01 to RD-07), acceptance criteria, risks, open
+    questions and a glossary
+- `PRD_TH.md` is the Thai translation, with the same IDs in the same order.
+- `AGENTS.md` tells agents to read `PRD.md` before changing behaviour, and to update both
+  files together when a change ships.
+
+### Improvements
+
+- The README matches the app again. It describes:
+  - purchase places in Settings, rather than a checkbox on each card
+  - editing purchases in place
+  - saving and restoring a copy with Merge or Replace, and Reset
+  - partial payments
+  - language and theme in Settings
+  - adding and editing in dialogs on the registry
+  - the storage keys
+
+  It links the PRD.
+
+### Decisions
+
+- A PRD rather than a plain feature list. The PRD carries the redesign's problem, goals and
+  open questions. It also keeps the rules, contracts and decisions, because a feature list
+  would let a rewrite quietly change the numbers or break saved data and backups.
+- IDs are stable. New items go at the end of their list, and a replaced item is marked, not
+  deleted, so links from other documents and pull requests keep pointing at the right thing.
+- Decided with the user for the redesign:
+  - entering receipts gets its own screen
+  - a recent entries list, newest added first, replaces *This sitting*
+  - a new visual direction on the same stack (Bun, TypeScript, Lit)
+  - no theme flash on load
+  - restore checks ranges
+  - delete guards move into storage
+- The page structure is left to clickable mockups of three layouts: task tabs, a hub with
+  sheets, and card-centric.
+- Facts that design specs from September held, and the changelog dropped, were recovered from
+  the specs removed in `ec4a13f` and checked against the code before they went in.
+
 ## 2026-10-28: Browser storage usage planned, and partial payments
 
 ### Features
