@@ -33,7 +33,7 @@
 	--cc-panel-padding: var(--cc-space-4);
 
 	/* Exists so the sticky aside (`.split__aside`) can clear the sticky `.site-header` when it
-	   parks, which happens from 960px, where the header carries its tabs and Payment button.
+	   parks, which happens from 900px, where the header carries its tabs and Payment button.
 	   Measured there at 59px: 2 × var(--cc-space-3) padding + the ~33px Payment button +
 	   the 2px rule. Keep this in step if the header's padding or contents ever change. */
 	--cc-header-height: 3.75rem;
@@ -43,6 +43,7 @@
 
 	--cc-icon-size: 1.375rem;
 	--cc-icon-size-sm: 1.0625rem;
+	/* A minimum: the measured bar is 68-84px, and `.page` bottom padding absorbs the difference. */
 	--cc-tabbar-height: 4rem;
 	--cc-add-size: 3.125rem;
 	--cc-add-lift: 1.5rem;

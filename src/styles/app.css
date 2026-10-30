@@ -121,6 +121,14 @@ a:any-link:hover {
 	border-bottom-color: var(--cc-env);
 }
 
+/* Muted text is 4.2:1 on the tint in the light theme, short of AA; use full text colour. */
+:root[data-env]:not([data-env="production"]) .site-header__date,
+:root[data-env]:not([data-env="production"])
+	.site-header__tabs
+	a:any-link:not([aria-current="page"]) {
+	color: var(--cc-text);
+}
+
 /* The phone's bottom bar: four places and the raised add button between them. */
 .tabbar {
 	position: fixed;
@@ -199,8 +207,9 @@ a:any-link:hover {
 		display: none;
 	}
 
+	/* The date goes from 900px to 1023px, where brand, badge, four tabs and Payment fill the bar. */
 	.site-header__date {
-		margin-inline-start: 0;
+		display: none;
 	}
 
 	.site-header__tabs {
@@ -279,6 +288,13 @@ a:any-link:hover {
 			var(--cc-tabbar-height) +
 			env(safe-area-inset-bottom, 0px)
 		);
+}
+
+@media (min-width: 1024px) {
+	.site-header__date {
+		display: block;
+		margin-inline-start: 0;
+	}
 }
 
 /* The bottom bar is gone from 900px, so the page no longer needs to clear it. */
@@ -733,4 +749,14 @@ a:any-link:hover {
 	align-self: flex-start;
 	font-size: var(--cc-text-sm);
 	font-weight: 550;
+}
+
+/* The placeholder page: a muted line of readable width, and a link that is only as wide as its text. */
+.page .placeholder {
+	max-width: 36rem;
+	color: var(--cc-text-muted);
+}
+
+.page > a[data-action="to-cards"] {
+	align-self: flex-start;
 }
