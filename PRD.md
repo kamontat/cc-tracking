@@ -56,8 +56,8 @@ requirements it serves, and each user story names the functional requirements it
 
 | Path | What |
 |---|---|
-| `src/lib/domain/` | Pure rules: dates, cycles, statements, limits, ranges, money. No storage, no UI. Tests beside each file. |
-| `src/lib/storage/` | `Repository` interface, the `localStorage` implementation, the contract suite, backup and restore, the location migration. |
+| `src/lib/domain/` | Pure rules: dates, cycles, statements, limits, ranges, money; and the phase 1 rules `ledger.ts`, `room.ts`, `purchase-list.ts`, `amount-warnings.ts`, `locations.ts`, `purge.ts`. No storage, no UI. Tests beside each file. |
+| `src/lib/storage/` | `Repository` interface, the `localStorage` implementation, the contract suite, backup and restore, the location migration, the payment conversion (`migrate-payments.ts`) and backup version 3 (`transfer-v3.ts`). |
 | `src/lib/i18n/` | The English and Thai catalogs (`en.ts`, `th.ts`), language detection and formatting. |
 | `src/lib/ui/` | Page plumbing shared by routes: load and save with error handling, panels, theme, list view in the address, build info. |
 | `src/components/` | Lit web components (`cc-*`), one per panel, form or table. They get data as properties and send events. |
@@ -140,6 +140,8 @@ Settled with the user on 2026-10-30. Build these. Each overrides the rows it nam
 this document; those rows describe today's app until the change ships, and are then updated or
 retired. RD-08 to RD-21 were settled later the same day, after the user corrected how the app
 is used (see [Problem](#problem)), on a clickable prototype: <https://claude.ai/code/artifact/a290fd13-81d8-483a-9968-8b16e953ca6c> (private).
+
+Phase 1 (rules and storage) shipped on 2026-10-30: the new rules and records sit beside the old ones, and no page uses them yet. See `docs/superpowers/plans/2026-10-30-redesign-roadmap.md`.
 
 | ID | Change | Affects |
 |---|---|---|
@@ -622,6 +624,11 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-44 | The + in the bottom bar opens the payment form, and asks for the card first. | Paying is frequent, and the form must know the card. A separate *+ Plan* button did the same job. | + starting a purchase list; a *+ Plan* button on the payments view. |
 | DD-45 | Navigation is Home, Transactions, +, Cards and Settings; on a desktop the tabs sit on the right of the header. | Matches how often each task happens, with Settings one tap away. | A cog in the top-right corner for Settings; a three-tab bar. |
 | DD-46 | Every build other than production is tinted, badged and marked in the tab title. | Nobody should mistake a test build for the real data. | Marking previews only, with `(pr-<n>)` on the brand. |
+| DD-47 | A payment is planned or paid, as a field. | RD-12 says a plan counts only once marked paid, so a plan whose date passes stays a plan. | Treating any future-dated payment as a plan. |
+| DD-48 | A payment converted from an old per-statement record keeps that statement (`period`); it pays that statement first and only overflow joins the oldest-first pool. Old overpayments are capped at the statement total when converted. The conversion runs once, marked done by `cc:migration:payments`, with ids `m:<period>:<index>` so a failed run can be repeated safely. | Every old statement keeps exactly the paid and left amounts it showed (G4), and the old app never carried overpaid money anywhere. | Feeding old payments into the oldest-first pool; converting overpayments into credit; deciding "already converted" by whether any card payment exists. |
+| DD-49 | Frozen statement dates are their own record (`cc:statementdates:<card>:<period>`), written the first time money reaches a statement. | Payments no longer belong to one statement, so they can't carry its dates (DD-02, DD-38). | Freezing dates on each payment. |
+| DD-50 | Only lists waiting for the spender hold room; drafts don't. | RD-09 says a waiting list holds its amounts. | Drafts holding room too. |
+| DD-51 | Bangkok, Phichit and Krabi keep the ids `bangkok`, `phichit`, `krabi`; a new location's id is a slug of its name (`-2`, `-3` on a clash, `location` when the name has no Latin letters or digits); renaming keeps the id. Deleting old purchases removes only purchases on closed, fully paid statements before the cutoff, with an equal amount of paid payments (trimming one if needed), and leaves a card out entirely if its owed or credit would change. | Cards and stored data refer to the id; RD-18 promises balances don't move. | Renaming ids; deleting whole statements only. |
 
 ## Out of scope
 
