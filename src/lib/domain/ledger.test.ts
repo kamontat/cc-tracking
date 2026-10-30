@@ -209,6 +209,26 @@ describe("ledgerUrgency", () => {
 		expect(ledgerUrgency(s, TODAY)).toBe("due");
 	});
 
+	test("due today is soon", () => {
+		const s = stmt("2026-09", { dueDate: TODAY });
+		expect(ledgerUrgency(s, TODAY)).toBe("soon");
+	});
+
+	test("due in exactly 7 days is soon", () => {
+		const s = stmt("2026-09", { dueDate: "2026-11-06" });
+		expect(ledgerUrgency(s, TODAY)).toBe("soon");
+	});
+
+	test("due in 8 days is due", () => {
+		const s = stmt("2026-09", { dueDate: "2026-11-07" });
+		expect(ledgerUrgency(s, TODAY)).toBe("due");
+	});
+
+	test("a statement that closes today is still open", () => {
+		const s = stmt("2026-10", { closeDate: TODAY, dueDate: "2026-11-24" });
+		expect(ledgerUrgency(s, TODAY)).toBe("open");
+	});
+
 	test("open period is open even when owed", () => {
 		const s = stmt("2026-10", {
 			open: true,
@@ -240,7 +260,7 @@ describe("nextBill", () => {
 			owed: 3_000,
 			credit: 0,
 		};
-		expect(nextBill(l)?.period).toBe("2026-08");
+		expect(nextBill(l, TODAY)?.period).toBe("2026-08");
 	});
 
 	test("nextBill is null when nothing closed is owed", () => {
@@ -252,6 +272,33 @@ describe("nextBill", () => {
 			owed: 1_000,
 			credit: 0,
 		};
-		expect(nextBill(l)).toBeNull();
+		expect(nextBill(l, TODAY)).toBeNull();
+	});
+
+	test("nextBill skips a future statement after the open one", () => {
+		const l: CardLedger = {
+			statements: [
+				stmt("2026-11", { closeDate: "2026-12-10", dueDate: "2027-01-04" }),
+				stmt("2026-10", {
+					open: true,
+					closeDate: "2026-11-10",
+					dueDate: "2026-12-05",
+				}),
+				stmt("2026-09", { remaining: 0, paid: true }),
+			],
+			owed: 2_000,
+			credit: 0,
+		};
+		expect(nextBill(l, TODAY)).toBeNull();
+	});
+
+	test("nextBill skips a statement that closes today", () => {
+		const l: CardLedger = {
+			statements: [stmt("2026-10", { closeDate: TODAY })],
+			owed: 1_000,
+			credit: 0,
+		};
+		expect(nextBill(l, TODAY)).toBeNull();
+		expect(nextBill(l, "2026-10-31")?.period).toBe("2026-10");
 	});
 });

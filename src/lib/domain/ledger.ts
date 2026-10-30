@@ -147,11 +147,19 @@ export function ledgerUrgency(
 	return daysLeft <= SOON_DAYS ? "soon" : "due";
 }
 
-/** The oldest closed statement that still owes money, or null. */
-export function nextBill(ledger: CardLedger): LedgerStatement | null {
+/**
+ * The oldest closed statement that still owes money, or null. Closed means not the open
+ * period and its close date already past: a later period that has not closed yet is not a
+ * bill, whatever it holds.
+ */
+export function nextBill(
+	ledger: CardLedger,
+	today: PlainDate,
+): LedgerStatement | null {
 	for (let i = ledger.statements.length - 1; i >= 0; i--) {
 		const s = ledger.statements[i];
-		if (s && !s.open && s.remaining > 0) return s;
+		if (s && !s.open && compareDates(s.closeDate, today) < 0 && s.remaining > 0)
+			return s;
 	}
 	return null;
 }

@@ -66,7 +66,7 @@ export function lineWarnings(
 		});
 	}
 
-	const bill = nextBill(line.ledger);
+	const bill = nextBill(line.ledger, today);
 	if (bill && ledgerUrgency(bill, today) === "overdue") {
 		out.push({
 			kind: "overdue-bill",
