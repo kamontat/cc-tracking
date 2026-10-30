@@ -161,3 +161,10 @@ export type PurchaseList = {
 	/** Id of the draft that took this list's not-made lines. */
 	movedTo?: string;
 };
+
+/** A place cards are kept, as a record the user can rename and extend. */
+export type LocationRecord = {
+	id: string;
+	name: string;
+	takesPurchases: boolean;
+};
