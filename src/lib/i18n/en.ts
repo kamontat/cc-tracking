@@ -292,6 +292,10 @@ export const en = {
 	"backup.purchase": "That backup's purchase #{index} {problem}.",
 	"backup.payment": "That backup's payment #{index} {problem}.",
 	"backup.limitGroup": "That backup's limit group #{index} {problem}.",
+	"backup.cardPayment": "That backup's card payment #{index} {problem}.",
+	"backup.statementDates": "That backup's statement dates #{index} {problem}.",
+	"backup.list": "That backup's purchase list #{index} {problem}.",
+	"backup.location": "That backup's location #{index} {problem}.",
 	"backup.problem.notObject": "is not an object",
 	"backup.problem.missingId": "is missing an id",
 	"backup.problem.missingName": "is missing a name",
@@ -318,6 +322,23 @@ export const en = {
 	"backup.problem.badParts":
 		"has partial payments that are not a list of dated, positive whole-satang amounts",
 	"backup.problem.badLimit": "has a limit that is not a whole number of satang",
+	"backup.problem.badLimitRange":
+		"has a limit that is not a whole number of satang above zero",
+	"backup.problem.badAmountRange":
+		"has an amount that is not a whole number of satang above zero",
+	"backup.problem.badLineAmount":
+		"has a line whose amount is not a whole number of satang above zero",
+	"backup.problem.badLines":
+		"has lines that are not a list of cards and amounts",
+	"backup.problem.badLast4": "has a last4 that is not exactly four digits",
+	"backup.problem.badCloseDay": "has a close day outside 1 to 31",
+	"backup.problem.badDueDay": "has a due day outside 1 to 31",
+	"backup.problem.badDueOffset": "has days until due outside 1 to 60",
+	"backup.problem.badPaymentStatus": "has a status that is not planned or paid",
+	"backup.problem.badListStatus":
+		"has a status that is not draft, sent, or saved",
+	"backup.problem.badTakesPurchases":
+		"has a takesPurchases that is not true or false",
 
 	"limits.title": "Limit groups",
 	"limits.empty": "No limit group yet. Add one before adding a card.",
