@@ -13,9 +13,10 @@ import { Glob } from "bun";
  *
  * The loader is kept byte-identical to what Google publishes, so a future version of it can
  * be diffed rather than re-ported. It is ES5 minified code, so it trips four style rules
- * meant for code we write; biome.json turns those off for `src/routes/*.html`, which holds no
- * other inline JavaScript. The one change made to the published snippet is a `title` on the
- * noscript iframe, which the a11y rule asks for and GTM does not care about.
+ * meant for code we write; biome.json turns those off for `src/routes/*.html`, which holds
+ * one other inline script, the theme loader (see theme-boot.test.ts). The one change made to
+ * the published snippet is a `title` on the noscript iframe, which the a11y rule asks for and
+ * GTM does not care about.
  */
 const CONTAINER = "GTM-5TMJN4ZX";
 

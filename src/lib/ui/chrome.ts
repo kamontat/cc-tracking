@@ -1,62 +1,43 @@
+import { today } from "#lib/domain/date";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
-import { buildInfo, withPrSuffix } from "#lib/ui/build-info";
+import { type BuildInfo, buildInfo, titleMark } from "#lib/ui/build-info";
+import { renderShell } from "#lib/ui/shell";
 import { applyTheme } from "#lib/ui/theme";
 
-const setText = (root: ParentNode, id: string, key: MessageKey): void => {
-	const element = root.querySelector(`#${id}`);
-	if (element) element.textContent = t(key);
+export type ChromeOptions = {
+	root?: ParentNode;
+	build?: Pick<BuildInfo, "environment" | "pr">;
+	clock?: () => Date;
+	path?: string;
 };
 
-/** The path each nav link owns. Kept in step with the `href`s in the route HTML files. */
-const NAV_PATHS: readonly (readonly [id: string, path: string])[] = [
-	["nav-dashboard", "/"],
-	["nav-cards", "/cards"],
-	["nav-settings", "/settings"],
-];
-
 /**
- * Marks whichever nav link matches `path` as the current page, and clears the marker from
- * the others. Takes the path rather than reading `location` so it can be tested without
- * navigating a real document.
+ * Fills everything around the page's own content -- the document title, the header and the
+ * bottom tab bar -- and keeps it in step with the language picker. Also stamps the build on
+ * `<html data-env>`, where tokens.css picks up the build's tint, and restores the reader's
+ * saved colour theme, since every page passes through here first.
  *
- * Matching is exact. A card detail page (`/card`) therefore marks neither link: it is reached
- * from the dashboard and from the registry alike, so naming either one would be a guess.
- */
-export function markCurrentLink(root: ParentNode, path: string): void {
-	for (const [id, linkPath] of NAV_PATHS) {
-		const link = root.querySelector(`#${id}`);
-		if (!link) continue;
-		if (path === linkPath) link.setAttribute("aria-current", "page");
-		else link.removeAttribute("aria-current");
-	}
-}
-
-/**
- * Fills the parts of the page that live in static HTML rather than in a Lit template —
- * the document title and the nav — and keeps them in step with the language picker. Also
- * restores the reader's saved colour theme, since every page passes through here first.
- *
- * The current-page marker is set once rather than on every locale change: these are plain
- * `<a href>` navigations with no client-side router, so the path cannot change without a
- * fresh page load, and the attribute survives the nav's text being rewritten.
+ * The path is read once: these are plain `<a href>` navigations with no client-side router, so
+ * it cannot change without a fresh page load. Each locale change re-renders the shell with it,
+ * so the current tab stays marked.
  */
 export function applyChrome(
 	titleKey: MessageKey,
-	root: ParentNode = document,
-	pr: string = buildInfo().pr,
+	options: ChromeOptions = {},
 ): void {
+	const root = options.root ?? document;
+	const { environment, pr } = options.build ?? buildInfo();
+	const clock = options.clock ?? (() => new Date());
+	const path = options.path ?? location.pathname;
+
 	const apply = () => {
-		document.title = withPrSuffix(t(titleKey), pr);
+		document.title = t(titleKey) + titleMark(environment, pr);
 		document.documentElement.lang = getLocale();
-		const brand = root.querySelector("#nav-brand");
-		if (brand) brand.textContent = withPrSuffix(t("nav.brand"), pr);
-		setText(root, "nav-dashboard", "nav.dashboard");
-		setText(root, "nav-cards", "nav.cards");
-		setText(root, "nav-settings", "nav.settings");
+		document.documentElement.setAttribute("data-env", environment);
+		renderShell({ path, today: today(clock()), environment, pr }, root);
 	};
 	applyTheme();
 	apply();
-	markCurrentLink(root, location.pathname);
 	subscribe(apply);
 }

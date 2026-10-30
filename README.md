@@ -17,14 +17,14 @@ bun run check      # biome check
 
 `bun run build` goes through `scripts/build.ts`, which stamps
 `BUN_PUBLIC_COMMIT_SHA` and `BUN_PUBLIC_BUILT_AT` into the environment before
-handing over to `bun-server build`; the bundler inlines both, and the footer on
-every page shows them alongside a link to the repository and to the commit. Set
-either variable yourself to override what git reports. A dev server inlines
-nothing, so the footer there reads `dev` and the time the page was opened.
+handing over to `bun-server build`; the bundler inlines both, and Settings > About
+shows them alongside a link to the repository and to the commit. Set either
+variable yourself to override what git reports. A dev server inlines nothing,
+so About there reads as a development build with no build time.
 
 ## Pages
 
-- `/` — a workspace for entering a pile of receipts. The purchase form is always
+- `/` — Home, a workspace for entering a pile of receipts. The purchase form is always
   open, and offers only the cards that may take one; see *Which cards can take a
   purchase* below. After each add it keeps the card and date and clears the
   rest. Under it, *This sitting* lists what was entered since *Start new batch*
@@ -33,6 +33,8 @@ nothing, so the footer there reads `dev` and the time the page was opened.
   counts purchases, their total and the cards used across every card (archived
   ones included) for a preset or custom range of purchase dates, then *Due next*
   and *Can spend now*.
+- `/transactions` — a placeholder until the Transactions page arrives; the + and
+  Payment buttons open it for now.
 - `/cards` — the card registry and the limit groups, each list searchable,
   filterable, sortable and foldable. Cards and limit groups are added and edited
   in a dialog. When adding or editing a card, you choose its physical location from a dropdown: one of Bangkok,
