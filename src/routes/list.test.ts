@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import type { CcErrorBanner } from "#components/cc-error-banner";
 import type { CcListAmounts } from "#components/cc-list-amounts";
+import type { CcListReply } from "#components/cc-list-reply";
 import type { Card, ListLine, PurchaseList } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { setLocale } from "#lib/i18n/index";
@@ -342,7 +343,8 @@ test("a sent list is not reopened for editing", async () => {
 				lines: [{ cardId: "A", amount: 100 }],
 			}),
 	});
-	expect(root.textContent).toContain("This list no longer exists.");
+	expect(root.querySelector("cc-list-amounts")).toBeNull();
+	expect(root.querySelector("cc-list-reply")).not.toBeNull();
 });
 
 test("re-renders in Thai", async () => {
@@ -354,4 +356,232 @@ test("re-renders in Thai", async () => {
 		root.querySelector('[data-action="back"]')?.getAttribute("aria-label"),
 	).toBe("กลับ");
 	setLocale("en");
+});
+
+const w1: PurchaseList = {
+	id: "w1",
+	date: "2026-10-30",
+	status: "sent",
+	sentAt: "2026-10-30T03:00:00.000Z",
+	lines: [
+		{ cardId: "A", amount: 12_500_00 },
+		{ cardId: "B", amount: 4_800_00 },
+		{ cardId: "C", amount: 22_000_00 },
+	],
+};
+
+const withW1 = async (repo: Repository) => {
+	await repo.saveCard(card("C"));
+	await repo.savePurchaseList(w1);
+};
+
+const answers: ListLine[] = [
+	{ cardId: "A", amount: 1250000, made: true, actual: 1300000 },
+	{ cardId: "B", amount: 480000, made: false },
+	{ cardId: "C", amount: 2200000, made: true },
+];
+
+const reply = async (root: HTMLElement): Promise<CcListReply> => {
+	const element = root.querySelector<CcListReply>("cc-list-reply");
+	if (!element) throw new Error("no cc-list-reply");
+	await element.updateComplete;
+	return element;
+};
+
+const sendReply = async (
+	root: HTMLElement,
+	moveUnmade: boolean,
+	lines: ListLine[] = answers,
+) => {
+	(await reply(root)).dispatchEvent(
+		new CustomEvent("save-reply", {
+			detail: { lines, moveUnmade },
+			bubbles: true,
+			composed: true,
+		}),
+	);
+	await settle();
+};
+
+const allPurchases = async (repo: Repository) =>
+	(
+		await Promise.all(["A", "B", "C"].map((id) => repo.listPurchases(id)))
+	).flat();
+
+const bannerText = (root: HTMLElement) =>
+	root.querySelector<CcErrorBanner>("cc-error-banner")?.message ?? "";
+
+const flatText = (el: Element | null | undefined) =>
+	el?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+
+/** The heading's own text, without the detail under it. */
+const titleOf = (h1: Element | null) => {
+	const copy = h1?.cloneNode(true) as Element | undefined;
+	copy?.querySelector("small")?.remove();
+	return flatText(copy);
+};
+
+test("a sent list opens the reply", async () => {
+	const { root } = await setup({ search: "?id=w1", before: withW1 });
+	const element = await reply(root);
+	expect(element.list.id).toBe("w1");
+	expect(element.cards.map((c) => c.id)).toContain("C");
+	const h1 = root.querySelector("h1");
+	expect(titleOf(h1)).toBe("Spender's reply");
+	expect(h1?.querySelector("small")?.textContent).toBe("List for Fri, 30 Oct");
+	expect(root.querySelector('[data-action="back"]')?.getAttribute("href")).toBe(
+		"/",
+	);
+});
+
+test("saving the reply stores purchases, the draft and the saved list", async () => {
+	const { root, repo } = await setup({ search: "?id=w1", before: withW1 });
+	await sendReply(root, true);
+	const purchases = await allPurchases(repo);
+	expect(purchases.sort((a, b) => a.id.localeCompare(b.id))).toEqual([
+		{
+			id: "w1-0",
+			cardId: "A",
+			date: "2026-10-30",
+			amount: 13_000_00,
+			note: "",
+			addedAt: "2026-10-31T03:00:00.000Z",
+		},
+		{
+			id: "w1-1",
+			cardId: "C",
+			date: "2026-10-30",
+			amount: 22_000_00,
+			note: "",
+			addedAt: "2026-10-31T03:00:00.000Z",
+		},
+	]);
+	const lists = await stored(repo);
+	expect(lists.find((l) => l.id === "w1-2")).toEqual({
+		id: "w1-2",
+		date: "2026-10-31",
+		status: "draft",
+		lines: [{ cardId: "B", amount: 480000 }],
+	});
+	const saved = lists.find((l) => l.id === "w1");
+	expect(saved?.status).toBe("saved");
+	expect(saved?.savedAt).toBe("2026-10-31T03:00:00.000Z");
+	expect(saved?.movedTo).toBe("w1-2");
+	expect(saved?.lines).toEqual(answers);
+
+	expect(root.querySelector("cc-list-reply")).toBeNull();
+	expect(flatText(root.querySelector('p.note[data-tone="ok"]'))).toContain(
+		"Saved 2 purchases, ฿35,000.00.",
+	);
+	const link = root.querySelector('[data-action="open-draft"]');
+	expect(link?.getAttribute("href")).toBe("/list?id=w1-2");
+	expect(flatText(link)).toContain("B moved to a draft for Sat, 31 Oct");
+	expect(link?.querySelector("small")?.textContent).toBe(
+		"Open it when you're ready to send",
+	);
+	expect(bannerText(root)).toBe("");
+});
+
+test("unticked, not-made lines are dropped", async () => {
+	const { root, repo } = await setup({ search: "?id=w1", before: withW1 });
+	await sendReply(root, false);
+	const lists = await stored(repo);
+	expect(lists.map((l) => l.id)).toEqual(["w1"]);
+	expect(lists[0]?.status).toBe("saved");
+	expect(lists[0]?.movedTo).toBeUndefined();
+	expect(await allPurchases(repo)).toHaveLength(2);
+	expect(root.querySelector('[data-action="open-draft"]')).toBeNull();
+});
+
+test("a list already saved is refused", async () => {
+	const { root, repo } = await setup({ search: "?id=w1", before: withW1 });
+	await reply(root);
+	await repo.savePurchaseList({
+		...w1,
+		status: "saved",
+		savedAt: "2026-10-30T09:00:00.000Z",
+		lines: w1.lines.map((line) => ({ ...line, made: true })),
+	});
+	await sendReply(root, true);
+	expect(bannerText(root)).toContain(
+		"This list was already saved, so nothing was added again.",
+	);
+	expect(await allPurchases(repo)).toEqual([]);
+	expect((await stored(repo)).map((l) => l.id)).toEqual(["w1"]);
+});
+
+/** A repository whose savePurchaseList rejects once, after `failNext` is set. */
+class FlakyListRepository extends InMemoryRepository {
+	failNext = false;
+	override savePurchaseList(list: PurchaseList): Promise<void> {
+		if (this.failNext) {
+			this.failNext = false;
+			return Promise.reject(new Error("disk is full"));
+		}
+		return super.savePurchaseList(list);
+	}
+}
+
+test("a retry after a failed write adds nothing twice", async () => {
+	const repo = new FlakyListRepository();
+	const { root } = await setup({ repo, search: "?id=w1", before: withW1 });
+	repo.failNext = true;
+	await sendReply(root, false);
+	expect(bannerText(root).startsWith("Could not save the reply.")).toBe(true);
+	expect((await stored(repo)).find((l) => l.id === "w1")?.status).toBe("sent");
+	expect(root.querySelector("cc-list-reply")).not.toBeNull();
+
+	await sendReply(root, false);
+	const ids = (await allPurchases(repo)).map((p) => p.id).sort();
+	expect(ids).toEqual(["w1-0", "w1-1"]);
+	expect((await stored(repo)).find((l) => l.id === "w1")?.status).toBe("saved");
+	expect(bannerText(root)).toBe("");
+});
+
+test("a retry with changed answers leaves no stale purchase", async () => {
+	const repo = new FlakyListRepository();
+	const { root } = await setup({ repo, search: "?id=w1", before: withW1 });
+	repo.failNext = true;
+	await sendReply(root, false);
+	expect(await allPurchases(repo)).toHaveLength(2);
+
+	await sendReply(root, false, [
+		{ cardId: "A", amount: 1250000, made: false },
+		{ cardId: "B", amount: 480000, made: false },
+		{ cardId: "C", amount: 2200000, made: true },
+	]);
+	const purchases = await allPurchases(repo);
+	expect(purchases.map((p) => [p.id, p.cardId])).toEqual([["w1-0", "C"]]);
+});
+
+test("a saved list shows what was bought", async () => {
+	const { root } = await setup({
+		search: "?id=s9",
+		before: (repo) =>
+			repo.savePurchaseList({
+				id: "s9",
+				date: "2026-10-30",
+				status: "saved",
+				sentAt: "2026-10-30T03:00:00.000Z",
+				savedAt: "2026-10-30T09:00:00.000Z",
+				lines: [
+					{ cardId: "A", amount: 12_500_00, made: true, actual: 13_000_00 },
+					{ cardId: "B", amount: 4_800_00, made: false },
+				],
+			}),
+	});
+	const h1 = root.querySelector("h1");
+	expect(titleOf(h1)).toBe("Fri, 30 Oct 2026");
+	expect(h1?.querySelector("small")?.textContent).toBe("Purchase list · saved");
+	expect(flatText(root.querySelector('p.note[data-tone="ok"]'))).toBe(
+		"Saved 1 purchase, ฿13,000.00. It counts against the card's room now.",
+	);
+	const rowA = root.querySelector('[data-card="A"]');
+	expect(flatText(rowA)).toContain("฿13,000.00");
+	expect(flatText(rowA)).toContain("planned ฿12,500.00");
+	const rowB = root.querySelector('[data-card="B"]');
+	expect(flatText(rowB?.querySelector(".tag"))).toBe("Not made");
+	expect(flatText(rowB)).not.toContain("฿");
+	expect(root.querySelector('[data-action="open-draft"]')).toBeNull();
+	expect(root.querySelector("cc-list-reply")).toBeNull();
 });

@@ -440,4 +440,29 @@ export const en = {
 	"purchaseList.error.read": "Could not read the list.",
 	"purchaseList.missing": "This list no longer exists.",
 	"purchaseList.toHome": "Go to Home",
+	"reply.title": "Spender's reply",
+	"reply.listFor": "List for {date}",
+	"reply.hint":
+		"Record the spender's reply for each line. Change the amount if the real one differs.",
+	"reply.planned": "planned {amount}",
+	"reply.wasMade": "Was it made?",
+	"reply.made": "Made",
+	"reply.notMade": "Not made",
+	"reply.actual": "Real amount",
+	"reply.diff": "{diff} vs plan",
+	"reply.move": "Move {cards} to a draft for {date}",
+	"reply.save.one": "Save 1 purchase · {total}",
+	"reply.save.many": "Save {count} purchases · {total}",
+	"reply.answerAll": "Answer every line ({answered} of {count})",
+	"reply.error.save": "Could not save the reply.",
+	"reply.error.alreadySaved":
+		"This list was already saved, so nothing was added again.",
+	"reply.error.unanswered": "Answer every line before saving.",
+	"saved.detail": "Purchase list · saved",
+	"saved.summary.one":
+		"Saved 1 purchase, {total}. It counts against the card's room now.",
+	"saved.summary.many":
+		"Saved {count} purchases, {total}. They count against each card's room now.",
+	"saved.moved": "{cards} moved to a draft for {date}",
+	"saved.openDraft": "Open it when you're ready to send",
 } as const;

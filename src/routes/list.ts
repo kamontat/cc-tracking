@@ -3,16 +3,29 @@ import "../styles/tokens.css";
 import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-list-amounts";
+import "#components/cc-list-reply";
 import "#components/cc-list-table";
 import { html, nothing, render } from "lit";
-import { today } from "#lib/domain/date";
+import { addDays, headerDate, today } from "#lib/domain/date";
 import { isReady, roomFor } from "#lib/domain/home";
-import { composeList, lineAmount, listLines } from "#lib/domain/list-entry";
-import { formatAmountInput } from "#lib/domain/money";
+import {
+	composeList,
+	lineAmount,
+	listLines,
+	sequentialIds,
+} from "#lib/domain/list-entry";
+import { formatAmount, formatAmountInput } from "#lib/domain/money";
+import { listTotal, saveReply } from "#lib/domain/purchase-list";
 import type { GroupRoom } from "#lib/domain/room";
-import type { Card, ListLine, PlainDate } from "#lib/domain/types";
-import { messageOf } from "#lib/i18n/error";
-import { subscribe, t } from "#lib/i18n/index";
+import type {
+	Card,
+	ListLine,
+	PlainDate,
+	Purchase,
+	PurchaseList,
+} from "#lib/domain/types";
+import { MessageError, messageOf } from "#lib/i18n/error";
+import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { backHeader } from "#lib/ui/back-header";
 import { icons } from "#lib/ui/icons";
@@ -40,7 +53,11 @@ export type ListPageOptions = {
 	newId?: () => string;
 };
 
-type View = "loading" | "amounts" | "review" | "missing";
+/**
+ * `answer` is a stored list past sending: the reply while it is sent, the saved view once it is
+ * saved, read from the list as stored on every paint.
+ */
+type View = "loading" | "amounts" | "review" | "answer" | "missing";
 
 /** How the last Copy text or Save image went, kept raw so it re-translates on a locale switch. */
 type ShareStatus =
@@ -55,7 +72,8 @@ const unique = (ids: string[]): string[] => [...new Set(ids)];
  * Renders the purchase list page into `root`: enter amounts for the cards picked on Home (or a
  * reopened draft), review the table, then mark it sent or keep it as a draft. Everything the
  * reader typed lives here, so going back from the review loses nothing, and a failed save
- * keeps the review on screen under the banner.
+ * keeps the review on screen under the banner. A sent list opens the spender's reply, and a
+ * saved one shows what was bought.
  */
 export function renderListPage(
 	repo: Repository,
@@ -80,6 +98,8 @@ export function renderListPage(
 	let entries: Record<string, string> = {};
 	let reviewed: { date: PlainDate; lines: ListLine[] } | null = null;
 	let status: ShareStatus | null = null;
+	// The sent or saved list on screen, by id; looked up again on every paint.
+	let answerId: string | undefined;
 
 	const readyCards = (from: MoneyData): Card[] =>
 		from.cards.filter((card) => isReady(card, from.groups, from.settings));
@@ -94,10 +114,15 @@ export function renderListPage(
 			view = "amounts";
 			return;
 		}
-		// Only a draft reopens for editing; a sent or saved list has its own page later.
-		const list = from.lists.find((l) => l.id === id && l.status === "draft");
+		const list = from.lists.find((l) => l.id === id);
 		if (!list) {
 			view = "missing";
+			return;
+		}
+		// Only a draft reopens for editing; a sent list is answered and a saved one shown.
+		if (list.status !== "draft") {
+			answerId = list.id;
+			view = "answer";
 			return;
 		}
 		editingId = list.id;
@@ -203,6 +228,59 @@ export function renderListPage(
 		if (saved) navigate("/");
 	};
 
+	/**
+	 * A failed save may already have written purchases under this list's ids, for answers that
+	 * have changed since (a line now not made, say). Each would count twice, so any purchase
+	 * named `<list id>-<n>` that this save does not write again is removed first.
+	 */
+	const dropStale = async (list: PurchaseList, keep: Purchase[]) => {
+		const kept = new Set(keep.map((p) => `${p.cardId}/${p.id}`));
+		const prefix = `${list.id}-`;
+		const ours = (id: string) =>
+			id.startsWith(prefix) && /^\d+$/.test(id.slice(prefix.length));
+		for (const cardId of new Set(list.lines.map((line) => line.cardId))) {
+			for (const purchase of await repo.listPurchases(cardId)) {
+				if (ours(purchase.id) && !kept.has(`${cardId}/${purchase.id}`))
+					await repo.deletePurchase(cardId, purchase.id);
+			}
+		}
+	};
+
+	/**
+	 * Writes the reply against the list as stored now, not the copy this page loaded: a list
+	 * saved since (in another tab, say) is refused, so its purchases are never written twice.
+	 * The ids come from the list's own id, so a retry after a failed write overwrites what that
+	 * write left. Purchases go first and the saved list last: until the list says saved, the
+	 * reply stays on screen to retry.
+	 */
+	const onSaveReply = async (
+		event: CustomEvent<{ lines: ListLine[]; moveUnmade: boolean }>,
+	) => {
+		const { lines, moveUnmade } = event.detail;
+		await state.guard(async () => {
+			const stored = (await repo.listPurchaseLists()).find(
+				(l) => l.id === answerId,
+			);
+			if (!stored) throw new MessageError("purchaseList.missing");
+			if (stored.status === "saved")
+				throw new MessageError("reply.error.alreadySaved");
+			const result = saveReply(
+				{ ...stored, lines },
+				{
+					now: clock().toISOString(),
+					newId: sequentialIds(stored.id),
+					moveUnmade,
+				},
+			);
+			if (!result.ok) throw new MessageError("reply.error.unanswered");
+			await dropStale(stored, result.purchases);
+			for (const purchase of result.purchases)
+				await repo.savePurchase(purchase);
+			if (result.draft) await repo.savePurchaseList(result.draft);
+			await repo.savePurchaseList(result.saved);
+		}, "reply.error.save");
+	};
+
 	const statusText = (): string => {
 		if (!status) return "";
 		switch (status.kind) {
@@ -289,11 +367,83 @@ export function renderListPage(
 	const banner = () =>
 		html`<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>`;
 
+	const replyView = (list: PurchaseList, from: MoneyData) => html`
+		${backHeader({
+			title: t("reply.title"),
+			detail: t("reply.listFor", {
+				date: headerDate(list.date, getLocale(), false),
+			}),
+			back: "/",
+		})}
+		${banner()}
+		<cc-list-reply .list=${list} .cards=${from.cards} @save-reply=${onSaveReply}></cc-list-reply>
+	`;
+
+	const savedView = (list: PurchaseList, from: MoneyData) => {
+		const locale = getLocale();
+		const byId = new Map(from.cards.map((card) => [card.id, card]));
+		const made = list.lines.filter((line) => line.made).length;
+		const total = formatAmount(listTotal(list));
+		const moved = list.lines
+			.filter((line) => !line.made)
+			.map((line) => line.cardId)
+			.join(", ");
+		return html`
+			${backHeader({
+				title: headerDate(list.date, locale, true),
+				detail: t("saved.detail"),
+				back: "/",
+			})}
+			${banner()}
+			<p class="note" data-tone="ok">${
+				made === 1
+					? t("saved.summary.one", { total })
+					: t("saved.summary.many", { count: made, total })
+			}</p>
+			<ul class="saved-lines">
+				${list.lines.map((line) => {
+					const real = line.actual ?? line.amount;
+					const detail =
+						line.made && real !== line.amount
+							? t("reply.planned", { amount: formatAmount(line.amount) })
+							: (byId.get(line.cardId)?.name ?? t("common.none"));
+					return html`<li data-card=${line.cardId}>
+						<span class="what"><b>${line.cardId}</b><small>${detail}</small></span>
+						${
+							line.made
+								? html`<b class="amount">${formatAmount(real)}</b>`
+								: html`<span class="tag">${t("reply.notMade")}</span>`
+						}
+					</li>`;
+				})}
+			</ul>
+			${
+				list.movedTo
+					? html`<a data-action="open-draft" href=${`/list?id=${encodeURIComponent(list.movedTo)}`}>
+						<b>${t("saved.moved", {
+							cards: moved,
+							date: headerDate(addDays(list.date, 1), locale, false),
+						})}</b>
+						<small>${t("saved.openDraft")}</small>
+					</a>`
+					: nothing
+			}
+		`;
+	};
+
+	const answerView = (from: MoneyData) => {
+		const list = from.lists.find((l) => l.id === answerId);
+		if (list?.status === "sent") return replyView(list, from);
+		if (list?.status === "saved") return savedView(list, from);
+		return missingView();
+	};
+
 	const paint = () => {
 		let body: unknown = banner();
 		if (view === "missing") body = missingView();
 		else if (data && view === "amounts") body = amountsView(data);
 		else if (data && view === "review") body = reviewView(data);
+		else if (data && view === "answer") body = answerView(data);
 		render(body, root);
 	};
 

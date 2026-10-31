@@ -1,7 +1,12 @@
 import { headerDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
-import type { Card, PlainDate, PurchaseList } from "#lib/domain/types";
+import type {
+	Card,
+	ListStatus,
+	PlainDate,
+	PurchaseList,
+} from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { getLocale, t } from "#lib/i18n/index";
 
@@ -15,18 +20,31 @@ export type ShareTable = {
 	total: [label: string, amount: string];
 };
 
-/** The list as words, in the current locale: the table, the text and the image all read it. */
+/**
+ * The list as words, in the current locale: the table, the text and the image all read it. A
+ * saved list shows what was really bought: a made line at its real amount, a not-made line
+ * marked so, and a total of the made lines only. Any other list shows its planned amounts.
+ */
 export function shareTable(
-	list: Pick<PurchaseList, "date" | "lines">,
+	list: Pick<PurchaseList, "date" | "lines"> & { status?: ListStatus },
 	cards: Card[],
 ): ShareTable {
+	const saved = list.status === "saved";
 	const byId = new Map(cards.map((card) => [card.id, card]));
 	const rows = list.lines.map((line): Cells => {
 		const card = byId.get(line.cardId);
 		const name = card ? `${card.name} (${card.last4})` : t("common.none");
-		return [line.cardId, name, formatAmount(line.amount)];
+		const amount = !saved
+			? formatAmount(line.amount)
+			: line.made
+				? formatAmount(line.actual ?? line.amount)
+				: t("reply.notMade");
+		return [line.cardId, name, amount];
 	});
-	const total = listTotal({ ...list, id: "", status: "draft" });
+	const total = listTotal({ ...list, id: "", status: list.status ?? "draft" });
+	const count = saved
+		? list.lines.filter((line) => line.made).length
+		: list.lines.length;
 	return {
 		title: t("purchaseList.title"),
 		date: headerDate(list.date, getLocale(), true),
@@ -36,10 +54,7 @@ export function shareTable(
 			t("purchaseList.column.amount"),
 		],
 		rows,
-		total: [
-			t("purchaseList.total", { count: list.lines.length }),
-			formatAmount(total),
-		],
+		total: [t("purchaseList.total", { count }), formatAmount(total)],
 	};
 }
 

@@ -1,6 +1,6 @@
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import type { Card, PurchaseList } from "#lib/domain/types";
+import type { Card, ListStatus, PurchaseList } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { shareTable } from "#lib/ui/list-share";
 import { base, dataTable } from "#styles/shared";
@@ -52,7 +52,9 @@ export class CcListTable extends LitElement {
 		`,
 	];
 
-	@property({ attribute: false }) list: Pick<PurchaseList, "date" | "lines"> = {
+	@property({ attribute: false }) list: Pick<PurchaseList, "date" | "lines"> & {
+		status?: ListStatus;
+	} = {
 		date: "",
 		lines: [],
 	};

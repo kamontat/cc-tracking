@@ -907,3 +907,60 @@ a:any-link:hover {
 	font-size: var(--cc-text-sm);
 	color: var(--cc-text-muted);
 }
+
+/* The saved list: a green summary, one row per line, and the link to the moved lines' draft. */
+.page > .note[data-tone="ok"] {
+	padding: var(--cc-space-3) var(--cc-space-4);
+	color: var(--cc-text);
+	background: var(--cc-accent-surface);
+	border-radius: var(--cc-radius-sm);
+}
+
+.saved-lines {
+	margin: 0;
+	padding: 0 var(--cc-space-4);
+	list-style: none;
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+}
+
+.saved-lines li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-3);
+	padding-block: var(--cc-space-3);
+}
+
+.saved-lines li + li {
+	border-top: var(--cc-border-width) solid var(--cc-border);
+}
+
+.saved-lines .what {
+	display: grid;
+	min-width: 0;
+}
+
+.saved-lines .amount {
+	font-variant-numeric: tabular-nums;
+}
+
+.saved-lines .tag {
+	padding: var(--cc-space-1) var(--cc-space-2);
+	font-size: var(--cc-text-xs);
+	font-weight: 600;
+	color: var(--cc-text-muted);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-pill);
+}
+
+.page > a[data-action="open-draft"] {
+	display: grid;
+	gap: var(--cc-space-1);
+	padding: var(--cc-space-3) var(--cc-space-4);
+	color: var(--cc-text);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+}

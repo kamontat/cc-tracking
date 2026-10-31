@@ -122,3 +122,30 @@ test("the image draws every cell, always on white paper", async () => {
 	}
 	expect(fills.has("#ffffff")).toBe(true);
 });
+
+test("a saved list totals only what was made, at the real amount", () => {
+	setLocale("en");
+	const saved = {
+		date: "2026-10-31",
+		status: "saved" as const,
+		lines: [
+			{ cardId: "KB-F", amount: 12_500_00, made: true, actual: 13_000_00 },
+			{ cardId: "UOB-K", amount: 4_800_00, made: false },
+		],
+	};
+	expect(shareText(shareTable(saved, cards))).toBe(
+		[
+			"Purchase list · Sat, 31 Oct 2026",
+			"Card | Name (last 4) | Amount",
+			"KB-F | KBank Fuel (4412) | ฿13,000.00",
+			"UOB-K | UOB Krabi (7765) | Not made",
+			"Total · 1 cards | ฿13,000.00",
+		].join("\n"),
+	);
+});
+
+test("a sent list keeps its planned amounts", () => {
+	setLocale("en");
+	const table = shareTable({ ...list, status: "sent" }, cards);
+	expect(table.total[1]).toBe("฿17,300.00");
+});
