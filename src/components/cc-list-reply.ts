@@ -9,7 +9,7 @@ import type { Card, ListLine, PurchaseList } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardLabelHtml } from "#lib/ui/card-label";
-import { base, controls } from "#styles/shared";
+import { base, controls, listLayout } from "#styles/shared";
 
 /** One line's answer: unanswered, made or not, and the real amount as typed. */
 type Answer = { made: boolean | undefined; text: string };
@@ -24,11 +24,10 @@ export class CcListReply extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		listLayout,
 		css`
 			:host {
-				display: flex;
-				flex-direction: column;
-				gap: var(--cc-space-4);
+				display: block;
 			}
 
 			.note {
@@ -261,9 +260,12 @@ export class CcListReply extends LitElement {
 						total: formatAmount(total),
 					});
 
-		return html`
-			<p class="note">${t("reply.hint")}</p>
-			${lines.map((line, i) => this.section(line, i, byId))}
+		return html`<div class="list-layout">
+			<div class="list-layout__main">
+				<p class="note">${t("reply.hint")}</p>
+				<div class="lines">${lines.map((line, i) => this.section(line, i, byId))}</div>
+			</div>
+			<div class="list-layout__side">
 			<div class="action-bar">
 				${
 					unmade.length > 0
@@ -286,7 +288,8 @@ export class CcListReply extends LitElement {
 				<button data-action="save-reply" ?disabled=${!allAnswered || !allMoney}
 					@click=${() => this.save()}>${label}</button>
 			</div>
-		`;
+			</div>
+		</div>`;
 	}
 }
 

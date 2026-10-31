@@ -586,6 +586,15 @@ test("saving the reply stores purchases, the draft and the saved list", async ()
 		"Saved 2 purchases, ฿35,000.00.",
 	);
 	const link = root.querySelector('[data-action="open-draft"]');
+	// The summary and the draft's link sit in the side panel, the rows in the main column.
+	const side = root.querySelector(".list-layout > .list-layout__side");
+	expect(side?.contains(link)).toBe(true);
+	expect(side?.querySelector('p.note[data-tone="ok"]')).toBeInstanceOf(
+		HTMLElement,
+	);
+	expect(
+		root.querySelector(".list-layout > .list-layout__main > .saved-lines"),
+	).toBeInstanceOf(HTMLElement);
 	expect(link?.getAttribute("href")).toBe("/list?id=w1-2");
 	expect(flatText(link)).toContain("B moved to a draft for Sat, 31 Oct");
 	expect(link?.querySelector("small")?.textContent).toBe(
@@ -790,19 +799,50 @@ const ruleBody = (css: string, selector: string) => {
 
 test("the empty status stays in the page for screen readers", async () => {
 	const css = await Bun.file("src/styles/app.css").text();
-	const empty = ruleBody(css, ".page > .status:empty");
+	const empty = ruleBody(css, ".list-layout .status:empty");
 	expect(empty).toBeDefined();
 	expect(empty).not.toContain("display: none");
 	expect(empty).toContain("clip-path");
 });
 
-test("the list page is narrower than the other pages", async () => {
+test("the list page is narrow until a desktop gives it the page width", async () => {
 	const tokens = await Bun.file("src/styles/tokens.css").text();
 	expect(tokens).toMatch(/--cc-page-narrow:\s*[\d.]+rem;/);
+	expect(tokens).toMatch(/--cc-page-width:\s*[\d.]+rem;/);
 	const css = await Bun.file("src/styles/app.css").text();
+	expect(ruleBody(css, ".page")).toContain("max-width: var(--cc-page-width)");
 	expect(ruleBody(css, ".page--narrow")).toContain(
 		"max-width: var(--cc-page-narrow)",
 	);
+	expect(css).toMatch(
+		/@media \(min-width: 900px\)\s*\{\s*\.page--narrow\s*\{\s*max-width: var\(--cc-page-width\);/,
+	);
 	const page = await Bun.file("src/routes/list.html").text();
 	expect(page).toContain('<main class="page page--narrow" id="page">');
+});
+
+test("the review puts the table in the main column and its actions in the side panel", async () => {
+	const { root } = await setup();
+	await typeAndReview(root, { A: "125" }, [{ cardId: "A", amount: 125_00 }]);
+	expect(
+		root.querySelector(".list-layout > .list-layout__main > cc-list-table"),
+	).toBeInstanceOf(HTMLElement);
+	const side = root.querySelector(".list-layout > .list-layout__side");
+	expect(side).toBeInstanceOf(HTMLElement);
+	for (const action of ["copy", "save-image", "mark-sent", "save-draft"]) {
+		expect(side?.querySelector(`[data-action="${action}"]`)).toBeInstanceOf(
+			HTMLElement,
+		);
+	}
+	expect(side?.querySelector('p.status[role="status"]')).toBeInstanceOf(
+		HTMLElement,
+	);
+});
+
+test("the side panel parks beside the lines from 900px", async () => {
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(css).toMatch(
+		/@media \(min-width: 900px\)\s*\{\s*\.list-layout\s*\{\s*display: grid;\s*grid-template-columns: minmax\(0, 1fr\) var\(--cc-side-panel\);/,
+	);
+	expect(ruleBody(css, ".list-layout__side")).toContain("display: contents");
 });

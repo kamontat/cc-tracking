@@ -20,7 +20,7 @@ import type { Card, CardLedger, ListLine, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardLabelHtml, cardLabelText } from "#lib/ui/card-label";
-import { base, controls } from "#styles/shared";
+import { base, controls, listLayout } from "#styles/shared";
 
 /**
  * Step 2 of a purchase list: a date and one amount per card, each line warned about what the
@@ -31,11 +31,14 @@ export class CcListAmounts extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		listLayout,
 		css`
 			:host {
-				display: flex;
-				flex-direction: column;
-				gap: var(--cc-space-4);
+				display: block;
+			}
+
+			.when {
+				gap: var(--cc-space-3);
 			}
 
 			.line {
@@ -351,7 +354,7 @@ export class CcListAmounts extends LitElement {
 								)} />
 					</label>
 					${bad ? html`<p class="error">${t("quickAdd.error.badAmount")}</p>` : nothing}
-					<div class="after">
+					<div class="after" row>
 						<span>${t("purchaseList.roomAfter")}</span>
 						<b>${after}</b>
 					</div>
@@ -381,23 +384,9 @@ export class CcListAmounts extends LitElement {
 						{ count: this.cards.length },
 					)}</span>`;
 
-		return html`
-			<label>${t("purchaseList.date")}
-				<input type="date" data-field="date" .value=${live(this.dateText)}
-					@input=${(e: Event) => this.setDate((e.target as HTMLInputElement).value)} />
-			</label>
-			${
-				passed
-					? html`<div class="note" data-warning="date-passed">
-						<span>${t("purchaseList.warn.datePassed")}</span>
-						<button data-variant="quiet" data-action="to-today"
-							@click=${() => this.setDate(this.today)}
-						>${t("purchaseList.warn.toToday")}</button>
-					</div>`
-					: nothing
-			}
-			${this.cards.length === 0 ? html`<p class="empty">${t("purchaseList.noCards")}</p>` : nothing}
-			${sections}
+		return html`<div class="list-layout">
+			<div class="list-layout__main">
+			${this.cards.length === 0 ? html`<p class="empty">${t("purchaseList.noCards")}</p>` : html`<div class="lines">${sections}</div>`}
 			<button data-variant="quiet" data-action="add-card"
 				aria-expanded=${this.picking ? "true" : "false"}
 				@click=${() => {
@@ -414,7 +403,25 @@ export class CcListAmounts extends LitElement {
 					</div>`
 					: nothing
 			}
-			<div class="action-bar">
+			</div>
+			<div class="list-layout__side">
+			<div class="when" data-place="start">
+				<label>${t("purchaseList.date")}
+					<input type="date" data-field="date" .value=${live(this.dateText)}
+						@input=${(e: Event) => this.setDate((e.target as HTMLInputElement).value)} />
+				</label>
+				${
+					passed
+						? html`<div class="note" data-warning="date-passed">
+							<span>${t("purchaseList.warn.datePassed")}</span>
+							<button data-variant="quiet" data-action="to-today"
+								@click=${() => this.setDate(this.today)}
+							>${t("purchaseList.warn.toToday")}</button>
+						</div>`
+						: nothing
+				}
+			</div>
+			<div class="action-bar" row>
 				${summary}
 				<b class="total">${formatAmount(total)}</b>
 				<button data-action="review" ?disabled=${!canReview}
@@ -428,7 +435,8 @@ export class CcListAmounts extends LitElement {
 						})}
 				>${t("purchaseList.review")} ›</button>
 			</div>
-		`;
+			</div>
+		</div>`;
 	}
 }
 

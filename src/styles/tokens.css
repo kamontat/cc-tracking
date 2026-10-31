@@ -59,9 +59,16 @@
 	/* The widest a modal dialog grows: room for the card form's two columns of labelled inputs. */
 	--cc-modal-max: 40rem;
 
-	/* The widest a single-column task page (the purchase list) grows on a desktop: its lines,
-	   table and actions read as one column, not stretched across the 72rem of the other pages. */
+	/* The widest a page's content grows. */
+	--cc-page-width: 72rem;
+
+	/* The widest the purchase list grows below 900px, where it is one column: its lines, table
+	   and actions are not stretched across a tablet. From 900px it takes the page width and
+	   parks its side panel beside the lines. */
 	--cc-page-narrow: 48rem;
+
+	/* The purchase list's side panel from 900px: the date, the summary and the one action. */
+	--cc-side-panel: 20rem;
 
 	/* A `select` left at `appearance: auto` reserves its own arrow area — about 20px in Chrome,
 	   more in Safari — inside the border box and on top of whatever padding we set, so its right

@@ -506,3 +506,90 @@ export const listControls = css`
 		color: inherit;
 	}
 `;
+
+/**
+ * The purchase list's two columns, for the steps drawn in a shadow root (amounts, reply); the
+ * page's own `.list-layout` in app.css draws the review and saved views the same way. On a
+ * phone the side panel's pieces flow into the one column, a `data-place="start"` piece above
+ * the lines; from 900px the panel parks beside them, sticky under the header, and the bottom
+ * action bar inside it loses its own frame.
+ */
+export const listLayout = css`
+	.list-layout {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-4);
+	}
+
+	.list-layout__main {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-4);
+		min-inline-size: 0;
+	}
+
+	.list-layout__side {
+		display: contents;
+	}
+
+	.list-layout [data-place="start"] {
+		order: -1;
+	}
+
+	.lines {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		align-items: start;
+		gap: var(--cc-space-4);
+	}
+
+	@media (min-width: 900px) {
+		.list-layout {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
+			align-items: start;
+			gap: var(--cc-space-5);
+		}
+
+		.list-layout__side {
+			position: sticky;
+			top: calc(var(--cc-header-height) + var(--cc-space-4));
+			display: flex;
+			flex-direction: column;
+			gap: var(--cc-space-3);
+			padding: var(--cc-panel-padding);
+			background: var(--cc-surface);
+			border: var(--cc-border-width) solid var(--cc-border);
+			border-radius: var(--cc-radius-md);
+			box-shadow: var(--cc-shadow-sm);
+		}
+
+		.list-layout [data-place="start"] {
+			order: 0;
+		}
+
+		.list-layout__side .action-bar {
+			position: static;
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			gap: var(--cc-space-3);
+			padding: 0;
+			background: none;
+			border: 0;
+			box-shadow: none;
+		}
+
+		.list-layout__side .action-bar button {
+			align-self: stretch;
+			text-align: center;
+		}
+	}
+
+	/* Two line cards side by side once the main column is wide enough for both. */
+	@media (min-width: 1200px) {
+		.lines {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+`;

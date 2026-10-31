@@ -381,7 +381,11 @@ export function renderListPage(
 			back: () => show("amounts"),
 		})}
 		${banner()}
-		<cc-list-table .list=${reviewed ?? { date, lines: [] }} .cards=${from.cards}></cc-list-table>
+		<div class="list-layout">
+		<div class="list-layout__main">
+			<cc-list-table .list=${reviewed ?? { date, lines: [] }} .cards=${from.cards}></cc-list-table>
+		</div>
+		<div class="list-layout__side">
 		${
 			share.copy || share.saveImage
 				? html`<div class="list-share" row>
@@ -402,6 +406,8 @@ export function renderListPage(
 		<p class="note">${t("purchaseList.sendHint")}</p>
 		<button data-action="mark-sent" @click=${() => save(true)}>${icons.send}${t("purchaseList.markSent")}</button>
 		<button data-variant="quiet" data-action="save-draft" @click=${() => save(false)}>${t("purchaseList.saveDraft")}</button>
+		</div>
+		</div>
 	`;
 
 	const missingView = () => html`
@@ -442,39 +448,45 @@ export function renderListPage(
 				back: "/",
 			})}
 			${banner()}
-			<p class="note" data-tone="ok">${
-				made === 1
-					? t("saved.summary.one", { total })
-					: t("saved.summary.many", { count: made, total })
-			}</p>
-			<ul class="saved-lines">
-				${list.lines.map((line) => {
-					const real = line.actual ?? line.amount;
-					const planned =
-						line.made && real !== line.amount
-							? html`<small>${t("reply.planned", { amount: formatAmount(line.amount) })}</small>`
-							: nothing;
-					return html`<li data-card=${line.cardId}>
-						<span class="what"><b>${cardLabelHtml(line.cardId, byId.get(line.cardId))}</b>${planned}</span>
-						${
-							line.made
-								? html`<b class="amount">${formatAmount(real)}</b>`
-								: html`<span class="tag">${t("reply.notMade")}</span>`
-						}
-					</li>`;
-				})}
-			</ul>
-			${
-				list.movedTo
-					? html`<a data-action="open-draft" href=${`/list?id=${encodeURIComponent(list.movedTo)}`}>
-						<b>${t("saved.moved", {
-							cards: moved,
-							date: headerDate(addDays(list.date, 1), locale, false),
-						})}</b>
-						<small>${t("saved.openDraft")}</small>
-					</a>`
-					: nothing
-			}
+			<div class="list-layout">
+				<div class="list-layout__main">
+					<ul class="saved-lines">
+						${list.lines.map((line) => {
+							const real = line.actual ?? line.amount;
+							const planned =
+								line.made && real !== line.amount
+									? html`<small>${t("reply.planned", { amount: formatAmount(line.amount) })}</small>`
+									: nothing;
+							return html`<li data-card=${line.cardId}>
+								<span class="what"><b>${cardLabelHtml(line.cardId, byId.get(line.cardId))}</b>${planned}</span>
+								${
+									line.made
+										? html`<b class="amount">${formatAmount(real)}</b>`
+										: html`<span class="tag">${t("reply.notMade")}</span>`
+								}
+							</li>`;
+						})}
+					</ul>
+				</div>
+				<div class="list-layout__side">
+					<p class="note" data-tone="ok" data-place="start">${
+						made === 1
+							? t("saved.summary.one", { total })
+							: t("saved.summary.many", { count: made, total })
+					}</p>
+					${
+						list.movedTo
+							? html`<a data-action="open-draft" href=${`/list?id=${encodeURIComponent(list.movedTo)}`}>
+								<b>${t("saved.moved", {
+									cards: moved,
+									date: headerDate(addDays(list.date, 1), locale, false),
+								})}</b>
+								<small>${t("saved.openDraft")}</small>
+							</a>`
+							: nothing
+					}
+				</div>
+			</div>
 		`;
 	};
 

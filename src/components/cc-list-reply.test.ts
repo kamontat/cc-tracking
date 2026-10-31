@@ -194,3 +194,17 @@ test("a line is headed by the card's label", async () => {
 	// C is no longer stored: its id stays, with a dash for the name.
 	expect(flat(line(root, "C").querySelector(".card-label"))).toBe("C) —");
 });
+
+test("the move checkbox and Save sit in the side panel, the lines in the main column", async () => {
+	const { element, root } = await mount();
+	await answer(element, "B", "not-made");
+	const main = root.querySelector(".list-layout > .list-layout__main");
+	const side = root.querySelector(".list-layout > .list-layout__side");
+	expect(main?.querySelectorAll("section.line")).toHaveLength(3);
+	expect(side?.querySelector('[data-field="move"]')).toBeInstanceOf(
+		HTMLElement,
+	);
+	expect(side?.querySelector('[data-action="save-reply"]')).toBeInstanceOf(
+		HTMLElement,
+	);
+});

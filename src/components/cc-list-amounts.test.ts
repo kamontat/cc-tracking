@@ -301,3 +301,26 @@ test("a line is headed by the card's label, Remove beside it", async () => {
 	expect(top?.querySelector(".last4")?.textContent).toBe("(1111)");
 	expect(top?.querySelector('[data-action="remove"]')).not.toBeNull();
 });
+
+test("the date, summary and Review sit in the side panel, the lines in the main column", async () => {
+	const { element, root } = await mount({ cards: [A, B] });
+	const main = root.querySelector(".list-layout > .list-layout__main");
+	const side = root.querySelector(".list-layout > .list-layout__side");
+	expect(main?.querySelectorAll("section.line")).toHaveLength(2);
+	expect(main?.querySelector('[data-action="add-card"]')).toBeInstanceOf(
+		HTMLElement,
+	);
+	expect(side?.querySelector('[data-field="date"]')).toBeInstanceOf(
+		HTMLElement,
+	);
+	expect(side?.querySelector(".action-bar .total")).toBeInstanceOf(HTMLElement);
+	expect(side?.querySelector('[data-action="review"]')).toBeInstanceOf(
+		HTMLElement,
+	);
+	const styles = (element.constructor as typeof CcListAmounts).styles as {
+		cssText: string;
+	}[];
+	expect(styles.map((s) => s.cssText).join("\n")).toContain(
+		"grid-template-columns: minmax(0, 1fr) var(--cc-side-panel)",
+	);
+});

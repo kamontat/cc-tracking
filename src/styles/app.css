@@ -55,7 +55,7 @@ a:any-link:hover {
 	align-items: center;
 	gap: var(--cc-space-3);
 	width: 100%;
-	max-width: 72rem;
+	max-width: var(--cc-page-width);
 	margin-inline: auto;
 	padding-block: var(--cc-space-3);
 	padding-inline: max(var(--cc-space-4), env(safe-area-inset-left, 0px))
@@ -338,7 +338,7 @@ a:any-link:hover {
 	flex-direction: column;
 	gap: var(--cc-space-5);
 	width: 100%;
-	max-width: 72rem;
+	max-width: var(--cc-page-width);
 	margin-inline: auto;
 	padding: var(--cc-space-5)
 		max(var(--cc-space-4), env(safe-area-inset-left, 0px))
@@ -351,9 +351,16 @@ a:any-link:hover {
 		);
 }
 
-/* A single-column task page (the purchase list) that would read too wide across a desktop. */
+/* The purchase list: one column, kept narrow, until 900px gives it the page width and its
+   side panel (`.list-layout`). */
 .page--narrow {
 	max-width: var(--cc-page-narrow);
+}
+
+@media (min-width: 900px) {
+	.page--narrow {
+		max-width: var(--cc-page-width);
+	}
 }
 
 /* From 900px the bar is gone; the page clears only the floating button. */
@@ -892,30 +899,90 @@ a:any-link:hover {
 	block-size: var(--cc-icon-size-sm);
 }
 
-.page > .status {
+/*
+ * The purchase list's views (review, saved; amounts and reply draw the same in their shadow
+ * roots, from `listLayout`). On a phone the side panel's pieces flow into the one column
+ * (`display: contents`), a `data-place="start"` piece above the lines and the rest below. From
+ * 900px the panel parks beside the lines, sticky under the header.
+ */
+.list-layout {
+	gap: var(--cc-space-5);
+}
+
+.list-layout__main {
+	gap: var(--cc-space-4);
+	min-width: 0;
+}
+
+.list-layout__side {
+	display: contents;
+}
+
+.list-layout [data-place="start"] {
+	order: -1;
+}
+
+@media (min-width: 900px) {
+	.list-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
+		align-items: start;
+	}
+
+	.list-layout__side {
+		position: sticky;
+		top: calc(var(--cc-header-height) + var(--cc-space-4));
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-3);
+		padding: var(--cc-panel-padding);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+		box-shadow: var(--cc-shadow-sm);
+	}
+
+	.list-layout [data-place="start"] {
+		order: 0;
+	}
+
+	/* In the panel the actions fill its width, one under the other. */
+	.list-layout__side > button,
+	.list-layout__side .list-share button {
+		align-self: stretch;
+		justify-content: center;
+	}
+
+	.list-layout__side .list-share {
+		flex-direction: column;
+	}
+}
+
+.list-layout .status {
 	font-size: var(--cc-text-sm);
 	color: var(--cc-success);
 }
 
-.page > .status[data-failed] {
+.list-layout .status[data-failed] {
 	color: var(--cc-danger);
 }
 
 /* Empty, the live region is taken out of the column's flow and clipped from sight, but never
    `display: none`: a screen reader only announces changes to a region it already knows, so a
    hidden one would swallow the first message. */
-.page > .status:empty {
+.list-layout .status:empty {
 	position: absolute;
 	clip-path: inset(50%);
 }
 
-.page > .note {
+.page > .note,
+.list-layout .note {
 	font-size: var(--cc-text-sm);
 	color: var(--cc-text-muted);
 }
 
 /* The saved list: a green summary, one row per line, and the link to the moved lines' draft. */
-.page > .note[data-tone="ok"] {
+.list-layout .note[data-tone="ok"] {
 	padding: var(--cc-space-3) var(--cc-space-4);
 	color: var(--cc-text);
 	background: var(--cc-accent-surface);
@@ -961,7 +1028,7 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-pill);
 }
 
-.page > a[data-action="open-draft"] {
+.list-layout a[data-action="open-draft"] {
 	display: grid;
 	gap: var(--cc-space-1);
 	padding: var(--cc-space-3) var(--cc-space-4);
