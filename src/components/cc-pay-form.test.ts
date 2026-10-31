@@ -169,6 +169,21 @@ test("submitting sends the amount and date, and shows an error without losing ty
 	expect(q<HTMLInputElement>(el, '[name="amount"]')?.value).toBe("120.50");
 });
 
+test("submitting a zero amount sends nothing, as the disabled button says", async () => {
+	const el = await mount(undefined, "0");
+	const sent: PayDetail[] = [];
+	el.addEventListener("pay", (e) =>
+		sent.push((e as CustomEvent<PayDetail>).detail),
+	);
+	expect(q<HTMLButtonElement>(el, 'button[type="submit"]')?.disabled).toBe(
+		true,
+	);
+	q<HTMLFormElement>(el, "form")?.dispatchEvent(
+		new Event("submit", { cancelable: true }),
+	);
+	expect(sent).toEqual([]);
+});
+
 test("a figure may wrap only after the baht sign or a comma, never inside a group of digits", async () => {
 	const el = await mount({
 		owed: 143_903_96,

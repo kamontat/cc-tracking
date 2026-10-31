@@ -173,6 +173,19 @@ test("a held modal ignores every request to close", async () => {
 	expect(element.hasAttribute("closing")).toBe(false);
 });
 
+test("a held sheet that the browser closes anyway opens again", async () => {
+	const element = await mount();
+	element.sheet = true;
+	element.held = true;
+	await element.updateComplete;
+	const seen = closes(element);
+	// A second Escape closes a dialog without a cancel the page could refuse.
+	dialog(element).close();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(dialog(element).open).toBe(true);
+	expect(seen).toHaveLength(0);
+});
+
 test("the closing slide and fade are in the sheet's styles, and stand down under reduced motion", () => {
 	const customElement = customElements.get("cc-modal") as unknown as {
 		styles: { cssText: string }[];

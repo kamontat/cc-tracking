@@ -411,3 +411,65 @@ test("a payment's note shows on its sub line, in the ledger and under Upcoming",
 		"31 Oct 2026 · Salary day",
 	);
 });
+
+test("a paid payment's Delete moves focus to the asking Delete, and Cancel moves it back", async () => {
+	const { element, root } = await mount({
+		entries: [payEntry("p1", 700_00)],
+	});
+	(root.querySelector("[data-action=delete]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(
+		root.querySelector("[data-action=confirm-delete]"),
+	);
+	(root.querySelector("[data-action=cancel-delete]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(root.querySelector("[data-action=delete]"));
+});
+
+test("a planned payment's Delete moves focus to the asking Delete, and Cancel moves it back", async () => {
+	const c = card("A");
+	const { element, root } = await mount({
+		entries: [payEntry("p0", 100_00)],
+		upcoming: {
+			lists: [],
+			planned: [{ payment: payment("pl1", 900_00, "planned", c), card: c }],
+			cards: [c],
+		},
+	});
+	const planned = () => root.querySelector("[data-row=pl1]") as HTMLElement;
+	(planned().querySelector("[data-action=delete]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(
+		planned().querySelector("[data-action=confirm-delete]"),
+	);
+	(
+		planned().querySelector("[data-action=cancel-delete]") as HTMLElement
+	).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(
+		planned().querySelector("[data-action=delete]"),
+	);
+});
+
+test("Confirm moves focus to Save, and Cancel moves it back to Confirm", async () => {
+	const sent: PurchaseList = {
+		id: "w1",
+		date: "2026-10-30",
+		status: "sent",
+		lines: [{ cardId: "A", amount: 10_00 }],
+	};
+	const { element, root } = await mount({
+		entries: [],
+		upcoming: { lists: [sent], planned: [], cards: [] },
+	});
+	(root.querySelector("[data-action=confirm-list]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(
+		root.querySelector("[data-action=save-list]"),
+	);
+	(root.querySelector("[data-action=cancel-confirm]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(
+		root.querySelector("[data-action=confirm-list]"),
+	);
+});

@@ -257,6 +257,10 @@ export class CcModal extends LitElement {
 				@click=${(event: Event) => {
 					if (event.target === this.dialog) this.requestClose();
 				}}
+				@close=${() => {
+					// A second Escape closes a dialog with no cancel to refuse; a held one opens again.
+					if (this.held && this.isConnected) this.dialog.showModal();
+				}}
 			>
 				<div class="body">
 					<span class="grab" aria-hidden="true"></span>

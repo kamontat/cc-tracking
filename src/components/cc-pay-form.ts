@@ -239,11 +239,19 @@ export class CcPayForm extends LitElement {
 		if (changed.has("today") && this.date === "") this.date = this.today;
 	}
 
+	/** The amount to send, or null while the button is disabled: one rule for both. */
+	private readyAmount(): number | null {
+		const amount = amountOf(this.text);
+		return amount !== null && amount > 0 && isValidDate(this.date)
+			? amount
+			: null;
+	}
+
 	private onSubmit(event: Event) {
 		event.preventDefault();
 		if (this.busy) return;
-		const amount = amountOf(this.text);
-		if (amount === null || !isValidDate(this.date)) return;
+		const amount = this.readyAmount();
+		if (amount === null) return;
 		const note = this.note.trim();
 		this.dispatchEvent(
 			new CustomEvent<PayDetail>("pay", {
@@ -268,12 +276,10 @@ export class CcPayForm extends LitElement {
 		const card = this.card;
 		if (!card) return nothing;
 		const { owed, credit, nextBill, overdue } = this.figures;
-		const amount = amountOf(this.text);
-		const ready = amount !== null && amount > 0 && isValidDate(this.date);
+		const amount = this.readyAmount();
+		const ready = amount !== null;
 		const preview =
-			ready && amount !== null
-				? payPreview(amount, this.date, owed, this.today)
-				: null;
+			amount !== null ? payPreview(amount, this.date, owed, this.today) : null;
 		const locale = getLocale();
 		let submit = t("pay.submit.empty");
 		if (preview && amount !== null) {
