@@ -162,11 +162,11 @@ export class CcListAmounts extends LitElement {
 
 	/** The list's cards, in order. */
 	@property({ attribute: false }) cards: Card[] = [];
-	/** Ready cards not on the list, offered by Add another card. */
 	/** Every card, so a planned payment on a group-mate not on the list still counts. */
 	@property({ attribute: false }) allCards: Card[] = [];
 	/** Planned payments (`plannedOf`). */
 	@property({ attribute: false }) planned: CardPayment[] = [];
+	/** Ready cards not on the list, offered by Add another card. */
 	@property({ attribute: false }) candidates: Card[] = [];
 	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
 	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();

@@ -189,12 +189,16 @@ export function renderCardsPage(
 		`;
 	};
 
+	const usedAndHeld = (room: { used: number; held: number }) =>
+		room.used + room.held;
+
 	const usage = (): Record<string, number> =>
 		Object.fromEntries(
 			groups.map((group) => [
 				group.id,
+				// Used plus what sent lists hold, the same count Home's room subtracts.
 				money
-					? groupRoom(group, cards, money.ledgers, money.lists, "").used
+					? usedAndHeld(groupRoom(group, cards, money.ledgers, money.lists, ""))
 					: 0,
 			]),
 		);

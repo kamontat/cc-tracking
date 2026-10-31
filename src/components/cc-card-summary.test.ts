@@ -103,6 +103,20 @@ test("shows what the group has left, of what limit, with a bar tinted as it runs
 	expect(available?.dataset["level"]).toBe("high");
 });
 
+test("the bar counts what lists hold, so it agrees with the room figure", async () => {
+	const room = { ...roomOf(50_000), held: 40_000, room: 10_000 };
+	const bar = tile(
+		await mount({ room }),
+		"available",
+	)?.querySelector<HTMLElement>(".usage > span");
+	expect(bar?.getAttribute("style")).toContain("inline-size: 90%");
+	expect(
+		tile(await mount({ room }), "available")
+			?.querySelector(".usage")
+			?.getAttribute("data-level"),
+	).toBe("high");
+});
+
 test("says how many other cards share the group, one or many", async () => {
 	expect(tile(await mount(), "available")?.textContent).not.toContain("Shared");
 	expect(

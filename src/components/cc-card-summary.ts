@@ -2,7 +2,7 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { displayDate } from "#lib/domain/date";
 import { ledgerUrgency } from "#lib/domain/ledger";
-import { usageShare } from "#lib/domain/limit";
+import { usageLevel, usageShare } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
 import type { GroupRoom } from "#lib/domain/room";
 import type { LedgerStatement, PlainDate } from "#lib/domain/types";
@@ -115,8 +115,11 @@ export class CcCardSummary extends LitElement {
 				</section>
 			`;
 		}
-		const { group, level } = room;
-		const share = usageShare(room.used, group.limit);
+		const { group } = room;
+		// What lists hold counts as used, so the bar agrees with the room figure.
+		const counted = room.used + room.held;
+		const level = usageLevel(counted, group.limit);
+		const share = usageShare(counted, group.limit);
 		return html`
 			<section data-tile="available" data-level=${level}>
 				<h2>${t("card.summary.available")}</h2>
