@@ -314,6 +314,15 @@ export const actionRowStyles = css`
 		text-align: end;
 	}
 
+	/* A ledger payment row's right side (DD-77): the amount, and its Delete under it. */
+	.pay-right {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: var(--cc-space-1);
+		line-height: 1.25;
+	}
+
 	/* A lone button sits at the right edge, under the amount (shared.ts sets flex-start). */
 	.a-right > button,
 	.pay-right > button {
@@ -346,6 +355,14 @@ export const actionRowStyles = css`
 		.a-right > button,
 		.pay-right > button {
 			align-self: center;
+		}
+
+		/* A payment's amount and Delete share the last line: amount left, buttons right. */
+		.pay-right {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: space-between;
 		}
 	}
 

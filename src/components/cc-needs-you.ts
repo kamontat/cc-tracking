@@ -9,7 +9,7 @@ import {
 	waitingText,
 } from "#components/action-row";
 import type { NeedsItem } from "#lib/domain/home";
-import { formatAmount } from "#lib/domain/money";
+import { formatAmount, MINUS } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
 import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
@@ -17,8 +17,6 @@ import { t } from "#lib/i18n/index";
 import { listPageAddress } from "#lib/ui/list-address";
 import { payAddress } from "#lib/ui/pay-address";
 import { base, controls, rowPanel } from "#styles/shared";
-
-const MINUS = "−";
 
 /** How many things show before *See more*. */
 const SHOWN = 5;

@@ -1,7 +1,7 @@
 import "#components/cc-ready-filter";
 import "#components/cc-ready-picker";
 import { html, nothing, render } from "lit";
-import { searchBox } from "#components/list-controls";
+import { type FilterPill, filterControls } from "#components/list-controls";
 import { canPurchase } from "#lib/domain/card";
 import { today } from "#lib/domain/date";
 import type { ReadySort } from "#lib/domain/home";
@@ -18,7 +18,6 @@ import { locationText } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { backHeader } from "#lib/ui/back-header";
-import { icons } from "#lib/ui/icons";
 import { newListAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
@@ -90,8 +89,7 @@ export function renderPickerPage(
 		paint();
 	};
 
-	type Chip = { key: string; label: string; clear: () => void };
-	const chips = (): Chip[] => {
+	const chips = (): FilterPill[] => {
 		const { filter } = view;
 		return [
 			...filter.locations.map((location) => ({
@@ -116,30 +114,16 @@ export function renderPickerPage(
 			sheet = { ...view.filter };
 			paint();
 		};
-		const count = readyFilterCount(view.filter);
-		return html`<div class="tx-controls ready-controls">
-			<div class="tx-ctl">
-				<label class="tx-search">${icons.search}${searchBox(
-					view.filter.q,
-					t("ready.search"),
-					(q) => setFilter({ q }),
-				)}</label>
-				<button type="button" class="tx-fbtn" data-variant="quiet" data-action="filter"
-					@click=${openSheet}>${icons.filter}${t("tx.filter.open")}${
-						count ? html`<b class="tx-count">${count}</b>` : nothing
-					}</button>
-			</div>
-			<div class="tx-chips">
-				<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="sort"
-					@click=${openSheet}>${t("tx.sortChip", { sort: t(`ready.sort.${view.sort}`) })} ▾</button>
-				${chips().map(
-					(chip) =>
-						html`<button type="button" class="tx-chip" data-variant="quiet" data-chip=${chip.key}
-							aria-label=${t("tx.chip.remove", { filter: chip.label })}
-							@click=${chip.clear}>${chip.label} ×</button>`,
-				)}
-			</div>
-		</div>`;
+		return filterControls({
+			q: view.filter.q,
+			placeholder: t("ready.search"),
+			onSearch: (q) => setFilter({ q }),
+			onOpen: openSheet,
+			count: readyFilterCount(view.filter),
+			sort: t(`ready.sort.${view.sort}`),
+			chips: chips(),
+			className: "ready-controls",
+		});
 	};
 
 	const selectionBar = () => {

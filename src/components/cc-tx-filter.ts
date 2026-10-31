@@ -11,16 +11,11 @@ import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { cardLine } from "#lib/ui/card-label";
 import { base, cardBits, controls, filterSheet } from "#styles/shared";
-import "#components/cc-modal";
+import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet";
 
 const RANGES: RangePreset[] = ["today", "week", "month", "lastMonth", "custom"];
 const SORTS: TxSort[] = ["new", "old", "big", "small"];
 const TYPES = ["purchase", "payment"] as const;
-
-const toggle = <T>(values: T[], value: T): T[] =>
-	values.includes(value)
-		? values.filter((v) => v !== value)
-		: [...values, value];
 
 /**
  * The filter sheet: a draft of the filter and sort that only the apply button hands back, with
@@ -54,32 +49,27 @@ export class CcTxFilter extends LitElement {
 		this.draft = { ...this.draft, ...patch };
 	}
 
-	private chip(
-		attr: "type" | "card" | "range" | "sort",
-		value: string,
-		label: unknown,
-		pressed: boolean,
-		onClick: () => void,
-	) {
-		return html`<button type="button" data-variant="quiet"
-			data-type=${attr === "type" ? value : nothing}
-			data-card=${attr === "card" ? value : nothing}
-			data-range=${attr === "range" ? value : nothing}
-			data-sort=${attr === "sort" ? value : nothing}
-			aria-pressed=${pressed} @click=${onClick}>${label}</button>`;
-	}
-
 	override render() {
 		const shown = this.count(this.draft, this.draftSort);
-		return html`<cc-modal sheet heading=${t("tx.filter.title")}
-			@close=${(event: Event) => {
-				event.stopPropagation();
-				this.dispatchEvent(new CustomEvent("close"));
-			}}>
+		return filterSheetFrame(
+			{
+				host: this,
+				shown,
+				showLabel: t(
+					shown === 1 ? "tx.filter.show.one" : "tx.filter.show.many",
+					{ count: shown },
+				),
+				onClear: () => {
+					this.draft = { ...DEFAULT_TX_FILTER, q: this.draft.q };
+					this.draftSort = "new";
+				},
+				detail: () => ({ filter: this.draft, sort: this.draftSort }),
+			},
+			html`
 			<fieldset>
 				<legend>${t("tx.filter.type")}</legend>
 				<div class="choices">${TYPES.map((type) =>
-					this.chip(
+					sheetChip(
 						"type",
 						type,
 						t(type === "purchase" ? "tx.type.purchase" : "tx.type.payment"),
@@ -91,7 +81,7 @@ export class CcTxFilter extends LitElement {
 			<fieldset>
 				<legend>${t("tx.filter.card")}</legend>
 				<div class="choices">${this.cards.map((card) =>
-					this.chip(
+					sheetChip(
 						"card",
 						card.id,
 						cardLine(card.id, card),
@@ -103,7 +93,7 @@ export class CcTxFilter extends LitElement {
 			<fieldset>
 				<legend>${t("tx.filter.date")}</legend>
 				<div class="choices">${RANGES.map((range) =>
-					this.chip(
+					sheetChip(
 						"range",
 						range,
 						t(`tx.range.${range}`),
@@ -134,7 +124,7 @@ export class CcTxFilter extends LitElement {
 			<fieldset>
 				<legend>${t("tx.filter.sort")}</legend>
 				<div class="choices">${SORTS.map((sort) =>
-					this.chip(
+					sheetChip(
 						"sort",
 						sort,
 						t(`tx.sort.${sort}`),
@@ -145,32 +135,8 @@ export class CcTxFilter extends LitElement {
 					),
 				)}</div>
 			</fieldset>
-			<div class="footer">
-				<button type="button" data-variant="quiet" data-action="clear"
-					@click=${() => {
-						this.draft = { ...DEFAULT_TX_FILTER, q: this.draft.q };
-						this.draftSort = "new";
-					}}>${t("tx.filter.clear")}</button>
-				<button type="button" data-action="apply" ?disabled=${shown === 0}
-					@click=${(event: Event) => {
-						// The sheet slides away first; the page takes it away on apply.
-						const detail = { filter: this.draft, sort: this.draftSort };
-						const sheet = (event.currentTarget as HTMLElement).closest(
-							"cc-modal",
-						);
-						const apply = () =>
-							this.dispatchEvent(new CustomEvent("apply", { detail }));
-						if (sheet) sheet.leave(apply);
-						else apply();
-					}}>${
-						shown === 0
-							? t("tx.filter.nothing")
-							: t(shown === 1 ? "tx.filter.show.one" : "tx.filter.show.many", {
-									count: shown,
-								})
-					}</button>
-			</div>
-		</cc-modal>`;
+			`,
+		);
 	}
 }
 

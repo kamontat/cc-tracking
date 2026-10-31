@@ -6,10 +6,10 @@ import "#components/cc-list-index";
 import "#components/cc-owed-list";
 import "#components/cc-tx-filter";
 import "#components/cc-tx-ledger";
-import { html, nothing, render, type TemplateResult } from "lit";
-import { searchBox } from "#components/list-controls";
+import { html, nothing, render } from "lit";
+import { type FilterPill, filterControls } from "#components/list-controls";
 import { displayDate, monthName, today } from "#lib/domain/date";
-import { formatAmount } from "#lib/domain/money";
+import { formatAmount, MINUS } from "#lib/domain/money";
 import { markPaid, plannedOf } from "#lib/domain/pay";
 import {
 	byDay,
@@ -25,7 +25,6 @@ import type { CardPayment, ListStatus, PurchaseList } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { cardLine, cardLineHtml } from "#lib/ui/card-label";
-import { icons } from "#lib/ui/icons";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -95,19 +94,12 @@ export function renderTransactionsPage(
 			await deletePayment(repo, payment);
 		}, "tx.error.delete");
 
-	type Chip = {
-		key: string;
-		/** The chip's words, also read out by its remove label. */
-		label: string;
-		/** Markup to show instead of `label`: a card's line form with its short form beside it. */
-		shown?: TemplateResult;
-		clear: () => void;
-	};
-	const chips = (): Chip[] => {
+	// A card's chip shows its line form with its short form beside it.
+	const chips = (): FilterPill[] => {
 		if (!data) return [];
 		const { filter } = view;
 		const cards = data.cards;
-		const list: Chip[] = [];
+		const list: FilterPill[] = [];
 		for (const type of filter.types)
 			list.push({
 				key: `type:${type}`,
@@ -177,33 +169,16 @@ export function renderTransactionsPage(
 		) =>
 			html`<div data-field=${field}><small>${label}</small>
 				<b data-numeric data-tone=${tone ?? nothing}>${text}</b></div>`;
-		const MINUS = "−";
 		return html`
-			<div class="tx-controls">
-				<div class="tx-ctl">
-					<label class="tx-search">${icons.search}${searchBox(
-						filter.q,
-						t("tx.search.placeholder"),
-						(q) => setFilter({ q }),
-					)}</label>
-					<button type="button" class="tx-fbtn" data-variant="quiet" data-action="filter"
-						@click=${openSheet}>${icons.filter}${t("tx.filter.open")}${
-							active.length
-								? html`<b class="tx-count">${active.length}</b>`
-								: nothing
-						}</button>
-				</div>
-				<div class="tx-chips">
-					<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="sort"
-						@click=${openSheet}>${t("tx.sortChip", { sort: t(`tx.sort.${view.sort}`) })} ▾</button>
-					${active.map(
-						(chip) =>
-							html`<button type="button" class="tx-chip" data-variant="quiet" data-chip=${chip.key}
-								aria-label=${t("tx.chip.remove", { filter: chip.label })}
-								@click=${chip.clear}>${chip.shown ?? chip.label} ×</button>`,
-					)}
-				</div>
-			</div>
+			${filterControls({
+				q: filter.q,
+				placeholder: t("tx.search.placeholder"),
+				onSearch: (q) => setFilter({ q }),
+				onOpen: openSheet,
+				count: active.length,
+				sort: t(`tx.sort.${view.sort}`),
+				chips: active,
+			})}
 			${
 				summary
 					? html`<section class="tx-summary" data-testid="summary">

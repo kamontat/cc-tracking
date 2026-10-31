@@ -7,7 +7,7 @@ import {
 	waitingText,
 } from "#components/action-row";
 import { displayDate, headerDate } from "#lib/domain/date";
-import { formatAmount } from "#lib/domain/money";
+import { formatAmount, MINUS } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
 import {
 	entriesTotal,
@@ -35,8 +35,6 @@ export type Upcoming = {
 	/** Every stored card, to name a waiting list's cards. */
 	cards: Card[];
 };
-
-const MINUS = "−";
 
 /**
  * The ledger: purchases and paid payments, grouped under day headings (`groups`) or flat
@@ -107,15 +105,6 @@ export class CcTxLedger extends LitElement {
 				display: inline;
 			}
 
-			/* A payment row's right side (DD-77): the amount, and its Delete under it. */
-			.pay-right {
-				display: flex;
-				flex-direction: column;
-				align-items: flex-end;
-				gap: var(--cc-space-1);
-				line-height: 1.25;
-			}
-
 			.archived {
 				align-self: center;
 			}
@@ -133,13 +122,9 @@ export class CcTxLedger extends LitElement {
 					text-align: start;
 				}
 
-				/* A payment's amount and Delete share the last line: amount left, buttons right. */
+				/* A payment's amount and Delete share the last line (actionRowStyles). */
 				.crow[data-kind] > .pay-right {
 					grid-column: 2;
-					flex-direction: row;
-					flex-wrap: wrap;
-					align-items: center;
-					justify-content: space-between;
 				}
 			}
 
