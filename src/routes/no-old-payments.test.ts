@@ -10,7 +10,7 @@ test("no route or component writes an old statement payment", async () => {
 	const offenders: string[] = [];
 	for (const pattern of ["routes/**/*.ts", "components/**/*.ts"]) {
 		for await (const path of new Glob(pattern).scan({
-			cwd: import.meta.dir + "/..",
+			cwd: `${import.meta.dir}/..`,
 		})) {
 			if (path.endsWith(".test.ts")) continue;
 			const text = await Bun.file(`${import.meta.dir}/../${path}`).text();
