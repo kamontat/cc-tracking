@@ -68,9 +68,9 @@ test("each item opens its task", async () => {
 		"draft",
 	]);
 	expect(found.map((e) => e.getAttribute("href"))).toEqual([
-		"/list?id=w1",
+		"/list/reply?id=w1",
 		"/card?id=SCB%2FK",
-		"/list?id=d1",
+		"/list/draft?id=d1",
 	]);
 	expect(text(found[0] as Element, "small")).toBe(
 		"List for Fri, 30 Oct · 3 cards · ฿39,300.00",
@@ -142,5 +142,5 @@ test("a list id is encoded in its link", async () => {
 		[...root.querySelectorAll("[data-item]")].map((e) =>
 			e.getAttribute("href"),
 		),
-	).toEqual(["/list?id=w%201%2F2", "/list?id=d%261"]);
+	).toEqual(["/list/reply?id=w%201%2F2", "/list/draft?id=d%261"]);
 });

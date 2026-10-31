@@ -11,6 +11,7 @@ import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home";
 import { unassignedCards } from "#lib/domain/limit";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { newListAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -23,13 +24,6 @@ export type HomeOptions = {
 	/** Opens another page; `location.assign` unless a test records it instead. */
 	navigate?: (url: string) => void;
 };
-
-/** The purchase lists page, opened on a new list for `cardIds` in the order given. */
-export function listAddress(cardIds: string[]): string {
-	const query = new URLSearchParams();
-	for (const id of cardIds) query.append("card", id);
-	return `/list?${query.toString()}`;
-}
 
 /**
  * Renders Home into `root`, wiring it to `repo`: what needs the reader first, then the cards
@@ -81,7 +75,7 @@ export function renderHomePage(
 				}</b>
 				<div class="action-bar__actions">
 					<button data-variant="quiet" data-action="clear" @click=${clear}>${t("list.clear")}</button>
-					<button data-action="enter-amounts" @click=${() => navigate(listAddress(selected))}>${t("home.enterAmounts")} ›</button>
+					<button data-action="enter-amounts" @click=${() => navigate(newListAddress(selected))}>${t("home.enterAmounts")} ›</button>
 				</div>
 			</div>
 		`;

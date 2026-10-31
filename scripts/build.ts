@@ -26,4 +26,13 @@ const proc = Bun.spawn(["bunx", "bun-server", "build", ...Bun.argv.slice(2)], {
 	env: { ...process.env, ...built },
 });
 
-process.exit(await proc.exited);
+const code = await proc.exited;
+// Home must land at the output's root; anywhere else means the bundle lost its root (see
+// scripts/routes-root.ts) and no page would answer at its address.
+if (code === 0 && !(await Bun.file("dist/index.html").exists())) {
+	console.error(
+		"Build put the pages outside dist/; see scripts/routes-root.ts.",
+	);
+	process.exit(1);
+}
+process.exit(code);

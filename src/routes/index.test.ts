@@ -5,7 +5,7 @@ import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
-import { listAddress, renderHomePage } from "./index";
+import { renderHomePage } from "./index";
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = (ms = 0) =>
@@ -163,12 +163,7 @@ test("enter amounts opens the list with the picked cards", async () => {
 	selectionBar(root)
 		?.querySelector<HTMLButtonElement>('[data-action="enter-amounts"]')
 		?.click();
-	expect(visited).toEqual(["/list?card=B&card=A"]);
-
-	const address = listAddress(["A,1", "x&y"]);
-	const query = new URLSearchParams(address.slice(address.indexOf("?")));
-	expect(address.startsWith("/list?")).toBe(true);
-	expect(query.getAll("card")).toEqual(["A,1", "x&y"]);
+	expect(visited).toEqual(["/list/new?card=B&card=A"]);
 });
 
 test("old payments and sent lists move the room", async () => {

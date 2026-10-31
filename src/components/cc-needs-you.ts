@@ -7,6 +7,7 @@ import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardLabelText } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
+import { listPageAddress } from "#lib/ui/list-address";
 import { base } from "#styles/shared";
 
 /** What needs doing on Home: replies to record, bills past due, drafts to finish. */
@@ -119,7 +120,7 @@ export class CcNeedsYou extends LitElement {
 		switch (item.kind) {
 			case "waiting":
 				return {
-					href: `/list?id=${encodeURIComponent(item.list.id)}`,
+					href: listPageAddress(item.list),
 					icon: icons.clock,
 					title: t("home.waiting"),
 					detail: t(
@@ -147,7 +148,7 @@ export class CcNeedsYou extends LitElement {
 				};
 			case "draft":
 				return {
-					href: `/list?id=${encodeURIComponent(item.list.id)}`,
+					href: listPageAddress(item.list),
 					icon: icons.transactions,
 					title: t("home.draft", {
 						date: headerDate(item.list.date, locale, false),

@@ -6,7 +6,7 @@
 	},
 	"overrides": [
 		{
-			"includes": ["src/routes/*.html"],
+			"includes": ["src/routes/**/*.html"],
 			"linter": {
 				"rules": {
 					"complexity": {
