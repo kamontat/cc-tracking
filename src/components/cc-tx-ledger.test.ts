@@ -190,7 +190,7 @@ test("opening another row drops the question", async () => {
 	expect(element.confirming).toBe(false);
 });
 
-test("Upcoming lists waiting lists and planned payments with Mark paid and delete", async () => {
+test("Upcoming uses the shared row: a waiting list with Confirm, a planned payment with Paid", async () => {
 	const sent: PurchaseList = {
 		id: "w1",
 		date: "2026-10-30",
@@ -200,32 +200,46 @@ test("Upcoming lists waiting lists and planned payments with Mark paid and delet
 			{ cardId: "B", amount: 50_00 },
 		],
 	};
-	const c = card("A");
-	const planned = payment("pl1", 900_00, "planned", c);
+	const c = { ...card("A"), last4: "1029" };
+	const planned = {
+		...payment("pl1", 900_00, "planned", c),
+		date: "2026-11-02" as const,
+	};
 	const { element, root } = await mount({
 		entries: [],
-		upcoming: { lists: [sent], planned: [{ payment: planned, card: c }] },
+		upcoming: {
+			lists: [sent],
+			planned: [{ payment: planned, card: c }],
+			cards: [c],
+		},
 	});
 	expect(text(root, ".upcoming h2")).toBe("Upcoming");
-	const waiting = root.querySelector("a[data-kind=waiting]");
-	expect(waiting?.getAttribute("href")).toBe("/list/reply?id=w1");
-	expect(waiting?.textContent).toContain("Waiting for the spender");
-	expect(waiting?.textContent).toContain("2 cards");
-	expect(waiting?.textContent).toContain("List · Fri, 30 Oct");
-	expect(text(waiting as Element, "[data-numeric]")).toBe("−฿150.00");
-	const row = root.querySelector("[data-planned=pl1]") as HTMLElement;
-	expect(row.textContent).toContain("Card A");
-	expect(row.textContent).toContain("Payment");
-	expect(row.textContent).toContain("Planned · Sat, 31 Oct");
-	expect(text(row, "[data-numeric]")).toBe("+฿900.00");
-	// Mark paid sits on the row, without opening it; delete waits for the row to open.
-	expect(row.querySelector("[data-action=mark-paid]")).not.toBeNull();
+	// The "not counted yet" note is gone.
+	expect(root.querySelector(".upcoming .sec-head small")).toBeNull();
+	const waiting = root.querySelector('[data-row="w1"]') as HTMLElement;
+	const link = waiting.querySelector("a[data-item=waiting]");
+	expect(link?.getAttribute("href")).toBe("/list/reply?id=w1");
+	expect(text(waiting, ".a-title")).toBe("Waiting on list for 30 Oct 2026");
+	expect(text(waiting, ".a-subtitle")).toBe("A) Card A, B) —");
+	expect(text(waiting, ".a-badge")).toBe("Purchase list");
+	expect(text(waiting, ".a-right [data-numeric]")).toBe("−฿150.00");
+	expect(text(waiting, "[data-action=confirm-list]")).toBe("Confirm");
+
+	const row = root.querySelector('[data-row="pl1"]') as HTMLElement;
+	expect(text(row, ".a-title")).toBe("Planned: pay Card A (1029) in 2 days");
+	expect(text(row, ".a-subtitle")).toBe("02 Nov 2026");
+	expect(text(row, ".a-badge")).toBe("Payment");
+	expect(row.querySelector(".a-right .amount.in")?.textContent).toBe(
+		"+฿900.00",
+	);
+	expect(text(row, "[data-action=mark-paid]")).toBe("Paid");
+	// Paid sits on the row, without opening it; delete waits for the row to open.
 	expect(root.querySelector("[data-action=delete]")).toBeNull();
 	const toggles: unknown[] = [];
 	element.addEventListener("toggle", (e) =>
 		toggles.push((e as unknown as CustomEvent).detail),
 	);
-	(root.querySelector("button[data-kind=planned]") as HTMLElement).click();
+	(root.querySelector("button[data-item=planned]") as HTMLElement).click();
 	expect(toggles).toEqual([{ id: "pl1" }]);
 	element.open = "pl1";
 	await element.updateComplete;
@@ -240,10 +254,62 @@ test("Upcoming lists waiting lists and planned payments with Mark paid and delet
 	expect(root.querySelector("[data-action=confirm-delete]")).not.toBeNull();
 });
 
+test("Confirm asks once more before it saves the list, and Cancel writes nothing", async () => {
+	const sent: PurchaseList = {
+		id: "w1",
+		date: "2026-10-30",
+		status: "sent",
+		lines: ["A", "B", "C", "D"].map((cardId) => ({ cardId, amount: 10_00 })),
+	};
+	const { element, root } = await mount({
+		entries: [],
+		upcoming: { lists: [sent], planned: [], cards: [] },
+	});
+	expect(text(root, '[data-row="w1"] .a-subtitle')).toBe("4 cards");
+	const saved: unknown[] = [];
+	element.addEventListener("confirm-list", (e) =>
+		saved.push((e as CustomEvent).detail),
+	);
+	(root.querySelector("[data-action=confirm-list]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(saved).toEqual([]);
+	expect(text(root, "[data-confirming=w1] .confirm")).toBe(
+		"Save all 4 as made?",
+	);
+	expect(root.querySelector("[data-action=confirm-list]")).toBeNull();
+	(root.querySelector("[data-action=cancel-confirm]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(saved).toEqual([]);
+	expect(root.querySelector("[data-confirming]")).toBeNull();
+	(root.querySelector("[data-action=confirm-list]") as HTMLElement).click();
+	await element.updateComplete;
+	(root.querySelector("[data-action=save-list]") as HTMLElement).click();
+	await element.updateComplete;
+	expect((saved[0] as { list: PurchaseList }).list.id).toBe("w1");
+	expect(root.querySelector("[data-confirming]")).toBeNull();
+});
+
+test("Upcoming reads in Thai", async () => {
+	setLocale("th");
+	const sent: PurchaseList = {
+		id: "w1",
+		date: "2026-10-30",
+		status: "sent",
+		lines: [{ cardId: "A", amount: 10_00 }],
+	};
+	const { root } = await mount({
+		entries: [],
+		upcoming: { lists: [sent], planned: [], cards: [card("A")] },
+	});
+	expect(text(root, ".a-title")).toBe("รอคำตอบใบรายการซื้อวันที่ 30 ต.ค. 2026");
+	expect(text(root, ".a-badge")).toBe("ใบรายการซื้อ");
+	expect(text(root, "[data-action=confirm-list]")).toBe("ยืนยัน");
+});
+
 test("no Upcoming section when nothing is upcoming", async () => {
 	const { root } = await mount({
 		entries: [],
-		upcoming: { lists: [], planned: [] },
+		upcoming: { lists: [], planned: [], cards: [] },
 	});
 	expect(root.querySelector(".upcoming")).toBeNull();
 });
@@ -296,10 +362,16 @@ test("a payment's note shows on its sub line, in the ledger and under Upcoming",
 	};
 	const { root } = await mount({
 		entries: [paid, payEntry("p2", 100_00)],
-		upcoming: { lists: [], planned: [{ payment: planned, card: c }] },
+		upcoming: {
+			lists: [],
+			planned: [{ payment: planned, card: c }],
+			cards: [],
+		},
 	});
 	const rows = [...root.querySelectorAll("button[data-kind=payment]")];
 	expect(text(rows[0] as Element, ".sub")).toBe("From savings · 31 Oct 2026");
 	expect(text(rows[1] as Element, ".sub")).toBe("31 Oct 2026");
-	expect(text(root, "[data-planned=pl1] .sub")).toMatch(/ · Salary day$/);
+	expect(text(root, '[data-row="pl1"] .a-subtitle')).toBe(
+		"31 Oct 2026 · Salary day",
+	);
 });

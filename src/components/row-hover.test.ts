@@ -38,7 +38,8 @@ test("Needs you, the payment picker and the ledger never underline a row on hove
 			({ selector }) =>
 				selector?.includes(".item") ||
 				selector?.includes("button[data-card]") ||
-				selector?.includes(".hit"),
+				selector?.includes(".hit") ||
+				selector?.includes(".a-hit"),
 		);
 		expect(rows.length).toBeGreaterThan(0);
 		for (const { body } of rows) {

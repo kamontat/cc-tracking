@@ -57,7 +57,7 @@ export function renderHomePage(
 			html`
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
-					.cards=${data?.cards ?? []}></cc-needs-you>
+					.cards=${data?.cards ?? []} .today=${now}></cc-needs-you>
 				<cc-ready-panel
 					.rows=${rows}
 					.locations=${data?.settings.purchaseLocations ?? []}

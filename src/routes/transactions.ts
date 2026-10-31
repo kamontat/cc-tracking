@@ -21,7 +21,7 @@ import {
 	type TxFilter,
 	type TxSort,
 } from "#lib/domain/transactions";
-import type { CardPayment, ListStatus } from "#lib/domain/types";
+import type { CardPayment, ListStatus, PurchaseList } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { cardLine, cardLineHtml } from "#lib/ui/card-label";
@@ -30,6 +30,7 @@ import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import { deletePayment, savePayment } from "#lib/ui/record-payment";
+import { writeListReply } from "#lib/ui/save-list-reply";
 import { readTxView, type TxView, writeTxView } from "#lib/ui/tx-query";
 
 export type TransactionsOptions = {
@@ -86,6 +87,11 @@ export function renderTransactionsPage(
 			if (data) await savePayment(repo, data, markPaid(payment, now), now);
 			open = null;
 		}, "tx.error.markPaid");
+	/** Upcoming's *Confirm*: the waiting list saved as is, every line made (DD-108). */
+	const confirmList = (list: PurchaseList) =>
+		state.guard(async () => {
+			await writeListReply(repo, list.id, { now: clock() });
+		}, "tx.error.confirmList");
 	const remove = (payment: CardPayment) =>
 		state.guard(async () => {
 			await deletePayment(repo, payment);
@@ -159,6 +165,7 @@ export function renderTransactionsPage(
 				payment,
 				card: d.cards.find((c) => c.id === payment.cardId),
 			})),
+			cards: d.cards,
 		};
 		const active = chips();
 		const openSheet = () => {
@@ -229,6 +236,7 @@ export function renderTransactionsPage(
 					paint();
 				}}
 				@mark-paid=${(e: CustomEvent<{ payment: CardPayment }>) => mark(e.detail.payment)}
+				@confirm-list=${(e: CustomEvent<{ list: PurchaseList }>) => confirmList(e.detail.list)}
 				@delete-payment=${(e: CustomEvent<{ payment: CardPayment }>) => remove(e.detail.payment)}
 			></cc-tx-ledger>
 			${

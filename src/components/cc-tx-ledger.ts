@@ -1,5 +1,11 @@
 import { css, html, LitElement, nothing, type PropertyValues } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
+import {
+	actionRow,
+	actionRowStyles,
+	plannedText,
+	waitingText,
+} from "#components/action-row";
 import { displayDate, headerDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
@@ -20,13 +26,14 @@ import type {
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardMini, cardName, cardPanelLabel } from "#lib/ui/card-label";
-import { icons } from "#lib/ui/icons";
 import { listPageAddress } from "#lib/ui/list-address";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
 export type Upcoming = {
 	lists: PurchaseList[];
 	planned: { payment: CardPayment; card: Card | undefined }[];
+	/** Every stored card, to name a waiting list's cards. */
+	cards: Card[];
 };
 
 const MINUS = "−";
@@ -35,8 +42,10 @@ const MINUS = "−";
  * The ledger: purchases and paid payments, grouped under day headings (`groups`) or flat
  * (`entries`), and the *Upcoming* section above it. Each day (or the flat list) is one panel
  * of rows. A purchase row is a link; a payment row is a button that opens in place, where a
- * wrong payment is deleted in two steps (UI-09). A planned payment shows Mark paid on the row
- * itself and opens the same way for its delete. The page owns `open`; `confirming` is the
+ * wrong payment is deleted in two steps (UI-09). Upcoming uses the shared action row (DD-108):
+ * a waiting list links to its reply and has *Confirm*, which asks once more before it saves
+ * every line as made (`confirm-list`); a planned payment has *Paid* (`mark-paid`) and opens
+ * the same way as a payment for its delete. The page owns `open`; `confirming` is the
  * second step and is dropped whenever another row opens.
  */
 @customElement("cc-tx-ledger")
@@ -46,6 +55,7 @@ export class CcTxLedger extends LitElement {
 		controls,
 		cardBits,
 		rowPanel,
+		actionRowStyles,
 		css`
 			:host {
 				display: flex;
@@ -97,50 +107,6 @@ export class CcTxLedger extends LitElement {
 				display: inline;
 			}
 
-			/* A planned payment: the row's text opens it, and the figure keeps its own button. */
-			.crow.split {
-				grid-template-columns: minmax(0, 1fr) auto;
-				cursor: default;
-			}
-
-			.hit {
-				display: grid;
-				grid-template-columns: auto minmax(0, 1fr);
-				align-items: center;
-				align-self: stretch;
-				gap: var(--cc-space-3);
-				padding: 0;
-				font: inherit;
-				font-weight: 400;
-				line-height: inherit;
-				white-space: normal;
-				text-align: start;
-				color: var(--cc-text);
-				background: transparent;
-				border: 0;
-				border-radius: 0;
-			}
-
-			/* A planned payment's row takes the same quiet ground as the others when its text is
-			   hovered (DD-105); its figure's own button keeps its own hover. */
-			.hit:hover {
-				background: transparent;
-			}
-
-			.crow.split:has(> .hit:hover) {
-				background: var(--cc-surface-sunken);
-				box-shadow:
-					calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
-					var(--cc-space-2) 0 0 var(--cc-surface-sunken);
-			}
-
-			.r button {
-				align-self: flex-end;
-				padding: var(--cc-space-1) var(--cc-space-3);
-				font-size: var(--cc-text-xs);
-				font-weight: 650;
-			}
-
 			.archived {
 				align-self: center;
 			}
@@ -181,6 +147,8 @@ export class CcTxLedger extends LitElement {
 	@property() open: string | null = null;
 	@property({ type: Boolean }) confirming = false;
 	@property({ type: Boolean }) filtered = false;
+	/** The waiting list whose *Confirm* asks its second step. */
+	@state() private confirmingList: string | null = null;
 
 	constructor() {
 		super();
@@ -285,46 +253,62 @@ export class CcTxLedger extends LitElement {
 		</div>`;
 	}
 
+	/** The second step of a waiting list's *Confirm*: nothing is written until *Save*. */
+	private confirmBlock(list: PurchaseList) {
+		const count = list.lines.length;
+		return html`<div class="actions" data-confirming=${list.id}>
+			<p class="confirm">${count === 1 ? t("row.confirmAsk.one") : t("row.confirmAsk.many", { count })}</p>
+			<button type="button" data-action="save-list"
+				@click=${() => {
+					this.confirmingList = null;
+					this.emit("confirm-list", { list });
+				}}>${t("row.save")}</button>
+			<button type="button" data-variant="quiet" data-action="cancel-confirm"
+				@click=${() => {
+					this.confirmingList = null;
+				}}>${t("common.cancel")}</button>
+		</div>`;
+	}
+
 	private renderUpcoming() {
 		const up = this.upcoming;
 		if (!up || (up.lists.length === 0 && up.planned.length === 0))
 			return nothing;
-		const locale = getLocale();
 		return html`<section class="upcoming">
-			<div class="sec-head"><h2>${t("tx.upcoming")}</h2><small>${t("tx.upcoming.note")}</small></div>
+			<div class="sec-head"><h2>${t("tx.upcoming")}</h2></div>
 			<div class="panel">
-				${up.lists.map((list) => {
-					const count = list.lines.length;
-					return html`<div class="row"><a class="crow" data-kind="waiting"
-						href=${listPageAddress(list)}>
-						<span class="ic">${icons.clock}</span>
-						<span class="what">
-							<span class="t"><b>${t("tx.upcoming.list", { date: headerDate(list.date, locale, false) })}</b> <span class="word">${t("tx.type.purchase")}</span></span>
-							<span class="sub">${t("home.waiting")} · ${t(count === 1 ? "tx.lists.cards.one" : "tx.lists.cards.many", { count })}</span>
-						</span>
-						<b class="amount muted r" data-numeric>${MINUS}${formatAmount(listTotal(list))}</b>
-					</a></div>`;
-				})}
+				${up.lists.map((list) =>
+					actionRow(waitingText(list, up.cards, false), {
+						id: list.id,
+						href: listPageAddress(list),
+						amount: {
+							text: `${MINUS}${formatAmount(listTotal(list))}`,
+							tone: "muted",
+						},
+						action:
+							this.confirmingList === list.id
+								? undefined
+								: html`<button type="button" data-variant="quiet" data-action="confirm-list"
+									@click=${() => {
+										this.confirmingList = list.id;
+									}}>${t("row.confirm")}</button>`,
+						below:
+							this.confirmingList === list.id
+								? this.confirmBlock(list)
+								: nothing,
+					}),
+				)}
 				${up.planned.map(({ payment, card }) => {
 					const open = this.open === payment.id;
-					return html`<div class="row" data-planned=${payment.id}>
-						<div class="crow split">
-							<button type="button" class="hit" data-kind="planned" aria-expanded=${open}
-								@click=${() => this.emit("toggle", { id: payment.id })}>
-								${this.chip(card)}
-								<span class="what">
-									${this.heading(payment.cardId, card, t("tx.type.payment"))}
-									<span class="sub">${[t("tx.planned", { date: headerDate(payment.date, locale, false) }), ...(payment.note ? [payment.note] : [])].join(" · ")}</span>
-								</span>
-							</button>
-							<span class="r">
-								<b class="amount muted" data-numeric>+${formatAmount(payment.amount)}</b>
-								<button type="button" data-variant="quiet" data-action="mark-paid"
-									@click=${() => this.emit("mark-paid", { payment })}>${t("statements.markPaid")}</button>
-							</span>
-						</div>
-						${open ? this.deleteBlock(payment, card) : nothing}
-					</div>`;
+					return actionRow(plannedText(payment, card, this.today, true), {
+						id: payment.id,
+						onToggle: () => this.emit("toggle", { id: payment.id }),
+						expanded: open,
+						amount: { text: `+${formatAmount(payment.amount)}`, tone: "in" },
+						action: html`<button type="button" data-variant="quiet" data-action="mark-paid"
+							@click=${() => this.emit("mark-paid", { payment })}>${t("row.paid")}</button>`,
+						below: open ? this.deleteBlock(payment, card) : nothing,
+					});
 				})}
 			</div>
 		</section>`;

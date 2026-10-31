@@ -47,11 +47,16 @@ const items = (): NeedsItem[] => [
 	},
 ];
 
-const mount = async (value: NeedsItem[], cards: Card[] = []) => {
+const mount = async (
+	value: NeedsItem[],
+	cards: Card[] = [],
+	today = "2026-10-31",
+) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-needs-you") as CcNeedsYou;
 	element.items = value;
 	element.cards = cards;
+	element.today = today;
 	document.body.append(element);
 	await element.updateComplete;
 	return element.shadowRoot as ShadowRoot;
@@ -60,28 +65,95 @@ const mount = async (value: NeedsItem[], cards: Card[] = []) => {
 const text = (root: ParentNode, selector: string) =>
 	root.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim();
 
+const planned = (date: string): NeedsItem => ({
+	kind: "planned",
+	payment: {
+		id: "c1",
+		cardId: "SCB/K",
+		date,
+		amount: 5_000_00,
+		status: "planned",
+	},
+	card,
+});
+
+const slots = (row: Element) => ({
+	title: text(row, ".a-title"),
+	subtitle: text(row, ".a-subtitle"),
+	badge: text(row, ".a-badge"),
+});
+
 test("each item opens its task", async () => {
-	const root = await mount(items(), [{ ...card, id: "KB-S", name: "KBank S" }]);
+	const root = await mount(
+		[...items(), planned("2026-11-02")],
+		[],
+		"2026-10-31",
+	);
 	const found = [...root.querySelectorAll("[data-item]")];
 	expect(found.map((e) => e.getAttribute("data-item"))).toEqual([
 		"waiting",
 		"overdue",
 		"draft",
+		"planned",
 	]);
 	expect(found.map((e) => e.getAttribute("href"))).toEqual([
 		"/list/reply?id=w1",
 		"/pay?card=SCB%2FK&amount=4123000",
 		"/list/draft?id=d1",
+		"/transactions",
 	]);
-	expect(text(found[0] as Element, "small")).toBe(
-		"List for Fri, 30 Oct · 3 cards · ฿39,300.00",
+});
+
+test("each kind fills the row's title, subtitle and badge, with no figure or button", async () => {
+	const root = await mount(
+		[...items(), planned("2026-11-02")],
+		[{ ...card, id: "KB-S", name: "KBank S" }],
+		"2026-10-31",
 	);
-	expect(text(found[1] as Element, "b")).toBe(
-		"Bill for SCB/K) SCB K is 16 days overdue",
-	);
+	const [waiting, overdue, draft, plan] = [
+		...root.querySelectorAll(".a-row"),
+	] as Element[];
+	expect(slots(waiting as Element)).toEqual({
+		title: "Waiting on list for 30 Oct 2026",
+		subtitle: "A) —, B) —, C) — · ฿3.00",
+		badge: "Purchase list",
+	});
+	expect(slots(overdue as Element)).toEqual({
+		title: "Overdue: SCB K (1111), due 16 days ago",
+		subtitle: "฿41,230.00",
+		badge: "Payment",
+	});
+	expect(slots(draft as Element)).toEqual({
+		title: "Draft list for 30 Oct 2026",
+		subtitle: "KB-S) KBank S, KS-K) — · ฿2.00",
+		badge: "Purchase list",
+	});
+	expect(slots(plan as Element)).toEqual({
+		title: "Planned: pay SCB K (1111) in 2 days",
+		subtitle: "฿5,000.00",
+		badge: "Payment",
+	});
+	expect(root.querySelector(".a-right")).toBeNull();
+	expect(root.querySelector(".a-row button")).toBeNull();
+	// The icon says the kind; no card chip besides (DD-106).
+	for (const row of root.querySelectorAll("[data-item]")) {
+		expect(row.querySelector(".a-ic .icon")).not.toBeNull();
+		expect(row.querySelector(".mini")).toBeNull();
+	}
 	expect(
-		text(found[2] as Element, "small")?.startsWith("KB-S) KBank S, KS-K) — · "),
-	).toBe(true);
+		root.querySelector('.a-ic[data-kind="draft"]')?.innerHTML,
+	).toBeTruthy();
+});
+
+test("more than three cards read as a count", async () => {
+	const root = await mount([
+		{
+			kind: "waiting",
+			list: list("w1", "sent", ["A", "B", "C", "D"]),
+			total: 400,
+		},
+	]);
+	expect(text(root, ".a-subtitle")).toBe("4 cards · ฿4.00");
 });
 
 test("the heading counts", async () => {
@@ -102,35 +174,21 @@ test("reads in Thai", async () => {
 	setLocale("th");
 	const root = await mount(items());
 	expect(text(root, "h1")).toBe("มี 3 เรื่องรอคุณ");
-	expect(text(root, '[data-item="waiting"] b')).toBe("รอคำตอบของผู้ใช้บัตร");
+	expect(text(root, '[data-item="waiting"] .a-title')).toBe(
+		"รอคำตอบใบรายการซื้อวันที่ 30 ต.ค. 2026",
+	);
+	expect(text(root, '[data-item="waiting"] .a-badge')).toBe("ใบรายการซื้อ");
+	expect(text(root, '[data-item="overdue"] .a-title')).toBe(
+		"เลยกำหนด: SCB K (1111) ครบกำหนดเมื่อ 16 วันที่แล้ว",
+	);
 });
 
-test("one card and one day read in the singular", async () => {
+test("one day overdue reads in the singular", async () => {
 	const root = await mount([
-		{ kind: "waiting", list: list("w1", "sent", ["A"]), total: 100 },
-		{
-			kind: "overdue",
-			card,
-			remaining: 100,
-			dueDate: "2026-10-30",
-			days: 1,
-		},
+		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-30", days: 1 },
 	]);
-	expect(text(root, '[data-item="waiting"] small')).toBe(
-		"List for Fri, 30 Oct · 1 card · ฿1.00",
-	);
-	expect(text(root, '[data-item="overdue"] b')).toBe(
-		"Bill for SCB/K) SCB K is 1 day overdue",
-	);
-	const many = await mount([
-		{ kind: "waiting", list: list("w1", "sent", ["A", "B"]), total: 100 },
-		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-29", days: 2 },
-	]);
-	expect(text(many, '[data-item="waiting"] small')).toBe(
-		"List for Fri, 30 Oct · 2 cards · ฿1.00",
-	);
-	expect(text(many, '[data-item="overdue"] b')).toBe(
-		"Bill for SCB/K) SCB K is 2 days overdue",
+	expect(text(root, '[data-item="overdue"] .a-title')).toBe(
+		"Overdue: SCB K (1111), due 1 day ago",
 	);
 });
 
@@ -146,45 +204,16 @@ test("a list id is encoded in its link", async () => {
 	).toEqual(["/list/reply?id=w%201%2F2", "/list/draft?id=d%261"]);
 });
 
-test("a planned payment row says what to do and opens Transactions", async () => {
-	const root = await mount([
-		{
-			kind: "planned",
-			payment: {
-				id: "c1",
-				cardId: "SCB/K",
-				date: "2026-11-02",
-				amount: 5_000_00,
-				status: "planned",
-			},
-			card,
-		},
-	]);
-	const row = root.querySelector('[data-item="planned"]') as Element;
-	expect(row.getAttribute("href")).toBe("/transactions");
-	expect(text(row, "b")).toBe("Planned: pay SCB/K) SCB K on Mon, 02 Nov");
-	expect(text(row, "small")).toBe("฿5,000.00 · mark it paid when it goes out");
-});
-
-test("a row with a type icon shows no card chip as well", async () => {
-	const root = await mount([
-		...items(),
-		{
-			kind: "planned",
-			payment: {
-				id: "c1",
-				cardId: "SCB/K",
-				date: "2026-11-02",
-				amount: 5_000_00,
-				status: "planned",
-			},
-			card,
-		},
-	]);
-	for (const row of root.querySelectorAll("[data-item]")) {
-		expect(row.querySelector(".chip .icon")).not.toBeNull();
-		expect(row.querySelector(".mini")).toBeNull();
-	}
+test("a planned payment says how far off it is, and a past plan says how long ago", async () => {
+	const title = async (date: string) =>
+		text(await mount([planned(date)], [], "2026-10-31"), ".a-title");
+	expect(await title("2026-10-31")).toBe("Planned: pay SCB K (1111) today");
+	expect(await title("2026-11-01")).toBe("Planned: pay SCB K (1111) tomorrow");
+	expect(await title("2026-11-03")).toBe("Planned: pay SCB K (1111) in 3 days");
+	expect(await title("2026-10-30")).toBe("Planned: pay SCB K (1111) 1 day ago");
+	expect(await title("2026-10-28")).toBe(
+		"Planned: pay SCB K (1111) 3 days ago",
+	);
 });
 
 const many = (count: number): NeedsItem[] =>

@@ -92,3 +92,10 @@ export const cardPanel = (
 	big = false,
 ) =>
 	html`<span class="card-panel">${cardMini(card, groups, big)} ${cardPanelLabel(id, card)}</span>`;
+
+/**
+ * The name form with the last 4 after it, for a sentence that must tell two cards of the same
+ * name apart: `SCB Krabi (1029)`. A card no longer stored is `c-[id]` (DD-108).
+ */
+export const cardNameLast4 = (id: string, card: Card | undefined): string =>
+	card ? `${card.name} (${card.last4})` : cardShort(id);

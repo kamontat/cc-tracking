@@ -183,7 +183,7 @@ test("Mark paid moves a plan into the ledger and lowers owed", async () => {
 	const owedBefore = (
 		root.querySelector("cc-owed-list") as CcOwedList
 	).rows.find((r) => r.card.id === "A")?.owed;
-	await press(inLedger(root, '[data-kind="planned"]'));
+	await press(inLedger(root, '[data-item="planned"]'));
 	await press(inLedger(root, '[data-action="mark-paid"]'));
 	await settle(5);
 	const [, planned] = (await repo.listCardPayments("A")).sort((a, b) =>
@@ -199,6 +199,52 @@ test("Mark paid moves a plan into the ledger and lowers owed", async () => {
 		root.querySelector("cc-owed-list") as CcOwedList
 	).rows.find((r) => r.card.id === "A")?.owed;
 	expect((owedAfter ?? 0) < (owedBefore ?? 0)).toBe(true);
+});
+
+test("Confirm saves a waiting list as is: every line made, under the list's own ids", async () => {
+	const { root, repo } = await open();
+	await repo.savePurchaseList({
+		...sent("w1", ["B"]),
+		lines: [{ cardId: "B", amount: 120_00, note: "gift" }],
+	});
+	await press(inLedger(root, '[data-action="confirm-list"]'));
+	// The first tap only asks; nothing is written yet.
+	expect(await repo.listPurchases("B")).toHaveLength(1);
+	await press(inLedger(root, '[data-action="save-list"]'));
+	await settle(5);
+	const stored = (await repo.listPurchaseLists()).find((l) => l.id === "w1");
+	expect(stored?.status).toBe("saved");
+	const made = (await repo.listPurchases("B")).filter((p) =>
+		p.id.startsWith("w1-"),
+	);
+	expect(made).toEqual([
+		expect.objectContaining({
+			id: "w1-0",
+			cardId: "B",
+			date: "2026-10-30",
+			amount: 120_00,
+			note: "gift",
+		}),
+	]);
+	expect(ledger(root).upcoming?.lists).toEqual([]);
+});
+
+test("Confirm refuses a list no longer waiting and writes nothing", async () => {
+	const { root, repo } = await open();
+	const stored = (await repo.listPurchaseLists()).find((l) => l.id === "w1");
+	await repo.savePurchaseList({
+		...(stored as NonNullable<typeof stored>),
+		status: "draft",
+	});
+	await press(inLedger(root, '[data-action="confirm-list"]'));
+	await press(inLedger(root, '[data-action="save-list"]'));
+	await settle(5);
+	expect(
+		(await repo.listPurchases("B")).filter((p) => p.id.startsWith("w1-")),
+	).toEqual([]);
+	expect(root.querySelector("cc-error-banner")?.message).toContain(
+		"no longer waiting",
+	);
 });
 
 test("deleting a payment needs the second step", async () => {
@@ -250,7 +296,7 @@ test("a failed delete names the delete, not a save", async () => {
 test("a failed mark paid names the marking, not a save", async () => {
 	const { root, repo } = await open();
 	repo.saveCardPayment = () => Promise.reject(new Error("disk full"));
-	await press(inLedger(root, '[data-kind="planned"]'));
+	await press(inLedger(root, '[data-item="planned"]'));
 	await press(inLedger(root, '[data-action="mark-paid"]'));
 	await settle(5);
 	const banner = root.querySelector("cc-error-banner");
