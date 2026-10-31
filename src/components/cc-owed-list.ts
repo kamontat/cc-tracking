@@ -6,7 +6,7 @@ import type { OwedSort } from "#lib/domain/transactions";
 import type { LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { cardMini, cardNameHtml } from "#lib/ui/card-label";
+import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
 import { openPayment } from "#lib/ui/pay-sheet";
 import { payTag } from "#lib/ui/pay-tag";
 import {
@@ -107,7 +107,7 @@ export class CcOwedList extends LitElement {
 				return html`<button type="button" class="crow" data-card=${row.card.id}
 					@click=${() => openPayment({ cardId: row.card.id })}>
 					${cardMini(row.card, this.groups)}
-					<span class="what">${cardNameHtml(row.card)}${
+					<span class="what"><b>${cardPanelLabel(row.card.id, row.card)}</b>${
 						tag
 							? html`<span class="tag" data-urgency=${tag.urgency}>${tag.text}</span>`
 							: nothing

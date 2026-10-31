@@ -76,11 +76,13 @@ test("rows read direction by sign and word, and purchases link to list or card",
 	expect(a?.tagName).toBe("A");
 	expect(a?.getAttribute("href")).toBe("/list/view?id=L1");
 	expect(text(a as Element, "[data-numeric]")).toBe("−฿1,000.00");
+	expect(a?.querySelector(".amount.out")).not.toBeNull();
 	expect(a?.textContent).toContain("Purchase");
 	expect(b?.getAttribute("href")).toBe("/card?id=A");
 	expect(b?.textContent).toContain("coffee");
 	expect(c?.tagName).toBe("BUTTON");
 	expect(text(c as Element, "[data-numeric]")).toBe("+฿700.00");
+	expect(c?.querySelector(".amount.in")).not.toBeNull();
 	expect(c?.textContent).toContain("Payment");
 });
 
@@ -253,7 +255,7 @@ test("Thai words after a language switch", async () => {
 	expect(root.querySelector("[data-kind]")?.textContent).toContain("การซื้อ");
 });
 
-test("rows name the card, wear its group's chip, and say which list a purchase came from", async () => {
+test("rows name the card in the panel form and say which list a purchase came from", async () => {
 	const c = { ...card("A"), limitGroupId: "g2" };
 	const { root } = await mount({
 		groups: byDay([
@@ -267,15 +269,16 @@ test("rows name the card, wear its group's chip, and say which list a purchase c
 		],
 	});
 	const [fromList, plain] = Array.from(root.querySelectorAll("[data-kind]"));
-	expect(fromList?.querySelector("b")?.textContent).toBe("Card A");
+	expect(fromList?.querySelector("b")?.textContent).toBe("A) Card A");
+	expect(fromList?.querySelector(".mini")?.textContent).toBe("1111");
 	expect(fromList?.querySelector(".mini")?.getAttribute("data-g")).toBe("2");
 	expect(fromList?.textContent).toContain("From list Thu, 29 Oct");
-	expect(plain?.textContent).toContain("[A] · 1111");
+	expect(plain?.querySelector(".sub")).toBeNull();
 	expect(root.querySelectorAll(".panel")).toHaveLength(1);
 });
 
-test("a card no longer stored is named by its bracketed id", async () => {
+test("a card no longer stored keeps its id", async () => {
 	const entry = purchase("x", 10_00);
 	const { root } = await mount({ entries: [{ ...entry, card: undefined }] });
-	expect(root.querySelector("[data-kind] b")?.textContent).toBe("[A]");
+	expect(root.querySelector("[data-kind] b")?.textContent).toBe("A) —");
 });

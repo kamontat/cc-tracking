@@ -10,19 +10,20 @@ import {
 import { usageLevel, usageShare } from "#lib/domain/limit";
 import type { Location } from "#lib/domain/location";
 import { formatAmount } from "#lib/domain/money";
-import type { PlainDate } from "#lib/domain/types";
+import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText, relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLabelHtml } from "#lib/ui/card-label";
+import { cardPanel } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
-import { base, usageBar } from "#styles/shared";
+import { base, cardBits, usageBar } from "#styles/shared";
 
 /** Cards that can take a purchase now, sortable, each a toggle for the purchase list. */
 @customElement("cc-ready-list")
 export class CcReadyList extends LitElement {
 	static override styles = [
 		base,
+		cardBits,
 		usageBar,
 		css`
 			:host {
@@ -124,13 +125,6 @@ export class CcReadyList extends LitElement {
 				container-type: inline-size;
 			}
 
-			/* A narrow card (four across, a small phone) drops the last 4, never the id or name. */
-			@container (max-width: 18rem) {
-				.last4 {
-					display: none;
-				}
-			}
-
 			.pick[aria-pressed="true"] {
 				background: var(--cc-accent-surface);
 				border-color: var(--cc-accent);
@@ -160,6 +154,12 @@ export class CcReadyList extends LitElement {
 				display: flex;
 				flex-direction: column;
 				min-inline-size: 0;
+			}
+
+			/* In a narrow card the chip takes its own line above id) name rather than squeeze it. */
+			.name .card-panel {
+				flex-wrap: wrap;
+				row-gap: var(--cc-space-1);
 			}
 
 			.room small {
@@ -204,6 +204,8 @@ export class CcReadyList extends LitElement {
 	@property({ attribute: false }) rows: ReadyRow[] = [];
 	@property({ attribute: false }) selected: string[] = [];
 	@property({ attribute: false }) locations: Location[] = [];
+	/** The stored limit groups, in order: a card's chip takes its group's colour. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
 	@property() today: PlainDate = "";
 	/** How many unarchived cards point at no limit group. */
 	@property({ type: Number }) unassigned = 0;
@@ -233,7 +235,7 @@ export class CcReadyList extends LitElement {
 			<button class="pick" data-card=${id} aria-pressed=${selected ? "true" : "false"}
 				@click=${() => this.toggle(id)}>
 				<span class="tick" aria-hidden="true">${selected ? icons.check : nothing}</span>
-				<span class="name"><b>${cardLabelHtml(id, row.card)}</b></span>
+				<span class="name"><b>${cardPanel(id, row.card, this.groups)}</b></span>
 				<span class="room">
 					<b>${formatAmount(row.room.room)}</b>
 					<small>${row.room.sharedWith > 0 ? t("ready.roomShared") : t("ready.room")}</small>

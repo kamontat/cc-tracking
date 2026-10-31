@@ -162,10 +162,12 @@ test("leaving custom clears the typed from and to", async () => {
 	expect(detail?.filter.to).toBe("");
 });
 
-test("draws as a sheet, with card choices named by name and bracketed id", async () => {
+test("draws as a sheet, with card choices in the line form", async () => {
 	const { root, modal } = await mount();
 	expect(modal.hasAttribute("sheet")).toBe(true);
 	const chip = root.querySelector("[data-card=A]");
-	expect(chip?.textContent?.replace(/\s+/g, " ").trim()).toBe("Card A [A]");
+	expect(chip?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+		"A) Card A (1111)",
+	);
 	expect(root.querySelectorAll("[data-sort]")).toHaveLength(4);
 });

@@ -26,6 +26,7 @@ import { MessageError } from "#lib/i18n/error";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -281,11 +282,12 @@ export function renderCardPage(
 							<div class="page-title" row>
 								<div class="page-heading">
 									<h1>
-										${card.name}
+										${cardMini(card, data?.groups ?? [], true)}
+										${cardPanelLabel(card.id, card)}
 										${card.archived ? html`<span class="badge">${t("cards.archived")}</span>` : nothing}
 										${card.supplementary ? html`<span class="badge">${t("form.supplementary")}</span>` : nothing}
 									</h1>
-									<p class="meta"><span class="mono">${card.id}</span> · ••••${card.last4} · ${locationText(card.location)} · ${describeCycleText(card.cycle)}</p>
+									<p class="meta">${locationText(card.location)} · ${describeCycleText(card.cycle)}</p>
 									${card.comment ? html`<p class="comment">${card.comment}</p>` : nothing}
 								</div>
 								${purchasable() ? addPurchaseButton(openAdd) : nothing}

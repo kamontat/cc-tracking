@@ -217,8 +217,8 @@ a:any-link:hover {
 	align-items: center;
 	justify-content: center;
 	gap: var(--cc-space-2);
-	inline-size: var(--cc-fab-size);
-	block-size: var(--cc-fab-size);
+	inline-size: var(--cc-bar-height);
+	block-size: var(--cc-bar-height);
 	padding: 0;
 	font: inherit;
 	font-weight: 650;
@@ -350,7 +350,7 @@ a:any-link:hover {
 		calc(
 			var(--cc-tabbar-height) +
 			var(--cc-space-4) +
-			var(--cc-fab-size) +
+			var(--cc-bar-height) +
 			var(--cc-space-5) +
 			env(safe-area-inset-bottom, 0px)
 		);
@@ -373,7 +373,7 @@ a:any-link:hover {
 	.page {
 		padding-bottom: calc(
 			var(--cc-space-5) +
-			var(--cc-fab-size) +
+			var(--cc-bar-height) +
 			var(--cc-space-7) +
 			env(safe-area-inset-bottom, 0px)
 		);
@@ -731,10 +731,6 @@ a:any-link:hover {
 	font-size: var(--cc-text-sm);
 }
 
-.page-heading .mono {
-	font-family: var(--cc-font-mono);
-}
-
 .page-heading .comment {
 	font-style: italic;
 }
@@ -949,6 +945,80 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-pill);
 }
 
+/*
+ * A card's name on the light-DOM pages (card-label.ts, UI-14): the panel form's last-4 chip in
+ * its group's pastel, a copy of `cardBits` in shared.ts; keep the two in step.
+ */
+.card-panel {
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-2);
+	min-inline-size: 0;
+}
+
+.mini {
+	display: inline-grid;
+	place-items: end start;
+	flex: none;
+	inline-size: calc(var(--cc-space-5) + var(--cc-space-3));
+	block-size: calc(var(--cc-space-5) + var(--cc-space-1) / 2);
+	padding: calc(var(--cc-space-1) / 2) var(--cc-space-1);
+	font-family: var(--cc-font-mono);
+	font-size: calc(var(--cc-text-xs) * 0.8);
+	font-weight: 700;
+	line-height: 1;
+	color: var(--cc-text-muted);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-xs);
+}
+
+.mini[data-big] {
+	inline-size: calc(var(--cc-space-7) + var(--cc-space-1));
+	block-size: calc(
+		var(--cc-space-5) +
+		var(--cc-space-3) -
+		var(--cc-space-1) /
+		2
+	);
+	font-size: calc(var(--cc-text-xs) * 0.88);
+}
+
+.mini[data-g="1"] {
+	color: var(--cc-group-1-text);
+	background: var(--cc-group-1);
+}
+
+.mini[data-g="2"] {
+	color: var(--cc-group-2-text);
+	background: var(--cc-group-2);
+}
+
+.mini[data-g="3"] {
+	color: var(--cc-group-3-text);
+	background: var(--cc-group-3);
+}
+
+.mini[data-g="4"] {
+	color: var(--cc-group-4-text);
+	background: var(--cc-group-4);
+}
+
+/* A card chip names the card in the line form, and its short form on a phone (UI-14). */
+.cl-short {
+	display: none;
+}
+
+@media (max-width: 899px) {
+	.tx-chips .cl-full {
+		display: none;
+	}
+
+	.tx-chips .cl-short {
+		display: inline;
+	}
+}
+
 .page .tx-chip.tx-sort {
 	font-weight: 400;
 	color: var(--cc-text);
@@ -1004,6 +1074,11 @@ a:any-link:hover {
 
 .tx-summary__figures b {
 	overflow-wrap: anywhere;
+}
+
+/* Purchases read red and payments green, each beside its label (UI-07). */
+.tx-summary__figures b[data-tone="out"] {
+	color: var(--cc-danger);
 }
 
 .tx-summary__figures b[data-tone="in"] {
@@ -1068,8 +1143,10 @@ a:any-link:hover {
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--cc-space-3);
-	padding: var(--cc-space-3) var(--cc-space-4);
+	gap: var(--cc-space-1) var(--cc-space-3);
+	/* As tall as the floating Payment button; a bar that wraps grows past it. */
+	min-block-size: var(--cc-bar-height);
+	padding: var(--cc-space-1) var(--cc-space-4);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);

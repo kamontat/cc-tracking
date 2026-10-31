@@ -47,8 +47,9 @@
 	/* The four-tab bar measured 69px at 390px in English and Thai (no label wraps), before the
 	   bottom safe-area inset. The floating Payment button sits this far up, plus a gap. */
 	--cc-tabbar-height: 4.375rem;
-	/* The floating Payment button: the round button's diameter and the pill's height. */
-	--cc-fab-size: 3.125rem;
+	/* One height for the floating Payment button (the round button's diameter, the pill's
+	   height) and the selection bars at the foot of a page, so the two read as one family. */
+	--cc-bar-height: 3.125rem;
 	--cc-fab-shadow: 0 8px 18px
 		color-mix(in oklab, var(--cc-accent) 40%, transparent);
 

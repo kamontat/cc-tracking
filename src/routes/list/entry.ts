@@ -17,7 +17,7 @@ import { MessageError, messageOf } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { backHeader } from "#lib/ui/back-header";
-import { cardLabelsText } from "#lib/ui/card-label";
+import { cardLines } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { newListAddress } from "#lib/ui/list-address";
 import {
@@ -312,13 +312,14 @@ export function renderEntryPage(
 							dropped.length === 1
 								? "purchaseList.dropped.one"
 								: "purchaseList.dropped.many",
-							{ cards: cardLabelsText(dropped, from.cards) },
+							{ cards: cardLines(dropped, from.cards) },
 						)}</p>`
 					: nothing
 			}
 			<cc-list-amounts
 				.cards=${cards}
 				.allCards=${from.cards}
+				.groups=${from.groups}
 				.planned=${plannedOf(from.payments)}
 				.candidates=${ready.filter((card) => !cardIds.includes(card.id))}
 				.rooms=${rooms}

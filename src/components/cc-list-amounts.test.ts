@@ -183,7 +183,7 @@ test("cards sharing a limit are warned together", async () => {
 		const warning = line(root, id).querySelector(
 			'[data-warning="shared-limit"]',
 		);
-		expect(flat(warning)).toContain("A, B");
+		expect(flat(warning)).toContain("Card A, Card B");
 	}
 });
 
@@ -294,11 +294,11 @@ test("the total counts one card or many", async () => {
 	);
 });
 
-test("a line is headed by the card's label, Remove beside it", async () => {
+test("a line is headed by the card in the panel form, Remove beside it", async () => {
 	const { root } = await mount({ cards: [A] });
 	const top = line(root, "A").querySelector(".top");
-	expect(flat(top?.querySelector(".card-label"))).toBe("A) Card A (1111)");
-	expect(top?.querySelector(".last4")?.textContent).toBe("(1111)");
+	expect(flat(top?.querySelector(".card-label"))).toBe("A) Card A");
+	expect(flat(top?.querySelector(".mini"))).toBe("1111");
 	expect(top?.querySelector('[data-action="remove"]')).not.toBeNull();
 });
 

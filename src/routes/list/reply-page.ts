@@ -140,7 +140,7 @@ export function renderReplyPage(
 			back: "/",
 		})}
 		${banner(state)}
-		<cc-list-reply .list=${list} .cards=${from.cards} @save-reply=${onSaveReply}
+		<cc-list-reply .list=${list} .cards=${from.cards} .groups=${from.groups} @save-reply=${onSaveReply}
 			><button data-variant="danger" data-action="cancel-list" slot="side" @click=${onCancel}>${t("reply.cancel")}</button></cc-list-reply>
 	`;
 

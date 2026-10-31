@@ -2,74 +2,55 @@ import { html, nothing, type TemplateResult } from "lit";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { t } from "#lib/i18n/index";
 
-/** A card's name in its three parts; `last4` is empty when the card is no longer stored. */
-export type CardLabel = { id: string; name: string; last4: string };
-
-/**
- * How Home and the purchase lists name a card: `10) Card A10 (4412)` (UI-14). `card` is the
- * stored card for `id`, if there still is one; without it the line keeps its id and a dash.
- */
-export function cardLabel(id: string, card: Card | undefined): CardLabel {
-	return {
-		id: `${id})`,
-		name: card?.name ?? t("common.none"),
-		last4: card ? `(${card.last4})` : "",
-	};
-}
-
-/** The label as one line of text; `last4: false` leaves the digits off. */
-export function cardLabelText(
-	id: string,
-	card: Card | undefined,
-	{ last4 = true }: { last4?: boolean } = {},
-): string {
-	const parts = cardLabel(id, card);
-	return [parts.id, parts.name, last4 ? parts.last4 : ""]
-		.filter(Boolean)
-		.join(" ");
-}
-
-/** Several cards' labels, comma separated, each looked up in `cards`. */
-export function cardLabelsText(ids: string[], cards: Card[]): string {
-	const byId = new Map(cards.map((card) => [card.id, card]));
-	return ids.map((id) => cardLabelText(id, byId.get(id))).join(", ");
-}
-
-/**
- * The label as markup. The last 4 sit in their own `.last4` element, so a narrow place can hide
- * them without ever cutting the id or name.
- */
-export function cardLabelHtml(
-	id: string,
-	card: Card | undefined,
-): TemplateResult {
-	const parts = cardLabel(id, card);
-	return html`<span class="card-label">${parts.id} ${parts.name}${
-		parts.last4 ? html` <span class="last4">${parts.last4}</span>` : nothing
-	}</span>`;
-}
-
 /*
- * Phase 4's surfaces (the payment sheet, Transactions) name a card by its name, with the id in
- * square brackets and the last 4 as a quieter second part: **SCB Krabi** `[SCB-K] · 1029`.
- * Sentences and buttons use the name alone ("Record ฿41,230.00 to SCB Krabi").
+ * Every page names a card in one of three forms (UI-14, DD-98):
+ * - panel: the last-4 chip, then `id) name` -- rows in lists and panels;
+ * - line: `id) name (last4)` -- single-line text, the copied list text, pickers and filter
+ *   chips; short `id) name`;
+ * - name: the name -- buttons, notices and sentences; short `c-[id]`.
+ * A short form is for a small space. The markup helpers hold both forms (`.cl-full` and
+ * `.cl-short`) and the page's CSS swaps them (`cardBits` in shared.ts); nothing measures widths.
+ * A card that is no longer stored keeps its id: `id) —`, and `c-[id]` for its name.
  */
 
-/** The id as a tag: `[SCB-K]`. */
-export const cardIdTag = (id: string): string => `[${id}]`;
+/** The name form's short form, and the name of a card no longer stored: `c-[5]`. */
+export const cardShort = (id: string): string => `c-[${id}]`;
 
-/** How a sentence or a button names a card: its name, or `[id]` when it is no longer stored. */
-export const cardName = (id: string, card: Card | undefined): string =>
-	card?.name ?? cardIdTag(id);
-
-/** The muted second part of a card's name: `[SCB-K] · 1029`. */
-export const cardMetaText = (card: Card): string =>
-	`${cardIdTag(card.id)} · ${card.last4}`;
-
-/** The name in bold, then the id and last 4 in a `.card-meta` element. */
-export function cardNameHtml(card: Card): TemplateResult {
-	return html`<span class="card-name"><b>${card.name}</b> <small class="card-meta">${cardMetaText(card)}</small></span>`;
+/** The line form: `10) Card A10 (4412)`; `short` leaves the last 4 off: `10) Card A10`. */
+export function cardLine(
+	id: string,
+	card: Card | undefined,
+	{ short = false }: { short?: boolean } = {},
+): string {
+	if (!card) return `${id}) ${t("common.none")}`;
+	return short ? `${id}) ${card.name}` : `${id}) ${card.name} (${card.last4})`;
 }
+
+/** Several cards' lines, comma separated, each looked up in `cards`. */
+export function cardLines(
+	ids: string[],
+	cards: Card[],
+	options: { short?: boolean } = {},
+): string {
+	const byId = new Map(cards.map((card) => [card.id, card]));
+	return ids.map((id) => cardLine(id, byId.get(id), options)).join(", ");
+}
+
+/** The name form: the card's name, or `c-[id]` once it is no longer stored. */
+export const cardName = (id: string, card: Card | undefined): string =>
+	card?.name ?? cardShort(id);
+
+function swap(full: string, short: string): TemplateResult {
+	return html`<span class="cl"><span class="cl-full">${full}</span><span class="cl-short" aria-hidden="true">${short}</span></span>`;
+}
+
+/** The line form as markup, with its short form beside it for a narrow place. */
+export const cardLineHtml = (id: string, card: Card | undefined) =>
+	swap(cardLine(id, card), cardLine(id, card, { short: true }));
+
+/** The name form as markup, with `c-[id]` beside it for a narrow place. */
+export const cardNameHtml = (id: string, card: Card | undefined) =>
+	swap(cardName(id, card), cardShort(id));
 
 /**
  * Which of the four group pastels a card wears: its group's place in the stored group order,
@@ -81,14 +62,33 @@ export function groupTone(card: Card, groups: LimitGroup[]): number | null {
 }
 
 /**
- * The small card chip at a row's start: the last 4 on the group's pastel (`cardBits` in
- * shared.ts draws it). Decorative, since the row's text already says the last 4.
+ * The small card chip at the start of the panel form: the last 4 on the group's pastel
+ * (`cardBits` in shared.ts draws it). It is the only place the panel form says the last 4, so
+ * readers hear it; a card no longer stored gets an empty, hidden chip that keeps the row's shape.
  */
 export function cardMini(
-	card: Card,
+	card: Card | undefined,
 	groups: LimitGroup[],
 	big = false,
 ): TemplateResult {
+	if (!card)
+		return html`<span class="mini" ?data-big=${big} aria-hidden="true"></span>`;
 	const tone = groupTone(card, groups);
-	return html`<span class="mini" data-g=${tone ?? nothing} ?data-big=${big} aria-hidden="true">${card.last4}</span>`;
+	return html`<span class="mini" data-g=${tone ?? nothing} ?data-big=${big}>${card.last4}</span>`;
 }
+
+/** The panel form's text, after the chip: `10) Card A10`. */
+export const cardPanelLabel = (id: string, card: Card | undefined) =>
+	html`<span class="card-label">${cardLine(id, card, { short: true })}</span>`;
+
+/**
+ * The panel form in one piece, for a row that lays the chip and the label out side by side
+ * (a row whose grid puts the chip in its own column uses `cardMini` and `cardPanelLabel`).
+ */
+export const cardPanel = (
+	id: string,
+	card: Card | undefined,
+	groups: LimitGroup[],
+	big = false,
+) =>
+	html`<span class="card-panel">${cardMini(card, groups, big)} ${cardPanelLabel(id, card)}</span>`;

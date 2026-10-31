@@ -611,8 +611,10 @@ export const actionBarStyles = css`
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: var(--cc-space-3);
-		padding: var(--cc-space-3) var(--cc-space-4);
+		gap: var(--cc-space-1) var(--cc-space-3);
+		/* As tall as the floating Payment button (--cc-bar-height); a bar that wraps grows. */
+		min-block-size: var(--cc-bar-height);
+		padding: var(--cc-space-1) var(--cc-space-4);
 		background: var(--cc-surface);
 		border: var(--cc-border-width) solid var(--cc-border);
 		border-radius: var(--cc-radius-md);
@@ -625,12 +627,26 @@ export const actionBarStyles = css`
 `;
 
 /**
- * The pieces phase 4 draws a card row from: `.mini`, the last-4 chip in the group's pastel
- * (`cardMini` in card-label.ts, `data-g` 1 to 4, `data-big` for the payment sheet's card), the
- * `.card-meta` beside a card's name, and `.tag`, a pill with a dot that carries a word as well
- * as a colour (`data-urgency` from `payTag`).
+ * The pieces a card's name is drawn from (card-label.ts, UI-14): `.mini`, the last-4 chip in the
+ * group's pastel (`data-g` 1 to 4, `data-big` for the payment sheet's card), `.card-panel`, the
+ * chip and `id) name` side by side, the `.cl-full` / `.cl-short` pair a narrow place swaps (a
+ * component shows `.cl-short` and hides `.cl-full` in its own media or container query), and
+ * `.tag`, a pill with a dot that carries a word as well as a colour (`data-urgency` from
+ * `payTag`). app.css keeps a copy of `.mini` and `.card-panel` for the light-DOM pages.
  */
 export const cardBits = css`
+	.card-panel {
+		display: inline-flex;
+		flex-direction: row;
+		align-items: center;
+		gap: var(--cc-space-2);
+		min-inline-size: 0;
+	}
+
+	.cl-short {
+		display: none;
+	}
+
 	.mini {
 		display: inline-grid;
 		place-items: end start;
@@ -671,12 +687,6 @@ export const cardBits = css`
 	.mini[data-g="4"] {
 		color: var(--cc-group-4-text);
 		background: var(--cc-group-4);
-	}
-
-	.card-meta {
-		font-size: var(--cc-text-xs);
-		font-weight: 400;
-		color: var(--cc-text-muted);
 	}
 
 	.tag {
@@ -722,8 +732,8 @@ export const cardBits = css`
 /**
  * Phase 4's row panels (the ledger, Upcoming, owed, lists): one `.panel` holding `.crow` rows
  * with a line between each. A row is a grid -- a leading chip or `.ic` tile, the `.what` (a
- * bold title, a muted `.word`, then a `.sub` line), and a right-aligned `.r` figure. `.in`
- * marks money coming in. `.tag[data-tone]` tints a status pill that carries no urgency.
+ * bold title, a muted `.word`, then a `.sub` line), and a right-aligned `.r` figure. `.out`
+ * marks money going out (red), `.in` money coming in (green). `.tag[data-tone]` tints a status pill that carries no urgency.
  */
 export const rowPanel = css`
 	.panel {
@@ -820,6 +830,11 @@ export const rowPanel = css`
 	.amount {
 		font-weight: 650;
 		white-space: nowrap;
+	}
+
+	/* Purchases read red and payments green, always with their sign and word (UI-07). */
+	.amount.out {
+		color: var(--cc-danger);
 	}
 
 	.amount.in {

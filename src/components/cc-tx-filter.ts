@@ -9,7 +9,7 @@ import {
 import type { Card } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { cardIdTag } from "#lib/ui/card-label";
+import { cardLine } from "#lib/ui/card-label";
 import { base, cardBits, controls } from "#styles/shared";
 import "#components/cc-modal";
 
@@ -80,10 +80,6 @@ export class CcTxFilter extends LitElement {
 				font-weight: 600;
 				color: var(--cc-success);
 				background: var(--cc-accent-surface);
-			}
-
-			.choices button[aria-pressed="true"] .card-meta {
-				color: inherit;
 			}
 
 			.dates {
@@ -180,7 +176,7 @@ export class CcTxFilter extends LitElement {
 					this.chip(
 						"card",
 						card.id,
-						html`${card.name} <small class="card-meta">${cardIdTag(card.id)}</small>`,
+						cardLine(card.id, card),
 						this.draft.cards.includes(card.id),
 						() => this.set({ cards: toggle(this.draft.cards, card.id) }),
 					),

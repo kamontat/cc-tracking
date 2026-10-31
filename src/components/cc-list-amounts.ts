@@ -20,13 +20,20 @@ import type {
 	Card,
 	CardLedger,
 	CardPayment,
+	LimitGroup,
 	ListLine,
 	PlainDate,
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLabelHtml, cardLabelText } from "#lib/ui/card-label";
-import { actionBarStyles, base, controls, listLayout } from "#styles/shared";
+import { cardLine, cardName, cardPanel } from "#lib/ui/card-label";
+import {
+	actionBarStyles,
+	base,
+	cardBits,
+	controls,
+	listLayout,
+} from "#styles/shared";
 
 /**
  * Step 2 of a purchase list: a date and one amount per card, each line warned about what the
@@ -37,6 +44,7 @@ import { actionBarStyles, base, controls, listLayout } from "#styles/shared";
 export class CcListAmounts extends LitElement {
 	static override styles = [
 		base,
+		cardBits,
 		controls,
 		listLayout,
 		actionBarStyles,
@@ -162,6 +170,8 @@ export class CcListAmounts extends LitElement {
 
 	/** The list's cards, in order. */
 	@property({ attribute: false }) cards: Card[] = [];
+	/** The stored limit groups, in order: a card's chip takes its group's colour. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
 	/** Every card, so a planned payment on a group-mate not on the list still counts. */
 	@property({ attribute: false }) allCards: Card[] = [];
 	/** Planned payments (`plannedOf`). */
@@ -232,6 +242,19 @@ export class CcListAmounts extends LitElement {
 		this.changed();
 	}
 
+	/** Cards' names for a notice, comma separated (the name form, UI-14). */
+	private names(ids: string[]): string {
+		const all = this.allCards.length > 0 ? this.allCards : this.cards;
+		return ids
+			.map((id) =>
+				cardName(
+					id,
+					all.find((card) => card.id === id),
+				),
+			)
+			.join(", ");
+	}
+
 	private warningNote(card: Card, warning: AmountWarning, line: DraftLine) {
 		const locale = getLocale();
 		switch (warning.kind) {
@@ -270,7 +293,7 @@ export class CcListAmounts extends LitElement {
 				return html`
 					<p class="note" data-warning="shared-limit">
 						${t("purchaseList.warn.shared", {
-							cards: warning.cardIds.join(", "),
+							cards: this.names(warning.cardIds),
 							group: line.room.group.name,
 							over: formatAmount(warning.over),
 							room: formatAmount(line.room.room),
@@ -281,7 +304,7 @@ export class CcListAmounts extends LitElement {
 				return html`
 					<p class="note" data-warning="overdue-bill">
 						<span>${t("purchaseList.warn.overdue", {
-							card: card.id,
+							card: cardName(card.id, card),
 							date: displayDate(warning.dueDate, locale),
 							remaining: formatAmount(warning.remaining),
 						})}</span>
@@ -293,7 +316,7 @@ export class CcListAmounts extends LitElement {
 				return html`
 					<p class="note" data-warning="close-date">
 						${t("purchaseList.warn.closeDate", {
-							card: card.id,
+							card: cardName(card.id, card),
 							date: displayDate(warning.closeDate, locale),
 						})}
 					</p>
@@ -331,7 +354,7 @@ export class CcListAmounts extends LitElement {
 			return html`
 				<section class="line" data-card=${card.id} ?data-warn=${warn}>
 					<div class="top" row>
-						<b>${cardLabelHtml(card.id, card)}</b>
+						<b>${cardPanel(card.id, card, this.groups)}</b>
 						<button data-variant="quiet" data-action="remove"
 							@click=${() => this.emit("remove", { cardId: card.id })}
 						>${t("purchaseList.remove")}</button>
@@ -339,7 +362,7 @@ export class CcListAmounts extends LitElement {
 					<label class="bigin">
 						<span>฿</span>
 						<input inputmode="decimal" data-field="amount" placeholder="0"
-							aria-label=${t("purchaseList.amountFor", { card: card.id })}
+							aria-label=${t("purchaseList.amountFor", { card: cardName(card.id, card) })}
 							.value=${live(this.typed[card.id] ?? "")}
 							@input=${(e: Event) =>
 								this.setAmount(
@@ -392,7 +415,7 @@ export class CcListAmounts extends LitElement {
 						${this.candidates.map(
 							(card) => html`<button data-variant="quiet" data-card=${card.id}
 								@click=${() => this.emit("add", { cardId: card.id })}
-							>${cardLabelText(card.id, card)}</button>`,
+							>${cardLine(card.id, card)}</button>`,
 						)}
 					</div>`
 					: nothing

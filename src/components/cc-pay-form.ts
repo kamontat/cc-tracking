@@ -11,7 +11,7 @@ import { payPreview } from "#lib/domain/pay";
 import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardMetaText, cardMini } from "#lib/ui/card-label";
+import { cardMini, cardName, cardPanelLabel } from "#lib/ui/card-label";
 import { base, cardBits, controls } from "#styles/shared";
 
 export type PayDetail = {
@@ -80,10 +80,6 @@ export class CcPayForm extends LitElement {
 
 			.paycard .what b {
 				font-size: var(--cc-text-md);
-			}
-
-			.paycard .card-meta {
-				font-size: var(--cc-text-sm);
 			}
 
 			.paycard button {
@@ -256,19 +252,19 @@ export class CcPayForm extends LitElement {
 			submit = preview.plan
 				? t("pay.submit.plan", {
 						amount: formatAmount(amount),
-						card: card.name,
+						card: cardName(card.id, card),
 						date: displayDate(this.date, locale),
 					})
 				: t("pay.submit.record", {
 						amount: formatAmount(amount),
-						card: card.name,
+						card: cardName(card.id, card),
 					});
 		}
 		return html`
 			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
 			<div class="paycard">
 				${cardMini(card, this.groups, true)}
-				<span class="what"><b>${card.name}</b><small class="card-meta">${cardMetaText(card)}</small></span>
+				<span class="what"><b>${cardPanelLabel(card.id, card)}</b></span>
 				<button type="button" data-variant="quiet" data-action="change"
 					@click=${() => this.dispatchEvent(new CustomEvent("change"))}>${t("pay.change")}</button>
 			</div>
@@ -325,7 +321,7 @@ export class CcPayForm extends LitElement {
 					preview && preview.extra > 0
 						? html`<p class="note" data-note="extra">${t("pay.note.extra", {
 								extra: formatAmount(preview.extra),
-								card: card.name,
+								card: cardName(card.id, card),
 							})}</p>`
 						: nothing
 				}

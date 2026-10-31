@@ -46,11 +46,10 @@ const type = async (
 };
 const submitText = (el: HTMLElement) => flat(q(el, 'button[type="submit"]'));
 
-test("shows the card by name, its figures, and Change asks for the picker", async () => {
+test("shows the card in the panel form, its figures, and Change asks for the picker", async () => {
 	const el = await mount();
-	expect(flat(q(el, ".paycard b"))).toBe("Alpha");
-	expect(flat(q(el, ".paycard .card-meta"))).toBe("[A] · 1234");
-	expect(q(el, ".paycard .mini[data-big]")).not.toBeNull();
+	expect(flat(q(el, ".paycard b"))).toBe("A) Alpha");
+	expect(flat(q(el, ".paycard .mini[data-big]"))).toBe("1234");
 	expect(flat(q(el, '[data-stat="owed"]'))).toBe("Owed ฿500.00");
 	expect(flat(q(el, '[data-stat="bill"]'))).toBe("Next bill ฿300.00");
 	expect(flat(q(el, '[data-stat="credit"]'))).toBe("Credit ฿0.00");

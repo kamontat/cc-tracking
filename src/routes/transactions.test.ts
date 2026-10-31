@@ -264,9 +264,12 @@ test("the Filter button counts the filters in use and the sort chip opens the sh
 	const { root } = await open("?type=payment&card=A");
 	const filter = root.querySelector('[data-action="filter"]');
 	expect(filter?.querySelector(".tx-count")?.textContent).toBe("2");
-	expect(root.querySelector('[data-chip="card:A"]')?.textContent).toBe(
-		"A card ×",
+	const cardChip = root.querySelector('[data-chip="card:A"]');
+	expect(cardChip?.querySelector(".cl-full")?.textContent).toBe(
+		"A) A card (1234)",
 	);
+	expect(cardChip?.querySelector(".cl-short")?.textContent).toBe("A) A card");
+	expect(cardChip?.getAttribute("aria-label")).toContain("A) A card (1234)");
 	const plain = await open();
 	expect(
 		plain.root.querySelector('[data-action="filter"] .tx-count'),
@@ -285,6 +288,11 @@ test("the summary names the month and signs its figures", async () => {
 	expect(
 		summary?.querySelector('[data-field="purchases"] b')?.textContent,
 	).toBe("−฿1,250.00");
+	expect(
+		summary
+			?.querySelector('[data-field="purchases"] b')
+			?.getAttribute("data-tone"),
+	).toBe("out");
 	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe(
 		"+฿300.00",
 	);

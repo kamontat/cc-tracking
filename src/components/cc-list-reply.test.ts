@@ -107,7 +107,7 @@ test("not made offers the move, ticked", async () => {
 	expect(actual(root, "B")).toBeNull();
 	expect(move(root)?.checked).toBe(true);
 	expect(flat(move(root)?.closest("label"))).toBe(
-		"Move B to a draft for Sat, 31 Oct",
+		"Move Card B to a draft for Sat, 31 Oct",
 	);
 });
 
@@ -147,7 +147,7 @@ test("one made line says purchase", async () => {
 	await answer(element, "C", "not-made");
 	expect(flat(saveButton(root))).toBe("Save 1 purchase · ฿12,500.00");
 	expect(flat(move(root)?.closest("label"))).toBe(
-		"Move B, C to a draft for Sat, 31 Oct",
+		"Move Card B, c-[C] to a draft for Sat, 31 Oct",
 	);
 });
 
@@ -186,11 +186,10 @@ test("answers survive a language switch", async () => {
 	expect(flat(answerButton(root, "A", "made"))).toBe("ซื้อแล้ว");
 });
 
-test("a line is headed by the card's label", async () => {
+test("a line is headed by the card in the panel form", async () => {
 	const { root } = await mount();
-	expect(flat(line(root, "A").querySelector(".card-label"))).toBe(
-		"A) Card A (1111)",
-	);
+	expect(flat(line(root, "A").querySelector(".card-label"))).toBe("A) Card A");
+	expect(flat(line(root, "A").querySelector(".mini"))).toBe("1111");
 	// C is no longer stored: its id stays, with a dash for the name.
 	expect(flat(line(root, "C").querySelector(".card-label"))).toBe("C) —");
 });

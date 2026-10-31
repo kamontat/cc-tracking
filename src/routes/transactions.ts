@@ -6,7 +6,7 @@ import "#components/cc-list-index";
 import "#components/cc-owed-list";
 import "#components/cc-tx-filter";
 import "#components/cc-tx-ledger";
-import { html, nothing, render } from "lit";
+import { html, nothing, render, type TemplateResult } from "lit";
 import { searchBox } from "#components/list-controls";
 import { displayDate, monthName, today } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
@@ -24,7 +24,7 @@ import {
 import type { CardPayment, ListStatus } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { cardName } from "#lib/ui/card-label";
+import { cardLine, cardLineHtml } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
@@ -92,11 +92,19 @@ export function renderTransactionsPage(
 			open = null;
 		}, "tx.error.delete");
 
-	const chips = (): { key: string; label: string; clear: () => void }[] => {
+	type Chip = {
+		key: string;
+		/** The chip's words, also read out by its remove label. */
+		label: string;
+		/** Markup to show instead of `label`: a card's line form with its short form beside it. */
+		shown?: TemplateResult;
+		clear: () => void;
+	};
+	const chips = (): Chip[] => {
 		if (!data) return [];
 		const { filter } = view;
 		const cards = data.cards;
-		const list: { key: string; label: string; clear: () => void }[] = [];
+		const list: Chip[] = [];
 		for (const type of filter.types)
 			list.push({
 				key: `type:${type}`,
@@ -104,15 +112,15 @@ export function renderTransactionsPage(
 				clear: () =>
 					setFilter({ types: filter.types.filter((x) => x !== type) }),
 			});
-		for (const id of filter.cards)
+		for (const id of filter.cards) {
+			const card = cards.find((c) => c.id === id);
 			list.push({
 				key: `card:${id}`,
-				label: cardName(
-					id,
-					cards.find((c) => c.id === id),
-				),
+				label: cardLine(id, card),
+				shown: cardLineHtml(id, card),
 				clear: () => setFilter({ cards: filter.cards.filter((x) => x !== id) }),
 			});
+		}
 		if (filter.range)
 			list.push({
 				key: "range",
@@ -188,7 +196,7 @@ export function renderTransactionsPage(
 						(chip) =>
 							html`<button type="button" class="tx-chip" data-variant="quiet" data-chip=${chip.key}
 								aria-label=${t("tx.chip.remove", { filter: chip.label })}
-								@click=${chip.clear}>${chip.label} ×</button>`,
+								@click=${chip.clear}>${chip.shown ?? chip.label} ×</button>`,
 					)}
 				</div>
 			</div>
@@ -200,7 +208,7 @@ export function renderTransactionsPage(
 							<small>${t("tx.summary.legend")}</small>
 						</div>
 						<div class="tx-summary__figures">
-							${figure("purchases", t("tx.summary.purchases"), `${summary.purchases ? MINUS : ""}${formatAmount(summary.purchases)}`)}
+							${figure("purchases", t("tx.summary.purchases"), `${summary.purchases ? MINUS : ""}${formatAmount(summary.purchases)}`, "out")}
 							${figure("payments", t("tx.summary.payments"), `${summary.payments ? "+" : ""}${formatAmount(summary.payments)}`, "in")}
 							${figure("owed", t("tx.summary.owed"), formatAmount(summary.owed))}
 						</div>

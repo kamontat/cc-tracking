@@ -12,6 +12,7 @@ import type { Card, PlainDate, Purchase } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
+import { cardLine } from "#lib/ui/card-label";
 import { base, controls } from "#styles/shared";
 
 export type QuickAddDetail = {
@@ -230,7 +231,7 @@ export class CcQuickAdd extends LitElement {
 						? html`
 							<div class="readonly" data-field="card">
 								<span class="readonly__label">${t("quickAdd.card")}</span>
-								<span class="readonly__value">${only.id} — ${only.name}</span>
+								<span class="readonly__value">${cardLine(only.id, only)}</span>
 							</div>
 						`
 						: html`
@@ -245,7 +246,7 @@ export class CcQuickAdd extends LitElement {
 								>
 									${this.cards.map(
 										(card) =>
-											html`<option value=${card.id}>${card.id} — ${card.name}</option>`,
+											html`<option value=${card.id}>${cardLine(card.id, card)}</option>`,
 									)}
 								</select>
 							</label>

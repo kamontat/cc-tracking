@@ -104,11 +104,13 @@ export function renderHomePage(
 		render(
 			html`
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}></cc-needs-you>
+				<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
+					.cards=${data?.cards ?? []} .groups=${data?.groups ?? []}></cc-needs-you>
 				<cc-ready-list
 					.rows=${rows}
 					.selected=${selected}
 					.locations=${data?.settings.purchaseLocations ?? []}
+					.groups=${data?.groups ?? []}
 					.today=${now}
 					.unassigned=${unassigned}
 					@toggle=${onToggle}

@@ -5,11 +5,22 @@ import { live } from "lit/directives/live.js";
 import { addDays, headerDate } from "#lib/domain/date";
 import { lineAmount } from "#lib/domain/list-entry";
 import { formatAmount, formatAmountInput } from "#lib/domain/money";
-import type { Card, ListLine, PurchaseList } from "#lib/domain/types";
+import type {
+	Card,
+	LimitGroup,
+	ListLine,
+	PurchaseList,
+} from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLabelHtml } from "#lib/ui/card-label";
-import { actionBarStyles, base, controls, listLayout } from "#styles/shared";
+import { cardName, cardPanel } from "#lib/ui/card-label";
+import {
+	actionBarStyles,
+	base,
+	cardBits,
+	controls,
+	listLayout,
+} from "#styles/shared";
 
 /** One line's answer: unanswered, made or not, and the real amount as typed. */
 type Answer = { made: boolean | undefined; text: string };
@@ -24,6 +35,7 @@ type Answer = { made: boolean | undefined; text: string };
 export class CcListReply extends LitElement {
 	static override styles = [
 		base,
+		cardBits,
 		controls,
 		listLayout,
 		actionBarStyles,
@@ -96,9 +108,10 @@ export class CcListReply extends LitElement {
 				color: var(--cc-danger);
 			}
 
-			/* The reply bar stacks its one button under the note. */
+			/* The reply bar stacks its one button under the note, so it keeps a roomier padding. */
 			.action-bar {
 				display: grid;
+				padding-block: var(--cc-space-3);
 				align-items: normal;
 				justify-content: normal;
 			}
@@ -118,6 +131,8 @@ export class CcListReply extends LitElement {
 		lines: [],
 	};
 	@property({ attribute: false }) cards: Card[] = [];
+	/** The stored limit groups, in order: a card's chip takes its group's colour. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
 
 	// The answers live here, not in the buttons or inputs, so a re-render keeps them.
 	@state() private answers: Answer[] = [];
@@ -178,7 +193,7 @@ export class CcListReply extends LitElement {
 		return html`
 			<section class="line" data-card=${line.cardId}>
 				<div class="top" row>
-					<b>${cardLabelHtml(line.cardId, byId.get(line.cardId))}</b>
+					<b>${cardPanel(line.cardId, byId.get(line.cardId), this.groups)}</b>
 					<span class="planned">${t("reply.planned", { amount: formatAmount(line.amount) })}</span>
 				</div>
 				<div class="pair" role="group" aria-label=${t("reply.wasMade")}>
@@ -254,7 +269,14 @@ export class CcListReply extends LitElement {
 									this.moveUnmade = (e.target as HTMLInputElement).checked;
 								}} />
 							${t("reply.move", {
-								cards: unmade.map((line) => line.cardId).join(", "),
+								cards: unmade
+									.map((line) =>
+										cardName(
+											line.cardId,
+											this.cards.find((card) => card.id === line.cardId),
+										),
+									)
+									.join(", "),
 								date: headerDate(
 									addDays(this.list.date, 1),
 									getLocale(),

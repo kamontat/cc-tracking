@@ -107,7 +107,7 @@ test("rows keep the given order, under the hint, and a tap picks the card", asyn
 	expect(picked).toEqual(["B"]);
 });
 
-test("a row is the card's name, its [id] and last 4, a chip in its group's colour, and owed", async () => {
+test("a row is the panel form: the last 4 in its group's colour, id) name, and owed", async () => {
 	const el = await mount();
 	el.groups = [
 		{ id: "g0", name: "Zero", limit: 1 },
@@ -118,8 +118,8 @@ test("a row is the card's name, its [id] and last 4, a chip in its group's colou
 	] as PayChoice[];
 	await el.updateComplete;
 	const [row] = rows(el);
-	expect(flat(row?.querySelector(".card-name b"))).toBe("Alpha");
-	expect(flat(row?.querySelector(".card-meta"))).toBe("[A] · 1234");
+	expect(flat(row?.querySelector(".what b"))).toBe("A) Alpha");
+	expect(flat(row?.querySelector(".mini"))).toBe("1234");
 	expect(row?.querySelector(".mini")?.getAttribute("data-g")).toBe("2");
 	expect(flat(row?.querySelector(".figures"))).toBe("฿500.00 owed");
 });

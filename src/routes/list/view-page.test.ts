@@ -38,7 +38,8 @@ test("a saved list shows what was bought", async () => {
 		"Saved 1 purchase, ฿13,000.00. It counts against the card's room now.",
 	);
 	const rowA = root.querySelector('[data-card="A"]');
-	expect(flatText(rowA?.querySelector(".card-label"))).toBe("A) A card (1234)");
+	expect(flatText(rowA?.querySelector(".card-label"))).toBe("A) A card");
+	expect(flatText(rowA?.querySelector(".mini"))).toBe("1234");
 	expect(flatText(rowA)).toContain("฿13,000.00");
 	expect(flatText(rowA)).toContain("planned ฿12,500.00");
 	const rowB = root.querySelector('[data-card="B"]');
@@ -88,7 +89,9 @@ test("a saved list that moved lines links to their draft", async () => {
 		root.querySelector(".list-layout > .list-layout__main > .saved-lines"),
 	).toBeInstanceOf(HTMLElement);
 	expect(link?.getAttribute("href")).toBe("/list/draft?id=w1-2");
-	expect(flatText(link)).toContain("B moved to a draft for Sat, 31 Oct");
+	expect(flatText(link)).toContain(
+		"B) B card moved to a draft for Sat, 31 Oct",
+	);
 	expect(link?.querySelector("small")?.textContent).toBe(
 		"Open it when you're ready to send",
 	);

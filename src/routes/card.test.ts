@@ -107,12 +107,13 @@ test("heads the page with the card's id, name, and last four digits", async () =
 	renderCardPage(repo, "kbank", root);
 	await settle();
 
-	expect(root.querySelector(".page-heading h1")?.textContent).toContain(
-		"KBank Visa",
+	// The heading names the card in the panel form: the last-4 chip, then id) name.
+	const heading = root.querySelector(".page-heading h1");
+	expect(heading?.querySelector(".mini")?.textContent).toBe("4821");
+	expect(heading?.querySelector(".card-label")?.textContent).toBe(
+		"kbank) KBank Visa",
 	);
 	const meta = root.querySelector(".page-heading .meta")?.textContent ?? "";
-	expect(meta).toContain("kbank");
-	expect(meta).toContain("4821");
 	expect(meta).toContain("Krabi");
 });
 
@@ -439,7 +440,7 @@ test("adds a purchase against this card and says which statement it lands on", a
 	expect(form.shadowRoot?.querySelector("select")).toBeNull();
 	expect(
 		form.shadowRoot?.querySelector('[data-field="card"]')?.textContent,
-	).toContain("kbank — KBank Visa");
+	).toContain("kbank) KBank Visa (4821)");
 	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
 	await settle();
 	expect(root.querySelector("cc-modal")).toBeNull();

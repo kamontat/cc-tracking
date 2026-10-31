@@ -5,7 +5,7 @@ import { matchesCard, type PayChoice } from "#lib/domain/pay";
 import type { LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { cardMini, cardNameHtml } from "#lib/ui/card-label";
+import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { payTag } from "#lib/ui/pay-tag";
 import { base, cardBits, controls } from "#styles/shared";
@@ -92,7 +92,7 @@ export class CcPayPicker extends LitElement {
 				background: transparent;
 			}
 
-			button[data-card]:hover .card-name b {
+			button[data-card]:hover .what b {
 				text-decoration: underline;
 			}
 
@@ -159,7 +159,7 @@ export class CcPayPicker extends LitElement {
 							return html`<button type="button" data-card=${choice.card.id}
 								@click=${() => this.pick(choice.card.id)}>
 								${cardMini(choice.card, this.groups)}
-								<span class="what">${cardNameHtml(choice.card)}${
+								<span class="what"><b>${cardPanelLabel(choice.card.id, choice.card)}</b>${
 									tag
 										? html`<span class="tag" data-urgency=${tag.urgency}>${tag.text}</span>`
 										: nothing

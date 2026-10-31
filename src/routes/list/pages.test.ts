@@ -93,6 +93,21 @@ test("the list bottom bars reserve no room for the Payment button", async () => 
 		const css = (element.styles as { cssText: string }[])
 			.map((s) => s.cssText)
 			.join("\n");
-		expect(css).not.toContain("--cc-fab-size");
+		// The bar shares the Payment button's height token, but never sits above the button.
+		expect(css).not.toMatch(/bottom:[^;]*--cc-bar-height/);
 	}
+});
+
+test("the floating Payment button and the selection bars share one height token", async () => {
+	const tokens = await Bun.file("src/styles/tokens.css").text();
+	expect(tokens).toMatch(/--cc-bar-height:/);
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(ruleBody(css, ".fab")).toContain("block-size: var(--cc-bar-height)");
+	expect(ruleBody(css, ".action-bar")).toContain(
+		"min-block-size: var(--cc-bar-height)",
+	);
+	const { actionBarStyles } = await import("#styles/shared");
+	expect(actionBarStyles.cssText).toContain(
+		"min-block-size: var(--cc-bar-height)",
+	);
 });

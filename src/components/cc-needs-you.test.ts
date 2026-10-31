@@ -47,10 +47,11 @@ const items = (): NeedsItem[] => [
 	},
 ];
 
-const mount = async (value: NeedsItem[]) => {
+const mount = async (value: NeedsItem[], cards: Card[] = []) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-needs-you") as CcNeedsYou;
 	element.items = value;
+	element.cards = cards;
 	document.body.append(element);
 	await element.updateComplete;
 	return element.shadowRoot as ShadowRoot;
@@ -60,7 +61,7 @@ const text = (root: ParentNode, selector: string) =>
 	root.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim();
 
 test("each item opens its task", async () => {
-	const root = await mount(items());
+	const root = await mount(items(), [{ ...card, id: "KB-S", name: "KBank S" }]);
 	const found = [...root.querySelectorAll("[data-item]")];
 	expect(found.map((e) => e.getAttribute("data-item"))).toEqual([
 		"waiting",
@@ -83,11 +84,11 @@ test("each item opens its task", async () => {
 		"List for Fri, 30 Oct · 3 cards · ฿39,300.00",
 	);
 	expect(text(found[1] as Element, "b")).toBe(
-		"Bill for SCB/K) SCB K (1111) is 16 days overdue",
+		"1111 Bill for SCB/K) SCB K is 16 days overdue",
 	);
-	expect(text(found[2] as Element, "small")?.startsWith("KB-S, KS-K · ")).toBe(
-		true,
-	);
+	expect(
+		text(found[2] as Element, "small")?.startsWith("KB-S) KBank S, KS-K) — · "),
+	).toBe(true);
 });
 
 test("the heading counts", async () => {
@@ -126,7 +127,7 @@ test("one card and one day read in the singular", async () => {
 		"List for Fri, 30 Oct · 1 card · ฿1.00",
 	);
 	expect(text(root, '[data-item="overdue"] b')).toBe(
-		"Bill for SCB/K) SCB K (1111) is 1 day overdue",
+		"1111 Bill for SCB/K) SCB K is 1 day overdue",
 	);
 	const many = await mount([
 		{ kind: "waiting", list: list("w1", "sent", ["A", "B"]), total: 100 },
@@ -136,7 +137,7 @@ test("one card and one day read in the singular", async () => {
 		"List for Fri, 30 Oct · 2 cards · ฿1.00",
 	);
 	expect(text(many, '[data-item="overdue"] b')).toBe(
-		"Bill for SCB/K) SCB K (1111) is 2 days overdue",
+		"1111 Bill for SCB/K) SCB K is 2 days overdue",
 	);
 });
 
@@ -168,8 +169,6 @@ test("a planned payment row says what to do and opens Transactions", async () =>
 	]);
 	const row = root.querySelector('[data-item="planned"]') as Element;
 	expect(row.getAttribute("href")).toBe("/transactions");
-	expect(text(row, "b")).toBe(
-		"Planned: pay SCB/K) SCB K (1111) on Mon, 02 Nov",
-	);
+	expect(text(row, "b")).toBe("1111 Planned: pay SCB/K) SCB K on Mon, 02 Nov");
 	expect(text(row, "small")).toBe("฿5,000.00 · mark it paid when it goes out");
 });

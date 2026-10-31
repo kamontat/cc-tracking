@@ -19,12 +19,7 @@ import type {
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import {
-	cardIdTag,
-	cardMetaText,
-	cardMini,
-	cardName,
-} from "#lib/ui/card-label";
+import { cardMini, cardName, cardPanelLabel } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { listPageAddress } from "#lib/ui/list-address";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
@@ -217,14 +212,12 @@ export class CcTxLedger extends LitElement {
 	}
 
 	private chip(card: Card | undefined) {
-		return card
-			? cardMini(card, this.limitGroups)
-			: html`<span class="mini" aria-hidden="true"></span>`;
+		return cardMini(card, this.limitGroups);
 	}
 
-	/** The row's first line: the card's name in bold, then the kind of row, muted. */
+	/** The row's first line: the card's `id) name` in bold, then the kind of row, muted. */
 	private heading(id: string, card: Card | undefined, word: string) {
-		return html`<span class="t"><b>${cardName(id, card)}</b> <span class="word">${word}</span></span>`;
+		return html`<span class="t"><b>${cardPanelLabel(id, card)}</b> <span class="word">${word}</span></span>`;
 	}
 
 	private deleteBlock(payment: CardPayment, card: Card | undefined) {
@@ -259,19 +252,21 @@ export class CcTxLedger extends LitElement {
 				t("tx.fromList", { date: headerDate(list.date, getLocale(), false) }),
 			);
 		if (showDate) parts.push(displayDate(entryDate(entry), getLocale()));
-		if (parts.length === 0)
-			parts.push(entry.card ? cardMetaText(entry.card) : cardIdTag(id));
 		const body = html`
 			${this.chip(entry.card)}
 			<span class="what">
 				${this.heading(id, entry.card, word)}
-				<span class="sub"><span>${parts.join(" · ")}</span>${
-					entry.card?.archived
-						? html`<span class="tag archived">${t("cards.archived")}</span>`
+				${
+					parts.length > 0 || entry.card?.archived
+						? html`<span class="sub">${parts.length > 0 ? html`<span>${parts.join(" · ")}</span>` : nothing}${
+								entry.card?.archived
+									? html`<span class="tag archived">${t("cards.archived")}</span>`
+									: nothing
+							}</span>`
 						: nothing
-				}</span>
+				}
 			</span>
-			<b class="amount r ${purchase ? "" : "in"}" data-numeric>${this.signed(entry)}</b>`;
+			<b class="amount r ${purchase ? "out" : "in"}" data-numeric>${this.signed(entry)}</b>`;
 		if (entry.kind === "purchase")
 			return html`<div class="row">
 				<a class="crow" data-kind="purchase" href=${this.link(entry)}>${body}</a>
