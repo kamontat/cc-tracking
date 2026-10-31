@@ -11,7 +11,6 @@ import {
 	cardOwnerName,
 	cardPanel,
 	cardRowTitle,
-	cardRowTitleHtml,
 	cardShort,
 	cardTitle,
 	groupTone,
@@ -135,11 +134,4 @@ test("card titles read name · holder (last4); holder and digits drop out when u
 	expect(cardTitle(noGroup, owned)).toBe("Card A10 (4412)");
 	expect(cardTitle({ ...noGroup, last4: "" }, owned)).toBe("Card A10");
 	expect(cardRowTitle({ ...card, last4: "" }, owned)).toBe("10) Card A10 · RI");
-});
-
-test("the row title markup holds a short form without the holder and digits", () => {
-	const host = document.createElement("div");
-	render(cardRowTitleHtml(card, groups), host);
-	expect(text(host.querySelector(".cl-full"))).toBe("10) Card A10 · KC (4412)");
-	expect(text(host.querySelector(".cl-short"))).toBe("10) Card A10");
 });

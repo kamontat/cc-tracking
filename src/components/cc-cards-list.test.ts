@@ -7,6 +7,7 @@ import {
 	cardsResults,
 	DEFAULT_CARDS_VIEW,
 } from "#lib/domain/cards-view";
+import { cardLedger } from "#lib/domain/ledger";
 import { LOCATIONS } from "#lib/domain/location";
 import type { GroupRoom } from "#lib/domain/room";
 import type { Card, LimitGroup } from "#lib/domain/types";
@@ -111,7 +112,7 @@ test("rows link to the card page, encoded, with the chip and id) name", async ()
 		"/card?id=C",
 	]);
 	expect(links[0]?.querySelector(".mini")?.textContent).toBe("1111");
-	expect(text(links[0]?.querySelector(".cl-short"))).toBe("A) Card A");
+	expect(text(links[0]?.querySelector(".t"))).toBe("A) Card A · KC (1111)");
 });
 
 test("rows are titled id) name · holder (last4), with the open period's dates and a Supplementary tag", async () => {
@@ -123,18 +124,31 @@ test("rows are titled id) name · holder (last4), with the open period's dates a
 	];
 	const { root } = await mount({}, { today: "2026-10-30" }, list);
 	const row = (id: string) => root.querySelector(`a[data-card="${id}"]`);
-	expect(text(row("A")?.querySelector(".t .cl-full"))).toBe(
-		"A) Card A · KC (1111)",
-	);
+	expect(text(row("A")?.querySelector(".t"))).toBe("A) Card A · KC (1111)");
 	expect(text(row("A")?.querySelector(".sub"))).toBe(
 		"closes 18 Nov 2026 · due 03 Dec 2026",
 	);
 	expect(row("A")?.querySelector(".tag")).toBeNull();
 	expect(text(row("S")?.querySelector(".tag"))).toBe("Supplementary");
-	expect(text(row("S")?.querySelector(".t .cl-full"))).toBe(
-		"S) Card S · NT (1111)",
+	expect(text(row("S")?.querySelector(".t"))).toBe("S) Card S · NT (1111)");
+	expect(text(row("N")?.querySelector(".t"))).toBe("N) Card N");
+});
+
+test("the subtitle takes the open period's dates from the ledger, frozen ones included", async () => {
+	const a = card("A");
+	const frozen = [
+		{
+			cardId: "A",
+			period: "2026-11",
+			closeDate: "2026-11-20",
+			dueDate: "2026-12-07",
+		},
+	];
+	const ledgers = new Map([["A", cardLedger(a, [], [], frozen, "2026-10-30")]]);
+	const { root } = await mount({}, { today: "2026-10-30", ledgers }, [a]);
+	expect(text(root.querySelector('a[data-card="A"] .sub'))).toBe(
+		"closes 20 Nov 2026 · due 07 Dec 2026",
 	);
-	expect(text(row("N")?.querySelector(".t .cl-full"))).toBe("N) Card N");
 });
 
 test("the right side: room, N% used from 80% in the warn tone, or credit", async () => {
@@ -161,13 +175,11 @@ test("a card with no limit group, or a deleted one, says so in place of a dash",
 	}
 });
 
-test("any other sort is one flat list headed N cards, rows adding place and holder", async () => {
+test("any other sort is one flat list headed N cards, rows adding the place", async () => {
 	const { root } = await mount({ sort: "name" });
 	expect(root.querySelector("section[data-location]")).toBeNull();
 	expect(text(root.querySelector(".result-head"))).toBe("3 cards");
-	expect(text(root.querySelector('a[data-card="B/2"] .word'))).toBe(
-		"· Krabi · NT",
-	);
+	expect(text(root.querySelector('a[data-card="B/2"] .word'))).toBe("· Krabi");
 });
 
 test("archived cards fold at the end, closed, and remember being opened", async () => {

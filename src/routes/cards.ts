@@ -282,6 +282,7 @@ export function renderCardsPage(
 				.groups=${groups}
 				.rooms=${d.rooms}
 				.credits=${d.credits}
+				.ledgers=${d.money.ledgers}
 				.settings=${settings}
 				.locationName=${locationName}
 				.total=${cards.length}

@@ -9,14 +9,18 @@ import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import type { Location } from "#lib/domain/location";
 import { formatAmount } from "#lib/domain/money";
-import { cardOwnerOf } from "#lib/domain/owner";
 import { defaultSettings, type Settings } from "#lib/domain/settings";
 import { openPeriod } from "#lib/domain/statement";
-import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
+import type {
+	Card,
+	CardLedger,
+	LimitGroup,
+	PlainDate,
+} from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardMini, cardRowTitleHtml } from "#lib/ui/card-label";
+import { cardMini, cardRowTitle } from "#lib/ui/card-label";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
@@ -146,16 +150,14 @@ export class CcCardsList extends LitElement {
 		locationText(id as Location);
 	/** How many cards are stored at all, to tell "none yet" from "none match". */
 	@property({ type: Number }) total = 0;
+	/** Each card's ledger, keyed by card id: its open statement holds the dates to show. */
+	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
 	/** Today, which picks each card's open period for the row's close and due dates. */
 	@property() today: PlainDate = today(new Date());
 
 	constructor() {
 		super();
 		new LocaleController(this);
-	}
-
-	private groupOf(card: Card): LimitGroup | null {
-		return this.groups.find((g) => g.id === card.limitGroupId) ?? null;
 	}
 
 	private right(card: Card) {
@@ -177,22 +179,24 @@ export class CcCardsList extends LitElement {
 
 	private dates(card: Card): string {
 		const period = openPeriod(card, this.today);
+		// The ledger's open statement honours kept dates; the cycle only fills in without one.
+		const kept = this.ledgers.get(card.id)?.statements.find((s) => s.open);
 		const locale = getLocale();
 		return t("cards.page.dates", {
-			close: displayDate(closeDateOf(card.cycle, period), locale),
-			due: displayDate(dueDateOf(card.cycle, period), locale),
+			close: displayDate(
+				kept?.closeDate ?? closeDateOf(card.cycle, period),
+				locale,
+			),
+			due: displayDate(kept?.dueDate ?? dueDateOf(card.cycle, period), locale),
 		});
 	}
 
 	private row(card: Card, flat: boolean) {
-		const owner = cardOwnerOf(card, this.groupOf(card));
-		const extra = flat
-			? [this.locationName(card.location), owner].filter(Boolean).join(" · ")
-			: "";
+		const extra = flat ? this.locationName(card.location) : "";
 		return html`<a class="crow" data-card=${card.id}
 			href=${`/card?id=${encodeURIComponent(card.id)}`}>
 			${cardMini(card, this.groups)}
-			<span class="what"><span class="title"><span class="t"><b>${cardRowTitleHtml(card, this.groups)}</b>${
+			<span class="what"><span class="title"><span class="t"><b>${cardRowTitle(card, this.groups)}</b>${
 				extra ? html` <span class="word">· ${extra}</span>` : nothing
 			}</span>${
 				card.supplementary

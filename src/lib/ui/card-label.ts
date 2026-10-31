@@ -122,7 +122,3 @@ export function cardTitle(card: Card, groups: LimitGroup[]): string {
 /** The Cards page row's title: `10) Krungsri Bangkok · RI (4412)`. */
 export const cardRowTitle = (card: Card, groups: LimitGroup[]): string =>
 	`${card.id}) ${cardTitle(card, groups)}`;
-
-/** The row title as markup; its short form is `id) name`, for a narrow place. */
-export const cardRowTitleHtml = (card: Card, groups: LimitGroup[]) =>
-	swap(cardRowTitle(card, groups), cardLine(card.id, card, { short: true }));
