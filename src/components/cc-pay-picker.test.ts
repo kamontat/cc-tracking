@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import "#components/cc-pay-picker";
+import type { PickDetail } from "#components/cc-pay-picker";
 import type { PayChoice } from "#lib/domain/pay";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
@@ -74,20 +75,23 @@ const mount = async () => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-pay-picker");
 	element.choices = choices();
-	element.today = "2026-10-31";
 	document.body.append(element);
 	await element.updateComplete;
 	return element;
 };
 
 const rows = (el: HTMLElement) => [
-	...(el.shadowRoot?.querySelectorAll<HTMLAnchorElement>("a[data-card]") ?? []),
+	...(el.shadowRoot?.querySelectorAll<HTMLButtonElement>("button[data-card]") ??
+		[]),
 ];
 const flat = (e: Element | null | undefined) =>
 	e?.textContent?.replace(/\s+/g, " ").trim() ?? "";
 
-test("rows keep the given order and link to the form", async () => {
+test("rows keep the given order, under the hint, and a tap picks the card", async () => {
 	const el = await mount();
+	expect(flat(el.shadowRoot?.querySelector(".hint"))).toBe(
+		"Which card is it for? Overdue and soon-due cards come first.",
+	);
 	expect(rows(el).map((r) => r.dataset["card"])).toEqual([
 		"A",
 		"B",
@@ -95,7 +99,29 @@ test("rows keep the given order and link to the form", async () => {
 		"D",
 		"E",
 	]);
-	expect(rows(el)[0]?.getAttribute("href")).toBe("/pay?card=A");
+	const picked: string[] = [];
+	el.addEventListener("pick", (e) =>
+		picked.push((e as CustomEvent<PickDetail>).detail.cardId),
+	);
+	rows(el)[1]?.click();
+	expect(picked).toEqual(["B"]);
+});
+
+test("a row is the card's name, its [id] and last 4, a chip in its group's colour, and owed", async () => {
+	const el = await mount();
+	el.groups = [
+		{ id: "g0", name: "Zero", limit: 1 },
+		{ id: "g1", name: "One", limit: 1 },
+	];
+	el.choices = [
+		{ ...choices()[0], card: { ...card("A", "Alpha"), limitGroupId: "g1" } },
+	] as PayChoice[];
+	await el.updateComplete;
+	const [row] = rows(el);
+	expect(flat(row?.querySelector(".card-name b"))).toBe("Alpha");
+	expect(flat(row?.querySelector(".card-meta"))).toBe("[A] · 1234");
+	expect(row?.querySelector(".mini")?.getAttribute("data-g")).toBe("2");
+	expect(flat(row?.querySelector(".figures"))).toBe("฿500.00 owed");
 });
 
 test("tags say it in words", async () => {
@@ -110,7 +136,6 @@ test("tags say it in words", async () => {
 		"overdue",
 	);
 	expect(flat(rows(el)[0]?.querySelector("[data-numeric]"))).toBe("฿500.00");
-	expect(flat(rows(el)[0])).toContain("A) Alpha (1234)");
 });
 
 test("search narrows the rows, and an empty result says what to do", async () => {
@@ -130,20 +155,6 @@ test("search narrows the rows, and an empty result says what to do", async () =>
 	expect(flat(el.shadowRoot?.querySelector(".empty"))).toBe(
 		"No card matches. Clear the search.",
 	);
-});
-
-test("a card id with & and a space survives the link", async () => {
-	setLocale("en");
-	document.body.innerHTML = "";
-	const el = document.createElement("cc-pay-picker");
-	el.choices = [
-		{ ...choices()[4], card: card("A&B 1", "Odd") },
-	] as unknown as PayChoice[];
-	el.today = "2026-10-31";
-	document.body.append(el);
-	await el.updateComplete;
-	const href = rows(el)[0]?.getAttribute("href") ?? "";
-	expect(new URLSearchParams(href.split("?")[1]).get("card")).toBe("A&B 1");
 });
 
 test("with no cards at all it says to add one, linking to Cards", async () => {

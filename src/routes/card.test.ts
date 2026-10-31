@@ -222,11 +222,7 @@ test("links to the payment form for this card, with no mark-paid on the statemen
 
 	const summary = root.querySelector("cc-card-summary");
 	await summary?.updateComplete;
-	expect(
-		summary?.shadowRoot
-			?.querySelector('a[data-action="pay"]')
-			?.getAttribute("href"),
-	).toBe("/pay?card=a%20b");
+	expect(summary?.payCardId).toBe("a b");
 	const list = root.querySelector("cc-statement-list");
 	await list?.updateComplete;
 	expect(

@@ -149,9 +149,7 @@ test("the floating Payment button steps aside while cards are selected", async (
 	expect(html.hasAttribute("data-selecting")).toBe(false);
 
 	const css = await Bun.file("src/styles/app.css").text();
-	expect(css).toMatch(
-		/:root\[data-selecting\] \.fab:any-link\s*\{\s*display: none;/,
-	);
+	expect(css).toMatch(/:root\[data-selecting\] \.fab\s*\{\s*display: none;/);
 });
 
 test("enter amounts opens the list with the picked cards", async () => {

@@ -5,6 +5,7 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { getLocale, t } from "#lib/i18n/index";
 import { type Environment, envMark } from "#lib/ui/build-info";
 import { icons } from "#lib/ui/icons";
+import { openPayment } from "#lib/ui/pay-sheet";
 
 export type Tab = "home" | "transactions" | "cards" | "settings";
 
@@ -21,7 +22,7 @@ export const TABS: readonly (readonly [
 ];
 
 /**
- * The tab a path belongs to. The payment pages (`/pay`) sit under Transactions, where payments are listed. A card's own page (`/card`) sits under Cards, where its link in
+ * The tab a path belongs to. A card's own page (`/card`) sits under Cards, where its link in
  * the registry leads from; every purchase list page (`/list/new`, `/list/draft`, `/list/reply`,
  * `/list/view`) sits under Home, where a list starts and waits. One trailing slash is ignored,
  * so `/cards/` is still Cards.
@@ -29,7 +30,6 @@ export const TABS: readonly (readonly [
 export function currentTab(path: string): Tab | null {
 	const bare = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 	if (bare === "/card") return "cards";
-	if (bare === "/pay") return "transactions";
 	if (bare.startsWith("/list/")) return "home";
 	return TABS.find(([, tabPath]) => tabPath === bare)?.[0] ?? null;
 }
@@ -56,7 +56,7 @@ const tabLink = (
 
 /**
  * Renders the header into `#site-header`, and the bottom tab bar and the floating Payment
- * button into `#tabbar`. Both navs are always in the document; the stylesheet shows the bottom
+ * button into `#tabbar`. The button opens the payment sheet over the page (`openPayment`). Both navs are always in the document; the stylesheet shows the bottom
  * bar on a phone and the header tabs from 900px, so the current page is marked in both. The
  * header date carries both of its forms, and the stylesheet shows one per screen size.
  */
@@ -107,13 +107,15 @@ export function renderShell(
 			html`<nav class="tabbar" aria-label=${t("nav.pages")}>
 					${TABS.map(tab)}
 				</nav>
-				<a
+				<button
+					type="button"
 					class="fab"
 					data-action="pay"
-					href="/pay"
 					aria-label=${t("nav.payment")}
-					>${icons.plus}<span class="fab__label">${t("nav.payment")}</span></a
-				>`,
+					@click=${() => openPayment()}
+				>
+					${icons.plus}<span class="fab__label">${t("nav.payment")}</span>
+				</button>`,
 			tabbar,
 		);
 	}

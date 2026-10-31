@@ -46,15 +46,44 @@ const type = async (
 };
 const submitText = (el: HTMLElement) => flat(q(el, 'button[type="submit"]'));
 
-test("shows the card, figures and a Change link", async () => {
+test("shows the card by name, its figures, and Change asks for the picker", async () => {
 	const el = await mount();
-	expect(
-		q<HTMLAnchorElement>(el, '[data-action="change"]')?.getAttribute("href"),
-	).toBe("/pay");
-	expect(flat(el.shadowRoot?.querySelector(".card"))).toContain(
-		"A) Alpha (1234)",
+	expect(flat(q(el, ".paycard b"))).toBe("Alpha");
+	expect(flat(q(el, ".paycard .card-meta"))).toBe("[A] · 1234");
+	expect(q(el, ".paycard .mini[data-big]")).not.toBeNull();
+	expect(flat(q(el, '[data-stat="owed"]'))).toBe("Owed ฿500.00");
+	expect(flat(q(el, '[data-stat="bill"]'))).toBe("Next bill ฿300.00");
+	expect(flat(q(el, '[data-stat="credit"]'))).toBe("Credit ฿0.00");
+	expect(q(el, '[data-stat="bill"] b')?.hasAttribute("data-overdue")).toBe(
+		false,
 	);
-	expect(flat(q(el, "dl"))).toContain("฿500.00");
+	let changes = 0;
+	el.addEventListener("change", () => changes++);
+	q<HTMLElement>(el, '[data-action="change"]')?.click();
+	expect(changes).toBe(1);
+	expect(flat(q(el, ".hint"))).toBe(
+		"Any day of the month. A later date saves it as a plan.",
+	);
+});
+
+test("an overdue bill is marked, and no bill reads as a dash", async () => {
+	const late = await mount({
+		owed: 500_00,
+		credit: 0,
+		nextBill: 300_00,
+		overdue: true,
+	});
+	expect(q(late, '[data-stat="bill"] b')?.hasAttribute("data-overdue")).toBe(
+		true,
+	);
+	const none = await mount({
+		owed: 0,
+		credit: 20_00,
+		nextBill: 0,
+		overdue: false,
+	});
+	expect(flat(q(none, '[data-stat="bill"]'))).toBe("Next bill —");
+	expect(q(none, ".chips")).toBeNull();
 });
 
 test("the button asks for an amount until there is one", async () => {
@@ -68,7 +97,7 @@ test("the button asks for an amount until there is one", async () => {
 		true,
 	);
 	await type(el, "amount", "120.5");
-	expect(submitText(el)).toBe("Record ฿120.50 to A");
+	expect(submitText(el)).toBe("Record ฿120.50 to Alpha");
 	expect(q<HTMLButtonElement>(el, 'button[type="submit"]')?.disabled).toBe(
 		false,
 	);
@@ -77,7 +106,7 @@ test("the button asks for an amount until there is one", async () => {
 test("a later date plans the payment", async () => {
 	const el = await mount(undefined, "100");
 	await type(el, "date", "2026-11-05");
-	expect(submitText(el)).toBe("Plan ฿100.00 to A on 05 Nov 2026");
+	expect(submitText(el)).toBe("Plan ฿100.00 to Alpha on 05 Nov 2026");
 	expect(flat(q(el, '[data-note="plan"]'))).toBe(
 		"Planned for 05 Nov 2026. It shows under Upcoming and counts once you mark it paid.",
 	);
@@ -92,12 +121,17 @@ test("chips fill the amount; the owed chip only shows when it differs", async ()
 	const el = await mount();
 	expect(flat(q(el, '[data-chip="bill"]'))).toBe("Next bill · ฿300.00");
 	expect(flat(q(el, '[data-chip="owed"]'))).toBe("Everything owed · ฿500.00");
+	const pressed = (chip: string) =>
+		q(el, `[data-chip="${chip}"]`)?.getAttribute("aria-pressed");
+	expect([pressed("bill"), pressed("owed")]).toEqual(["false", "false"]);
 	q<HTMLElement>(el, '[data-chip="owed"]')?.click();
 	await el.updateComplete;
 	expect(q<HTMLInputElement>(el, '[name="amount"]')?.value).toBe("500");
+	expect([pressed("bill"), pressed("owed")]).toEqual(["false", "true"]);
 	q<HTMLElement>(el, '[data-chip="bill"]')?.click();
 	await el.updateComplete;
 	expect(q<HTMLInputElement>(el, '[name="amount"]')?.value).toBe("300");
+	expect([pressed("bill"), pressed("owed")]).toEqual(["true", "false"]);
 
 	const same = await mount({
 		owed: 300_00,
@@ -114,7 +148,7 @@ test("the extra note shows only above what is owed", async () => {
 	expect(q(el, '[data-note="extra"]')).toBeNull();
 	await type(el, "amount", "650");
 	expect(flat(q(el, '[data-note="extra"]'))).toBe(
-		"฿150.00 more than owed. It stays on A as credit for its next purchases.",
+		"฿150.00 more than owed. It stays on Alpha as credit for its next purchases.",
 	);
 });
 

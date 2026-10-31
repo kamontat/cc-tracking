@@ -50,10 +50,65 @@ export class CcModal extends LitElement {
 				font-size: var(--cc-text-lg);
 				font-weight: 600;
 			}
+
+			.grab {
+				display: none;
+			}
+
+			/* A sheet: on a phone it rises from the bottom edge, the screen's full width, with a
+			   grab handle; from 900px it is a centred dialog the sheet's width. */
+			:host([sheet]) dialog {
+				inline-size: 100%;
+				max-inline-size: 100%;
+				max-block-size: calc(100dvh - var(--cc-space-7));
+				margin: auto 0 0;
+				background: var(--cc-bg);
+				border: 0;
+				border-radius: var(--cc-radius-md) var(--cc-radius-md) 0 0;
+			}
+
+			:host([sheet]) .body {
+				gap: var(--cc-space-4);
+				padding: var(--cc-space-2) var(--cc-space-4)
+					calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+			}
+
+			:host([sheet]) .grab {
+				display: block;
+				align-self: center;
+				inline-size: calc(var(--cc-space-7) - var(--cc-space-1));
+				block-size: var(--cc-space-1);
+				background: var(--cc-border);
+				border-radius: var(--cc-radius-pill);
+			}
+
+			:host([sheet]) h2 {
+				font-weight: 700;
+			}
+
+			@media (min-width: 900px) {
+				:host([sheet]) dialog {
+					inline-size: min(100% - 2 * var(--cc-space-4), var(--cc-sheet-max));
+					max-block-size: calc(100dvh - 2 * var(--cc-space-4));
+					margin: auto;
+					border-radius: var(--cc-radius-md);
+					box-shadow: var(--cc-shadow-lg);
+				}
+
+				:host([sheet]) .body {
+					padding: var(--cc-space-4) var(--cc-space-4) var(--cc-space-5);
+				}
+
+				:host([sheet]) .grab {
+					display: none;
+				}
+			}
 		`,
 	];
 
 	@property() heading = "";
+	/** Draw as a sheet (bottom sheet on a phone, centred from 900px) with a worded Close. */
+	@property({ type: Boolean, reflect: true }) sheet = false;
 
 	@query("dialog") private dialog!: HTMLDialogElement;
 
@@ -104,10 +159,16 @@ export class CcModal extends LitElement {
 				}}
 			>
 				<div class="body">
+					<span class="grab" aria-hidden="true"></span>
 					<header>
 						<h2 id="heading">${this.heading}</h2>
-						<button type="button" data-variant="quiet" data-action="close"
-							aria-label=${t("common.close")} @click=${() => this.requestClose()}>×</button>
+						${
+							this.sheet
+								? html`<button type="button" data-variant="quiet" data-action="close"
+										@click=${() => this.requestClose()}>${t("common.close")}</button>`
+								: html`<button type="button" data-variant="quiet" data-action="close"
+										aria-label=${t("common.close")} @click=${() => this.requestClose()}>×</button>`
+						}
 					</header>
 					<slot></slot>
 				</div>

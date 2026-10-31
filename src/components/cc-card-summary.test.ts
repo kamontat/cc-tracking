@@ -66,7 +66,7 @@ type Props = {
 	owed: number;
 	credit: number;
 	next: LedgerStatement | null;
-	payHref: string;
+	payCardId: string;
 	today: string;
 };
 
@@ -80,7 +80,7 @@ const mount = async (overrides: Partial<Props> = {}) => {
 		credit: 0,
 		// 2026-08 closes 18 Aug, due 02 Sep; today is 2026-08-30, so due soon.
 		next: stmt("2026-08", [purchase]),
-		payHref: "/pay?card=kbank",
+		payCardId: "kbank",
 		today: "2026-08-30",
 		...overrides,
 	});
@@ -176,13 +176,18 @@ test("shows credit only when the card holds some", async () => {
 	);
 });
 
-test("links to the payment form for this card", async () => {
+test("Make a payment opens the payment sheet on this card", async () => {
 	const element = await mount();
-	const link = element.shadowRoot?.querySelector<HTMLAnchorElement>(
-		'a[data-action="pay"]',
+	const button = element.shadowRoot?.querySelector<HTMLButtonElement>(
+		'button[data-action="pay"]',
 	);
-	expect(link?.getAttribute("href")).toBe("/pay?card=kbank");
-	expect(link?.textContent).toBe("Make a payment");
+	expect(button?.textContent).toBe("Make a payment");
+	const asked: unknown[] = [];
+	const listen = (event: Event) => asked.push((event as CustomEvent).detail);
+	document.addEventListener("cc:pay", listen);
+	button?.click();
+	document.removeEventListener("cc:pay", listen);
+	expect(asked).toEqual([{ cardId: "kbank" }]);
 });
 
 test("renders in the chosen language", async () => {

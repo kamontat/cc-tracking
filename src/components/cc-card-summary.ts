@@ -8,7 +8,8 @@ import type { GroupRoom } from "#lib/domain/room";
 import type { LedgerStatement, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { base, usageBar } from "#styles/shared";
+import { openPayment } from "#lib/ui/pay-sheet";
+import { base, controls, usageBar } from "#styles/shared";
 
 /**
  * The three answers someone opens a card's page for, above its history: how much room is
@@ -19,6 +20,7 @@ import { base, usageBar } from "#styles/shared";
 export class CcCardSummary extends LitElement {
 	static override styles = [
 		base,
+		controls,
 		usageBar,
 		css`
 			:host {
@@ -92,8 +94,8 @@ export class CcCardSummary extends LitElement {
 	@property({ attribute: false }) credit = 0;
 	/** The oldest closed statement still owing, from `nextBill`. */
 	@property({ attribute: false }) next: LedgerStatement | null = null;
-	/** Where the Make a payment link goes; empty for no link. */
-	@property() payHref = "";
+	/** The card *Make a payment* opens the payment sheet on; empty for no button. */
+	@property() payCardId = "";
 	@property() today: PlainDate = "";
 
 	constructor() {
@@ -156,8 +158,9 @@ export class CcCardSummary extends LitElement {
 						: nothing
 				}
 				${
-					this.payHref
-						? html`<a data-action="pay" href=${this.payHref}>${t("card.summary.pay")}</a>`
+					this.payCardId
+						? html`<button type="button" data-variant="quiet" data-action="pay"
+								@click=${() => openPayment({ cardId: this.payCardId })}>${t("card.summary.pay")}</button>`
 						: nothing
 				}
 			</section>

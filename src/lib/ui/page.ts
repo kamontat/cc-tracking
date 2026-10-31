@@ -7,6 +7,7 @@ import { migrateLocations } from "#lib/storage/migrate-locations";
 import { migratePayments } from "#lib/storage/migrate-payments";
 import type { Repository } from "#lib/storage/repository";
 import { applyChrome } from "#lib/ui/chrome";
+import { mountPayHost } from "#lib/ui/pay-sheet";
 
 /**
  * Creates the repository once per page, reconciles any stored location the closed set no
@@ -84,5 +85,8 @@ export async function bootstrap(
 		return;
 	}
 
+	// The payment sheet sits closed on every page, so the floating Payment button and every
+	// other way to pay open it over the page (`openPayment`).
+	mountPayHost(repo);
 	render(repo);
 }

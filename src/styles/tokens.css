@@ -59,6 +59,10 @@
 	/* The widest a modal dialog grows: room for the card form's two columns of labelled inputs. */
 	--cc-modal-max: 40rem;
 
+	/* The payment sheet's width from 900px, where it becomes a centred dialog; on a phone it is
+	   a bottom sheet the screen's full width. */
+	--cc-sheet-max: 32.5rem;
+
 	/* The widest a page's content grows. */
 	--cc-page-width: 72rem;
 

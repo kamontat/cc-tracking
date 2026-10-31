@@ -4,6 +4,7 @@ import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { buildInfo, titleMark } from "#lib/ui/build-info";
 import { bootstrap } from "#lib/ui/page";
+import { openPayment } from "#lib/ui/pay-sheet";
 
 const mountNav = () => {
 	document.body.innerHTML = `
@@ -157,4 +158,20 @@ test("a failed payment conversion shows the banner, not the page", async () => {
 		"Could not update your saved payments. Nothing was lost. Reload to try again.",
 	);
 	expect(storage.getItem(PAYMENTS_MIGRATION_KEY)).toBeNull();
+});
+
+test("every page gets the payment sheet, which opens on a cc:pay event", async () => {
+	mountNav();
+	setLocale("en");
+	const storage = globalThis.localStorage;
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done");
+	const repo = new InMemoryRepository();
+	await bootstrap("title.cards", () => {}, { storage, createRepo: () => repo });
+	expect(document.querySelector("#pay-sheet")).not.toBeNull();
+	expect(document.querySelector("cc-modal")).toBeNull();
+	openPayment();
+	await new Promise((resolve) => setTimeout(resolve, 5));
+	expect(document.querySelector("cc-modal[sheet]")).not.toBeNull();
+	document.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
+	expect(document.querySelector("cc-modal")).toBeNull();
 });

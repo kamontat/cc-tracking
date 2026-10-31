@@ -235,7 +235,7 @@ export function renderCardPage(
 				.credit=${ledger?.credit ?? 0}
 				.next=${ledger ? nextBill(ledger, now) : null}
 				.today=${now}
-				payHref=${`/pay?card=${encodeURIComponent(current.id)}`}
+				payCardId=${current.id}
 			></cc-card-summary>
 		`;
 	};

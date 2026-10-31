@@ -8,11 +8,11 @@ import {
 	parseAmount,
 } from "#lib/domain/money";
 import { payPreview } from "#lib/domain/pay";
-import type { Card, PlainDate } from "#lib/domain/types";
+import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLabelHtml } from "#lib/ui/card-label";
-import { base, controls, panel } from "#styles/shared";
+import { cardMetaText, cardMini } from "#lib/ui/card-label";
+import { base, cardBits, controls } from "#styles/shared";
 
 export type PayDetail = {
 	/** Satang. */
@@ -36,15 +36,17 @@ const amountOf = (text: string): number | null => {
 };
 
 /**
- * The payment form for one card: the card and its figures, two shortcuts that fill the amount,
- * the amount and the date. A date after today plans the payment instead of recording it.
+ * The payment sheet's second step, for one card: the card with *Change*, its owed, next bill
+ * and credit, chips that fill the amount, the amount and the date. A date after today plans
+ * the payment instead of recording it. Emits `pay` with the amount and date, and `change` to go
+ * back to the card picker.
  */
 @customElement("cc-pay-form")
 export class CcPayForm extends LitElement {
 	static override styles = [
 		base,
 		controls,
-		panel,
+		cardBits,
 		css`
 			:host {
 				display: flex;
@@ -58,60 +60,136 @@ export class CcPayForm extends LitElement {
 				gap: var(--cc-space-3);
 			}
 
-			.card {
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-				justify-content: space-between;
-				gap: var(--cc-space-3);
-				font-size: var(--cc-text-2xl);
-				font-weight: 700;
-			}
-
-			.card a {
-				font-size: var(--cc-text-sm);
-				font-weight: 500;
-			}
-
-			dl {
+			.paycard {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(calc(var(--cc-space-7) * 2), 1fr));
+				grid-template-columns: auto minmax(0, 1fr) auto;
+				align-items: center;
 				gap: var(--cc-space-3);
+				padding: var(--cc-space-3);
+				line-height: 1.35;
+				background: var(--cc-surface);
+				border: calc(var(--cc-border-width) * 1.5) solid var(--cc-accent);
+				border-radius: var(--cc-radius-md);
 			}
 
-			dt {
+			.paycard .what {
+				display: flex;
+				flex-direction: column;
+				min-inline-size: 0;
+			}
+
+			.paycard .what b {
+				font-size: var(--cc-text-md);
+			}
+
+			.paycard .card-meta {
 				font-size: var(--cc-text-sm);
-				color: var(--cc-text-muted);
 			}
 
-			dd {
-				margin: 0;
+			.paycard button {
+				align-self: center;
+			}
+
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: var(--cc-space-2);
+			}
+
+			.stat {
+				gap: calc(var(--cc-space-1) * 0.75);
+				padding: var(--cc-space-2) var(--cc-space-3);
+				line-height: 1.3;
+				background: var(--cc-surface);
+				border: var(--cc-border-width) solid var(--cc-border);
+				border-radius: var(--cc-radius-sm);
+			}
+
+			.stat small {
+				font-size: var(--cc-text-xs);
 				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.06em;
+			}
+
+			.stat b {
+				font-size: var(--cc-text-md);
+				overflow-wrap: anywhere;
+			}
+
+			.stat b[data-overdue] {
+				color: var(--cc-danger);
 			}
 
 			.chips {
 				display: flex;
+				flex-direction: row;
 				flex-wrap: wrap;
 				gap: var(--cc-space-2);
 			}
 
 			.chips button[data-chip] {
+				padding: var(--cc-space-1) var(--cc-space-3);
+				font-weight: 400;
+				color: var(--cc-text);
+				background: var(--cc-surface-sunken);
+				border-color: transparent;
 				border-radius: var(--cc-radius-pill);
 			}
 
+			.chips button[data-chip]:hover {
+				background: var(--cc-border);
+			}
+
+			.chips button[data-chip][aria-pressed="true"] {
+				font-weight: 600;
+				color: var(--cc-success);
+				background: var(--cc-accent-surface);
+			}
+
+			.fields {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: var(--cc-space-3);
+			}
+
+			.fields input {
+				min-inline-size: 0;
+				padding: var(--cc-space-3);
+				border-radius: var(--cc-radius-sm);
+			}
+
 			.note {
-				padding: var(--cc-space-3) var(--cc-space-4);
+				padding: var(--cc-space-2) var(--cc-space-3);
+				font-size: var(--cc-text-sm);
 				border-radius: var(--cc-radius-sm);
 				background: var(--cc-surface-sunken);
 			}
 
+			.note[data-note="extra"] {
+				background: var(--cc-accent-surface);
+			}
+
 			button[type="submit"] {
 				align-self: stretch;
+				padding: var(--cc-space-3) var(--cc-space-4);
+				font-size: var(--cc-text-md);
+				font-weight: 650;
+				white-space: normal;
+				border-radius: var(--cc-radius-sm);
+			}
+
+			.hint {
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
+				text-align: center;
 			}
 		`,
 	];
 
 	@property({ attribute: false }) card: Card | null = null;
+	/** The stored limit groups, in order: the card's chip takes its group's colour. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
 	@property({ attribute: false }) figures: PayFigures = {
 		owed: 0,
 		credit: 0,
@@ -156,12 +234,18 @@ export class CcPayForm extends LitElement {
 		this.text = formatAmountInput(satang);
 	}
 
+	private chip(kind: "bill" | "owed", satang: number, label: string) {
+		return html`<button type="button" data-variant="quiet" data-chip=${kind}
+			aria-pressed=${amountOf(this.text) === satang ? "true" : "false"}
+			@click=${() => this.fill(satang)}>${label}</button>`;
+	}
+
 	override render() {
 		const card = this.card;
 		if (!card) return nothing;
 		const { owed, credit, nextBill, overdue } = this.figures;
 		const amount = amountOf(this.text);
-		const ready = amount !== null && isValidDate(this.date);
+		const ready = amount !== null && amount > 0 && isValidDate(this.date);
 		const preview =
 			ready && amount !== null
 				? payPreview(amount, this.date, owed, this.today)
@@ -172,61 +256,76 @@ export class CcPayForm extends LitElement {
 			submit = preview.plan
 				? t("pay.submit.plan", {
 						amount: formatAmount(amount),
-						card: card.id,
+						card: card.name,
 						date: displayDate(this.date, locale),
 					})
 				: t("pay.submit.record", {
 						amount: formatAmount(amount),
-						card: card.id,
+						card: card.name,
 					});
 		}
 		return html`
 			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
-			<div class="card">
-				<span>${cardLabelHtml(card.id, card)}</span>
-				<a data-action="change" href="/pay">${t("pay.change")}</a>
+			<div class="paycard">
+				${cardMini(card, this.groups, true)}
+				<span class="what"><b>${card.name}</b><small class="card-meta">${cardMetaText(card)}</small></span>
+				<button type="button" data-variant="quiet" data-action="change"
+					@click=${() => this.dispatchEvent(new CustomEvent("change"))}>${t("pay.change")}</button>
 			</div>
-			<dl>
-				<div><dt>${t("pay.owed")}</dt><dd data-numeric>${formatAmount(owed)}</dd></div>
-				<div><dt>${t("pay.nextBill")}</dt><dd data-numeric>${formatAmount(nextBill)}</dd></div>
-				<div><dt>${t("pay.credit")}</dt><dd data-numeric>${formatAmount(credit)}</dd></div>
-			</dl>
+			<div class="stats">
+				<div class="stat" data-stat="owed"><small>${t("pay.owed")}</small>
+					<b data-numeric>${formatAmount(owed)}</b></div>
+				<div class="stat" data-stat="bill"><small>${t("pay.nextBill")}</small>
+					<b data-numeric
+					?data-overdue=${overdue && nextBill > 0}>${nextBill > 0 ? formatAmount(nextBill) : t("common.none")}</b></div>
+				<div class="stat" data-stat="credit"><small>${t("pay.credit")}</small>
+					<b data-numeric>${formatAmount(credit)}</b></div>
+			</div>
 			<form @submit=${this.onSubmit}>
-				<div class="chips">
-					${
-						nextBill > 0
-							? html`<button type="button" data-variant="quiet" data-chip="bill"
-								@click=${() => this.fill(nextBill)}>${t(
-									overdue ? "pay.chip.overdue" : "pay.chip.bill",
-									{ amount: formatAmount(nextBill) },
-								)}</button>`
-							: nothing
-					}
-					${
-						owed > 0 && owed !== nextBill
-							? html`<button type="button" data-variant="quiet" data-chip="owed"
-								@click=${() => this.fill(owed)}>${t("pay.chip.owed", {
-									amount: formatAmount(owed),
-								})}</button>`
-							: nothing
-					}
+				${
+					nextBill > 0 || owed > 0
+						? html`<div class="chips">
+							${
+								nextBill > 0
+									? this.chip(
+											"bill",
+											nextBill,
+											t(overdue ? "pay.chip.overdue" : "pay.chip.bill", {
+												amount: formatAmount(nextBill),
+											}),
+										)
+									: nothing
+							}
+							${
+								owed > 0 && owed !== nextBill
+									? this.chip(
+											"owed",
+											owed,
+											t("pay.chip.owed", { amount: formatAmount(owed) }),
+										)
+									: nothing
+							}
+						</div>`
+						: nothing
+				}
+				<div class="fields">
+					<label>${t("pay.amount")}
+						<input name="amount" inputmode="decimal" .value=${this.text}
+							placeholder=${t("quickAdd.amountPlaceholder")}
+							@input=${(e: Event) => {
+								this.text = (e.target as HTMLInputElement).value;
+							}} /></label>
+					<label>${t("pay.date")}
+						<input name="date" type="date" .value=${this.date}
+							@input=${(e: Event) => {
+								this.date = (e.target as HTMLInputElement).value;
+							}} /></label>
 				</div>
-				<label>${t("pay.amount")}
-					<input name="amount" inputmode="decimal" .value=${this.text}
-						placeholder=${t("quickAdd.amountPlaceholder")}
-						@input=${(e: Event) => {
-							this.text = (e.target as HTMLInputElement).value;
-						}} /></label>
-				<label>${t("pay.date")}
-					<input name="date" type="date" .value=${this.date}
-						@input=${(e: Event) => {
-							this.date = (e.target as HTMLInputElement).value;
-						}} /></label>
 				${
 					preview && preview.extra > 0
 						? html`<p class="note" data-note="extra">${t("pay.note.extra", {
 								extra: formatAmount(preview.extra),
-								card: card.id,
+								card: card.name,
 							})}</p>`
 						: nothing
 				}
@@ -238,6 +337,7 @@ export class CcPayForm extends LitElement {
 						: nothing
 				}
 				<button type="submit" ?disabled=${!ready || this.busy}>${submit}</button>
+				<p class="hint">${t("pay.dateHint")}</p>
 			</form>
 		`;
 	}

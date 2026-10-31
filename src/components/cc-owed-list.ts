@@ -6,12 +6,13 @@ import type { OwedSort } from "#lib/domain/transactions";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { cardLabelHtml } from "#lib/ui/card-label";
+import { openPayment } from "#lib/ui/pay-sheet";
 import { payTag } from "#lib/ui/pay-tag";
 import { base, controls, listControls } from "#styles/shared";
 
 const SORTS: OwedSort[] = ["urgency", "card", "due", "left"];
 
-/** Every card that owes money or holds credit, each row opening its payment form. */
+/** Every card that owes money or holds credit, each row opening the payment sheet on it. */
 @customElement("cc-owed-list")
 export class CcOwedList extends LitElement {
 	static override styles = [
@@ -39,22 +40,30 @@ export class CcOwedList extends LitElement {
 				overflow: hidden;
 			}
 
-			a[data-card] {
+			button[data-card] {
 				display: flex;
 				flex-direction: row;
 				align-items: center;
+				align-self: stretch;
 				justify-content: space-between;
 				gap: var(--cc-space-3);
 				padding: var(--cc-space-3) var(--cc-panel-padding);
-				color: inherit;
-				text-decoration: none;
+				font-size: var(--cc-text-md);
+				font-weight: 400;
+				line-height: var(--cc-leading);
+				white-space: normal;
+				text-align: start;
+				color: var(--cc-text);
+				background: transparent;
+				border: 0;
+				border-radius: 0;
 			}
 
-			a[data-card] + a[data-card] {
+			button[data-card] + button[data-card] {
 				border-top: var(--cc-border-width) solid var(--cc-border);
 			}
 
-			a[data-card]:hover {
+			button[data-card]:hover {
 				background: var(--cc-surface-sunken);
 			}
 
@@ -112,14 +121,14 @@ export class CcOwedList extends LitElement {
 			</div>
 			<div class="list">${this.rows.map((row) => {
 				const tag = payTag(row);
-				return html`<a data-card=${row.card.id}
-					href=${`/pay?card=${encodeURIComponent(row.card.id)}`}>
+				return html`<button type="button" data-card=${row.card.id}
+					@click=${() => openPayment({ cardId: row.card.id })}>
 					<b>${cardLabelHtml(row.card.id, row.card)}</b>
 					<span class="figures">
 						<b data-numeric>${formatAmount(row.owed)}</b>
 						${tag ? html`<span class="tag" data-urgency=${tag.urgency}>${tag.text}</span>` : nothing}
 					</span>
-				</a>`;
+				</button>`;
 			})}</div>
 		`;
 	}

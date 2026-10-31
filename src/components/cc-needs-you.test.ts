@@ -69,9 +69,16 @@ test("each item opens its task", async () => {
 	]);
 	expect(found.map((e) => e.getAttribute("href"))).toEqual([
 		"/list/reply?id=w1",
-		"/pay?card=SCB%2FK&amount=4123000",
+		null,
 		"/list/draft?id=d1",
 	]);
+	const asked: unknown[] = [];
+	const listen = (event: Event) => asked.push((event as CustomEvent).detail);
+	document.addEventListener("cc:pay", listen);
+	(found[1] as HTMLElement).click();
+	document.removeEventListener("cc:pay", listen);
+	expect(found[1]?.tagName).toBe("BUTTON");
+	expect(asked).toEqual([{ cardId: "SCB/K", amount: 4123000 }]);
 	expect(text(found[0] as Element, "small")).toBe(
 		"List for Fri, 30 Oct · 3 cards · ฿39,300.00",
 	);

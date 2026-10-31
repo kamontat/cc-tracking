@@ -46,13 +46,17 @@ const mount = async (props: Partial<CcOwedList> = {}) => {
 	return { element, root: element.shadowRoot as ShadowRoot };
 };
 
-test("each row opens the payment page for its card", async () => {
+test("each row opens the payment sheet on its card", async () => {
 	const { root } = await mount();
-	const links = Array.from(root.querySelectorAll("a[data-card]"));
-	expect(links.map((a) => a.getAttribute("href"))).toEqual([
-		"/pay?card=A",
-		"/pay?card=B%2F2",
-	]);
+	const links = Array.from(
+		root.querySelectorAll<HTMLButtonElement>("button[data-card]"),
+	);
+	const asked: unknown[] = [];
+	const listen = (event: Event) => asked.push((event as CustomEvent).detail);
+	document.addEventListener("cc:pay", listen);
+	for (const link of links) link.click();
+	document.removeEventListener("cc:pay", listen);
+	expect(asked).toEqual([{ cardId: "A" }, { cardId: "B/2" }]);
 	expect(links[0]?.textContent).toContain("฿500.00");
 	expect(links[0]?.textContent).toContain("Overdue 3 days");
 	expect(links[1]?.textContent).toContain("Credit ฿120.00");

@@ -1,12 +1,17 @@
 import { afterEach, expect, test } from "bun:test";
 import { render } from "lit";
-import type { Card } from "#lib/domain/types";
+import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import {
+	cardIdTag,
 	cardLabel,
 	cardLabelHtml,
 	cardLabelsText,
 	cardLabelText,
+	cardMetaText,
+	cardMini,
+	cardNameHtml,
+	groupTone,
 } from "#lib/ui/card-label";
 
 afterEach(() => setLocale("en"));
@@ -50,4 +55,41 @@ test("the markup puts the last 4 in its own element", () => {
 
 	render(cardLabelHtml("A", undefined), host);
 	expect(host.querySelector(".last4")).toBeNull();
+});
+
+const groups: LimitGroup[] = [
+	{ id: "g1", name: "SCB", limit: 1 },
+	{ id: "g2", name: "UOB", limit: 1 },
+	{ id: "g3", name: "K", limit: 1 },
+	{ id: "g4", name: "B", limit: 1 },
+	{ id: "g5", name: "T", limit: 1 },
+];
+
+test("phase 4 names a card by its name, with the id in brackets and the last 4", () => {
+	expect(cardIdTag("SCB-K")).toBe("[SCB-K]");
+	expect(cardMetaText(card)).toBe("[10] · 4412");
+	const host = document.createElement("div");
+	render(cardNameHtml(card), host);
+	expect(host.querySelector(".card-name b")?.textContent).toBe("Card A10");
+	expect(host.querySelector(".card-meta")?.textContent).toBe("[10] · 4412");
+});
+
+test("a card's colour follows its group's place in the stored order, four colours round", () => {
+	expect(groupTone({ ...card, limitGroupId: "g1" }, groups)).toBe(1);
+	expect(groupTone({ ...card, limitGroupId: "g2" }, groups)).toBe(2);
+	expect(groupTone({ ...card, limitGroupId: "g5" }, groups)).toBe(1);
+	expect(groupTone({ ...card, limitGroupId: "nope" }, groups)).toBeNull();
+	expect(groupTone(card, groups)).toBeNull();
+});
+
+test("the mini chip shows the last 4 in the group's colour, hidden from readers", () => {
+	const host = document.createElement("div");
+	render(cardMini({ ...card, limitGroupId: "g2" }, groups, true), host);
+	const mini = host.querySelector(".mini");
+	expect(mini?.textContent).toBe("4412");
+	expect(mini?.getAttribute("data-g")).toBe("2");
+	expect(mini?.hasAttribute("data-big")).toBe(true);
+	expect(mini?.getAttribute("aria-hidden")).toBe("true");
+	render(cardMini(card, groups), host);
+	expect(host.querySelector(".mini")?.hasAttribute("data-g")).toBe(false);
 });

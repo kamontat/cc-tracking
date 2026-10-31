@@ -101,3 +101,16 @@ test("asks to be closed when the backdrop is clicked, but not when its content i
 	dialog(element).dispatchEvent(new MouseEvent("click", { bubbles: true }));
 	expect(seen).toHaveLength(1);
 });
+
+test("as a sheet it has a grab handle and a worded Close", async () => {
+	const element = await mount("Make a payment");
+	element.sheet = true;
+	await element.updateComplete;
+	expect(element.hasAttribute("sheet")).toBe(true);
+	expect(element.shadowRoot?.querySelector(".grab")).not.toBeNull();
+	const close = element.shadowRoot?.querySelector('[data-action="close"]');
+	expect(close?.textContent?.trim()).toBe("Close");
+	const seen = closes(element);
+	(close as HTMLButtonElement).click();
+	expect(seen).toHaveLength(1);
+});

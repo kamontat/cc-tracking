@@ -623,3 +623,98 @@ export const actionBarStyles = css`
 		align-self: center;
 	}
 `;
+
+/**
+ * The pieces phase 4 draws a card row from: `.mini`, the last-4 chip in the group's pastel
+ * (`cardMini` in card-label.ts, `data-g` 1 to 4, `data-big` for the payment sheet's card), the
+ * `.card-meta` beside a card's name, and `.tag`, a pill with a dot that carries a word as well
+ * as a colour (`data-urgency` from `payTag`).
+ */
+export const cardBits = css`
+	.mini {
+		display: inline-grid;
+		place-items: end start;
+		flex: none;
+		inline-size: calc(var(--cc-space-5) + var(--cc-space-3));
+		block-size: calc(var(--cc-space-5) + var(--cc-space-1) / 2);
+		padding: calc(var(--cc-space-1) / 2) var(--cc-space-1);
+		font-family: var(--cc-font-mono);
+		font-size: calc(var(--cc-text-xs) * 0.8);
+		font-weight: 700;
+		line-height: 1;
+		color: var(--cc-text-muted);
+		background: var(--cc-surface-sunken);
+		border-radius: var(--cc-radius-xs);
+	}
+
+	.mini[data-big] {
+		inline-size: calc(var(--cc-space-7) + var(--cc-space-1));
+		block-size: calc(var(--cc-space-5) + var(--cc-space-3) - var(--cc-space-1) / 2);
+		font-size: calc(var(--cc-text-xs) * 0.88);
+	}
+
+	.mini[data-g="1"] {
+		color: var(--cc-group-1-text);
+		background: var(--cc-group-1);
+	}
+
+	.mini[data-g="2"] {
+		color: var(--cc-group-2-text);
+		background: var(--cc-group-2);
+	}
+
+	.mini[data-g="3"] {
+		color: var(--cc-group-3-text);
+		background: var(--cc-group-3);
+	}
+
+	.mini[data-g="4"] {
+		color: var(--cc-group-4-text);
+		background: var(--cc-group-4);
+	}
+
+	.card-meta {
+		font-size: var(--cc-text-xs);
+		font-weight: 400;
+		color: var(--cc-text-muted);
+	}
+
+	.tag {
+		display: inline-flex;
+		flex-direction: row;
+		align-items: center;
+		align-self: flex-start;
+		gap: calc(var(--cc-space-1) * 1.25);
+		padding: 0 var(--cc-space-2);
+		font-size: var(--cc-text-xs);
+		font-weight: 650;
+		line-height: 1.6;
+		white-space: nowrap;
+		color: var(--cc-text-muted);
+		background: var(--cc-surface-sunken);
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.tag::before {
+		content: "";
+		inline-size: calc(var(--cc-space-1) * 1.5);
+		block-size: calc(var(--cc-space-1) * 1.5);
+		background: currentColor;
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.tag[data-urgency="overdue"] {
+		color: var(--cc-danger);
+		background: var(--cc-danger-surface);
+	}
+
+	.tag[data-urgency="soon"] {
+		color: var(--cc-warning);
+		background: var(--cc-warning-surface);
+	}
+
+	.tag[data-urgency="credit"] {
+		color: var(--cc-success);
+		background: var(--cc-accent-surface);
+	}
+`;
