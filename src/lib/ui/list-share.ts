@@ -9,6 +9,7 @@ import type {
 } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { getLocale, t } from "#lib/i18n/index";
+import { cardLabelText } from "#lib/ui/card-label";
 
 type Cells = [card: string, name: string, amount: string];
 
@@ -17,6 +18,8 @@ export type ShareTable = {
 	date: string;
 	headers: Cells;
 	rows: Cells[];
+	/** Each row's card as the copied text names it: `10) Card A10 (4412)`, or `10)` once gone. */
+	labels: string[];
 	total: [label: string, amount: string];
 };
 
@@ -31,6 +34,10 @@ export function shareTable(
 ): ShareTable {
 	const saved = list.status === "saved";
 	const byId = new Map(cards.map((card) => [card.id, card]));
+	const labels = list.lines.map((line) => {
+		const card = byId.get(line.cardId);
+		return card ? cardLabelText(line.cardId, card) : `${line.cardId})`;
+	});
 	const rows = list.lines.map((line): Cells => {
 		const card = byId.get(line.cardId);
 		const name = card ? `${card.name} (${card.last4})` : t("common.none");
@@ -54,6 +61,7 @@ export function shareTable(
 			t("purchaseList.column.amount"),
 		],
 		rows,
+		labels,
 		total: [
 			t(count === 1 ? "purchaseList.total.one" : "purchaseList.total.many", {
 				count,
@@ -63,12 +71,18 @@ export function shareTable(
 	};
 }
 
+/**
+ * The list as it reads pasted into a chat (LINE, WhatsApp, iMessage): no table, so nothing to
+ * line up in a proportional font. The heading, one line per card with its amount at the end,
+ * then the total, each part a blank line apart.
+ */
 export function shareText(table: ShareTable): string {
 	return [
 		`${table.title} · ${table.date}`,
-		table.headers.join(" | "),
-		...table.rows.map((row) => row.join(" | ")),
-		table.total.join(" | "),
+		"",
+		...table.rows.map((row, i) => `${table.labels[i]} — ${row[2]}`),
+		"",
+		table.total.join(" — "),
 	].join("\n");
 }
 

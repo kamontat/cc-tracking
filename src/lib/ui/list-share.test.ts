@@ -34,15 +34,16 @@ const list = {
 
 afterEach(() => setLocale("en"));
 
-test("the text follows the table", () => {
+test("the text reads as plain chat lines, one card each", () => {
 	setLocale("en");
 	expect(shareText(shareTable(list, cards))).toBe(
 		[
 			"Purchase list · Sat, 31 Oct 2026",
-			"Card | Name (last 4) | Amount",
-			"KB-F | KBank Fuel (4412) | ฿12,500.00",
-			"UOB-K | UOB Krabi (7765) | ฿4,800.00",
-			"Total · 2 cards | ฿17,300.00",
+			"",
+			"KB-F) KBank Fuel (4412) — ฿12,500.00",
+			"UOB-K) UOB Krabi (7765) — ฿4,800.00",
+			"",
+			"Total · 2 cards — ฿17,300.00",
 		].join("\n"),
 	);
 });
@@ -51,13 +52,17 @@ test("the text reads in Thai", () => {
 	setLocale("th");
 	const lines = shareText(shareTable(list, cards)).split("\n");
 	expect(lines[0]?.startsWith("ใบรายการซื้อ · ")).toBe(true);
-	expect(lines[1]).toBe("บัตร | ชื่อ (4 หลักท้าย) | จำนวนเงิน");
+	expect(lines[1]).toBe("");
+	expect(lines[2]).toBe("KB-F) KBank Fuel (4412) — ฿12,500.00");
+	expect(lines[5]).toBe("รวม · 2 ใบ — ฿17,300.00");
+	expect(shareText(shareTable(list, cards))).not.toContain("|");
 });
 
 test("a card no longer stored keeps its line", () => {
 	setLocale("en");
 	const table = shareTable(list, [cards[0] as Card]);
 	expect(table.rows[1]).toEqual(["UOB-K", "—", "฿4,800.00"]);
+	expect(shareText(table).split("\n")[3]).toBe("UOB-K) — ฿4,800.00");
 });
 
 test("images are named by the list date", () => {
@@ -138,10 +143,11 @@ test("a saved list totals only what was made, at the real amount", () => {
 	expect(shareText(shareTable(saved, cards))).toBe(
 		[
 			"Purchase list · Sat, 31 Oct 2026",
-			"Card | Name (last 4) | Amount",
-			"KB-F | KBank Fuel (4412) | ฿13,000.00",
-			"UOB-K | UOB Krabi (7765) | Not made",
-			"Total · 1 card | ฿13,000.00",
+			"",
+			"KB-F) KBank Fuel (4412) — ฿13,000.00",
+			"UOB-K) UOB Krabi (7765) — Not made",
+			"",
+			"Total · 1 card — ฿13,000.00",
 		].join("\n"),
 	);
 });
