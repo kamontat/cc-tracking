@@ -250,7 +250,9 @@ a:any-link:hover {
 	display: none;
 }
 
-/* While Home's selection bar shows, Payment steps aside so it never covers the bar. */
+/* Payment steps aside on the purchase list pages, where the reader is mid-list, and while
+   Home's selection bar shows, so it never covers a bottom bar. */
+:root[data-list-page] .fab:any-link,
 :root[data-selecting] .fab:any-link {
 	display: none;
 }

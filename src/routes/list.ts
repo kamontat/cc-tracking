@@ -92,6 +92,9 @@ export function renderListPage(
 	}: ListPageOptions = {},
 ): void {
 	const now = today(clock());
+	// The shell hides the floating Payment button on every list view: the reader is mid-list,
+	// and the bottom bars need the full width.
+	root.ownerDocument.documentElement.setAttribute("data-list-page", "");
 	let data: MoneyData | null = null;
 	let view: View = "loading";
 	// The stored draft being edited, if any; its id is kept and its own lines hold no room.

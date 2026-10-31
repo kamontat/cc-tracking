@@ -147,25 +147,13 @@ export class CcListAmounts extends LitElement {
 				align-items: center;
 				justify-content: space-between;
 				gap: var(--cc-space-3);
-				padding-block: var(--cc-space-3);
-				padding-inline: var(--cc-space-4)
-					calc(var(--cc-fab-size) + var(--cc-space-4) + var(--cc-space-4));
+				padding: var(--cc-space-3) var(--cc-space-4);
 				background: var(--cc-surface);
 				border: var(--cc-border-width) solid var(--cc-border);
 				border-radius: var(--cc-radius-md);
 				box-shadow: var(--cc-shadow-lg);
 			}
 
-			@media (min-width: 900px) {
-				.action-bar {
-					bottom: calc(
-						var(--cc-space-5) +
-						var(--cc-fab-size) +
-						var(--cc-space-3) +
-						env(safe-area-inset-bottom, 0px)
-					);
-				}
-			}
 
 			.summary {
 				font-size: var(--cc-text-sm);

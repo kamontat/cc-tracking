@@ -846,3 +846,24 @@ test("the side panel parks beside the lines from 900px", async () => {
 	);
 	expect(ruleBody(css, ".list-layout__side")).toContain("display: contents");
 });
+
+test("the list pages hide the floating Payment button", async () => {
+	document.documentElement.removeAttribute("data-list-page");
+	await setup();
+	expect(document.documentElement.hasAttribute("data-list-page")).toBe(true);
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(css).toMatch(
+		/:root\[data-list-page\] \.fab:any-link,\s*:root\[data-selecting\] \.fab:any-link\s*\{\s*display: none;/,
+	);
+});
+
+test("the list bottom bars reserve no room for the Payment button", async () => {
+	const { CcListAmounts } = await import("#components/cc-list-amounts");
+	const { CcListReply } = await import("#components/cc-list-reply");
+	for (const element of [CcListAmounts, CcListReply]) {
+		const css = (element.styles as { cssText: string }[])
+			.map((s) => s.cssText)
+			.join("\n");
+		expect(css).not.toContain("--cc-fab-size");
+	}
+});
