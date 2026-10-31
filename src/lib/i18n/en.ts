@@ -398,6 +398,12 @@ export const en = {
 	"purchaseList.addCard": "Add another card",
 	"purchaseList.noCards": "No cards on this list yet. Add one below.",
 	"purchaseList.total": "Total · {count} cards",
+	"purchaseList.title": "Purchase list",
+	"purchaseList.column.card": "Card",
+	"purchaseList.column.name": "Name (last 4)",
+	"purchaseList.column.amount": "Amount",
+	"purchaseList.error.image":
+		"Could not save the image. Use Copy text instead.",
 	"purchaseList.review": "Review",
 	"purchaseList.warn.lines.one": "1 line has warnings",
 	"purchaseList.warn.lines.many": "{count} lines have warnings",
