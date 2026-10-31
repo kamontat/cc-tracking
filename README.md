@@ -32,6 +32,17 @@ so About there reads as a development build with no build time.
   shows a bar at the bottom with how many are selected, *Clear*, and *Enter
   amounts*, which opens a new purchase list for those cards in the order they
   were ticked.
+- `/list` — a purchase list. `?card=<id>` (once per card) starts a new list for
+  those cards; `?id=<list id>` opens a stored one. Enter an amount per card and
+  the purchase date, with warnings that never block (over the group's room, room
+  held by lists waiting for the spender, a shared limit, an overdue bill, the
+  close date, a date that has passed). *Review* shows the dated table with *Copy
+  text* and *Save image* (on a phone that can share files, the image goes to the
+  share sheet; elsewhere it downloads), then *Mark as sent* or *Save as draft
+  instead*. A reopened draft names any card that can no longer take purchases
+  and leaves it out. A sent list opens the spender's reply: mark each line *Made*
+  or *Not made*, correct the real amount, optionally move the not-made lines to
+  a draft for the next day, and save; a saved list shows what was bought.
 - `/transactions` — a placeholder until the Transactions page arrives; the + and
   Payment buttons open it for now.
 - `/cards` — the card registry and the limit groups, each list searchable,
@@ -47,7 +58,9 @@ so About there reads as a development build with no build time.
 - `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
   paging. A month with no purchases in it starts collapsed, so a long run of
   unused months stays one line each. Each purchase can be edited in place (date,
-  amount and note; the card stays fixed) or deleted.
+  amount and note; the card stays fixed) or deleted. Its add/edit purchase
+  dialog stays until phase 5 of the redesign replaces the card page; new
+  purchases otherwise come from purchase lists.
 
 ## Which cards can take a purchase
 
@@ -122,8 +135,11 @@ next one.
 
 Everything lives in this browser's `localStorage`, under keys shaped like
 `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
-`cc:payment:<cardId>:<period>`, and `cc:limitgroup:<id>`, plus `cc:settings`
-for the purchase places. The old dashboard's `cc:batch-start` is no longer read
+`cc:payment:<cardId>:<period>`, `cc:limitgroup:<id>` and `cc:list:<id>` (a
+purchase list, with its lines and status), plus `cc:settings` for the purchase
+places. A purchase saved from a spender's reply takes the id `<list id>-<n>`
+instead of a uuid, and a draft moved from it `<list id>-<n>` too, so a retried
+save overwrites what a failed one wrote instead of doubling it. The old dashboard's `cc:batch-start` is no longer read
 or written; a leftover one stays until a reset in Settings clears it. Those shapes hold
 as written for an ordinary card id, date, and uuid; each segment is actually
 percent-encoded, so a card id containing `:` or other reserved characters
@@ -183,17 +199,19 @@ those statements. Money is likewise never translated or reformatted per locale;
 Text a user typed in — a card's name, its comment, a purchase's note — is never
 translated. Only the application's own wording comes from the catalog.
 
-One consequence of avoiding `Intl` is worth knowing: the location groups on the
-dashboard sort by plain UTF-16 code-unit order, not Thai collation, and the two can
-disagree. A Thai dictionary treats a leading vowel like เ as following the consonant
-it is pronounced with, not preceding it, so `เกา` ("to scratch") collates as if it
+One consequence of avoiding `Intl` is worth knowing: card ids, where Home breaks a tie
+between cards in *Ready to use* and *Needs you*, sort by plain UTF-16 code-unit order,
+not Thai collation, and the two can disagree. (Card and group names on `/cards` are
+compared with `Intl.Collator` instead, so this applies to ids only.)
+A Thai dictionary treats a leading vowel like เ as following the consonant it is
+pronounced with, not preceding it, so `เกา` ("to scratch") collates as if it
 were spelled starting with ก and sorts *before* `ขาว` ("white") — confirmed with
 `Intl.Collator("th")`. Plain code-unit order gets this backwards: เ's code point
 (`U+0E40`) is higher than every consonant's, so `เกา` sorts *after* `ขาว` instead.
-As it happens, the app's three actual locations — Bangkok, Phichit, and Krabi — land
-in the same order under both code-unit comparison and real Thai collation, so this
-gap is latent rather than visible in the UI today; it would only surface if a location
-were added whose name has this shape. This is a known, deliberate trade-off rather
+As it happens, card ids are short Latin codes (`KB-F`, `UOB-K`), which land in the
+same order under both code-unit comparison and real Thai collation, so this gap is
+latent rather than visible in the UI today; it would only surface for an id written
+in Thai with this shape. This is a known, deliberate trade-off rather
 than a bug: fixing it needs `Intl.Collator`, and using any `Intl` API on `th-TH` risks
 pulling in the same Buddhist-era year handling the date rendering above exists to
 avoid.
