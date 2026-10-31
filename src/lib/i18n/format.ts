@@ -29,7 +29,7 @@ const day = (value: number): string =>
 /**
  * How far `date` is from `from`, in words: "today", "in 9 days", "2 days ago".
  *
- * Deliberately neutral about what the date means. `due.overdue` reads "3 days overdue",
+ * Deliberately neutral about what the date means. `home.overdue.many` reads "3 days overdue",
  * which is right for a payment and wrong for a closing date, so a column that shows both
  * kinds of date needs wording that says only how far away the day is.
  */

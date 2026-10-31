@@ -55,7 +55,7 @@ a:any-link:hover {
 	align-items: center;
 	gap: var(--cc-space-3);
 	width: 100%;
-	max-width: 72rem;
+	max-width: var(--cc-page-width);
 	margin-inline: auto;
 	padding-block: var(--cc-space-3);
 	padding-inline: max(var(--cc-space-4), env(safe-area-inset-left, 0px))
@@ -250,6 +250,13 @@ a:any-link:hover {
 	display: none;
 }
 
+/* Payment steps aside on the purchase list pages, where the reader is mid-list, and while
+   Home's selection bar shows, so it never covers a bottom bar. */
+:root[data-list-page] .fab:any-link,
+:root[data-selecting] .fab:any-link {
+	display: none;
+}
+
 @media (min-width: 900px) {
 	.tabbar {
 		display: none;
@@ -333,7 +340,7 @@ a:any-link:hover {
 	flex-direction: column;
 	gap: var(--cc-space-5);
 	width: 100%;
-	max-width: 72rem;
+	max-width: var(--cc-page-width);
 	margin-inline: auto;
 	padding: var(--cc-space-5)
 		max(var(--cc-space-4), env(safe-area-inset-left, 0px))
@@ -344,6 +351,18 @@ a:any-link:hover {
 			var(--cc-space-5) +
 			env(safe-area-inset-bottom, 0px)
 		);
+}
+
+/* The purchase list: one column, kept narrow, until 900px gives it the page width and its
+   side panel (`.list-layout`). */
+.page--narrow {
+	max-width: var(--cc-page-narrow);
+}
+
+@media (min-width: 900px) {
+	.page--narrow {
+		max-width: var(--cc-page-width);
+	}
 }
 
 /* From 900px the bar is gone; the page clears only the floating button. */
@@ -380,33 +399,8 @@ a:any-link:hover {
 	font-weight: 600;
 }
 
-/* A dashboard panel the reader can fold away. The heading is the toggle, so it keeps its
-   size and weight and sits inline beside the disclosure marker. */
-.page details.panel,
-.page section.panel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-3);
-}
-
-/* A column of panels inside `.split`, such as the dashboard's form and its sitting list. */
-.split__column {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-5);
-}
-
-.page details.panel > summary {
-	cursor: pointer;
-}
-
-.page details.panel > summary > h2 {
-	display: inline;
-}
-
 .page > article,
-.page .split > article,
-.page .split__column > article {
+.page .split > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -659,11 +653,6 @@ a:any-link:hover {
 		align-items: start;
 	}
 
-	/* The dashboard's form is the narrow side; due list and spendable need the width. */
-	.split.split--workspace {
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-	}
-
 	.split > .split__aside {
 		position: sticky;
 		/* Must clear the sticky .site-header, which is --cc-header-height tall. */
@@ -813,4 +802,242 @@ a:any-link:hover {
 
 .page > a[data-action="to-cards"] {
 	align-self: flex-start;
+}
+
+/*
+ * Home's selection bar: what is ticked on the left, its actions on the right. It sticks to the
+ * bottom of the page as it scrolls, above the phone's tab bar. The floating Payment button is
+ * hidden while it shows (`:root[data-selecting]`), so the bar has the full width.
+ */
+.action-bar {
+	position: sticky;
+	bottom: calc(
+		var(--cc-tabbar-height) +
+		var(--cc-space-3) +
+		env(safe-area-inset-bottom, 0px)
+	);
+	z-index: 5;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-3) var(--cc-space-4);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-lg);
+}
+
+.action-bar__actions {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-2);
+}
+
+.action-bar__actions button {
+	align-self: center;
+}
+
+/* From 900px the tab bar is gone, so the bar sits near the bottom edge. */
+@media (min-width: 900px) {
+	.action-bar {
+		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+	}
+}
+
+/*
+ * A sub page's heading: a square back control, then the title with its detail. The control is
+ * a link to a page or a quiet button for a step inside one; both get the same target.
+ */
+.back-header {
+	align-items: center;
+	gap: var(--cc-space-3);
+}
+
+.back-header > [data-action="back"] {
+	display: grid;
+	place-items: center;
+	flex: none;
+	align-self: center;
+	inline-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
+	block-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
+	padding: 0;
+	color: var(--cc-text);
+	background: var(--cc-surface-sunken);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.back-header .icon {
+	inline-size: var(--cc-icon-size);
+	block-size: var(--cc-icon-size);
+}
+
+.back-header h1 {
+	display: grid;
+	min-width: 0;
+	line-height: 1.25;
+}
+
+/* The review's share buttons side by side, and how the last one went. */
+.list-share {
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+}
+
+.list-share button,
+.page button[data-action="mark-sent"] {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cc-space-2);
+}
+
+.list-share .icon,
+.page button[data-action="mark-sent"] .icon {
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+}
+
+/*
+ * The purchase list's views (review, saved; amounts and reply draw the same in their shadow
+ * roots, from `listLayout`). On a phone the side panel's pieces flow into the one column
+ * (`display: contents`), a `data-place="start"` piece above the lines and the rest below. From
+ * 900px the panel parks beside the lines, sticky under the header.
+ */
+.list-layout {
+	gap: var(--cc-space-5);
+}
+
+.list-layout__main {
+	gap: var(--cc-space-4);
+	min-width: 0;
+}
+
+.list-layout__side {
+	display: contents;
+}
+
+.list-layout [data-place="start"] {
+	order: -1;
+}
+
+@media (min-width: 900px) {
+	.list-layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
+		align-items: start;
+	}
+
+	.list-layout__side {
+		position: sticky;
+		top: calc(var(--cc-header-height) + var(--cc-space-4));
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-3);
+		padding: var(--cc-panel-padding);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+		box-shadow: var(--cc-shadow-sm);
+	}
+
+	.list-layout [data-place="start"] {
+		order: 0;
+	}
+
+	/* In the panel the actions fill its width, one under the other -- a page's own actions
+	   slotted into a list element's panel (Delete draft, Cancel list) too. */
+	.list-layout__side > button,
+	.list-layout__side .list-share button,
+	.page [slot="side"] {
+		align-self: stretch;
+		justify-content: center;
+	}
+
+	.list-layout__side .list-share {
+		flex-direction: column;
+	}
+}
+
+.list-layout .status {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-success);
+}
+
+.list-layout .status[data-failed] {
+	color: var(--cc-danger);
+}
+
+/* Empty, the live region is taken out of the column's flow and clipped from sight, but never
+   `display: none`: a screen reader only announces changes to a region it already knows, so a
+   hidden one would swallow the first message. */
+.list-layout .status:empty {
+	position: absolute;
+	clip-path: inset(50%);
+}
+
+.page > .note,
+.list-layout .note {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}
+
+/* The saved list: a green summary, one row per line, and the link to the moved lines' draft. */
+.list-layout .note[data-tone="ok"] {
+	padding: var(--cc-space-3) var(--cc-space-4);
+	color: var(--cc-text);
+	background: var(--cc-accent-surface);
+	border-radius: var(--cc-radius-sm);
+}
+
+.saved-lines {
+	margin: 0;
+	padding: 0 var(--cc-space-4);
+	list-style: none;
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+}
+
+.saved-lines li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-3);
+	padding-block: var(--cc-space-3);
+}
+
+.saved-lines li + li {
+	border-top: var(--cc-border-width) solid var(--cc-border);
+}
+
+.saved-lines .what {
+	display: grid;
+	min-width: 0;
+}
+
+.saved-lines .amount {
+	font-variant-numeric: tabular-nums;
+}
+
+.saved-lines .tag {
+	padding: var(--cc-space-1) var(--cc-space-2);
+	font-size: var(--cc-text-xs);
+	font-weight: 600;
+	color: var(--cc-text-muted);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-pill);
+}
+
+.list-layout a[data-action="open-draft"] {
+	display: grid;
+	gap: var(--cc-space-1);
+	padding: var(--cc-space-3) var(--cc-space-4);
+	color: var(--cc-text);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
 }
