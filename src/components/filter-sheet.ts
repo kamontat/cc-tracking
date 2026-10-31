@@ -48,6 +48,8 @@ export type SheetFrame = {
 	onClear: () => void;
 	/** The draft to hand back on apply. */
 	detail: () => unknown;
+	/** The sheet's heading; *Filter and sort* when left out. */
+	title?: string;
 };
 
 /**
@@ -56,10 +58,10 @@ export type SheetFrame = {
  * `apply`, and the page takes the sheet away.
  */
 export function filterSheetFrame(
-	{ host, shown, showLabel, onClear, detail }: SheetFrame,
+	{ host, shown, showLabel, onClear, detail, title }: SheetFrame,
 	body: TemplateResult,
 ): TemplateResult {
-	return html`<cc-modal sheet heading=${t("tx.filter.title")}
+	return html`<cc-modal sheet heading=${title ?? t("tx.filter.title")}
 		@close=${(event: Event) => {
 			event.stopPropagation();
 			host.dispatchEvent(new CustomEvent("close"));

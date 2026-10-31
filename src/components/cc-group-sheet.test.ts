@@ -183,3 +183,17 @@ test("typing survives a language switch", async () => {
 		(root.querySelector("input[name=name]") as HTMLInputElement).value,
 	).toBe("Draft");
 });
+
+test("a reload of the same group keeps the typing; another group resets it", async () => {
+	const { element, root } = await mount({ group: scb });
+	await type(element, "name", "Typed");
+	element.group = { ...scb };
+	element.error = "Disk full";
+	await element.updateComplete;
+	const name = () =>
+		(root.querySelector("input[name=name]") as HTMLInputElement).value;
+	expect(name()).toBe("Typed");
+	element.group = { ...scb, id: "g2", name: "Other" };
+	await element.updateComplete;
+	expect(name()).toBe("Other");
+});

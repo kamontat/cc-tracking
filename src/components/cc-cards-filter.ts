@@ -1,4 +1,4 @@
-import { html, LitElement, type PropertyValues } from "lit";
+import { css, html, LitElement, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import {
 	CARDS_SORTS,
@@ -26,12 +26,66 @@ export const cardsSortLabel = (sort: CardsSort): string => t(SORT_KEYS[sort]);
 
 /**
  * The Cards page's filter sheet, drawn like Transactions' (`filterSheet`): *Kept in*, *Account
- * holder* and *Sort*, then *Clear all* and *Show N cards*. A draft of the view that only the
+ * holder* and *Sort by* (a radio list), under the heading *Filter cards*, then *Clear all* and
+ * *Show N cards*. A draft of the view that only the
  * apply button hands back (`apply`, the whole view), counted live by `count`.
  */
 @customElement("cc-cards-filter")
 export class CcCardsFilter extends LitElement {
-	static override styles = [base, controls, filterSheet];
+	static override styles = [
+		base,
+		controls,
+		filterSheet,
+		css`
+			/* The sort as a radio list (the prototype's filter sheet): one row per sort on a panel,
+			   its words on the left and the radio mark on the right. */
+			.set {
+				display: flex;
+				flex-direction: column;
+				padding: 0 var(--cc-space-4);
+				background: var(--cc-surface);
+				border: var(--cc-border-width) solid var(--cc-border);
+				border-radius: var(--cc-radius-md);
+			}
+
+			.set > label {
+				display: flex;
+				flex-direction: row;
+				align-items: center;
+				justify-content: space-between;
+				gap: var(--cc-space-3);
+				padding: var(--cc-space-3) 0;
+				color: var(--cc-text);
+				cursor: pointer;
+			}
+
+			.set > label + label {
+				border-top: var(--cc-border-width) solid var(--cc-border);
+			}
+
+			.set input[type="radio"] {
+				flex: none;
+				inline-size: var(--cc-space-5);
+				block-size: var(--cc-space-5);
+				margin: 0;
+				appearance: none;
+				cursor: pointer;
+				background: var(--cc-surface);
+				border: calc(var(--cc-border-width) * 2) solid var(--cc-border);
+				border-radius: var(--cc-radius-pill);
+			}
+
+			.set input[type="radio"]:checked {
+				border: var(--cc-space-2) solid var(--cc-accent);
+			}
+
+			@media (forced-colors: active) {
+				.set input[type="radio"] {
+					appearance: auto;
+				}
+			}
+		`,
+	];
 
 	@property({ attribute: false }) view: CardsView = DEFAULT_CARDS_VIEW;
 	/** The places to offer, in order. */
@@ -70,6 +124,7 @@ export class CcCardsFilter extends LitElement {
 					this.draft = { ...DEFAULT_CARDS_VIEW, q: draft.q };
 				},
 				detail: () => ({ ...this.draft }),
+				title: t("cards.filter.title"),
 			},
 			html`
 			<fieldset>
@@ -93,15 +148,11 @@ export class CcCardsFilter extends LitElement {
 				)}</div>
 			</fieldset>
 			<fieldset>
-				<legend>${t("tx.filter.sort")}</legend>
-				<div class="choices">${CARDS_SORTS.map((sort) =>
-					sheetChip(
-						"sort",
-						sort,
-						cardsSortLabel(sort),
-						draft.sort === sort,
-						() => this.set({ sort }),
-					),
+				<legend id="sort-legend">${t("cards.filter.sortBy")}</legend>
+				<div class="set" role="radiogroup" aria-labelledby="sort-legend">${CARDS_SORTS.map(
+					(sort) => html`<label><span>${cardsSortLabel(sort)}</span><input
+						type="radio" name="sort" value=${sort} .checked=${draft.sort === sort}
+						@change=${() => this.set({ sort })} /></label>`,
 				)}</div>
 			</fieldset>
 			`,

@@ -57,7 +57,7 @@ export class CcGroupPanels extends LitElement {
 				display: flex;
 				flex-direction: column;
 				align-items: stretch;
-				gap: calc(var(--cc-space-1) * 1.5);
+				gap: var(--cc-space-2);
 				inline-size: 100%;
 				padding: var(--cc-space-3) var(--cc-space-4);
 				font: inherit;

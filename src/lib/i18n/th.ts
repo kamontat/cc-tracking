@@ -200,6 +200,8 @@ export const th: Catalog = {
 	"cards.searchPlaceholder": "ชื่อ รหัส เลขท้าย 4 หลัก หรือหมายเหตุ",
 	"cards.sort.name": "ชื่อ",
 	"cards.sort.closeDay": "วันสรุปยอด",
+	"cards.filter.title": "กรองบัตร",
+	"cards.filter.sortBy": "เรียงตาม",
 	"cards.sort.place": "ตามที่อยู่บัตร",
 	"cards.sort.room": "วงเงินเหลือมากสุด",
 	"cards.page.count.one": "1 ใบ",

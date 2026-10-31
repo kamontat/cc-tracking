@@ -122,6 +122,8 @@ export class CcGroupSheet extends LitElement {
 	@state() private asking = false;
 	// The catalog key, so a language switch re-renders the message in place.
 	@state() private errorKey: MessageKey | "" = "";
+	/** The id the fields were last filled from (`null` for a new group); unset before the first fill. */
+	private filledFor: string | null | undefined = undefined;
 	/** The button to focus once the delete swap has rendered. */
 	private refocus: string | null = null;
 
@@ -130,9 +132,17 @@ export class CcGroupSheet extends LitElement {
 		new LocaleController(this);
 	}
 
+	/**
+	 * Fills the fields from the group only when the sheet turns to another group (by id), so a
+	 * page that hands back a fresh copy of the same group -- a reload after a failed save --
+	 * keeps what was typed (UI-11).
+	 */
 	protected override willUpdate(changed: PropertyValues<this>) {
 		if (!changed.has("group")) return;
 		const group = this.group;
+		const id = group?.id ?? null;
+		if (id === this.filledFor) return;
+		this.filledFor = id;
 		this.name = group?.name ?? "";
 		this.limit = group ? formatAmountInput(group.limit) : "";
 		this.owner = group ? ownerOf(group) : null;

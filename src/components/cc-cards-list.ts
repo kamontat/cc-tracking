@@ -99,6 +99,8 @@ export class CcCardsList extends LitElement {
 			}
 
 			.empty {
+				padding: var(--cc-space-4);
+				color: var(--cc-text-muted);
 				text-align: center;
 				background: var(--cc-surface);
 				border: var(--cc-border-width) solid var(--cc-border);

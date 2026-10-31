@@ -28,12 +28,12 @@ const click = async (element: CcCardsFilter, selector: string) => {
 const text = (el: Element | null | undefined) =>
 	el?.textContent?.replace(/\s+/g, " ").trim() ?? "";
 
-test("offers Kept in, Account holder and Sort, counting cards live", async () => {
+test("offers Kept in, Account holder and Sort by, counting cards live", async () => {
 	const { element, root } = await mount();
 	expect([...root.querySelectorAll("legend")].map((l) => text(l))).toEqual([
 		"Kept in",
 		"Account holder",
-		"Sort",
+		"Sort by",
 	]);
 	expect(
 		[...root.querySelectorAll("[data-location]")].map((b) => text(b)),
@@ -41,12 +41,32 @@ test("offers Kept in, Account holder and Sort, counting cards live", async () =>
 	expect(
 		[...root.querySelectorAll("[data-owner]")].map((b) => text(b)),
 	).toEqual(["KC", "NT", "RI"]);
-	expect([...root.querySelectorAll("[data-sort]")].map((b) => text(b))).toEqual(
-		["By place", "Most room", "Name", "Close day"],
-	);
+	const group = root.querySelector("[role=radiogroup]");
+	expect(
+		[...(group?.querySelectorAll("label") ?? [])].map((b) => text(b)),
+	).toEqual(["By place", "Most room", "Name", "Close day"]);
+	expect(
+		[
+			...root.querySelectorAll<HTMLInputElement>(
+				"input[type=radio][name=sort]",
+			),
+		].map((r) => [r.value, r.checked]),
+	).toEqual([
+		["place", true],
+		["room", false],
+		["name", false],
+		["close", false],
+	]);
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 5 cards");
 	await click(element, "[data-owner=NT]");
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 4 cards");
+});
+
+test("the sheet is titled Filter cards", async () => {
+	const { root } = await mount();
+	expect(root.querySelector("cc-modal")?.getAttribute("heading")).toBe(
+		"Filter cards",
+	);
 });
 
 test("the route names the places", async () => {
@@ -77,12 +97,12 @@ test("apply emits the draft view", async () => {
 	});
 	await click(element, "[data-location=krabi]");
 	await click(element, "[data-owner=RI]");
-	await click(element, "[data-sort=room]");
+	await click(element, "input[name=sort][value=room]");
 	expect(
-		element.shadowRoot
-			?.querySelector("[data-sort=room]")
-			?.getAttribute("aria-pressed"),
-	).toBe("true");
+		element.shadowRoot?.querySelector<HTMLInputElement>(
+			"input[name=sort][value=room]",
+		)?.checked,
+	).toBe(true);
 	await click(element, "[data-action=apply]");
 	expect(detail).toEqual({
 		q: "kb",
