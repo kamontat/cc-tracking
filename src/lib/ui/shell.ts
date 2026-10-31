@@ -109,8 +109,7 @@ export function renderShell(
 			html`<nav class="tabbar" aria-label=${t("nav.pages")}>
 					${TABS.map(tab)}
 				</nav>
-				<cc-fab-menu class="fab-menu"></cc-fab-menu>
-				>`,
+				<cc-fab-menu class="fab-menu"></cc-fab-menu>`,
 			tabbar,
 		);
 	}

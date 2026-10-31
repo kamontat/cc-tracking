@@ -136,6 +136,18 @@ test("one floating + New menu, outside both navs", async () => {
 	expect(menu?.closest("#site-header")).toBeNull();
 });
 
+test("the tab bar holds no stray text beside the nav and the menu", () => {
+	mount();
+	renderShell(view());
+
+	const tabbar = document.querySelector("#tabbar");
+	const text = [...(tabbar?.childNodes ?? [])]
+		.filter((node) => node.nodeType === Node.TEXT_NODE)
+		.map((node) => node.textContent?.trim())
+		.filter(Boolean);
+	expect(text).toEqual([]);
+});
+
 test("the payment page marks the Transactions tab", () => {
 	mount();
 	renderShell(view({ path: "/pay" }));
