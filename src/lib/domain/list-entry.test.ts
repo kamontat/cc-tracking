@@ -107,6 +107,23 @@ describe("list entry", () => {
 		]);
 	});
 
+	test("a line keeps its note, trimmed; a blank note is not stored", () => {
+		expect(
+			listLines(
+				["A", "B", "C"],
+				{ A: 100, B: 200, C: 0 },
+				{
+					A: "  fuel for the van ",
+					B: "   ",
+					C: "dropped with its line",
+				},
+			),
+		).toEqual([
+			{ cardId: "A", amount: 100, note: "fuel for the van" },
+			{ cardId: "B", amount: 200 },
+		]);
+	});
+
 	test("a sent list carries its sent time", () => {
 		const base = {
 			id: "l",

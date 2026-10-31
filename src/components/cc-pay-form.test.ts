@@ -168,3 +168,23 @@ test("submitting sends the amount and date, and shows an error without losing ty
 	).toBe("Could not save the payment.");
 	expect(q<HTMLInputElement>(el, '[name="amount"]')?.value).toBe("120.50");
 });
+
+test("a figure may wrap only after the baht sign or a comma, never inside a group of digits", async () => {
+	const el = await mount({
+		owed: 143_903_96,
+		credit: 0,
+		nextBill: 0,
+		overdue: false,
+	});
+	const owed = q(el, '[data-stat="owed"] b');
+	expect(flat(owed)).toBe("฿143,903.96");
+	// Each <wbr> follows the sign or a comma.
+	expect(owed?.innerHTML.replace(/<!--[^>]*-->/g, "")).toBe(
+		"฿<wbr>143,<wbr>903.96",
+	);
+	const css = String(
+		(customElements.get("cc-pay-form") as unknown as { styles: unknown[] })
+			.styles,
+	);
+	expect(css).not.toContain("overflow-wrap: anywhere");
+});

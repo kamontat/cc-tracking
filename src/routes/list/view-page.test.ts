@@ -116,3 +116,21 @@ test("a list not yet saved leads to its own page", async () => {
 	);
 	expect(elsewhereLink(notSent.root)).toBe("/list/draft?id=d1");
 });
+
+test("a saved list shows each line's note", async () => {
+	const { root } = await setup("?id=s9", (repo) =>
+		repo.savePurchaseList({
+			id: "s9",
+			date: "2026-10-30",
+			status: "saved",
+			lines: [
+				{ cardId: "A", amount: 100, made: true, note: "van fuel" },
+				{ cardId: "B", amount: 200, made: false },
+			],
+		}),
+	);
+	expect(flatText(root.querySelector('[data-card="A"] .line-note'))).toBe(
+		"van fuel",
+	);
+	expect(root.querySelector('[data-card="B"] .line-note')).toBeNull();
+});

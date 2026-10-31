@@ -66,15 +66,22 @@ export function roomAfter(line: DraftLine, lines: DraftLine[]): number {
 	return line.room.room - total;
 }
 
-/** Lines with an amount above zero, in card order. */
+/** A line's note as stored: trimmed, and absent when blank. */
+export function withNote(line: ListLine, text: string | undefined): ListLine {
+	const note = text?.trim();
+	return note ? { ...line, note } : line;
+}
+
+/** Lines with an amount above zero, in card order, each with its note when one was typed. */
 export function listLines(
 	cardIds: string[],
 	amounts: Record<string, number>,
+	notes: Record<string, string> = {},
 ): ListLine[] {
 	const lines: ListLine[] = [];
 	for (const cardId of cardIds) {
 		const amount = amounts[cardId] ?? 0;
-		if (amount > 0) lines.push({ cardId, amount });
+		if (amount > 0) lines.push(withNote({ cardId, amount }, notes[cardId]));
 	}
 	return lines;
 }

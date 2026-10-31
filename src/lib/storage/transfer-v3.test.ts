@@ -409,6 +409,8 @@ describe("backup version 3", () => {
 		["a text actual", { actual: "100" }, "backup.problem.badLineActual"],
 		["a text made", { made: "yes" }, "backup.problem.badLineMade"],
 		["a numeric made", { made: 1 }, "backup.problem.badLineMade"],
+		["a numeric note", { note: 5 }, "backup.problem.badNote"],
+		["a null note", { note: null }, "backup.problem.badNote"],
 	];
 	for (const [name, patch, problem] of badLines) {
 		test(`rejects a list line with ${name}, naming the problem`, () => {
@@ -428,7 +430,8 @@ describe("backup version 3", () => {
 	test("accepts list lines with a positive actual and a boolean made", () => {
 		const lines = [
 			{ cardId: "kbank", amount: 1_000, made: true, actual: 900 },
-			{ cardId: "kbank", amount: 2_000, made: false },
+			{ cardId: "kbank", amount: 2_000, made: false, note: "next week" },
+			{ cardId: "kbank", amount: 3_000, note: "" },
 		];
 		const parsed = parseAnyBackup(
 			v3({ lists: [samplePurchaseList({ lines })] }),

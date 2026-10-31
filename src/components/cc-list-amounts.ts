@@ -126,6 +126,18 @@ export class CcListAmounts extends LitElement {
 				color: var(--cc-danger);
 			}
 
+			.line-note {
+				gap: var(--cc-space-1);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.line-note input {
+				min-inline-size: 0;
+				font-size: var(--cc-text-md);
+				color: var(--cc-text);
+			}
+
 			.note {
 				display: grid;
 				gap: var(--cc-space-2);
@@ -185,9 +197,12 @@ export class CcListAmounts extends LitElement {
 	@property() date: PlainDate = "";
 	/** Read once, as the starting amounts. */
 	@property({ attribute: false }) entries: Record<string, string> = {};
+	/** Read once, as the starting notes, by card. */
+	@property({ attribute: false }) notes: Record<string, string> = {};
 
 	// What the reader typed lives here, not in the inputs, so a re-render keeps it.
 	@state() private typed: Record<string, string> = {};
+	@state() private typedNotes: Record<string, string> = {};
 	@state() private dateText = "";
 	@state() private picking = false;
 	private started = false;
@@ -202,6 +217,7 @@ export class CcListAmounts extends LitElement {
 		if (!this.started) {
 			this.started = true;
 			this.typed = { ...this.entries };
+			this.typedNotes = { ...this.notes };
 			this.dateText = this.date;
 		}
 	}
@@ -229,7 +245,13 @@ export class CcListAmounts extends LitElement {
 		this.emit("entry-change", {
 			date: this.effectiveDate,
 			entries: { ...this.typed },
+			notes: { ...this.typedNotes },
 		});
+	}
+
+	private setNote(cardId: string, text: string) {
+		this.typedNotes = { ...this.typedNotes, [cardId]: text };
+		this.changed();
 	}
 
 	private setAmount(cardId: string, text: string) {
@@ -375,6 +397,12 @@ export class CcListAmounts extends LitElement {
 						<span>${t("purchaseList.roomAfter")}</span>
 						<b>${after}</b>
 					</div>
+					<label class="line-note">${t("purchaseList.noteLabel")}
+						<input data-field="note" placeholder=${t("purchaseList.notePlaceholder")}
+							.value=${live(this.typedNotes[card.id] ?? "")}
+							@input=${(e: Event) =>
+								this.setNote(card.id, (e.target as HTMLInputElement).value)} />
+					</label>
 					${line ? warnings.map((w) => this.warningNote(card, w, line)) : nothing}
 				</section>
 			`;
@@ -448,6 +476,7 @@ export class CcListAmounts extends LitElement {
 							lines: listLines(
 								this.cards.map((c) => c.id),
 								money,
+								this.typedNotes,
 							) satisfies ListLine[],
 						})}
 				>${t("purchaseList.review")} ›</button>

@@ -3,7 +3,7 @@ import { customElement, property, state } from "lit/decorators.js";
 import { ifDefined } from "lit/directives/if-defined.js";
 import { live } from "lit/directives/live.js";
 import { addDays, headerDate } from "#lib/domain/date";
-import { lineAmount } from "#lib/domain/list-entry";
+import { lineAmount, withNote } from "#lib/domain/list-entry";
 import { formatAmount, formatAmountInput } from "#lib/domain/money";
 import type {
 	Card,
@@ -22,8 +22,8 @@ import {
 	listLayout,
 } from "#styles/shared";
 
-/** One line's answer: unanswered, made or not, and the real amount as typed. */
-type Answer = { made: boolean | undefined; text: string };
+/** One line's answer: unanswered, made or not, the real amount and the note as typed. */
+type Answer = { made: boolean | undefined; text: string; note: string };
 
 /**
  * The spender's reply to a sent list: Made or Not made per line, with the real amount of a
@@ -108,6 +108,17 @@ export class CcListReply extends LitElement {
 				color: var(--cc-danger);
 			}
 
+			.line-note {
+				gap: var(--cc-space-1);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.line-note input {
+				min-inline-size: 0;
+				color: var(--cc-text);
+			}
+
 			/* The reply bar stacks its one button under the note, so it keeps a roomier padding. */
 			.action-bar {
 				display: grid;
@@ -151,6 +162,7 @@ export class CcListReply extends LitElement {
 			this.answers = this.list.lines.map((line) => ({
 				made: line.made,
 				text: formatAmountInput(line.actual ?? line.amount),
+				note: line.note ?? "",
 			}));
 		}
 	}
@@ -171,9 +183,11 @@ export class CcListReply extends LitElement {
 		const lines = this.list.lines.map((line, i): ListLine => {
 			const made = this.answers[i]?.made === true;
 			const real = this.real(i);
-			return made && real !== null && real !== line.amount
-				? { cardId: line.cardId, amount: line.amount, made, actual: real }
-				: { cardId: line.cardId, amount: line.amount, made };
+			const answered: ListLine =
+				made && real !== null && real !== line.amount
+					? { cardId: line.cardId, amount: line.amount, made, actual: real }
+					: { cardId: line.cardId, amount: line.amount, made };
+			return withNote(answered, this.answers[i]?.note);
 		});
 		this.dispatchEvent(
 			new CustomEvent("save-reply", {
@@ -185,7 +199,11 @@ export class CcListReply extends LitElement {
 	}
 
 	private section(line: ListLine, index: number, byId: Map<string, Card>) {
-		const answer = this.answers[index] ?? { made: undefined, text: "" };
+		const answer = this.answers[index] ?? {
+			made: undefined,
+			text: "",
+			note: "",
+		};
 		const real = this.real(index);
 		const diff = real === null ? 0 : real - line.amount;
 		const made = answer.made === true;
@@ -229,6 +247,14 @@ export class CcListReply extends LitElement {
 						`
 						: nothing
 				}
+				<label class="line-note">${t("purchaseList.noteLabel")}
+					<input data-field="note" placeholder=${t("purchaseList.notePlaceholder")}
+						.value=${live(answer.note)}
+						@input=${(e: Event) =>
+							this.setAnswer(index, {
+								note: (e.target as HTMLInputElement).value,
+							})} />
+				</label>
 			</section>
 		`;
 	}

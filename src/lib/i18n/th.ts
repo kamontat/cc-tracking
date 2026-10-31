@@ -495,6 +495,8 @@ export const th: Catalog = {
 	"ready.toSettings": "เลือกสถานที่ในหน้าตั้งค่า",
 	"purchaseList.date": "วันที่ซื้อ",
 	"purchaseList.amountFor": "จำนวนเงินของ {card}",
+	"purchaseList.noteLabel": "หมายเหตุ (ไม่บังคับ)",
+	"purchaseList.notePlaceholder": "เครื่องเขียนสำนักงาน",
 	"purchaseList.roomAfter": "วงเงินเหลือหลังซื้อ",
 	"purchaseList.remove": "เอาออก",
 	"purchaseList.addCard": "เพิ่มบัตรอีกใบ",

@@ -150,6 +150,8 @@ export type ListLine = {
 	made?: boolean;
 	/** Satang really spent, when it differs from the plan. */
 	actual?: number;
+	/** What the purchase is for, trimmed; absent when blank. Becomes the purchase's note. */
+	note?: string;
 };
 
 export type PurchaseList = {

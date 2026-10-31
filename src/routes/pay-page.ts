@@ -64,7 +64,8 @@ const markPayPage = (root: HTMLElement): void => {
  * `/pay?card=<id>` shows the picker with the payment sheet risen over it, the amount
  * prefilled from `&amount=<satang>` or else the card's next bill. Picking a card pushes its
  * address, so Back closes the sheet; closing the sheet (Close, Escape, the backdrop, *Change*)
- * rewrites the address without the card. A save leaves for Transactions by replacing this
+ * steps back over that pushed entry, or rewrites the address without the card when the page
+ * was opened at `?card=` directly. A save leaves for Transactions by replacing this
  * page in history; a failed one keeps the sheet and what was typed, with the reason.
  */
 export function renderPayPage(
@@ -81,6 +82,11 @@ export function renderPayPage(
 	let busy = false;
 	// A failed save's reason shows in the sheet it failed in, and goes when that sheet closes.
 	let saveFailed = false;
+	// Whether this page pushed the entry now showing (a pick, or Forward onto one): closing its
+	// sheet then steps back, so the picker is not in history twice. An address opened as it is
+	// (a link to `?card=`) is rewritten instead, since there is nothing of ours behind it.
+	let pushed = false;
+	let pickedOnce = false;
 	const sheetHost = root.ownerDocument.createElement("div");
 	sheetHost.id = "pay-sheet";
 
@@ -95,6 +101,12 @@ export function renderPayPage(
 	const close = () => {
 		if (busy) return;
 		saveFailed = false;
+		if (pushed) {
+			pushed = false;
+			// The pop that follows repaints without the card.
+			address.back();
+			return;
+		}
 		address.replace(payAddress());
 		paint();
 	};
@@ -173,6 +185,8 @@ export function renderPayPage(
 					.groups=${data.groups}
 					@pick=${(event: CustomEvent<PickDetail>) => {
 						saveFailed = false;
+						pushed = true;
+						pickedOnce = true;
 						address.push(payAddress({ cardId: event.detail.cardId }));
 						paint();
 					}}
@@ -187,6 +201,9 @@ export function renderPayPage(
 	address.onPop(() => {
 		if (busy) return;
 		saveFailed = false;
+		// Back onto the picker, or Forward onto a card entry only a pick could have made.
+		pushed =
+			pickedOnce && readPayAddress(address.search()).cardId !== undefined;
 		paint();
 	});
 	subscribe(() => paint());

@@ -493,6 +493,8 @@ export const en = {
 	"ready.toSettings": "Choose places in Settings",
 	"purchaseList.date": "Purchase date",
 	"purchaseList.amountFor": "Amount for {card}",
+	"purchaseList.noteLabel": "Note (optional)",
+	"purchaseList.notePlaceholder": "office supplies",
 	"purchaseList.roomAfter": "Room after",
 	"purchaseList.remove": "Remove",
 	"purchaseList.addCard": "Add another card",

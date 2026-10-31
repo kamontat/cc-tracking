@@ -49,7 +49,12 @@ const fakeBar = (start: string) => {
 			pop();
 		},
 	};
-	return { bar, calls, entries, now: () => entries[at] };
+	/** The browser's Forward. */
+	const forward = () => {
+		at = Math.min(entries.length - 1, at + 1);
+		pop();
+	};
+	return { bar, calls, entries, forward, now: () => entries[at] };
 };
 
 const withStatement = async (repo: Repository) => {
@@ -194,7 +199,39 @@ test("Close, Escape and Change take the card out of the address and leave the pi
 	inner<HTMLButtonElement>(form(), '[data-action="change"]')?.click();
 	await settle();
 	expect(modal()).toBeNull();
-	expect(address.calls.slice(-1)).toEqual(["replace /pay"]);
+	// The sheets after the first came from picks, so closing them steps back over the pick.
+	expect(address.calls.slice(-1)).toEqual(["back"]);
+	expect(address.now()).toBe("/pay");
+});
+
+test("closing a sheet the page pushed steps back, so the picker is in history once", async () => {
+	const { address } = await setup("/pay", withStatement);
+	(await pickerRows())[0]?.click();
+	await settle();
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
+	await settle();
+	expect(address.calls).toEqual(["push /pay?card=A", "back"]);
+	expect(modal()).toBeNull();
+	expect(address.now()).toBe("/pay");
+	// Forward onto the pushed entry reopens it, and closing it steps back again.
+	address.forward();
+	await settle();
+	expect(form()?.card?.id).toBe("A");
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
+	await settle();
+	expect(address.calls).toEqual(["push /pay?card=A", "back", "back"]);
+	expect(address.entries).toEqual(["/pay", "/pay?card=A"]);
+	expect(address.now()).toBe("/pay");
+	expect(modal()).toBeNull();
+});
+
+test("closing a sheet opened from a link at ?card= rewrites the address", async () => {
+	const { address } = await setup("/pay?card=A", withStatement);
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
+	await settle();
+	expect(address.calls).toEqual(["replace /pay"]);
+	expect(address.entries).toEqual(["/pay"]);
+	expect(modal()).toBeNull();
 });
 
 test("an unknown card says so above the picker and opens no sheet", async () => {

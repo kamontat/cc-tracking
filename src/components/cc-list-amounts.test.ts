@@ -361,3 +361,62 @@ test("no planned note when nothing is planned by then", async () => {
 	await type(element, root, "A", "60,000");
 	expect(line(root, "A").querySelector('[data-part="planned"]')).toBeNull();
 });
+
+const noteInput = (root: ParentNode, id: string) =>
+	line(root, id).querySelector('[data-field="note"]') as HTMLInputElement;
+
+const typeNote = async (
+	element: CcListAmounts,
+	root: ParentNode,
+	id: string,
+	text: string,
+) => {
+	const input = noteInput(root, id);
+	input.value = text;
+	input.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+	await element.updateComplete;
+};
+
+test("each line has an optional Note under its amount, sent with the entries and the review", async () => {
+	const { element, root } = await mount({ cards: [A, B] });
+	const changes = listen<{ notes: Record<string, string> }>(
+		element,
+		"entry-change",
+	);
+	const reviews = listen(element, "review");
+	const label = noteInput(root, "A").closest("label");
+	expect(flat(label)).toBe("Note (optional)");
+	// The note follows the amount in the line.
+	const fields = [...line(root, "A").querySelectorAll("[data-field]")].map(
+		(el) => (el as HTMLElement).dataset["field"],
+	);
+	expect(fields).toEqual(["amount", "note"]);
+	await type(element, root, "A", "100");
+	await type(element, root, "B", "50");
+	await typeNote(element, root, "A", " fuel ");
+	expect(changes.at(-1)?.notes).toEqual({ A: " fuel " });
+	reviewButton(root).click();
+	expect(reviews).toEqual([
+		{
+			date: "2026-10-31",
+			lines: [
+				{ cardId: "A", amount: 10000, note: "fuel" },
+				{ cardId: "B", amount: 5000 },
+			],
+		},
+	]);
+});
+
+test("starting notes show, and a language switch keeps a typed note", async () => {
+	const { element, root } = await mount({
+		cards: [A, B],
+		notes: { A: "office" },
+	});
+	expect(noteInput(root, "A").value).toBe("office");
+	await typeNote(element, root, "B", "van fuel");
+	setLocale("th");
+	await element.updateComplete;
+	expect(noteInput(root, "A").value).toBe("office");
+	expect(noteInput(root, "B").value).toBe("van fuel");
+	expect(flat(noteInput(root, "B").closest("label"))).toBe("หมายเหตุ (ไม่บังคับ)");
+});

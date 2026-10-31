@@ -37,6 +37,12 @@ const amountOf = (text: string): number | null => {
 	}
 };
 
+/** An amount that may wrap only after the baht sign or a comma, so no digit is left alone. */
+const figure = (satang: number) =>
+	formatAmount(satang)
+		.split(/(?<=[,฿])/)
+		.map((part, i) => (i === 0 ? part : html`<wbr>${part}`));
+
 /**
  * The payment sheet's second step, for one card: the card with *Change*, its owed, next bill
  * and credit, chips that fill the amount, the amount and the date. A date after today plans
@@ -110,9 +116,21 @@ export class CcPayForm extends LitElement {
 				letter-spacing: 0.06em;
 			}
 
+			/* A figure breaks only after the baht sign or a comma (figure()), never inside a group
+			   of digits; on a phone it also steps down a size, so it mostly keeps one line. */
 			.stat b {
 				font-size: var(--cc-text-md);
-				overflow-wrap: anywhere;
+				overflow-wrap: normal;
+			}
+
+			@media (max-width: 639px) {
+				.stat {
+					padding-inline: var(--cc-space-2);
+				}
+
+				.stat b {
+					font-size: var(--cc-text-sm);
+				}
 			}
 
 			.stat b[data-overdue] {
@@ -280,12 +298,12 @@ export class CcPayForm extends LitElement {
 			</div>
 			<div class="stats">
 				<div class="stat" data-stat="owed"><small>${t("pay.owed")}</small>
-					<b data-numeric>${formatAmount(owed)}</b></div>
+					<b data-numeric>${figure(owed)}</b></div>
 				<div class="stat" data-stat="bill"><small>${t("pay.nextBill")}</small>
 					<b data-numeric
-					?data-overdue=${overdue && nextBill > 0}>${nextBill > 0 ? formatAmount(nextBill) : t("common.none")}</b></div>
+					?data-overdue=${overdue && nextBill > 0}>${nextBill > 0 ? figure(nextBill) : t("common.none")}</b></div>
 				<div class="stat" data-stat="credit"><small>${t("pay.credit")}</small>
-					<b data-numeric>${formatAmount(credit)}</b></div>
+					<b data-numeric>${figure(credit)}</b></div>
 			</div>
 			<form @submit=${this.onSubmit}>
 				${

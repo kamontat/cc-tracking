@@ -70,7 +70,11 @@ export function renderSavedPage(
 									? html`<small>${t("reply.planned", { amount: formatAmount(line.amount) })}</small>`
 									: nothing;
 							return html`<li data-card=${line.cardId}>
-								<span class="what"><b>${cardPanel(line.cardId, byId.get(line.cardId), from.groups)}</b>${planned}</span>
+								<span class="what"><b>${cardPanel(line.cardId, byId.get(line.cardId), from.groups)}</b>${planned}${
+									line.note
+										? html`<small class="line-note">${line.note}</small>`
+										: nothing
+								}</span>
 								${
 									line.made
 										? html`<b class="amount">${formatAmount(real)}</b>`

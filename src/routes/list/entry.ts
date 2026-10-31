@@ -97,6 +97,7 @@ export function renderEntryPage(
 	let dropped: string[] = [];
 	let date: PlainDate = now;
 	let entries: Record<string, string> = {};
+	let notes: Record<string, string> = {};
 	let reviewed: { date: PlainDate; lines: ListLine[] } | null = null;
 	let status: ShareStatus | null = null;
 
@@ -125,9 +126,11 @@ export function renderEntryPage(
 		cardIds = onList.filter((c) => ready.has(c));
 		dropped = onList.filter((c) => !ready.has(c));
 		entries = {};
+		notes = {};
 		for (const line of list.lines) {
-			if (cardIds.includes(line.cardId))
-				entries[line.cardId] = formatAmountInput(line.amount);
+			if (!cardIds.includes(line.cardId)) continue;
+			entries[line.cardId] = formatAmountInput(line.amount);
+			if (line.note) notes[line.cardId] = line.note;
 		}
 		view = "amounts";
 	};
@@ -148,10 +151,15 @@ export function renderEntryPage(
 	};
 
 	const onEntryChange = (
-		event: CustomEvent<{ date: PlainDate; entries: Record<string, string> }>,
+		event: CustomEvent<{
+			date: PlainDate;
+			entries: Record<string, string>;
+			notes?: Record<string, string>;
+		}>,
 	) => {
 		date = event.detail.date;
 		entries = { ...event.detail.entries };
+		notes = { ...event.detail.notes };
 	};
 
 	const onReview = (event: CustomEvent<{ date: PlainDate }>) => {
@@ -160,7 +168,7 @@ export function renderEntryPage(
 		// card that was removed.
 		const amounts: Record<string, number> = {};
 		for (const id of cardIds) amounts[id] = lineAmount(entries[id] ?? "") ?? 0;
-		reviewed = { date, lines: listLines(cardIds, amounts) };
+		reviewed = { date, lines: listLines(cardIds, amounts, notes) };
 		show("review");
 	};
 
@@ -327,6 +335,7 @@ export function renderEntryPage(
 				.today=${now}
 				.date=${date}
 				.entries=${entries}
+				.notes=${notes}
 				@entry-change=${onEntryChange}
 				@review=${onReview}
 				@remove=${onRemove}

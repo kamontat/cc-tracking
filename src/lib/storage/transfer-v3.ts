@@ -211,6 +211,9 @@ function listProblem(value: unknown): MessageKey | null {
 		const actual = prop(line, "actual");
 		if (actual !== undefined && !isPositiveAmount(actual))
 			return "backup.problem.badLineActual";
+		const note = prop(line, "note");
+		if (note !== undefined && typeof note !== "string")
+			return "backup.problem.badNote";
 	}
 	return null;
 }

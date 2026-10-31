@@ -1340,6 +1340,11 @@ a:any-link:hover {
 	min-width: 0;
 }
 
+.saved-lines .line-note {
+	color: var(--cc-text-muted);
+	overflow-wrap: anywhere;
+}
+
 .saved-lines .amount {
 	font-variant-numeric: tabular-nums;
 }
