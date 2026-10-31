@@ -5,14 +5,15 @@ import { icons } from "#lib/ui/icons";
 /**
  * A sub page's heading: a back control, then the title with an optional detail under it. A
  * string `back` is a link to that address; a function is a button that runs it, for a step
- * inside one page.
+ * inside one page. `action` (an Edit link, say) sits at the header's end.
  */
 export function backHeader(options: {
 	title: string;
 	detail?: string;
 	back: string | (() => void);
+	action?: TemplateResult;
 }): TemplateResult {
-	const { title, detail, back } = options;
+	const { title, detail, back, action } = options;
 	const control =
 		typeof back === "string"
 			? html`<a data-action="back" href=${back} aria-label=${t("common.back")}
@@ -30,5 +31,6 @@ export function backHeader(options: {
 	return html`<div class="back-header" row>
 		${control}
 		<h1>${title}${detail ? html`<small>${detail}</small>` : nothing}</h1>
+		${action ? html`<div class="back-header__action">${action}</div>` : nothing}
 	</div>`;
 }

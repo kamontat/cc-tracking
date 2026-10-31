@@ -1,0 +1,244 @@
+import "#components/cc-error-banner";
+import "#components/cc-modal";
+import { css, html, LitElement, nothing, type PropertyValues } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import { isCloseDate } from "#lib/domain/cycle";
+import { compareDates, isValidDate } from "#lib/domain/date";
+import { formatAmountInput, parseAmount } from "#lib/domain/money";
+import type { Card, LimitGroup, PlainDate, Purchase } from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
+import { LocaleController } from "#lib/i18n/controller";
+import { t } from "#lib/i18n/index";
+import { cardPanel } from "#lib/ui/card-label";
+import { base, cardBits, controls } from "#styles/shared";
+
+const amountOf = (text: string): number | null => {
+	try {
+		return parseAmount(text);
+	} catch {
+		return null;
+	}
+};
+
+/**
+ * One saved purchase in a sheet over the card page: the card fixed and named (FR-21), then its
+ * date, amount and note, and *Save changes*. A date ahead of today or on the close day is warned
+ * about, not refused. Emits `save-purchase` with the purchase -- its id, card and `addedAt`
+ * kept -- and `close`. `error` says why a save failed; what was typed stays (UI-11).
+ */
+@customElement("cc-purchase-sheet")
+export class CcPurchaseSheet extends LitElement {
+	static override styles = [
+		base,
+		controls,
+		cardBits,
+		css`
+			:host {
+				display: contents;
+			}
+
+			form {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
+			}
+
+			.fixed {
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-1);
+			}
+
+			.fixed__label {
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.fixed .card-panel {
+				padding: var(--cc-space-3);
+				font-weight: 600;
+				background: var(--cc-surface);
+				border: var(--cc-border-width) solid var(--cc-border);
+				border-radius: var(--cc-radius-sm);
+			}
+
+			.fields {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: var(--cc-space-3);
+			}
+
+			.fields .wide {
+				grid-column: 1 / -1;
+			}
+
+			input {
+				min-inline-size: 0;
+				padding: var(--cc-space-3);
+				border-radius: var(--cc-radius-sm);
+			}
+
+			/* A caution, not a refusal. */
+			.warning {
+				padding: var(--cc-space-2) var(--cc-space-3);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-warning);
+				background: var(--cc-warning-surface);
+				border-radius: var(--cc-radius-sm);
+			}
+
+			button[type="submit"] {
+				padding: var(--cc-space-3) var(--cc-space-4);
+				font-size: var(--cc-text-md);
+				font-weight: 650;
+				border-radius: var(--cc-radius-sm);
+			}
+		`,
+	];
+
+	/** The card the purchase is on; it is shown, never picked. */
+	@property({ attribute: false }) card: Card | null = null;
+	/** Every stored group, for the card chip's pastel. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) purchase: Purchase | null = null;
+	@property() today: PlainDate = "";
+	/** Why the last save failed; typing is kept. */
+	@property() error = "";
+	/** A save is under way: the button waits and the sheet holds open. */
+	@property({ type: Boolean }) busy = false;
+
+	@state() private date: PlainDate = "";
+	@state() private amount = "";
+	@state() private note = "";
+	// The catalog key, so a language switch re-renders the message in place.
+	@state() private errorKey: MessageKey | "" = "";
+	/** The purchase id the fields were last filled from; unset before the first fill. */
+	private filledFor: string | undefined = undefined;
+
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
+
+	/**
+	 * Fills the fields only when the sheet turns to another purchase (by id), so a fresh copy of
+	 * the same purchase -- a reload after a failed save -- keeps what was typed.
+	 */
+	protected override willUpdate(changed: PropertyValues<this>) {
+		if (!changed.has("purchase")) return;
+		const purchase = this.purchase;
+		if (!purchase || purchase.id === this.filledFor) return;
+		this.filledFor = purchase.id;
+		this.date = purchase.date;
+		this.amount = formatAmountInput(purchase.amount);
+		this.note = purchase.note;
+		this.errorKey = "";
+	}
+
+	private get inFuture(): boolean {
+		return isValidDate(this.date) && compareDates(this.date, this.today) > 0;
+	}
+
+	private get onCloseDate(): boolean {
+		return (
+			this.card !== null &&
+			isValidDate(this.date) &&
+			isCloseDate(this.card.cycle, this.date)
+		);
+	}
+
+	private onSubmit(event: Event) {
+		event.preventDefault();
+		const purchase = this.purchase;
+		if (this.busy || !purchase) return;
+		const date = this.date.trim();
+		if (!isValidDate(date)) {
+			this.errorKey = "quickAdd.error.badDate";
+			return;
+		}
+		const amount = amountOf(this.amount.trim());
+		if (amount === null) {
+			this.errorKey = "quickAdd.error.badAmount";
+			return;
+		}
+		this.errorKey = "";
+		this.dispatchEvent(
+			new CustomEvent<Purchase>("save-purchase", {
+				detail: {
+					id: purchase.id,
+					cardId: purchase.cardId,
+					date,
+					amount,
+					note: this.note.trim(),
+					...(purchase.addedAt ? { addedAt: purchase.addedAt } : {}),
+				},
+			}),
+		);
+	}
+
+	private field(
+		name: "date" | "amount" | "note",
+		label: string,
+		extra: { type?: string; inputmode?: string; placeholder?: string } = {},
+	) {
+		return html`<label class=${name === "note" ? "wide" : ""}>${label}
+			<input name=${name} type=${extra.type ?? "text"}
+				inputmode=${extra.inputmode ?? nothing}
+				placeholder=${extra.placeholder ?? nothing}
+				autocomplete="off"
+				.value=${this[name]}
+				@input=${(e: Event) => {
+					this[name] = (e.target as HTMLInputElement).value;
+				}} /></label>`;
+	}
+
+	override render() {
+		const card = this.card;
+		return html`<cc-modal sheet .held=${this.busy}
+			heading=${t("card.purchase.edit")}
+			@close=${(event: Event) => {
+				event.stopPropagation();
+				this.dispatchEvent(new CustomEvent("close"));
+			}}>
+			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
+			<form @submit=${this.onSubmit} novalidate>
+				${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
+				${
+					card
+						? html`<div class="fixed" data-field="card">
+							<span class="fixed__label">${t("quickAdd.card")}</span>
+							${cardPanel(card.id, card, this.groups)}
+						</div>`
+						: nothing
+				}
+				<div class="fields">
+					${this.field("date", t("quickAdd.date"), { type: "date" })}
+					${this.field("amount", t("quickAdd.amount"), {
+						inputmode: "decimal",
+						placeholder: t("quickAdd.amountPlaceholder"),
+					})}
+					${this.field("note", t("quickAdd.note"), {
+						placeholder: t("quickAdd.notePlaceholder"),
+					})}
+				</div>
+				${
+					this.inFuture
+						? html`<p class="warning" data-testid="future-date-warning">${t("quickAdd.futureDateWarning")}</p>`
+						: nothing
+				}
+				${
+					this.onCloseDate
+						? html`<p class="warning" data-testid="close-date-warning">${t("quickAdd.closeDateWarning")}</p>`
+						: nothing
+				}
+				<button type="submit" ?disabled=${this.busy}>${t("quickAdd.save")}</button>
+			</form>
+		</cc-modal>`;
+	}
+}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"cc-purchase-sheet": CcPurchaseSheet;
+	}
+}

@@ -1,0 +1,384 @@
+import { css, html, LitElement, nothing } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
+import {
+	compareDates,
+	daysBetween,
+	displayDate,
+	periodLabel,
+} from "#lib/domain/date";
+import { ledgerUrgency } from "#lib/domain/ledger";
+import { formatAmount } from "#lib/domain/money";
+import type { LedgerStatement, PlainDate, Purchase } from "#lib/domain/types";
+import { LocaleController } from "#lib/i18n/controller";
+import { getLocale, t } from "#lib/i18n/index";
+import { base, cardBits, controls, rowPanel } from "#styles/shared";
+
+type Tag = { urgency?: "overdue" | "soon"; tone?: "ok"; text: string };
+
+/**
+ * A card's statements, newest first (prototype `vCard`): one row each, `Mon YYYY` with a tag
+ * (*Current*, *Overdue N days*, *Due in N days* within 7, *Due D*, *Paid*), its dates or *paid
+ * in full*, and what is left on the right. Runs of quiet months fold into one line (DR-22). A
+ * row with purchases is a button with `aria-expanded` that unfolds them: date, note, amount,
+ * *Edit* and *Delete*. *Delete* swaps in place for *Delete ฿X?* with *Delete* and *Keep*
+ * (UI-09), and focus follows the swap. Emits `edit-purchase` and `delete-purchase`, each with
+ * `{ purchase }`.
+ */
+@customElement("cc-card-statements")
+export class CcCardStatements extends LitElement {
+	static override styles = [
+		base,
+		controls,
+		rowPanel,
+		cardBits,
+		css`
+			:host {
+				display: block;
+			}
+
+			.statement {
+				display: flex;
+				flex-direction: column;
+			}
+
+			.head {
+				grid-template-columns: minmax(0, 1fr) auto;
+				inline-size: 100%;
+			}
+
+			div.head {
+				cursor: default;
+			}
+
+			.title {
+				display: flex;
+				flex-direction: row;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: var(--cc-space-1) var(--cc-space-2);
+			}
+
+			.name {
+				font-weight: 650;
+			}
+
+			.title .tag {
+				align-self: center;
+			}
+
+			.left {
+				font-weight: 650;
+				white-space: nowrap;
+			}
+
+			.left[data-zero] {
+				color: var(--cc-text-muted);
+			}
+
+			.purchases {
+				display: flex;
+				flex-direction: column;
+				gap: 0;
+				padding: 0 0 var(--cc-space-3);
+				margin: 0;
+				list-style: none;
+			}
+
+			.purchase {
+				display: grid;
+				grid-template-columns: auto minmax(0, 1fr) auto auto;
+				align-items: center;
+				gap: var(--cc-space-1) var(--cc-space-3);
+				padding: var(--cc-space-2) var(--cc-space-3);
+				font-size: var(--cc-text-sm);
+				background: var(--cc-surface-sunken);
+			}
+
+			.purchase:first-child {
+				border-radius: var(--cc-radius-sm) var(--cc-radius-sm) 0 0;
+			}
+
+			.purchase:last-child {
+				border-radius: 0 0 var(--cc-radius-sm) var(--cc-radius-sm);
+			}
+
+			.purchase:only-child {
+				border-radius: var(--cc-radius-sm);
+			}
+
+			.purchase + .purchase {
+				border-top: var(--cc-border-width) solid var(--cc-border);
+			}
+
+			.pdate {
+				color: var(--cc-text-muted);
+				white-space: nowrap;
+			}
+
+			.pnote {
+				overflow-wrap: anywhere;
+			}
+
+			.pamount {
+				font-weight: 600;
+				white-space: nowrap;
+			}
+
+			.pactions {
+				display: flex;
+				flex-direction: row;
+				flex-wrap: wrap;
+				align-items: center;
+				justify-content: flex-end;
+				gap: var(--cc-space-2);
+			}
+
+			.pactions button {
+				padding: var(--cc-space-1) var(--cc-space-3);
+				font-size: var(--cc-text-sm);
+			}
+
+			.ask {
+				font-weight: 600;
+			}
+
+			/* On a phone the buttons take their own line under the date, note and amount. */
+			@media (max-width: 639px) {
+				.purchase {
+					grid-template-columns: auto minmax(0, 1fr) auto;
+				}
+
+				.pactions {
+					grid-column: 1 / -1;
+				}
+			}
+
+			.quiet {
+				padding: var(--cc-space-2) 0;
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
+			}
+		`,
+	];
+
+	@property({ attribute: false }) statements: LedgerStatement[] = [];
+	@property() today: PlainDate = "";
+
+	/** The periods unfolded to their purchases; kept across reloads, by period. */
+	@state() private openPeriods = new Set<string>();
+	/** The purchase whose *Delete* is asking, by id. */
+	@state() private asking: string | null = null;
+	/** The button to focus once the delete swap has rendered. */
+	private refocus: { action: string; id: string } | null = null;
+
+	constructor() {
+		super();
+		new LocaleController(this);
+	}
+
+	protected override updated() {
+		const want = this.refocus;
+		if (!want) return;
+		this.refocus = null;
+		this.renderRoot
+			.querySelector<HTMLElement>(
+				`[data-purchase="${CSS.escape(want.id)}"] [data-action="${want.action}"]`,
+			)
+			?.focus();
+	}
+
+	private swap(asking: string | null, action: string, id: string) {
+		this.refocus = { action, id };
+		this.asking = asking;
+	}
+
+	private toggle(period: string) {
+		const next = new Set(this.openPeriods);
+		if (next.has(period)) next.delete(period);
+		else next.add(period);
+		this.openPeriods = next;
+	}
+
+	private emit(name: string, purchase: Purchase) {
+		this.dispatchEvent(new CustomEvent(name, { detail: { purchase } }));
+	}
+
+	override render() {
+		if (this.statements.length === 0)
+			return html`<p class="empty">${t("statements.empty")}</p>`;
+		return html`<div class="panel">${this.segments().map((segment) =>
+			Array.isArray(segment)
+				? this.quietLine(segment)
+				: this.statement(segment),
+		)}</div>`;
+	}
+
+	/**
+	 * Statements in order, with each run of quiet ones -- closed, nothing spent, nothing paid --
+	 * gathered into an array (DR-22). The open period stays whole even when empty.
+	 */
+	private segments(): (LedgerStatement | LedgerStatement[])[] {
+		const segments: (LedgerStatement | LedgerStatement[])[] = [];
+		for (const statement of this.statements) {
+			const quiet =
+				statement.purchases.length === 0 &&
+				statement.paidAmount === 0 &&
+				ledgerUrgency(statement, this.today) !== "open";
+			const last = segments.at(-1);
+			if (!quiet) segments.push(statement);
+			else if (Array.isArray(last)) last.push(statement);
+			else segments.push([statement]);
+		}
+		return segments;
+	}
+
+	private quietLine(run: LedgerStatement[]) {
+		const locale = getLocale();
+		// Statements arrive newest first; the range reads oldest to newest.
+		const newest = periodLabel(run[0]?.period ?? "", locale);
+		const oldest = periodLabel(run.at(-1)?.period ?? "", locale);
+		return html`<p class="quiet">${
+			run.length === 1
+				? t("statements.quietOne", { period: newest })
+				: t("statements.quietRun", { from: oldest, to: newest })
+		}</p>`;
+	}
+
+	/**
+	 * The statement a purchase made today lands on: the earliest one not yet closed. Later ones
+	 * exist only when a purchase is dated ahead, and are not current.
+	 */
+	private get currentPeriod(): string | null {
+		let current: LedgerStatement | null = null;
+		for (const statement of this.statements) {
+			if (compareDates(this.today, statement.closeDate) > 0) continue;
+			if (!current || compareDates(statement.closeDate, current.closeDate) < 0)
+				current = statement;
+		}
+		return current?.period ?? null;
+	}
+
+	private tag(statement: LedgerStatement, current: boolean): Tag | null {
+		if (current) return { tone: "ok", text: t("statements.current") };
+		const urgency = ledgerUrgency(statement, this.today);
+		if (urgency === "paid") return { text: t("statements.paidTag") };
+		if (urgency === "overdue") {
+			const days = daysBetween(statement.dueDate, this.today);
+			return {
+				urgency,
+				text: t(days === 1 ? "pay.tag.overdue.one" : "pay.tag.overdue.many", {
+					days,
+				}),
+			};
+		}
+		if (urgency === "soon") {
+			const days = daysBetween(this.today, statement.dueDate);
+			return {
+				urgency,
+				text: t(days === 1 ? "pay.tag.soon.one" : "pay.tag.soon.many", {
+					days,
+				}),
+			};
+		}
+		if (urgency === "due")
+			return {
+				text: t("pay.tag.due", {
+					date: displayDate(statement.dueDate, getLocale()),
+				}),
+			};
+		return null;
+	}
+
+	private statement(statement: LedgerStatement) {
+		const locale = getLocale();
+		const tag = this.tag(statement, statement.period === this.currentPeriod);
+		const paid = ledgerUrgency(statement, this.today) === "paid";
+		const hasPurchases = statement.purchases.length > 0;
+		const open = hasPurchases && this.openPeriods.has(statement.period);
+		const listId = `purchases-${statement.period}`;
+		const body = html`
+			<span class="what">
+				<span class="title">
+					<b class="name">${periodLabel(statement.period, locale)}</b>
+					${
+						tag
+							? html`<span class="tag" data-urgency=${tag.urgency ?? nothing}
+								data-tone=${tag.tone ?? nothing}>${tag.text}</span>`
+							: nothing
+					}
+				</span>
+				<span class="sub">${
+					paid
+						? t("statements.paid")
+						: t("statements.header", {
+								close: displayDate(statement.closeDate, locale),
+								due: displayDate(statement.dueDate, locale),
+							})
+				}</span>
+			</span>
+			<span class="r">
+				<span class="left" data-numeric ?data-zero=${statement.remaining === 0}
+					>${formatAmount(statement.remaining)}</span>
+				${
+					!statement.paid && statement.paidAmount > 0
+						? html`<small class="paid-part">${t("statements.paidAmount", {
+								amount: formatAmount(statement.paidAmount),
+							})}</small>`
+						: nothing
+				}
+			</span>
+		`;
+		return html`<div class="statement" data-period=${statement.period}>
+			${
+				hasPurchases
+					? html`<button type="button" class="crow head" aria-expanded=${open ? "true" : "false"}
+						aria-controls=${listId}
+						@click=${() => this.toggle(statement.period)}>${body}</button>`
+					: html`<div class="crow head">${body}</div>`
+			}
+			${
+				open
+					? html`<ul class="purchases" id=${listId}>${statement.purchases.map(
+							(purchase) => this.purchase(purchase),
+						)}</ul>`
+					: nothing
+			}
+		</div>`;
+	}
+
+	private purchase(purchase: Purchase) {
+		const locale = getLocale();
+		const amount = formatAmount(purchase.amount);
+		const date = displayDate(purchase.date, locale);
+		return html`<li class="purchase" data-purchase=${purchase.id}>
+			<span class="pdate">${date}</span>
+			<span class="pnote">${purchase.note}</span>
+			<span class="pamount" data-numeric>${amount}</span>
+			<span class="pactions">${
+				this.asking === purchase.id
+					? html`<span class="ask">${t("card.purchase.deleteAsk", { amount })}</span>
+						<button type="button" data-variant="danger" data-action="confirm-delete"
+							@click=${() => {
+								this.asking = null;
+								this.emit("delete-purchase", purchase);
+							}}>${t("common.delete")}</button>
+						<button type="button" data-variant="quiet" data-action="keep"
+							@click=${() => this.swap(null, "delete-purchase", purchase.id)}
+							>${t("card.purchase.keep")}</button>`
+					: html`<button type="button" data-variant="quiet" data-action="edit-purchase"
+							aria-label=${t("card.purchase.editOne", { amount, date })}
+							@click=${() => this.emit("edit-purchase", purchase)}>${t("common.edit")}</button>
+						<button type="button" data-variant="danger" data-action="delete-purchase"
+							aria-label=${t("card.purchase.deleteOne", { amount, date })}
+							@click=${() => this.swap(purchase.id, "confirm-delete", purchase.id)}
+							>${t("common.delete")}</button>`
+			}</span>
+		</li>`;
+	}
+}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"cc-card-statements": CcCardStatements;
+	}
+}

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { render } from "lit";
+import { html, render } from "lit";
 import { setLocale } from "#lib/i18n/index";
 import { backHeader } from "#lib/ui/back-header";
 
@@ -53,4 +53,22 @@ test("the label is translated", () => {
 		root.querySelector('[data-action="back"]')?.getAttribute("aria-label"),
 	).toBe("กลับ");
 	setLocale("en");
+});
+
+test("an action sits at the end of the header", () => {
+	setLocale("en");
+	const root = mount();
+	render(
+		backHeader({
+			title: "Title",
+			back: "/",
+			action: html`<a data-action="edit" href="/e">Edit</a>`,
+		}),
+		root,
+	);
+	const action = root.querySelector(".back-header > .back-header__action");
+	expect(action?.querySelector('a[data-action="edit"]')).not.toBeNull();
+	expect(root.querySelector(".back-header h1")?.textContent).not.toContain(
+		"Edit",
+	);
 });

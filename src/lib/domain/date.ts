@@ -124,6 +124,12 @@ export function displayDate(date: PlainDate, locale: Locale): string {
 	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`;
 }
 
+/** A statement's month as `Mon YYYY` ("Nov 2026", "พ.ย. 2026"), the year Gregorian as in `displayDate`. */
+export function periodLabel(period: Period, locale: Locale): string {
+	const { year, month } = periodParts(period);
+	return `${MONTH_NAMES[locale][month - 1]} ${year}`;
+}
+
 const LONG_MONTH_NAMES: Record<Locale, readonly string[]> = {
 	en: [
 		"January",

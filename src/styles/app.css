@@ -505,8 +505,7 @@ a:any-link:hover {
 	font-weight: 600;
 }
 
-.page > article,
-.page .split > article {
+.page > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -517,9 +516,8 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
-/* The settings page's confirmations after a backup copy, import or reset, matching the purchase
-   confirmation's `.purchase-status`. Each element stays in the DOM so its live region is in place before the message
-   arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
+/* The settings page's confirmations after a backup copy, import or reset. Each element stays in
+   the DOM so its live region is in place before the message arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
 .export-status,
 .import-status,
 .reset-status {
@@ -744,107 +742,6 @@ a:any-link:hover {
 	background: var(--cc-border);
 }
 
-/*
- * Below 960px this is the reset's default column flex, the aside -- reference, not the task --
- * following the main column. At 960px it becomes a grid with the aside parked beside it.
- */
-.split {
-	gap: var(--cc-space-5);
-}
-
-@media (min-width: 960px) {
-	.split {
-		display: grid;
-		grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-		align-items: start;
-	}
-
-	.split > .split__aside {
-		position: sticky;
-		/* Must clear the sticky .site-header, which is --cc-header-height tall. */
-		top: calc(var(--cc-header-height) + var(--cc-space-4));
-	}
-}
-
-/*
- * A page's heading with its one action -- Add a purchase -- at the right. On a phone the button
- * wraps under the heading rather than squeezing it.
- */
-.page-title {
-	flex-wrap: wrap;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--cc-space-3);
-}
-
-/* Where a saved purchase lands, under the heading. Matches the settings page's confirmations. */
-.purchase-status {
-	flex-direction: row;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--cc-space-2);
-	padding: var(--cc-space-2) var(--cc-space-3);
-	font-size: var(--cc-text-sm);
-	color: var(--cc-success);
-	background: var(--cc-surface-sunken);
-	border-radius: var(--cc-radius-sm);
-}
-
-.purchase-status:empty {
-	display: none;
-}
-
-/* A registry list's add button, lifted onto its list's title line at the panel's top right rather
-   than costing a row of its own. The title lives in the table's shadow root, so the button cannot
-   join it there; the titles are short words in both languages, so the corner is always clear. */
-.page > article:has(> .list-actions) {
-	position: relative;
-}
-
-.list-actions {
-	position: absolute;
-	top: var(--cc-space-3);
-	right: var(--cc-panel-padding);
-}
-
-/* The card page's statement column: the list, then its "show older" button beneath it. */
-.card-statements {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-5);
-	min-width: 0;
-}
-
-.page-heading {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-1);
-}
-
-.page-heading h1 {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--cc-space-2);
-	align-items: center;
-}
-
-.page-heading p {
-	color: var(--cc-text-muted);
-	font-size: var(--cc-text-sm);
-}
-
-.page-heading .comment {
-	font-style: italic;
-}
-
-/* Sits tight above the heading it leads away from, rather than a full page gap apart. */
-.page > a.back {
-	align-self: flex-start;
-	margin-bottom: calc(var(--cc-space-5) * -1 + var(--cc-space-2));
-	font-size: var(--cc-text-sm);
-}
-
 /* The light-DOM twin of `badge` in shared.ts. */
 .page .badge {
 	display: inline-block;
@@ -857,43 +754,6 @@ a:any-link:hover {
 	background: var(--cc-surface-sunken);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-sm);
-}
-
-/* The card page's facts panel: label and value on one line each. */
-.facts {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-2);
-	margin: 0;
-	font-size: var(--cc-text-sm);
-}
-
-.facts__row {
-	justify-content: space-between;
-	gap: var(--cc-space-3);
-}
-
-.facts dt {
-	color: var(--cc-text-muted);
-}
-
-.facts dd {
-	margin: 0;
-	text-align: right;
-}
-
-.card-details .note {
-	padding: var(--cc-space-2) var(--cc-space-3);
-	font-size: var(--cc-text-sm);
-	color: var(--cc-warning);
-	background: var(--cc-warning-surface);
-	border-radius: var(--cc-radius-sm);
-}
-
-.card-details a.edit {
-	align-self: flex-start;
-	font-size: var(--cc-text-sm);
-	font-weight: 550;
 }
 
 /* The placeholder page: a muted line of readable width, and a link that is only as wide as its text. */
@@ -1546,4 +1406,103 @@ a:any-link:hover {
 	.cards-groups {
 		padding-block-start: var(--cc-space-1);
 	}
+}
+
+/*
+ * The card page (prototype `vCard`): one narrow column -- the back header with *Edit*, badges,
+ * the hero and stats (cc-card-hero), the comment, the two actions side by side, then the
+ * statements and *Show older statements*.
+ */
+.card-page {
+	max-width: var(--cc-page-narrow);
+	gap: var(--cc-space-4);
+}
+
+.back-header > .back-header__action {
+	margin-inline-start: auto;
+}
+
+.card-page a.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--cc-accent-text);
+	text-align: center;
+	text-decoration: none;
+	background: var(--cc-accent);
+	border: var(--cc-border-width) solid transparent;
+	border-radius: var(--cc-radius-sm);
+}
+
+.card-page a.btn:hover {
+	text-decoration: none;
+	background: var(--cc-accent-hover);
+}
+
+.card-page a.btn[data-variant="quiet"] {
+	color: var(--cc-text);
+	background: var(--cc-surface-sunken);
+	border-color: var(--cc-border);
+}
+
+.card-page a.btn[data-variant="quiet"]:hover {
+	background: var(--cc-border);
+}
+
+.card-badges {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+	margin-block-start: calc(var(--cc-space-2) * -1);
+}
+
+.card-comment {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-style: italic;
+	color: var(--cc-text-muted);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
+}
+
+.card-actions {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--cc-space-3);
+}
+
+.card-actions a.btn {
+	padding: var(--cc-space-3) var(--cc-space-4);
+	font-size: var(--cc-text-md);
+	border-radius: var(--cc-radius-md);
+}
+
+.card-actions .note {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	line-height: 1.5;
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-md);
+}
+
+.card-statements {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	min-width: 0;
+	margin-block-start: var(--cc-space-2);
+}
+
+.card-page .card-statements h2 {
+	font-size: var(--cc-text-md);
+	font-weight: 700;
+}
+
+.card-statements button[data-action="show-older"] {
+	align-self: center;
+	margin-block-start: var(--cc-space-2);
 }

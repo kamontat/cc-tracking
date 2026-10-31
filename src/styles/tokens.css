@@ -32,15 +32,18 @@
 	   roomier from 640px (see the media query after this block). */
 	--cc-panel-padding: var(--cc-space-4);
 
-	/* Exists so the sticky aside (`.split__aside`) can clear the sticky `.site-header` when it
+	/* Exists so a sticky side panel can clear the sticky `.site-header` when it
 	   parks, which happens from 900px. The header is one row on every width. Measured at 51px
 	   (390, 900 and 1280px, English and Thai, brand, `(pr-30)` and date in one run):
 	   2 × var(--cc-space-3) padding + the 25px brand line + the 2px rule; the tabs reach down
 	   into the padding and add nothing. Keep this in step if the header's padding or contents change. */
 	--cc-header-height: 3.25rem;
 
-	/* The narrowest a card-page summary tile gets before its row wraps to one per line. */
+	/* The narrowest a settings tile gets before its row wraps to one per line. */
 	--cc-tile-min: 14rem;
+
+	/* How much of the group's ink tints the card hero's bar track. */
+	--cc-hero-track: 18%;
 
 	--cc-icon-size: 1.375rem;
 	--cc-icon-size-sm: 1.0625rem;
