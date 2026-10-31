@@ -27,6 +27,7 @@ test("current tab per path", () => {
 	expect(currentTab("/transactions")).toBe("transactions");
 	expect(currentTab("/cards")).toBe("cards");
 	expect(currentTab("/card")).toBe("cards");
+	expect(currentTab("/pay")).toBe("transactions");
 	expect(currentTab("/settings")).toBe("settings");
 	expect(currentTab("/cards/")).toBe("cards");
 	expect(currentTab("/settings/")).toBe("settings");
@@ -122,7 +123,7 @@ test("one floating Payment button, outside both navs", () => {
 	expect(pay).toHaveLength(1);
 	const [fab] = pay;
 	expect(fab?.classList.contains("fab")).toBe(true);
-	expect(fab?.getAttribute("href")).toBe("/transactions");
+	expect(fab?.getAttribute("href")).toBe("/pay");
 	expect(fab?.getAttribute("aria-label")).toBe("Payment");
 	expect(fab?.querySelector(".fab__label")?.textContent).toBe("Payment");
 	expect(fab?.querySelector("svg")).not.toBeNull();
