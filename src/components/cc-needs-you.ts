@@ -121,17 +121,25 @@ export class CcNeedsYou extends LitElement {
 					href: `/list?id=${encodeURIComponent(item.list.id)}`,
 					icon: icons.clock,
 					title: t("home.waiting"),
-					detail: t("home.waitingDetail", {
-						date: headerDate(item.list.date, locale, false),
-						count: item.list.lines.length,
-						total: formatAmount(item.total),
-					}),
+					detail: t(
+						item.list.lines.length === 1
+							? "home.waitingDetail.one"
+							: "home.waitingDetail.many",
+						{
+							date: headerDate(item.list.date, locale, false),
+							count: item.list.lines.length,
+							total: formatAmount(item.total),
+						},
+					),
 				};
 			case "overdue":
 				return {
 					href: `/card?id=${encodeURIComponent(item.card.id)}`,
 					icon: icons.alert,
-					title: t("home.overdue", { card: item.card.id, days: item.days }),
+					title: t(item.days === 1 ? "home.overdue.one" : "home.overdue.many", {
+						card: item.card.id,
+						days: item.days,
+					}),
 					detail: t("home.overdueDetail", {
 						amount: formatAmount(item.remaining),
 					}),

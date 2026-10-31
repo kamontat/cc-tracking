@@ -139,7 +139,7 @@ test("a saved list totals only what was made, at the real amount", () => {
 			"Card | Name (last 4) | Amount",
 			"KB-F | KBank Fuel (4412) | ฿13,000.00",
 			"UOB-K | UOB Krabi (7765) | Not made",
-			"Total · 1 cards | ฿13,000.00",
+			"Total · 1 card | ฿13,000.00",
 		].join("\n"),
 	);
 });
@@ -148,4 +148,11 @@ test("a sent list keeps its planned amounts", () => {
 	setLocale("en");
 	const table = shareTable({ ...list, status: "sent" }, cards);
 	expect(table.total[1]).toBe("฿17,300.00");
+});
+
+test("the total counts one card or many", () => {
+	setLocale("en");
+	const one = { ...list, lines: list.lines.slice(0, 1) };
+	expect(shareTable(one, cards).total[0]).toBe("Total · 1 card");
+	expect(shareTable(list, cards).total[0]).toBe("Total · 2 cards");
 });

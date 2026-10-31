@@ -139,6 +139,18 @@ test("not-assigned cards are counted", async () => {
 	expect(flat(root)).toContain("2 cards have no limit group yet.");
 });
 
+test("one card is counted in the singular", async () => {
+	const one = await mount({ unassigned: 1, rows: rows().slice(0, 1) });
+	expect(flat(one.root)).toContain("1 card has no limit group yet.");
+	expect(flat(one.root.querySelector("h2 small"))).toBe(
+		"1 card in Krabi, Bangkok",
+	);
+	const two = await mount({ rows: rows().slice(0, 2) });
+	expect(flat(two.root.querySelector("h2 small"))).toBe(
+		"2 cards in Krabi, Bangkok",
+	);
+});
+
 test("reads in Thai", async () => {
 	setLocale("th");
 	const { root } = await mount();

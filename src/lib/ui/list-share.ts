@@ -54,7 +54,12 @@ export function shareTable(
 			t("purchaseList.column.amount"),
 		],
 		rows,
-		total: [t("purchaseList.total", { count }), formatAmount(total)],
+		total: [
+			t(count === 1 ? "purchaseList.total.one" : "purchaseList.total.many", {
+				count,
+			}),
+			formatAmount(total),
+		],
 	};
 }
 

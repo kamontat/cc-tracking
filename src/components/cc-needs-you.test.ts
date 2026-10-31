@@ -102,12 +102,43 @@ test("reads in Thai", async () => {
 	expect(text(root, '[data-item="waiting"] b')).toBe("รอคำตอบของผู้ใช้บัตร");
 });
 
+test("one card and one day read in the singular", async () => {
+	const root = await mount([
+		{ kind: "waiting", list: list("w1", "sent", ["A"]), total: 100 },
+		{
+			kind: "overdue",
+			card,
+			remaining: 100,
+			dueDate: "2026-10-30",
+			days: 1,
+		},
+	]);
+	expect(text(root, '[data-item="waiting"] small')).toBe(
+		"List for Fri, 30 Oct · 1 card · ฿1.00",
+	);
+	expect(text(root, '[data-item="overdue"] b')).toBe(
+		"SCB/K bill is 1 day overdue",
+	);
+	const many = await mount([
+		{ kind: "waiting", list: list("w1", "sent", ["A", "B"]), total: 100 },
+		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-29", days: 2 },
+	]);
+	expect(text(many, '[data-item="waiting"] small')).toBe(
+		"List for Fri, 30 Oct · 2 cards · ฿1.00",
+	);
+	expect(text(many, '[data-item="overdue"] b')).toBe(
+		"SCB/K bill is 2 days overdue",
+	);
+});
+
 test("a list id is encoded in its link", async () => {
 	const root = await mount([
 		{ kind: "waiting", list: list("w 1/2", "sent", ["A"]), total: 100 },
 		{ kind: "draft", list: list("d&1", "draft", ["A"]), total: 100 },
 	]);
 	expect(
-		[...root.querySelectorAll("[data-item]")].map((e) => e.getAttribute("href")),
+		[...root.querySelectorAll("[data-item]")].map((e) =>
+			e.getAttribute("href"),
+		),
 	).toEqual(["/list?id=w%201%2F2", "/list?id=d%261"]);
 });

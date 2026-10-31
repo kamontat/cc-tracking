@@ -369,9 +369,12 @@ export class CcListAmounts extends LitElement {
 		const summary =
 			parts.length > 0
 				? html`<span class="summary warned">${parts.join(" · ")}</span>`
-				: html`<span class="summary">${t("purchaseList.total", {
-						count: this.cards.length,
-					})}</span>`;
+				: html`<span class="summary">${t(
+						this.cards.length === 1
+							? "purchaseList.total.one"
+							: "purchaseList.total.many",
+						{ count: this.cards.length },
+					)}</span>`;
 
 		return html`
 			<label>${t("purchaseList.date")}

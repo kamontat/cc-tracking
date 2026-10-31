@@ -284,3 +284,12 @@ test("starting values and a language switch keep what was typed", async () => {
 	expect(amountInput(root, "B").value).toBe("5");
 	expect(flat(line(root, "A"))).toContain("วงเงินเหลือหลังซื้อ");
 });
+
+test("the total counts one card or many", async () => {
+	expect(flat(footer((await mount({ cards: [A] })).root))).toContain(
+		"Total · 1 card",
+	);
+	expect(flat(footer((await mount({ cards: [A, B] })).root))).toContain(
+		"Total · 2 cards",
+	);
+});

@@ -222,7 +222,12 @@ export class CcReadyList extends LitElement {
 		if (this.unassigned === 0) return nothing;
 		return html`
 			<p data-testid="unassigned">
-				${t("spendable.unassigned", { count: this.unassigned })}
+				${t(
+					this.unassigned === 1
+						? "spendable.unassigned.one"
+						: "spendable.unassigned.many",
+					{ count: this.unassigned },
+				)}
 				<a href="/cards">${t("spendable.unassignedAction")}</a>
 			</p>
 		`;
@@ -230,10 +235,11 @@ export class CcReadyList extends LitElement {
 
 	override render() {
 		const places = this.locations.map(locationText).join(", ");
+		const count = this.rows.length;
 		const header = html`
 			<h2>
 				${t("ready.title")}
-				<small>${t("ready.summary", { count: this.rows.length, places })}</small>
+				<small>${t(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places })}</small>
 			</h2>
 		`;
 		if (this.rows.length === 0) {
