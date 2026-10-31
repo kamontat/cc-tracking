@@ -208,3 +208,12 @@ test("the move checkbox and Save sit in the side panel, the lines in the main co
 		HTMLElement,
 	);
 });
+
+test("the side panel takes the page's own actions after Save", async () => {
+	const { root } = await mount();
+	const slot = root.querySelector('.list-layout__side > slot[name="side"]');
+	expect(slot).toBeInstanceOf(HTMLElement);
+	expect(slot?.previousElementSibling?.classList.contains("action-bar")).toBe(
+		true,
+	);
+});

@@ -17,7 +17,8 @@ type Answer = { made: boolean | undefined; text: string };
 /**
  * The spender's reply to a sent list: Made or Not made per line, with the real amount of a
  * made one. Saving waits until every line is answered and every real amount is money; a
- * not-made line can move to tomorrow's draft.
+ * not-made line can move to tomorrow's draft. The `side` slot takes the page's own actions,
+ * after Save (Cancel list).
  */
 @customElement("cc-list-reply")
 export class CcListReply extends LitElement {
@@ -275,6 +276,7 @@ export class CcListReply extends LitElement {
 				<button data-action="save-reply" ?disabled=${!allAnswered || !allMoney}
 					@click=${() => this.save()}>${label}</button>
 			</div>
+			<slot name="side"></slot>
 			</div>
 		</div>`;
 	}

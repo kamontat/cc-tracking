@@ -232,6 +232,28 @@ export function renderEntryPage(
 		if (saved) navigate("/");
 	};
 
+	/**
+	 * Deletes the stored draft at once, with no second step (the user's decision, DD-74): it
+	 * holds nothing that was bought. A draft sent or saved since is refused, like a save.
+	 */
+	const deleteDraft = async () => {
+		const id = editingId;
+		if (!id) return;
+		let deleted = false;
+		await state.guard(async () => {
+			await storedDraft(id);
+			await repo.deletePurchaseList(id);
+			deleted = true;
+		}, "purchaseList.error.delete");
+		if (deleted) navigate("/");
+	};
+
+	/** Delete draft, on a draft's page only; `side` slots it into a list element's panel. */
+	const deleteButton = (slot?: "side") =>
+		editingId
+			? html`<button data-variant="danger" data-action="delete-draft" slot=${slot ?? nothing} @click=${deleteDraft}>${t("purchaseList.deleteDraft")}</button>`
+			: nothing;
+
 	const statusText = (): string => {
 		if (!status) return "";
 		switch (status.kind) {
@@ -291,7 +313,7 @@ export function renderEntryPage(
 				@review=${onReview}
 				@remove=${onRemove}
 				@add=${onAdd}
-			></cc-list-amounts>
+			>${deleteButton("side")}</cc-list-amounts>
 		`;
 	};
 
@@ -326,6 +348,7 @@ export function renderEntryPage(
 		<p class="note">${t("purchaseList.sendHint")}</p>
 		<button data-action="mark-sent" @click=${() => save(true)}>${icons.send}${t("purchaseList.markSent")}</button>
 		<button data-variant="quiet" data-action="save-draft" @click=${() => save(false)}>${t("purchaseList.saveDraft")}</button>
+		${deleteButton()}
 		</div>
 		</div>
 	`;

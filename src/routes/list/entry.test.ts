@@ -68,8 +68,11 @@ const setup = async (
 };
 
 /** The draft page, opened on `d1` as `before` stored it. */
-const setupDraft = (before: (repo: Repository) => Promise<void>) =>
-	setup({ mode: "draft", search: "?id=d1", before });
+const setupDraft = (
+	before: (repo: Repository) => Promise<void>,
+	repo?: Repository,
+) =>
+	setup({ mode: "draft", search: "?id=d1", before, ...(repo ? { repo } : {}) });
 
 const amounts = async (root: HTMLElement): Promise<CcListAmounts> => {
 	const element = root.querySelector<CcListAmounts>("cc-list-amounts");
@@ -461,4 +464,73 @@ test("the review puts the table in the main column and its actions in the side p
 	expect(side?.querySelector('p.status[role="status"]')).toBeInstanceOf(
 		HTMLElement,
 	);
+});
+
+/** The page's Delete draft button, in the light DOM wherever the step puts it. */
+const deleteButton = (root: HTMLElement) =>
+	root.querySelector<HTMLButtonElement>('[data-action="delete-draft"]');
+
+test("only a draft offers Delete draft, in the side panel of both steps", async () => {
+	const fresh = await setup();
+	expect(deleteButton(fresh.root)).toBeNull();
+	await typeAndReview(fresh.root, { A: "125" }, [
+		{ cardId: "A", amount: 125_00 },
+	]);
+	expect(deleteButton(fresh.root)).toBeNull();
+
+	const { root } = await setupDraft(draftWith(["A"]));
+	const onAmounts = deleteButton(root);
+	expect(onAmounts?.getAttribute("data-variant")).toBe("danger");
+	expect(onAmounts?.getAttribute("slot")).toBe("side");
+	expect(onAmounts?.parentElement?.tagName).toBe("CC-LIST-AMOUNTS");
+	expect(onAmounts?.textContent?.trim()).toBe("Delete draft");
+
+	await fire(root, "review", {
+		date: "2026-11-02",
+		lines: [{ cardId: "A", amount: 100 }],
+	});
+	const side = root.querySelector(".list-layout > .list-layout__side");
+	expect(side?.contains(deleteButton(root))).toBe(true);
+	expect(deleteButton(root)?.getAttribute("data-variant")).toBe("danger");
+});
+
+test("delete draft removes the draft at once and goes home", async () => {
+	const { root, repo, visited } = await setupDraft(async (repo) => {
+		await draftWith(["A"])(repo);
+		await repo.savePurchaseList(sent("s1", ["B"]));
+	});
+	await click(root, "delete-draft");
+	expect((await stored(repo)).map((l) => l.id)).toEqual(["s1"]);
+	expect(visited).toEqual(["/"]);
+});
+
+test("a draft sent or saved elsewhere is not deleted", async () => {
+	const { root, repo, visited } = await setupDraft(draftWith(["A"]));
+	const elsewhere = sent("d1", ["A"]);
+	await repo.savePurchaseList(elsewhere);
+	await click(root, "delete-draft");
+	expect(bannerText(root)).toContain(
+		"This list was sent or saved elsewhere, so it was not changed.",
+	);
+	expect(await stored(repo)).toEqual([elsewhere]);
+	expect(visited).toEqual([]);
+});
+
+/** A repository whose deletePurchaseList always rejects. */
+class UndeletableRepository extends InMemoryRepository {
+	override deletePurchaseList(): Promise<void> {
+		return Promise.reject(new Error("disk is busy"));
+	}
+}
+
+test("a failed delete says so and stays", async () => {
+	const { root, repo, visited } = await setupDraft(
+		draftWith(["A"]),
+		new UndeletableRepository(),
+	);
+	await click(root, "delete-draft");
+	expect(bannerText(root).startsWith("Could not delete the draft.")).toBe(true);
+	expect((await stored(repo)).map((l) => l.id)).toEqual(["d1"]);
+	expect(visited).toEqual([]);
+	expect(root.querySelector("cc-list-amounts")).not.toBeNull();
 });

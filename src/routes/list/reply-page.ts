@@ -112,6 +112,25 @@ export function renderReplyPage(
 		if (saved) navigate(listPageAddress(saved));
 	};
 
+	/**
+	 * Deletes the waiting list at once, with no second step (the user's decision, DD-74), so it
+	 * stops holding room; nothing was bought. A list no longer waiting (saved in another tab,
+	 * say) is refused, so a saved list never loses its record.
+	 */
+	const onCancel = async () => {
+		let cancelled = false;
+		await state.guard(async () => {
+			const stored = (await repo.listPurchaseLists()).find((l) => l.id === id);
+			if (!stored) throw new MessageError("purchaseList.missing");
+			if (stored.status !== "sent")
+				throw new MessageError("reply.error.notWaiting");
+			await repo.deletePurchaseList(stored.id);
+			cancelled = true;
+			leaving = true;
+		}, "reply.error.cancel");
+		if (cancelled) navigate("/");
+	};
+
 	const replyView = (list: PurchaseList, from: MoneyData) => html`
 		${backHeader({
 			title: t("reply.title"),
@@ -121,7 +140,8 @@ export function renderReplyPage(
 			back: "/",
 		})}
 		${banner(state)}
-		<cc-list-reply .list=${list} .cards=${from.cards} @save-reply=${onSaveReply}></cc-list-reply>
+		<cc-list-reply .list=${list} .cards=${from.cards} @save-reply=${onSaveReply}
+			><button data-variant="danger" data-action="cancel-list" slot="side" @click=${onCancel}>${t("reply.cancel")}</button></cc-list-reply>
 	`;
 
 	const paint = () => {

@@ -6,6 +6,7 @@ import { renderReplyPage } from "./reply-page";
 import {
 	bannerText,
 	card,
+	click,
 	draft,
 	elsewhereLink,
 	saved,
@@ -304,4 +305,38 @@ test("a retry with changed answers leaves no stale purchase", async () => {
 	]);
 	const purchases = await allPurchases(repo);
 	expect(purchases.map((p) => [p.id, p.cardId])).toEqual([["w1-0", "C"]]);
+});
+
+test("a waiting list offers Cancel list beside Save", async () => {
+	const { root } = await setup();
+	const button = root.querySelector('[data-action="cancel-list"]');
+	expect(button?.getAttribute("data-variant")).toBe("danger");
+	expect(button?.getAttribute("slot")).toBe("side");
+	expect(button?.parentElement?.tagName).toBe("CC-LIST-REPLY");
+	expect(button?.textContent?.trim()).toBe("Cancel list");
+});
+
+test("cancel list removes the waiting list at once, buys nothing and goes home", async () => {
+	const { root, repo, visited } = await setup({
+		before: async (repo) => {
+			await withW1(repo);
+			await repo.savePurchaseList(draft("d1", ["A"]));
+		},
+	});
+	await click(root, "cancel-list");
+	expect((await stored(repo)).map((l) => l.id)).toEqual(["d1"]);
+	expect(await allPurchases(repo)).toEqual([]);
+	expect(visited).toEqual(["/"]);
+});
+
+test("a list saved meanwhile is not cancelled", async () => {
+	const { root, repo, visited } = await setup();
+	const done = { ...saved("w1", ["A"]) };
+	await repo.savePurchaseList(done);
+	await click(root, "cancel-list");
+	expect(bannerText(root)).toContain(
+		"This list is no longer waiting for a reply, so it was not cancelled.",
+	);
+	expect(await stored(repo)).toEqual([done]);
+	expect(visited).toEqual([]);
 });

@@ -324,3 +324,12 @@ test("the date, summary and Review sit in the side panel, the lines in the main 
 		"grid-template-columns: minmax(0, 1fr) var(--cc-side-panel)",
 	);
 });
+
+test("the side panel takes the page's own actions after Review", async () => {
+	const { root } = await mount();
+	const slot = root.querySelector('.list-layout__side > slot[name="side"]');
+	expect(slot).toBeInstanceOf(HTMLElement);
+	expect(slot?.previousElementSibling?.classList.contains("action-bar")).toBe(
+		true,
+	);
+});

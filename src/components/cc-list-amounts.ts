@@ -25,6 +25,7 @@ import { base, controls, listLayout } from "#styles/shared";
 /**
  * Step 2 of a purchase list: a date and one amount per card, each line warned about what the
  * bank may do with it. The warnings inform and never block; only text that is not money does.
+ * The `side` slot takes the page's own actions, after Review (a draft's Delete draft).
  */
 @customElement("cc-list-amounts")
 export class CcListAmounts extends LitElement {
@@ -423,6 +424,7 @@ export class CcListAmounts extends LitElement {
 						})}
 				>${t("purchaseList.review")} ›</button>
 			</div>
+			<slot name="side"></slot>
 			</div>
 		</div>`;
 	}

@@ -948,9 +948,11 @@ a:any-link:hover {
 		order: 0;
 	}
 
-	/* In the panel the actions fill its width, one under the other. */
+	/* In the panel the actions fill its width, one under the other -- a page's own actions
+	   slotted into a list element's panel (Delete draft, Cancel list) too. */
 	.list-layout__side > button,
-	.list-layout__side .list-share button {
+	.list-layout__side .list-share button,
+	.page [slot="side"] {
 		align-self: stretch;
 		justify-content: center;
 	}

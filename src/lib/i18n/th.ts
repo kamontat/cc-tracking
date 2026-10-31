@@ -460,6 +460,8 @@ export const th: Catalog = {
 	"purchaseList.openDraft": "เปิดฉบับร่าง",
 	"purchaseList.openReply": "บันทึกคำตอบของผู้ใช้บัตร",
 	"purchaseList.openSaved": "ดูใบรายการที่บันทึกแล้ว",
+	"purchaseList.deleteDraft": "ลบฉบับร่าง",
+	"purchaseList.error.delete": "ลบฉบับร่างไม่สำเร็จ",
 	"reply.title": "คำตอบของผู้ใช้บัตร",
 	"reply.listFor": "ใบรายการซื้อวันที่ {date}",
 	"reply.hint": "บันทึกคำตอบของผู้ใช้บัตรทีละบรรทัด แก้จำนวนเงินถ้ายอดจริงต่างจากที่วางไว้",
@@ -476,6 +478,9 @@ export const th: Catalog = {
 	"reply.error.save": "บันทึกคำตอบไม่สำเร็จ",
 	"reply.error.alreadySaved": "ใบรายการนี้บันทึกไปแล้ว จึงไม่ได้เพิ่มรายการซ้ำ",
 	"reply.error.unanswered": "ตอบให้ครบทุกบรรทัดก่อนบันทึก",
+	"reply.cancel": "ยกเลิกใบรายการ",
+	"reply.error.cancel": "ยกเลิกใบรายการไม่สำเร็จ",
+	"reply.error.notWaiting": "ใบรายการนี้ไม่ได้รอคำตอบแล้ว จึงไม่ได้ยกเลิก",
 	"saved.detail": "ใบรายการซื้อ · บันทึกแล้ว",
 	"saved.summary.one":
 		"บันทึก 1 รายการ รวม {total} แล้ว ยอดนี้นับรวมในวงเงินของบัตรแล้ว",

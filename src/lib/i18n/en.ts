@@ -462,6 +462,8 @@ export const en = {
 	"purchaseList.openDraft": "Open the draft",
 	"purchaseList.openReply": "Record the spender's reply",
 	"purchaseList.openSaved": "See the saved list",
+	"purchaseList.deleteDraft": "Delete draft",
+	"purchaseList.error.delete": "Could not delete the draft.",
 	"reply.title": "Spender's reply",
 	"reply.listFor": "List for {date}",
 	"reply.hint":
@@ -480,6 +482,10 @@ export const en = {
 	"reply.error.alreadySaved":
 		"This list was already saved, so nothing was added again.",
 	"reply.error.unanswered": "Answer every line before saving.",
+	"reply.cancel": "Cancel list",
+	"reply.error.cancel": "Could not cancel the list.",
+	"reply.error.notWaiting":
+		"This list is no longer waiting for a reply, so it was not cancelled.",
 	"saved.detail": "Purchase list · saved",
 	"saved.summary.one":
 		"Saved 1 purchase, {total}. It counts against the card's room now.",
