@@ -346,6 +346,11 @@ a:any-link:hover {
 		);
 }
 
+/* A single-column task page (the purchase list) that would read too wide across a desktop. */
+.page--narrow {
+	max-width: var(--cc-page-narrow);
+}
+
 /* From 900px the bar is gone; the page clears only the floating button. */
 @media (min-width: 900px) {
 	.page {
@@ -899,8 +904,12 @@ a:any-link:hover {
 	color: var(--cc-danger);
 }
 
+/* Empty, the live region is taken out of the column's flow and clipped from sight, but never
+   `display: none`: a screen reader only announces changes to a region it already knows, so a
+   hidden one would swallow the first message. */
 .page > .status:empty {
-	display: none;
+	position: absolute;
+	clip-path: inset(50%);
 }
 
 .page > .note {

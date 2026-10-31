@@ -780,3 +780,28 @@ test("a saved list shows what was bought", async () => {
 	expect(root.querySelector('[data-action="open-draft"]')).toBeNull();
 	expect(root.querySelector("cc-list-reply")).toBeNull();
 });
+
+/** The body of the first rule in `css` whose selector is exactly `selector`. */
+const ruleBody = (css: string, selector: string) => {
+	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return css.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`))?.[1];
+};
+
+test("the empty status stays in the page for screen readers", async () => {
+	const css = await Bun.file("src/styles/app.css").text();
+	const empty = ruleBody(css, ".page > .status:empty");
+	expect(empty).toBeDefined();
+	expect(empty).not.toContain("display: none");
+	expect(empty).toContain("clip-path");
+});
+
+test("the list page is narrower than the other pages", async () => {
+	const tokens = await Bun.file("src/styles/tokens.css").text();
+	expect(tokens).toMatch(/--cc-page-narrow:\s*[\d.]+rem;/);
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(ruleBody(css, ".page--narrow")).toContain(
+		"max-width: var(--cc-page-narrow)",
+	);
+	const page = await Bun.file("src/routes/list.html").text();
+	expect(page).toContain('<main class="page page--narrow" id="page">');
+});
