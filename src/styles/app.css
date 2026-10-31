@@ -800,8 +800,102 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
-.page > a[data-action="to-cards"] {
-	align-self: flex-start;
+/*
+ * Transactions: a switch (Ledger, Lists, Owed), then one column. From 900px the Owed button
+ * leaves the switch and the owed list sits beside the ledger. Below it, the owed view shows
+ * the owed list alone and the ledger view the ledger alone.
+ */
+.tx-switch {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+}
+
+.tx-grid {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-4);
+}
+
+.tx-main {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+	min-inline-size: 0;
+}
+
+.tx-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+	align-items: center;
+}
+
+.tx-toolbar > .search {
+	flex: 1 1 calc(var(--cc-space-7) * 4);
+	width: auto;
+}
+
+.tx-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+}
+
+.tx-summary {
+	display: grid;
+	grid-template-columns: repeat(
+			auto-fit,
+			minmax(calc(var(--cc-space-7) * 3), 1fr)
+		);
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-3) var(--cc-panel-padding);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-sm);
+}
+
+.tx-summary > div {
+	display: flex;
+	flex-direction: column;
+}
+
+.tx-summary .figure__label {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}
+
+.tx-grid[data-view="ledger"] > .tx-owed {
+	display: none;
+}
+
+.tx-grid[data-view="owed"] > .tx-main {
+	display: none;
+}
+
+@media (min-width: 900px) {
+	.tx-switch [data-view="owed"] {
+		display: none;
+	}
+
+	.tx-grid {
+		flex-direction: row;
+		align-items: flex-start;
+	}
+
+	.tx-grid > .tx-main {
+		flex: 1 1 0;
+	}
+
+	.tx-grid > .tx-owed {
+		display: block;
+		flex: 0 0 var(--cc-side-panel);
+	}
+
+	.tx-grid[data-view="owed"] > .tx-main {
+		display: flex;
+	}
 }
 
 /*

@@ -118,7 +118,7 @@ export class CcListIndex extends LitElement {
 						aria-pressed=${this.status.includes(status)}
 						@click=${() => this.toggle(status)}>${t(`tx.lists.status.${status}`)}</button>`,
 			)}</div>
-			${rows.length === 0 ? html`<p class="empty">${t("tx.lists.empty")}</p>` : nothing}
+			${rows.length === 0 ? html`<p class="empty">${t("tx.lists.noMatch")}</p>` : nothing}
 			<div class="list">${rows.map((list) => {
 				const count = list.lines.length;
 				return html`<a data-list=${list.id} href=${listPageAddress(list)}>

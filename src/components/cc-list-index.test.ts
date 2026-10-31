@@ -92,3 +92,12 @@ test("empty names the next step", async () => {
 		"No lists yet. Start one from Home.",
 	);
 });
+
+test("lists that no chip matches say so instead of asking for a first list", async () => {
+	const only = lists().filter((l) => l.status === "draft");
+	const { root } = await mount({ lists: only, status: ["saved"] });
+	expect(root.querySelector(".empty")?.textContent?.trim()).toBe(
+		"No list has these statuses. Clear a status to see more.",
+	);
+	expect(root.querySelector("a[data-list]")).toBeNull();
+});
