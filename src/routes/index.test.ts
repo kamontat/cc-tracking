@@ -136,6 +136,24 @@ test("ticking a card twice takes it back off", async () => {
 	expect(selectionBar(root)).toBeNull();
 });
 
+test("the floating Payment button steps aside while cards are selected", async () => {
+	const { root } = await setup();
+	const html = document.documentElement;
+	expect(html.hasAttribute("data-selecting")).toBe(false);
+	await toggle(root, "A");
+	expect(html.hasAttribute("data-selecting")).toBe(true);
+	selectionBar(root)
+		?.querySelector<HTMLButtonElement>('[data-action="clear"]')
+		?.click();
+	await settle();
+	expect(html.hasAttribute("data-selecting")).toBe(false);
+
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(css).toMatch(
+		/:root\[data-selecting\] \.fab:any-link\s*\{\s*display: none;/,
+	);
+});
+
 test("enter amounts opens the list with the picked cards", async () => {
 	const { root, visited } = await setup();
 	await toggle(root, "B");

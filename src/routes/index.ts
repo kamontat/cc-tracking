@@ -100,6 +100,12 @@ export function renderHomePage(
 		// A card that is no longer ready (archived, moved, its group gone) drops out of the pick.
 		const ready = new Set(rows.map((row) => row.card.id));
 		if (data) selected = selected.filter((id) => ready.has(id));
+		// The shell hides the floating Payment button while the selection bar shows, so it never
+		// sits over Enter amounts.
+		root.ownerDocument.documentElement.toggleAttribute(
+			"data-selecting",
+			selected.length > 0,
+		);
 		render(
 			html`
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>

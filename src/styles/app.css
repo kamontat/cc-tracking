@@ -250,6 +250,11 @@ a:any-link:hover {
 	display: none;
 }
 
+/* While Home's selection bar shows, Payment steps aside so it never covers the bar. */
+:root[data-selecting] .fab:any-link {
+	display: none;
+}
+
 @media (min-width: 900px) {
 	.tabbar {
 		display: none;
@@ -792,8 +797,8 @@ a:any-link:hover {
 
 /*
  * Home's selection bar: what is ticked on the left, its actions on the right. It sticks to the
- * bottom of the page as it scrolls, above the phone's tab bar, and leaves room at its inline end
- * for the floating Payment button so that button never covers Enter amounts.
+ * bottom of the page as it scrolls, above the phone's tab bar. The floating Payment button is
+ * hidden while it shows (`:root[data-selecting]`), so the bar has the full width.
  */
 .action-bar {
 	position: sticky;
@@ -809,9 +814,7 @@ a:any-link:hover {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--cc-space-3);
-	padding-block: var(--cc-space-3);
-	padding-inline: var(--cc-space-4)
-		calc(var(--cc-fab-size) + var(--cc-space-4) + var(--cc-space-4));
+	padding: var(--cc-space-3) var(--cc-space-4);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
@@ -829,16 +832,10 @@ a:any-link:hover {
 	align-self: center;
 }
 
-/* From 900px the tab bar is gone, and Payment grows into a pill wider than the inline-end room,
-   so the bar parks just above it instead. */
+/* From 900px the tab bar is gone, so the bar sits near the bottom edge. */
 @media (min-width: 900px) {
 	.action-bar {
-		bottom: calc(
-			var(--cc-space-5) +
-			var(--cc-fab-size) +
-			var(--cc-space-3) +
-			env(safe-area-inset-bottom, 0px)
-		);
+		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
 	}
 }
 

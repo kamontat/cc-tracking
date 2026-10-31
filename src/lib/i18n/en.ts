@@ -387,6 +387,7 @@ export const en = {
 	"ready.title": "Ready to use",
 	"ready.summary.one": "1 card in {places}",
 	"ready.summary.many": "{count} cards in {places}",
+	"ready.sortBy": "Sort by",
 	"ready.sort.room": "Most room",
 	"ready.sort.close": "Longest to close",
 	"ready.sort.due": "Latest due",

@@ -390,6 +390,7 @@ export const th: Catalog = {
 	"ready.title": "พร้อมใช้",
 	"ready.summary.one": "1 ใบที่ {places}",
 	"ready.summary.many": "{count} ใบที่ {places}",
+	"ready.sortBy": "เรียงตาม",
 	"ready.sort.room": "วงเงินเหลือมากสุด",
 	"ready.sort.close": "อีกนานสุดกว่าจะสรุปยอด",
 	"ready.sort.due": "ครบกำหนดช้าสุด",

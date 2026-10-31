@@ -175,3 +175,32 @@ test("the picked sort chip reads as link text on the accent tint", async () => {
 	expect(rule).toContain("background: var(--cc-accent-surface)");
 	expect(rule).toContain("color: var(--cc-link)");
 });
+
+const cssOf = (element: CcReadyList) =>
+	((element.constructor as typeof CcReadyList).styles as { cssText: string }[])
+		.map((s) => s.cssText)
+		.join("\n");
+
+test("the sort chips sit on one row as a segmented group", async () => {
+	const { element, root } = await mount();
+	const group = root.querySelector(".chips");
+	// `row` turns the shared column-flex div back into a row; nothing wraps.
+	expect(group?.hasAttribute("row")).toBe(true);
+	expect(group?.getAttribute("role")).toBe("group");
+	expect(group?.getAttribute("aria-label")).toBeTruthy();
+	expect(group?.querySelectorAll("button.chip")).toHaveLength(3);
+	const rule = cssOf(element).match(/\.chips\s*\{([^}]*)\}/)?.[1];
+	expect(rule).toContain("flex-wrap: nowrap");
+	expect(rule).toContain("overflow-x: auto");
+});
+
+test("ready cards run 1, 2 then 4 across", async () => {
+	const { element } = await mount();
+	const css = cssOf(element);
+	expect(css).toMatch(
+		/@media \(min-width: 640px\)\s*\{\s*\.picks\s*\{\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/,
+	);
+	expect(css).toMatch(
+		/@media \(min-width: 1200px\)\s*\{\s*\.picks\s*\{\s*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/,
+	);
+});

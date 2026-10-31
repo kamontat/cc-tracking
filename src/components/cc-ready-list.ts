@@ -42,21 +42,37 @@ export class CcReadyList extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
+			/* A segmented control: one row, never wrapping. On a phone a row too long for the
+			   screen scrolls sideways; from 900px the options share the full width equally. */
 			.chips {
 				display: flex;
-				flex-wrap: wrap;
-				gap: var(--cc-space-2);
+				flex-direction: row;
+				flex-wrap: nowrap;
+				gap: var(--cc-space-1);
+				padding: var(--cc-space-1);
+				overflow-x: auto;
+				background: var(--cc-surface-sunken);
+				border: var(--cc-border-width) solid var(--cc-border);
+				border-radius: var(--cc-radius-md);
+				scrollbar-width: thin;
 			}
 
 			.chip {
-				padding: var(--cc-space-1) var(--cc-space-3);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-pill);
-				background: var(--cc-surface-sunken);
-				color: var(--cc-text);
+				flex: 1 0 auto;
+				padding: var(--cc-space-2) var(--cc-space-3);
+				border: var(--cc-border-width) solid transparent;
+				border-radius: var(--cc-radius-sm);
+				background: transparent;
+				color: var(--cc-text-muted);
 				font: inherit;
 				font-size: var(--cc-text-sm);
+				white-space: nowrap;
+				text-align: center;
 				cursor: pointer;
+			}
+
+			.chip:hover {
+				color: var(--cc-text);
 			}
 
 			.chip[aria-pressed="true"] {
@@ -66,15 +82,27 @@ export class CcReadyList extends LitElement {
 				font-weight: 600;
 			}
 
+			@media (min-width: 900px) {
+				.chip {
+					flex: 1 1 0;
+				}
+			}
+
 			.picks {
 				display: grid;
-				grid-template-columns: 1fr;
+				grid-template-columns: minmax(0, 1fr);
 				gap: var(--cc-space-3);
 			}
 
 			@media (min-width: 640px) {
 				.picks {
-					grid-template-columns: 1fr 1fr;
+					grid-template-columns: repeat(2, minmax(0, 1fr));
+				}
+			}
+
+			@media (min-width: 1200px) {
+				.picks {
+					grid-template-columns: repeat(4, minmax(0, 1fr));
 				}
 			}
 
@@ -255,7 +283,7 @@ export class CcReadyList extends LitElement {
 		}
 		return html`
 			${header}
-			<div class="chips">
+			<div class="chips" row role="group" aria-label=${t("ready.sortBy")}>
 				${READY_SORTS.map(
 					(sort) => html`
 						<button class="chip" data-sort=${sort}
