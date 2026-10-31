@@ -328,6 +328,8 @@ test("the summary names the month and signs its figures", async () => {
 	const { root } = await open();
 	const summary = root.querySelector('[data-testid="summary"]');
 	expect(summary?.querySelector("h2")?.textContent).toBe("October so far");
+	expect(summary?.querySelector(".tx-summary__head small")).toBeNull();
+	expect(flatText(summary)).not.toContain(" · ");
 	expect(
 		summary?.querySelector('[data-field="purchases"] b')?.textContent,
 	).toBe("−฿1,250.00");

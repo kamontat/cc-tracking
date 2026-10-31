@@ -142,23 +142,26 @@ export function needsYou(
 	overdue.sort((a, b) => b.days - a.days || byId(a.card, b.card));
 
 	const horizon = plannedHorizon(today);
-	const soonPlanned = planned
+	const plannedItem = (payment: CardPayment): NeedsItem => ({
+		kind: "planned",
+		payment,
+		card: data.cards.find((c) => c.id === payment.cardId),
+	});
+	const dueSoon = planned
 		.filter((p) => p.status === "planned" && compareDates(p.date, horizon) <= 0)
-		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b))
-		.map(
-			(payment): NeedsItem => ({
-				kind: "planned",
-				payment,
-				card: data.cards.find((c) => c.id === payment.cardId),
-			}),
-		);
+		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b));
+	const late = dueSoon.filter((p) => compareDates(p.date, today) <= 0);
+	const soon = dueSoon.filter((p) => compareDates(p.date, today) > 0);
 
+	// Money at risk first (DD-62): overdue bills, late plans, waiting lists, plans in the next
+	// three days, then drafts.
 	return [
+		...overdue,
+		...late.map(plannedItem),
 		...ofStatus("sent").map(
 			(list): NeedsItem => ({ kind: "waiting", list, total: listTotal(list) }),
 		),
-		...overdue,
-		...soonPlanned,
+		...soon.map(plannedItem),
 		...ofStatus("draft").map(
 			(list): NeedsItem => ({ kind: "draft", list, total: listTotal(list) }),
 		),

@@ -194,11 +194,18 @@ export const actionRowStyles = css`
 		gap: var(--cc-space-3);
 	}
 
+	/* The quiet ground reaches the panel's inner edges (DD-105, DD-109); the badge and a
+	   neutral icon tile, whose fill is that ground, turn to the surface so they still show. */
 	.a-row:has(> .a-hit:hover) {
 		background: var(--cc-surface-sunken);
 		box-shadow:
-			calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
-			var(--cc-space-2) 0 0 var(--cc-surface-sunken);
+			calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
+			var(--cc-space-4) 0 0 var(--cc-surface-sunken);
+	}
+
+	.a-row:has(> .a-hit:hover) .tag,
+	.a-row:has(> .a-hit:hover) .a-ic:not([data-kind="waiting"], [data-kind="overdue"]) {
+		background: var(--cc-surface);
 	}
 
 	.a-hit {
@@ -295,6 +302,30 @@ export const actionRowStyles = css`
 		padding-block: var(--cc-space-3);
 		line-height: 1.25;
 		text-align: end;
+	}
+
+	/* Below 900px the row stacks (DD-109): the title takes the full width beside the icon and
+	   may wrap, the subtitle and badge sit under it, then a last line holds the figure on the
+	   left and the button on the right, both in line with the text. */
+	@media (max-width: 899.98px) {
+		.a-row {
+			grid-template-columns: minmax(0, 1fr);
+			gap: 0;
+		}
+
+		.a-row:has(> .a-right) > .a-hit {
+			padding-block-end: var(--cc-space-2);
+		}
+
+		.a-right {
+			flex-direction: row;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: space-between;
+			padding-block: 0 var(--cc-space-3);
+			padding-inline-start: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
+			text-align: start;
+		}
 	}
 
 	.a-right button {

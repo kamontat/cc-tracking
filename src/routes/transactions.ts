@@ -212,7 +212,6 @@ export function renderTransactionsPage(
 					? html`<section class="tx-summary" data-testid="summary">
 						<div class="tx-summary__head">
 							<h2>${t("tx.summary.title", { month: monthName(now, getLocale()) })}</h2>
-							<small>${t("tx.summary.legend")}</small>
 						</div>
 						<div class="tx-summary__figures">
 							${figure("purchases", t("tx.summary.purchases"), `${summary.purchases ? MINUS : ""}${formatAmount(summary.purchases)}`, "out")}

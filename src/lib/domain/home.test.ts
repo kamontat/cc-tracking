@@ -165,7 +165,104 @@ describe("sortReady", () => {
 });
 
 describe("needsYou", () => {
-	test("needs you lists waiting, then overdue, then drafts", () => {
+	test("money at risk first: overdue, late plans, waiting, soon plans, drafts", () => {
+		const a = mk("A");
+		const d = data(
+			[a],
+			[buy("p", "A", "2026-09-10", 4_000_00)],
+			[
+				list("d", "draft", [{ cardId: "A", amount: 2_00 }]),
+				list("s", "sent", [{ cardId: "A", amount: 3_00 }]),
+			],
+		);
+		const plan = (id: string, date: string): CardPayment => ({
+			id,
+			cardId: "A",
+			date,
+			amount: 100,
+			status: "planned",
+		});
+		const items = needsYou(d, TODAY, [
+			plan("soon", "2026-11-02"),
+			plan("late", "2026-10-31"),
+		]);
+		expect(items.map((i) => i.kind)).toEqual([
+			"overdue",
+			"planned",
+			"waiting",
+			"planned",
+			"draft",
+		]);
+		const ids = items.flatMap((i) =>
+			i.kind === "planned" ? [i.payment.id] : [],
+		);
+		expect(ids).toEqual(["late", "soon"]);
+	});
+
+	test("overdue bills: most days overdue first, ties by card id", () => {
+		const b = mk("B");
+		const a = mk("A");
+		const c = mk("C");
+		const d = data(
+			[b, a, c],
+			[
+				buy("pb", "B", "2026-09-10", 1_00),
+				buy("pa", "A", "2026-09-10", 1_00),
+				buy("pc", "C", "2026-08-10", 1_00),
+			],
+		);
+		const cards = needsYou(d, TODAY).flatMap((i) =>
+			i.kind === "overdue" ? [i.card.id] : [],
+		);
+		expect(cards).toEqual(["C", "A", "B"]);
+	});
+
+	test("late plans oldest first, soon plans soonest first, ties by id", () => {
+		const plan = (id: string, date: string): CardPayment => ({
+			id,
+			cardId: "A",
+			date,
+			amount: 100,
+			status: "planned",
+		});
+		const items = needsYou(data([mk("A")]), TODAY, [
+			plan("s2", "2026-11-03"),
+			plan("s1b", "2026-11-01"),
+			plan("s1a", "2026-11-01"),
+			plan("l0", "2026-10-31"),
+			plan("l2b", "2026-10-20"),
+			plan("l2a", "2026-10-20"),
+			{ ...plan("paid", "2026-10-01"), status: "paid" },
+		]);
+		expect(
+			items.flatMap((i) => (i.kind === "planned" ? [i.payment.id] : [])),
+		).toEqual(["l2a", "l2b", "l0", "s1a", "s1b", "s2"]);
+	});
+
+	test("waiting and draft lists: oldest list date first, ties by id", () => {
+		const line = [{ cardId: "A", amount: 1_00 }];
+		const items = needsYou(
+			data(
+				[mk("A")],
+				[],
+				[
+					list("d2", "draft", line, "2026-10-29"),
+					list("d1", "draft", line, "2026-10-01"),
+					list("wb", "sent", line, "2026-10-20"),
+					list("wc", "sent", line, "2026-10-28"),
+					list("wa", "sent", line, "2026-10-20"),
+				],
+			),
+			TODAY,
+		);
+		expect(
+			items.map((i) =>
+				i.kind === "waiting" || i.kind === "draft" ? i.list.id : "",
+			),
+		).toEqual(["wa", "wb", "wc", "d1", "d2"]);
+	});
+
+	test("needs you lists overdue, then waiting, then drafts", () => {
 		const a = mk("A");
 		const z = mk("Z", { archived: true });
 		const d = data(
@@ -181,15 +278,15 @@ describe("needsYou", () => {
 			],
 		);
 		const items = needsYou(d, TODAY);
-		expect(items.map((i) => i.kind)).toEqual(["waiting", "overdue", "draft"]);
-		const overdue = items[1];
+		expect(items.map((i) => i.kind)).toEqual(["overdue", "waiting", "draft"]);
+		const overdue = items[0];
 		if (overdue?.kind !== "overdue") throw new Error("expected overdue");
 		expect(overdue.days).toBe(16);
 		expect(overdue.dueDate).toBe("2026-10-15");
 		expect(overdue.remaining).toBe(4_000_00);
 	});
 
-	test("planned payments due within 3 days sit after overdue, before drafts", () => {
+	test("planned payments due within 3 days sit after overdue, before drafts; later ones wait", () => {
 		const a = mk("A");
 		const d = data(
 			[a],

@@ -61,6 +61,7 @@ export class CcPayPicker extends LitElement {
 				display: flex;
 				flex-direction: column;
 				padding: 0 var(--cc-space-4);
+				overflow: clip;
 				background: var(--cc-surface);
 				border: var(--cc-border-width) solid var(--cc-border);
 				border-radius: var(--cc-radius-md);
@@ -88,12 +89,17 @@ export class CcPayPicker extends LitElement {
 				border-top: var(--cc-border-width) solid var(--cc-border);
 			}
 
-			/* A quiet ground on hover, never an underline (DD-105). */
+			/* A quiet ground on hover, never an underline (DD-105), reaching the list's inner
+			   edges (DD-109); a neutral badge turns to the surface so it still shows. */
 			button[data-card]:hover {
 				background: var(--cc-surface-sunken);
 				box-shadow:
-					calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
-					var(--cc-space-2) 0 0 var(--cc-surface-sunken);
+					calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
+					var(--cc-space-4) 0 0 var(--cc-surface-sunken);
+			}
+
+			button[data-card]:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]) {
+				background: var(--cc-surface);
 			}
 
 			button[data-card]:focus-visible {

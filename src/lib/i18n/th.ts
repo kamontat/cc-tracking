@@ -119,7 +119,6 @@ export const th: Catalog = {
 	"tx.chip.remove": "เอาออก {filter}",
 	"tx.owed.title": "ยอดค้างของแต่ละบัตร",
 	"tx.fromList": "จากใบรายการซื้อ {date}",
-	"tx.summary.legend": "การซื้อ − · การชำระ +",
 	"tx.summary.title": "{month} จนถึงวันนี้",
 	"tx.sortChip": "เรียง: {sort}",
 	"tx.lists.empty": "ยังไม่มีใบรายการซื้อ เริ่มได้จากหน้าหลัก",

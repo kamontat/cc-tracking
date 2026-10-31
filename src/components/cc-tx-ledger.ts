@@ -126,6 +126,20 @@ export class CcTxLedger extends LitElement {
 				font-size: var(--cc-text-sm);
 			}
 
+			/* Below 900px a ledger row stacks like the action row (DD-109): the chip, the title
+			   and its sub line, then the signed amount on its own line, in line with the text. */
+			@media (max-width: 899.98px) {
+				.crow[data-kind] {
+					grid-template-columns: auto minmax(0, 1fr);
+				}
+
+				.crow[data-kind] > .amount {
+					grid-column: 2;
+					align-items: flex-start;
+					text-align: start;
+				}
+			}
+
 			.empty {
 				text-align: center;
 				background: var(--cc-surface);

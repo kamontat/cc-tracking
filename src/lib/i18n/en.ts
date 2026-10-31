@@ -111,7 +111,6 @@ export const en = {
 	"tx.chip.remove": "Remove {filter}",
 	"tx.owed.title": "Owed on each card",
 	"tx.fromList": "From list {date}",
-	"tx.summary.legend": "Purchases − · Payments +",
 	"tx.summary.title": "{month} so far",
 	"tx.sortChip": "Sort: {sort}",
 	"tx.lists.empty": "No lists yet. Start one from Home.",

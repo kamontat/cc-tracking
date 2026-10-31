@@ -20,10 +20,11 @@ import { base, cardBits, controls, rowPanel } from "#styles/shared";
 const SHOWN = 5;
 
 /**
- * What needs doing on Home: replies to record, bills past due, payments planned soon, drafts
- * to finish. Each is the shared action row (DD-108): its icon and badge say the kind, and the
- * whole row opens the item; no figure or button on the right. More than five
- * show the first five and *See more (N)*, which opens the rest in place, in the same order.
+ * What needs doing on Home, money at risk first (DD-62): bills past due, late plans, replies
+ * to record, payments planned soon, drafts to finish. Each is the shared action row (DD-108):
+ * its icon and badge say the kind, and the whole row opens the item; no figure or button on
+ * the right. More than five show the first five and *See more (N)*, which opens the rest in
+ * place, in the same order.
  */
 @customElement("cc-needs-you")
 export class CcNeedsYou extends LitElement {

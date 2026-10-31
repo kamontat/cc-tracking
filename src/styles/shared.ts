@@ -740,6 +740,7 @@ export const rowPanel = css`
 		display: flex;
 		flex-direction: column;
 		padding: 0 var(--cc-space-4);
+		overflow: clip;
 		background: var(--cc-surface);
 		border: var(--cc-border-width) solid var(--cc-border);
 		border-radius: var(--cc-radius-md);
@@ -776,15 +777,21 @@ export const rowPanel = css`
 	}
 
 	/* Hover is a quiet ground, never an underline (DD-105). The two side shadows carry the
-	   ground a little past the row's edges into the panel's padding, so the text does not sit
-	   on its very rim. Focus keeps its ring (UI-16). */
+	   ground across the panel's side padding to its inner edges (DD-109); the panel clips them
+	   at its rounded corners, and the lines between rows stay whole. A neutral badge, whose
+	   fill is that ground, turns to the surface so it still shows. Focus keeps its ring (UI-16). */
 	button.crow:hover,
 	.crow:any-link:hover {
 		text-decoration: none;
 		background: var(--cc-surface-sunken);
 		box-shadow:
-			calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
-			var(--cc-space-2) 0 0 var(--cc-surface-sunken);
+			calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
+			var(--cc-space-4) 0 0 var(--cc-surface-sunken);
+	}
+
+	button.crow:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]),
+	.crow:any-link:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]) {
+		background: var(--cc-surface);
 	}
 
 	button.crow:focus-visible,
