@@ -5,15 +5,18 @@ import {
 	type CardsRooms,
 	cardUsePct,
 } from "#lib/domain/cards-view";
+import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
+import { displayDate, today } from "#lib/domain/date";
 import type { Location } from "#lib/domain/location";
 import { formatAmount } from "#lib/domain/money";
 import { cardOwnerOf } from "#lib/domain/owner";
 import { defaultSettings, type Settings } from "#lib/domain/settings";
-import type { Card, LimitGroup } from "#lib/domain/types";
+import { openPeriod } from "#lib/domain/statement";
+import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
-import { t } from "#lib/i18n/index";
-import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
+import { getLocale, t } from "#lib/i18n/index";
+import { cardMini, cardRowTitleHtml } from "#lib/ui/card-label";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
@@ -77,6 +80,18 @@ export class CcCardsList extends LitElement {
 				display: inline;
 			}
 
+			.title {
+				display: flex;
+				flex-wrap: wrap;
+				align-items: baseline;
+				gap: var(--cc-space-1) var(--cc-space-2);
+			}
+
+			.sub {
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
 			.r small[data-tone="warn"] {
 				color: var(--cc-warning);
 			}
@@ -131,6 +146,8 @@ export class CcCardsList extends LitElement {
 		locationText(id as Location);
 	/** How many cards are stored at all, to tell "none yet" from "none match". */
 	@property({ type: Number }) total = 0;
+	/** Today, which picks each card's open period for the row's close and due dates. */
+	@property() today: PlainDate = today(new Date());
 
 	constructor() {
 		super();
@@ -158,6 +175,15 @@ export class CcCardsList extends LitElement {
 		</span>`;
 	}
 
+	private dates(card: Card): string {
+		const period = openPeriod(card, this.today);
+		const locale = getLocale();
+		return t("cards.page.dates", {
+			close: displayDate(closeDateOf(card.cycle, period), locale),
+			due: displayDate(dueDateOf(card.cycle, period), locale),
+		});
+	}
+
 	private row(card: Card, flat: boolean) {
 		const owner = cardOwnerOf(card, this.groupOf(card));
 		const extra = flat
@@ -166,9 +192,14 @@ export class CcCardsList extends LitElement {
 		return html`<a class="crow" data-card=${card.id}
 			href=${`/card?id=${encodeURIComponent(card.id)}`}>
 			${cardMini(card, this.groups)}
-			<span class="what"><span class="t"><b>${cardPanelLabel(card.id, card)}</b>${
+			<span class="what"><span class="title"><span class="t"><b>${cardRowTitleHtml(card, this.groups)}</b>${
 				extra ? html` <span class="word">· ${extra}</span>` : nothing
-			}</span></span>
+			}</span>${
+				card.supplementary
+					? html`<span class="tag">${t("cards.page.supplementary")}</span>`
+					: nothing
+			}</span>
+			<span class="sub">${this.dates(card)}</span></span>
 			${this.right(card)}
 		</a>`;
 	}

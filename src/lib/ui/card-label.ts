@@ -105,3 +105,24 @@ export function cardOwnerName(
 	const owner = cardOwnerOf(card, group);
 	return owner ? `${card.name} (${owner})` : card.name;
 }
+
+/**
+ * The title the Cards page, the card page and the edit page give a card (amends UI-14 there):
+ * `Krungsri Bangkok · RI (4412)`. The holder is `cardOwnerOf` (DR-13) and is left out, with its
+ * `·`, when unknown; `(last4)` is left out when the card has none.
+ */
+export function cardTitle(card: Card, groups: LimitGroup[]): string {
+	const group = groups.find((g) => g.id === card.limitGroupId) ?? null;
+	const owner = cardOwnerOf(card, group);
+	const holder = owner ? ` · ${owner}` : "";
+	const digits = card.last4 ? ` (${card.last4})` : "";
+	return `${card.name}${holder}${digits}`;
+}
+
+/** The Cards page row's title: `10) Krungsri Bangkok · RI (4412)`. */
+export const cardRowTitle = (card: Card, groups: LimitGroup[]): string =>
+	`${card.id}) ${cardTitle(card, groups)}`;
+
+/** The row title as markup; its short form is `id) name`, for a narrow place. */
+export const cardRowTitleHtml = (card: Card, groups: LimitGroup[]) =>
+	swap(cardRowTitle(card, groups), cardLine(card.id, card, { short: true }));

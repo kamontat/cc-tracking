@@ -217,6 +217,8 @@ export const th: Catalog = {
 	"cards.archived": "เก็บเข้าคลังแล้ว",
 	"cards.archivedList": "เก็บเข้าคลังแล้ว ({count})",
 	"cards.page.noGroup": "ไม่มีกลุ่มวงเงิน",
+	"cards.page.supplementary": "บัตรเสริม",
+	"cards.page.dates": "สรุปยอด {close} · ครบกำหนด {due}",
 	"cards.locationReset":
 		"บัตรเหล่านี้เคยเก็บไว้ในที่ที่แอปไม่รู้จักแล้ว จึงตั้งที่เก็บเป็นกรุงเทพฯ: {names} แก้ไขแต่ละใบเพื่อเลือกที่เก็บที่ถูกต้อง",
 	"cards.error.read": "อ่านรายการบัตรไม่สำเร็จ",

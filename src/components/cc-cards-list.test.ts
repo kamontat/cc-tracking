@@ -111,7 +111,30 @@ test("rows link to the card page, encoded, with the chip and id) name", async ()
 		"/card?id=C",
 	]);
 	expect(links[0]?.querySelector(".mini")?.textContent).toBe("1111");
-	expect(text(links[0]?.querySelector(".card-label"))).toBe("A) Card A");
+	expect(text(links[0]?.querySelector(".cl-short"))).toBe("A) Card A");
+});
+
+test("rows are titled id) name · holder (last4), with the open period's dates and a Supplementary tag", async () => {
+	const { limitGroupId: _unused, ...bare } = card("N", { last4: "" });
+	const list = [
+		card("A"),
+		card("S", { supplementary: true, owner: "NT" }),
+		bare,
+	];
+	const { root } = await mount({}, { today: "2026-10-30" }, list);
+	const row = (id: string) => root.querySelector(`a[data-card="${id}"]`);
+	expect(text(row("A")?.querySelector(".t .cl-full"))).toBe(
+		"A) Card A · KC (1111)",
+	);
+	expect(text(row("A")?.querySelector(".sub"))).toBe(
+		"closes 18 Nov 2026 · due 03 Dec 2026",
+	);
+	expect(row("A")?.querySelector(".tag")).toBeNull();
+	expect(text(row("S")?.querySelector(".tag"))).toBe("Supplementary");
+	expect(text(row("S")?.querySelector(".t .cl-full"))).toBe(
+		"S) Card S · NT (1111)",
+	);
+	expect(text(row("N")?.querySelector(".t .cl-full"))).toBe("N) Card N");
 });
 
 test("the right side: room, N% used from 80% in the warn tone, or credit", async () => {

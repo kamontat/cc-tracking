@@ -203,6 +203,8 @@ export const en = {
 	"cards.archived": "Archived",
 	"cards.archivedList": "Archived ({count})",
 	"cards.page.noGroup": "No limit group",
+	"cards.page.supplementary": "Supplementary",
+	"cards.page.dates": "closes {close} · due {due}",
 	"cards.locationReset":
 		"These cards were kept somewhere this app no longer recognises, so their location was set to Bangkok: {names}. Edit each one to pick the right place.",
 	"cards.error.read": "Could not read the card list.",

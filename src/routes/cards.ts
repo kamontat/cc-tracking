@@ -285,6 +285,7 @@ export function renderCardsPage(
 				.settings=${settings}
 				.locationName=${locationName}
 				.total=${cards.length}
+				.today=${now}
 			></cc-cards-list>
 			${
 				filterOpen
