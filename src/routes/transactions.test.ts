@@ -155,6 +155,18 @@ test("the switch changes the view and the address", async () => {
 	expect(root.querySelector("cc-list-index")).not.toBeNull();
 });
 
+test("with Owed open the Ledger button is marked current for wide screens", async () => {
+	const { root } = await open("?view=owed");
+	const ledgerButton = root.querySelector('.tx-switch [data-view="ledger"]');
+	expect(ledgerButton?.hasAttribute("data-desktop-current")).toBe(true);
+	const other = await open("?view=lists");
+	expect(
+		other.root
+			.querySelector('.tx-switch [data-view="ledger"]')
+			?.hasAttribute("data-desktop-current"),
+	).toBe(false);
+});
+
 test("Owed rows open the payment form for the card", async () => {
 	const { root } = await open("?view=owed");
 	const owed = root.querySelector("cc-owed-list") as CcOwedList;
@@ -219,4 +231,25 @@ test("a custom range chip shows display dates", async () => {
 	const chip = root.querySelector('[data-chip="range"]');
 	expect(chip?.textContent).not.toContain("2026-10-30");
 	expect(chip?.textContent).toContain("30");
+});
+
+test("a failed delete names the delete, not a save", async () => {
+	const { root, repo } = await open();
+	repo.deleteCardPayment = () => Promise.reject(new Error("disk full"));
+	await press(inLedger(root, '[data-kind="payment"]'));
+	await press(inLedger(root, '[data-action="delete"]'));
+	await press(inLedger(root, '[data-action="confirm-delete"]'));
+	await settle(5);
+	const banner = root.querySelector("cc-error-banner");
+	expect(banner?.message).toContain("Could not delete the payment.");
+});
+
+test("a failed mark paid names the marking, not a save", async () => {
+	const { root, repo } = await open();
+	repo.saveCardPayment = () => Promise.reject(new Error("disk full"));
+	await press(inLedger(root, '[data-kind="planned"]'));
+	await press(inLedger(root, '[data-action="mark-paid"]'));
+	await settle(5);
+	const banner = root.querySelector("cc-error-banner");
+	expect(banner?.message).toContain("Could not mark the payment paid.");
 });

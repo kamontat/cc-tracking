@@ -89,12 +89,12 @@ export function renderTransactionsPage(
 		state.guard(async () => {
 			if (data) await savePayment(repo, data, markPaid(payment, now), now);
 			open = null;
-		}, "pay.error.save");
+		}, "tx.error.markPaid");
 	const remove = (payment: CardPayment) =>
 		state.guard(async () => {
 			await deletePayment(repo, payment);
 			open = null;
-		}, "pay.error.save");
+		}, "tx.error.delete");
 
 	const chips = (): { key: string; label: string; clear: () => void }[] => {
 		if (!data) return [];
@@ -244,6 +244,7 @@ export function renderTransactionsPage(
 						html`<button type="button" data-view=${name}
 							data-variant=${view.view === name ? nothing : "quiet"}
 							aria-pressed=${view.view === name}
+							data-desktop-current=${name === "ledger" && view.view === "owed" ? "" : nothing}
 							@click=${() => {
 								open = null;
 								change({ view: name });

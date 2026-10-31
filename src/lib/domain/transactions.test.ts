@@ -87,8 +87,10 @@ describe("filterEntries", () => {
 		expect(f({ q: "41230" })).toEqual(["p1"]);
 		expect(f({ q: "฿41,230" })).toEqual(["p1"]);
 	});
-	test("a query of only separators matches only what prints it", () => {
-		expect(f({ q: "," })).toEqual(["p1"]);
+	test("a query without a digit never matches by the printed amount", () => {
+		expect(f({ q: "," })).toEqual([]);
+		expect(f({ q: "฿" })).toEqual([]);
+		expect(f({ q: "." })).toEqual([]);
 		expect(f({ q: ",," })).toEqual([]);
 		expect(f({ q: ". ," })).toEqual([]);
 	});

@@ -163,7 +163,7 @@ test("a payment row opens in place and deleting asks twice", async () => {
 		"Delete ฿700.00 to A) Card A (1111)?",
 	);
 	const keep = root.querySelector("[data-action=keep]") as HTMLElement;
-	expect(keep.getAttribute("data-variant")).toBe("quiet");
+	expect(keep.hasAttribute("data-variant")).toBe(false);
 	expect(
 		root
 			.querySelector("[data-action=confirm-delete]")

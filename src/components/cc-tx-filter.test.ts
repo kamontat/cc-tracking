@@ -141,3 +141,20 @@ test("close from the modal is passed on", async () => {
 	modal.dispatchEvent(new CustomEvent("close"));
 	expect(closed).toBe(1);
 });
+
+test("leaving custom clears the typed from and to", async () => {
+	const { element, root } = await mount();
+	await click(element, "[data-range=custom]");
+	const from = root.querySelector("input[name=from]") as HTMLInputElement;
+	from.value = "2026-10-01";
+	from.dispatchEvent(new Event("input"));
+	await click(element, "[data-range=month]");
+	let detail: { filter: TxFilter } | undefined;
+	element.addEventListener("apply", (e) => {
+		detail = (e as CustomEvent).detail;
+	});
+	await click(element, "[data-action=apply]");
+	expect(detail?.filter.range).toBe("month");
+	expect(detail?.filter.from).toBe("");
+	expect(detail?.filter.to).toBe("");
+});

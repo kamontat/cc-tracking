@@ -155,7 +155,14 @@ export class CcTxFilter extends LitElement {
 						range,
 						t(`tx.range.${range}`),
 						this.draft.range === range,
-						() => this.set({ range: this.draft.range === range ? "" : range }),
+						() => {
+							const next = this.draft.range === range ? "" : range;
+							this.set(
+								next === "custom"
+									? { range: next }
+									: { range: next, from: "", to: "" },
+							);
+						},
 					),
 				)}</div>
 				${

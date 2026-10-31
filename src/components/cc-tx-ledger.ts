@@ -212,7 +212,7 @@ export class CcTxLedger extends LitElement {
 						<p class="confirm">${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: label })}</p>
 						<button type="button" data-variant="danger" data-action="confirm-delete"
 							@click=${() => this.emit("delete-payment", { payment })}>${t("common.delete")}</button>
-						<button type="button" data-variant="quiet" data-action="keep"
+						<button type="button" data-action="keep"
 							@click=${() => {
 								this.confirming = false;
 							}}>${t("tx.keep")}</button>`

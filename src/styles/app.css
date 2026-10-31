@@ -879,6 +879,13 @@ a:any-link:hover {
 		display: none;
 	}
 
+	/* Owed sits beside the ledger here, so the ledger button reads as the current one. */
+	.tx-switch [data-view="ledger"][data-desktop-current] {
+		color: var(--cc-accent-text);
+		background: var(--cc-accent);
+		border-color: transparent;
+	}
+
 	.tx-grid {
 		flex-direction: row;
 		align-items: flex-start;

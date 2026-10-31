@@ -86,12 +86,11 @@ function matchesQuery(entry: TxEntry, query: string): boolean {
 		entry.kind === "purchase" ? entry.purchase.note : "",
 	];
 	if (text.some((t) => t.toLowerCase().includes(q))) return true;
+	const wanted = digits(q);
+	if (wanted === "") return false;
 	const printed = formatAmount(entryAmount(entry));
 	if (printed.toLowerCase().includes(q)) return true;
-	const wanted = digits(q);
-	return (
-		wanted !== "" && /^[\d,.฿\s]+$/.test(q) && digits(printed).includes(wanted)
-	);
+	return /^[\d,.฿\s]+$/.test(q) && digits(printed).includes(wanted);
 }
 
 export function filterEntries(
