@@ -30,7 +30,8 @@ export const TABS: readonly (readonly [
  */
 export function currentTab(path: string): Tab | null {
 	const bare = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
-	if (bare === "/card") return "cards";
+	if (bare === "/card" || bare === "/card/new" || bare === "/card/edit")
+		return "cards";
 	if (bare === "/pay") return "transactions";
 	if (bare.startsWith("/list/")) return "home";
 	return TABS.find(([, tabPath]) => tabPath === bare)?.[0] ?? null;

@@ -55,7 +55,7 @@ test("every list page hides the floating Payment button", async () => {
 	await settle();
 	const css = await Bun.file("src/styles/app.css").text();
 	expect(css).toMatch(
-		/:root\[data-pay-page\] \.fab-menu,\s*:root\[data-list-page\] \.fab-menu\s*\{\s*display: none;/,
+		/:root\[data-pay-page\] \.fab-menu,\s*:root\[data-list-page\] \.fab-menu,\s*:root\[data-form-page\] \.fab-menu\s*\{\s*display: none;/,
 	);
 });
 

@@ -350,9 +350,11 @@ a:any-link:hover {
 }
 
 /* + New steps aside on the payment page and on the purchase list pages (the new-list picker
-   among them), where the reader is mid-task and a bottom bar needs the full width. */
+   among them), where the reader is mid-task and a bottom bar needs the full width, and on the
+   card form, where it would sit over the form's buttons on a phone. */
 :root[data-pay-page] .fab-menu,
-:root[data-list-page] .fab-menu {
+:root[data-list-page] .fab-menu,
+:root[data-form-page] .fab-menu {
 	display: none;
 }
 
@@ -462,6 +464,11 @@ a:any-link:hover {
 /* The purchase list: one column, kept narrow, until 900px gives it the page width and its
    side panel (`.list-layout`). */
 .page--narrow {
+	max-width: var(--cc-page-narrow);
+}
+
+/* A form page (the card form) keeps its narrow measure at every width. */
+.page--form {
 	max-width: var(--cc-page-narrow);
 }
 

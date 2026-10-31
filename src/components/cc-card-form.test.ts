@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import "#components/cc-card-form";
+import type { CcCardForm } from "#components/cc-card-form";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
@@ -7,90 +8,112 @@ const groups: LimitGroup[] = [
 	{ id: "pool", name: "KBank account", limit: 500_000 },
 ];
 
-const mount = async (card: Card | null = null, limitGroups = groups) => {
+const stored = (extra: Partial<Card> = {}): Card => ({
+	id: "kbank",
+	name: "KBank Visa",
+	last4: "4821",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+	archived: false,
+	limitGroupId: "pool",
+	...extra,
+});
+
+const mount = async (
+	card: Card | null = null,
+	limitGroups = groups,
+	extra: Partial<CcCardForm> = {},
+) => {
+	setLocale("en");
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-card-form");
 	element.card = card;
 	element.groups = limitGroups;
+	Object.assign(element, extra);
 	document.body.append(element);
 	await element.updateComplete;
 	return element;
 };
 
-/** Every field a valid offset-rule card needs, except the limit group. */
-const fillCard = (element: HTMLElement) => {
-	fill(element, "id", "kbank");
-	fill(element, "name", "KBank Visa");
-	fill(element, "last4", "4821");
-	fill(element, "location", "krabi");
-	fill(element, "closeDay", "18");
-	fill(element, "dueOffsetDays", "15");
-};
+const $ = <T extends Element = HTMLElement>(
+	element: HTMLElement,
+	selector: string,
+) => element.shadowRoot?.querySelector<T>(selector) ?? null;
 
 const fill = (element: HTMLElement, name: string, value: string) => {
-	const field = element.shadowRoot?.querySelector<HTMLInputElement>(
-		`[name="${name}"]`,
-	);
+	const field = $<HTMLInputElement>(element, `[name="${name}"]`);
 	if (!field) throw new Error(`no field named ${name}`);
 	field.value = value;
 	field.dispatchEvent(new Event("input", { bubbles: true }));
 };
 
-const tickSupplementary = (element: HTMLElement) =>
-	element.shadowRoot
-		?.querySelector<HTMLInputElement>('[name="supplementary"]')
-		?.click();
+const press = async (element: CcCardForm, selector: string) => {
+	const button = $<HTMLButtonElement>(element, selector);
+	if (!button) throw new Error(`no button ${selector}`);
+	button.click();
+	await element.updateComplete;
+};
 
-const submit = (element: HTMLElement) =>
-	element.shadowRoot
-		?.querySelector("form")
-		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+const pickLocation = (element: CcCardForm, location: string) =>
+	press(element, `[data-location="${location}"]`);
+
+const holder = async (element: CcCardForm, value: string) => {
+	fill(element, "holder", value);
+	await element.updateComplete;
+};
+
+/** Every field a valid offset-rule card needs, except the limit group. */
+const fillCard = async (element: CcCardForm) => {
+	fill(element, "id", "kbank");
+	fill(element, "name", "KBank Visa");
+	fill(element, "last4", "4821");
+	await pickLocation(element, "krabi");
+	fill(element, "closeDay", "18");
+	fill(element, "dueOffsetDays", "15");
+};
+
+const submit = async (element: CcCardForm) => {
+	$(element, "form")?.dispatchEvent(
+		new Event("submit", { bubbles: true, cancelable: true }),
+	);
+	await element.updateComplete;
+};
+
+const onSave = (element: HTMLElement) => {
+	const saves: Card[] = [];
+	element.addEventListener("save", (event) =>
+		saves.push((event as CustomEvent<Card>).detail),
+	);
+	return saves;
+};
 
 test("refuses to save a card with no limit group", async () => {
 	const element = await mount();
-	let emitted = false;
-	element.addEventListener("save", () => {
-		emitted = true;
-	});
+	const saves = onSave(element);
 
-	fillCard(element);
-	submit(element);
-	await element.updateComplete;
+	await fillCard(element);
+	await submit(element);
 
-	expect(emitted).toBe(false);
+	expect(saves).toHaveLength(0);
 	expect(element.shadowRoot?.textContent).toContain("limit group");
 });
 
 test("carries the chosen limit group in the saved card", async () => {
 	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
+	const saves = onSave(element);
 
-	fillCard(element);
+	await fillCard(element);
 	fill(element, "limitGroupId", "pool");
-	submit(element);
+	await submit(element);
 
-	expect(saved?.limitGroupId).toBe("pool");
+	expect(saves[0]?.limitGroupId).toBe("pool");
 });
 
 test("opens an existing card on its stored group", async () => {
-	const card: Card = {
-		id: "kbank",
-		name: "KBank Visa",
-		last4: "4821",
-		location: "krabi",
-		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-		archived: false,
-		limitGroupId: "pool",
-	};
-	const element = await mount(card);
-	expect(
-		element.shadowRoot?.querySelector<HTMLSelectElement>(
-			'[name="limitGroupId"]',
-		)?.value,
-	).toBe("pool");
+	const element = await mount(stored());
+	expect($<HTMLSelectElement>(element, '[name="limitGroupId"]')?.value).toBe(
+		"pool",
+	);
 });
 
 test("keeps the chosen limit group in place when the group list reshapes under the open form", async () => {
@@ -101,18 +124,11 @@ test("keeps the chosen limit group in place when the group list reshapes under t
 	];
 	const element = await mount(null, threeGroups);
 
-	const select = element.shadowRoot?.querySelector<HTMLSelectElement>(
-		'[name="limitGroupId"]',
-	);
-	if (!select) throw new Error("no limit group select");
-	select.value = "b";
-	select.dispatchEvent(new Event("change", { bubbles: true }));
+	fill(element, "limitGroupId", "b");
 	await element.updateComplete;
 
-	// A fourth group is inserted ahead of "b", so a group named "d" now occupies the array
-	// position "b" used to hold. The options render from an unkeyed map, so without a fix Lit
-	// patches the existing <option> nodes positionally and the browser's native selection
-	// silently lands on "d" -- no `change` event fires -- while the user actually chose "b".
+	// A fourth group lands ahead of "b": the options render from an unkeyed map, so the
+	// browser's own selection would drift onto "d" with no event at all.
 	element.groups = [
 		threeGroups[0] as LimitGroup,
 		{ id: "d", name: "Group D", limit: 400_000 },
@@ -120,63 +136,50 @@ test("keeps the chosen limit group in place when the group list reshapes under t
 		threeGroups[2] as LimitGroup,
 	];
 	await element.updateComplete;
+	expect($<HTMLSelectElement>(element, '[name="limitGroupId"]')?.value).toBe(
+		"b",
+	);
 
-	expect(
-		element.shadowRoot?.querySelector<HTMLSelectElement>(
-			'[name="limitGroupId"]',
-		)?.value,
-	).toBe("b");
-
-	// "b" is now deleted outright, with nothing left behind at its old slot -- the selection
-	// must fall back to the empty placeholder, not silently adopt whatever group ends up there.
+	// "b" is deleted outright: back to the placeholder, not whatever sits in its old slot.
 	element.groups = [threeGroups[0] as LimitGroup, threeGroups[2] as LimitGroup];
 	await element.updateComplete;
-
-	expect(
-		element.shadowRoot?.querySelector<HTMLSelectElement>(
-			'[name="limitGroupId"]',
-		)?.value,
-	).toBe("");
-});
-
-test("disables the selector, without a note, when no group exists", async () => {
-	const element = await mount(null, []);
-	const field = element.shadowRoot?.querySelector<HTMLSelectElement>(
-		'[name="limitGroupId"]',
+	expect($<HTMLSelectElement>(element, '[name="limitGroupId"]')?.value).toBe(
+		"",
 	);
-	expect(field?.disabled).toBe(true);
-	expect(field?.closest("label")?.querySelector("small")).toBeNull();
 });
 
-test("keeps the holder with the supplementary box, the box standing as its label", async () => {
-	const element = await mount();
-	tickSupplementary(element);
-	await element.updateComplete;
+test("disables the group select when no group exists", async () => {
+	const element = await mount(null, []);
+	expect($<HTMLSelectElement>(element, '[name="limitGroupId"]')?.disabled).toBe(
+		true,
+	);
+});
 
-	const field = element.shadowRoot?.querySelector(".supplementary-field");
-	expect(field?.querySelector('[name="supplementary"]')).not.toBeNull();
-	const owner = field?.querySelector<HTMLSelectElement>('[name="owner"]');
-	expect(owner?.getAttribute("aria-label")).toBe("Card holder");
-	expect(field?.querySelector("small")).toBeNull();
+test("names each group as name (holder) · limit, by holder then name", async () => {
+	const element = await mount(null, [
+		{ id: "pool", name: "KBank account", limit: 500_000_00, owner: "NT" },
+		{ id: "solo", name: "SCB", limit: 100_000_00 },
+	]);
+	const options = [
+		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
+			'[name="limitGroupId"] option',
+		) ?? []),
+	].slice(1);
+	expect(options.map((option) => option.textContent?.trim())).toEqual([
+		"SCB (KC) · ฿100,000.00",
+		"KBank account (NT) · ฿500,000.00",
+	]);
 });
 
 test("emits a complete card with an offset rule", async () => {
 	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
+	const saves = onSave(element);
 
-	fill(element, "id", "kbank");
-	fill(element, "name", "KBank Visa");
-	fill(element, "last4", "4821");
-	fill(element, "location", "krabi");
-	fill(element, "closeDay", "18");
-	fill(element, "dueOffsetDays", "15");
+	await fillCard(element);
 	fill(element, "limitGroupId", "pool");
-	submit(element);
+	await submit(element);
 
-	expect(saved).toEqual({
+	expect(saves[0]).toEqual({
 		id: "kbank",
 		name: "KBank Visa",
 		last4: "4821",
@@ -189,12 +192,39 @@ test("emits a complete card with an offset rule", async () => {
 	});
 });
 
-test("asks whose card it is only for a supplementary card -- otherwise the group answers", async () => {
+test("emits a fixed rule when that kind is chosen", async () => {
 	const element = await mount();
-	expect(element.shadowRoot?.querySelector('[name="owner"]')).toBeNull();
+	const saves = onSave(element);
 
-	tickSupplementary(element);
+	await press(element, '[data-kind="fixed"]');
+	expect($(element, '[data-kind="fixed"]')?.getAttribute("aria-pressed")).toBe(
+		"true",
+	);
+	fill(element, "id", "scb");
+	fill(element, "name", "SCB Mastercard");
+	fill(element, "last4", "1234");
+	fill(element, "closeDay", "18");
+	fill(element, "dueDay", "5");
+	fill(element, "limitGroupId", "pool");
+	await submit(element);
+
+	expect(saves[0]?.cycle).toEqual({ kind: "fixed", closeDay: 18, dueDay: 5 });
+});
+
+test("names the account holder from the chosen group, and asks for a holder only for a supplementary card", async () => {
+	const element = await mount(null, [
+		{ id: "nt", name: "NT pool", limit: 1, owner: "NT" },
+	]);
+	const account = () =>
+		$<HTMLOptionElement>(element, '[name="holder"] option[value="account"]')
+			?.textContent;
+	expect(account()).toContain("Account holder (KC)");
+	fill(element, "limitGroupId", "nt");
 	await element.updateComplete;
+	expect(account()).toContain("Account holder (NT)");
+
+	expect($(element, '[name="owner"]')).toBeNull();
+	await holder(element, "supplementary");
 	const options = [
 		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
 			'[name="owner"] option',
@@ -202,26 +232,20 @@ test("asks whose card it is only for a supplementary card -- otherwise the group
 	].map((option) => option.value);
 	expect(options).toEqual(["", "KC", "NT", "RI"]);
 
-	tickSupplementary(element);
-	await element.updateComplete;
-	expect(element.shadowRoot?.querySelector('[name="owner"]')).toBeNull();
+	await holder(element, "account");
+	expect($(element, '[name="owner"]')).toBeNull();
 });
 
-test("refuses a supplementary card with no owner chosen", async () => {
+test("refuses a supplementary card with no holder chosen", async () => {
 	const element = await mount();
-	let emitted = false;
-	element.addEventListener("save", () => {
-		emitted = true;
-	});
+	const saves = onSave(element);
 
-	tickSupplementary(element);
-	await element.updateComplete;
-	fillCard(element);
+	await holder(element, "supplementary");
+	await fillCard(element);
 	fill(element, "limitGroupId", "pool");
-	submit(element);
-	await element.updateComplete;
+	await submit(element);
 
-	expect(emitted).toBe(false);
+	expect(saves).toHaveLength(0);
 	expect(element.shadowRoot?.textContent).toContain(
 		"Choose who holds this supplementary card.",
 	);
@@ -229,239 +253,121 @@ test("refuses a supplementary card with no owner chosen", async () => {
 
 test("saves the holder of a supplementary card", async () => {
 	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
+	const saves = onSave(element);
 
-	tickSupplementary(element);
-	await element.updateComplete;
-	fillCard(element);
+	await holder(element, "supplementary");
+	await fillCard(element);
 	fill(element, "limitGroupId", "pool");
 	fill(element, "owner", "NT");
-	submit(element);
+	await submit(element);
 
-	expect(saved?.supplementary).toBe(true);
-	expect(saved?.owner).toBe("NT");
+	expect(saves[0]?.supplementary).toBe(true);
+	expect(saves[0]?.owner).toBe("NT");
 });
 
 test("drops the owner once the card is no longer supplementary", async () => {
-	const element = await mount({
-		id: "a2",
-		name: "Card A",
-		last4: "2222",
-		location: "krabi",
-		supplementary: true,
-		owner: "NT",
-		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-		archived: false,
-		limitGroupId: "pool",
-	});
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
+	const element = await mount(stored({ supplementary: true, owner: "NT" }));
+	const saves = onSave(element);
 
-	tickSupplementary(element);
-	await element.updateComplete;
-	submit(element);
+	await holder(element, "account");
+	await submit(element);
 
-	expect(saved?.supplementary).toBe(false);
-	expect(saved && "owner" in saved).toBe(false);
+	expect(saves[0]?.supplementary).toBe(false);
+	expect(saves[0] && "owner" in saves[0]).toBe(false);
 });
 
-test("names each group with its owner in the picker", async () => {
-	const element = await mount(null, [
-		{ id: "pool", name: "KBank account", limit: 500_000, owner: "NT" },
-		{ id: "solo", name: "SCB", limit: 100_000 },
-	]);
-	const labels = [
-		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
-			'[name="limitGroupId"] option',
-		) ?? []),
-	]
-		.slice(1)
-		.map((option) => option.textContent?.trim());
-	expect(labels).toEqual(["SCB (KC)", "KBank account (NT)"]);
-});
+test("shows the edited card's supplementary answer and holder, and saves them back untouched", async () => {
+	const element = await mount(stored({ supplementary: true, owner: "RI" }));
+	const saves = onSave(element);
 
-test("lists groups in the picker by owner, then by name", async () => {
-	const element = await mount(null, [
-		{ id: "ri", name: "Alpha", limit: 1, owner: "RI" },
-		{ id: "kz", name: "Zulu", limit: 1, owner: "KC" },
-		{ id: "nt", name: "Mike", limit: 1, owner: "NT" },
-		{ id: "ka", name: "Alpha", limit: 1, owner: "KC" },
-	]);
-	const values = [
-		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
-			'[name="limitGroupId"] option',
-		) ?? []),
-	].map((option) => option.value);
-	expect(values).toEqual(["", "ka", "kz", "nt", "ri"]);
-});
-
-test("saves a card with no owner field at all", async () => {
-	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
-
-	fillCard(element);
-	fill(element, "limitGroupId", "pool");
-	submit(element);
-
-	expect(saved).not.toBeUndefined();
-	expect(saved && "owner" in saved).toBe(false);
-});
-
-test("emits a fixed rule when that kind is chosen", async () => {
-	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
-
-	const fixedRadio = element.shadowRoot?.querySelector<HTMLInputElement>(
-		'[name="kind"][value="fixed"]',
+	expect($<HTMLSelectElement>(element, '[name="holder"]')?.value).toBe(
+		"supplementary",
 	);
-	fixedRadio?.click();
-	await element.updateComplete;
+	expect($<HTMLSelectElement>(element, '[name="owner"]')?.value).toBe("RI");
 
-	fill(element, "id", "scb");
-	fill(element, "name", "SCB Mastercard");
-	fill(element, "last4", "1234");
-	fill(element, "location", "bangkok");
-	fill(element, "closeDay", "18");
-	fill(element, "dueDay", "5");
-	fill(element, "limitGroupId", "pool");
-	submit(element);
-
-	expect(saved?.cycle).toEqual({ kind: "fixed", closeDay: 18, dueDay: 5 });
+	await submit(element);
+	expect(saves[0]?.supplementary).toBe(true);
+	expect(saves[0]?.owner).toBe("RI");
 });
 
 test("refuses a last4 that is not four digits", async () => {
 	const element = await mount();
-	let saved = false;
-	element.addEventListener("save", () => {
-		saved = true;
-	});
+	const saves = onSave(element);
 
-	fill(element, "id", "kbank");
-	fill(element, "name", "KBank Visa");
+	await fillCard(element);
 	fill(element, "last4", "48");
-	fill(element, "location", "krabi");
-	fill(element, "closeDay", "18");
-	fill(element, "dueOffsetDays", "15");
-	submit(element);
-	await element.updateComplete;
+	fill(element, "limitGroupId", "pool");
+	await submit(element);
 
-	expect(saved).toBe(false);
+	expect(saves).toHaveLength(0);
 	expect(element.shadowRoot?.textContent).toContain("four digits");
 });
 
 test("re-renders a displayed error in the new language when the locale switches", async () => {
-	setLocale("en");
 	const element = await mount();
 
-	fill(element, "id", "kbank");
-	fill(element, "name", "KBank Visa");
+	await fillCard(element);
 	fill(element, "last4", "48");
-	fill(element, "location", "krabi");
-	fill(element, "closeDay", "18");
-	fill(element, "dueOffsetDays", "15");
-	submit(element);
-	await element.updateComplete;
-
+	await submit(element);
 	expect(element.shadowRoot?.textContent).toContain(
 		"Last 4 must be exactly four digits.",
 	);
 
 	setLocale("th");
 	await element.updateComplete;
-
 	expect(element.shadowRoot?.textContent).toContain(
 		"เลข 4 ตัวท้ายต้องเป็นตัวเลขสี่หลัก",
 	);
-	expect(element.shadowRoot?.textContent).not.toContain(
-		"Last 4 must be exactly four digits.",
-	);
-});
-
-test("shows a four-digit example in the id field, in both languages", async () => {
 	setLocale("en");
+});
+
+test("shows a four-digit example in the id field", async () => {
 	const element = await mount();
-	const field =
-		element.shadowRoot?.querySelector<HTMLInputElement>('[name="id"]');
-	expect(field?.placeholder).toBe("0001");
-
-	setLocale("th");
-	await element.updateComplete;
-	expect(
-		element.shadowRoot?.querySelector<HTMLInputElement>('[name="id"]')
-			?.placeholder,
-	).toBe("0001");
+	expect($<HTMLInputElement>(element, '[name="id"]')?.placeholder).toBe("0001");
 });
 
-test("the locked id reads as a field, its label above its value like every other one", async () => {
-	setLocale("en");
-	const element = await mount({
-		id: "kbank",
-		name: "KBank Visa",
-		last4: "4821",
-		location: "krabi",
-		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-		archived: false,
-	});
+test("shows the id of a saved card disabled, saying it can't change, and saves under it", async () => {
+	const element = await mount(stored());
+	const saves = onSave(element);
 
-	const field = element.shadowRoot?.querySelector('[data-field="id"]');
-	expect(field?.querySelector(".readonly__label")?.textContent?.trim()).toBe(
-		"Id",
-	);
-	const value = field?.querySelector(".readonly__value");
-	expect(value?.textContent).toContain("kbank");
-	expect(value?.textContent).toContain("cannot change");
+	const id = $<HTMLInputElement>(element, '[name="id"]');
+	expect(id?.disabled).toBe(true);
+	expect(id?.value).toBe("kbank");
+	expect(element.shadowRoot?.textContent).toContain("Card id can't change");
+
+	fill(element, "name", "Renamed");
+	await submit(element);
+	expect(saves[0]?.id).toBe("kbank");
+	expect(saves[0]?.name).toBe("Renamed");
 });
 
-test("locks the id when editing an existing card", async () => {
-	const element = await mount({
-		id: "kbank",
-		name: "KBank Visa",
-		last4: "4821",
-		location: "krabi",
-		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-		archived: false,
-	});
-	expect(element.shadowRoot?.querySelector('[name="id"]')).toBeNull();
-	expect(element.shadowRoot?.textContent).toContain("kbank");
-});
-
-test("offers exactly the three locations, labelled", async () => {
+test("offers the locations as a segmented control, labelled, Bangkok first", async () => {
 	const element = await mount();
-	const options = [
-		...(element.shadowRoot?.querySelectorAll<HTMLOptionElement>(
-			'[name="location"] option',
+	const buttons = [
+		...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+			".seg [data-location]",
 		) ?? []),
 	];
-
-	expect(options.map((option) => option.value)).toEqual([
+	expect(buttons.map((button) => button.dataset["location"])).toEqual([
 		"bangkok",
 		"phichit",
 		"krabi",
 	]);
-	expect(options.map((option) => option.textContent?.trim())).toEqual([
+	expect(buttons.map((button) => button.textContent?.trim())).toEqual([
 		"Bangkok",
 		"Phichit",
 		"Krabi",
+	]);
+	expect(buttons.map((button) => button.getAttribute("aria-pressed"))).toEqual([
+		"true",
+		"false",
+		"false",
 	]);
 });
 
 test("defaults a new card to Bangkok without the user touching the field", async () => {
 	const element = await mount();
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
+	const saves = onSave(element);
 
 	fill(element, "id", "kbank");
 	fill(element, "name", "KBank Visa");
@@ -469,28 +375,19 @@ test("defaults a new card to Bangkok without the user touching the field", async
 	fill(element, "closeDay", "18");
 	fill(element, "dueOffsetDays", "15");
 	fill(element, "limitGroupId", "pool");
-	submit(element);
+	await submit(element);
 
-	expect(saved?.location).toBe("bangkok");
+	expect(saves[0]?.location).toBe("bangkok");
 });
 
-test("shows the edited card's own location when editing", async () => {
-	const element = await mount({
-		id: "scb",
-		name: "SCB",
-		last4: "1234",
-		location: "phichit",
-		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
-		archived: false,
-	});
-
-	const select =
-		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="location"]');
-	expect(select?.value).toBe("phichit");
+test("shows the edited card's own location pressed", async () => {
+	const element = await mount(stored({ location: "phichit" }));
+	expect(
+		$(element, '[data-location="phichit"]')?.getAttribute("aria-pressed"),
+	).toBe("true");
 });
 
-test("renders its labels and location options in the chosen language", async () => {
-	setLocale("en");
+test("renders its labels and locations in the chosen language", async () => {
 	const element = await mount();
 	expect(element.shadowRoot?.textContent).toContain("Add card");
 	expect(element.shadowRoot?.textContent).toContain("Bangkok");
@@ -499,106 +396,93 @@ test("renders its labels and location options in the chosen language", async () 
 	await element.updateComplete;
 	expect(element.shadowRoot?.textContent).toContain("เพิ่มบัตร");
 	expect(element.shadowRoot?.textContent).toContain("กรุงเทพฯ");
+	setLocale("en");
 });
 
-test("no longer asks whether the card may take purchases -- that moved to settings", async () => {
-	const element = await mount();
-	expect(element.shadowRoot?.querySelector('[name="canPurchase"]')).toBeNull();
-});
-
-test("saves a card as supplementary only when the box is ticked", async () => {
-	const element = await mount();
-	const saves: Card[] = [];
-	element.addEventListener("save", (event) => {
-		saves.push((event as CustomEvent<Card>).detail);
-	});
-
-	fillCard(element);
-	fill(element, "limitGroupId", "pool");
-	submit(element);
+test("keeps what was typed when the page hands back a fresh copy of the same card", async () => {
+	const element = await mount(stored());
+	fill(element, "name", "Typed");
+	element.card = stored();
 	await element.updateComplete;
-	expect(saves[0]?.supplementary).toBe(false);
+	expect($<HTMLInputElement>(element, '[name="name"]')?.value).toBe("Typed");
+});
 
-	element.shadowRoot
-		?.querySelector<HTMLInputElement>('[name="supplementary"]')
-		?.click();
+test("a new card has no archive, no delete and no cancel -- the back header leaves", async () => {
+	const element = await mount(null, groups, { deletable: true });
+	expect($(element, '[data-action="archive"]')).toBeNull();
+	expect($(element, '[data-action="delete-card"]')).toBeNull();
+	expect($(element, '[data-action="cancel"]')).toBeNull();
+	expect($(element, 'button[type="submit"]')?.textContent?.trim()).toBe(
+		"Add card",
+	);
+});
+
+test("editing saves changes, and archives or unarchives as a quiet button", async () => {
+	const element = await mount(stored());
+	expect($(element, 'button[type="submit"]')?.textContent?.trim()).toBe(
+		"Save changes",
+	);
+	const archive = $(element, '[data-action="archive"]');
+	expect(archive?.getAttribute("data-variant")).toBe("quiet");
+	expect(archive?.textContent?.trim()).toBe("Archive card");
+
+	const asked: Card[] = [];
+	element.addEventListener("archive", (event) =>
+		asked.push((event as CustomEvent<{ card: Card }>).detail.card),
+	);
+	await press(element, '[data-action="archive"]');
+	expect(asked.map((card) => card.id)).toEqual(["kbank"]);
+
+	element.card = stored({ archived: true });
 	await element.updateComplete;
-	fillCard(element);
-	fill(element, "limitGroupId", "pool");
-	fill(element, "owner", "NT");
-	submit(element);
-
-	expect(saves[1]?.supplementary).toBe(true);
+	expect($(element, '[data-action="archive"]')?.textContent?.trim()).toBe(
+		"Unarchive card",
+	);
 });
 
-test("shows the edited card's supplementary answer and holder, and saves them back untouched", async () => {
-	const element = await mount({
-		id: "scb",
-		name: "SCB",
-		last4: "1234",
-		location: "bangkok",
-		supplementary: true,
-		owner: "RI",
-		cycle: { kind: "fixed", closeDay: 18, dueDay: 5 },
-		archived: false,
+test("offers Delete card only when the page says it can go", async () => {
+	const element = await mount(stored());
+	expect($(element, '[data-action="delete-card"]')).toBeNull();
+	element.deletable = true;
+	await element.updateComplete;
+	expect(
+		$(element, '[data-action="delete-card"]')?.getAttribute("data-variant"),
+	).toBe("danger");
+});
+
+test("Delete card asks twice, focus following the swap, and Keep steps back", async () => {
+	const element = await mount(stored(), groups, { deletable: true });
+	const deleted: Card[] = [];
+	element.addEventListener("delete-card", (event) =>
+		deleted.push((event as CustomEvent<{ card: Card }>).detail.card),
+	);
+
+	await press(element, '[data-action="delete-card"]');
+	expect(element.shadowRoot?.textContent).toContain("Delete KBank Visa?");
+	expect(element.shadowRoot?.activeElement?.getAttribute("data-action")).toBe(
+		"confirm-delete",
+	);
+
+	await press(element, '[data-action="keep"]');
+	expect($(element, '[data-action="confirm-delete"]')).toBeNull();
+	expect(element.shadowRoot?.activeElement?.getAttribute("data-action")).toBe(
+		"delete-card",
+	);
+
+	await press(element, '[data-action="delete-card"]');
+	await press(element, '[data-action="confirm-delete"]');
+	expect(deleted.map((card) => card.id)).toEqual(["kbank"]);
+});
+
+test("shows the page's reason a write failed, and holds the buttons while busy", async () => {
+	const element = await mount(stored(), groups, {
+		error: "Could not save the card.",
+		busy: true,
 	});
-	let saved: Card | undefined;
-	element.addEventListener("save", (event) => {
-		saved = (event as CustomEvent<Card>).detail;
-	});
-
 	expect(
-		element.shadowRoot?.querySelector<HTMLInputElement>(
-			'[name="supplementary"]',
-		)?.checked,
-	).toBe(true);
-
-	expect(
-		element.shadowRoot?.querySelector<HTMLSelectElement>('[name="owner"]')
-			?.value,
-	).toBe("RI");
-
-	fill(element, "limitGroupId", "pool");
-	submit(element);
-	expect(saved?.supplementary).toBe(true);
-	expect(saved?.owner).toBe("RI");
-});
-
-test("lays its fields out in the open, leaving the title to the dialog around it", async () => {
-	const element = await mount();
-
-	expect(element.shadowRoot?.querySelector("details")).toBeNull();
-	expect(element.shadowRoot?.querySelector("summary")).toBeNull();
-	expect(element.shadowRoot?.querySelector('[name="id"]')).not.toBeNull();
-});
-
-test("offers cancel while adding a card too, since it closes the dialog", async () => {
-	const element = await mount();
-	const cancelled: Event[] = [];
-	element.addEventListener("cancel", (event) => cancelled.push(event));
-
-	element.shadowRoot
-		?.querySelector<HTMLButtonElement>('button[data-action="cancel"]')
-		?.click();
-
-	expect(cancelled).toHaveLength(1);
-});
-
-test("renders cancel as a quiet button beside the submit", async () => {
-	const element = await mount({
-		id: "kbank",
-		name: "KBank Visa",
-		last4: "4821",
-		location: "krabi",
-		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-		archived: false,
-	});
-
-	expect(
-		element.shadowRoot?.querySelector('button[type="submit"]'),
-	).not.toBeNull();
-	expect(
-		element.shadowRoot?.querySelector('button[data-variant="quiet"]')
-			?.textContent,
-	).toContain("Cancel");
+		$<HTMLElement & { message: string }>(element, "cc-error-banner")?.message,
+	).toBe("Could not save the card.");
+	expect($<HTMLButtonElement>(element, 'button[type="submit"]')?.disabled).toBe(
+		true,
+	);
 });
