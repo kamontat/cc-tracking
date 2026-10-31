@@ -5,8 +5,7 @@ import {
 	formatDate,
 	parseDate,
 } from "#lib/domain/date";
-import { sumAmounts } from "#lib/domain/money";
-import type { PlainDate, Purchase } from "#lib/domain/types";
+import type { PlainDate } from "#lib/domain/types";
 
 export type RangePreset = "today" | "week" | "month" | "lastMonth" | "custom";
 
@@ -48,45 +47,4 @@ export function normaliseRange(range: DateRange): DateRange {
 	return range.from && range.to && compareDates(range.from, range.to) > 0
 		? { from: range.to, to: range.from }
 		: range;
-}
-
-const addedMillis = (purchase: Purchase): number =>
-	purchase.addedAt ? Date.parse(purchase.addedAt) : Number.NaN;
-
-/** Latest first; a purchase with no entry time counts as the earliest. */
-const byAddedDesc = (a: Purchase, b: Purchase): number =>
-	(addedMillis(b) || 0) - (addedMillis(a) || 0);
-
-/**
- * Purchases dated within `range`, on `cardId` when given, newest purchase date first and, within
- * a day, the latest entered first.
- */
-export function purchasesInRange(
-	purchases: Purchase[],
-	range: DateRange,
-	cardId?: string,
-): Purchase[] {
-	const { from, to } = normaliseRange(range);
-	return purchases
-		.filter((purchase) => !cardId || purchase.cardId === cardId)
-		.filter((purchase) => !from || compareDates(purchase.date, from) >= 0)
-		.filter((purchase) => !to || compareDates(purchase.date, to) <= 0)
-		.sort(
-			(a, b) =>
-				compareDates(b.date, a.date) ||
-				byAddedDesc(a, b) ||
-				(a.id < b.id ? 1 : -1),
-		);
-}
-
-export function rangeSummary(purchases: Purchase[]): {
-	count: number;
-	total: number;
-	cards: number;
-} {
-	return {
-		count: purchases.length,
-		total: sumAmounts(purchases.map((purchase) => purchase.amount)),
-		cards: new Set(purchases.map((purchase) => purchase.cardId)).size,
-	};
 }
