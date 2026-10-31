@@ -99,6 +99,8 @@ export class CcListReply extends LitElement {
 			/* The reply bar stacks its one button under the note. */
 			.action-bar {
 				display: grid;
+				align-items: normal;
+				justify-content: normal;
 			}
 
 
