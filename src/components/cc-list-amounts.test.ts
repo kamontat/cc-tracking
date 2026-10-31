@@ -333,3 +333,31 @@ test("the side panel takes the page's own actions after Review", async () => {
 		true,
 	);
 });
+
+test("the over-room note shows planned payments due by the list date", async () => {
+	const plan = (id: string, cardId: string, date: string, amount: number) => ({
+		id,
+		cardId,
+		date,
+		amount,
+		status: "planned" as const,
+	});
+	const { element, root } = await mount({
+		allCards: [A, B, C],
+		cards: [A],
+		planned: [
+			plan("p1", "B", "2026-10-31", 3_000_00),
+			plan("p2", "A", "2026-12-01", 9_000_00),
+			plan("p3", "C", "2026-10-31", 7_000_00),
+		],
+	});
+	await type(element, root, "A", "60,000");
+	const part = line(root, "A").querySelector('[data-part="planned"]');
+	expect(flat(part)).toBe("฿3,000.00 planned to be paid by then");
+});
+
+test("no planned note when nothing is planned by then", async () => {
+	const { element, root } = await mount();
+	await type(element, root, "A", "60,000");
+	expect(line(root, "A").querySelector('[data-part="planned"]')).toBeNull();
+});

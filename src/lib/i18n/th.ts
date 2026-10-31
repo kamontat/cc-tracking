@@ -468,8 +468,8 @@ export const th: Catalog = {
 	"home.overdue.many": "บิลของ {card} เลยกำหนด {days} วัน",
 	"home.overdueDetail": "ค้างชำระ {amount} · เปิดหน้าบัตร",
 	"home.draft": "ใบรายการซื้อฉบับร่างวันที่ {date}",
-	"home.planned": "การชำระที่วางแผนไว้ไปยัง {card} วันที่ {date}",
-	"home.plannedDetail": "{amount} · เปิดรายการเคลื่อนไหว",
+	"home.planned": "วางแผนไว้: ชำระ {card} วันที่ {date}",
+	"home.plannedDetail": "{amount} · ทำเครื่องหมายว่าชำระแล้วเมื่อจ่ายออกไป",
 	"home.selected.one": "เลือกแล้ว 1 ใบ",
 	"home.selected.many": "เลือกแล้ว {count} ใบ",
 	"home.enterAmounts": "ใส่จำนวนเงิน",
@@ -508,6 +508,7 @@ export const th: Catalog = {
 	"purchaseList.warn.overRoom": "เกินวงเงินที่เหลือ {over} ธนาคารอาจปฏิเสธรายการนี้",
 	"purchaseList.warn.held":
 		"วงเงินที่เหลือคือ {room} เพราะมี {held} ถูกกันไว้ให้ใบรายการซื้อที่รอคำตอบของผู้ใช้บัตร",
+	"purchaseList.warn.planned": "วางแผนจะชำระ {amount} ก่อนถึงวันนั้น",
 	"purchaseList.warn.lowerTo": "ลดเป็น {room}",
 	"purchaseList.warn.shared":
 		"วงเงินร่วม {cards} ใช้วงเงิน {group} ร่วมกัน รวมกันแล้วเกินวงเงินที่เหลือ {room} อยู่ {over}",

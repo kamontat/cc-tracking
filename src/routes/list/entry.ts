@@ -5,6 +5,7 @@ import { today } from "#lib/domain/date";
 import { isReady, roomFor } from "#lib/domain/home";
 import { composeList, lineAmount, listLines } from "#lib/domain/list-entry";
 import { formatAmountInput } from "#lib/domain/money";
+import { plannedOf } from "#lib/domain/pay";
 import type { GroupRoom } from "#lib/domain/room";
 import type {
 	Card,
@@ -317,6 +318,8 @@ export function renderEntryPage(
 			}
 			<cc-list-amounts
 				.cards=${cards}
+				.allCards=${from.cards}
+				.planned=${plannedOf(from.payments)}
 				.candidates=${ready.filter((card) => !cardIds.includes(card.id))}
 				.rooms=${rooms}
 				.ledgers=${from.ledgers}

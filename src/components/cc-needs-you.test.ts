@@ -69,7 +69,7 @@ test("each item opens its task", async () => {
 	]);
 	expect(found.map((e) => e.getAttribute("href"))).toEqual([
 		"/list/reply?id=w1",
-		"/card?id=SCB%2FK",
+		"/pay?card=SCB%2FK&amount=4123000",
 		"/list/draft?id=d1",
 	]);
 	expect(text(found[0] as Element, "small")).toBe(
@@ -143,4 +143,26 @@ test("a list id is encoded in its link", async () => {
 			e.getAttribute("href"),
 		),
 	).toEqual(["/list/reply?id=w%201%2F2", "/list/draft?id=d%261"]);
+});
+
+test("a planned payment row says what to do and opens Transactions", async () => {
+	const root = await mount([
+		{
+			kind: "planned",
+			payment: {
+				id: "c1",
+				cardId: "SCB/K",
+				date: "2026-11-02",
+				amount: 5_000_00,
+				status: "planned",
+			},
+			card,
+		},
+	]);
+	const row = root.querySelector('[data-item="planned"]') as Element;
+	expect(row.getAttribute("href")).toBe("/transactions");
+	expect(text(row, "b")).toBe(
+		"Planned: pay SCB/K) SCB K (1111) on Mon, 02 Nov",
+	);
+	expect(text(row, "small")).toBe("฿5,000.00 · mark it paid when it goes out");
 });

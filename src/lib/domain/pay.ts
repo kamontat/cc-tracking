@@ -114,14 +114,7 @@ export function plannedOf(payments: CardPayment[]): CardPayment[] {
 		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b));
 }
 
-/** Planned payments dated on or before `limit`, in plan order. */
-export function plannedUntil(
-	payments: CardPayment[],
-	limit: PlainDate,
-): CardPayment[] {
-	return plannedOf(payments).filter((p) => compareDates(p.date, limit) <= 0);
-}
-
+/** How many days ahead a planned payment shows in Needs you. */
 export const NEEDS_PLANNED_DAYS = 3;
 export const plannedHorizon = (today: PlainDate): PlainDate =>
 	addDays(today, NEEDS_PLANNED_DAYS);

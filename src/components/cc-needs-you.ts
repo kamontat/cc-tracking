@@ -136,7 +136,7 @@ export class CcNeedsYou extends LitElement {
 				};
 			case "overdue":
 				return {
-					href: `/card?id=${encodeURIComponent(item.card.id)}`,
+					href: `/pay?card=${encodeURIComponent(item.card.id)}&amount=${item.remaining}`,
 					icon: icons.alert,
 					title: t(item.days === 1 ? "home.overdue.one" : "home.overdue.many", {
 						card: cardLabelText(item.card.id, item.card),

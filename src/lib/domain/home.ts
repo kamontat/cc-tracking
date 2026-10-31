@@ -1,7 +1,8 @@
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
-import { addDays, compareDates, daysBetween } from "#lib/domain/date";
+import { compareDates, daysBetween } from "#lib/domain/date";
 import { ledgerUrgency, nextBill } from "#lib/domain/ledger";
+import { plannedHorizon } from "#lib/domain/pay";
 import { listTotal } from "#lib/domain/purchase-list";
 import { type GroupRoom, groupRoom } from "#lib/domain/room";
 import type { Settings } from "#lib/domain/settings";
@@ -140,7 +141,7 @@ export function needsYou(
 	}
 	overdue.sort((a, b) => b.days - a.days || byId(a.card, b.card));
 
-	const horizon = addDays(today, 3);
+	const horizon = plannedHorizon(today);
 	const soonPlanned = planned
 		.filter((p) => p.status === "planned" && compareDates(p.date, horizon) <= 0)
 		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b))

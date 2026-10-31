@@ -209,6 +209,29 @@ test("stored payments and sent lists move the room", async () => {
 	expect(kinds).not.toContain("overdue");
 });
 
+test("a planned payment due soon needs you, a far one does not", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCardPayment({
+		id: "c1",
+		cardId: "A",
+		date: "2026-11-02",
+		amount: 1_000_00,
+		status: "planned",
+	});
+	await repo.saveCardPayment({
+		id: "c2",
+		cardId: "A",
+		date: "2026-12-25",
+		amount: 1_000_00,
+		status: "planned",
+	});
+	const { root } = await setup(repo);
+	const planned = (
+		root.querySelector<CcNeedsYou>("cc-needs-you")?.items ?? []
+	).filter((item) => item.kind === "planned");
+	expect(planned.length).toBe(1);
+});
+
 test("an overdue bill needs you", async () => {
 	const repo = new InMemoryRepository();
 	await repo.savePurchase({

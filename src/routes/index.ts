@@ -9,6 +9,7 @@ import { canPurchase } from "#lib/domain/card";
 import { today } from "#lib/domain/date";
 import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home";
 import { unassignedCards } from "#lib/domain/limit";
+import { plannedOf } from "#lib/domain/pay";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { newListAddress } from "#lib/ui/list-address";
@@ -103,7 +104,7 @@ export function renderHomePage(
 		render(
 			html`
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<cc-needs-you .items=${data ? needsYou(data, now) : []}></cc-needs-you>
+				<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}></cc-needs-you>
 				<cc-ready-list
 					.rows=${rows}
 					.selected=${selected}

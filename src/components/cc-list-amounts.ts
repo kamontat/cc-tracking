@@ -16,7 +16,13 @@ import {
 } from "#lib/domain/list-entry";
 import { formatAmount, formatAmountInput } from "#lib/domain/money";
 import type { GroupRoom } from "#lib/domain/room";
-import type { Card, CardLedger, ListLine, PlainDate } from "#lib/domain/types";
+import type {
+	Card,
+	CardLedger,
+	CardPayment,
+	ListLine,
+	PlainDate,
+} from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardLabelHtml, cardLabelText } from "#lib/ui/card-label";
@@ -180,6 +186,10 @@ export class CcListAmounts extends LitElement {
 	/** The list's cards, in order. */
 	@property({ attribute: false }) cards: Card[] = [];
 	/** Ready cards not on the list, offered by Add another card. */
+	/** Every card, so a planned payment on a group-mate not on the list still counts. */
+	@property({ attribute: false }) allCards: Card[] = [];
+	/** Planned payments (`plannedOf`). */
+	@property({ attribute: false }) planned: CardPayment[] = [];
 	@property({ attribute: false }) candidates: Card[] = [];
 	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
 	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
@@ -261,6 +271,16 @@ export class CcListAmounts extends LitElement {
 								: nothing
 						}
 						${
+							warning.plannedBefore > 0
+								? html`<span data-part="planned">${t(
+										"purchaseList.warn.planned",
+										{
+											amount: formatAmount(warning.plannedBefore),
+										},
+									)}</span>`
+								: nothing
+						}
+						${
 							warning.room > 0
 								? html`<button data-variant="quiet" data-action="lower"
 									@click=${() => this.setAmount(card.id, formatAmountInput(warning.room))}
@@ -311,7 +331,15 @@ export class CcListAmounts extends LitElement {
 		for (const [id, amount] of Object.entries(amounts)) {
 			money[id] = amount ?? 0;
 		}
-		const lines = draftLines(this.cards, money, this.rooms, this.ledgers);
+		const lines = draftLines(
+			this.cards,
+			money,
+			this.rooms,
+			this.ledgers,
+			this.planned,
+			date,
+			this.allCards.length > 0 ? this.allCards : this.cards,
+		);
 		const passed = datePassed(date, this.today);
 
 		let warned = 0;

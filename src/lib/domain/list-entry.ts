@@ -21,7 +21,7 @@ export function lineAmount(text: string): number | null {
 	}
 }
 
-/** One DraftLine per card that has a room and a ledger, in card order; planned holds group-mates' plans due by `date`. */
+/** One DraftLine per card that has a room and a ledger, in card order; planned holds group-mates' plans due by `date` (`allCards` is where group-mates come from). */
 export function draftLines(
 	cards: Card[],
 	amounts: Record<string, number>,
@@ -29,6 +29,7 @@ export function draftLines(
 	ledgers: Map<string, CardLedger>,
 	planned: CardPayment[] = [],
 	date?: PlainDate,
+	allCards: Card[] = cards,
 ): DraftLine[] {
 	const lines: DraftLine[] = [];
 	for (const card of cards) {
@@ -36,7 +37,7 @@ export function draftLines(
 		const ledger = ledgers.get(card.id);
 		if (!room || !ledger) continue;
 		const groupCards = new Set(
-			cards
+			allCards
 				.filter((c) => c.limitGroupId === card.limitGroupId)
 				.map((c) => c.id),
 		);

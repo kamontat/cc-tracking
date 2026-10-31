@@ -465,8 +465,8 @@ export const en = {
 	"home.overdue.many": "Bill for {card} is {days} days overdue",
 	"home.overdueDetail": "{amount} left · open the card",
 	"home.draft": "Draft list for {date}",
-	"home.planned": "Planned payment to {card} on {date}",
-	"home.plannedDetail": "{amount} · open Transactions",
+	"home.planned": "Planned: pay {card} on {date}",
+	"home.plannedDetail": "{amount} · mark it paid when it goes out",
 	"home.selected.one": "1 card selected",
 	"home.selected.many": "{count} cards selected",
 	"home.enterAmounts": "Enter amounts",
@@ -507,6 +507,7 @@ export const en = {
 		"Over the room by {over}. The bank may decline it.",
 	"purchaseList.warn.held":
 		"Room is {room} because {held} is held by lists waiting for the spender.",
+	"purchaseList.warn.planned": "{amount} planned to be paid by then",
 	"purchaseList.warn.lowerTo": "Lower to {room}",
 	"purchaseList.warn.shared":
 		"Shared limit. {cards} share {group}; together they are {over} over its room of {room}.",
