@@ -1,7 +1,8 @@
 import { expect, test } from "bun:test";
 import type { CcPayForm } from "#components/cc-pay-form";
 import type { CardPayment } from "#lib/domain/types";
-import type { Repository } from "#lib/storage/repository";
+import { InMemoryRepository, type Repository } from "#lib/storage/repository";
+import type { ListPageOptions } from "./list/common";
 import { bannerText, flatText, settle, setupPage } from "./list/test-support";
 import { renderPayPage } from "./pay-page";
 
@@ -36,9 +37,7 @@ test("without a card it asks which one, archived cards left out", async () => {
 			[]),
 	].map((a) => a.dataset["card"]);
 	expect(ids).toEqual(["A", "B"]);
-	expect(root.querySelector('[data-action="back"]')?.getAttribute("href")).toBe(
-		"/transactions",
-	);
+	expect(root.querySelector('[data-action="back"]')).not.toBeNull();
 	expect(document.documentElement.hasAttribute("data-list-page")).toBe(true);
 });
 
@@ -118,4 +117,75 @@ test("the pay page is in the build", async () => {
 	const html = await Bun.file(`${import.meta.dir}/pay.html`).text();
 	expect(html).toContain('<script type="module" src="./pay.ts"></script>');
 	expect(html).toContain('<link rel="icon" href="./favicon.svg"');
+});
+
+test("two quick pay events save one payment", async () => {
+	const { root, repo, visited } = await open("?card=A", withStatement);
+	const el = form(root);
+	await fill(el, "amount", "100");
+	const form1 = inner<HTMLFormElement>(el, "form");
+	form1.dispatchEvent(new Event("submit", { cancelable: true }));
+	form1.dispatchEvent(new Event("submit", { cancelable: true }));
+	await settle(10);
+	expect(await repo.listCardPayments("A")).toHaveLength(1);
+	expect(visited).toEqual(["/transactions"]);
+});
+
+test("a failed save frees the form to try again", async () => {
+	const { root, repo } = await open("?card=A", async (repo) => {
+		repo.saveCardPayment = () => Promise.reject(new Error("disk full"));
+	});
+	const el = form(root);
+	await fill(el, "amount", "100");
+	await submit(el);
+	await el.updateComplete;
+	expect(inner<HTMLButtonElement>(el, 'button[type="submit"]').disabled).toBe(
+		false,
+	);
+	expect(await repo.listCardPayments("A")).toHaveLength(0);
+});
+
+const openWith = async (
+	search: string,
+	extra: { historyLength: () => number; goBack: () => void },
+) => {
+	const wrapped = (
+		repo: Repository,
+		root: HTMLElement,
+		options: Required<ListPageOptions>,
+	) => renderPayPage(repo, root, { ...options, ...extra });
+	return setupPage(wrapped, { search });
+};
+
+test("Back goes to the previous page when there is one", async () => {
+	let backs = 0;
+	const { root, visited } = await openWith("", {
+		historyLength: () => 3,
+		goBack: () => {
+			backs++;
+		},
+	});
+	root.querySelector<HTMLElement>('[data-action="back"]')?.click();
+	expect(backs).toBe(1);
+	expect(visited).toEqual([]);
+});
+
+test("Back goes to Transactions when this is the first page", async () => {
+	let backs = 0;
+	const { root, visited } = await openWith("", {
+		historyLength: () => 1,
+		goBack: () => {
+			backs++;
+		},
+	});
+	root.querySelector<HTMLElement>('[data-action="back"]')?.click();
+	expect(backs).toBe(0);
+	expect(visited).toEqual(["/transactions"]);
+});
+
+test("a load failure reads as a read error", async () => {
+	const repo = new InMemoryRepository();
+	repo.listCards = () => Promise.reject(new Error("boom"));
+	const { root } = await setupPage(renderPayPage, { search: "", repo });
+	expect(bannerText(root)).toContain("Could not read");
 });

@@ -25,6 +25,9 @@ export class CcErrorBanner extends LitElement {
 	// t("common.retry") instead, re-evaluated on every render.
 	@property({ attribute: "retry-label" }) retryLabel = "";
 
+	/** Hides the retry button, for a banner with nothing to retry. */
+	@property({ type: Boolean, attribute: "no-retry" }) noRetry = false;
+
 	constructor() {
 		super();
 		new LocaleController(this);
@@ -39,9 +42,13 @@ export class CcErrorBanner extends LitElement {
 		return html`
 			<article role="alert" data-tone="danger">
 				<p>${this.message}</p>
-				<button data-variant="quiet" @click=${() => this.dispatchEvent(new CustomEvent("retry"))}>
-					${this.retryLabel || t("common.retry")}
-				</button>
+				${
+					this.noRetry
+						? nothing
+						: html`<button data-variant="quiet" @click=${() => this.dispatchEvent(new CustomEvent("retry"))}>
+							${this.retryLabel || t("common.retry")}
+						</button>`
+				}
 			</article>
 		`;
 	}

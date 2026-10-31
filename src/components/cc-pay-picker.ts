@@ -91,6 +91,9 @@ export class CcPayPicker extends LitElement {
 	}
 
 	override render() {
+		if (this.choices.length === 0) {
+			return html`<p class="empty" data-empty="no-cards"><a href="/cards">${t("pay.noCards")}</a></p>`;
+		}
 		const shown = this.choices.filter((c) => matchesCard(c.card, this.query));
 		return html`
 			<input class="search" type="search" name="q" .value=${this.query}

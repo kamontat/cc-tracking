@@ -19,6 +19,13 @@ import {
 	markListPage,
 } from "./list/common";
 
+export type PayPageOptions = ListPageOptions & {
+	/** How many pages the session holds; `history.length` unless a test passes its own. */
+	historyLength?: () => number;
+	/** Steps back one page; `history.back()` unless a test records it instead. */
+	goBack?: () => void;
+};
+
 /**
  * Renders the payment pages into `root`. Without a known `card` in the address it asks which
  * card (an unknown id says so first); with one it shows the form, the amount prefilled from
@@ -27,9 +34,11 @@ import {
 export function renderPayPage(
 	repo: Repository,
 	root: HTMLElement,
-	options: ListPageOptions = {},
+	options: PayPageOptions = {},
 ): void {
 	const { clock, search, navigate } = listPageDefaults(options);
+	const historyLength = options.historyLength ?? (() => history.length);
+	const goBack = options.goBack ?? (() => history.back());
 	markListPage(root);
 	const now = today(clock());
 	const params = new URLSearchParams(search);
@@ -42,12 +51,15 @@ export function renderPayPage(
 		fetch: async () => {
 			data = await loadMoneyData(repo, now);
 		},
-		fallbackKey: "pay.error.save",
+		fallbackKey: "pay.error.read",
 		paint: () => paint(),
 	});
 
+	let busy = false;
 	const save = async (detail: { amount: number; date: string }) => {
-		if (!data || !cardId) return;
+		if (!data || !cardId || busy) return;
+		busy = true;
+		paint();
 		const payment: CardPayment = {
 			id: crypto.randomUUID(),
 			cardId,
@@ -62,10 +74,17 @@ export function renderPayPage(
 			saved = true;
 		}, "pay.error.save");
 		if (saved) navigate("/transactions");
+		else {
+			busy = false;
+			paint();
+		}
 	};
 
 	const paint = () => {
-		const header = backHeader({ title: t("pay.title"), back: "/transactions" });
+		const header = backHeader({
+			title: t("pay.title"),
+			back: () => (historyLength() > 1 ? goBack() : navigate("/transactions")),
+		});
 		if (!data) {
 			render(html`${header}${banner(state)}`, root);
 			return;
@@ -81,6 +100,7 @@ export function renderPayPage(
 						.today=${now}
 						.amount=${initial === null ? "" : formatAmountInput(initial)}
 						.error=${state.error}
+						.busy=${busy}
 						@pay=${(event: CustomEvent<{ amount: number; date: string }>) =>
 							void save(event.detail)}
 					></cc-pay-form>`,

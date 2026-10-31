@@ -124,6 +124,9 @@ export class CcPayForm extends LitElement {
 	/** Why the last save failed, shown above the form; typing is kept. */
 	@property() error = "";
 
+	/** A save is under way; the button waits so a second tap cannot record it twice. */
+	@property({ type: Boolean }) busy = false;
+
 	@state() private text = "";
 	@state() private date: PlainDate = "";
 
@@ -139,6 +142,7 @@ export class CcPayForm extends LitElement {
 
 	private onSubmit(event: Event) {
 		event.preventDefault();
+		if (this.busy) return;
 		const amount = amountOf(this.text);
 		if (amount === null || !isValidDate(this.date)) return;
 		this.dispatchEvent(
@@ -177,7 +181,7 @@ export class CcPayForm extends LitElement {
 					});
 		}
 		return html`
-			<cc-error-banner .message=${this.error} retry-label=${t("common.retry")}></cc-error-banner>
+			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
 			<div class="card">
 				<span>${cardLabelHtml(card.id, card)}</span>
 				<a data-action="change" href="/pay">${t("pay.change")}</a>
@@ -233,7 +237,7 @@ export class CcPayForm extends LitElement {
 							})}</p>`
 						: nothing
 				}
-				<button type="submit" ?disabled=${!ready}>${submit}</button>
+				<button type="submit" ?disabled=${!ready || this.busy}>${submit}</button>
 			</form>
 		`;
 	}

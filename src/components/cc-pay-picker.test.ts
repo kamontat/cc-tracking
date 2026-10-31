@@ -145,3 +145,17 @@ test("a card id with & and a space survives the link", async () => {
 	const href = rows(el)[0]?.getAttribute("href") ?? "";
 	expect(new URLSearchParams(href.split("?")[1]).get("card")).toBe("A&B 1");
 });
+
+test("with no cards at all it says to add one, linking to Cards", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const el = document.createElement("cc-pay-picker");
+	el.choices = [];
+	document.body.append(el);
+	await el.updateComplete;
+	const empty = el.shadowRoot?.querySelector(".empty");
+	expect(empty?.textContent?.replace(/\s+/g, " ").trim()).toBe(
+		"No cards yet. Add one on the Cards page.",
+	);
+	expect(empty?.querySelector("a")?.getAttribute("href")).toBe("/cards");
+});
