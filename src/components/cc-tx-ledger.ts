@@ -121,12 +121,17 @@ export class CcTxLedger extends LitElement {
 				border-radius: 0;
 			}
 
+			/* A planned payment's row takes the same quiet ground as the others when its text is
+			   hovered (DD-105); its figure's own button keeps its own hover. */
 			.hit:hover {
 				background: transparent;
 			}
 
-			.hit:hover .what b:first-child {
-				text-decoration: underline;
+			.crow.split:has(> .hit:hover) {
+				background: var(--cc-surface-sunken);
+				box-shadow:
+					calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
+					var(--cc-space-2) 0 0 var(--cc-surface-sunken);
 			}
 
 			.r button {

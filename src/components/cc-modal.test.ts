@@ -114,3 +114,72 @@ test("as a sheet it has a grab handle and a worded Close", async () => {
 	(close as HTMLButtonElement).click();
 	expect(seen).toHaveLength(1);
 });
+
+// A browser runs the closing slide on the dialog; happy-dom runs none, so the tests below
+// stand one in to check that `close` waits for it.
+const stallExit = (element: CcModal) => {
+	let finish!: () => void;
+	const finished = new Promise<void>((resolve) => {
+		finish = resolve;
+	});
+	const target = dialog(element);
+	target.getAnimations = () =>
+		element.hasAttribute("closing")
+			? [{ finished } as unknown as Animation]
+			: [];
+	return finish;
+};
+
+test("a sheet marks itself closing and asks to close only once its exit animation ends", async () => {
+	const element = await mount("Make a payment");
+	element.sheet = true;
+	await element.updateComplete;
+	const finish = stallExit(element);
+	const seen = closes(element);
+	element.shadowRoot
+		?.querySelector<HTMLButtonElement>('[data-action="close"]')
+		?.click();
+	expect(element.hasAttribute("closing")).toBe(true);
+	expect(seen).toHaveLength(0);
+	// A second request while it is leaving is the same close.
+	dialog(element).dispatchEvent(new Event("cancel", { cancelable: true }));
+	finish();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(seen).toHaveLength(1);
+});
+
+test("leave() lets a page close the sheet after its exit animation too", async () => {
+	const element = await mount("Filter");
+	element.sheet = true;
+	await element.updateComplete;
+	const finish = stallExit(element);
+	let left = 0;
+	element.leave(() => left++);
+	expect(left).toBe(0);
+	finish();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(left).toBe(1);
+});
+
+test("a held modal ignores every request to close", async () => {
+	const element = await mount();
+	element.held = true;
+	const seen = closes(element);
+	dialog(element).dispatchEvent(new Event("cancel", { cancelable: true }));
+	element.shadowRoot
+		?.querySelector<HTMLButtonElement>('[data-action="close"]')
+		?.click();
+	expect(seen).toHaveLength(0);
+	expect(element.hasAttribute("closing")).toBe(false);
+});
+
+test("the closing slide and fade are in the sheet's styles, and stand down under reduced motion", () => {
+	const customElement = customElements.get("cc-modal") as unknown as {
+		styles: { cssText: string }[];
+	};
+	const text = customElement.styles.map((s) => s.cssText).join("\n");
+	expect(text).toContain(":host([sheet][closing]) dialog[open]");
+	expect(text).toMatch(/@keyframes sheet-fall/);
+	expect(text).toMatch(/@keyframes backdrop-out/);
+	expect(text).toMatch(/prefers-reduced-motion[\s\S]*closing/);
+});

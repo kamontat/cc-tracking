@@ -88,12 +88,16 @@ export class CcPayPicker extends LitElement {
 				border-top: var(--cc-border-width) solid var(--cc-border);
 			}
 
+			/* A quiet ground on hover, never an underline (DD-105). */
 			button[data-card]:hover {
-				background: transparent;
+				background: var(--cc-surface-sunken);
+				box-shadow:
+					calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
+					var(--cc-space-2) 0 0 var(--cc-surface-sunken);
 			}
 
-			button[data-card]:hover .what b {
-				text-decoration: underline;
+			button[data-card]:focus-visible {
+				box-shadow: var(--cc-focus-ring);
 			}
 
 			.what {

@@ -133,12 +133,17 @@ export class CcReadyFilter extends LitElement {
 						this.draftSort = "room";
 					}}>${t("tx.filter.clear")}</button>
 				<button type="button" data-action="apply" ?disabled=${shown === 0}
-					@click=${() =>
-						this.dispatchEvent(
-							new CustomEvent("apply", {
-								detail: { filter: this.draft, sort: this.draftSort },
-							}),
-						)}>${
+					@click=${(event: Event) => {
+						// The sheet slides away first; the page takes it away on apply.
+						const detail = { filter: this.draft, sort: this.draftSort };
+						const sheet = (event.currentTarget as HTMLElement).closest(
+							"cc-modal",
+						);
+						const apply = () =>
+							this.dispatchEvent(new CustomEvent("apply", { detail }));
+						if (sheet) sheet.leave(apply);
+						else apply();
+					}}>${
 						shown === 0
 							? t("tx.filter.nothing")
 							: t(

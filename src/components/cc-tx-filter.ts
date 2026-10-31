@@ -152,12 +152,17 @@ export class CcTxFilter extends LitElement {
 						this.draftSort = "new";
 					}}>${t("tx.filter.clear")}</button>
 				<button type="button" data-action="apply" ?disabled=${shown === 0}
-					@click=${() =>
-						this.dispatchEvent(
-							new CustomEvent("apply", {
-								detail: { filter: this.draft, sort: this.draftSort },
-							}),
-						)}>${
+					@click=${(event: Event) => {
+						// The sheet slides away first; the page takes it away on apply.
+						const detail = { filter: this.draft, sort: this.draftSort };
+						const sheet = (event.currentTarget as HTMLElement).closest(
+							"cc-modal",
+						);
+						const apply = () =>
+							this.dispatchEvent(new CustomEvent("apply", { detail }));
+						if (sheet) sheet.leave(apply);
+						else apply();
+					}}>${
 						shown === 0
 							? t("tx.filter.nothing")
 							: t(shown === 1 ? "tx.filter.show.one" : "tx.filter.show.many", {

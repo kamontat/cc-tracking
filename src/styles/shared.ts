@@ -775,14 +775,21 @@ export const rowPanel = css`
 		color: var(--cc-text);
 	}
 
+	/* Hover is a quiet ground, never an underline (DD-105). The two side shadows carry the
+	   ground a little past the row's edges into the panel's padding, so the text does not sit
+	   on its very rim. Focus keeps its ring (UI-16). */
 	button.crow:hover,
 	.crow:any-link:hover {
-		background: transparent;
+		text-decoration: none;
+		background: var(--cc-surface-sunken);
+		box-shadow:
+			calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
+			var(--cc-space-2) 0 0 var(--cc-surface-sunken);
 	}
 
-	button.crow:hover .what b:first-child,
-	.crow:any-link:hover .what b:first-child {
-		text-decoration: underline;
+	button.crow:focus-visible,
+	.crow:any-link:focus-visible {
+		box-shadow: var(--cc-focus-ring);
 	}
 
 	.what {

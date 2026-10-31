@@ -201,9 +201,10 @@ a:any-link:hover {
 	background: var(--cc-accent-surface);
 }
 
-/* Payment floats at the bottom right of every page: a round + over the bar on a phone, a pill
-   with its label from 900px. The primary button's colours, as `.page button` draws them. */
-.fab:any-link {
+/* + New floats at the bottom right of every page (DD-104): a round + over the bar on a phone, a
+   pill with its label from 900px. The primary button's colours, as `.page button` draws them.
+   Tapping it opens a small menu above it -- a new purchase list, or a payment. */
+.fab-menu {
 	position: fixed;
 	z-index: 11;
 	right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
@@ -212,6 +213,16 @@ a:any-link:hover {
 		var(--cc-space-4) +
 		env(safe-area-inset-bottom, 0px)
 	);
+}
+
+.fab-menu__wrap {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+}
+
+.fab {
 	display: inline-flex;
 	flex-direction: row;
 	align-items: center;
@@ -220,23 +231,24 @@ a:any-link:hover {
 	inline-size: var(--cc-bar-height);
 	block-size: var(--cc-bar-height);
 	padding: 0;
+	font: inherit;
 	font-weight: 650;
 	line-height: 1.2;
 	color: var(--cc-accent-text);
 	white-space: nowrap;
-	text-decoration: none;
+	cursor: pointer;
 	background: var(--cc-accent);
+	border: 0;
 	border-radius: var(--cc-radius-pill);
 	box-shadow: var(--cc-fab-shadow);
 }
 
-.fab:any-link:hover {
-	text-decoration: none;
+.fab:hover {
 	background: var(--cc-accent-hover);
 }
 
 /* The ring on top of the shadow: this rule outranks the global `:focus-visible` one. */
-.fab:any-link:focus-visible {
+.fab:focus-visible {
 	box-shadow: var(--cc-focus-ring), var(--cc-fab-shadow);
 }
 
@@ -246,15 +258,101 @@ a:any-link:hover {
 	flex: none;
 }
 
+.fab__plus {
+	display: inline-flex;
+	transition: transform var(--cc-sheet-motion) var(--cc-sheet-ease);
+}
+
+/* The + turns to a × while the menu is open: its shape says it closes, not only its state. */
+.fab[aria-expanded="true"] .fab__plus {
+	transform: rotate(45deg);
+}
+
 .fab__label {
 	display: none;
 }
 
-/* Payment steps aside on the payment page, where it leads, and on the purchase list pages
-   (the new-list picker among them), where the reader is mid-list and a bottom bar needs the
-   full width. */
-:root[data-pay-page] .fab,
-:root[data-list-page] .fab {
+/* The menu sits above the button, its right edge on the button's. */
+.fab-menu__list {
+	position: absolute;
+	right: 0;
+	bottom: calc(100% + var(--cc-space-2));
+	display: flex;
+	flex-direction: column;
+	min-inline-size: max-content;
+	padding: var(--cc-space-1);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-lg);
+	transform-origin: bottom right;
+	animation: fab-menu-in var(--cc-sheet-motion) var(--cc-sheet-ease);
+}
+
+/* `display: flex` above outranks the reset's `[hidden]`, so the closed menu says so itself. */
+.fab-menu__list[hidden] {
+	display: none;
+}
+
+.fab-menu__list[data-state="closing"] {
+	animation: fab-menu-out var(--cc-sheet-motion) var(--cc-sheet-ease) forwards;
+}
+
+@keyframes fab-menu-in {
+	from {
+		opacity: 0;
+		transform: translateY(var(--cc-space-2)) scale(var(--cc-sheet-scale-from));
+	}
+}
+
+@keyframes fab-menu-out {
+	to {
+		opacity: 0;
+		transform: translateY(var(--cc-space-2)) scale(var(--cc-sheet-scale-from));
+	}
+}
+
+.fab-menu__item:any-link {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-3) var(--cc-space-4) var(--cc-space-3)
+		var(--cc-space-3);
+	font-weight: 600;
+	color: var(--cc-text);
+	white-space: nowrap;
+	text-decoration: none;
+	border-radius: var(--cc-radius-sm);
+}
+
+.fab-menu__item:any-link:hover {
+	text-decoration: none;
+	background: var(--cc-surface-sunken);
+}
+
+.fab-menu__item .icon {
+	inline-size: var(--cc-icon-size);
+	block-size: var(--cc-icon-size);
+	flex: none;
+	color: var(--cc-link);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fab__plus {
+		transition: none;
+	}
+
+	.fab-menu__list,
+	.fab-menu__list[data-state="closing"] {
+		animation: none;
+	}
+}
+
+/* + New steps aside on the payment page and on the purchase list pages (the new-list picker
+   among them), where the reader is mid-task and a bottom bar needs the full width. */
+:root[data-pay-page] .fab-menu,
+:root[data-list-page] .fab-menu {
 	display: none;
 }
 
@@ -289,8 +387,11 @@ a:any-link:hover {
 		align-self: stretch;
 		gap: var(--cc-space-1);
 		margin-inline-start: auto;
-		/* Reach down through the bar's padding and the rule, so a tab's underline sits on it. */
-		margin-block-end: calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
+		/* Reach up through the bar's padding and down through it and the rule, so a tab's
+		   underline sits on the rule and its label shares the bar's centre line with the brand
+		   and the date (each tab pads its top by what its underline outweighs the rule). */
+		margin-block: calc(var(--cc-space-3) * -1)
+			calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
 	}
 
 	.site-header__tabs a:any-link {
@@ -298,6 +399,7 @@ a:any-link:hover {
 		flex-direction: row;
 		align-items: center;
 		gap: var(--cc-space-2);
+		padding-block-start: calc(var(--cc-env-rule-width) - var(--cc-rule-width));
 		padding-inline: var(--cc-space-3);
 		color: var(--cc-text-muted);
 		text-decoration: none;
@@ -322,9 +424,12 @@ a:any-link:hover {
 		flex: none;
 	}
 
-	.fab:any-link {
+	.fab-menu {
 		right: calc(var(--cc-space-5) + env(safe-area-inset-right, 0px));
 		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+	}
+
+	.fab {
 		inline-size: auto;
 		padding-inline: var(--cc-space-4) var(--cc-space-5);
 	}

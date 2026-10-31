@@ -141,7 +141,7 @@ test("/pay is the card picker under a back header, with no sheet, and hides the 
 	expect(modal()).toBeNull();
 	expect(document.documentElement.hasAttribute("data-pay-page")).toBe(true);
 	const css = await Bun.file("src/styles/app.css").text();
-	expect(css).toMatch(/:root\[data-pay-page\] \.fab,/);
+	expect(css).toMatch(/:root\[data-pay-page\] \.fab-menu,/);
 });
 
 test("/pay?card= opens the sheet over the picker, the amount prefilled from the address", async () => {
@@ -358,4 +358,28 @@ test("a payment's note goes from the sheet to the ledger's search and through a 
 		parseAnyBackup(JSON.stringify(await exportBackupV3(repo, new Date()))),
 	);
 	expect(await search(restored)).toEqual(["From savings"]);
+});
+
+test("while a save is in flight the sheet is held, so Escape cannot slide it away", async () => {
+	let release!: () => void;
+	const { address } = await setup("/pay?card=A", async (repo) => {
+		const save = repo.saveCardPayment.bind(repo);
+		repo.saveCardPayment = (payment) =>
+			new Promise((resolve) => {
+				release = () => resolve(save(payment));
+			});
+	});
+	await fill("amount", "100");
+	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(
+		new Event("submit", { cancelable: true }),
+	);
+	await settle(5);
+	expect(modal()?.held).toBe(true);
+	inner(modal(), "dialog")?.dispatchEvent(
+		new Event("cancel", { cancelable: true }),
+	);
+	expect(modal()?.hasAttribute("closing")).toBe(false);
+	expect(address.bar.search()).toContain("card=A");
+	release();
+	await settle(10);
 });

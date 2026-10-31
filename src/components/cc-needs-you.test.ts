@@ -77,7 +77,7 @@ test("each item opens its task", async () => {
 		"List for Fri, 30 Oct · 3 cards · ฿39,300.00",
 	);
 	expect(text(found[1] as Element, "b")).toBe(
-		"1111 Bill for SCB/K) SCB K is 16 days overdue",
+		"Bill for SCB/K) SCB K is 16 days overdue",
 	);
 	expect(
 		text(found[2] as Element, "small")?.startsWith("KB-S) KBank S, KS-K) — · "),
@@ -120,7 +120,7 @@ test("one card and one day read in the singular", async () => {
 		"List for Fri, 30 Oct · 1 card · ฿1.00",
 	);
 	expect(text(root, '[data-item="overdue"] b')).toBe(
-		"1111 Bill for SCB/K) SCB K is 1 day overdue",
+		"Bill for SCB/K) SCB K is 1 day overdue",
 	);
 	const many = await mount([
 		{ kind: "waiting", list: list("w1", "sent", ["A", "B"]), total: 100 },
@@ -130,7 +130,7 @@ test("one card and one day read in the singular", async () => {
 		"List for Fri, 30 Oct · 2 cards · ฿1.00",
 	);
 	expect(text(many, '[data-item="overdue"] b')).toBe(
-		"1111 Bill for SCB/K) SCB K is 2 days overdue",
+		"Bill for SCB/K) SCB K is 2 days overdue",
 	);
 });
 
@@ -162,6 +162,78 @@ test("a planned payment row says what to do and opens Transactions", async () =>
 	]);
 	const row = root.querySelector('[data-item="planned"]') as Element;
 	expect(row.getAttribute("href")).toBe("/transactions");
-	expect(text(row, "b")).toBe("1111 Planned: pay SCB/K) SCB K on Mon, 02 Nov");
+	expect(text(row, "b")).toBe("Planned: pay SCB/K) SCB K on Mon, 02 Nov");
 	expect(text(row, "small")).toBe("฿5,000.00 · mark it paid when it goes out");
+});
+
+test("a row with a type icon shows no card chip as well", async () => {
+	const root = await mount([
+		...items(),
+		{
+			kind: "planned",
+			payment: {
+				id: "c1",
+				cardId: "SCB/K",
+				date: "2026-11-02",
+				amount: 5_000_00,
+				status: "planned",
+			},
+			card,
+		},
+	]);
+	for (const row of root.querySelectorAll("[data-item]")) {
+		expect(row.querySelector(".chip .icon")).not.toBeNull();
+		expect(row.querySelector(".mini")).toBeNull();
+	}
+});
+
+const many = (count: number): NeedsItem[] =>
+	Array.from({ length: count }, (_, i) => ({
+		kind: "waiting" as const,
+		list: list(`w${i}`, "sent", ["A"]),
+		total: 100,
+	}));
+
+const shown = (root: ShadowRoot) =>
+	[...root.querySelectorAll("[data-item]")].map((e) => e.getAttribute("href"));
+
+test("five or fewer things show in full, with no See more", async () => {
+	const root = await mount(many(5));
+	expect(shown(root)).toHaveLength(5);
+	expect(root.querySelector('[data-action="more"]')).toBeNull();
+});
+
+test("more than five show the first five and See more expands the rest in place, in order", async () => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-needs-you") as CcNeedsYou;
+	element.items = many(8);
+	document.body.append(element);
+	await element.updateComplete;
+	const root = element.shadowRoot as ShadowRoot;
+	expect(text(root, "h1")).toBe("8 things need you");
+	expect(shown(root)).toEqual(
+		[0, 1, 2, 3, 4].map((i) => `/list/reply?id=w${i}`),
+	);
+	const more = root.querySelector<HTMLButtonElement>('[data-action="more"]');
+	expect(more?.getAttribute("type")).toBe("button");
+	expect(more?.getAttribute("data-variant")).toBe("quiet");
+	expect(more?.getAttribute("aria-expanded")).toBe("false");
+	expect(more?.textContent?.trim()).toBe("See more (3)");
+	more?.click();
+	await element.updateComplete;
+	expect(shown(root)).toEqual(
+		[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `/list/reply?id=w${i}`),
+	);
+	const less = root.querySelector<HTMLButtonElement>('[data-action="more"]');
+	expect(less?.getAttribute("aria-expanded")).toBe("true");
+	expect(less?.textContent?.trim()).toBe("Show less");
+	less?.click();
+	await element.updateComplete;
+	expect(shown(root)).toHaveLength(5);
+});
+
+test("See more reads in Thai", async () => {
+	setLocale("th");
+	const root = await mount(many(7));
+	expect(text(root, '[data-action="more"]')).toBe("ดูเพิ่ม (2)");
 });

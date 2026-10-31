@@ -55,7 +55,7 @@ test("every list page hides the floating Payment button", async () => {
 	await settle();
 	const css = await Bun.file("src/styles/app.css").text();
 	expect(css).toMatch(
-		/:root\[data-pay-page\] \.fab,\s*:root\[data-list-page\] \.fab\s*\{\s*display: none;/,
+		/:root\[data-pay-page\] \.fab-menu,\s*:root\[data-list-page\] \.fab-menu\s*\{\s*display: none;/,
 	);
 });
 
@@ -101,13 +101,11 @@ test("the list bottom bars reserve no room for the Payment button", async () => 
 	}
 });
 
-test("the floating Payment button and the selection bars share one height token", async () => {
+test("the floating + New button and the selection bars share one height token", async () => {
 	const tokens = await Bun.file("src/styles/tokens.css").text();
 	expect(tokens).toMatch(/--cc-bar-height:/);
 	const css = await Bun.file("src/styles/app.css").text();
-	expect(ruleBody(css, ".fab:any-link")).toContain(
-		"block-size: var(--cc-bar-height)",
-	);
+	expect(ruleBody(css, ".fab")).toContain("block-size: var(--cc-bar-height)");
 	expect(ruleBody(css, ".action-bar")).toContain(
 		"min-block-size: var(--cc-bar-height)",
 	);

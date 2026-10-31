@@ -171,3 +171,24 @@ test("draws as a sheet, with card choices in the line form", async () => {
 	);
 	expect(root.querySelectorAll("[data-sort]")).toHaveLength(4);
 });
+
+test("apply waits for the sheet to slide away before it is handed back", async () => {
+	const { element, modal } = await mount();
+	let finish!: () => void;
+	const finished = new Promise<void>((resolve) => {
+		finish = resolve;
+	});
+	const dialog = modal.shadowRoot?.querySelector("dialog") as HTMLDialogElement;
+	dialog.getAnimations = () =>
+		modal.hasAttribute("closing") ? [{ finished } as unknown as Animation] : [];
+	let applied = 0;
+	element.addEventListener("apply", () => applied++);
+	element.shadowRoot
+		?.querySelector<HTMLButtonElement>("[data-action=apply]")
+		?.click();
+	expect(modal.hasAttribute("closing")).toBe(true);
+	expect(applied).toBe(0);
+	finish();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	expect(applied).toBe(1);
+});

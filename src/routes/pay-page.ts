@@ -145,7 +145,8 @@ export function renderPayPage(
 		if (!card || !ledger) return nothing;
 		const figures = payFigures(ledger, now);
 		const start = amount ?? (figures.nextBill > 0 ? figures.nextBill : null);
-		return html`<cc-modal sheet data-sheet="pay" heading=${t("pay.title")} @close=${close}>
+		return html`<cc-modal sheet data-sheet="pay" heading=${t("pay.title")}
+			.held=${busy} @close=${close}>
 			<cc-pay-form
 				.card=${card}
 				.groups=${loaded.groups}
@@ -155,7 +156,14 @@ export function renderPayPage(
 				.error=${saveFailed ? state.error : ""}
 				.busy=${busy}
 				@pay=${(event: CustomEvent<PayDetail>) => void save(card.id, event.detail)}
-				@change=${close}
+				@change=${(event: Event) => {
+					// *Change* slides the sheet away as Close does, then goes back to the picker.
+					const modal = (event.currentTarget as HTMLElement).closest(
+						"cc-modal",
+					);
+					if (modal && !busy) modal.leave(close);
+					else close();
+				}}
 			></cc-pay-form>
 		</cc-modal>`;
 	};

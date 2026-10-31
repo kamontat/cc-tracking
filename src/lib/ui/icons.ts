@@ -26,7 +26,9 @@ export const icons: Record<
 	| "image"
 	| "send"
 	| "search"
-	| "filter",
+	| "filter"
+	| "list"
+	| "wallet",
 	SVGTemplateResult
 > = {
 	home: icon(
@@ -58,4 +60,12 @@ export const icons: Record<
 	send: icon(svg`<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>`),
 	search: icon(svg`<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`),
 	filter: icon(svg`<path d="M3 6h18M7 12h10M10 18h4"/>`),
+	// Lucide's `list-plus`: a new purchase list.
+	list: icon(
+		svg`<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/>`,
+	),
+	// Lucide's `wallet`: making a payment.
+	wallet: icon(
+		svg`<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>`,
+	),
 };

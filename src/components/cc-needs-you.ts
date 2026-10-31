@@ -1,23 +1,30 @@
-import { css, html, LitElement } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { css, html, LitElement, nothing } from "lit";
+import { customElement, property, state } from "lit/decorators.js";
 import { headerDate } from "#lib/domain/date";
 import type { NeedsItem } from "#lib/domain/home";
 import { formatAmount } from "#lib/domain/money";
-import type { Card, LimitGroup } from "#lib/domain/types";
+import type { Card } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLine, cardLines, cardMini } from "#lib/ui/card-label";
+import { cardLine, cardLines } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { listPageAddress } from "#lib/ui/list-address";
 import { payAddress } from "#lib/ui/pay-address";
-import { base, cardBits } from "#styles/shared";
+import { base, controls } from "#styles/shared";
 
-/** What needs doing on Home: replies to record, bills past due, drafts to finish. */
+/** How many things show before *See more*. */
+const SHOWN = 5;
+
+/**
+ * What needs doing on Home: replies to record, bills past due, drafts to finish. A row's icon
+ * says what kind of thing it is, so it carries no card chip besides (DD-106). More than five
+ * show the first five and *See more (N)*, which opens the rest in place, in the same order.
+ */
 @customElement("cc-needs-you")
 export class CcNeedsYou extends LitElement {
 	static override styles = [
 		base,
-		cardBits,
+		controls,
 		css`
 			:host {
 				display: flex;
@@ -54,7 +61,9 @@ export class CcNeedsYou extends LitElement {
 				border-top: var(--cc-border-width) solid var(--cc-border);
 			}
 
+			/* A quiet ground on hover, never an underline (DD-105). */
 			.item:hover {
+				text-decoration: none;
 				background: var(--cc-surface-sunken);
 			}
 
@@ -89,11 +98,6 @@ export class CcNeedsYou extends LitElement {
 				min-inline-size: 0;
 			}
 
-			/* A card's row starts its title with the card's chip (the panel form, UI-14). */
-			.text .mini {
-				vertical-align: middle;
-			}
-
 			small {
 				font-size: var(--cc-text-sm);
 				color: var(--cc-text-muted);
@@ -110,6 +114,10 @@ export class CcNeedsYou extends LitElement {
 				background: var(--cc-surface-sunken);
 			}
 
+			.more {
+				align-self: center;
+			}
+
 			.note[data-tone="ok"] {
 				background: var(--cc-accent-surface);
 			}
@@ -119,8 +127,9 @@ export class CcNeedsYou extends LitElement {
 	@property({ attribute: false }) items: NeedsItem[] = [];
 	/** Every stored card, to name a draft's cards. */
 	@property({ attribute: false }) cards: Card[] = [];
-	/** The stored limit groups, in order: a card's chip takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+
+	/** Whether the things past the first `SHOWN` are open (DD-106). */
+	@state() private expanded = false;
 
 	constructor() {
 		super();
@@ -150,7 +159,6 @@ export class CcNeedsYou extends LitElement {
 				return {
 					href: payAddress({ cardId: item.card.id, amount: item.remaining }),
 					icon: icons.alert,
-					chip: cardMini(item.card, this.groups),
 					title: t(item.days === 1 ? "home.overdue.one" : "home.overdue.many", {
 						card: cardLine(item.card.id, item.card, { short: true }),
 						days: item.days,
@@ -163,7 +171,6 @@ export class CcNeedsYou extends LitElement {
 				return {
 					href: "/transactions",
 					icon: icons.clock,
-					chip: cardMini(item.card, this.groups),
 					title: t("home.planned", {
 						card: cardLine(item.payment.cardId, item.card, { short: true }),
 						date: headerDate(item.payment.date, locale, false),
@@ -198,16 +205,31 @@ export class CcNeedsYou extends LitElement {
 		const count = this.items.length;
 		return html`
 			<h1>${count === 1 ? t("home.needs.one") : t("home.needs.many", { count })}</h1>
-			<div class="list">
-				${this.items.map((item) => {
-					const row = this.row(item);
-					const inside = html`<span class="chip">${row.icon}</span>
-						<span class="text"><b>${"chip" in row ? html`${row.chip} ` : ""}${row.title}</b><small>${row.detail}</small></span>
+			<div class="list" id="needs-list">
+				${(this.expanded ? this.items : this.items.slice(0, SHOWN)).map(
+					(item) => {
+						const row = this.row(item);
+						const inside = html`<span class="chip">${row.icon}</span>
+						<span class="text"><b>${row.title}</b><small>${row.detail}</small></span>
 						<span class="chevron" aria-hidden="true">›</span>`;
-					// An overdue bill leads to the payment sheet on its card and what is left.
-					return html`<a class="item" data-item=${item.kind} href=${row.href}>${inside}</a>`;
-				})}
+						// An overdue bill leads to the payment sheet on its card and what is left.
+						return html`<a class="item" data-item=${item.kind} href=${row.href}>${inside}</a>`;
+					},
+				)}
 			</div>
+			${
+				count > SHOWN
+					? html`<button type="button" class="more" data-variant="quiet" data-action="more"
+							aria-controls="needs-list" aria-expanded=${this.expanded ? "true" : "false"}
+							@click=${() => {
+								this.expanded = !this.expanded;
+							}}>${
+								this.expanded
+									? t("home.needs.less")
+									: t("home.needs.more", { count: count - SHOWN })
+							}</button>`
+					: nothing
+			}
 		`;
 	}
 }

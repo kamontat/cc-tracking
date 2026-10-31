@@ -2,6 +2,7 @@ import { css, html, LitElement } from "lit";
 import { customElement, property, query } from "lit/decorators.js";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
+import { afterExit } from "#lib/ui/motion";
 import { base, controls } from "#styles/shared";
 
 /**
@@ -9,7 +10,8 @@ import { base, controls } from "#styles/shared";
  * the page, so a page shows one by rendering it and hides it by rendering it away -- there is no
  * `open` to keep in step. Escape, the backdrop and the close button never close it directly;
  * each only emits `close`, leaving the page to decide, so the dialog can never be shut while the
- * page still believes it is showing.
+ * page still believes it is showing. A sheet slides (or fades) out first and asks only once
+ * that has ended, so the page renders it away after its exit rather than mid-screen.
  */
 @customElement("cc-modal")
 export class CcModal extends LitElement {
@@ -114,15 +116,51 @@ export class CcModal extends LitElement {
 				animation: backdrop-in var(--cc-sheet-motion) var(--cc-sheet-ease);
 			}
 
+			/* Closing plays it backwards: the sheet slides down (shrinks and fades from 900px)
+			   and the backdrop fades out, and only then does the page take it away. */
+			@keyframes sheet-fall {
+				to {
+					transform: translateY(100%);
+				}
+			}
+
+			@keyframes sheet-shrink {
+				to {
+					opacity: 0;
+					transform: scale(var(--cc-sheet-scale-from));
+				}
+			}
+
+			@keyframes backdrop-out {
+				to {
+					opacity: 0;
+				}
+			}
+
+			:host([sheet][closing]) dialog[open] {
+				animation: sheet-fall var(--cc-sheet-motion) var(--cc-sheet-ease) forwards;
+			}
+
+			:host([sheet][closing]) dialog[open]::backdrop {
+				animation: backdrop-out var(--cc-sheet-motion) var(--cc-sheet-ease)
+					forwards;
+			}
+
 			@media (min-width: 900px) {
 				:host([sheet]) dialog[open] {
 					animation-name: sheet-grow;
+				}
+
+				:host([sheet][closing]) dialog[open] {
+					animation-name: sheet-shrink;
 				}
 			}
 
 			@media (prefers-reduced-motion: reduce) {
 				:host([sheet]) dialog[open],
-				:host([sheet]) dialog[open]::backdrop {
+				:host([sheet]) dialog[open]::backdrop,
+				:host([sheet][closing]) dialog[open],
+				:host([sheet][closing]) dialog[open]::backdrop {
 					animation: none;
 				}
 			}
@@ -150,6 +188,11 @@ export class CcModal extends LitElement {
 	@property() heading = "";
 	/** Draw as a sheet (bottom sheet on a phone, centred from 900px) with a worded Close. */
 	@property({ type: Boolean, reflect: true }) sheet = false;
+	/**
+	 * Held open: Escape, the backdrop and Close do nothing, so a page that would refuse to
+	 * close (a save in flight) never sees its sheet slide away first.
+	 */
+	@property({ type: Boolean }) held = false;
 
 	@query("dialog") private dialog!: HTMLDialogElement;
 
@@ -183,8 +226,24 @@ export class CcModal extends LitElement {
 		this.dialog.showModal();
 	}
 
+	/**
+	 * Plays the sheet's exit (marking the host `closing`) and runs `then` once it has ended --
+	 * at once when nothing animates (reduced motion, a plain modal). For a page that closes the
+	 * sheet itself, as an apply button does; `then` should render the sheet away. A plain modal
+	 * drops the mark again, since it has nothing to play.
+	 */
+	leave(then: () => void): void {
+		if (this.hasAttribute("closing")) return;
+		this.toggleAttribute("closing", true);
+		afterExit(this.dialog, () => {
+			if (!this.sheet) this.removeAttribute("closing");
+			then();
+		});
+	}
+
 	private requestClose() {
-		this.dispatchEvent(new CustomEvent("close"));
+		if (this.held) return;
+		this.leave(() => this.dispatchEvent(new CustomEvent("close")));
 	}
 
 	override render() {
