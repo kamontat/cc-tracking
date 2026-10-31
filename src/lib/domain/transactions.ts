@@ -88,7 +88,10 @@ function matchesQuery(entry: TxEntry, query: string): boolean {
 	if (text.some((t) => t.toLowerCase().includes(q))) return true;
 	const printed = formatAmount(entryAmount(entry));
 	if (printed.toLowerCase().includes(q)) return true;
-	return /^[\d,.฿\s]+$/.test(q) && digits(printed).includes(digits(q));
+	const wanted = digits(q);
+	return (
+		wanted !== "" && /^[\d,.฿\s]+$/.test(q) && digits(printed).includes(wanted)
+	);
 }
 
 export function filterEntries(

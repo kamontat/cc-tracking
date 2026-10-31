@@ -87,6 +87,11 @@ describe("filterEntries", () => {
 		expect(f({ q: "41230" })).toEqual(["p1"]);
 		expect(f({ q: "฿41,230" })).toEqual(["p1"]);
 	});
+	test("a query of only separators matches only what prints it", () => {
+		expect(f({ q: "," })).toEqual(["p1"]);
+		expect(f({ q: ",," })).toEqual([]);
+		expect(f({ q: ". ," })).toEqual([]);
+	});
 	test("search finds Thai notes, card names and ignores case", () => {
 		expect(f({ q: "เครื่องบิน" })).toEqual(["p1"]);
 		expect(f({ q: "LUNCH" })).toEqual(["p2"]);
