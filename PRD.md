@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Draft for the refactor and redesign |
-| **Last updated** | 2026-10-30 |
+| **Last updated** | 2026-10-31 |
 | **Baseline** | Everything shipped up to 2026-10-28, including partial payments ([`CHANGELOG.md`](CHANGELOG.md)) |
 | **Thai translation** | [`PRD_TH.md`](PRD_TH.md), same IDs in the same order |
 
@@ -59,9 +59,9 @@ requirements it serves, and each user story names the functional requirements it
 | `src/lib/domain/` | Pure rules: dates, cycles, statements, limits, ranges, money; and the phase 1 rules `ledger.ts`, `room.ts`, `purchase-list.ts`, `amount-warnings.ts`, `locations.ts`, `purge.ts`. No storage, no UI. Tests beside each file. |
 | `src/lib/storage/` | `Repository` interface, the `localStorage` implementation, the contract suite, backup and restore, the location migration, the payment conversion (`migrate-payments.ts`) and backup version 3 (`transfer-v3.ts`). |
 | `src/lib/i18n/` | The English and Thai catalogs (`en.ts`, `th.ts`), language detection and formatting. |
-| `src/lib/ui/` | Page plumbing shared by routes: load and save with error handling, panels, theme, list view in the address, build info, and the shell (`shell.ts`, `chrome.ts`, `icons.ts`: header, bottom bar, tabs, build marks). |
+| `src/lib/ui/` | Page plumbing shared by routes: load and save with error handling, panels, theme, list view in the address, build info, the phase 3 helpers `money-data.ts`, `list-share.ts` and `back-header.ts`, and the shell (`shell.ts`, `chrome.ts`, `icons.ts`: header, bottom bar, tabs, build marks). |
 | `src/components/` | Lit web components (`cc-*`), one per panel, form or table. They get data as properties and send events. |
-| `src/routes/` | One HTML page and script per address: `index` (`/`), `transactions`, `cards`, `card`, `settings`. |
+| `src/routes/` | One HTML page and script per address: `index` (`/`), `list`, `transactions`, `cards`, `card`, `settings`. |
 | `src/styles/` | `tokens.css` (every value), `app.css` (page shell), `shared.ts` (styles inside components). |
 
 Stack: Bun, TypeScript, Lit, `@kcstyles/reset.css`, happy-dom for tests, static pages on
@@ -145,6 +145,8 @@ Phase 1 (rules and storage) shipped on 2026-10-30: the new rules and records sit
 
 Phase 2 (shell and look) shipped on 2026-10-30: the header, bottom bar, desktop tabs, build marks, the new palette, the early theme and About replacing the footer. Every page still shows today's panels; `/transactions` is a placeholder.
 
+Phase 3 (Home and purchase lists) shipped on 2026-10-31: Home replaced the dashboard with *Needs you* and *Ready to use*, and `/list` enters, reviews, replies to and shows a purchase list. *Due next* and *Purchases by date* are off Home until Transactions (phase 4); the card page keeps its Add purchase dialog until phase 5.
+
 | ID | Change | Affects |
 |---|---|---|
 | RD-01 | *(Replaced by RD-09.)* **Entering receipts gets its own screen**, off the dashboard. It keeps today's speed: card and date stay between adds, amount and note clear, a failed add keeps what was typed. | FR-23, FR-27, DD-20, CD-03, CD-04, G3 |
@@ -155,13 +157,13 @@ Phase 2 (shell and look) shipped on 2026-10-30: the header, bottom bar, desktop 
 | RD-06 | **Restore checks ranges** with the same rules as the forms: amounts and limits above zero, last 4 exactly four digits, cycle days in range (DR-25), and payment parts as today. A file that breaks one is rejected before anything is written, naming the record and the problem. | DC-06, FR-31, known limits |
 | RD-07 | **Delete guards move into storage.** The repository refuses to delete a card that has purchases or a limit group that cards use, and the contract suite tests it. The interface keeps hiding the buttons as well. | DR-19, DC-13 |
 | RD-08 | **Pages and navigation.** Four pages: Home, Transactions, Cards and Settings. On a phone a bottom bar holds the four tabs; on a desktop they sit on the right of the header. A floating **Payment** button at the bottom right of every page opens the payment form (RD-14): a round + on a phone, above the bar, and a pill with its label on a desktop. The header keeps the boxed `cc` mark with a bold rule under it. Sub-screens (entering amounts, a card, its edit form, locations) open with a back button. *Shipped in part in phase 2: the shell, with Payment as a floating button (DD-57) that opens a placeholder until the payment form in phase 4.* | CD-01, CD-02, FR-27, DD-19, DD-45, question 3 |
-| RD-09 | **Purchase lists replace receipt entry.** (1) On Home, tick cards under *Ready to use*. (2) Enter an amount for each card on its own screen, with the purchase date. (3) Review the dated table, with the columns *Card* (id), *Name (last 4)* and *Amount*; copy it as text or save it as an image for the chat, then mark it sent. (4) When the spender replies, mark each line *Made* or *Not made* and correct the real amount. (5) Save: made lines become purchases on the list's date; not-made lines can move to a draft for the next day. A list is a draft, waiting for the spender, or saved. A waiting list holds its amounts against each group's room until it is saved. | RD-01, RD-02, FR-17, FR-18, FR-23, FR-24, US-07, US-08, DD-20 to DD-23, DD-39, DD-40, CD-03 to CD-05 |
-| RD-10 | **Warnings while entering amounts.** None blocks the list. Each sits under its line with the reason in words, the line gets an amber outline, and a count shows above *Review*. *Over the room*, explaining any room held by a waiting list and any planned payment that would make room, with one action: *Lower to* the room. *Shared limit*: cards on one list that share a group go over its room together. *Overdue bill* on the card. *Close date*: the purchase date is the card's close date. *Date has passed*: shown once, at the date, with *Change to today*. Dropped: the future-date warning, since lists are planned ahead, and a warning for a card already on another list. | FR-19, FR-20, US-09, DR-11, DD-41 |
+| RD-09 | **Purchase lists replace receipt entry.** (1) On Home, tick cards under *Ready to use*. (2) Enter an amount for each card on its own screen, with the purchase date. (3) Review the dated table, with the columns *Card* (id), *Name (last 4)* and *Amount*; copy it as text or save it as an image for the chat, then mark it sent. (4) When the spender replies, mark each line *Made* or *Not made* and correct the real amount. (5) Save: made lines become purchases on the list's date; not-made lines can move to a draft for the next day. A list is a draft, waiting for the spender, or saved. A waiting list holds its amounts against each group's room until it is saved. *Shipped in phase 3.* | RD-01, RD-02, FR-17, FR-18, FR-23, FR-24, US-07, US-08, DD-20 to DD-23, DD-39, DD-40, CD-03 to CD-05 |
+| RD-10 | **Warnings while entering amounts.** None blocks the list. Each sits under its line with the reason in words, the line gets an amber outline, and a count shows above *Review*. *Over the room*, explaining any room held by a waiting list and any planned payment that would make room, with one action: *Lower to* the room. *Shared limit*: cards on one list that share a group go over its room together. *Overdue bill* on the card. *Close date*: the purchase date is the card's close date. *Date has passed*: shown once, at the date, with *Change to today*. Dropped: the future-date warning, since lists are planned ahead, and a warning for a card already on another list. *Shipped in phase 3; the planned-payment part of the over-room explanation arrives with planned payments in phase 4.* | FR-19, FR-20, US-09, DR-11, DD-41 |
 | RD-11 | **Payments belong to a card and can be made on any day.** A payment has a card, a date and an amount. Paid money settles the card's oldest statement first, the open period included. Paying more than is owed is accepted and said in words; the extra stays on the card as **credit**, used by its next purchases, so room can go above the limit. Existing per-statement records migrate without changing any total. | FR-09, FR-12, FR-14, FR-16, US-02, US-25, DR-05 to DR-09, DR-28 to DR-31, DC-02, DC-05 to DC-07, DD-07, DD-37, DD-38, DD-42, known limits |
 | RD-12 | **Planned payments.** A payment dated later than today is a plan. It shows under *Upcoming* with *Mark paid*, and changes nothing until it is marked paid. | new |
 | RD-13 | **Transactions is one ledger.** Purchases (−) and payments (+) by day, with sign and word marking direction; a month summary (purchases, payments, owed now); *Upcoming* on top, with lists waiting for the spender and planned payments. Search, filter by type, card and date, and sort; filters show as removable chips, and the filter sheet counts matches before applying. On a desktop, what each card owes sits beside the ledger. Replaces *Purchases by date* and *Due next*. | FR-15, FR-25, US-01, US-13, CD-06, CD-08, DD-43 |
 | RD-14 | **The payment form.** The Payment button (DD-57) first asks *Which card?*: every card with what it owes, overdue and soon-due first, with a search box. The form then shows the card large at the top with *Change*, what it owes, its next bill and its credit, chips for *Next bill* and *Everything owed*, the amount and the date. The button names the amount, the card and, for a plan, the date: "Record ฿41,230 to SCB-K", "Plan ฿10,000 to UOB-K on Thu 5 Nov". | FR-14, CD-13, DD-44 |
-| RD-15 | **Home.** *Needs you* first: lists waiting for the spender, overdue bills, planned payments in the next three days and drafts, each opening its task. Then *Ready to use*: the cards in places that take purchases, with room, close date and due date for buying today, sortable by most room, longest to close or latest due, and selectable for a list. A quiet day reads "All caught up". Replaces the dashboard panels. | FR-11, FR-15, US-04, CD-03, DD-34 |
+| RD-15 | **Home.** *Needs you* first: lists waiting for the spender, overdue bills, planned payments in the next three days and drafts, each opening its task. Then *Ready to use*: the cards in places that take purchases, with room, close date and due date for buying today, sortable by most room, longest to close or latest due, and selectable for a list. A quiet day reads "All caught up". Replaces the dashboard panels. *Shipped in phase 3; planned payments join Needs you in phase 4.* | FR-11, FR-15, US-04, CD-03, DD-34 |
 | RD-16 | **Cards page.** Grouped by location by default; search; filter by location and account holder; sort by place, most room, name or close day, where any sort but place gives one flat list. Limit groups sit beside the list on a desktop. A card's page shows room, owed, next bill, *Use on a list*, *Make a payment* and statements; *Edit* opens a full edit screen instead of a dialog. Old addresses need not keep working (question 15). | FR-06, FR-07, FR-38, US-16, US-18, CD-09, CD-10, DC-15, DC-16 |
 | RD-17 | **Locations can be managed** at `/settings/locations`: add, rename, delete (only a location with no cards), and tick *Takes purchases* per location, which replaces *Purchase places*. Needs a stored list of locations and a migration from the fixed three. | FR-02, FR-22, US-11, DR-12, DR-14, DC-07, DC-08, DC-10, DD-10, DD-11, out of scope, known limits |
 | RD-18 | **Delete old purchases.** Settings › Reset offers deleting purchases older than 6 months, 1 year or 3 years, or all of them. Saved lists and payments from the same time go with them. Only purchases on fully paid statements go, with the payments that settled them, so what each card owes, its credit and its room don't change. It says how many will go and asks a second time. *Delete all data* stays (FR-32). | FR-32, US-21, new |
@@ -230,7 +232,7 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 | FR-08 | A limit group has a name, a credit limit in baht (above zero) and an account holder (KC, NT or RI). Every card must point at one group; a card on its own is a group of one. A group can be deleted only while no card uses it. | BR-02, BR-05 |
 | FR-09 | A group's available credit is its limit less every purchase on a statement not yet marked paid, including the open period. Marking a statement paid gives back exactly that statement's total. See DR-09. | BR-02 |
 | FR-10 | The limit group list shows each group's owner, limit, cards, used and available amounts, and can be searched, filtered by owner and sorted. | BR-02 |
-| FR-11 | *Can spend now* lists each unarchived card that can take a purchase, with its available credit out of its limit, how much of the limit is used (DR-23), whether the limit is shared (DR-24), and the close and due dates a purchase made today would get, each with a relative date (DR-27). It counts cards with no group and links to assign them. It sorts by card, available, closes or due. | BR-02 |
+| FR-11 | *(Retired in phase 3: replaced by Ready to use, RD-15.)* *Can spend now* lists each unarchived card that can take a purchase, with its available credit out of its limit, how much of the limit is used (DR-23), whether the limit is shared (DR-24), and the close and due dates a purchase made today would get, each with a relative date (DR-27). It counts cards with no group and links to assign them. It sorts by card, available, closes or due. | BR-02 |
 | FR-12 | The card page shows the card's available credit, what is still owed on it (what is left on every statement not fully paid), and its next due date with what is left on it. | BR-01, BR-02 |
 
 ### Statements and payments
@@ -239,7 +241,7 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 |---|---|---|
 | FR-13 | Statements are derived from the card's cycle and its purchases, never stored. See DR-03 to DR-05. | BR-03 |
 | FR-14 | *Mark paid* on a closed statement opens a dialog for the amount and the date paid, starting at what is left and today, so paying in full is still one confirm. A statement can be paid in several parts and counts as paid once they cover its total. Each payment can be unmarked on its own. The first payment freezes the close and due dates. The open period has no *Mark paid* button; it reads "still open". | BR-01, BR-06 |
-| FR-15 | *Due next* lists, per unarchived card, what is due next (DR-06), with close date, due date, what is left to pay (with the full total under it), and an urgency label (DR-07). Rows can be marked paid from the list and sorted by card, location, closes, due or what is left. | BR-01 |
+| FR-15 | *(Off Home since phase 3; returns in Transactions, RD-13, phase 4.)* *Due next* lists, per unarchived card, what is due next (DR-06), with close date, due date, what is left to pay (with the full total under it), and an urgency label (DR-07). Rows can be marked paid from the list and sorted by card, location, closes, due or what is left. | BR-01 |
 | FR-16 | The card page lists statements newest first, marks the current one, folds runs of quiet months into one line (DR-22), and shows 12 periods at a time with *Show older statements* for 12 more. A statement with payments lists each one under its purchases, as an amount off the total with its own *Unmark*, and ends with what is left to pay. | BR-03 |
 
 ### Purchases
@@ -248,8 +250,8 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 |---|---|---|
 | FR-17 | A purchase has a card, a date, an amount in baht (stored in satang) and an optional note. It records when it was first entered; an edit keeps that time. | BR-03 |
 | FR-18 | After adding, the app says which statement the purchase lands on and when it is due. | BR-03 |
-| FR-19 | The form shows the selected card's available credit. A purchase over it is saved, and the confirmation says by how much it went over which group's limit. | BR-02, BR-07 |
-| FR-20 | The form warns, without blocking, when the date is the card's close date (the bank may post it on either statement) and when the date is in the future. | BR-03, BR-07 |
+| FR-19 | The form shows the selected card's available credit. A purchase over it is saved, and the confirmation says by how much it went over which group's limit. *Met on purchase lists by RD-10 since phase 3; the card page's purchase dialog keeps its notes until phase 5.* | BR-02, BR-07 |
+| FR-20 | The form warns, without blocking, when the date is the card's close date (the bank may post it on either statement) and when the date is in the future. *Met on purchase lists by RD-10 since phase 3; the card page's purchase dialog keeps its notes until phase 5.* | BR-03, BR-07 |
 | FR-21 | A purchase can be edited (date, amount, note; the card stays fixed) or deleted from the card page, archived cards included. | BR-03 |
 | FR-22 | Only cards kept in a place ticked under *Purchases* in Settings can take a new purchase. Default: Krabi only. When none qualify, the form says how to fix it; on the card page of a card that can't take one, the add button is hidden and a note says how to fix it. | BR-11 |
 
@@ -257,11 +259,11 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 
 | ID | Requirement | Serves |
 |---|---|---|
-| FR-23 | *(Moves to its own screen: RD-01.)* The dashboard's purchase form is always open. After each add it keeps the card and date and clears amount and note. A failed add keeps what was typed and shows the error beside the form. With exactly one eligible card, the card is shown as text rather than a list to pick from. | BR-04 |
-| FR-24 | *(Replaced by RD-02.)* *This sitting* lists purchases entered since *Start new batch* was last pressed (DR-16), with how long ago, card, purchase date and amount, and a count and total. It survives reloads, closing the tab and the next day. *Start new batch* asks for a second click before clearing. | BR-04 |
-| FR-25 | *Purchases by date* counts purchases, their total and the cards used, across every card (archived ones tagged), for Today, This week, This month, Last month or a custom range of purchase dates (DR-17), with a card filter. The list is folded until opened and grouped by day, each card linked to its page. | BR-12 |
-| FR-26 | The dashboard re-reads the clock each minute, so a tab left open past midnight moves its default date and presets to the new day, without changing a date the user picked. | BR-04 |
-| FR-27 | *(Replaced by RD-01.)* The purchase form and *This sitting* are the first things on the dashboard, beside or above the overview panels, on desktop and on a phone. (Today's layout is CD-03.) | BR-04, BR-10 |
+| FR-23 | *(Retired in phase 3: replaced by RD-09, purchase lists.)* The dashboard's purchase form is always open. After each add it keeps the card and date and clears amount and note. A failed add keeps what was typed and shows the error beside the form. With exactly one eligible card, the card is shown as text rather than a list to pick from. | BR-04 |
+| FR-24 | *(Retired in phase 3: replaced by RD-09, purchase lists.)* *This sitting* lists purchases entered since *Start new batch* was last pressed (DR-16), with how long ago, card, purchase date and amount, and a count and total. It survives reloads, closing the tab and the next day. *Start new batch* asks for a second click before clearing. | BR-04 |
+| FR-25 | *(Off Home since phase 3; returns in Transactions, RD-13, phase 4.)* *Purchases by date* counts purchases, their total and the cards used, across every card (archived ones tagged), for Today, This week, This month, Last month or a custom range of purchase dates (DR-17), with a card filter. The list is folded until opened and grouped by day, each card linked to its page. | BR-12 |
+| FR-26 | The dashboard re-reads the clock each minute, so a tab left open past midnight moves its default date and presets to the new day, without changing a date the user picked. *Home keeps re-reading the clock since phase 3.* | BR-04 |
+| FR-27 | *(Retired in phase 3: replaced by RD-09, purchase lists.)* The purchase form and *This sitting* are the first things on the dashboard, beside or above the overview panels, on desktop and on a phone. (Today's layout is CD-03.) | BR-04, BR-10 |
 
 ### Data, backup and reset
 
@@ -326,7 +328,7 @@ exactly.
 
 **US-04 -- See room on every card.** As a spender, I want to see how much each card can still
 take and when a purchase made today would be due, so that I pick the right card.
-- *Can spend now* lists only unarchived cards that can take a purchase.
+- *Ready to use* on Home (RD-15, since phase 3) lists only unarchived cards that can take a purchase.
 - Each row shows available out of limit, how much of the limit is used in words and as a bar,
   and the open period's close and due dates.
 - A card sharing its limit says how many others share it.
@@ -348,29 +350,23 @@ no limit group, so that I can assign them.
 
 ### Entering receipts
 
-**US-07 -- Enter a pile of receipts quickly.** As a bookkeeper, I want the purchase form always
-open and ready for the next receipt, so that I can work through a pile without extra clicks.
-- After an add, card and date stay; amount and note clear.
-- The confirmation names the statement close date and due date.
-- A failed add keeps what I typed and shows why.
-- *Covers FR-17, FR-18, FR-23.*
+**US-07 -- Build a purchase list quickly.** As a bookkeeper, I want to tick cards, enter amounts, review the list and mark it sent, so that I can plan a day's buying without extra steps.
+- On Home I tick cards under *Ready to use*, then enter an amount for each on one screen.
+- Review shows the dated table; I copy it as text or save it as an image, then mark it sent.
+- A failed save keeps what I typed and says why.
+- *Covers FR-17, FR-18, FR-23 (retired; RD-09 replaces it).*
 
-**US-08 -- Pick up where I left off.** *(The need stays; RD-02 replaces how it is met with a recent entries
-list. The criteria below describe today's app.)* As a bookkeeper who gets interrupted, I want to see what
-I already entered this sitting, so that I don't skip or double-enter a receipt.
-- *This sitting* lists purchases entered since the batch started, latest first, with count and
-  total.
+**US-08 -- Pick up where I left off.** As a bookkeeper who gets interrupted, I want a list waiting for the spender to stay on Home until its reply is saved, so that nothing is lost after an interruption.
+- A list waiting for the spender, and any draft, shows under *Needs you* on Home.
 - It survives a reload, closing the tab and the next day.
-- *Start new batch* needs a second click before it clears the list.
-- Purchases saved before entry times were recorded never appear.
-- *Covers FR-24.*
+- Saving the reply turns made lines into purchases and removes it from *Needs you*.
+- *Covers FR-24 (retired; RD-09 replaces it).*
 
-**US-09 -- Be warned, not blocked.** As a bookkeeper, I want warnings when a purchase is
-unusual, so that I can check it without being stopped from recording it.
-- Over the available credit: saved, and the message says by how much and over which limit.
-- On the close date: amber warning that the bank may post it on either statement.
-- In the future: amber warning, saved anyway.
-- *Covers FR-19, FR-20.*
+**US-09 -- Be warned, not blocked.** As a bookkeeper, I want warnings when an amount is unusual, so that I can check it without being stopped from sending the list.
+- Over the room: amber outline with the reason under the line, and one action, *Lower to* the room.
+- On the close date, on an overdue bill and on a past date: amber warnings with the reason in words.
+- There is no future-date warning, since lists are planned ahead.
+- *Covers FR-19, FR-20; met by RD-10.*
 
 **US-10 -- Fix a purchase.** As a bookkeeper, I want to edit or delete a purchase on the card
 page, so that a typo doesn't need delete-and-re-add.
@@ -498,13 +494,13 @@ in `src/lib/domain/`; a refactor should keep those tests passing unchanged.
 | DR-07 | **Urgency**, in order: *future* while today is on or before the close date; *open* if paid or the total is zero; *overdue* once past the due date; *soon* within 7 days of it; otherwise *open*. A period with no spending can never be overdue. A *future* statement cannot be marked paid. |
 | DR-08 | **The open period** is the statement a purchase made today would land on. The card page marks it *Current*. |
 | DR-09 | **Available credit** for a group is its limit less, on every card in the group (archived ones included), what is left on each closed statement plus the whole of the open period. The open period counts in full even if stored data holds a payment against it. It can go below zero. Each payment gives back exactly its amount. |
-| DR-10 | **Can spend now** shows the open period's close and due dates (DR-08), not what is due next (DR-06). On a card with an overdue statement the two differ, and both are right for their question. |
+| DR-10 | **Can spend now** shows the open period's close and due dates (DR-08), not what is due next (DR-06). On a card with an overdue statement the two differ, and both are right for their question. *Applies to *Ready to use* since phase 3.* |
 | DR-11 | **Over-limit note.** Adding a purchase above the available credit saves it and names the amount over and the group. Editing a purchase never shows the note, because available credit already counts the old amount. |
 | DR-12 | **Who can take a purchase**: an unarchived card whose location is in the Settings list. The default list is Krabi only. An empty list is a real answer (nobody can), not "unset". |
 | DR-13 | **Owners.** A group's account holder is KC, NT or RI; a missing or unknown value reads as KC. A card's cardholder is its own owner if it is supplementary, otherwise its group's account holder, otherwise nobody (no group). A group is labelled `Name (OWNER)`, untranslated. |
 | DR-14 | **Locations** are `bangkok`, `phichit` and `krabi`; the default is `bangkok`. |
 | DR-15 | **Entry time** (`addedAt`) is set when a purchase is first saved, from the dashboard or the card page, and an edit keeps it. Purchases saved before 2026-10-27 have none and are never backfilled. |
-| DR-16 | ***This sitting*** holds purchases whose entry time is at or after the batch start, latest entered first. On the very first load the batch start is set to that moment, so the list starts empty. |
+| DR-16 | *(Retired in phase 3 with *This sitting*; replaced by waiting lists on Home, RD-15.)* ***This sitting*** holds purchases whose entry time is at or after the batch start, latest entered first. On the very first load the batch start is set to that moment, so the list starts empty. |
 | DR-17 | **Date ranges** filter on the purchase date, not the entry time. Weeks run Monday to Sunday. The default preset is This month. A custom range typed backwards is turned the right way round. Within a day, the latest entered comes first. |
 | DR-18 | **Card page history** counts back from the later of the open period and the period of the latest purchase, so a future-dated purchase still has a statement to edit it from. |
 | DR-19 | **Identity and deletion.** A card id is unique and never changes. A card can be deleted only while it has no purchases (otherwise archive it). A group can be deleted only while no card uses it. (Storage enforces both now, and the UI still hides the buttons; see DC-13.) |
@@ -515,7 +511,7 @@ in `src/lib/domain/`; a refactor should keep those tests passing unchanged.
 | DR-24 | **"Shared with N more"** counts every other card in the group, archived ones included. |
 | DR-25 | **Cycle inputs**: close day and due day 1 to 31, days until due 1 to 60. |
 | DR-26 | **Last 4** is exactly four digits in the card form. |
-| DR-27 | **Relative dates** in *Can spend now* read "today", "in N days" or "N days ago". A past date there is never called overdue; overdue is the due list's word. |
+| DR-27 | **Relative dates** in *Can spend now* read "today", "in N days" or "N days ago". A past date there is never called overdue; overdue is the due list's word. *Applies to *Ready to use* since phase 3.* |
 | DR-28 | **Payments in parts.** A statement's paid amount is the sum of its parts; what is left is the total less that, never below zero, so paying more than is left is accepted and leaves nothing owed. A statement is paid when a payment record exists and nothing is left. A partly paid statement is unpaid for DR-06 and DR-07, so it stays due and can become overdue. |
 | DR-29 | **Old payment records.** A record without `parts` (saved before 2026-10-28) reads as one part for the statement's whole total, dated its `paidAt`. |
 | DR-30 | **Part order and undo.** Parts are kept oldest first, and the record's `paidAt` is the latest part's date. Unmarking removes one part; removing the last one deletes the record. |
@@ -530,11 +526,11 @@ these needs a migration, or it loses or misreads someone's data.
 |---|---|
 | DC-01 | **Repository.** Storage is reached only through the `Repository` interface, made of key lookups and prefix scans. Every implementation must pass the shared contract suite (`src/lib/storage/contract.ts`). `src/lib/domain` imports nothing from storage or the interface, and components get data as properties and send events; none imports `#lib/storage`. |
 | DC-02 | **Record keys** in `localStorage`: `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`, `cc:payment:<cardId>:<period>`, `cc:limitgroup:<id>`, `cc:cardpayment:<cardId>:<id>`, `cc:statementdates:<cardId>:<period>`, `cc:list:<id>`, `cc:location:<id>`. Each segment is `encodeURIComponent`-encoded. Deleting a card also removes its card payments and statement dates; it scans `<encoded id>:` with the trailing colon, so it never touches a card whose id merely starts with the same text. |
-| DC-03 | **Other keys**: `cc:settings`, `cc:batch-start` (start of *This sitting*, an ISO instant), `cc:lang` (`en` or `th`), `cc:theme` (theme pick), `cc:panel:<name>` (`open` or `closed`, for `range`, `due`, `spendable`, `cards`, `cards-archived`, `limit-groups`), `cc:migration:location` (cards reset by the location migration), `cc:migration:payments` (`done` once stored payments are converted to card payments), `cc:probe` (storage check at startup). A failed read or write of language, theme or panel state falls back to the default and never breaks the page. |
+| DC-03 | **Other keys**: `cc:settings`, `cc:batch-start` (start of *This sitting*, an ISO instant; no longer read or written since phase 3, a leftover stays until reset, DD-14), `cc:lang` (`en` or `th`), `cc:theme` (theme pick), `cc:panel:<name>` (`open` or `closed`, for `cards`, `cards-archived`, `limit-groups`), `cc:migration:location` (cards reset by the location migration), `cc:migration:payments` (`done` once stored payments are converted to card payments), `cc:probe` (storage check at startup). A failed read or write of language, theme or panel state falls back to the default and never breaks the page. |
 | DC-04 | **Reset** removes cards, purchases, payments, limit groups, card payments, statement dates, lists, locations, settings, the batch start, any pending migration notice and the payments marker. It keeps language, theme and panel state, so the page doesn't change under the reader. |
 | DC-05 | **Backup format**, version 2: `{ version: 2, exportedAt, limitGroups, cards, purchases, payments, settings? }`. `settings` is optional, and a file without it leaves stored settings alone. The batch start, language, theme and panel state are never in a backup. A file of any other version is rejected. The download is named `cc-tracking-<exportedAt date>.json`. |
 | DC-06 | **Restore checks shapes only**: valid JSON, version 2, the four lists present; each record an object; ids, names, `last4` and `cardId` present; location and owner in their closed sets; cycle kind known with whole-number days; dates valid `YYYY-MM-DD`; amounts and limits whole numbers; `addedAt` a valid instant if present; a payment's `parts`, if present, a non-empty list of valid dates and whole-satang amounts above zero. It does not check ranges (a zero amount or a day of 40 passes), `limitGroupId`, `archived`, `comment` or `supplementary`. Unknown places inside `settings` are dropped, and a `settings` that is not an object is ignored. Restore then writes groups, cards, purchases and payments in that order. It is not atomic. A card whose group is not in the file is still imported. |
-| DC-07 | **Record shapes** (`src/lib/domain/types.ts`): `Card { id, name, last4, location, cycle, comment?, archived, supplementary?, owner?, limitGroupId? }`; `CycleRule` is `{ kind: "offset", closeDay, dueOffsetDays }` or `{ kind: "fixed", closeDay, dueDay }`; `Purchase { id, cardId, date, amount, note, addedAt? }`; `StatementPayment { cardId, period, paidAt, closeDate, dueDate, parts? }` with `PaymentPart { paidAt, amount }`; `LimitGroup { id, name, limit, owner? }`. Purchase and group ids are random UUIDs. Amounts and limits are satang. |
+| DC-07 | **Record shapes** (`src/lib/domain/types.ts`): `Card { id, name, last4, location, cycle, comment?, archived, supplementary?, owner?, limitGroupId? }`; `CycleRule` is `{ kind: "offset", closeDay, dueOffsetDays }` or `{ kind: "fixed", closeDay, dueDay }`; `Purchase { id, cardId, date, amount, note, addedAt? }`; `StatementPayment { cardId, period, paidAt, closeDate, dueDate, parts? }` with `PaymentPart { paidAt, amount }`; `LimitGroup { id, name, limit, owner? }`. Purchase and group ids are random UUIDs. Amounts and limits are satang. Purchases saved from a spender's reply have ids `<list id>-<n>`. |
 | DC-08 | **Settings record** `cc:settings` is `{ purchaseLocations: Location[] }`. An empty list is kept as written; a missing or garbled record falls back to `["krabi"]`. |
 | DC-09 | **Stale fields.** Cards stored before 2026-09-24 carry an `owner` from when the owner was on the card; `Card.owner` is read only when `supplementary` is set, so those values are ignored. Some cards carry a per-card purchase flag from before purchase places moved to Settings; nothing reads it. Keep both guards, and don't reuse those field names for something else. |
 | DC-10 | **Location migration** runs at every startup, is safe to run twice, resets unknown locations to Bangkok, and records which cards it reset for a one-time notice. A failure on one card does not stop the page loading. |
@@ -560,12 +556,12 @@ Rules that hold whatever the screens look like.
 | UI-06 | **Thai needs room.** Line height stays at least `1.65` so Thai vowel and tone marks are not clipped. The font stack lists system and Thai faces; there are no web fonts. The page sets `<html lang>` on load and on every switch. |
 | UI-07 | **Never colour alone.** Urgency, limit usage and warnings always carry words as well as colour. |
 | UI-08 | **Warnings don't block.** Unusual input (over limit, close date, future date) is saved and warned about in amber. Only invalid input (no card, an impossible date, a non-amount) is refused. |
-| UI-09 | **Dangerous actions explain themselves and ask twice.** Replace, Reset and Start new batch each state their consequence and need a second, deliberate step. A dangerous choice uses the danger variant; the safe choice is the primary one. |
+| UI-09 | **Dangerous actions explain themselves and ask twice.** Replace and Reset each state their consequence and need a second, deliberate step. A dangerous choice uses the danger variant; the safe choice is the primary one. |
 | UI-10 | **Don't offer what can't work.** Copy and paste buttons are hidden where the browser lacks the clipboard call they need. The card page hides Add purchase on a card that can't take one. The group list in the card form is disabled while no group exists. |
 | UI-11 | **Saves are honest.** Writes are awaited, never shown ahead of time. A failed write keeps typed input, and its message survives the reload that follows. |
 | UI-12 | **Switching language loses nothing.** The page re-renders in place; open forms keep what was typed. |
 | UI-13 | **User text is never translated.** Card names, comments and purchase notes appear as typed. |
-| UI-14 | **Cards are named the same way everywhere.** Panels show `id)` and the name, linked to the card page with the id URL-encoded. Pickers show `id — Name`. The last 4 digits appear only in the registry and on the card page heading (`id · ••••1234`). |
+| UI-14 | **Cards are named the same way everywhere.** Panels show `id)` and the name, linked to the card page with the id URL-encoded. Pickers show `id — Name`. The last 4 digits appear only in the registry and on the card page heading (`id · ••••1234`). The purchase list's table and text (RD-09) show the last 4 beside the name. |
 | UI-15 | **Empty states name the next step**, for example "Add one on the Cards page". |
 | UI-16 | **Keyboard focus is always visible**, with a ring from `--cc-focus-ring`. |
 | UI-17 | **Numbers line up.** Numeric cells carry `data-numeric`: right-aligned, tabular figures. On a phone, tables become stacked rows using each cell's `data-label`, from the same markup. |
@@ -637,6 +633,16 @@ Choices made along the way, with the reason and what was rejected. Revisit one o
 | DD-55 | A preview build without a PR number reads `(preview)` in its header mark and its title. | A preview can be built without a pull request; the mark must still say it isn't production (RD-20). | Hiding the mark; a made-up number. |
 | DD-56 | The desktop layout starts at 900px. | Below it the bottom bar fits a phone or small tablet; from it the four tabs fit the header's one line, right of the brand, mark and date. | 640px or 960px. |
 | DD-57 | Payment is a floating button at the bottom right on every screen size; the bar keeps four tabs. | The user asked for it after testing the phase 2 preview (2026-10-30). | The raised + in the bar; a Payment button in the header. |
+| DD-58 | All list screens live on one page, `/list`: `?card=` (one per card) starts a new list, `?id=` opens a stored one, and review is a step on that page. | One page holds the list's state through entering, review, reply and the saved view, with the Home tab marked and a back button on each step. | One page per step; review as its own address. |
+| DD-59 | A list holds only ready cards, and another card is added in place on the entering screen. | Lists are for places that take purchases (RD-15); going back to Home to add one card would lose the screen. | Any card on a list; going back to Home to add a card. |
+| DD-60 | Room while entering amounts counts every amount on the list in the same limit group, and only lists waiting for the spender hold room (DD-50). | Two cards on one group go over its room together, and a draft isn't a promise. | Counting each line alone; drafts holding room. |
+| DD-61 | Review needs at least one amount and no bad one. *Lower to* shows only when the room is above zero. | A list of nothing, or with an unreadable amount, is not worth sending; lowering to nothing or less is not an action. | Allowing an empty list; *Lower to* zero. |
+| DD-62 | *Ready to use* starts sorted by most room. *Needs you* reads in this order: lists waiting for the spender (oldest date first), overdue bills (longest overdue first), then drafts. | Most room answers "which card can I use"; waiting and overdue items are the ones that block work. | Sorting by soonest close date (DD-34); drafts first. |
+| DD-63 | The copied text is a title line (`Purchase list · <date>`), then the header row, one row per line and the total row, with cells joined by ` \| `. | It pastes into a chat as a readable table without a tool to format it. | Tab-separated text; one line per card in words. |
+| DD-64 | The saved image is always drawn light (white paper, dark text) whatever the app's theme, and is named `purchase-list-<date>.png`. | It is sent to other people, who see paper, not this reader's dark mode. A canvas cannot read the theme's tokens, so the colours are fixed in the drawing. | Following the app's theme. |
+| DD-65 | A saved list's table, copied text and total use only the made lines, at their real amount; a not-made line reads *Not made*. | The saved list shows what was bought, and the total must match the purchases it made. | Showing planned amounts; counting not-made lines. |
+| DD-66 | Saving a reply writes purchases (ids `<list id>-<n>`), then any draft, then the saved list. A retry overwrites those, removes purchases a failed save wrote that the retry doesn't rewrite, and a list already saved is refused. | A save that stops halfway can be repeated without doubling purchases, and the list turns saved only after everything it made exists. | Random purchase ids; writing the saved list first. |
+| DD-67 | The card page keeps its Add purchase dialog until phase 5 replaces the card page; production only sees the finished stack. | Removing it early would leave a card page with no way to add or edit a purchase, and the phases ship together. | Removing the dialog in phase 3. |
 
 ## Out of scope
 
@@ -658,12 +664,12 @@ that each change is a choice.
 
 | ID | Today |
 |---|---|
-| CD-01 | **Pages**: `/` Home (today's dashboard panels for now), `/transactions` (a placeholder until phase 4), `/cards` registry and limit groups, `/card?id=<id>` one card, `/settings` display, purchase places, backup, reset and About. Nav: Home, Transactions, Cards, Settings, with a floating Payment button (DD-57). (Keep redirects, DC-17.) |
+| CD-01 | **Pages**: `/` Home (*Needs you*, *Ready to use*), `/list` enters, reviews, replies to and shows a purchase list (`?card=` per card for a new list, `?id=` for a stored one), `/transactions` (a placeholder until phase 4), `/cards` registry and limit groups, `/card?id=<id>` one card, `/settings` display, purchase places, backup, reset and About. Nav: Home, Transactions, Cards, Settings, with a floating Payment button (DD-57). (Keep redirects, DC-17.) |
 | CD-02 | **Page shell**: sticky one-line header with a bold rule. On the left the boxed `cc` mark and `tracking` (the only link), then the build mark as plain text (`(pr-30)`, none on production). On a phone the date (`Fri, 30 Oct`) sits at the right edge. From 900px a decorative middle dot and the date with its year (`Fri, 30 Oct 2026`) follow the mark as one run of text, and the tabs sit on the right, right-aligned; on a phone a bottom bar with the four tabs; a floating Payment button at the bottom right of every page (DD-57); content up to `72rem` wide; no footer; a non-production build is tinted and marked (RD-20). |
-| CD-03 | **Dashboard layout**: at 960px and wider, two columns, the purchase form and *This sitting* on the narrower left and *Purchases by date*, *Due next* and *Can spend now* on the right. Narrower, one column in that order. The "lands on" confirmation sits above both columns. |
-| CD-04 | **Purchase entry**: always-open form on the dashboard; a dialog on the card page for adding and editing. |
-| CD-05 | ***This sitting*** columns: added, card, bought, amount. *Start new batch* turns into a confirm and Keep pair in place. |
-| CD-06 | ***Purchases by date***: preset chips, from and to dates, a card filter, three summary tiles (purchases, total, cards used) that wrap on a phone, and a folded list grouped by day. |
+| CD-03 | **Home layout**: one column on a phone, *Needs you* then *Ready to use*, with a sticky selection bar above the bottom bar and clear of the Payment button once cards are ticked. *(The old dashboard layout, with the purchase form, *This sitting*, *Purchases by date*, *Due next* and *Can spend now*, is retired.)* |
+| CD-04 | **Purchase entry**: purchases come from purchase lists (RD-09). The card page keeps its dialog for adding and editing until phase 5 replaces the card page. |
+| CD-05 | *(Retired in phase 3 with *This sitting*.)* ***This sitting*** columns: added, card, bought, amount. *Start new batch* turns into a confirm and Keep pair in place. |
+| CD-06 | *(Gone from Home since phase 3; returns with Transactions, phase 4.)* ***Purchases by date***: preset chips, from and to dates, a card filter, three summary tiles (purchases, total, cards used) that wrap on a phone, and a folded list grouped by day. |
 | CD-07 | **Lists**: tables with sortable headings; below 640px they become stacked rows with a sort chip. Filters are pill chips with "Any". |
 | CD-08 | ***Due next***: a coloured left rule and text badge per urgency. ***Can spend now***: a usage bar under each available amount. |
 | CD-09 | **Registry page**: Add a card and Add limit group buttons open dialogs; the card list (open by default) with an archived list inside it (folded), and the limit group list (folded). |
@@ -689,6 +695,10 @@ Removed on purpose; listed so a redesign doesn't think they were lost.
 - Backup format version 1.
 - *Mark paid* as one click that settled the whole statement, replaced by the payment dialog and
   partial payments (DD-37).
+- The dashboard's purchase form, replaced by purchase lists (RD-09).
+- *This sitting* and *Start new batch*, replaced by waiting lists on Home (RD-15).
+- *Can spend now*, replaced by *Ready to use* (RD-15).
+- *Due next* and *Purchases by date* on Home; they come back in Transactions (RD-13, phase 4).
 
 ## Acceptance criteria for the redesign
 
@@ -747,7 +757,7 @@ The redesign is done when all of these hold.
 | A shared link or the card page's *Edit card* breaks. | DC-15 and DC-16. |
 | Removing a delete button's condition lets a card with purchases be deleted, taking them with it. | DR-19 and DC-13; the storage layer refuses it too, and the contract suite checks it. |
 | Thai is broken or untranslated in a new screen. | UI-03 to UI-06; the catalog coverage test; screenshots in Thai. |
-| Replacing *This sitting* drops the need with the mechanism, and the bookkeeper loses their place after an interruption. | G3, RD-02, US-08. |
+| Replacing *This sitting* drops the need with the mechanism, and the bookkeeper loses their place after an interruption. | G3, RD-02, US-08. Met in phase 3: waiting lists stay on Home until their reply is saved (RD-15). |
 | Stricter restore checks reject an old backup the user relies on. | RD-06 only rejects values the forms never allowed; check a real backup before shipping. |
 | A refactor drops the reading of old payment records without `parts`, and paid statements turn unpaid. | DR-29; the domain tests cover old records. |
 | Moving payments from statements to cards changes what was paid or is left on an old statement. | RD-11 requires a migration that keeps every total; test it on a real backup. |
@@ -846,8 +856,8 @@ Not part of this redesign.
 | Unmark | ยกเลิกชำระ | Remove one payment from a statement (DR-30). |
 | Archived | เก็บเข้าคลัง | A retired card: hidden from daily views, history kept, still counts against its group. |
 | Purchase places | ที่ที่บันทึกรายการใหม่ได้ | The locations whose cards can take a new purchase (DR-12). |
-| This sitting | รอบนี้ | Purchases entered since *Start new batch* was last pressed (DR-16). |
-| Batch start | เวลาเริ่มรอบ | When the current sitting began. |
+| This sitting | รอบนี้ | *(Retired in phase 3.)* Purchases entered since *Start new batch* was last pressed (DR-16). |
+| Batch start | เวลาเริ่มรอบ | *(Retired in phase 3.)* When the current sitting began. |
 | Entry time | เวลาที่เพิ่ม | When a purchase was first entered (`addedAt`), as opposed to its purchase date. |
 | Satang | สตางค์ | 1/100 baht; how money is stored (DR-01). |
 | Purchase list | ใบรายการซื้อ | A dated list of cards and amounts sent to the spender before buying (RD-09). |
