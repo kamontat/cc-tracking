@@ -215,6 +215,8 @@ export const en = {
 	"storage.unavailable":
 		"This browser is not letting the page store data. Private windows and blocked site data both cause this.",
 	"startup.failed": "Something went wrong starting the page.",
+	"startup.paymentsFailed":
+		"Could not update your saved payments. Nothing was lost. Reload to try again.",
 
 	"backup.title": "Backup",
 	"backup.warning":

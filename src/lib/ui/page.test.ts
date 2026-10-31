@@ -1,5 +1,7 @@
 import { expect, test } from "bun:test";
 import { setLocale } from "#lib/i18n/index";
+import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
+import { InMemoryRepository } from "#lib/storage/repository";
 import { buildInfo, titleMark } from "#lib/ui/build-info";
 import { bootstrap } from "#lib/ui/page";
 
@@ -98,4 +100,61 @@ test("the storage-unavailable banner follows a locale switch instead of freezing
 	} finally {
 		globalThis.localStorage = original;
 	}
+});
+
+test("a failed payment conversion shows the banner, not the page", async () => {
+	mountNav();
+	setLocale("en");
+	const storage = globalThis.localStorage;
+	storage.removeItem(PAYMENTS_MIGRATION_KEY);
+	const repo = new InMemoryRepository();
+	await repo.saveCard({
+		id: "A",
+		name: "A",
+		last4: "0000",
+		location: "krabi",
+		cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 20 },
+		archived: false,
+		limitGroupId: "g1",
+	});
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "A",
+		date: "2026-09-10",
+		amount: 1_00,
+		note: "",
+	});
+	await repo.savePayment({
+		cardId: "A",
+		period: "2026-09",
+		paidAt: "2026-10-01",
+		closeDate: "2026-09-25",
+		dueDate: "2026-10-15",
+		parts: [{ paidAt: "2026-10-01", amount: 1_00 }],
+	});
+	repo.saveCardPayment = async () => {
+		throw new Error("disk full");
+	};
+	repo.saveStatementDates = async () => {};
+	let rendered = false;
+	const spy = console.error;
+	console.error = () => {};
+	try {
+		await bootstrap(
+			"title.cards",
+			() => {
+				rendered = true;
+			},
+			{ storage, createRepo: () => repo },
+		);
+	} finally {
+		console.error = spy;
+	}
+
+	expect(rendered).toBe(false);
+	const banner = document.querySelector("cc-error-banner");
+	expect(banner?.message).toBe(
+		"Could not update your saved payments. Nothing was lost. Reload to try again.",
+	);
+	expect(storage.getItem(PAYMENTS_MIGRATION_KEY)).toBeNull();
 });

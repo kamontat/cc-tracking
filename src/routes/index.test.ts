@@ -166,7 +166,7 @@ test("enter amounts opens the list with the picked cards", async () => {
 	expect(visited).toEqual(["/list/new?card=B&card=A"]);
 });
 
-test("old payments and sent lists move the room", async () => {
+test("stored payments and sent lists move the room", async () => {
 	const repo = new InMemoryRepository();
 	await repo.savePurchase({
 		id: "p1",
@@ -175,13 +175,13 @@ test("old payments and sent lists move the room", async () => {
 		amount: 20_000_00,
 		note: "",
 	});
-	await repo.savePayment({
+	await repo.saveCardPayment({
+		id: "c1",
 		cardId: "A",
+		date: "2026-10-01",
+		amount: 20_000_00,
+		status: "paid",
 		period: "2026-09",
-		paidAt: "2026-10-01",
-		closeDate: "2026-09-25",
-		dueDate: "2026-10-15",
-		parts: [{ paidAt: "2026-10-01", amount: 20_000_00 }],
 	});
 	await repo.savePurchase({
 		id: "p2",
