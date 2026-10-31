@@ -5,6 +5,7 @@ import type { NeedsItem } from "#lib/domain/home";
 import { formatAmount } from "#lib/domain/money";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
+import { cardLabelText } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { base } from "#styles/shared";
 
@@ -137,7 +138,7 @@ export class CcNeedsYou extends LitElement {
 					href: `/card?id=${encodeURIComponent(item.card.id)}`,
 					icon: icons.alert,
 					title: t(item.days === 1 ? "home.overdue.one" : "home.overdue.many", {
-						card: item.card.id,
+						card: cardLabelText(item.card.id, item.card),
 						days: item.days,
 					}),
 					detail: t("home.overdueDetail", {

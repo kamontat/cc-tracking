@@ -75,7 +75,9 @@ test("each item opens its task", async () => {
 	expect(text(found[0] as Element, "small")).toBe(
 		"List for Fri, 30 Oct · 3 cards · ฿39,300.00",
 	);
-	expect(text(found[1] as Element, "b")).toBe("SCB/K bill is 16 days overdue");
+	expect(text(found[1] as Element, "b")).toBe(
+		"Bill for SCB/K) SCB K (1111) is 16 days overdue",
+	);
 	expect(text(found[2] as Element, "small")?.startsWith("KB-S, KS-K · ")).toBe(
 		true,
 	);
@@ -117,7 +119,7 @@ test("one card and one day read in the singular", async () => {
 		"List for Fri, 30 Oct · 1 card · ฿1.00",
 	);
 	expect(text(root, '[data-item="overdue"] b')).toBe(
-		"SCB/K bill is 1 day overdue",
+		"Bill for SCB/K) SCB K (1111) is 1 day overdue",
 	);
 	const many = await mount([
 		{ kind: "waiting", list: list("w1", "sent", ["A", "B"]), total: 100 },
@@ -127,7 +129,7 @@ test("one card and one day read in the singular", async () => {
 		"List for Fri, 30 Oct · 2 cards · ฿1.00",
 	);
 	expect(text(many, '[data-item="overdue"] b')).toBe(
-		"SCB/K bill is 2 days overdue",
+		"Bill for SCB/K) SCB K (1111) is 2 days overdue",
 	);
 });
 

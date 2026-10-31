@@ -14,6 +14,7 @@ import type { PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText, relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
+import { cardLabelHtml } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { base, usageBar } from "#styles/shared";
 
@@ -120,6 +121,14 @@ export class CcReadyList extends LitElement {
 				font: inherit;
 				text-align: start;
 				cursor: pointer;
+				container-type: inline-size;
+			}
+
+			/* A narrow card (four across, a small phone) drops the last 4, never the id or name. */
+			@container (max-width: 18rem) {
+				.last4 {
+					display: none;
+				}
 			}
 
 			.pick[aria-pressed="true"] {
@@ -153,7 +162,6 @@ export class CcReadyList extends LitElement {
 				min-inline-size: 0;
 			}
 
-			.name small,
 			.room small {
 				font-size: var(--cc-text-xs);
 				color: var(--cc-text-muted);
@@ -225,7 +233,7 @@ export class CcReadyList extends LitElement {
 			<button class="pick" data-card=${id} aria-pressed=${selected ? "true" : "false"}
 				@click=${() => this.toggle(id)}>
 				<span class="tick" aria-hidden="true">${selected ? icons.check : nothing}</span>
-				<span class="name"><b>${id}</b><small>${row.card.name}</small></span>
+				<span class="name"><b>${cardLabelHtml(id, row.card)}</b></span>
 				<span class="room">
 					<b>${formatAmount(row.room.room)}</b>
 					<small>${row.room.sharedWith > 0 ? t("ready.roomShared") : t("ready.room")}</small>

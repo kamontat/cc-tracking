@@ -19,6 +19,7 @@ import type { GroupRoom } from "#lib/domain/room";
 import type { Card, CardLedger, ListLine, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
+import { cardLabelHtml, cardLabelText } from "#lib/ui/card-label";
 import { base, controls } from "#styles/shared";
 
 /**
@@ -52,17 +53,22 @@ export class CcListAmounts extends LitElement {
 				box-shadow: 0 0 0 var(--cc-border-width) var(--cc-warning);
 			}
 
+			/* One row: the card's label at the start, a small Remove at the end. */
 			.top {
 				display: flex;
 				align-items: center;
 				gap: var(--cc-space-3);
 			}
 
-			.top small {
+			.top b {
 				flex: 1;
 				min-inline-size: 0;
-				color: var(--cc-text-muted);
-				font-size: var(--cc-text-sm);
+			}
+
+			.top button {
+				flex: none;
+				padding: var(--cc-space-1) var(--cc-space-2);
+				font-size: var(--cc-text-xs);
 			}
 
 			.bigin {
@@ -327,9 +333,8 @@ export class CcListAmounts extends LitElement {
 				line && !bad ? formatAmount(roomAfter(line, lines)) : t("common.none");
 			return html`
 				<section class="line" data-card=${card.id} ?data-warn=${warn}>
-					<div class="top">
-						<b>${card.id}</b>
-						<small>${card.name}</small>
+					<div class="top" row>
+						<b>${cardLabelHtml(card.id, card)}</b>
 						<button data-variant="quiet" data-action="remove"
 							@click=${() => this.emit("remove", { cardId: card.id })}
 						>${t("purchaseList.remove")}</button>
@@ -404,7 +409,7 @@ export class CcListAmounts extends LitElement {
 						${this.candidates.map(
 							(card) => html`<button data-variant="quiet" data-card=${card.id}
 								@click=${() => this.emit("add", { cardId: card.id })}
-							>${card.id} — ${card.name}</button>`,
+							>${cardLabelText(card.id, card)}</button>`,
 						)}
 					</div>`
 					: nothing

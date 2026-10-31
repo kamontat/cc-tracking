@@ -185,3 +185,12 @@ test("answers survive a language switch", async () => {
 	expect(actual(root, "A").value).toBe("13000");
 	expect(flat(answerButton(root, "A", "made"))).toBe("ซื้อแล้ว");
 });
+
+test("a line is headed by the card's label", async () => {
+	const { root } = await mount();
+	expect(flat(line(root, "A").querySelector(".card-label"))).toBe(
+		"A) Card A (1111)",
+	);
+	// C is no longer stored: its id stays, with a dash for the name.
+	expect(flat(line(root, "C").querySelector(".card-label"))).toBe("C) —");
+});

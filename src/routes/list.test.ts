@@ -245,7 +245,7 @@ const droppedNote = (root: HTMLElement) =>
 test("a reopened draft says which cards were left out and why", async () => {
 	const one = await setup({ search: "?id=d1", before: draftWith(["A", "Z"]) });
 	expect(droppedNote(one.root)).toBe(
-		"Z can no longer take purchases and was left out.",
+		"Z) Z card (1234) can no longer take purchases and was left out.",
 	);
 
 	const two = await setup({
@@ -256,7 +256,7 @@ test("a reopened draft says which cards were left out and why", async () => {
 		},
 	});
 	expect(droppedNote(two.root)).toBe(
-		"Z, Y can no longer take purchases and were left out.",
+		"Z) Z card (1234), Y) Y card (1234) can no longer take purchases and were left out.",
 	);
 
 	const none = await setup({ search: "?id=d1", before: draftWith(["A"]) });
@@ -772,6 +772,7 @@ test("a saved list shows what was bought", async () => {
 		"Saved 1 purchase, ฿13,000.00. It counts against the card's room now.",
 	);
 	const rowA = root.querySelector('[data-card="A"]');
+	expect(flatText(rowA?.querySelector(".card-label"))).toBe("A) A card (1234)");
 	expect(flatText(rowA)).toContain("฿13,000.00");
 	expect(flatText(rowA)).toContain("planned ฿12,500.00");
 	const rowB = root.querySelector('[data-card="B"]');

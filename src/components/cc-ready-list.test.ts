@@ -125,6 +125,13 @@ test("a row says its room, dates and usage in words", async () => {
 	);
 });
 
+test("a card reads as id, name and last 4", async () => {
+	const { root } = await mount();
+	const a = root.querySelector('[data-card="A"]') as HTMLElement;
+	expect(flat(a.querySelector(".card-label"))).toBe("A) Card A (1111)");
+	expect(a.querySelector(".card-label .last4")?.textContent).toBe("(1111)");
+});
+
 test("nothing ready names the next step", async () => {
 	const { root } = await mount({ rows: [] });
 	expect(

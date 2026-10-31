@@ -260,7 +260,7 @@ test("remove and add", async () => {
 	const pick = root.querySelector(
 		'.picker [data-card="C"]',
 	) as HTMLButtonElement;
-	expect(flat(pick)).toBe("C — Card C");
+	expect(flat(pick)).toBe("C) Card C (1111)");
 	pick.click();
 	expect(adds).toEqual([{ cardId: "C" }]);
 });
@@ -292,4 +292,12 @@ test("the total counts one card or many", async () => {
 	expect(flat(footer((await mount({ cards: [A, B] })).root))).toContain(
 		"Total · 2 cards",
 	);
+});
+
+test("a line is headed by the card's label, Remove beside it", async () => {
+	const { root } = await mount({ cards: [A] });
+	const top = line(root, "A").querySelector(".top");
+	expect(flat(top?.querySelector(".card-label"))).toBe("A) Card A (1111)");
+	expect(top?.querySelector(".last4")?.textContent).toBe("(1111)");
+	expect(top?.querySelector('[data-action="remove"]')).not.toBeNull();
 });

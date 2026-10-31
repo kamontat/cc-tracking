@@ -28,6 +28,7 @@ import { MessageError, messageOf } from "#lib/i18n/error";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { backHeader } from "#lib/ui/back-header";
+import { cardLabelHtml, cardLabelsText } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import {
 	browserShare,
@@ -354,7 +355,7 @@ export function renderListPage(
 							dropped.length === 1
 								? "purchaseList.dropped.one"
 								: "purchaseList.dropped.many",
-							{ cards: dropped.join(", ") },
+							{ cards: cardLabelsText(dropped, from.cards) },
 						)}</p>`
 					: nothing
 			}
@@ -449,12 +450,12 @@ export function renderListPage(
 			<ul class="saved-lines">
 				${list.lines.map((line) => {
 					const real = line.actual ?? line.amount;
-					const detail =
+					const planned =
 						line.made && real !== line.amount
-							? t("reply.planned", { amount: formatAmount(line.amount) })
-							: (byId.get(line.cardId)?.name ?? t("common.none"));
+							? html`<small>${t("reply.planned", { amount: formatAmount(line.amount) })}</small>`
+							: nothing;
 					return html`<li data-card=${line.cardId}>
-						<span class="what"><b>${line.cardId}</b><small>${detail}</small></span>
+						<span class="what"><b>${cardLabelHtml(line.cardId, byId.get(line.cardId))}</b>${planned}</span>
 						${
 							line.made
 								? html`<b class="amount">${formatAmount(real)}</b>`

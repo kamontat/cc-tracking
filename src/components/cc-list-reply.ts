@@ -8,6 +8,7 @@ import { formatAmount, formatAmountInput } from "#lib/domain/money";
 import type { Card, ListLine, PurchaseList } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
+import { cardLabelHtml } from "#lib/ui/card-label";
 import { base, controls } from "#styles/shared";
 
 /** One line's answer: unanswered, made or not, and the real amount as typed. */
@@ -53,7 +54,7 @@ export class CcListReply extends LitElement {
 				gap: var(--cc-space-2);
 			}
 
-			.top small {
+			.top b {
 				flex: 1;
 				min-inline-size: 0;
 			}
@@ -198,9 +199,8 @@ export class CcListReply extends LitElement {
 		const notMade = answer.made === false;
 		return html`
 			<section class="line" data-card=${line.cardId}>
-				<div class="top">
-					<b>${line.cardId}</b>
-					<small>${byId.get(line.cardId)?.name ?? t("common.none")}</small>
+				<div class="top" row>
+					<b>${cardLabelHtml(line.cardId, byId.get(line.cardId))}</b>
 					<span class="planned">${t("reply.planned", { amount: formatAmount(line.amount) })}</span>
 				</div>
 				<div class="pair" role="group" aria-label=${t("reply.wasMade")}>
