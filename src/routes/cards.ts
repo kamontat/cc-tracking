@@ -101,6 +101,14 @@ export function renderCardsPage(
 	// A new group's id, made once when its sheet opens, so a retry after a failed save writes
 	// the same record rather than a second one.
 	let newId: string | null = null;
+	/** Makes a new group's id when the address opens the blank sheet, and drops it otherwise. */
+	const syncNewId = () => {
+		newId =
+			readGroupSheet(address.search()) === "new"
+				? (newId ?? crypto.randomUUID())
+				: null;
+	};
+	syncNewId();
 	const sheetHost = root.ownerDocument.createElement("div");
 	sheetHost.id = "group-sheet";
 
@@ -149,6 +157,7 @@ export function renderCardsPage(
 		pushed = true;
 		openedOnce = true;
 		address.push(sheetAddress(id));
+		syncNewId();
 		paint();
 	};
 
@@ -162,6 +171,7 @@ export function renderCardsPage(
 			return;
 		}
 		address.replace(sheetAddress(null));
+		syncNewId();
 		paint();
 	};
 
@@ -180,12 +190,16 @@ export function renderCardsPage(
 			done = true;
 		}, key);
 		busy = false;
+		// Back may have closed the sheet while the write was under way; then there is nothing
+		// left to close, and stepping back again would leave the page.
+		const open = readGroupSheet(address.search()) !== null;
 		if (done) {
 			newId = null;
-			closeSheet();
+			if (open) closeSheet();
+			else paint();
 			return;
 		}
-		sheetFailed = true;
+		sheetFailed = open;
 		paint();
 	};
 
@@ -226,13 +240,11 @@ export function renderCardsPage(
 
 	const sheet = (d: CardsData) => {
 		const sheetId = readGroupSheet(address.search());
-		if (sheetId !== "new") newId = null;
 		if (sheetId === null) return nothing;
 		const { groups, cards } = d.money;
 		const group =
 			sheetId === "new" ? null : (groups.find((g) => g.id === sheetId) ?? null);
 		if (sheetId !== "new" && !group) return nothing;
-		if (sheetId === "new" && newId === null) newId = crypto.randomUUID();
 		return html`<cc-group-sheet
 			.group=${group}
 			.inUse=${group ? cards.some((c) => c.limitGroupId === group.id) : false}
@@ -273,7 +285,7 @@ export function renderCardsPage(
 				filterOpen
 					? html`<cc-cards-filter
 						.view=${{ ...view }}
-						.locations=${d.order as Location[]}
+						.locations=${LOCATIONS}
 						.locationName=${locationName}
 						.count=${(v: CardsView) =>
 							cardsResults(cards, groups, d.rooms, v, d.order).count}
@@ -333,11 +345,14 @@ export function renderCardsPage(
 	};
 
 	address.onPop(() => {
-		if (busy) return;
+		// Read the new entry even while a write is under way, so the write's close knows what
+		// is still open and never steps back past this page.
 		sheetFailed = false;
 		view = readCardsView(address.search());
 		// Back off a sheet, or Forward onto one only a tap could have made.
 		pushed = openedOnce && readGroupSheet(address.search()) !== null;
+		syncNewId();
+		if (busy) return;
 		paint();
 	});
 	subscribe(() => paint());

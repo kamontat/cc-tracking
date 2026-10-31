@@ -277,6 +277,41 @@ test("the filter sheet applies a whole view, shown as chips that clear one at a 
 	expect(address.now()).toBe("/cards?sort=room");
 });
 
+test("the filter offers only the fixed places, and a choice survives a reload", async () => {
+	const { root, address } = await setup("/cards", {
+		before: async (repo) => {
+			await repo.saveLocation({
+				id: "chiangmai",
+				name: "Chiang Mai",
+				takesPurchases: false,
+			});
+			await repo.saveCard(
+				card("C", { location: "chiangmai" as Card["location"] }),
+			);
+		},
+	});
+	root.querySelector<HTMLButtonElement>('[data-action="filter"]')?.click();
+	await settle();
+	expect(filter(root)?.locations).toEqual(["bangkok", "phichit", "krabi"]);
+	filter(root)?.dispatchEvent(
+		new CustomEvent("apply", {
+			detail: { ...DEFAULT_CARDS_VIEW, locations: ["phichit", "bangkok"] },
+		}),
+	);
+	await settle();
+	const url = address.now() ?? "";
+	expect(url).toBe("/cards?loc=phichit&loc=bangkok");
+	const again = await setup(url);
+	expect(list(again.root)?.results.sections?.map((s) => s.location)).toEqual([
+		"bangkok",
+	]);
+	again.root
+		.querySelector<HTMLButtonElement>('[data-action="filter"]')
+		?.click();
+	await settle();
+	expect(filter(again.root)?.view.locations).toEqual(["bangkok", "phichit"]);
+});
+
 test("closing the filter sheet keeps the view", async () => {
 	const { root, address } = await setup();
 	root.querySelector<HTMLButtonElement>('[data-action="filter"]')?.click();
@@ -457,4 +492,40 @@ test("a language switch re-renders the page in place", async () => {
 		"เพิ่มบัตร",
 	);
 	setLocale("en");
+});
+
+class HeldGroupRepository extends InMemoryRepository {
+	hold = false;
+	release: () => void = () => {};
+	override saveLimitGroup(group: LimitGroup): Promise<void> {
+		if (!this.hold) return super.saveLimitGroup(group);
+		return new Promise((resolve) => {
+			this.release = () => resolve(super.saveLimitGroup(group));
+		});
+	}
+}
+
+test("Back during a pending save: the save closes nothing further once it lands", async () => {
+	const repo = new HeldGroupRepository();
+	const { root, address } = await setup("/cards", { repo });
+	repo.hold = true;
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g2" } }),
+	);
+	await settle();
+	sheet()?.dispatchEvent(
+		new CustomEvent("save-group", { detail: { ...G2, name: "SCB 2" } }),
+	);
+	await settle();
+	expect(sheet()?.busy).toBe(true);
+	address.bar.back(); // the reader's Back while the write is pending
+	await settle();
+	repo.release();
+	await settle(5);
+	expect(address.calls.filter((c) => c === "back")).toHaveLength(1);
+	expect(address.now()).toBe("/cards");
+	expect(sheet()).toBeNull();
+	expect((await repo.listLimitGroups()).find((g) => g.id === "g2")?.name).toBe(
+		"SCB 2",
+	);
 });

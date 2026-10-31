@@ -16,7 +16,7 @@ export const en = {
 	"date.weekday.5": "Fri",
 	"date.weekday.6": "Sat",
 	"title.home": "Home — cc-tracking",
-	"title.cards": "Card registry — cc-tracking",
+	"title.cards": "Cards — cc-tracking",
 	"title.card": "Card — cc-tracking",
 	"title.settings": "Settings — cc-tracking",
 	"title.transactions": "Transactions — cc-tracking",

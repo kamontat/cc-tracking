@@ -25,7 +25,7 @@ export const th: Catalog = {
 	"date.weekday.5": "ศ.",
 	"date.weekday.6": "ส.",
 	"title.home": "หน้าหลัก — cc-tracking",
-	"title.cards": "ทะเบียนบัตร — cc-tracking",
+	"title.cards": "บัตร — cc-tracking",
 	"title.card": "บัตร — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",
 	"title.transactions": "รายการเคลื่อนไหว — cc-tracking",
