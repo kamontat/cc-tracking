@@ -453,6 +453,8 @@ export const en = {
 
 	"guard.cardHasPurchases":
 		"This card has purchases, so it can't be deleted. Archive it instead.",
+	"guard.cardOnList":
+		"This card is on a list that isn't saved yet, so it can't be deleted. Remove it from the list first.",
 	"guard.groupInUse":
 		"Cards still use this limit group. Move them to another group first.",
 	"guard.locationInUse":

@@ -105,6 +105,11 @@ export class LocalStorageRepository implements Repository {
 		if (this.keysWithPrefix(`${PURCHASE}${encodedCardId}:`).length > 0) {
 			throw new MessageError("guard.cardHasPurchases");
 		}
+		for (const list of await this.listPurchaseLists()) {
+			if (list.status !== "saved" && list.lines.some((l) => l.cardId === id)) {
+				throw new MessageError("guard.cardOnList");
+			}
+		}
 		this.storage.removeItem(cardKey(id));
 		// Cascade: delete the card's payments, card payments and statement dates.
 		// The trailing colon keeps a card whose id merely starts the same untouched.

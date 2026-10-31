@@ -23,7 +23,7 @@ export interface Repository {
 	listCards(): Promise<Card[]>;
 	getCard(id: string): Promise<Card | null>;
 	saveCard(card: Card): Promise<void>;
-	/** Removes the card with its card payments and statement dates. Throws `guard.cardHasPurchases` while it has purchases. */
+	/** Removes the card with its card payments and statement dates. Throws `guard.cardHasPurchases` while it has purchases, `guard.cardOnList` while a draft or sent list has a line on it. */
 	deleteCard(id: string): Promise<void>;
 
 	/** Purchases for one card, sorted by date ascending, optionally limited to `[from, to]`. */
@@ -116,6 +116,11 @@ export class InMemoryRepository implements Repository {
 		for (const purchase of this.purchases.values()) {
 			if (purchase.cardId === id) {
 				throw new MessageError("guard.cardHasPurchases");
+			}
+		}
+		for (const list of this.purchaseLists.values()) {
+			if (list.status !== "saved" && list.lines.some((l) => l.cardId === id)) {
+				throw new MessageError("guard.cardOnList");
 			}
 		}
 		this.cards.delete(id);

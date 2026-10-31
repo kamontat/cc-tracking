@@ -633,6 +633,20 @@ export function repositoryContract(
 			expect(await repo.listPurchases("kbank")).toHaveLength(1);
 		});
 
+		test("refuses to delete a card on a draft or sent list, not a saved one", async () => {
+			await repo.saveCard(sampleCard());
+			for (const status of ["draft", "sent"] as const) {
+				await repo.savePurchaseList(samplePurchaseList({ status }));
+				expect(await guardKey(repo.deleteCard("kbank"))).toBe(
+					"guard.cardOnList",
+				);
+				expect(await repo.getCard("kbank")).not.toBeNull();
+			}
+			await repo.savePurchaseList(samplePurchaseList({ status: "saved" }));
+			await repo.deleteCard("kbank");
+			expect(await repo.getCard("kbank")).toBeNull();
+		});
+
 		test("refuses to delete a limit group a card uses", async () => {
 			await repo.saveLimitGroup(sampleLimitGroup());
 			await repo.saveCard(sampleCard({ limitGroupId: "pool" }));
