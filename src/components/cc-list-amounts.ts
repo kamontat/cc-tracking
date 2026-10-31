@@ -399,6 +399,7 @@ export class CcListAmounts extends LitElement {
 					</div>
 					<label class="line-note">${t("purchaseList.noteLabel")}
 						<input data-field="note" placeholder=${t("purchaseList.notePlaceholder")}
+							aria-label=${t("purchaseList.noteFor", { card: cardName(card.id, card) })}
 							.value=${live(this.typedNotes[card.id] ?? "")}
 							@input=${(e: Event) =>
 								this.setNote(card.id, (e.target as HTMLInputElement).value)} />

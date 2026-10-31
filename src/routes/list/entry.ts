@@ -311,7 +311,8 @@ export function renderEntryPage(
 		return html`
 			${backHeader({
 				title: t(editingId ? "purchaseList.draft" : "purchaseList.new"),
-				back: "/",
+				// A new list goes back to the picker it came from; a draft goes Home (DD-103).
+				back: mode === "new" ? "/list/new" : "/",
 			})}
 			${banner(state)}
 			${

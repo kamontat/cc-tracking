@@ -271,3 +271,18 @@ test("each line shows its note to edit, made or not, and saving sends it trimmed
 		{ cardId: "C", amount: 300, made: true, note: "cash back" },
 	]);
 });
+
+test("each note box is named for its card", async () => {
+	const { root } = await mount();
+	expect(
+		line(root, "A")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("Note for Card A");
+	// A card no longer stored keeps its id.
+	expect(
+		line(root, "C")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("Note for c-[C]");
+});

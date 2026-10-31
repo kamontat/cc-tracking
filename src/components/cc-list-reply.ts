@@ -249,6 +249,7 @@ export class CcListReply extends LitElement {
 				}
 				<label class="line-note">${t("purchaseList.noteLabel")}
 					<input data-field="note" placeholder=${t("purchaseList.notePlaceholder")}
+						aria-label=${t("purchaseList.noteFor", { card: cardName(line.cardId, byId.get(line.cardId)) })}
 						.value=${live(answer.note)}
 						@input=${(e: Event) =>
 							this.setAnswer(index, {

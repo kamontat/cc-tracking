@@ -1,15 +1,19 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { ReadyRow } from "#lib/domain/home";
+import { formatAmount } from "#lib/domain/money";
 import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
+import { t } from "#lib/i18n/index";
+import { cardName } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { base, cardBits, rowPanel, usageBar } from "#styles/shared";
 import { readyRowParts, readyRowStyles } from "./ready-row";
 
 /**
  * The new-list picker's rows (DD-103): the ready cards as given (already filtered and sorted),
- * each a toggle with a tick, in one panel. A tap emits `toggle` with the card.
+ * each a toggle with a tick, in one panel. A tap emits `toggle` with the card. A row's name is
+ * only the card and its room, so a screen reader is not read the whole row on every tab.
  */
 @customElement("cc-ready-picker")
 export class CcReadyPicker extends LitElement {
@@ -73,7 +77,9 @@ export class CcReadyPicker extends LitElement {
 			const id = row.card.id;
 			const on = this.selected.includes(id);
 			return html`<button type="button" class="crow ready-row" data-card=${id}
-				aria-pressed=${on ? "true" : "false"} @click=${() => this.toggle(id)}>
+				aria-pressed=${on ? "true" : "false"}
+				aria-label=${t("ready.pickName", { card: cardName(id, row.card), room: formatAmount(row.room.room) })}
+				@click=${() => this.toggle(id)}>
 				<span class="tick" aria-hidden="true">${on ? icons.check : nothing}</span>
 				${readyRowParts(row, this.groups, this.today)}
 			</button>`;

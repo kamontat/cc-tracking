@@ -420,3 +420,20 @@ test("starting notes show, and a language switch keeps a typed note", async () =
 	expect(noteInput(root, "B").value).toBe("van fuel");
 	expect(flat(noteInput(root, "B").closest("label"))).toBe("หมายเหตุ (ไม่บังคับ)");
 });
+
+test("each note box is named for its card", async () => {
+	const { root } = await mount();
+	expect(
+		line(root, "B")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("Note for Card B");
+	setLocale("th");
+	await (root.host as CcListAmounts).updateComplete;
+	expect(
+		line(root, "B")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("หมายเหตุของ Card B");
+	setLocale("en");
+});

@@ -88,3 +88,15 @@ test("reads in Thai", async () => {
 		"วงเงินเหลือ · ใช้ร่วม",
 	);
 });
+
+test("each row button is named by its card and room alone", async () => {
+	const { root } = await mount();
+	const name = (id: string) =>
+		root.querySelector(`[data-card="${id}"]`)?.getAttribute("aria-label");
+	expect(name("B")).toBe("Card B, ฿80,000.00 room");
+	setLocale("th");
+	const thai = await mount();
+	expect(
+		thai.root.querySelector('[data-card="B"]')?.getAttribute("aria-label"),
+	).toBe("Card B วงเงินเหลือ ฿80,000.00");
+});
