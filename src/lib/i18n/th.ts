@@ -331,7 +331,6 @@ export const th: Catalog = {
 		"กู้คืน {file} แล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม, ใบรายการซื้อ {lists} ใบ",
 	"backup.importedText":
 		"กู้คืนข้อความที่วางแล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม, ใบรายการซื้อ {lists} ใบ",
-	"backup.error.read": "อ่านข้อมูลไม่สำเร็จ",
 	"backup.error.export": "ดาวน์โหลดสำเนาไม่สำเร็จ",
 	"backup.error.import": "กู้คืนสำเนานี้ไม่สำเร็จ",
 	"backup.error.clipboard": "อ่านคลิปบอร์ดไม่สำเร็จ",

@@ -26,7 +26,7 @@ import type {
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardLabelHtml, cardLabelText } from "#lib/ui/card-label";
-import { base, controls, listLayout } from "#styles/shared";
+import { actionBarStyles, base, controls, listLayout } from "#styles/shared";
 
 /**
  * Step 2 of a purchase list: a date and one amount per card, each line warned about what the
@@ -39,6 +39,7 @@ export class CcListAmounts extends LitElement {
 		base,
 		controls,
 		listLayout,
+		actionBarStyles,
 		css`
 			:host {
 				display: block;
@@ -141,26 +142,6 @@ export class CcListAmounts extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			.action-bar {
-				position: sticky;
-				bottom: calc(
-					var(--cc-tabbar-height) +
-					var(--cc-space-3) +
-					env(safe-area-inset-bottom, 0px)
-				);
-				z-index: 5;
-				display: flex;
-				flex-wrap: wrap;
-				align-items: center;
-				justify-content: space-between;
-				gap: var(--cc-space-3);
-				padding: var(--cc-space-3) var(--cc-space-4);
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
-				box-shadow: var(--cc-shadow-lg);
-			}
-
 
 			.summary {
 				font-size: var(--cc-text-sm);
@@ -175,10 +156,6 @@ export class CcListAmounts extends LitElement {
 			.total {
 				font-size: var(--cc-text-lg);
 				font-variant-numeric: tabular-nums;
-			}
-
-			.action-bar button {
-				align-self: center;
 			}
 		`,
 	];

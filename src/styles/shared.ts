@@ -593,3 +593,33 @@ export const listLayout = css`
 		}
 	}
 `;
+
+/**
+ * The sticky bar at the foot of a list page: a summary on the left, its actions on the right.
+ * It sticks above the phone's tab bar; `listLayout` turns it into a plain column in the side
+ * panel from 900px. Home's selection bar is light DOM, so `app.css` keeps its own copy.
+ */
+export const actionBarStyles = css`
+	.action-bar {
+		position: sticky;
+		bottom: calc(
+			var(--cc-tabbar-height) + var(--cc-space-3) + env(safe-area-inset-bottom, 0px)
+		);
+		z-index: 5;
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--cc-space-3);
+		padding: var(--cc-space-3) var(--cc-space-4);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+		box-shadow: var(--cc-shadow-lg);
+	}
+
+	.action-bar button {
+		align-self: center;
+	}
+`;

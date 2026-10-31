@@ -321,7 +321,6 @@ export const en = {
 		"Restored {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists.",
 	"backup.importedText":
 		"Restored pasted text: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists.",
-	"backup.error.read": "Could not read your data.",
 	"backup.error.export": "Could not download a copy.",
 	"backup.error.import": "Could not restore that copy.",
 	"backup.error.clipboard": "Could not read the clipboard.",

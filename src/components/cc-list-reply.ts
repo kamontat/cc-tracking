@@ -9,7 +9,7 @@ import type { Card, ListLine, PurchaseList } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardLabelHtml } from "#lib/ui/card-label";
-import { base, controls, listLayout } from "#styles/shared";
+import { actionBarStyles, base, controls, listLayout } from "#styles/shared";
 
 /** One line's answer: unanswered, made or not, and the real amount as typed. */
 type Answer = { made: boolean | undefined; text: string };
@@ -26,6 +26,7 @@ export class CcListReply extends LitElement {
 		base,
 		controls,
 		listLayout,
+		actionBarStyles,
 		css`
 			:host {
 				display: block;
@@ -95,21 +96,9 @@ export class CcListReply extends LitElement {
 				color: var(--cc-danger);
 			}
 
+			/* The reply bar stacks its one button under the note. */
 			.action-bar {
-				position: sticky;
-				bottom: calc(
-					var(--cc-tabbar-height) +
-					var(--cc-space-3) +
-					env(safe-area-inset-bottom, 0px)
-				);
-				z-index: 5;
 				display: grid;
-				gap: var(--cc-space-3);
-				padding: var(--cc-space-3) var(--cc-space-4);
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
-				box-shadow: var(--cc-shadow-lg);
 			}
 
 
