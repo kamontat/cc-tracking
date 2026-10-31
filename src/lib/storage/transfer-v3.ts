@@ -239,6 +239,14 @@ function check(
 	}
 }
 
+/** A record whose note is trimmed, and absent when blank (DC-07), as the app saves it. */
+function trimmedNote<T extends { note?: string }>(record: T): T {
+	if (record.note === undefined) return record;
+	const { note, ...rest } = record;
+	const trimmed = note.trim();
+	return (trimmed ? { ...rest, note: trimmed } : rest) as T;
+}
+
 /**
  * Reads a version 2 or version 3 file as version 3, rejecting the whole file before
  * anything is written when any record breaks a shape or range rule (RD-06). A version 2
@@ -328,9 +336,12 @@ export function parseAnyBackup(text: string): BackupV3 {
 		limitGroups: limitGroups as LimitGroup[],
 		cards: cards as Card[],
 		purchases: purchases as Purchase[],
-		payments: payments as CardPayment[],
+		payments: (payments as CardPayment[]).map(trimmedNote),
 		statementDates: statementDates as StatementDates[],
-		lists: lists as PurchaseList[],
+		lists: (lists as PurchaseList[]).map((list) => ({
+			...list,
+			lines: list.lines.map(trimmedNote),
+		})),
 		locations: locations as LocationRecord[],
 	};
 }

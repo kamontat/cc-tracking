@@ -107,6 +107,31 @@ describe("backup version 3", () => {
 		expect(await exportBackupV3(again, NOW)).toEqual(out);
 	});
 
+	test("notes are trimmed on import, and a blank note is dropped (DC-07)", () => {
+		const parsed = parseAnyBackup(
+			v3({
+				payments: [
+					sampleCardPayment({ id: "n1", note: "  From savings  " }),
+					sampleCardPayment({ id: "n2", note: "   " }),
+				],
+				lists: [
+					samplePurchaseList({
+						lines: [
+							{ cardId: "kbank", amount: 100, note: " gas " },
+							{ cardId: "kbank", amount: 200, note: "  " },
+						],
+					}),
+				],
+			}),
+		);
+		const [noted, blank] = parsed.payments;
+		expect(noted?.note).toBe("From savings");
+		expect(blank && "note" in blank).toBe(false);
+		const [gas, empty] = parsed.lists[0]?.lines ?? [];
+		expect(gas?.note).toBe("gas");
+		expect(empty && "note" in empty).toBe(false);
+	});
+
 	test("a version 2 file converts", () => {
 		const parsed: BackupV3 = parseAnyBackup(v2());
 		expect(parsed.version).toBe(3);
@@ -436,7 +461,11 @@ describe("backup version 3", () => {
 		const parsed = parseAnyBackup(
 			v3({ lists: [samplePurchaseList({ lines })] }),
 		);
-		expect(parsed.lists[0]?.lines).toEqual(lines);
+		// A blank note is accepted, then dropped (DC-07).
+		expect(parsed.lists[0]?.lines).toEqual([
+			...lines.slice(0, 2),
+			{ cardId: "kbank", amount: 3_000 },
+		]);
 	});
 
 	test("the rejection names which record is wrong", () => {
