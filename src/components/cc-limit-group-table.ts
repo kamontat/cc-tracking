@@ -92,7 +92,7 @@ export class CcLimitGroupTable extends LitElement {
 	];
 
 	@property({ attribute: false }) groups: LimitGroup[] = [];
-	/** Satang already spent against each group id, from `groupUsage`. */
+	/** Satang already spent against each group id, from `groupRoom`. */
 	@property({ attribute: false }) usage: Record<string, number> = {};
 	/** How many cards point at each group id. */
 	@property({ attribute: false }) counts: Record<string, number> = {};

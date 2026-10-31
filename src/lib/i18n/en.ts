@@ -144,14 +144,6 @@ export const en = {
 	"dashboard.answer": "Lands on the statement closing {close} — pay by {due}.",
 	"dashboard.answerOver": "That is {over} over the {name} limit.",
 
-	"due.stillOpen": "still open",
-
-	"payment.heading": "Record a payment",
-	"payment.balance":
-		"Statement {period}: total {total}, paid {paid}, {left} left.",
-	"payment.date": "Paid on",
-	"payment.submit": "Record payment",
-
 	"quickAdd.card": "Card",
 	"quickAdd.date": "Date",
 	"quickAdd.amount": "Amount (THB)",
@@ -265,11 +257,11 @@ export const en = {
 	"card.summary.nextDate": "Due {date}",
 	"card.summary.nextOpen": "Still open, closes {date}",
 	"card.summary.nothing": "Nothing due",
+	"card.summary.credit": "Credit {amount} held toward the next bills",
+	"card.summary.pay": "Make a payment",
 	"card.error.noSelection": "No card was selected.",
 	"card.error.notFound": "No card with the id {id}.",
 	"card.error.read": "Could not read this card.",
-	"card.error.markPaid": "Could not record the payment.",
-	"card.error.unmarkPaid": "Could not undo the payment.",
 	"card.error.deletePurchase": "Could not delete the purchase.",
 	"card.error.addPurchase": "Could not save the purchase.",
 	"card.error.editPurchase": "Could not save the changes to the purchase.",
@@ -277,11 +269,9 @@ export const en = {
 	"statements.empty":
 		"No statements yet. Purchases come from purchase lists on Home.",
 	"statements.header": "closes {close}, due {due}",
-	"statements.paid": "Paid {date}",
+	"statements.paid": "Paid in full",
+	"statements.paidAmount": "Paid {amount}",
 	"statements.left": "{amount} left",
-	"statements.payment": "Payment",
-	"statements.leftToPay": "Left to pay",
-	"statements.unmark": "Unmark",
 	"statements.markPaid": "Mark paid",
 	"statements.current": "Current",
 	"statements.noPurchases": "No purchases in this period.",

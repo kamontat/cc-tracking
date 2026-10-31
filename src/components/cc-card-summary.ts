@@ -1,10 +1,11 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { displayDate } from "#lib/domain/date";
-import { usageLevel, usageShare } from "#lib/domain/limit";
+import { ledgerUrgency } from "#lib/domain/ledger";
+import { usageShare } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
-import { urgencyOf } from "#lib/domain/statement";
-import type { LimitGroup, PlainDate, Statement } from "#lib/domain/types";
+import type { GroupRoom } from "#lib/domain/room";
+import type { LedgerStatement, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { base, usageBar } from "#styles/shared";
@@ -83,15 +84,16 @@ export class CcCardSummary extends LitElement {
 		`,
 	];
 
-	@property({ attribute: false }) group: LimitGroup | null = null;
-	/** Unpaid total across every card in the group, from `groupUsage`. */
-	@property({ attribute: false }) used = 0;
-	/** How many other cards draw on the same group. */
-	@property({ attribute: false }) sharedWith = 0;
-	/** What this card alone still owes, from `outstandingOf`. */
+	/** The card's group room, from `roomFor`; null when it draws on no group. */
+	@property({ attribute: false }) room: GroupRoom | null = null;
+	/** What this card alone still owes, from its ledger. */
 	@property({ attribute: false }) owed = 0;
-	/** The statement needing attention, from `nextActionable`. */
-	@property({ attribute: false }) next: Statement | null = null;
+	/** Paid money the card's statements could not spend, from its ledger. */
+	@property({ attribute: false }) credit = 0;
+	/** The oldest closed statement still owing, from `nextBill`. */
+	@property({ attribute: false }) next: LedgerStatement | null = null;
+	/** Where the Make a payment link goes; empty for no link. */
+	@property() payHref = "";
 	@property() today: PlainDate = "";
 
 	constructor() {
@@ -104,8 +106,8 @@ export class CcCardSummary extends LitElement {
 	}
 
 	private available() {
-		const group = this.group;
-		if (!group) {
+		const room = this.room;
+		if (!room) {
 			return html`
 				<section data-tile="available">
 					<h2>${t("card.summary.available")}</h2>
@@ -113,12 +115,12 @@ export class CcCardSummary extends LitElement {
 				</section>
 			`;
 		}
-		const level = usageLevel(this.used, group.limit);
-		const share = usageShare(this.used, group.limit);
+		const { group, level } = room;
+		const share = usageShare(room.used, group.limit);
 		return html`
 			<section data-tile="available" data-level=${level}>
 				<h2>${t("card.summary.available")}</h2>
-				<p class="figure">${formatAmount(group.limit - this.used)}</p>
+				<p class="figure">${formatAmount(room.room)}</p>
 				<span class="usage" data-level=${level} title=${t("limits.usage", { share })}>
 					<span style=${`inline-size: ${share}%`}></span>
 				</span>
@@ -127,11 +129,11 @@ export class CcCardSummary extends LitElement {
 					name: group.name,
 				})}</small></p>
 				${
-					this.sharedWith > 0
+					room.sharedWith > 0
 						? html`<p><small>${
-								this.sharedWith === 1
+								room.sharedWith === 1
 									? t("card.summary.sharedOne")
-									: t("card.summary.shared", { count: this.sharedWith })
+									: t("card.summary.shared", { count: room.sharedWith })
 							}</small></p>`
 						: nothing
 				}
@@ -145,6 +147,16 @@ export class CcCardSummary extends LitElement {
 				<h2>${t("card.summary.owed")}</h2>
 				<p class="figure">${formatAmount(this.owed)}</p>
 				<p><small>${t("card.summary.owedHint")}</small></p>
+				${
+					this.credit > 0
+						? html`<p><small data-testid="credit">${t("card.summary.credit", { amount: formatAmount(this.credit) })}</small></p>`
+						: nothing
+				}
+				${
+					this.payHref
+						? html`<a data-action="pay" href=${this.payHref}>${t("card.summary.pay")}</a>`
+						: nothing
+				}
 			</section>
 		`;
 	}
@@ -159,13 +171,13 @@ export class CcCardSummary extends LitElement {
 				</section>
 			`;
 		}
-		const urgency = urgencyOf(next, this.today);
+		const urgency = ledgerUrgency(next, this.today);
 		return html`
 			<section data-tile="next" data-urgency=${urgency}>
 				<h2>${t("card.summary.next")}</h2>
 				<p class="figure">${formatAmount(next.remaining)}</p>
 				<p><small>${
-					urgency === "future"
+					urgency === "open"
 						? t("card.summary.nextOpen", {
 								date: displayDate(next.closeDate, getLocale()),
 							})

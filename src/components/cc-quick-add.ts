@@ -72,7 +72,7 @@ export class CcQuickAdd extends LitElement {
 
 	@property({ attribute: false }) cards: Card[] = [];
 	@property() today: PlainDate = "";
-	/** Rows for the cards above, from `spendableRows`. A card with no row shows no credit. */
+	/** Rows for the cards above, built from `roomFor`. A card with no row shows no credit. */
 	@property({ attribute: false }) rows: SpendRow[] = [];
 	/**
 	 * The saved purchase this form edits, or null to add a new one. Its card must be among
