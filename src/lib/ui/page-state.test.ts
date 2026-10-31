@@ -122,15 +122,15 @@ test("the error follows a locale switch instead of freezing in whatever language
 
 	await state.guard(async () => {
 		throw new Error("localStorage is full");
-	}, "card.error.markPaid");
+	}, "card.error.deletePurchase");
 
 	expect(state.error).toBe(
-		"Could not record the payment. localStorage is full",
+		"Could not delete the purchase. localStorage is full",
 	);
 
 	// No further guard/load call: reading `error` again after the switch is the whole
 	// point -- it must re-translate from the failure it kept, not replay a cached sentence.
 	setLocale("th");
 
-	expect(state.error).toBe("บันทึกการชำระเงินไม่สำเร็จ localStorage is full");
+	expect(state.error).toBe("ลบรายการใช้จ่ายไม่สำเร็จ localStorage is full");
 });

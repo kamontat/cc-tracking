@@ -1,8 +1,7 @@
 import { expect, test } from "bun:test";
 import type { CcErrorBanner } from "#components/cc-error-banner";
-import type { CcPaymentForm } from "#components/cc-payment-form";
 import type { CcQuickAdd } from "#components/cc-quick-add";
-import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
+import { closeDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
@@ -94,45 +93,6 @@ const submitPurchase = async (
 	await settle();
 };
 
-/**
- * Presses Mark paid on `targetPeriod`'s statement, then submits the payment dialog it opens --
- * with `amount` typed over the default, when given.
- */
-const payStatement = async (
-	root: HTMLElement,
-	targetPeriod: string,
-	amount?: string,
-) => {
-	const list = root.querySelector("cc-statement-list");
-	await list?.updateComplete;
-	articleFor(list, targetPeriod)
-		.querySelector<HTMLButtonElement>("[data-action='mark-paid']")
-		?.click();
-	await settle();
-	const form = root.querySelector<CcPaymentForm>("cc-modal cc-payment-form");
-	if (!form) throw new Error("the payment dialog did not open");
-	await form.updateComplete;
-	const input =
-		form.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]');
-	if (input && amount !== undefined) input.value = amount;
-	form.shadowRoot?.querySelector("form")?.requestSubmit();
-	await settle();
-};
-
-/** A repository whose savePayment always rejects, to exercise the failure path in isolation. */
-class RejectingPaymentRepository extends InMemoryRepository {
-	override savePayment(): Promise<void> {
-		return Promise.reject(new Error("disk is full"));
-	}
-}
-
-/** A repository whose deletePayment always rejects, to exercise the failure path in isolation. */
-class RejectingUnmarkRepository extends InMemoryRepository {
-	override deletePayment(): Promise<void> {
-		return Promise.reject(new Error("disk is full"));
-	}
-}
-
 /** A repository whose deletePurchase always rejects, to exercise the failure path in isolation. */
 class RejectingDeleteRepository extends InMemoryRepository {
 	override deletePurchase(): Promise<void> {
@@ -147,12 +107,13 @@ test("heads the page with the card's id, name, and last four digits", async () =
 	renderCardPage(repo, "kbank", root);
 	await settle();
 
-	expect(root.querySelector(".page-heading h1")?.textContent).toContain(
-		"KBank Visa",
+	// The heading names the card in the panel form: the last-4 chip, then id) name.
+	const heading = root.querySelector(".page-heading h1");
+	expect(heading?.querySelector(".mini")?.textContent).toBe("4821");
+	expect(heading?.querySelector(".card-label")?.textContent).toBe(
+		"kbank) KBank Visa",
 	);
 	const meta = root.querySelector(".page-heading .meta")?.textContent ?? "";
-	expect(meta).toContain("kbank");
-	expect(meta).toContain("4821");
 	expect(meta).toContain("Krabi");
 });
 
@@ -203,11 +164,71 @@ test("sums up the group's room, this card's debt, and the next statement due", a
 	await settle();
 
 	const summary = root.querySelector("cc-card-summary");
-	expect(summary?.group?.id).toBe("pool");
-	expect(summary?.used).toBe(45_000);
-	expect(summary?.sharedWith).toBe(1);
+	expect(summary?.room?.group.id).toBe("pool");
+	expect(summary?.room?.used).toBe(45_000);
+	expect(summary?.room?.room).toBe(455_000);
+	expect(summary?.room?.sharedWith).toBe(1);
 	expect(summary?.owed).toBe(35_000);
 	expect(summary?.next?.period).toBe(period);
+});
+
+test("card payments settle the oldest statement first and leave credit past what is owed", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit: 500_000 });
+	await repo.saveCard({ ...card, limitGroupId: "pool" });
+	await repo.savePurchase(purchase);
+	await repo.saveCardPayment({
+		id: "pay1",
+		cardId: "kbank",
+		date: today(),
+		amount: 15_000,
+		status: "paid",
+	});
+	const root = mount();
+	renderCardPage(repo, "kbank", root);
+	await settle();
+
+	let summary = root.querySelector("cc-card-summary");
+	expect(summary?.owed).toBe(20_000);
+	expect(summary?.credit).toBe(0);
+	expect(summary?.next?.remaining).toBe(20_000);
+	const list = root.querySelector("cc-statement-list");
+	expect(list?.statements.find((s) => s.period === period)?.paidAmount).toBe(
+		15_000,
+	);
+
+	await repo.saveCardPayment({
+		id: "pay2",
+		cardId: "kbank",
+		date: today(),
+		amount: 30_000,
+		status: "paid",
+	});
+	const again = mount();
+	renderCardPage(repo, "kbank", again);
+	await settle();
+	summary = again.querySelector("cc-card-summary");
+	expect(summary?.owed).toBe(0);
+	expect(summary?.credit).toBe(10_000);
+	expect(summary?.next).toBeNull();
+});
+
+test("links to the payment form for this card, with no mark-paid on the statements", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({ ...card, id: "a b" });
+	await repo.savePurchase({ ...purchase, cardId: "a b" });
+	const root = mount();
+	renderCardPage(repo, "a b", root);
+	await settle();
+
+	const summary = root.querySelector("cc-card-summary");
+	await summary?.updateComplete;
+	expect(summary?.payCardId).toBe("a b");
+	const list = root.querySelector("cc-statement-list");
+	await list?.updateComplete;
+	expect(
+		list?.shadowRoot?.querySelector("[data-action='mark-paid']"),
+	).toBeNull();
 });
 
 test("describes the card beside its history, with a way to edit it", async () => {
@@ -347,108 +368,6 @@ test('"Show older statements" reveals a period beyond the first twelve', async (
 	expect(listAfter?.shadowRoot?.textContent).toContain("vintage typewriter");
 });
 
-test("marking a statement paid records a payment whose frozen dates match that statement", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	const root = mount();
-	renderCardPage(repo, "kbank", root);
-	await settle();
-
-	await payStatement(root, period);
-
-	expect(bannerMessage(root)).toBe("");
-	expect(root.querySelector("cc-modal")).toBeNull();
-	const payments = await repo.listPayments("kbank");
-	expect(payments).toHaveLength(1);
-	expect(payments[0]?.period).toBe(period);
-	expect(payments[0]?.parts).toEqual([{ paidAt: today(), amount: 35_000 }]);
-	// The payment freezes the statement's own close/due dates at the moment it was paid.
-	expect(payments[0]?.closeDate).toBe(closeDateOf(card.cycle, period));
-	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, period));
-});
-
-test("paying part of a statement leaves it owing, and a second payment settles it", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	const root = mount();
-	renderCardPage(repo, "kbank", root);
-	await settle();
-
-	await payStatement(root, period, "150");
-	const list = root.querySelector("cc-statement-list");
-	await list?.updateComplete;
-	expect(list?.statements.find((s) => s.period === period)?.remaining).toBe(
-		20_000,
-	);
-
-	await payStatement(root, period);
-	const [payment] = await repo.listPayments("kbank");
-	expect(payment?.parts?.map((part) => part.amount)).toEqual([15_000, 20_000]);
-	await list?.updateComplete;
-	expect(list?.statements.find((s) => s.period === period)?.paid).toBe(true);
-});
-
-test("unmarking one partial payment keeps the others", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	await repo.savePayment({
-		cardId: "kbank",
-		period,
-		paidAt: today(),
-		closeDate: "2020-01-18",
-		dueDate: "2020-02-02",
-		parts: [
-			{ paidAt: addDays(today(), -1), amount: 10_000 },
-			{ paidAt: today(), amount: 5_000 },
-		],
-	});
-	const root = mount();
-	renderCardPage(repo, "kbank", root);
-	await settle();
-
-	const list = root.querySelector("cc-statement-list");
-	await list?.updateComplete;
-	list?.shadowRoot
-		?.querySelectorAll<HTMLButtonElement>("[data-action='unmark-paid']")[1]
-		?.click();
-	await settle();
-
-	expect(bannerMessage(root)).toBe("");
-	const payments = await repo.listPayments("kbank");
-	expect(payments[0]?.parts).toEqual([
-		{ paidAt: addDays(today(), -1), amount: 10_000 },
-	]);
-});
-
-test("unmarking a paid statement removes its payment", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	await repo.savePayment({
-		cardId: "kbank",
-		period,
-		paidAt: today(),
-		closeDate: "2020-01-18",
-		dueDate: "2020-02-02",
-	});
-	const root = mount();
-	renderCardPage(repo, "kbank", root);
-	await settle();
-
-	const list = root.querySelector("cc-statement-list");
-	await list?.updateComplete;
-	list?.shadowRoot
-		?.querySelector<HTMLButtonElement>("[data-action='unmark-paid']")
-		?.click();
-	await settle();
-
-	expect(bannerMessage(root)).toBe("");
-	expect(await repo.listPayments("kbank")).toEqual([]);
-});
-
 test("deleting a purchase removes it from its statement", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(card);
@@ -466,52 +385,6 @@ test("deleting a purchase removes it from its statement", async () => {
 
 	expect(bannerMessage(root)).toBe("");
 	expect(await repo.listPurchases("kbank")).toEqual([]);
-});
-
-test("a failed mark-paid leaves a message in the banner and writes nothing", async () => {
-	const repo = new RejectingPaymentRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	const root = mount();
-	renderCardPage(repo, "kbank", root);
-	await settle();
-
-	await payStatement(root, period);
-
-	expect(bannerMessage(root)).toContain("disk is full");
-	// The dialog stays open with the reason in it, so the reader can retry.
-	expect(
-		root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message ??
-			"",
-	).toContain("disk is full");
-	expect(await repo.listPayments("kbank")).toEqual([]);
-});
-
-test("a failed unmark-paid leaves a message in the banner and keeps the payment", async () => {
-	const repo = new RejectingUnmarkRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	const existingPayment = {
-		cardId: "kbank",
-		period,
-		paidAt: today(),
-		closeDate: "2020-01-18",
-		dueDate: "2020-02-02",
-	};
-	await repo.savePayment(existingPayment);
-	const root = mount();
-	renderCardPage(repo, "kbank", root);
-	await settle();
-
-	const list = root.querySelector("cc-statement-list");
-	await list?.updateComplete;
-	list?.shadowRoot
-		?.querySelector<HTMLButtonElement>("[data-action='unmark-paid']")
-		?.click();
-	await settle();
-
-	expect(bannerMessage(root)).toContain("disk is full");
-	expect(await repo.listPayments("kbank")).toEqual([existingPayment]);
 });
 
 test("a failed delete-purchase leaves a message in the banner and keeps the purchase", async () => {
@@ -567,7 +440,7 @@ test("adds a purchase against this card and says which statement it lands on", a
 	expect(form.shadowRoot?.querySelector("select")).toBeNull();
 	expect(
 		form.shadowRoot?.querySelector('[data-field="card"]')?.textContent,
-	).toContain("kbank — KBank Visa");
+	).toContain("kbank) KBank Visa (4821)");
 	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
 	await settle();
 	expect(root.querySelector("cc-modal")).toBeNull();

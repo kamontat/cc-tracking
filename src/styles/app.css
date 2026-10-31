@@ -201,9 +201,10 @@ a:any-link:hover {
 	background: var(--cc-accent-surface);
 }
 
-/* Payment floats at the bottom right of every page: a round + over the bar on a phone, a pill
-   with its label from 900px. The primary button's colours, as `.page button` draws them. */
-.fab:any-link {
+/* + New floats at the bottom right of every page (DD-104): a round + over the bar on a phone, a
+   pill with its label from 900px. The primary button's colours, as `.page button` draws them.
+   Tapping it opens a small menu above it -- a new purchase list, or a payment. */
+.fab-menu {
 	position: fixed;
 	z-index: 11;
 	right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
@@ -212,31 +213,42 @@ a:any-link:hover {
 		var(--cc-space-4) +
 		env(safe-area-inset-bottom, 0px)
 	);
+}
+
+.fab-menu__wrap {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+}
+
+.fab {
 	display: inline-flex;
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
 	gap: var(--cc-space-2);
-	inline-size: var(--cc-fab-size);
-	block-size: var(--cc-fab-size);
+	inline-size: var(--cc-bar-height);
+	block-size: var(--cc-bar-height);
 	padding: 0;
+	font: inherit;
 	font-weight: 650;
 	line-height: 1.2;
 	color: var(--cc-accent-text);
 	white-space: nowrap;
-	text-decoration: none;
+	cursor: pointer;
 	background: var(--cc-accent);
+	border: 0;
 	border-radius: var(--cc-radius-pill);
 	box-shadow: var(--cc-fab-shadow);
 }
 
-.fab:any-link:hover {
-	text-decoration: none;
+.fab:hover {
 	background: var(--cc-accent-hover);
 }
 
 /* The ring on top of the shadow: this rule outranks the global `:focus-visible` one. */
-.fab:any-link:focus-visible {
+.fab:focus-visible {
 	box-shadow: var(--cc-focus-ring), var(--cc-fab-shadow);
 }
 
@@ -246,14 +258,101 @@ a:any-link:hover {
 	flex: none;
 }
 
+.fab__plus {
+	display: inline-flex;
+	transition: transform var(--cc-sheet-motion) var(--cc-sheet-ease);
+}
+
+/* The + turns to a × while the menu is open: its shape says it closes, not only its state. */
+.fab[aria-expanded="true"] .fab__plus {
+	transform: rotate(45deg);
+}
+
 .fab__label {
 	display: none;
 }
 
-/* Payment steps aside on the purchase list pages, where the reader is mid-list, and while
-   Home's selection bar shows, so it never covers a bottom bar. */
-:root[data-list-page] .fab:any-link,
-:root[data-selecting] .fab:any-link {
+/* The menu sits above the button, its right edge on the button's. */
+.fab-menu__list {
+	position: absolute;
+	right: 0;
+	bottom: calc(100% + var(--cc-space-2));
+	display: flex;
+	flex-direction: column;
+	min-inline-size: max-content;
+	padding: var(--cc-space-1);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-lg);
+	transform-origin: bottom right;
+	animation: fab-menu-in var(--cc-sheet-motion) var(--cc-sheet-ease);
+}
+
+/* `display: flex` above outranks the reset's `[hidden]`, so the closed menu says so itself. */
+.fab-menu__list[hidden] {
+	display: none;
+}
+
+.fab-menu__list[data-state="closing"] {
+	animation: fab-menu-out var(--cc-sheet-motion) var(--cc-sheet-ease) forwards;
+}
+
+@keyframes fab-menu-in {
+	from {
+		opacity: 0;
+		transform: translateY(var(--cc-space-2)) scale(var(--cc-sheet-scale-from));
+	}
+}
+
+@keyframes fab-menu-out {
+	to {
+		opacity: 0;
+		transform: translateY(var(--cc-space-2)) scale(var(--cc-sheet-scale-from));
+	}
+}
+
+.fab-menu__item:any-link {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-3) var(--cc-space-4) var(--cc-space-3)
+		var(--cc-space-3);
+	font-weight: 600;
+	color: var(--cc-text);
+	white-space: nowrap;
+	text-decoration: none;
+	border-radius: var(--cc-radius-sm);
+}
+
+.fab-menu__item:any-link:hover {
+	text-decoration: none;
+	background: var(--cc-surface-sunken);
+}
+
+.fab-menu__item .icon {
+	inline-size: var(--cc-icon-size);
+	block-size: var(--cc-icon-size);
+	flex: none;
+	color: var(--cc-link);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.fab__plus {
+		transition: none;
+	}
+
+	.fab-menu__list,
+	.fab-menu__list[data-state="closing"] {
+		animation: none;
+	}
+}
+
+/* + New steps aside on the payment page and on the purchase list pages (the new-list picker
+   among them), where the reader is mid-task and a bottom bar needs the full width. */
+:root[data-pay-page] .fab-menu,
+:root[data-list-page] .fab-menu {
 	display: none;
 }
 
@@ -288,8 +387,11 @@ a:any-link:hover {
 		align-self: stretch;
 		gap: var(--cc-space-1);
 		margin-inline-start: auto;
-		/* Reach down through the bar's padding and the rule, so a tab's underline sits on it. */
-		margin-block-end: calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
+		/* Reach up through the bar's padding and down through it and the rule, so a tab's
+		   underline sits on the rule and its label shares the bar's centre line with the brand
+		   and the date (each tab pads its top by what its underline outweighs the rule). */
+		margin-block: calc(var(--cc-space-3) * -1)
+			calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
 	}
 
 	.site-header__tabs a:any-link {
@@ -297,6 +399,7 @@ a:any-link:hover {
 		flex-direction: row;
 		align-items: center;
 		gap: var(--cc-space-2);
+		padding-block-start: calc(var(--cc-env-rule-width) - var(--cc-rule-width));
 		padding-inline: var(--cc-space-3);
 		color: var(--cc-text-muted);
 		text-decoration: none;
@@ -321,9 +424,12 @@ a:any-link:hover {
 		flex: none;
 	}
 
-	.fab:any-link {
+	.fab-menu {
 		right: calc(var(--cc-space-5) + env(safe-area-inset-right, 0px));
 		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+	}
+
+	.fab {
 		inline-size: auto;
 		padding-inline: var(--cc-space-4) var(--cc-space-5);
 	}
@@ -347,7 +453,7 @@ a:any-link:hover {
 		calc(
 			var(--cc-tabbar-height) +
 			var(--cc-space-4) +
-			var(--cc-fab-size) +
+			var(--cc-bar-height) +
 			var(--cc-space-5) +
 			env(safe-area-inset-bottom, 0px)
 		);
@@ -370,7 +476,7 @@ a:any-link:hover {
 	.page {
 		padding-bottom: calc(
 			var(--cc-space-5) +
-			var(--cc-fab-size) +
+			var(--cc-bar-height) +
 			var(--cc-space-7) +
 			env(safe-area-inset-bottom, 0px)
 		);
@@ -728,10 +834,6 @@ a:any-link:hover {
 	font-size: var(--cc-text-sm);
 }
 
-.page-heading .mono {
-	font-family: var(--cc-font-mono);
-}
-
 .page-heading .comment {
 	font-style: italic;
 }
@@ -800,14 +902,336 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
-.page > a[data-action="to-cards"] {
-	align-self: flex-start;
+/*
+ * Transactions: the title with a segmented switch (Ledger, Lists, Owed) beside it, then one
+ * column. On a phone the Owed view shows the owed panel under the title instead of the ledger.
+ * From 900px the Owed button leaves the switch and the page is two columns, the owed panel
+ * beside whatever the left column shows.
+ */
+.tx-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--cc-space-5);
+	align-items: start;
+}
+
+.tx-main,
+.tx-body {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-4);
+	min-inline-size: 0;
+}
+
+.tx-head {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-2) var(--cc-space-3);
+}
+
+.tx-switch {
+	display: inline-grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 1fr;
+	padding: calc(var(--cc-space-1) * 0.75);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page .tx-switch button[data-view] {
+	align-self: stretch;
+	padding: var(--cc-space-1) var(--cc-space-3);
+	font-weight: 600;
+	color: var(--cc-text-muted);
+	text-align: center;
+	white-space: nowrap;
+	background: transparent;
+	border: 0;
+	border-radius: calc(var(--cc-radius-sm) - var(--cc-space-1) * 0.75);
+}
+
+.page .tx-switch button[data-view]:hover {
+	color: var(--cc-text);
+}
+
+.page .tx-switch button[data-view][aria-pressed="true"] {
+	color: var(--cc-text);
+	background: var(--cc-surface);
+	box-shadow: var(--cc-shadow-sm);
+}
+
+/* The search box (with its icon) and the Filter button share one row; the chips go under. */
+.tx-controls {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+}
+
+.tx-ctl {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: var(--cc-space-2);
+}
+
+.page .tx-search {
+	position: relative;
+	display: block;
+}
+
+.tx-search .icon {
+	position: absolute;
+	inset-inline-start: var(--cc-space-3);
+	inset-block-start: 50%;
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+	color: var(--cc-text-muted);
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+.page .tx-search input {
+	inline-size: 100%;
+	padding-block: var(--cc-space-2);
+	padding-inline: calc(var(--cc-space-3) * 2 + var(--cc-icon-size-sm))
+		var(--cc-space-3);
+	font-size: var(--cc-text-md);
+	color: var(--cc-text);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page .tx-fbtn {
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	align-self: stretch;
+	gap: var(--cc-space-1);
+	padding: 0 var(--cc-space-3);
+	font-weight: 650;
+	white-space: nowrap;
+	border-color: transparent;
+}
+
+.tx-fbtn .icon {
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+}
+
+.tx-count {
+	padding: 0 var(--cc-space-2);
+	font-size: var(--cc-text-xs);
+	line-height: 1.6;
+	color: var(--cc-accent-text);
+	background: var(--cc-accent);
+	border-radius: var(--cc-radius-pill);
+}
+
+.tx-chips {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+}
+
+.page .tx-chip {
+	padding: var(--cc-space-1) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 600;
+	color: var(--cc-success);
+	white-space: nowrap;
+	background: var(--cc-accent-surface);
+	border-color: transparent;
+	border-radius: var(--cc-radius-pill);
 }
 
 /*
- * Home's selection bar: what is ticked on the left, its actions on the right. It sticks to the
- * bottom of the page as it scrolls, above the phone's tab bar. The floating Payment button is
- * hidden while it shows (`:root[data-selecting]`), so the bar has the full width.
+ * A card's name on the light-DOM pages (card-label.ts, UI-14): the panel form's last-4 chip in
+ * its group's pastel, a copy of `cardBits` in shared.ts; keep the two in step.
+ */
+.card-panel {
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-2);
+	min-inline-size: 0;
+}
+
+.mini {
+	display: inline-grid;
+	place-items: end start;
+	flex: none;
+	inline-size: calc(var(--cc-space-5) + var(--cc-space-3));
+	block-size: calc(var(--cc-space-5) + var(--cc-space-1) / 2);
+	padding: calc(var(--cc-space-1) / 2) var(--cc-space-1);
+	font-family: var(--cc-font-mono);
+	font-size: calc(var(--cc-text-xs) * 0.8);
+	font-weight: 700;
+	line-height: 1;
+	color: var(--cc-text-muted);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-xs);
+}
+
+.mini[data-big] {
+	inline-size: calc(var(--cc-space-7) + var(--cc-space-1));
+	block-size: calc(
+		var(--cc-space-5) +
+		var(--cc-space-3) -
+		var(--cc-space-1) /
+		2
+	);
+	font-size: calc(var(--cc-text-xs) * 0.88);
+}
+
+.mini[data-g="1"] {
+	color: var(--cc-group-1-text);
+	background: var(--cc-group-1);
+}
+
+.mini[data-g="2"] {
+	color: var(--cc-group-2-text);
+	background: var(--cc-group-2);
+}
+
+.mini[data-g="3"] {
+	color: var(--cc-group-3-text);
+	background: var(--cc-group-3);
+}
+
+.mini[data-g="4"] {
+	color: var(--cc-group-4-text);
+	background: var(--cc-group-4);
+}
+
+/* A card chip names the card in the line form, and its short form on a phone (UI-14). */
+.cl-short {
+	display: none;
+}
+
+@media (max-width: 899px) {
+	.tx-chips .cl-full {
+		display: none;
+	}
+
+	.tx-chips .cl-short {
+		display: inline;
+	}
+}
+
+.page .tx-chip.tx-sort {
+	font-weight: 400;
+	color: var(--cc-text);
+	background: transparent;
+	border-color: var(--cc-border);
+}
+
+.page .tx-chip:hover {
+	background: var(--cc-surface-sunken);
+}
+
+/* The month so far: a title, then three figures in a row. */
+.tx-summary {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	padding: var(--cc-space-3) var(--cc-space-4);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+}
+
+.tx-summary__head {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--cc-space-1) var(--cc-space-2);
+}
+
+.page .tx-summary h2 {
+	font-size: var(--cc-text-lg);
+	font-weight: 700;
+}
+
+.page .tx-summary small {
+	font-size: var(--cc-text-xs);
+}
+
+.tx-summary__figures {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--cc-space-2);
+}
+
+.tx-summary__figures > div {
+	display: flex;
+	flex-direction: column;
+	min-inline-size: 0;
+	line-height: 1.35;
+}
+
+.tx-summary__figures b {
+	overflow-wrap: anywhere;
+}
+
+/* Purchases read red and payments green, each beside its label (UI-07). */
+.tx-summary__figures b[data-tone="out"] {
+	color: var(--cc-danger);
+}
+
+.tx-summary__figures b[data-tone="in"] {
+	color: var(--cc-success);
+}
+
+.tx-grid > .tx-owed {
+	display: none;
+	min-inline-size: 0;
+}
+
+.tx-grid[data-show="owed"] > .tx-owed {
+	display: block;
+}
+
+.tx-grid[data-show="owed"] .tx-body {
+	display: none;
+}
+
+@media (min-width: 900px) {
+	.tx-grid {
+		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
+	}
+
+	.page .tx-switch [data-view="owed"] {
+		display: none;
+	}
+
+	/* Owed sits beside the ledger here, so the ledger button reads as the current one. */
+	.page .tx-switch button[data-view="ledger"][data-desktop-current] {
+		color: var(--cc-text);
+		background: var(--cc-surface);
+		box-shadow: var(--cc-shadow-sm);
+	}
+
+	.tx-grid[data-show] > .tx-owed {
+		display: block;
+		padding-block-start: var(--cc-space-1);
+	}
+
+	.tx-grid[data-show="owed"] .tx-body {
+		display: flex;
+	}
+}
+
+/*
+ * The new-list picker's selection bar: what is ticked on the left, its actions on the right. It
+ * sticks to the bottom of the page as it scrolls, above the phone's tab bar. The picker is a
+ * list page, so the floating + New menu is hidden there and the bar has the full width.
  */
 .action-bar {
 	position: sticky;
@@ -822,8 +1246,10 @@ a:any-link:hover {
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: var(--cc-space-3);
-	padding: var(--cc-space-3) var(--cc-space-4);
+	gap: var(--cc-space-1) var(--cc-space-3);
+	/* As tall as the floating + New button; a bar that wraps grows past it. */
+	min-block-size: var(--cc-bar-height);
+	padding: var(--cc-space-1) var(--cc-space-4);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
@@ -979,6 +1405,16 @@ a:any-link:hover {
 	clip-path: inset(50%);
 }
 
+/* The new-list picker with no card ready: what to do, on a sunken note. */
+.ready-empty {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	padding: var(--cc-space-3) var(--cc-space-4);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
+}
+
 .page > .note,
 .list-layout .note {
 	font-size: var(--cc-text-sm);
@@ -1017,6 +1453,11 @@ a:any-link:hover {
 .saved-lines .what {
 	display: grid;
 	min-width: 0;
+}
+
+.saved-lines .line-note {
+	color: var(--cc-text-muted);
+	overflow-wrap: anywhere;
 }
 
 .saved-lines .amount {

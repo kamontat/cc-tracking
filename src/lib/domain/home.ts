@@ -2,6 +2,7 @@ import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { compareDates, daysBetween } from "#lib/domain/date";
 import { ledgerUrgency, nextBill } from "#lib/domain/ledger";
+import { plannedHorizon } from "#lib/domain/pay";
 import { listTotal } from "#lib/domain/purchase-list";
 import { type GroupRoom, groupRoom } from "#lib/domain/room";
 import type { Settings } from "#lib/domain/settings";
@@ -9,6 +10,7 @@ import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	CardLedger,
+	CardPayment,
 	LimitGroup,
 	PlainDate,
 	PurchaseList,
@@ -109,12 +111,17 @@ export type NeedsItem =
 			dueDate: PlainDate;
 			days: number;
 	  }
+	| { kind: "planned"; payment: CardPayment; card: Card | undefined }
 	| { kind: "draft"; list: PurchaseList; total: number };
 
 const byDateThenId = (a: PurchaseList, b: PurchaseList): number =>
 	compareDates(a.date, b.date) || byId(a, b);
 
-export function needsYou(data: RoomData, today: PlainDate): NeedsItem[] {
+export function needsYou(
+	data: RoomData,
+	today: PlainDate,
+	planned: CardPayment[] = [],
+): NeedsItem[] {
 	const ofStatus = (status: PurchaseList["status"]) =>
 		data.lists.filter((l) => l.status === status).sort(byDateThenId);
 
@@ -134,11 +141,27 @@ export function needsYou(data: RoomData, today: PlainDate): NeedsItem[] {
 	}
 	overdue.sort((a, b) => b.days - a.days || byId(a.card, b.card));
 
+	const horizon = plannedHorizon(today);
+	const plannedItem = (payment: CardPayment): NeedsItem => ({
+		kind: "planned",
+		payment,
+		card: data.cards.find((c) => c.id === payment.cardId),
+	});
+	const dueSoon = planned
+		.filter((p) => p.status === "planned" && compareDates(p.date, horizon) <= 0)
+		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b));
+	const late = dueSoon.filter((p) => compareDates(p.date, today) <= 0);
+	const soon = dueSoon.filter((p) => compareDates(p.date, today) > 0);
+
+	// Money at risk first (DD-62): overdue bills, late plans, waiting lists, plans in the next
+	// three days, then drafts.
 	return [
+		...overdue,
+		...late.map(plannedItem),
 		...ofStatus("sent").map(
 			(list): NeedsItem => ({ kind: "waiting", list, total: listTotal(list) }),
 		),
-		...overdue,
+		...soon.map(plannedItem),
 		...ofStatus("draft").map(
 			(list): NeedsItem => ({ kind: "draft", list, total: listTotal(list) }),
 		),

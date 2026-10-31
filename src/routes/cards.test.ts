@@ -236,6 +236,32 @@ test("shows the limit groups with what each has used", async () => {
 	expect(section?.counts).toEqual({ pool: 1 });
 });
 
+test("a group's usage counts what sent lists hold, as Home's room does", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({ id: "pool", name: "KBank", limit: 500_000 });
+	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" });
+	await repo.savePurchase({
+		id: "p1",
+		cardId: sampleCard.id,
+		date: today(),
+		amount: 120_000,
+		note: "fuel",
+	});
+	await repo.savePurchaseList({
+		id: "w1",
+		date: today(),
+		status: "sent",
+		sentAt: "2026-10-30T03:00:00.000Z",
+		lines: [{ cardId: sampleCard.id, amount: 30_000 }],
+	});
+	const root = mount();
+	renderCardsPage(repo, root);
+	await settle();
+	expect(root.querySelector("cc-limit-group-table")?.usage).toEqual({
+		pool: 150_000,
+	});
+});
+
 test("saves a new limit group", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();

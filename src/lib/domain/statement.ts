@@ -1,10 +1,5 @@
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import {
-	addPeriods,
-	compareDates,
-	comparePeriods,
-	daysBetween,
-} from "#lib/domain/date";
+import { addPeriods, compareDates } from "#lib/domain/date";
 import { sumAmounts } from "#lib/domain/money";
 import { partsOf } from "#lib/domain/payment";
 import type {
@@ -15,10 +10,6 @@ import type {
 	Statement,
 	StatementPayment,
 } from "#lib/domain/types";
-
-export type Urgency = "overdue" | "soon" | "open" | "future";
-
-const DUE_SOON_DAYS = 7;
 
 export function buildStatement(
 	card: Card,
@@ -65,50 +56,4 @@ export function recentPeriods(
 ): Period[] {
 	const start = openPeriod(card, today);
 	return Array.from({ length: count }, (_, index) => addPeriods(start, -index));
-}
-
-/**
- * The statement needing attention: the oldest closed statement that is still unpaid,
- * or the open period when every closed statement is settled.
- */
-export function nextActionable(
-	card: Card,
-	purchases: Purchase[],
-	payments: StatementPayment[],
-	today: PlainDate,
-): Statement {
-	const paymentFor = (period: Period): StatementPayment | null =>
-		payments.find((p) => p.cardId === card.id && p.period === period) ?? null;
-
-	const open = openPeriod(card, today);
-	const earliest = purchases
-		.filter((p) => p.cardId === card.id)
-		.map((p) => periodOfPurchase(card.cycle, p.date))
-		.sort(comparePeriods)[0];
-
-	// Walk from the earliest period that could owe money up to the open one.
-	let period = earliest && comparePeriods(earliest, open) < 0 ? earliest : open;
-	while (comparePeriods(period, open) < 0) {
-		const statement = buildStatement(
-			card,
-			period,
-			purchases,
-			paymentFor(period),
-		);
-		if (!statement.paid && statement.total > 0) return statement;
-		period = addPeriods(period, 1);
-	}
-	return buildStatement(card, open, purchases, paymentFor(open));
-}
-
-export function urgencyOf(statement: Statement, today: PlainDate): Urgency {
-	if (compareDates(today, statement.closeDate) <= 0) return "future";
-	if (statement.paid) return "open";
-	// A period nobody spent on owes nothing, so no date can make it late. `nextActionable`
-	// above already applies this rule when it picks what needs attention, which is why the
-	// dashboard skipped these while the card page still drew them overdue.
-	if (statement.total <= 0) return "open";
-	const remaining = daysBetween(today, statement.dueDate);
-	if (remaining < 0) return "overdue";
-	return remaining <= DUE_SOON_DAYS ? "soon" : "open";
 }

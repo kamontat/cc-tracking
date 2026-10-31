@@ -11,6 +11,7 @@ import {
 	formatDate,
 	headerDate,
 	isValidDate,
+	monthName,
 	parseDate,
 	periodOf,
 	periodParts,
@@ -189,5 +190,13 @@ describe("headerDate", () => {
 		expect(
 			week.map((date) => headerDate(date, "th", false).split(",")[0]),
 		).toEqual(["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."]);
+	});
+});
+
+describe("monthName", () => {
+	test("names the month in full, in each language", () => {
+		expect(monthName("2026-10-31", "en")).toBe("October");
+		expect(monthName("2026-01-01", "th")).toBe("มกราคม");
+		expect(monthName("2026-12-05", "th")).toBe("ธันวาคม");
 	});
 });

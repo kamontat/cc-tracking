@@ -3,15 +3,15 @@ import "../styles/tokens.css";
 import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-needs-you";
-import "#components/cc-ready-list";
-import { html, nothing, render } from "lit";
+import "#components/cc-ready-panel";
+import { html, render } from "lit";
 import { canPurchase } from "#lib/domain/card";
 import { today } from "#lib/domain/date";
 import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home";
 import { unassignedCards } from "#lib/domain/limit";
+import { plannedOf } from "#lib/domain/pay";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { newListAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
@@ -21,27 +21,19 @@ export type HomeOptions = {
 	clock?: () => Date;
 	/** How often the page re-reads the clock, so a tab left open past midnight moves on. */
 	tickMs?: number;
-	/** Opens another page; `location.assign` unless a test records it instead. */
-	navigate?: (url: string) => void;
 };
 
 /**
- * Renders Home into `root`, wiring it to `repo`: what needs the reader first, then the cards
- * ready to use, which the reader ticks to start a purchase list.
+ * Renders Home into `root`, wiring it to `repo`: what needs the reader first, then a short
+ * *Ready to use* that leads to the new-list picker (DD-103).
  */
 export function renderHomePage(
 	repo: Repository,
 	root: HTMLElement,
-	{
-		clock = () => new Date(),
-		tickMs = 60_000,
-		navigate = (url) => location.assign(url),
-	}: HomeOptions = {},
+	{ clock = () => new Date(), tickMs = 60_000 }: HomeOptions = {},
 ): void {
 	let now = today(clock());
 	let data: MoneyData | null = null;
-	// Tap order, which is the order the list page opens its lines in.
-	let selected: string[] = [];
 
 	const state = createPageState({
 		fetch: async () => {
@@ -50,36 +42,6 @@ export function renderHomePage(
 		fallbackKey: "home.error.read",
 		paint: () => paint(),
 	});
-
-	const onToggle = (event: CustomEvent<{ cardId: string }>) => {
-		const { cardId } = event.detail;
-		selected = selected.includes(cardId)
-			? selected.filter((id) => id !== cardId)
-			: [...selected, cardId];
-		paint();
-	};
-
-	const clear = () => {
-		selected = [];
-		paint();
-	};
-
-	const selectionBar = () => {
-		if (selected.length === 0) return nothing;
-		return html`
-			<div class="action-bar" data-testid="selection">
-				<b>${
-					selected.length === 1
-						? t("home.selected.one")
-						: t("home.selected.many", { count: selected.length })
-				}</b>
-				<div class="action-bar__actions">
-					<button data-variant="quiet" data-action="clear" @click=${clear}>${t("list.clear")}</button>
-					<button data-action="enter-amounts" @click=${() => navigate(newListAddress(selected))}>${t("home.enterAmounts")} ›</button>
-				</div>
-			</div>
-		`;
-	};
 
 	const paint = () => {
 		let rows: ReadyRow[] = [];
@@ -91,28 +53,18 @@ export function renderHomePage(
 				canPurchase(card, settings),
 			).length;
 		}
-		// A card that is no longer ready (archived, moved, its group gone) drops out of the pick.
-		const ready = new Set(rows.map((row) => row.card.id));
-		if (data) selected = selected.filter((id) => ready.has(id));
-		// The shell hides the floating Payment button while the selection bar shows, so it never
-		// sits over Enter amounts.
-		root.ownerDocument.documentElement.toggleAttribute(
-			"data-selecting",
-			selected.length > 0,
-		);
 		render(
 			html`
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<cc-needs-you .items=${data ? needsYou(data, now) : []}></cc-needs-you>
-				<cc-ready-list
+				<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
+					.cards=${data?.cards ?? []} .groups=${data?.groups ?? []} .today=${now}></cc-needs-you>
+				<cc-ready-panel
 					.rows=${rows}
-					.selected=${selected}
 					.locations=${data?.settings.purchaseLocations ?? []}
+					.groups=${data?.groups ?? []}
 					.today=${now}
 					.unassigned=${unassigned}
-					@toggle=${onToggle}
-				></cc-ready-list>
-				${selectionBar()}
+				></cc-ready-panel>
 			`,
 			root,
 		);

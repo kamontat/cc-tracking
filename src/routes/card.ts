@@ -5,35 +5,31 @@ import "#components/cc-card-summary";
 import "#components/cc-error-banner";
 import "#components/cc-statement-list";
 import { html, nothing, render } from "lit";
-import type { PaymentDetail } from "#components/cc-payment-form";
 import type { QuickAddDetail } from "#components/cc-quick-add";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { compareDates, displayDate, today } from "#lib/domain/date";
-import { groupUsage, outstandingOf, spendableRows } from "#lib/domain/limit";
+import { roomFor } from "#lib/domain/home";
+import { nextBill } from "#lib/domain/ledger";
+import type { SpendRow } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
 import { cardOwnerOf, groupLabel } from "#lib/domain/owner";
-import { removePart } from "#lib/domain/payment";
-import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
-import {
-	buildStatement,
-	nextActionable,
-	recentPeriods,
-} from "#lib/domain/statement";
+import { DEFAULT_SETTINGS } from "#lib/domain/settings";
+import { openPeriod, recentPeriods } from "#lib/domain/statement";
 import type {
 	Card,
+	LedgerStatement,
 	LimitGroup,
 	Purchase,
-	Statement,
-	StatementPayment,
 } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
+import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
-import { paymentDialog, savePart } from "#lib/ui/payment-dialog";
 import {
 	addPurchaseButton,
 	purchaseDialog,
@@ -51,14 +47,9 @@ export function renderCardPage(
 	const now = today();
 	let card: Card | null = null;
 	let purchases: Purchase[] = [];
-	let payments: StatementPayment[] = [];
-	// Every card, group, purchase and payment, not just this card's: a limit group is shared,
-	// so what this card has left to spend depends on what its siblings have spent too.
-	let allCards: Card[] = [];
-	let groups: LimitGroup[] = [];
-	let allPurchases: Purchase[] = [];
-	let allPayments: StatementPayment[] = [];
-	let settings: Settings = DEFAULT_SETTINGS;
+	// Every card's ledger, not just this card's: a limit group is shared, so the room this card
+	// has to spend depends on what its siblings owe too.
+	let data: MoneyData | null = null;
 	let shown = PAGE_SIZE;
 	// The period a purchase landed on, not a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language (same as on the dashboard).
@@ -72,10 +63,6 @@ export function renderCardPage(
 	let editing: Purchase | null = null;
 	// Whether the open dialog has tried a save yet, so an older page error stays out of it.
 	let addSubmitted = false;
-	// The period the payment dialog is open for, or null when it is closed.
-	let paying: string | null = null;
-	let paySubmitted = false;
-
 	const state = createPageState({
 		fetch: async () => {
 			if (!cardId) {
@@ -85,26 +72,18 @@ export function renderCardPage(
 			if (!card) {
 				throw new MessageError("card.error.notFound", { id: cardId });
 			}
-			allCards = await repo.listCards();
-			groups = await repo.listLimitGroups();
-			settings = await repo.getSettings();
-			allPurchases = (
-				await Promise.all(allCards.map((entry) => repo.listPurchases(entry.id)))
-			).flat();
-			allPayments = (
-				await Promise.all(allCards.map((entry) => repo.listPayments(entry.id)))
-			).flat();
-			const id = card.id;
-			purchases = allPurchases.filter((entry) => entry.cardId === id);
-			payments = allPayments.filter((entry) => entry.cardId === id);
+			data = await loadMoneyData(repo, now);
+			purchases = data.purchases.filter((entry) => entry.cardId === cardId);
 		},
 		fallbackKey: "card.error.read",
 		paint: () => paint(),
 	});
 
-	const statements = (): Statement[] => {
-		if (!card) return [];
+	const statements = (): LedgerStatement[] => {
+		if (!card || !data) return [];
 		const current = card;
+		const ledger = data.ledgers.get(current.id);
+		const open = openPeriod(current, now);
 		// Counted back from the latest purchase when one is dated past today, so a purchase
 		// entered ahead still has a statement on the page to edit or delete it from.
 		const latest = purchases.reduce(
@@ -112,56 +91,22 @@ export function renderCardPage(
 				compareDates(purchase.date, date) > 0 ? purchase.date : date,
 			now,
 		);
-		return recentPeriods(current, latest, shown).map((period) =>
-			buildStatement(
-				current,
-				period,
-				purchases,
-				payments.find((payment) => payment.period === period) ?? null,
-			),
+		return recentPeriods(current, latest, shown).map(
+			(period): LedgerStatement =>
+				ledger?.statements.find((entry) => entry.period === period) ?? {
+					cardId: current.id,
+					period,
+					closeDate: closeDateOf(current.cycle, period),
+					dueDate: dueDateOf(current.cycle, period),
+					purchases: [],
+					total: 0,
+					paidAmount: 0,
+					remaining: 0,
+					paid: false,
+					open: period === open,
+				},
 		);
 	};
-
-	const statementFor = (period: string): Statement | null =>
-		statements().find((s) => s.period === period) ?? null;
-
-	// Mark paid only opens the payment dialog; the payment is recorded once it is submitted.
-	const onMarkPaid = (
-		event: CustomEvent<{ cardId: string; period: string }>,
-	) => {
-		paying = event.detail.period;
-		paySubmitted = false;
-		paint();
-	};
-
-	const closePay = () => {
-		paying = null;
-		paint();
-	};
-
-	// Closes the dialog only once the payment is stored, so a failed save keeps the reader's typing.
-	const onPay = (event: CustomEvent<PaymentDetail>) => {
-		paySubmitted = true;
-		return state.guard(async () => {
-			const statement = statementFor(event.detail.period);
-			if (!statement) return;
-			await savePart(repo, statement, event.detail);
-			paying = null;
-		}, "card.error.markPaid");
-	};
-
-	const onUnmarkPaid = (
-		event: CustomEvent<{ cardId: string; period: string; index: number }>,
-	) =>
-		state.guard(async () => {
-			const { cardId, period, index } = event.detail;
-			const statement = statementFor(period);
-			if (!statement?.payment) return;
-			const left = removePart(statement.payment, index, statement.total);
-			await (left
-				? repo.savePayment(left)
-				: repo.deletePayment(cardId, period));
-		}, "card.error.unmarkPaid");
 
 	const onDeletePurchase = (
 		event: CustomEvent<{ cardId: string; purchaseId: string }>,
@@ -171,12 +116,30 @@ export function renderCardPage(
 			"card.error.deletePurchase",
 		);
 
-	const spendable = () =>
-		spendableRows(allCards, groups, allPurchases, allPayments, now, settings);
+	/** This card's row for the purchase dialog: the room its group has left to spend. */
+	const spendable = (): SpendRow[] => {
+		if (!card || !data) return [];
+		const room = roomFor(card, data);
+		if (!room) return [];
+		const period = openPeriod(card, now);
+		return [
+			{
+				card,
+				group: room.group,
+				used: room.used,
+				available: room.room,
+				closeDate: closeDateOf(card.cycle, period),
+				dueDate: dueDateOf(card.cycle, period),
+				sharedWith: room.sharedWith,
+			},
+		];
+	};
 
 	/** Whether this card takes new purchases: not archived, and kept somewhere that spends. */
 	const purchasable = (): boolean =>
-		card !== null && !card.archived && canPurchase(card, settings);
+		card !== null &&
+		!card.archived &&
+		canPurchase(card, data?.settings ?? DEFAULT_SETTINGS);
 
 	const openAdd = () => {
 		adding = true;
@@ -262,23 +225,18 @@ export function renderCardPage(
 	};
 
 	const groupOf = (current: Card): LimitGroup | null =>
-		groups.find(({ id }) => id === current.limitGroupId) ?? null;
+		data?.groups.find(({ id }) => id === current.limitGroupId) ?? null;
 
 	const summary = (current: Card) => {
-		const group = groupOf(current);
+		const ledger = data?.ledgers.get(current.id);
 		return html`
 			<cc-card-summary
-				.group=${group}
-				.used=${group ? groupUsage(group, allCards, allPurchases, allPayments, now) : 0}
-				.sharedWith=${
-					group
-						? allCards.filter((entry) => entry.limitGroupId === group.id)
-								.length - 1
-						: 0
-				}
-				.owed=${outstandingOf(current, purchases, payments, now)}
-				.next=${nextActionable(current, purchases, payments, now)}
+				.room=${data ? roomFor(current, data) : null}
+				.owed=${ledger?.owed ?? 0}
+				.credit=${ledger?.credit ?? 0}
+				.next=${ledger ? nextBill(ledger, now) : null}
 				.today=${now}
+				payCardId=${current.id}
 			></cc-card-summary>
 		`;
 	};
@@ -301,7 +259,8 @@ export function renderCardPage(
 				${
 					// An archived card takes no purchases wherever it is kept, so naming the place as
 					// the reason would send the reader to the wrong setting.
-					!current.archived && !canPurchase(current, settings)
+					!current.archived &&
+					!canPurchase(current, data?.settings ?? DEFAULT_SETTINGS)
 						? html`<p class="note">${t("card.noPurchases", {
 								location: locationText(current.location),
 							})}</p>`
@@ -310,19 +269,6 @@ export function renderCardPage(
 				<a class="edit" href=${`/cards?edit=${encodeURIComponent(current.id)}`}>${t("card.edit")}</a>
 			</article>
 		`;
-	};
-
-	const payingDialog = () => {
-		const statement = paying ? statementFor(paying) : null;
-		if (!statement) return nothing;
-		return paymentDialog({
-			statement,
-			today: now,
-			error: paySubmitted ? state.error : "",
-			onPay,
-			onClose: closePay,
-			onRetry: () => state.load(),
-		});
 	};
 
 	const paint = () =>
@@ -336,11 +282,12 @@ export function renderCardPage(
 							<div class="page-title" row>
 								<div class="page-heading">
 									<h1>
-										${card.name}
+										${cardMini(card, data?.groups ?? [], true)}
+										${cardPanelLabel(card.id, card)}
 										${card.archived ? html`<span class="badge">${t("cards.archived")}</span>` : nothing}
 										${card.supplementary ? html`<span class="badge">${t("form.supplementary")}</span>` : nothing}
 									</h1>
-									<p class="meta"><span class="mono">${card.id}</span> · ••••${card.last4} · ${locationText(card.location)} · ${describeCycleText(card.cycle)}</p>
+									<p class="meta">${locationText(card.location)} · ${describeCycleText(card.cycle)}</p>
 									${card.comment ? html`<p class="comment">${card.comment}</p>` : nothing}
 								</div>
 								${purchasable() ? addPurchaseButton(openAdd) : nothing}
@@ -355,8 +302,6 @@ export function renderCardPage(
 									<cc-statement-list
 										.statements=${statements()}
 										.today=${now}
-										@mark-paid=${onMarkPaid}
-										@unmark-paid=${onUnmarkPaid}
 										@edit-purchase=${onEditPurchase}
 										@delete-purchase=${onDeletePurchase}
 									></cc-statement-list>
@@ -381,7 +326,6 @@ export function renderCardPage(
 										})
 									: nothing
 							}
-							${payingDialog()}
 						`
 						: html`<p><a href="/cards">${t("card.back")}</a></p>`
 				}

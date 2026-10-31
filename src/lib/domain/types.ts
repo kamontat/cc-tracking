@@ -109,6 +109,8 @@ export type CardPayment = {
 	amount: number;
 	status: PaymentStatus;
 	period?: Period;
+	/** What the payer wrote about it, e.g. which account it came from; absent when none. */
+	note?: string;
 };
 
 /** Close and due dates kept once money first reached a statement. */
@@ -148,6 +150,8 @@ export type ListLine = {
 	made?: boolean;
 	/** Satang really spent, when it differs from the plan. */
 	actual?: number;
+	/** What the purchase is for, trimmed; absent when blank. Becomes the purchase's note. */
+	note?: string;
 };
 
 export type PurchaseList = {

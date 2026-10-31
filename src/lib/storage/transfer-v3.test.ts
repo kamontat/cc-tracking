@@ -10,13 +10,16 @@ import {
 	samplePurchaseList,
 	sampleStatementDates,
 } from "#lib/storage/contract";
+import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
 import { InMemoryRepository } from "#lib/storage/repository";
 import {
 	BACKUP_V3,
 	type BackupV3,
+	countRecordsV3,
 	exportBackupV3,
 	importBackupV3,
 	parseAnyBackup,
+	replaceWithBackupV3,
 } from "#lib/storage/transfer-v3";
 
 const NOW = new Date("2026-10-30T00:00:00.000Z");
@@ -87,6 +90,48 @@ describe("backup version 3", () => {
 		expect(await exportBackupV3(again, NOW)).toEqual(out);
 	});
 
+	test("a payment's note survives export and import; a payment without one stays without", async () => {
+		const noted = sampleCardPayment({ id: "n1", note: "From savings" });
+		const plain = sampleCardPayment({ id: "n2" });
+		const repo = new InMemoryRepository();
+		await importBackupV3(
+			repo,
+			parseAnyBackup(v3({ payments: [noted, plain] })),
+		);
+		const out = await exportBackupV3(repo, NOW);
+		const byId = new Map(out.payments.map((p) => [p.id, p]));
+		expect(byId.get("n1")?.note).toBe("From savings");
+		expect(byId.get("n2") && "note" in byId.get("n2")!).toBe(false);
+		const again = new InMemoryRepository();
+		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)));
+		expect(await exportBackupV3(again, NOW)).toEqual(out);
+	});
+
+	test("notes are trimmed on import, and a blank note is dropped (DC-07)", () => {
+		const parsed = parseAnyBackup(
+			v3({
+				payments: [
+					sampleCardPayment({ id: "n1", note: "  From savings  " }),
+					sampleCardPayment({ id: "n2", note: "   " }),
+				],
+				lists: [
+					samplePurchaseList({
+						lines: [
+							{ cardId: "kbank", amount: 100, note: " gas " },
+							{ cardId: "kbank", amount: 200, note: "  " },
+						],
+					}),
+				],
+			}),
+		);
+		const [noted, blank] = parsed.payments;
+		expect(noted?.note).toBe("From savings");
+		expect(blank && "note" in blank).toBe(false);
+		const [gas, empty] = parsed.lists[0]?.lines ?? [];
+		expect(gas?.note).toBe("gas");
+		expect(empty && "note" in empty).toBe(false);
+	});
+
 	test("a version 2 file converts", () => {
 		const parsed: BackupV3 = parseAnyBackup(v2());
 		expect(parsed.version).toBe(3);
@@ -146,6 +191,120 @@ describe("backup version 3", () => {
 		expect(parsed.payments.map((p) => p.amount)).toEqual([4_000, 6_000]);
 	});
 
+	test("export reads default locations from settings while none are stored", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		const out = await exportBackupV3(repo, NOW);
+		expect(out.locations.map((l) => [l.id, l.takesPurchases])).toEqual([
+			["bangkok", true],
+			["phichit", false],
+			["krabi", false],
+		]);
+	});
+
+	test("export takes takesPurchases from settings, not stale stored records", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveLocation(
+			sampleLocation({ id: "krabi", takesPurchases: true }),
+		);
+		await repo.saveLocation(
+			sampleLocation({ id: "bangkok", takesPurchases: false }),
+		);
+		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		const out = await exportBackupV3(repo, NOW);
+		expect(out.locations.map((l) => [l.id, l.takesPurchases]).sort()).toEqual([
+			["bangkok", true],
+			["krabi", false],
+		]);
+	});
+
+	test("a file whose places take no purchases restores an empty list", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		await importBackupV3(
+			repo,
+			parseAnyBackup(
+				v3({
+					locations: [
+						sampleLocation({ id: "krabi", takesPurchases: false }),
+						sampleLocation({ id: "chiang-mai", takesPurchases: true }),
+					],
+				}),
+			),
+		);
+		expect((await repo.getSettings()).purchaseLocations).toEqual([]);
+		const out = await exportBackupV3(repo, NOW);
+		expect(out.locations.every((l) => !l.takesPurchases)).toBe(true);
+		const again = new InMemoryRepository();
+		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)));
+		expect((await again.getSettings()).purchaseLocations).toEqual([]);
+	});
+
+	test("a version 2 file with settings sets the purchase places on restore", async () => {
+		const repo = new InMemoryRepository();
+		await importBackupV3(
+			repo,
+			parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })),
+		);
+		expect((await repo.getSettings()).purchaseLocations).toEqual(["phichit"]);
+	});
+
+	test("purchase places skip locations that are unknown or take no purchases", async () => {
+		const repo = new InMemoryRepository();
+		await importBackupV3(
+			repo,
+			parseAnyBackup(
+				v3({
+					locations: [
+						sampleLocation({ id: "krabi", takesPurchases: false }),
+						sampleLocation({ id: "bangkok", takesPurchases: true }),
+						sampleLocation({ id: "chiang-mai", takesPurchases: true }),
+					],
+				}),
+			),
+		);
+		expect((await repo.getSettings()).purchaseLocations).toEqual(["bangkok"]);
+	});
+
+	test("restoring a version 2 file over converted data leaves no stale m: parts", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveCard(sampleCard());
+		for (const index of [0, 1, 2])
+			await repo.saveCardPayment(
+				sampleCardPayment({
+					id: `m:kbank:2026-09:${index}`,
+					period: "2026-09",
+				}),
+			);
+		await repo.saveCardPayment(sampleCardPayment({ id: "keep" }));
+		await importBackupV3(repo, parseAnyBackup(v2()));
+		const ids = (await repo.listCardPayments("kbank")).map((p) => p.id).sort();
+		expect(ids).toEqual(["keep", "m:kbank:2026-09:0"]);
+	});
+
+	test("replace sets the payments marker so startup does not convert again", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveCard(sampleCard({ id: "old" }));
+		const items = new Map<string, string>();
+		await replaceWithBackupV3(repo, parseAnyBackup(v3()), {
+			setItem: (key, value) => void items.set(key, value),
+		});
+		expect(items.get(PAYMENTS_MIGRATION_KEY)).toBe("done");
+		expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank"]);
+	});
+
+	test("counts include lists", async () => {
+		const repo = new InMemoryRepository();
+		await importBackupV3(repo, parseAnyBackup(v3()));
+		expect(await countRecordsV3(repo)).toEqual({
+			cards: 1,
+			purchases: 1,
+			payments: 1,
+			limitGroups: 1,
+			lists: 1,
+		});
+	});
+
 	test("a version 1 file is rejected", () => {
 		rejects(JSON.stringify({ version: 1 }), "backup.version");
 		rejects(v3({ version: 4 }), "backup.version");
@@ -185,6 +344,11 @@ describe("backup version 3", () => {
 		[
 			"a bad payment status",
 			v3({ payments: [sampleCardPayment({ status: "late" as never })] }),
+			"backup.cardPayment",
+		],
+		[
+			"a payment note that is not text",
+			v3({ payments: [sampleCardPayment({ note: 12 as never })] }),
 			"backup.cardPayment",
 		],
 		[
@@ -270,6 +434,8 @@ describe("backup version 3", () => {
 		["a text actual", { actual: "100" }, "backup.problem.badLineActual"],
 		["a text made", { made: "yes" }, "backup.problem.badLineMade"],
 		["a numeric made", { made: 1 }, "backup.problem.badLineMade"],
+		["a numeric note", { note: 5 }, "backup.problem.badNote"],
+		["a null note", { note: null }, "backup.problem.badNote"],
 	];
 	for (const [name, patch, problem] of badLines) {
 		test(`rejects a list line with ${name}, naming the problem`, () => {
@@ -289,12 +455,17 @@ describe("backup version 3", () => {
 	test("accepts list lines with a positive actual and a boolean made", () => {
 		const lines = [
 			{ cardId: "kbank", amount: 1_000, made: true, actual: 900 },
-			{ cardId: "kbank", amount: 2_000, made: false },
+			{ cardId: "kbank", amount: 2_000, made: false, note: "next week" },
+			{ cardId: "kbank", amount: 3_000, note: "" },
 		];
 		const parsed = parseAnyBackup(
 			v3({ lists: [samplePurchaseList({ lines })] }),
 		);
-		expect(parsed.lists[0]?.lines).toEqual(lines);
+		// A blank note is accepted, then dropped (DC-07).
+		expect(parsed.lists[0]?.lines).toEqual([
+			...lines.slice(0, 2),
+			{ cardId: "kbank", amount: 3_000 },
+		]);
 	});
 
 	test("the rejection names which record is wrong", () => {
@@ -317,7 +488,7 @@ describe("backup version 3", () => {
 		);
 		const out = await exportBackupV3(repo, NOW);
 		expect(out.cards).toEqual([]);
-		expect(out.locations).toEqual([]);
+		expect(await repo.listLocations()).toEqual([]);
 		expect(out.limitGroups).toEqual([]);
 	});
 });

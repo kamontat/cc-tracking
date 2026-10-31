@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import "#components/cc-statement-list";
 import { buildStatement } from "#lib/domain/statement";
-import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
+import type { Card, LedgerStatement, Purchase } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
 const card: Card = {
@@ -30,20 +30,35 @@ const purchases: Purchase[] = [
 	},
 ];
 
-const payment: StatementPayment = {
-	cardId: "kbank",
-	period: "2026-08",
-	paidAt: "2026-09-01",
-	closeDate: "2026-08-18",
-	dueDate: "2026-09-02",
+/** A ledger statement for `period`, `paidAmount` of it settled. Open when it closes after `today`. */
+const stmt = (
+	period: string,
+	list: Purchase[],
+	paidAmount = 0,
+	open = false,
+): LedgerStatement => {
+	const built = buildStatement(card, period, list);
+	return {
+		cardId: built.cardId,
+		period,
+		closeDate: built.closeDate,
+		dueDate: built.dueDate,
+		purchases: built.purchases,
+		total: built.total,
+		paidAmount,
+		remaining: built.total - paidAmount,
+		paid: paidAmount > 0 && built.total - paidAmount === 0,
+		open,
+	};
 };
 
 const mount = async () => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-statement-list");
 	element.statements = [
-		buildStatement(card, "2026-09", purchases),
-		buildStatement(card, "2026-08", purchases, payment),
+		stmt("2026-09", purchases),
+		// Kept whole although empty: it is marked open, as the period purchases land on is.
+		stmt("2026-08", [], 0, true),
 	];
 	element.today = "2026-09-25";
 	document.body.append(element);
@@ -89,143 +104,26 @@ test("names the period, the dates, and the total on the collapsed line", async (
 	expect(summary).toContain("฿0.00");
 });
 
-test("shows a paid statement as paid, with its payment date", async () => {
-	const element = await mount();
-	expect(element.shadowRoot?.textContent).toContain("Paid 01 Sep 2026");
-});
-
-test("emits mark-paid for an unpaid statement", async () => {
-	const element = await mount();
-	let detail: { cardId: string; period: string } | undefined;
-	element.addEventListener("mark-paid", (event) => {
-		detail = (event as CustomEvent<{ cardId: string; period: string }>).detail;
-	});
-	element.shadowRoot
-		?.querySelector<HTMLButtonElement>("[data-action='mark-paid']")
-		?.click();
-	expect(detail).toEqual({ cardId: "kbank", period: "2026-09" });
-});
-
-test("offers no mark-paid on the still-open statement, but keeps it on a closed unpaid one", async () => {
-	setLocale("en");
-	document.body.innerHTML = "";
-	const element = document.createElement("cc-statement-list");
-	element.statements = [
-		// Closes 18 Sep; "today" below is before that, so this period is still open.
-		buildStatement(card, "2026-09", purchases),
-		// Closes 18 Aug, long since past, unpaid -- and owing something, since a closed month
-		// with nothing on it folds into a quiet line with no button at all.
-		buildStatement(card, "2026-08", [
-			...purchases,
-			{ id: "c", cardId: "kbank", date: "2026-08-10", amount: 5_000, note: "" },
-		]),
-	];
-	element.today = "2026-09-10";
-	document.body.append(element);
-	await element.updateComplete;
-
-	const openArticle = [
-		...(element.shadowRoot?.querySelectorAll("article") ?? []),
-	].find((article) => article.getAttribute("data-urgency") === "future");
-	const closedArticle = [
-		...(element.shadowRoot?.querySelectorAll("article") ?? []),
-	].find((article) => article.getAttribute("data-urgency") !== "future");
-
-	expect(openArticle?.querySelector("[data-action='mark-paid']")).toBeNull();
-	expect(openArticle?.textContent).toContain("still open");
-	expect(
-		closedArticle?.querySelector("[data-action='mark-paid']"),
-	).not.toBeNull();
-});
-
-test("emits unmark-paid for a paid statement", async () => {
-	const element = await mount();
-	let detail: { cardId: string; period: string; index: number } | undefined;
-	element.addEventListener("unmark-paid", (event) => {
-		detail = (
-			event as CustomEvent<{ cardId: string; period: string; index: number }>
-		).detail;
-	});
-	element.shadowRoot
-		?.querySelector<HTMLButtonElement>("[data-action='unmark-paid']")
-		?.click();
-	expect(detail).toEqual({ cardId: "kbank", period: "2026-08", index: 0 });
-});
-
-const partlyPaid = () =>
-	buildStatement(card, "2026-09", purchases, {
-		cardId: "kbank",
-		period: "2026-09",
-		paidAt: "2026-09-30",
-		closeDate: "2026-09-18",
-		dueDate: "2026-10-03",
-		parts: [
-			{ paidAt: "2026-09-25", amount: 5_000 },
-			{ paidAt: "2026-09-30", amount: 10_000 },
-		],
-	});
-
-const mountPartlyPaid = async () => {
-	setLocale("en");
-	document.body.innerHTML = "";
-	const element = document.createElement("cc-statement-list");
-	element.statements = [partlyPaid()];
-	element.today = "2026-10-01";
-	document.body.append(element);
-	await element.updateComplete;
-	return element;
-};
-
-test("a partly paid statement shows what is left beside its total, and can still be paid", async () => {
-	const element = await mountPartlyPaid();
-	const total =
-		detailsFor(element, "2026-09").querySelector("summary .total")
-			?.textContent ?? "";
-	expect(total).toContain("Total ฿350.00");
-	expect(total).toContain("฿200.00 left");
+test("shows a settled statement as paid in full, and a part-paid one with what is paid and left", async () => {
+	const element = await mountStatements([
+		stmt("2026-09", purchases, 15_000),
+		stmt(
+			"2026-08",
+			[{ ...(purchases[0] as Purchase), date: "2026-08-10" }],
+			10_000,
+		),
+	]);
+	const text = element.shadowRoot?.textContent ?? "";
+	expect(text).toContain("Paid in full");
+	expect(text).toContain("Paid ฿150.00");
+	expect(text).toContain("฿200.00 left");
+	expect(text).not.toContain("Mark paid");
 	expect(
 		element.shadowRoot?.querySelector("[data-action='mark-paid']"),
-	).not.toBeNull();
-});
-
-test("lists payments in the purchase table, as amounts taken off the total", async () => {
-	const element = await mountPartlyPaid();
-	// One table, so payment amounts and buttons share the purchases' columns.
-	const tables = element.shadowRoot?.querySelectorAll("table") ?? [];
-	expect(tables).toHaveLength(1);
-	const rows = [...(tables[0]?.querySelectorAll("tr.payment") ?? [])];
-	expect(rows).toHaveLength(2);
-	const cells = (row: Element | undefined) =>
-		[...(row?.querySelectorAll("td") ?? [])].map(
-			(cell) => cell.textContent?.trim() ?? "",
-		);
-	expect(cells(rows[0]).slice(0, 3)).toEqual([
-		"25 Sep 2026",
-		"Payment",
-		"-฿50.00",
-	]);
-	expect(cells(rows[1])[2]).toBe("-฿100.00");
-});
-
-test("closes the table with what is still left to pay", async () => {
-	const element = await mountPartlyPaid();
-	const foot =
-		element.shadowRoot?.querySelector("table tfoot")?.textContent ?? "";
-	expect(foot).toContain("Left to pay");
-	expect(foot).toContain("฿200.00");
-});
-
-test("lists each partial payment with its own undo", async () => {
-	const element = await mountPartlyPaid();
-
-	let detail: { index: number } | undefined;
-	element.addEventListener("unmark-paid", (event) => {
-		detail = (event as CustomEvent<{ index: number }>).detail;
-	});
-	element.shadowRoot
-		?.querySelectorAll<HTMLButtonElement>("[data-action='unmark-paid']")[1]
-		?.click();
-	expect(detail?.index).toBe(1);
+	).toBeNull();
+	expect(
+		element.shadowRoot?.querySelector("[data-action='unmark-paid']"),
+	).toBeNull();
 });
 
 test("emits delete-purchase with the purchase id", async () => {
@@ -244,15 +142,11 @@ test("emits delete-purchase with the purchase id", async () => {
 test("renders its statement text and buttons in the chosen language", async () => {
 	setLocale("en");
 	const element = await mount();
-	expect(element.shadowRoot?.textContent).toContain("Mark paid");
-	expect(element.shadowRoot?.textContent).toContain("Unmark");
 	expect(element.shadowRoot?.textContent).toContain("Delete");
 	expect(element.shadowRoot?.textContent).toContain("Total");
 
 	setLocale("th");
 	await element.updateComplete;
-	expect(element.shadowRoot?.textContent).toContain("บันทึกว่าชำระแล้ว");
-	expect(element.shadowRoot?.textContent).toContain("ยกเลิกชำระ");
 	expect(element.shadowRoot?.textContent).toContain("ลบ");
 	expect(element.shadowRoot?.textContent).toContain("รวม");
 });
@@ -265,15 +159,10 @@ test("renders the destructive and secondary actions as their variants", async ()
 			'[data-action="delete-purchase"][data-variant="danger"]',
 		),
 	).not.toBeNull();
-	expect(
-		element.shadowRoot?.querySelector(
-			'[data-action="unmark-paid"][data-variant="quiet"]',
-		),
-	).not.toBeNull();
 });
 
 const mountStatements = async (
-	statements: ReturnType<typeof buildStatement>[],
+	statements: LedgerStatement[],
 	today = "2026-09-25",
 ) => {
 	setLocale("en");
@@ -289,13 +178,13 @@ const mountStatements = async (
 test("folds a run of closed, empty, unpaid months into one quiet line", async () => {
 	const element = await mountStatements([
 		// Open (closes 18 Oct, after today): kept whole even with nothing on it.
-		buildStatement(card, "2026-10", purchases),
-		buildStatement(card, "2026-09", purchases),
-		// Empty but paid: kept whole, so the payment can still be undone.
-		buildStatement(card, "2026-08", purchases, payment),
-		buildStatement(card, "2026-07", purchases),
-		buildStatement(card, "2026-06", purchases),
-		buildStatement(card, "2026-05", purchases),
+		stmt("2026-10", purchases, 0, true),
+		stmt("2026-09", purchases),
+		// Empty but with money on it: kept whole.
+		{ ...stmt("2026-08", []), paidAmount: 1_000, remaining: -1_000 },
+		stmt("2026-07", []),
+		stmt("2026-06", []),
+		stmt("2026-05", []),
 	]);
 	const shadow = element.shadowRoot;
 	const periods = [...(shadow?.querySelectorAll("article .period") ?? [])].map(
@@ -320,10 +209,10 @@ test("names a lone quiet month on its own, and breaks runs around a month with p
 		note: "tyres",
 	};
 	const element = await mountStatements([
-		buildStatement(card, "2026-08", [june]),
-		buildStatement(card, "2026-07", [june]),
-		buildStatement(card, "2026-06", [june]),
-		buildStatement(card, "2026-05", [june]),
+		stmt("2026-08", []),
+		stmt("2026-07", []),
+		stmt("2026-06", [june]),
+		stmt("2026-05", []),
 	]);
 	const quiet = [...(element.shadowRoot?.querySelectorAll(".quiet") ?? [])].map(
 		(node) => node.textContent?.trim(),
@@ -372,10 +261,7 @@ test("marks the statement still open today as the current one, and only that one
 	// 2026-09 closes on the 18th, so it is the open statement on the 10th.
 	element.today = "2026-09-10";
 	// A statement ahead of the open one, as a purchase dated into the future makes.
-	element.statements = [
-		buildStatement(card, "2026-10", purchases),
-		...element.statements,
-	];
+	element.statements = [stmt("2026-10", purchases), ...element.statements];
 	await element.updateComplete;
 
 	const current = [

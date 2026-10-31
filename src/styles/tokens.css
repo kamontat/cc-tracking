@@ -45,10 +45,11 @@
 	--cc-icon-size: 1.375rem;
 	--cc-icon-size-sm: 1.0625rem;
 	/* The four-tab bar measured 69px at 390px in English and Thai (no label wraps), before the
-	   bottom safe-area inset. The floating Payment button sits this far up, plus a gap. */
+	   bottom safe-area inset. The floating + New menu sits this far up, plus a gap. */
 	--cc-tabbar-height: 4.375rem;
-	/* The floating Payment button: the round button's diameter and the pill's height. */
-	--cc-fab-size: 3.125rem;
+	/* One height for the floating + New button (the round button's diameter, the pill's
+	   height) and the selection bars at the foot of a page, so the two read as one family. */
+	--cc-bar-height: 3.125rem;
 	--cc-fab-shadow: 0 8px 18px
 		color-mix(in oklab, var(--cc-accent) 40%, transparent);
 
@@ -58,6 +59,16 @@
 
 	/* The widest a modal dialog grows: room for the card form's two columns of labelled inputs. */
 	--cc-modal-max: 40rem;
+
+	/* The payment sheet's width from 900px, where it becomes a centred dialog; on a phone it is
+	   a bottom sheet the screen's full width. */
+	--cc-sheet-max: 32.5rem;
+
+	/* How the payment sheet arrives: it slides up from the bottom edge on a phone, and fades in
+	   from slightly smaller from 900px. None of it runs under prefers-reduced-motion. */
+	--cc-sheet-motion: 240ms;
+	--cc-sheet-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--cc-sheet-scale-from: 0.96;
 
 	/* The widest a page's content grows. */
 	--cc-page-width: 72rem;
