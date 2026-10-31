@@ -146,6 +146,20 @@ export class CcNeedsYou extends LitElement {
 						amount: formatAmount(item.remaining),
 					}),
 				};
+			case "planned":
+				return {
+					href: "/transactions",
+					icon: icons.clock,
+					title: t("home.planned", {
+						card: item.card
+							? cardLabelText(item.card.id, item.card)
+							: item.payment.cardId,
+						date: headerDate(item.payment.date, locale, false),
+					}),
+					detail: t("home.plannedDetail", {
+						amount: formatAmount(item.payment.amount),
+					}),
+				};
 			case "draft":
 				return {
 					href: listPageAddress(item.list),

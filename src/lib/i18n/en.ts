@@ -385,6 +385,8 @@ export const en = {
 	"home.overdue.many": "Bill for {card} is {days} days overdue",
 	"home.overdueDetail": "{amount} left · open the card",
 	"home.draft": "Draft list for {date}",
+	"home.planned": "Planned payment to {card} on {date}",
+	"home.plannedDetail": "{amount} · open Transactions",
 	"home.selected.one": "1 card selected",
 	"home.selected.many": "{count} cards selected",
 	"home.enterAmounts": "Enter amounts",

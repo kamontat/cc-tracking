@@ -1,6 +1,6 @@
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
-import { compareDates, daysBetween } from "#lib/domain/date";
+import { addDays, compareDates, daysBetween } from "#lib/domain/date";
 import { ledgerUrgency, nextBill } from "#lib/domain/ledger";
 import { listTotal } from "#lib/domain/purchase-list";
 import { type GroupRoom, groupRoom } from "#lib/domain/room";
@@ -9,6 +9,7 @@ import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	CardLedger,
+	CardPayment,
 	LimitGroup,
 	PlainDate,
 	PurchaseList,
@@ -109,12 +110,17 @@ export type NeedsItem =
 			dueDate: PlainDate;
 			days: number;
 	  }
+	| { kind: "planned"; payment: CardPayment; card: Card | undefined }
 	| { kind: "draft"; list: PurchaseList; total: number };
 
 const byDateThenId = (a: PurchaseList, b: PurchaseList): number =>
 	compareDates(a.date, b.date) || byId(a, b);
 
-export function needsYou(data: RoomData, today: PlainDate): NeedsItem[] {
+export function needsYou(
+	data: RoomData,
+	today: PlainDate,
+	planned: CardPayment[] = [],
+): NeedsItem[] {
 	const ofStatus = (status: PurchaseList["status"]) =>
 		data.lists.filter((l) => l.status === status).sort(byDateThenId);
 
@@ -134,11 +140,24 @@ export function needsYou(data: RoomData, today: PlainDate): NeedsItem[] {
 	}
 	overdue.sort((a, b) => b.days - a.days || byId(a.card, b.card));
 
+	const horizon = addDays(today, 3);
+	const soonPlanned = planned
+		.filter((p) => p.status === "planned" && compareDates(p.date, horizon) <= 0)
+		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b))
+		.map(
+			(payment): NeedsItem => ({
+				kind: "planned",
+				payment,
+				card: data.cards.find((c) => c.id === payment.cardId),
+			}),
+		);
+
 	return [
 		...ofStatus("sent").map(
 			(list): NeedsItem => ({ kind: "waiting", list, total: listTotal(list) }),
 		),
 		...overdue,
+		...soonPlanned,
 		...ofStatus("draft").map(
 			(list): NeedsItem => ({ kind: "draft", list, total: listTotal(list) }),
 		),

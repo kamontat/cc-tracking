@@ -388,6 +388,8 @@ export const th: Catalog = {
 	"home.overdue.many": "บิลของ {card} เลยกำหนด {days} วัน",
 	"home.overdueDetail": "ค้างชำระ {amount} · เปิดหน้าบัตร",
 	"home.draft": "ใบรายการซื้อฉบับร่างวันที่ {date}",
+	"home.planned": "การชำระที่วางแผนไว้ไปยัง {card} วันที่ {date}",
+	"home.plannedDetail": "{amount} · เปิดรายการเคลื่อนไหว",
 	"home.selected.one": "เลือกแล้ว 1 ใบ",
 	"home.selected.many": "เลือกแล้ว {count} ใบ",
 	"home.enterAmounts": "ใส่จำนวนเงิน",

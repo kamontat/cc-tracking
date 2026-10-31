@@ -1,9 +1,11 @@
 import type { DraftLine } from "#lib/domain/amount-warnings";
+import { compareDates } from "#lib/domain/date";
 import { parseAmount } from "#lib/domain/money";
 import type { GroupRoom } from "#lib/domain/room";
 import type {
 	Card,
 	CardLedger,
+	CardPayment,
 	ListLine,
 	PlainDate,
 	PurchaseList,
@@ -19,24 +21,36 @@ export function lineAmount(text: string): number | null {
 	}
 }
 
-/** One DraftLine per card that has a room and a ledger, in card order; planned is []. */
+/** One DraftLine per card that has a room and a ledger, in card order; planned holds group-mates' plans due by `date`. */
 export function draftLines(
 	cards: Card[],
 	amounts: Record<string, number>,
 	rooms: Map<string, GroupRoom>,
 	ledgers: Map<string, CardLedger>,
+	planned: CardPayment[] = [],
+	date?: PlainDate,
 ): DraftLine[] {
 	const lines: DraftLine[] = [];
 	for (const card of cards) {
 		const room = rooms.get(card.id);
 		const ledger = ledgers.get(card.id);
 		if (!room || !ledger) continue;
+		const groupCards = new Set(
+			cards
+				.filter((c) => c.limitGroupId === card.limitGroupId)
+				.map((c) => c.id),
+		);
 		lines.push({
 			card,
 			amount: amounts[card.id] ?? 0,
 			room,
 			ledger,
-			planned: [],
+			planned: planned.filter(
+				(p) =>
+					p.status === "planned" &&
+					groupCards.has(p.cardId) &&
+					(date === undefined || compareDates(p.date, date) <= 0),
+			),
 		});
 	}
 	return lines;

@@ -8,7 +8,7 @@ import {
 	sequentialIds,
 } from "#lib/domain/list-entry";
 import type { GroupRoom } from "#lib/domain/room";
-import type { Card, CardLedger } from "#lib/domain/types";
+import type { Card, CardLedger, CardPayment } from "#lib/domain/types";
 
 const mk = (id: string, limitGroupId = "g"): Card => ({
 	id,
@@ -40,6 +40,28 @@ describe("list entry", () => {
 		for (const bad of ["12.345", "-5", "abc", "0"]) {
 			expect(lineAmount(bad)).toBeNull();
 		}
+	});
+
+	test("a group-mate's plan dated by the list date lands in planned", () => {
+		const cards = [mk("a", "g"), mk("b", "g"), mk("c", "h")];
+		const rooms = new Map(cards.map((c) => [c.id, room("g", 1)]));
+		const ledgers = new Map(cards.map((c) => [c.id, empty]));
+		const plan = (id: string, cardId: string, date: string): CardPayment => ({
+			id,
+			cardId,
+			date,
+			amount: 100,
+			status: "planned",
+		});
+		const planned = [
+			plan("p1", "b", "2026-10-31"),
+			plan("p2", "b", "2026-11-09"),
+			plan("p3", "c", "2026-10-31"),
+		];
+		const lines = draftLines(cards, {}, rooms, ledgers, planned, "2026-11-01");
+		expect(lines[0]?.planned.map((p) => p.id)).toEqual(["p1"]);
+		expect(lines[1]?.planned.map((p) => p.id)).toEqual(["p1"]);
+		expect(lines[2]?.planned.map((p) => p.id)).toEqual(["p3"]);
 	});
 
 	test("room after counts the whole group on the list", () => {

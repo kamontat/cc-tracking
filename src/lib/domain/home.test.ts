@@ -189,6 +189,37 @@ describe("needsYou", () => {
 		expect(overdue.remaining).toBe(4_000_00);
 	});
 
+	test("planned payments due within 3 days sit after overdue, before drafts", () => {
+		const a = mk("A");
+		const d = data(
+			[a],
+			[buy("p", "A", "2026-09-10", 4_000_00)],
+			[list("d", "draft", [{ cardId: "A", amount: 2_00 }])],
+		);
+		const plan = (id: string, date: string): CardPayment => ({
+			id,
+			cardId: "A",
+			date,
+			amount: 100,
+			status: "planned",
+		});
+		const items = needsYou(d, TODAY, [
+			plan("far", "2026-11-05"),
+			plan("edge", "2026-11-03"),
+			plan("old", "2026-10-24"),
+		]);
+		expect(items.map((i) => i.kind)).toEqual([
+			"overdue",
+			"planned",
+			"planned",
+			"draft",
+		]);
+		const ids = items.flatMap((i) =>
+			i.kind === "planned" ? [i.payment.id] : [],
+		);
+		expect(ids).toEqual(["old", "edge"]);
+	});
+
 	test("a quiet day needs nothing", () => {
 		expect(needsYou(data([mk("A")]), TODAY)).toEqual([]);
 	});
