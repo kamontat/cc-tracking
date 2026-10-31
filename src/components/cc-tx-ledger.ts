@@ -13,14 +13,21 @@ import {
 import type {
 	Card,
 	CardPayment,
+	LimitGroup,
 	PlainDate,
 	PurchaseList,
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLabelHtml, cardLabelText } from "#lib/ui/card-label";
+import {
+	cardIdTag,
+	cardMetaText,
+	cardMini,
+	cardName,
+} from "#lib/ui/card-label";
+import { icons } from "#lib/ui/icons";
 import { listPageAddress } from "#lib/ui/list-address";
-import { base, controls } from "#styles/shared";
+import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
 export type Upcoming = {
 	lists: PurchaseList[];
@@ -31,32 +38,53 @@ const MINUS = "−";
 
 /**
  * The ledger: purchases and paid payments, grouped under day headings (`groups`) or flat
- * (`entries`), and the *Upcoming* section above it. A purchase row is a link; a payment row is
- * a button that opens in place, where a wrong payment is deleted in two steps (UI-09). The page
- * owns `open`; `confirming` is the second step and is dropped whenever another row opens.
+ * (`entries`), and the *Upcoming* section above it. Each day (or the flat list) is one panel
+ * of rows. A purchase row is a link; a payment row is a button that opens in place, where a
+ * wrong payment is deleted in two steps (UI-09). A planned payment shows Mark paid on the row
+ * itself and opens the same way for its delete. The page owns `open`; `confirming` is the
+ * second step and is dropped whenever another row opens.
  */
 @customElement("cc-tx-ledger")
 export class CcTxLedger extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		cardBits,
+		rowPanel,
 		css`
 			:host {
 				display: flex;
 				flex-direction: column;
 				gap: var(--cc-space-4);
+				min-inline-size: 0;
 			}
 
 			section {
 				display: flex;
 				flex-direction: column;
+				gap: var(--cc-space-1);
+			}
+
+			.sec-head {
+				display: flex;
+				flex-direction: row;
+				flex-wrap: wrap;
+				align-items: baseline;
+				justify-content: space-between;
 				gap: var(--cc-space-2);
 			}
 
 			h2,
 			h3 {
-				font-size: var(--cc-text-sm);
-				font-weight: 600;
+				font-size: var(--cc-text-xs);
+				font-weight: 650;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+				color: var(--cc-text-muted);
+			}
+
+			.sec-head small {
+				font-size: var(--cc-text-xs);
 				color: var(--cc-text-muted);
 			}
 
@@ -65,85 +93,66 @@ export class CcTxLedger extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			.rows {
-				display: flex;
-				flex-direction: column;
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
-				box-shadow: var(--cc-shadow-sm);
-				overflow: hidden;
-			}
-
 			.row {
 				display: flex;
 				flex-direction: column;
 			}
 
-			.row + .row {
-				border-top: var(--cc-border-width) solid var(--cc-border);
+			.t {
+				display: inline;
 			}
 
-			a.line,
-			button.line {
-				display: flex;
-				flex-direction: row;
+			/* A planned payment: the row's text opens it, and the figure keeps its own button. */
+			.crow.split {
+				grid-template-columns: minmax(0, 1fr) auto;
+				cursor: default;
+			}
+
+			.hit {
+				display: grid;
+				grid-template-columns: auto minmax(0, 1fr);
 				align-items: center;
-				justify-content: space-between;
+				align-self: stretch;
 				gap: var(--cc-space-3);
-				inline-size: 100%;
-				padding: var(--cc-space-3) var(--cc-panel-padding);
+				padding: 0;
 				font: inherit;
-				font-size: var(--cc-text-md);
 				font-weight: 400;
-				color: inherit;
-				text-align: start;
+				line-height: inherit;
 				white-space: normal;
-				text-decoration: none;
-				cursor: pointer;
+				text-align: start;
+				color: var(--cc-text);
 				background: transparent;
 				border: 0;
 				border-radius: 0;
 			}
 
-			a.line:hover,
-			button.line:hover {
-				background: var(--cc-surface-sunken);
+			.hit:hover {
+				background: transparent;
 			}
 
-			.what {
-				display: flex;
-				flex-direction: column;
-				min-inline-size: 0;
+			.hit:hover .what b:first-child {
+				text-decoration: underline;
 			}
 
-			.sub,
-			.word {
-				font-size: var(--cc-text-sm);
-				color: var(--cc-text-muted);
+			.r button {
+				align-self: flex-end;
+				padding: var(--cc-space-1) var(--cc-space-3);
+				font-size: var(--cc-text-xs);
+				font-weight: 650;
 			}
 
 			.archived {
-				font-size: var(--cc-text-xs);
-				padding: 0 var(--cc-space-2);
-				color: var(--cc-text-muted);
-				background: var(--cc-surface-sunken);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-pill);
-			}
-
-			.amount {
-				flex: none;
-				font-weight: 600;
+				align-self: center;
 			}
 
 			.actions {
 				display: flex;
+				flex-direction: row;
 				flex-wrap: wrap;
 				align-items: center;
 				gap: var(--cc-space-2);
-				padding: var(--cc-space-2) var(--cc-panel-padding) var(--cc-space-3);
-				background: var(--cc-surface-sunken);
+				padding: 0 0 var(--cc-space-3)
+					calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
 			}
 
 			.confirm {
@@ -152,8 +161,10 @@ export class CcTxLedger extends LitElement {
 			}
 
 			.empty {
-				padding: var(--cc-space-4);
-				color: var(--cc-text-muted);
+				text-align: center;
+				background: var(--cc-surface);
+				border: var(--cc-border-width) solid var(--cc-border);
+				border-radius: var(--cc-radius-md);
 			}
 		`,
 	];
@@ -163,6 +174,8 @@ export class CcTxLedger extends LitElement {
 		| null = null;
 	@property({ attribute: false }) entries: TxEntry[] = [];
 	@property({ attribute: false }) lists: PurchaseList[] = [];
+	/** The stored limit groups, in order: a row's chip takes its group's colour. */
+	@property({ attribute: false }) limitGroups: LimitGroup[] = [];
 	@property({ attribute: false }) upcoming: Upcoming | null = null;
 	@property() today: PlainDate = "";
 	@property() open: string | null = null;
@@ -191,25 +204,35 @@ export class CcTxLedger extends LitElement {
 		return `${entry.kind === "payment" ? "+" : MINUS}${formatAmount(entryAmount(entry))}`;
 	}
 
-	private link(entry: TxEntry & { kind: "purchase" }): string {
+	private listOf(entry: TxEntry & { kind: "purchase" }) {
 		const listId = listIdOf(entry.purchase.id);
-		return listId && this.lists.some((l) => l.id === listId)
-			? `/list/view?id=${encodeURIComponent(listId)}`
+		return listId ? this.lists.find((l) => l.id === listId) : undefined;
+	}
+
+	private link(entry: TxEntry & { kind: "purchase" }): string {
+		const list = this.listOf(entry);
+		return list
+			? `/list/view?id=${encodeURIComponent(list.id)}`
 			: `/card?id=${encodeURIComponent(entry.purchase.cardId)}`;
 	}
 
-	private deleteBlock(
-		payment: CardPayment,
-		card: Card | undefined,
-		extra: unknown = nothing,
-	) {
-		const label = cardLabelText(payment.cardId, card);
+	private chip(card: Card | undefined) {
+		return card
+			? cardMini(card, this.limitGroups)
+			: html`<span class="mini" aria-hidden="true"></span>`;
+	}
+
+	/** The row's first line: the card's name in bold, then the kind of row, muted. */
+	private heading(id: string, card: Card | undefined, word: string) {
+		return html`<span class="t"><b>${cardName(id, card)}</b> <span class="word">${word}</span></span>`;
+	}
+
+	private deleteBlock(payment: CardPayment, card: Card | undefined) {
 		return html`<div class="actions" data-open=${payment.id}>
-			${extra}
 			${
 				this.confirming
 					? html`
-						<p class="confirm">${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: label })}</p>
+						<p class="confirm">${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}</p>
 						<button type="button" data-variant="danger" data-action="confirm-delete"
 							@click=${() => this.emit("delete-payment", { payment })}>${t("common.delete")}</button>
 						<button type="button" data-action="keep"
@@ -225,28 +248,37 @@ export class CcTxLedger extends LitElement {
 	}
 
 	private row(entry: TxEntry, showDate: boolean) {
-		const word = t(
-			entry.kind === "purchase" ? "tx.type.purchase" : "tx.type.payment",
-		);
-		const note = entry.kind === "purchase" ? entry.purchase.note : "";
+		const purchase = entry.kind === "purchase";
+		const id = purchase ? entry.purchase.cardId : entry.payment.cardId;
+		const word = t(purchase ? "tx.type.purchase" : "tx.type.payment");
+		const list = purchase ? this.listOf(entry) : undefined;
+		const parts: string[] = [];
+		if (purchase && entry.purchase.note) parts.push(entry.purchase.note);
+		if (list)
+			parts.push(
+				t("tx.fromList", { date: headerDate(list.date, getLocale(), false) }),
+			);
+		if (showDate) parts.push(displayDate(entryDate(entry), getLocale()));
+		if (parts.length === 0)
+			parts.push(entry.card ? cardMetaText(entry.card) : cardIdTag(id));
 		const body = html`
+			${this.chip(entry.card)}
 			<span class="what">
-				<b>${cardLabelHtml(entry.kind === "purchase" ? entry.purchase.cardId : entry.payment.cardId, entry.card)}
-					${entry.card?.archived ? html`<span class="archived">${t("cards.archived")}</span>` : nothing}</b>
-				<span class="sub"><span class="word">${word}</span>${note ? html` · ${note}` : nothing}${
-					showDate
-						? html` · ${displayDate(entryDate(entry), getLocale())}`
+				${this.heading(id, entry.card, word)}
+				<span class="sub"><span>${parts.join(" · ")}</span>${
+					entry.card?.archived
+						? html`<span class="tag archived">${t("cards.archived")}</span>`
 						: nothing
 				}</span>
 			</span>
-			<span class="amount" data-numeric>${this.signed(entry)}</span>`;
+			<b class="amount r ${purchase ? "" : "in"}" data-numeric>${this.signed(entry)}</b>`;
 		if (entry.kind === "purchase")
 			return html`<div class="row">
-				<a class="line" data-kind="purchase" href=${this.link(entry)}>${body}</a>
+				<a class="crow" data-kind="purchase" href=${this.link(entry)}>${body}</a>
 			</div>`;
 		const open = this.open === entry.payment.id;
 		return html`<div class="row">
-			<button type="button" class="line" data-kind="payment" aria-expanded=${open}
+			<button type="button" class="crow" data-kind="payment" aria-expanded=${open}
 				@click=${() => this.emit("toggle", { id: entry.payment.id })}>${body}</button>
 			${open ? this.deleteBlock(entry.payment, entry.card) : nothing}
 		</div>`;
@@ -256,39 +288,41 @@ export class CcTxLedger extends LitElement {
 		const up = this.upcoming;
 		if (!up || (up.lists.length === 0 && up.planned.length === 0))
 			return nothing;
+		const locale = getLocale();
 		return html`<section class="upcoming">
-			<h2>${t("tx.upcoming")}</h2>
-			<div class="rows">
+			<div class="sec-head"><h2>${t("tx.upcoming")}</h2><small>${t("tx.upcoming.note")}</small></div>
+			<div class="panel">
 				${up.lists.map((list) => {
 					const count = list.lines.length;
-					return html`<div class="row"><a class="line" data-kind="waiting"
+					return html`<div class="row"><a class="crow" data-kind="waiting"
 						href=${listPageAddress(list)}>
-						<span class="what"><b>${t("home.waiting")}</b>
-							<span class="sub">${displayDate(list.date, getLocale())} · ${t(count === 1 ? "tx.lists.cards.one" : "tx.lists.cards.many", { count })}</span></span>
-						<span class="amount" data-numeric>${formatAmount(listTotal(list))}</span>
+						<span class="ic">${icons.clock}</span>
+						<span class="what">
+							<span class="t"><b>${t("tx.upcoming.list", { date: headerDate(list.date, locale, false) })}</b> <span class="word">${t("tx.type.purchase")}</span></span>
+							<span class="sub">${t("home.waiting")} · ${t(count === 1 ? "tx.lists.cards.one" : "tx.lists.cards.many", { count })}</span>
+						</span>
+						<b class="amount muted r" data-numeric>${MINUS}${formatAmount(listTotal(list))}</b>
 					</a></div>`;
 				})}
 				${up.planned.map(({ payment, card }) => {
 					const open = this.open === payment.id;
-					return html`<div class="row">
-						<button type="button" class="line" data-kind="planned" aria-expanded=${open}
-							@click=${() => this.emit("toggle", { id: payment.id })}>
-							<span class="what"><b>${cardLabelHtml(payment.cardId, card)}</b>
-								<span class="sub"><span class="word">${t("tx.planned")}</span> · ${displayDate(payment.date, getLocale())}</span></span>
-							<span class="amount" data-numeric>${formatAmount(payment.amount)}</span>
-						</button>
-						${
-							open
-								? this.deleteBlock(
-										payment,
-										card,
-										this.confirming
-											? nothing
-											: html`<button type="button" data-action="mark-paid"
-												@click=${() => this.emit("mark-paid", { payment })}>${t("statements.markPaid")}</button>`,
-									)
-								: nothing
-						}
+					return html`<div class="row" data-planned=${payment.id}>
+						<div class="crow split">
+							<button type="button" class="hit" data-kind="planned" aria-expanded=${open}
+								@click=${() => this.emit("toggle", { id: payment.id })}>
+								${this.chip(card)}
+								<span class="what">
+									${this.heading(payment.cardId, card, t("tx.type.payment"))}
+									<span class="sub">${t("tx.planned", { date: headerDate(payment.date, locale, false) })}</span>
+								</span>
+							</button>
+							<span class="r">
+								<b class="amount muted" data-numeric>+${formatAmount(payment.amount)}</b>
+								<button type="button" data-variant="quiet" data-action="mark-paid"
+									@click=${() => this.emit("mark-paid", { payment })}>${t("statements.markPaid")}</button>
+							</span>
+						</div>
+						${open ? this.deleteBlock(payment, card) : nothing}
 					</div>`;
 				})}
 			</div>
@@ -315,7 +349,7 @@ export class CcTxLedger extends LitElement {
 					? html`<p class="empty">${t(this.filtered ? "tx.noResults" : "tx.empty")}</p>`
 					: this.groups
 						? this.groups.map(
-								(group) => html`<section>
+								(group) => html`<section class="day">
 									<h3>${
 										group.date === this.today
 											? t("tx.today", {
@@ -323,10 +357,10 @@ export class CcTxLedger extends LitElement {
 												})
 											: headerDate(group.date, getLocale(), false)
 									}</h3>
-									<div class="rows">${group.entries.map((e) => this.row(e, false))}</div>
+									<div class="panel">${group.entries.map((e) => this.row(e, false))}</div>
 								</section>`,
 							)
-						: html`<div class="rows">${this.entries.map((e) => this.row(e, true))}</div>`
+						: html`<div class="panel">${this.entries.map((e) => this.row(e, true))}</div>`
 			}
 		`;
 	}

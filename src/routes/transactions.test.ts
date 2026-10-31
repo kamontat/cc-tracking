@@ -219,7 +219,9 @@ test("the address read on load restores the view", async () => {
 	expect(root.querySelector<HTMLInputElement>('input[name="q"]')?.value).toBe(
 		"lunch",
 	);
-	expect(root.querySelector('[data-chip="sort"]')).not.toBeNull();
+	expect(root.querySelector('[data-action="sort"]')?.textContent).toContain(
+		"Sort: Oldest first",
+	);
 	expect(ledger(root).groups?.flatMap((g) => g.entries)).toHaveLength(1);
 });
 
@@ -256,4 +258,43 @@ test("a failed mark paid names the marking, not a save", async () => {
 	await settle(5);
 	const banner = root.querySelector("cc-error-banner");
 	expect(banner?.message).toContain("Could not mark the payment paid.");
+});
+
+test("the Filter button counts the filters in use and the sort chip opens the sheet", async () => {
+	const { root } = await open("?type=payment&card=A");
+	const filter = root.querySelector('[data-action="filter"]');
+	expect(filter?.querySelector(".tx-count")?.textContent).toBe("2");
+	expect(root.querySelector('[data-chip="card:A"]')?.textContent).toBe(
+		"A card ×",
+	);
+	const plain = await open();
+	expect(
+		plain.root.querySelector('[data-action="filter"] .tx-count'),
+	).toBeNull();
+	expect(
+		plain.root.querySelector('[data-action="sort"]')?.textContent,
+	).toContain("Sort: Newest first");
+	await press(plain.root.querySelector('[data-action="sort"]'));
+	expect(plain.root.querySelector("cc-tx-filter")).not.toBeNull();
+});
+
+test("the summary names the month and signs its figures", async () => {
+	const { root } = await open();
+	const summary = root.querySelector('[data-testid="summary"]');
+	expect(summary?.querySelector("h2")?.textContent).toBe("October so far");
+	expect(
+		summary?.querySelector('[data-field="purchases"] b')?.textContent,
+	).toBe("−฿1,250.00");
+	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe(
+		"+฿300.00",
+	);
+});
+
+test("the Owed view keeps the title and switch above the owed panel", async () => {
+	const { root } = await open("?view=owed");
+	expect(root.querySelector("h1")?.textContent).toBe("Transactions");
+	expect(root.querySelector(".tx-grid")?.getAttribute("data-show")).toBe(
+		"owed",
+	);
+	expect(root.querySelector(".tx-owed cc-owed-list")).not.toBeNull();
 });

@@ -25,7 +25,8 @@ export const icons: Record<
 	| "copy"
 	| "image"
 	| "send"
-	| "search",
+	| "search"
+	| "filter",
 	SVGTemplateResult
 > = {
 	home: icon(
@@ -56,4 +57,5 @@ export const icons: Record<
 	),
 	send: icon(svg`<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/>`),
 	search: icon(svg`<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`),
+	filter: icon(svg`<path d="M3 6h18M7 12h10M10 18h4"/>`),
 };

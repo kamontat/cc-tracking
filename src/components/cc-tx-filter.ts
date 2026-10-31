@@ -9,8 +9,8 @@ import {
 import type { Card } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { cardLabelText } from "#lib/ui/card-label";
-import { base, controls } from "#styles/shared";
+import { cardIdTag } from "#lib/ui/card-label";
+import { base, cardBits, controls } from "#styles/shared";
 import "#components/cc-modal";
 
 const RANGES: RangePreset[] = ["today", "week", "month", "lastMonth", "custom"];
@@ -31,6 +31,7 @@ export class CcTxFilter extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		cardBits,
 		css`
 			:host {
 				display: contents;
@@ -39,7 +40,7 @@ export class CcTxFilter extends LitElement {
 			fieldset {
 				display: flex;
 				flex-direction: column;
-				gap: var(--cc-space-2);
+				gap: var(--cc-space-1);
 				min-inline-size: 0;
 				padding: 0;
 				border: 0;
@@ -47,22 +48,50 @@ export class CcTxFilter extends LitElement {
 
 			legend {
 				padding: 0;
-				margin-bottom: var(--cc-space-2);
+				margin-bottom: var(--cc-space-1);
 				font-size: var(--cc-text-sm);
-				font-weight: 600;
+				font-weight: 400;
+				letter-spacing: normal;
+				text-transform: none;
 				color: var(--cc-text-muted);
 			}
 
 			.choices {
 				display: flex;
+				flex-direction: row;
 				flex-wrap: wrap;
 				gap: var(--cc-space-2);
 			}
 
+			.choices button {
+				padding: var(--cc-space-1) var(--cc-space-3);
+				font-weight: 400;
+				color: var(--cc-text);
+				background: var(--cc-surface-sunken);
+				border-color: transparent;
+				border-radius: var(--cc-radius-pill);
+			}
+
+			.choices button:hover {
+				background: var(--cc-border);
+			}
+
+			.choices button[aria-pressed="true"] {
+				font-weight: 600;
+				color: var(--cc-success);
+				background: var(--cc-accent-surface);
+			}
+
+			.choices button[aria-pressed="true"] .card-meta {
+				color: inherit;
+			}
+
 			.dates {
 				display: flex;
+				flex-direction: row;
 				flex-wrap: wrap;
 				gap: var(--cc-space-3);
+				margin-top: var(--cc-space-2);
 			}
 
 			.dates label {
@@ -71,9 +100,18 @@ export class CcTxFilter extends LitElement {
 
 			.footer {
 				display: flex;
-				flex-wrap: wrap;
-				justify-content: space-between;
-				gap: var(--cc-space-3);
+				flex-direction: row;
+				gap: var(--cc-space-2);
+			}
+
+			.footer button {
+				padding-block: var(--cc-space-3);
+				font-size: var(--cc-text-md);
+				font-weight: 650;
+			}
+
+			.footer [data-action="apply"] {
+				flex: 1 1 auto;
 			}
 		`,
 	];
@@ -103,22 +141,23 @@ export class CcTxFilter extends LitElement {
 	}
 
 	private chip(
-		attr: "type" | "card" | "range",
+		attr: "type" | "card" | "range" | "sort",
 		value: string,
-		label: string,
+		label: unknown,
 		pressed: boolean,
 		onClick: () => void,
 	) {
-		return html`<button type="button" data-variant=${pressed ? nothing : "quiet"}
+		return html`<button type="button" data-variant="quiet"
 			data-type=${attr === "type" ? value : nothing}
 			data-card=${attr === "card" ? value : nothing}
 			data-range=${attr === "range" ? value : nothing}
+			data-sort=${attr === "sort" ? value : nothing}
 			aria-pressed=${pressed} @click=${onClick}>${label}</button>`;
 	}
 
 	override render() {
 		const shown = this.count(this.draft, this.draftSort);
-		return html`<cc-modal heading=${t("tx.filter.title")}
+		return html`<cc-modal sheet heading=${t("tx.filter.title")}
 			@close=${(event: Event) => {
 				event.stopPropagation();
 				this.dispatchEvent(new CustomEvent("close"));
@@ -141,7 +180,7 @@ export class CcTxFilter extends LitElement {
 					this.chip(
 						"card",
 						card.id,
-						cardLabelText(card.id, card),
+						html`${card.name} <small class="card-meta">${cardIdTag(card.id)}</small>`,
 						this.draft.cards.includes(card.id),
 						() => this.set({ cards: toggle(this.draft.cards, card.id) }),
 					),
@@ -178,14 +217,20 @@ export class CcTxFilter extends LitElement {
 						: nothing
 				}
 			</fieldset>
-			<label>${t("tx.filter.sort")}
-				<select name="sort" @change=${(e: Event) => {
-					this.draftSort = (e.target as HTMLSelectElement).value as TxSort;
-				}}>${SORTS.map(
-					(sort) =>
-						html`<option value=${sort} .selected=${this.draftSort === sort}>${t(`tx.sort.${sort}`)}</option>`,
-				)}</select>
-			</label>
+			<fieldset>
+				<legend>${t("tx.filter.sort")}</legend>
+				<div class="choices">${SORTS.map((sort) =>
+					this.chip(
+						"sort",
+						sort,
+						t(`tx.sort.${sort}`),
+						this.draftSort === sort,
+						() => {
+							this.draftSort = sort;
+						},
+					),
+				)}</div>
+			</fieldset>
 			<div class="footer">
 				<button type="button" data-variant="quiet" data-action="clear"
 					@click=${() => {

@@ -804,106 +804,248 @@ a:any-link:hover {
 }
 
 /*
- * Transactions: a switch (Ledger, Lists, Owed), then one column. From 900px the Owed button
- * leaves the switch and the owed list sits beside the ledger. Below it, the owed view shows
- * the owed list alone and the ledger view the ledger alone.
+ * Transactions: the title with a segmented switch (Ledger, Lists, Owed) beside it, then one
+ * column. On a phone the Owed view shows the owed panel under the title instead of the ledger.
+ * From 900px the Owed button leaves the switch and the page is two columns, the owed panel
+ * beside whatever the left column shows.
  */
-.tx-switch {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--cc-space-2);
+.tx-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--cc-space-5);
+	align-items: start;
 }
 
-.tx-grid {
+.tx-main,
+.tx-body {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-4);
-}
-
-.tx-main {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-3);
 	min-inline-size: 0;
 }
 
-.tx-toolbar {
+.tx-head {
 	display: flex;
+	flex-direction: row;
 	flex-wrap: wrap;
-	gap: var(--cc-space-2);
 	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-2) var(--cc-space-3);
 }
 
-.tx-toolbar > .search {
-	flex: 1 1 calc(var(--cc-space-7) * 4);
-	width: auto;
+.tx-switch {
+	display: inline-grid;
+	grid-auto-flow: column;
+	grid-auto-columns: 1fr;
+	padding: calc(var(--cc-space-1) * 0.75);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page .tx-switch button[data-view] {
+	align-self: stretch;
+	padding: var(--cc-space-1) var(--cc-space-3);
+	font-weight: 600;
+	color: var(--cc-text-muted);
+	text-align: center;
+	white-space: nowrap;
+	background: transparent;
+	border: 0;
+	border-radius: calc(var(--cc-radius-sm) - var(--cc-space-1) * 0.75);
+}
+
+.page .tx-switch button[data-view]:hover {
+	color: var(--cc-text);
+}
+
+.page .tx-switch button[data-view][aria-pressed="true"] {
+	color: var(--cc-text);
+	background: var(--cc-surface);
+	box-shadow: var(--cc-shadow-sm);
+}
+
+/* The search box (with its icon) and the Filter button share one row; the chips go under. */
+.tx-controls {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+}
+
+.tx-ctl {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: var(--cc-space-2);
+}
+
+.page .tx-search {
+	position: relative;
+	display: block;
+}
+
+.tx-search .icon {
+	position: absolute;
+	inset-inline-start: var(--cc-space-3);
+	inset-block-start: 50%;
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+	color: var(--cc-text-muted);
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+
+.page .tx-search input {
+	inline-size: 100%;
+	padding-block: var(--cc-space-2);
+	padding-inline: calc(var(--cc-space-3) * 2 + var(--cc-icon-size-sm))
+		var(--cc-space-3);
+	font-size: var(--cc-text-md);
+	color: var(--cc-text);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page .tx-fbtn {
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	align-self: stretch;
+	gap: var(--cc-space-1);
+	padding: 0 var(--cc-space-3);
+	font-weight: 650;
+	white-space: nowrap;
+	border-color: transparent;
+}
+
+.tx-fbtn .icon {
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+}
+
+.tx-count {
+	padding: 0 var(--cc-space-2);
+	font-size: var(--cc-text-xs);
+	line-height: 1.6;
+	color: var(--cc-accent-text);
+	background: var(--cc-accent);
+	border-radius: var(--cc-radius-pill);
 }
 
 .tx-chips {
 	display: flex;
+	flex-direction: row;
 	flex-wrap: wrap;
 	gap: var(--cc-space-2);
 }
 
+.page .tx-chip {
+	padding: var(--cc-space-1) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 600;
+	color: var(--cc-success);
+	white-space: nowrap;
+	background: var(--cc-accent-surface);
+	border-color: transparent;
+	border-radius: var(--cc-radius-pill);
+}
+
+.page .tx-chip.tx-sort {
+	font-weight: 400;
+	color: var(--cc-text);
+	background: transparent;
+	border-color: var(--cc-border);
+}
+
+.page .tx-chip:hover {
+	background: var(--cc-surface-sunken);
+}
+
+/* The month so far: a title and the sign legend, then three figures in a row. */
 .tx-summary {
-	display: grid;
-	grid-template-columns: repeat(
-			auto-fit,
-			minmax(calc(var(--cc-space-7) * 3), 1fr)
-		);
-	gap: var(--cc-space-3);
-	padding: var(--cc-space-3) var(--cc-panel-padding);
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	padding: var(--cc-space-3) var(--cc-space-4);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
-	box-shadow: var(--cc-shadow-sm);
 }
 
-.tx-summary > div {
+.tx-summary__head {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--cc-space-1) var(--cc-space-2);
+}
+
+.page .tx-summary h2 {
+	font-size: var(--cc-text-lg);
+	font-weight: 700;
+}
+
+.page .tx-summary small {
+	font-size: var(--cc-text-xs);
+}
+
+.tx-summary__figures {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: var(--cc-space-2);
+}
+
+.tx-summary__figures > div {
 	display: flex;
 	flex-direction: column;
+	min-inline-size: 0;
+	line-height: 1.35;
 }
 
-.tx-summary .figure__label {
-	font-size: var(--cc-text-sm);
-	color: var(--cc-text-muted);
+.tx-summary__figures b {
+	overflow-wrap: anywhere;
 }
 
-.tx-grid[data-view="ledger"] > .tx-owed {
+.tx-summary__figures b[data-tone="in"] {
+	color: var(--cc-success);
+}
+
+.tx-grid > .tx-owed {
 	display: none;
+	min-inline-size: 0;
 }
 
-.tx-grid[data-view="owed"] > .tx-main {
+.tx-grid[data-show="owed"] > .tx-owed {
+	display: block;
+}
+
+.tx-grid[data-show="owed"] .tx-body {
 	display: none;
 }
 
 @media (min-width: 900px) {
-	.tx-switch [data-view="owed"] {
+	.tx-grid {
+		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
+	}
+
+	.page .tx-switch [data-view="owed"] {
 		display: none;
 	}
 
 	/* Owed sits beside the ledger here, so the ledger button reads as the current one. */
-	.tx-switch [data-view="ledger"][data-desktop-current] {
-		color: var(--cc-accent-text);
-		background: var(--cc-accent);
-		border-color: transparent;
+	.page .tx-switch button[data-view="ledger"][data-desktop-current] {
+		color: var(--cc-text);
+		background: var(--cc-surface);
+		box-shadow: var(--cc-shadow-sm);
 	}
 
-	.tx-grid {
-		flex-direction: row;
-		align-items: flex-start;
-	}
-
-	.tx-grid > .tx-main {
-		flex: 1 1 0;
-	}
-
-	.tx-grid[data-view] > .tx-owed {
+	.tx-grid[data-show] > .tx-owed {
 		display: block;
-		flex: 0 0 var(--cc-side-panel);
+		padding-block-start: var(--cc-space-1);
 	}
 
-	.tx-grid[data-view] > .tx-main {
+	.tx-grid[data-show="owed"] .tx-body {
 		display: flex;
 	}
 }

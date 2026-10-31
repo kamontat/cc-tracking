@@ -74,12 +74,12 @@ test("apply emits the draft filter and sort", async () => {
 	await click(element, "[data-type=payment]");
 	await click(element, "[data-card=B]");
 	await click(element, "[data-range=week]");
-	const sort = element.shadowRoot?.querySelector(
-		"select[name=sort]",
-	) as HTMLSelectElement;
-	sort.value = "big";
-	sort.dispatchEvent(new Event("change"));
-	await element.updateComplete;
+	await click(element, "[data-sort=big]");
+	expect(
+		element.shadowRoot
+			?.querySelector("[data-sort=big]")
+			?.getAttribute("aria-pressed"),
+	).toBe("true");
 	await click(element, "[data-action=apply]");
 	expect(detail?.filter.types).toEqual(["payment"]);
 	expect(detail?.filter.cards).toEqual(["B"]);
@@ -130,8 +130,11 @@ test("Clear all resets the draft but keeps the sheet open", async () => {
 		root.querySelector("[data-range=month]")?.getAttribute("aria-pressed"),
 	).toBe("false");
 	expect(
-		(root.querySelector("select[name=sort]") as HTMLSelectElement).value,
-	).toBe("new");
+		root.querySelector("[data-sort=new]")?.getAttribute("aria-pressed"),
+	).toBe("true");
+	expect(
+		root.querySelector("[data-sort=old]")?.getAttribute("aria-pressed"),
+	).toBe("false");
 });
 
 test("close from the modal is passed on", async () => {
@@ -157,4 +160,12 @@ test("leaving custom clears the typed from and to", async () => {
 	expect(detail?.filter.range).toBe("month");
 	expect(detail?.filter.from).toBe("");
 	expect(detail?.filter.to).toBe("");
+});
+
+test("draws as a sheet, with card choices named by name and bracketed id", async () => {
+	const { root, modal } = await mount();
+	expect(modal.hasAttribute("sheet")).toBe(true);
+	const chip = root.querySelector("[data-card=A]");
+	expect(chip?.textContent?.replace(/\s+/g, " ").trim()).toBe("Card A [A]");
+	expect(root.querySelectorAll("[data-sort]")).toHaveLength(4);
 });

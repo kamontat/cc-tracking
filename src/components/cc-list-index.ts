@@ -9,9 +9,14 @@ import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { listPageAddress } from "#lib/ui/list-address";
 import { shareTable } from "#lib/ui/list-share";
-import { base, controls } from "#styles/shared";
+import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
 const STATUSES: ListStatus[] = ["draft", "sent", "saved"];
+/** A status pill's tint; a draft stays plain. The pill's word says the status either way. */
+const TONES: Partial<Record<ListStatus, string>> = {
+	sent: "warn",
+	saved: "ok",
+};
 
 /** Every purchase list, newest first, narrowed by status chips (none ticked means all). */
 @customElement("cc-list-index")
@@ -19,67 +24,48 @@ export class CcListIndex extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		cardBits,
+		rowPanel,
 		css`
 			:host {
 				display: flex;
 				flex-direction: column;
 				gap: var(--cc-space-3);
+				min-inline-size: 0;
 			}
 
 			.chips {
 				display: flex;
+				flex-direction: row;
 				flex-wrap: wrap;
 				gap: var(--cc-space-2);
 			}
 
-			.list {
-				display: flex;
-				flex-direction: column;
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
-				box-shadow: var(--cc-shadow-sm);
-				overflow: hidden;
-			}
-
-			a[data-list] {
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-				justify-content: space-between;
-				gap: var(--cc-space-3);
-				padding: var(--cc-space-3) var(--cc-panel-padding);
-				color: inherit;
-				text-decoration: none;
-			}
-
-			a[data-list] + a[data-list] {
-				border-top: var(--cc-border-width) solid var(--cc-border);
-			}
-
-			a[data-list]:hover {
+			.chips button {
+				padding: var(--cc-space-1) var(--cc-space-3);
+				font-weight: 400;
+				color: var(--cc-text);
 				background: var(--cc-surface-sunken);
+				border-color: transparent;
+				border-radius: var(--cc-radius-pill);
 			}
 
-			.what {
-				display: flex;
-				flex-direction: column;
-				min-inline-size: 0;
+			.chips button:hover {
+				background: var(--cc-border);
 			}
 
-			.sub {
-				font-size: var(--cc-text-sm);
-				color: var(--cc-text-muted);
-			}
-
-			.total {
-				flex: none;
+			.chips button[aria-pressed="true"] {
 				font-weight: 600;
+				color: var(--cc-success);
+				background: var(--cc-accent-surface);
 			}
 
-			.empty {
-				padding: var(--cc-space-4);
-				color: var(--cc-text-muted);
+			.crow {
+				grid-template-columns: minmax(0, 1fr) auto;
+			}
+
+			.sub .tag {
+				align-self: center;
 			}
 		`,
 	];
@@ -113,22 +99,27 @@ export class CcListIndex extends LitElement {
 		return html`
 			<div class="chips">${STATUSES.map(
 				(status) =>
-					html`<button type="button" data-status=${status}
-						data-variant=${this.status.includes(status) ? nothing : "quiet"}
+					html`<button type="button" data-status=${status} data-variant="quiet"
 						aria-pressed=${this.status.includes(status)}
 						@click=${() => this.toggle(status)}>${t(`tx.lists.status.${status}`)}</button>`,
 			)}</div>
-			${rows.length === 0 ? html`<p class="empty">${t("tx.lists.noMatch")}</p>` : nothing}
-			<div class="list">${rows.map((list) => {
-				const count = list.lines.length;
-				return html`<a data-list=${list.id} href=${listPageAddress(list)}>
-					<span class="what">
-						<b>${displayDate(list.date, getLocale())}</b>
-						<span class="sub">${t(count === 1 ? "tx.lists.cards.one" : "tx.lists.cards.many", { count })} · ${t(`tx.lists.status.${list.status}`)}</span>
-					</span>
-					<span class="total" data-numeric>${this.total(list)}</span>
-				</a>`;
-			})}</div>
+			${
+				rows.length === 0
+					? html`<p class="empty">${t("tx.lists.noMatch")}</p>`
+					: html`<div class="panel">${rows.map((list) => {
+							const count = list.lines.length;
+							return html`<a class="crow" data-list=${list.id} href=${listPageAddress(list)}>
+								<span class="what">
+									<b>${displayDate(list.date, getLocale())}</b>
+									<span class="sub">
+										<span class="tag" data-tone=${TONES[list.status] ?? nothing}>${t(`tx.lists.status.${list.status}`)}</span>
+										<span>${t(count === 1 ? "tx.lists.cards.one" : "tx.lists.cards.many", { count })}</span>
+									</span>
+								</span>
+								<b class="amount r" data-numeric>${this.total(list)}</b>
+							</a>`;
+						})}</div>`
+			}
 		`;
 	}
 }

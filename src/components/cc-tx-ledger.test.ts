@@ -159,9 +159,7 @@ test("a payment row opens in place and deleting asks twice", async () => {
 	await element.updateComplete;
 	expect(deleted).toEqual([]);
 	expect(element.confirming).toBe(true);
-	expect(text(root, ".confirm")).toContain(
-		"Delete ฿700.00 to A) Card A (1111)?",
-	);
+	expect(text(root, ".confirm")).toContain("Delete ฿700.00 to Card A?");
 	const keep = root.querySelector("[data-action=keep]") as HTMLElement;
 	expect(keep.hasAttribute("data-variant")).toBe(false);
 	expect(
@@ -211,9 +209,22 @@ test("Upcoming lists waiting lists and planned payments with Mark paid and delet
 	expect(waiting?.getAttribute("href")).toBe("/list/reply?id=w1");
 	expect(waiting?.textContent).toContain("Waiting for the spender");
 	expect(waiting?.textContent).toContain("2 cards");
-	const row = root.querySelector("button[data-kind=planned]") as HTMLElement;
-	expect(row.textContent).toContain("Planned payment");
-	expect(row.textContent).toContain("฿900.00");
+	expect(waiting?.textContent).toContain("List · Fri, 30 Oct");
+	expect(text(waiting as Element, "[data-numeric]")).toBe("−฿150.00");
+	const row = root.querySelector("[data-planned=pl1]") as HTMLElement;
+	expect(row.textContent).toContain("Card A");
+	expect(row.textContent).toContain("Payment");
+	expect(row.textContent).toContain("Planned · Sat, 31 Oct");
+	expect(text(row, "[data-numeric]")).toBe("+฿900.00");
+	// Mark paid sits on the row, without opening it; delete waits for the row to open.
+	expect(row.querySelector("[data-action=mark-paid]")).not.toBeNull();
+	expect(root.querySelector("[data-action=delete]")).toBeNull();
+	const toggles: unknown[] = [];
+	element.addEventListener("toggle", (e) =>
+		toggles.push((e as unknown as CustomEvent).detail),
+	);
+	(root.querySelector("button[data-kind=planned]") as HTMLElement).click();
+	expect(toggles).toEqual([{ id: "pl1" }]);
 	element.open = "pl1";
 	await element.updateComplete;
 	const marked: unknown[] = [];
@@ -240,4 +251,31 @@ test("Thai words after a language switch", async () => {
 	setLocale("th");
 	await element.updateComplete;
 	expect(root.querySelector("[data-kind]")?.textContent).toContain("การซื้อ");
+});
+
+test("rows name the card, wear its group's chip, and say which list a purchase came from", async () => {
+	const c = { ...card("A"), limitGroupId: "g2" };
+	const { root } = await mount({
+		groups: byDay([
+			purchase("L1-1", 100_00, "", c),
+			purchase("zz", 10_00, "", c),
+		]),
+		lists: [{ ...list("L1"), date: "2026-10-29" }],
+		limitGroups: [
+			{ id: "g1", name: "One", limit: 1 },
+			{ id: "g2", name: "Two", limit: 1 },
+		],
+	});
+	const [fromList, plain] = Array.from(root.querySelectorAll("[data-kind]"));
+	expect(fromList?.querySelector("b")?.textContent).toBe("Card A");
+	expect(fromList?.querySelector(".mini")?.getAttribute("data-g")).toBe("2");
+	expect(fromList?.textContent).toContain("From list Thu, 29 Oct");
+	expect(plain?.textContent).toContain("[A] · 1111");
+	expect(root.querySelectorAll(".panel")).toHaveLength(1);
+});
+
+test("a card no longer stored is named by its bracketed id", async () => {
+	const entry = purchase("x", 10_00);
+	const { root } = await mount({ entries: [{ ...entry, card: undefined }] });
+	expect(root.querySelector("[data-kind] b")?.textContent).toBe("[A]");
 });

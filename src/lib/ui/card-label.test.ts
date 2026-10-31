@@ -10,6 +10,7 @@ import {
 	cardLabelText,
 	cardMetaText,
 	cardMini,
+	cardName,
 	cardNameHtml,
 	groupTone,
 } from "#lib/ui/card-label";
@@ -92,4 +93,9 @@ test("the mini chip shows the last 4 in the group's colour, hidden from readers"
 	expect(mini?.getAttribute("aria-hidden")).toBe("true");
 	render(cardMini(card, groups), host);
 	expect(host.querySelector(".mini")?.hasAttribute("data-g")).toBe(false);
+});
+
+test("a sentence names a card by its name, or its bracketed id once it is gone", () => {
+	expect(cardName("10", card)).toBe("Card A10");
+	expect(cardName("Z", undefined)).toBe("[Z]");
 });

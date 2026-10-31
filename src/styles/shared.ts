@@ -718,3 +718,146 @@ export const cardBits = css`
 		background: var(--cc-accent-surface);
 	}
 `;
+
+/**
+ * Phase 4's row panels (the ledger, Upcoming, owed, lists): one `.panel` holding `.crow` rows
+ * with a line between each. A row is a grid -- a leading chip or `.ic` tile, the `.what` (a
+ * bold title, a muted `.word`, then a `.sub` line), and a right-aligned `.r` figure. `.in`
+ * marks money coming in. `.tag[data-tone]` tints a status pill that carries no urgency.
+ */
+export const rowPanel = css`
+	.panel {
+		display: flex;
+		flex-direction: column;
+		padding: 0 var(--cc-space-4);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+	}
+
+	.panel > * + * {
+		border-top: var(--cc-border-width) solid var(--cc-border);
+	}
+
+	.crow {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: center;
+		align-self: stretch;
+		gap: var(--cc-space-1) var(--cc-space-3);
+		padding: var(--cc-space-3) 0;
+		font: inherit;
+		font-size: var(--cc-text-md);
+		font-weight: 400;
+		line-height: var(--cc-leading);
+		white-space: normal;
+		text-align: start;
+		text-decoration: none;
+		color: var(--cc-text);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+	}
+
+	.crow:any-link,
+	button.crow {
+		color: var(--cc-text);
+	}
+
+	button.crow:hover,
+	.crow:any-link:hover {
+		background: transparent;
+	}
+
+	button.crow:hover .what b:first-child,
+	.crow:any-link:hover .what b:first-child {
+		text-decoration: underline;
+	}
+
+	.what {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: calc(var(--cc-space-1) / 2);
+		min-inline-size: 0;
+		line-height: 1.35;
+	}
+
+	.what b {
+		font-weight: 650;
+	}
+
+	.word,
+	.sub {
+		font-size: var(--cc-text-xs);
+		font-weight: 400;
+		color: var(--cc-text-muted);
+	}
+
+	.sub {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0 var(--cc-space-2);
+	}
+
+	.r {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: var(--cc-space-1);
+		line-height: 1.25;
+		text-align: end;
+	}
+
+	.r small {
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
+	}
+
+	.amount {
+		font-weight: 650;
+		white-space: nowrap;
+	}
+
+	.amount.in {
+		color: var(--cc-success);
+	}
+
+	.amount.muted {
+		color: var(--cc-text-muted);
+	}
+
+	.ic {
+		display: grid;
+		place-items: center;
+		flex: none;
+		inline-size: calc(var(--cc-space-5) + var(--cc-space-3));
+		block-size: calc(var(--cc-space-5) + var(--cc-space-3));
+		color: var(--cc-warning);
+		background: var(--cc-warning-surface);
+		border-radius: var(--cc-radius-sm);
+	}
+
+	.ic .icon {
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
+	}
+
+	.tag[data-tone="warn"] {
+		color: var(--cc-warning);
+		background: var(--cc-warning-surface);
+	}
+
+	.tag[data-tone="ok"] {
+		color: var(--cc-success);
+		background: var(--cc-accent-surface);
+	}
+
+	.empty {
+		padding: var(--cc-space-4);
+		color: var(--cc-text-muted);
+	}
+`;

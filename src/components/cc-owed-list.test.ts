@@ -81,3 +81,19 @@ test("empty says nothing is owed", async () => {
 		"Nothing owed on any card.",
 	);
 });
+
+test("heads the panel and names each card by name, id and last 4", async () => {
+	const { root } = await mount({
+		groups: [{ id: "g1", name: "One", limit: 1 }],
+		rows: rows().map((r) => ({
+			...r,
+			card: { ...r.card, limitGroupId: "g1" },
+		})),
+	});
+	expect(root.querySelector("h2")?.textContent).toBe("Owed on each card");
+	const first = root.querySelector("button[data-card]");
+	expect(first?.querySelector(".card-name b")?.textContent).toBe("Card A");
+	expect(first?.querySelector(".card-meta")?.textContent).toBe("[A] · 1111");
+	expect(first?.querySelector(".mini")?.getAttribute("data-g")).toBe("1");
+	expect(root.querySelectorAll(".panel")).toHaveLength(1);
+});

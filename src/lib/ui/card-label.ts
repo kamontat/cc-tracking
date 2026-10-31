@@ -58,6 +58,10 @@ export function cardLabelHtml(
 /** The id as a tag: `[SCB-K]`. */
 export const cardIdTag = (id: string): string => `[${id}]`;
 
+/** How a sentence or a button names a card: its name, or `[id]` when it is no longer stored. */
+export const cardName = (id: string, card: Card | undefined): string =>
+	card?.name ?? cardIdTag(id);
+
 /** The muted second part of a card's name: `[SCB-K] · 1029`. */
 export const cardMetaText = (card: Card): string =>
 	`${cardIdTag(card.id)} · ${card.last4}`;

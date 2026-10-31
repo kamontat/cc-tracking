@@ -8,7 +8,7 @@ import "#components/cc-tx-filter";
 import "#components/cc-tx-ledger";
 import { html, nothing, render } from "lit";
 import { searchBox } from "#components/list-controls";
-import { displayDate, today } from "#lib/domain/date";
+import { displayDate, monthName, today } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { markPaid, plannedOf } from "#lib/domain/pay";
 import {
@@ -24,17 +24,13 @@ import {
 import type { CardPayment, ListStatus } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { cardLabelText } from "#lib/ui/card-label";
+import { cardName } from "#lib/ui/card-label";
+import { icons } from "#lib/ui/icons";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import { deletePayment, savePayment } from "#lib/ui/record-payment";
-import {
-	DEFAULT_TX_VIEW,
-	readTxView,
-	type TxView,
-	writeTxView,
-} from "#lib/ui/tx-query";
+import { readTxView, type TxView, writeTxView } from "#lib/ui/tx-query";
 
 export type TransactionsOptions = {
 	/** The page's only clock reading: today's date. */
@@ -111,7 +107,7 @@ export function renderTransactionsPage(
 		for (const id of filter.cards)
 			list.push({
 				key: `card:${id}`,
-				label: cardLabelText(
+				label: cardName(
 					id,
 					cards.find((c) => c.id === id),
 				),
@@ -128,12 +124,6 @@ export function renderTransactionsPage(
 				key: "range",
 				label: `${filter.from ? displayDate(filter.from, getLocale()) : "…"} – ${filter.to ? displayDate(filter.to, getLocale()) : "…"}`,
 				clear: () => setFilter({ from: "", to: "" }),
-			});
-		if (view.sort !== DEFAULT_TX_VIEW.sort)
-			list.push({
-				key: "sort",
-				label: t(`tx.sort.${view.sort}`),
-				clear: () => change({ sort: DEFAULT_TX_VIEW.sort }),
 			});
 		return list;
 	};
@@ -163,41 +153,65 @@ export function renderTransactionsPage(
 			})),
 		};
 		const active = chips();
-		const figure = (field: string, label: string, text: string) =>
-			html`<div data-field=${field}><span class="figure__label">${label}</span>
-				<b data-numeric>${text}</b></div>`;
+		const openSheet = () => {
+			sheet = { ...filter };
+			paint();
+		};
+		const figure = (
+			field: string,
+			label: string,
+			text: string,
+			tone?: string,
+		) =>
+			html`<div data-field=${field}><small>${label}</small>
+				<b data-numeric data-tone=${tone ?? nothing}>${text}</b></div>`;
+		const MINUS = "−";
 		return html`
-			<div class="tx-toolbar">
-				${searchBox(filter.q, t("tx.search.placeholder"), (q) => setFilter({ q }))}
-				<button type="button" data-variant="quiet" data-action="filter"
-					@click=${() => {
-						sheet = { ...filter };
-						paint();
-					}}>${t("tx.filter.open")}${active.length ? ` · ${active.length}` : ""}</button>
+			<div class="tx-controls">
+				<div class="tx-ctl">
+					<label class="tx-search">${icons.search}${searchBox(
+						filter.q,
+						t("tx.search.placeholder"),
+						(q) => setFilter({ q }),
+					)}</label>
+					<button type="button" class="tx-fbtn" data-variant="quiet" data-action="filter"
+						@click=${openSheet}>${icons.filter}${t("tx.filter.open")}${
+							active.length
+								? html`<b class="tx-count">${active.length}</b>`
+								: nothing
+						}</button>
+				</div>
+				<div class="tx-chips">
+					<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="sort"
+						@click=${openSheet}>${t("tx.sortChip", { sort: t(`tx.sort.${view.sort}`) })} ▾</button>
+					${active.map(
+						(chip) =>
+							html`<button type="button" class="tx-chip" data-variant="quiet" data-chip=${chip.key}
+								aria-label=${t("tx.chip.remove", { filter: chip.label })}
+								@click=${chip.clear}>${chip.label} ×</button>`,
+					)}
+				</div>
 			</div>
 			${
-				active.length
-					? html`<div class="tx-chips">${active.map(
-							(chip) =>
-								html`<button type="button" data-variant="quiet" data-chip=${chip.key}
-									aria-label=${t("tx.chip.remove", { filter: chip.label })}
-									@click=${chip.clear}>${chip.label} ×</button>`,
-						)}</div>`
-					: nothing
-			}
-			${
 				summary
-					? html`<div class="tx-summary" data-testid="summary">
-						${figure("purchases", t("tx.summary.purchases"), formatAmount(summary.purchases))}
-						${figure("payments", t("tx.summary.payments"), formatAmount(summary.payments))}
-						${figure("owed", t("tx.summary.owed"), formatAmount(summary.owed))}
-					</div>`
+					? html`<section class="tx-summary" data-testid="summary">
+						<div class="tx-summary__head">
+							<h2>${t("tx.summary.title", { month: monthName(now, getLocale()) })}</h2>
+							<small>${t("tx.summary.legend")}</small>
+						</div>
+						<div class="tx-summary__figures">
+							${figure("purchases", t("tx.summary.purchases"), `${summary.purchases ? MINUS : ""}${formatAmount(summary.purchases)}`)}
+							${figure("payments", t("tx.summary.payments"), `${summary.payments ? "+" : ""}${formatAmount(summary.payments)}`, "in")}
+							${figure("owed", t("tx.summary.owed"), formatAmount(summary.owed))}
+						</div>
+					</section>`
 					: nothing
 			}
 			<cc-tx-ledger
 				.groups=${dated ? byDay(rows) : null}
 				.entries=${rows}
 				.lists=${d.lists}
+				.limitGroups=${d.groups}
 				.today=${now}
 				.open=${open}
 				.filtered=${narrowed}
@@ -234,49 +248,52 @@ export function renderTransactionsPage(
 
 	const paint = () => {
 		const d = data;
-		const showMain = view.view === "ledger" || view.view === "owed";
 		render(
 			html`
-				<h1>${t("nav.transactions")}</h1>
-				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<div class="tx-switch" role="group">${VIEWS.map(
-					(name) =>
-						html`<button type="button" data-view=${name}
-							data-variant=${view.view === name ? nothing : "quiet"}
-							aria-pressed=${view.view === name}
-							data-desktop-current=${name === "ledger" && view.view === "owed" ? "" : nothing}
-							@click=${() => {
-								open = null;
-								change({ view: name });
-							}}>${t(`tx.view.${name}`)}</button>`,
-				)}</div>
-				${
-					d
-						? html`<div class="tx-grid" data-view=${view.view}>
-							${
-								showMain
-									? html`<div class="tx-main">${ledgerView()}</div>`
-									: nothing
-							}
-							${
-								view.view === "lists"
-									? html`<cc-list-index
-										.lists=${d.lists}
-										.cards=${d.cards}
-										.status=${view.status}
-										@status=${(e: CustomEvent<{ status: ListStatus[] }>) => change({ status: e.detail.status })}
-									></cc-list-index>`
-									: html`<aside class="tx-owed">
-										<cc-owed-list
-											.rows=${owedRows(d.cards, d.ledgers, now, view.owedSort)}
-											.sort=${view.owedSort}
-											@sort=${(e: CustomEvent<{ sort: TxView["owedSort"] }>) => change({ owedSort: e.detail.sort })}
-										></cc-owed-list>
-									</aside>`
-							}
-						</div>`
-						: nothing
-				}
+				<div class="tx-grid" data-show=${view.view}>
+					<div class="tx-main">
+						<div class="tx-head">
+							<h1>${t("nav.transactions")}</h1>
+							<div class="tx-switch" role="group">${VIEWS.map(
+								(name) =>
+									html`<button type="button" data-view=${name} data-variant="quiet"
+										aria-pressed=${view.view === name}
+										data-desktop-current=${name === "ledger" && view.view === "owed" ? "" : nothing}
+										@click=${() => {
+											open = null;
+											change({ view: name });
+										}}>${t(`tx.view.${name}`)}</button>`,
+							)}</div>
+						</div>
+						<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+						${
+							d
+								? html`<div class="tx-body">${
+										view.view === "lists"
+											? html`<cc-list-index
+												.lists=${d.lists}
+												.cards=${d.cards}
+												.status=${view.status}
+												@status=${(e: CustomEvent<{ status: ListStatus[] }>) => change({ status: e.detail.status })}
+											></cc-list-index>`
+											: ledgerView()
+									}</div>`
+								: nothing
+						}
+					</div>
+					${
+						d
+							? html`<aside class="tx-owed">
+								<cc-owed-list
+									.rows=${owedRows(d.cards, d.ledgers, now, view.owedSort)}
+									.groups=${d.groups}
+									.sort=${view.owedSort}
+									@sort=${(e: CustomEvent<{ sort: TxView["owedSort"] }>) => change({ owedSort: e.detail.sort })}
+								></cc-owed-list>
+							</aside>`
+							: nothing
+					}
+				</div>
 			`,
 			root,
 		);
