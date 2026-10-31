@@ -1,4 +1,4 @@
-import { css, html, LitElement, nothing, type PropertyValues } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import {
 	actionRow,
@@ -107,23 +107,17 @@ export class CcTxLedger extends LitElement {
 				display: inline;
 			}
 
+			/* A payment row's right side (DD-77): the amount, and its Delete under it. */
+			.pay-right {
+				display: flex;
+				flex-direction: column;
+				align-items: flex-end;
+				gap: var(--cc-space-1);
+				line-height: 1.25;
+			}
+
 			.archived {
 				align-self: center;
-			}
-
-			.actions {
-				display: flex;
-				flex-direction: row;
-				flex-wrap: wrap;
-				align-items: center;
-				gap: var(--cc-space-2);
-				padding: 0 0 var(--cc-space-3)
-					calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
-			}
-
-			.confirm {
-				flex: 1 1 100%;
-				font-size: var(--cc-text-sm);
 			}
 
 			/* Below 900px a ledger row stacks like the action row (DD-109): the chip, the title
@@ -137,6 +131,15 @@ export class CcTxLedger extends LitElement {
 					grid-column: 2;
 					align-items: flex-start;
 					text-align: start;
+				}
+
+				/* A payment's amount and Delete share the last line: amount left, buttons right. */
+				.crow[data-kind] > .pay-right {
+					grid-column: 2;
+					flex-direction: row;
+					flex-wrap: wrap;
+					align-items: center;
+					justify-content: space-between;
 				}
 			}
 
@@ -158,8 +161,6 @@ export class CcTxLedger extends LitElement {
 	@property({ attribute: false }) limitGroups: LimitGroup[] = [];
 	@property({ attribute: false }) upcoming: Upcoming | null = null;
 	@property() today: PlainDate = "";
-	@property() open: string | null = null;
-	@property({ type: Boolean }) confirming = false;
 	@property({ type: Boolean }) filtered = false;
 	/** The waiting list whose *Confirm* asks its second step. */
 	@state() private confirmingList: string | null = null;
@@ -169,11 +170,6 @@ export class CcTxLedger extends LitElement {
 	constructor() {
 		super();
 		new LocaleController(this);
-	}
-
-	protected override willUpdate(changed: PropertyValues<this>) {
-		if (changed.has("open") && changed.get("open") !== undefined)
-			this.confirming = false;
 	}
 
 	private emit(name: string, detail: object) {
@@ -209,26 +205,6 @@ export class CcTxLedger extends LitElement {
 		return html`<span class="t"><b>${cardPanelLabel(id, card)}</b> <span class="word">${word}</span></span>`;
 	}
 
-	private deleteBlock(payment: CardPayment, card: Card | undefined) {
-		return html`<div class="actions" data-open=${payment.id}>
-			${
-				this.confirming
-					? html`
-						<p class="confirm">${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}</p>
-						<button type="button" data-variant="danger" data-action="confirm-delete"
-							@click=${() => this.emit("delete-payment", { payment })}>${t("common.delete")}</button>
-						<button type="button" data-action="keep"
-							@click=${() => {
-								this.confirming = false;
-							}}>${t("tx.keep")}</button>`
-					: html`<button type="button" data-variant="danger" data-action="delete"
-							@click=${() => {
-								this.confirming = true;
-							}}>${t("tx.deletePayment")}</button>`
-			}
-		</div>`;
-	}
-
 	/** A planned payment's buttons: *Paid* and *Delete*, which swap in place for *Delete* and *Cancel* (DD-110). */
 	private planButtons(payment: CardPayment, card: Card | undefined) {
 		if (this.confirmingPlan !== payment.id)
@@ -237,6 +213,11 @@ export class CcTxLedger extends LitElement {
 				@click=${() => {
 					this.confirmingPlan = payment.id;
 				}}>${t("common.delete")}</button></span>`;
+		return this.deleteSwap(payment, card);
+	}
+
+	/** *Delete* (asks "Delete ฿X to NAME?" as its label) and *Cancel*, in place of the buttons. */
+	private deleteSwap(payment: CardPayment, card: Card | undefined) {
 		return html`<span class="a-btns" data-confirming=${payment.id}><button type="button" data-variant="danger" data-action="confirm-delete"
 			aria-label=${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}
 			@click=${() => {
@@ -246,6 +227,16 @@ export class CcTxLedger extends LitElement {
 			@click=${() => {
 				this.confirmingPlan = null;
 			}}>${t("common.cancel")}</button></span>`;
+	}
+
+	/** A paid payment's *Delete*, always visible; it swaps in place for *Delete* and *Cancel* (DD-77). */
+	private paidButtons(payment: CardPayment, card: Card | undefined) {
+		if (this.confirmingPlan !== payment.id)
+			return html`<button type="button" data-variant="danger" data-action="delete"
+				@click=${() => {
+					this.confirmingPlan = payment.id;
+				}}>${t("common.delete")}</button>`;
+		return this.deleteSwap(payment, card);
 	}
 
 	private row(entry: TxEntry, showDate: boolean) {
@@ -261,30 +252,28 @@ export class CcTxLedger extends LitElement {
 				t("tx.fromList", { date: headerDate(list.date, getLocale(), false) }),
 			);
 		if (showDate) parts.push(displayDate(entryDate(entry), getLocale()));
+		const sub =
+			parts.length > 0 || entry.card?.archived
+				? html`<span class="sub">${parts.length > 0 ? html`<span>${parts.join(" · ")}</span>` : nothing}${
+						entry.card?.archived
+							? html`<span class="tag archived">${t("cards.archived")}</span>`
+							: nothing
+					}</span>`
+				: nothing;
 		const body = html`
 			${this.chip(entry.card)}
-			<span class="what">
-				${this.heading(id, entry.card, word)}
-				${
-					parts.length > 0 || entry.card?.archived
-						? html`<span class="sub">${parts.length > 0 ? html`<span>${parts.join(" · ")}</span>` : nothing}${
-								entry.card?.archived
-									? html`<span class="tag archived">${t("cards.archived")}</span>`
-									: nothing
-							}</span>`
-						: nothing
-				}
-			</span>
+			<span class="what">${this.heading(id, entry.card, word)}${sub}</span>
 			<b class="amount r ${purchase ? "out" : "in"}" data-numeric>${this.signed(entry)}</b>`;
 		if (entry.kind === "purchase")
 			return html`<div class="row">
 				<a class="crow" data-kind="purchase" href=${this.link(entry)}>${body}</a>
 			</div>`;
-		const open = this.open === entry.payment.id;
 		return html`<div class="row">
-			<button type="button" class="crow" data-kind="payment" aria-expanded=${open}
-				@click=${() => this.emit("toggle", { id: entry.payment.id })}>${body}</button>
-			${open ? this.deleteBlock(entry.payment, entry.card) : nothing}
+			<div class="crow" data-kind="payment">
+				${this.chip(entry.card)}
+				<span class="what">${this.heading(id, entry.card, word)}${sub}</span>
+				<span class="pay-right"><b class="amount r in" data-numeric>${this.signed(entry)}</b>${this.paidButtons(entry.payment, entry.card)}</span>
+			</div>
 		</div>`;
 	}
 

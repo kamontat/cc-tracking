@@ -62,7 +62,6 @@ export function renderTransactionsPage(
 	const now = today(clock());
 	let view: TxView = readTxView(search);
 	let data: MoneyData | null = null;
-	let open: string | null = null;
 	// A fresh object each time the sheet opens, so the sheet's draft starts from the view.
 	let sheet: TxFilter | null = null;
 
@@ -85,7 +84,6 @@ export function renderTransactionsPage(
 	const mark = (payment: CardPayment) =>
 		state.guard(async () => {
 			if (data) await savePayment(repo, data, markPaid(payment, now), now);
-			open = null;
 		}, "tx.error.markPaid");
 	/** Upcoming's *Confirm*: the waiting list saved as is, every line made (DD-108). */
 	const confirmList = (list: PurchaseList) =>
@@ -95,7 +93,6 @@ export function renderTransactionsPage(
 	const remove = (payment: CardPayment) =>
 		state.guard(async () => {
 			await deletePayment(repo, payment);
-			open = null;
 		}, "tx.error.delete");
 
 	type Chip = {
@@ -227,13 +224,8 @@ export function renderTransactionsPage(
 				.lists=${d.lists}
 				.limitGroups=${d.groups}
 				.today=${now}
-				.open=${open}
 				.filtered=${narrowed}
 				.upcoming=${narrowed ? null : upcoming}
-				@toggle=${(e: CustomEvent<{ id: string }>) => {
-					open = open === e.detail.id ? null : e.detail.id;
-					paint();
-				}}
 				@mark-paid=${(e: CustomEvent<{ payment: CardPayment }>) => mark(e.detail.payment)}
 				@confirm-list=${(e: CustomEvent<{ list: PurchaseList }>) => confirmList(e.detail.list)}
 				@delete-payment=${(e: CustomEvent<{ payment: CardPayment }>) => remove(e.detail.payment)}
@@ -275,7 +267,6 @@ export function renderTransactionsPage(
 										aria-pressed=${view.view === name}
 										data-desktop-current=${name === "ledger" && view.view === "owed" ? "" : nothing}
 										@click=${() => {
-											open = null;
 											change({ view: name });
 										}}>${t(`tx.view.${name}`)}</button>`,
 							)}</div>

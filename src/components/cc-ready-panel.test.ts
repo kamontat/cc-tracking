@@ -56,14 +56,33 @@ test("only the three cards with the most room show, as rows with no tick", async
 	expect(flat(root.querySelector('[data-card="A"]'))).toContain("Overdue bill");
 });
 
-test("Start a list and See all both lead to the picker", async () => {
+test("See more (N) opens the rest in place and Show less folds them; there is no Start a list", async () => {
+	const rows = [
+		...testRows(),
+		testRow("D", 90_000_00, "2026-11-10", "2026-11-25"),
+		testRow("E", 10_000_00, "2026-11-10", "2026-11-25"),
+	];
+	const { element, root } = await mount({ rows });
+	expect(root.querySelector('[data-action="start"]')).toBeNull();
+	expect(root.querySelector('[data-action="see-all"]')).toBeNull();
+	const more = () =>
+		root.querySelector('[data-action="more"]') as HTMLButtonElement;
+	expect(flat(more())).toBe("See more (2)");
+	expect(more().getAttribute("data-variant")).toBe("quiet");
+	expect(more().getAttribute("aria-expanded")).toBe("false");
+	more().click();
+	await element.updateComplete;
+	expect(order(root)).toHaveLength(5);
+	expect(flat(more())).toBe("Show less");
+	expect(more().getAttribute("aria-expanded")).toBe("true");
+	more().click();
+	await element.updateComplete;
+	expect(order(root)).toEqual(["D", "B", "A"]);
+});
+
+test("three cards or fewer have no See more", async () => {
 	const { root } = await mount();
-	const start = root.querySelector('[data-action="start"]');
-	const all = root.querySelector('[data-action="see-all"]');
-	expect(start?.getAttribute("href")).toBe("/list/new");
-	expect(flat(start)).toBe("Start a list");
-	expect(all?.getAttribute("href")).toBe("/list/new");
-	expect(flat(all)).toBe("See all 3 ›");
+	expect(root.querySelector('[data-action="more"]')).toBeNull();
 });
 
 test("nothing ready names the next step and offers no list", async () => {
@@ -71,7 +90,6 @@ test("nothing ready names the next step and offers no list", async () => {
 	expect(
 		root.querySelector('[data-action="settings"]')?.getAttribute("href"),
 	).toBe("/settings");
-	expect(root.querySelector('[data-action="start"]')).toBeNull();
 	expect(root.querySelectorAll("[data-card]")).toHaveLength(0);
 });
 
@@ -89,8 +107,4 @@ test("reads in Thai", async () => {
 	setLocale("th");
 	const { root } = await mount();
 	expect(flat(root.querySelector("h2"))).toBe("พร้อมใช้");
-	expect(flat(root.querySelector('[data-action="start"]'))).toBe("เริ่มรายการ");
-	expect(flat(root.querySelector('[data-action="see-all"]'))).toBe(
-		"ดูทั้งหมด 3 ใบ ›",
-	);
 });

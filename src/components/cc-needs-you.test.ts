@@ -193,6 +193,18 @@ test("reads in Thai", async () => {
 	expect(text(root, '[data-item="overdue"] .a-sub')).toBe("เป็นเวลา 16 วัน");
 });
 
+test("the overdue amount carries the danger tone, with its words", async () => {
+	const root = await mount([
+		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-30", days: 1 },
+	]);
+	const amount = root
+		.querySelector('[data-item="overdue"]')
+		?.closest(".a-row")
+		?.querySelector(".amount");
+	expect(amount?.classList.contains("danger")).toBe(true);
+	expect(text(root, '[data-item="overdue"] .a-title')).toContain("Overdue");
+});
+
 test("one day overdue reads in the singular", async () => {
 	const root = await mount([
 		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-30", days: 1 },

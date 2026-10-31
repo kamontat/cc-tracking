@@ -80,7 +80,7 @@ test("rows read direction by sign and word, and purchases link to list or card",
 	expect(a?.textContent).toContain("Purchase");
 	expect(b?.getAttribute("href")).toBe("/card?id=A");
 	expect(b?.textContent).toContain("coffee");
-	expect(c?.tagName).toBe("BUTTON");
+	expect(c?.tagName).toBe("DIV");
 	expect(text(c as Element, "[data-numeric]")).toBe("+฿700.00");
 	expect(c?.querySelector(".amount.in")).not.toBeNull();
 	expect(c?.textContent).toContain("Payment");
@@ -140,54 +140,50 @@ test("an empty ledger names the way on", async () => {
 	expect(text(filtered.root, ".empty")).toContain("Clear the search");
 });
 
-test("a payment row opens in place and deleting asks twice", async () => {
+test("a payment row shows Delete under its amount; Delete swaps in place for Delete and Cancel", async () => {
 	const { element, root } = await mount({
 		entries: [payEntry("p1", 700_00)],
 	});
-	const toggles: unknown[] = [];
-	element.addEventListener("toggle", (e) =>
-		toggles.push((e as unknown as CustomEvent).detail),
-	);
-	(root.querySelector("button[data-kind=payment]") as HTMLElement).click();
-	expect(toggles).toEqual([{ id: "p1" }]);
-	element.open = "p1";
-	await element.updateComplete;
-	expect(root.querySelector("[data-action=confirm-delete]")).toBeNull();
 	const deleted: unknown[] = [];
 	element.addEventListener("delete-payment", (e) =>
 		deleted.push((e as CustomEvent).detail),
 	);
-	(root.querySelector("[data-action=delete]") as HTMLElement).click();
+	const right = () => root.querySelector(".pay-right") as HTMLElement;
+	expect(root.querySelector("button[data-kind=payment]")).toBeNull();
+	expect(right().querySelector(".amount")?.textContent).toBe("+฿700.00");
+	const del = right().querySelector("[data-action=delete]") as HTMLElement;
+	expect(del.getAttribute("data-variant")).toBe("danger");
+	expect(del.textContent?.trim()).toBe("Delete");
+	del.click();
 	await element.updateComplete;
 	expect(deleted).toEqual([]);
-	expect(element.confirming).toBe(true);
-	expect(text(root, ".confirm")).toContain("Delete ฿700.00 to Card A?");
-	const keep = root.querySelector("[data-action=keep]") as HTMLElement;
-	expect(keep.hasAttribute("data-variant")).toBe(false);
-	expect(
-		root
-			.querySelector("[data-action=confirm-delete]")
-			?.getAttribute("data-variant"),
-	).toBe("danger");
-	keep.click();
+	const confirm = right().querySelector(
+		"[data-action=confirm-delete]",
+	) as HTMLElement;
+	expect(confirm.getAttribute("data-variant")).toBe("danger");
+	expect(confirm.getAttribute("aria-label")).toBe("Delete ฿700.00 to Card A?");
+	const cancel = right().querySelector(
+		"[data-action=cancel-delete]",
+	) as HTMLElement;
+	expect(cancel.hasAttribute("data-variant")).toBe(false);
+	expect(right().querySelector("[data-action=delete]")).toBeNull();
+	cancel.click();
 	await element.updateComplete;
-	expect(element.confirming).toBe(false);
-	(root.querySelector("[data-action=delete]") as HTMLElement).click();
+	expect(right().querySelector("[data-action=delete]")).not.toBeNull();
+	expect(deleted).toEqual([]);
+	(right().querySelector("[data-action=delete]") as HTMLElement).click();
 	await element.updateComplete;
-	(root.querySelector("[data-action=confirm-delete]") as HTMLElement).click();
+	(
+		right().querySelector("[data-action=confirm-delete]") as HTMLElement
+	).click();
 	expect(deleted.length).toBe(1);
 	expect((deleted[0] as { payment: CardPayment }).payment.id).toBe("p1");
 });
 
-test("opening another row drops the question", async () => {
-	const { element } = await mount({
-		entries: [payEntry("p1", 100_00), payEntry("p2", 100_00)],
-		open: "p1",
-		confirming: true,
-	});
-	element.open = "p2";
-	await element.updateComplete;
-	expect(element.confirming).toBe(false);
+test("a purchase row has no Delete", async () => {
+	const { root } = await mount({ entries: [purchase("x1", 100_00)] });
+	expect(root.querySelector("[data-action=delete]")).toBeNull();
+	expect(root.querySelector(".pay-right")).toBeNull();
 });
 
 test("Upcoming uses the shared row: a waiting list with Confirm, a planned payment with Paid", async () => {
@@ -408,7 +404,7 @@ test("a payment's note shows on its sub line, in the ledger and under Upcoming",
 			cards: [],
 		},
 	});
-	const rows = [...root.querySelectorAll("button[data-kind=payment]")];
+	const rows = [...root.querySelectorAll(".crow[data-kind=payment]")];
 	expect(text(rows[0] as Element, ".sub")).toBe("From savings · 31 Oct 2026");
 	expect(text(rows[1] as Element, ".sub")).toBe("31 Oct 2026");
 	expect(text(root, '[data-row="pl1"] .a-sub')).toBe(

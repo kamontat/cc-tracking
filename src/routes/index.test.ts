@@ -93,15 +93,13 @@ test("the batch start is never touched", async () => {
 	expect(localStorage.getItem("cc:batch-start")).toBeNull();
 });
 
-test("Home has no selection: the short panel leads to the picker", async () => {
+test("Home has no selection: the short panel has no Start a list", async () => {
 	const { root } = await setup();
 	const panel = await readyList(root);
 	expect(panel.rows.map((row) => row.card.id)).toEqual(["A", "B"]);
 	const shadow = panel.shadowRoot as ShadowRoot;
 	expect(shadow.querySelector(".tick")).toBeNull();
-	expect(
-		shadow.querySelector('[data-action="start"]')?.getAttribute("href"),
-	).toBe("/list/new");
+	expect(shadow.querySelector('[data-action="start"]')).toBeNull();
 	expect(root.querySelector('[data-testid="selection"]')).toBeNull();
 	expect(document.documentElement.hasAttribute("data-selecting")).toBe(false);
 });

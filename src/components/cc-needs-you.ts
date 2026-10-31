@@ -99,7 +99,7 @@ export class CcNeedsYou extends LitElement {
 				// An overdue bill leads to the payment sheet on its card and what is left.
 				return actionRow(overdueText(item.card, this.groups, item.days), {
 					href: payAddress({ cardId: item.card.id, amount: item.remaining }),
-					amount: { text: formatAmount(item.remaining), tone: "plain" },
+					amount: { text: formatAmount(item.remaining), tone: "danger" },
 				});
 			case "planned":
 				return actionRow(

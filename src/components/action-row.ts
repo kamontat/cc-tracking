@@ -143,7 +143,7 @@ export type ActionRowOptions = {
 	onToggle?: () => void;
 	expanded?: boolean;
 	/** The right-hand figure, already signed, and its tone. */
-	amount?: { text: string; tone: "out" | "in" | "muted" | "plain" };
+	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" };
 	/** ...or is plain text, with only its own buttons (a planned payment, DD-110).
 	 * The button under the figure. */
 	action?: TemplateResult | undefined;
@@ -315,7 +315,8 @@ export const actionRowStyles = css`
 	}
 
 	/* A lone button sits at the right edge, under the amount (shared.ts sets flex-start). */
-	.a-right > button {
+	.a-right > button,
+	.pay-right > button {
 		align-self: flex-end;
 	}
 
@@ -342,7 +343,8 @@ export const actionRowStyles = css`
 			text-align: start;
 		}
 
-		.a-right > button {
+		.a-right > button,
+		.pay-right > button {
 			align-self: center;
 		}
 	}
@@ -355,7 +357,8 @@ export const actionRowStyles = css`
 		gap: var(--cc-space-2);
 	}
 
-	.a-right button {
+	.a-right button,
+	.pay-right button {
 		padding: var(--cc-space-1) var(--cc-space-3);
 		font-size: var(--cc-text-xs);
 		font-weight: 650;

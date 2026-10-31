@@ -847,7 +847,8 @@ export const rowPanel = css`
 	}
 
 	/* Purchases read red and payments green, always with their sign and word (UI-07). */
-	.amount.out {
+	.amount.out,
+	.amount.danger {
 		color: var(--cc-danger);
 	}
 
