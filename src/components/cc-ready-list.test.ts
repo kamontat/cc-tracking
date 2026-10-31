@@ -150,3 +150,16 @@ test("reads in Thai", async () => {
 	]);
 	expect(flat(root.querySelector("h2"))).toContain("พร้อมใช้");
 });
+
+test("the picked sort chip reads as link text on the accent tint", async () => {
+	const { element } = await mount();
+	const styles = (element.constructor as typeof CcReadyList).styles as {
+		cssText: string;
+	}[];
+	const rule = styles
+		.map((s) => s.cssText)
+		.join("\n")
+		.match(/\.chip\[aria-pressed="true"\]\s*\{([^}]*)\}/)?.[1];
+	expect(rule).toContain("background: var(--cc-accent-surface)");
+	expect(rule).toContain("color: var(--cc-link)");
+});

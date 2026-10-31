@@ -62,7 +62,7 @@ export class CcReadyList extends LitElement {
 			.chip[aria-pressed="true"] {
 				background: var(--cc-accent-surface);
 				border-color: var(--cc-accent);
-				color: var(--cc-accent-text);
+				color: var(--cc-link);
 				font-weight: 600;
 			}
 

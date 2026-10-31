@@ -118,7 +118,7 @@ export class CcNeedsYou extends LitElement {
 		switch (item.kind) {
 			case "waiting":
 				return {
-					href: `/list?id=${item.list.id}`,
+					href: `/list?id=${encodeURIComponent(item.list.id)}`,
 					icon: icons.clock,
 					title: t("home.waiting"),
 					detail: t("home.waitingDetail", {
@@ -138,7 +138,7 @@ export class CcNeedsYou extends LitElement {
 				};
 			case "draft":
 				return {
-					href: `/list?id=${item.list.id}`,
+					href: `/list?id=${encodeURIComponent(item.list.id)}`,
 					icon: icons.transactions,
 					title: t("home.draft", {
 						date: headerDate(item.list.date, locale, false),

@@ -101,3 +101,13 @@ test("reads in Thai", async () => {
 	expect(text(root, "h1")).toBe("มี 3 เรื่องรอคุณ");
 	expect(text(root, '[data-item="waiting"] b')).toBe("รอคำตอบของผู้ใช้บัตร");
 });
+
+test("a list id is encoded in its link", async () => {
+	const root = await mount([
+		{ kind: "waiting", list: list("w 1/2", "sent", ["A"]), total: 100 },
+		{ kind: "draft", list: list("d&1", "draft", ["A"]), total: 100 },
+	]);
+	expect(
+		[...root.querySelectorAll("[data-item]")].map((e) => e.getAttribute("href")),
+	).toEqual(["/list?id=w%201%2F2", "/list?id=d%261"]);
+});
