@@ -202,8 +202,7 @@ export const en = {
 	"cards.edit": "Edit {name}",
 	"cards.archived": "Archived",
 	"cards.archivedList": "Archived ({count})",
-	"cards.archive": "Archive",
-	"cards.purchaseCount": "{count} purchases",
+	"cards.page.noGroup": "No limit group",
 	"cards.locationReset":
 		"These cards were kept somewhere this app no longer recognises, so their location was set to Bangkok: {names}. Edit each one to pick the right place.",
 	"cards.error.read": "Could not read the card list.",
@@ -270,6 +269,8 @@ export const en = {
 	"card.stat.keptIn": "Kept in",
 	"card.useOnList": "Use on a list",
 	"card.pay": "Make a payment",
+	"card.noGroupNote":
+		"Give this card a limit group (Edit) to use it on a list.",
 	"card.archivedNote": "This card is archived, so it isn't offered on lists.",
 	"card.statements": "Statements",
 	"card.purchase.edit": "Edit purchase",

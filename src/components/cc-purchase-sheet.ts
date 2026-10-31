@@ -4,21 +4,13 @@ import { css, html, LitElement, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { isCloseDate } from "#lib/domain/cycle";
 import { compareDates, isValidDate } from "#lib/domain/date";
-import { formatAmountInput, parseAmount } from "#lib/domain/money";
+import { amountOf, formatAmountInput } from "#lib/domain/money";
 import type { Card, LimitGroup, PlainDate, Purchase } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { cardPanel } from "#lib/ui/card-label";
 import { base, cardBits, controls } from "#styles/shared";
-
-const amountOf = (text: string): number | null => {
-	try {
-		return parseAmount(text);
-	} catch {
-		return null;
-	}
-};
 
 /**
  * One saved purchase in a sheet over the card page: the card fixed and named (FR-21), then its

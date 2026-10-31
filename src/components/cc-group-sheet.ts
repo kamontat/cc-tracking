@@ -2,21 +2,13 @@ import "#components/cc-error-banner";
 import "#components/cc-modal";
 import { css, html, LitElement, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { formatAmountInput, parseAmount } from "#lib/domain/money";
+import { amountOf, formatAmountInput } from "#lib/domain/money";
 import { OWNERS, type Owner, ownerOf } from "#lib/domain/owner";
 import type { LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { base, controls } from "#styles/shared";
-
-const amountOf = (text: string): number | null => {
-	try {
-		return parseAmount(text);
-	} catch {
-		return null;
-	}
-};
 
 /**
  * A limit group in a sheet over Cards: name, limit and account holder (a segmented control),

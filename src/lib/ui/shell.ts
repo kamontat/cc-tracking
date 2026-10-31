@@ -23,8 +23,8 @@ export const TABS: readonly (readonly [
 
 /**
  * The tab a path belongs to. The payment page (`/pay`) sits under Transactions, where payments
- * are listed. A card's own page (`/card`) sits under Cards, where its link in
- * the registry leads from; every purchase list page (`/list/new`, `/list/draft`, `/list/reply`,
+ * are listed. A card's own page (`/card`) sits under Cards, where the link
+ * to it leads from; every purchase list page (`/list/new`, `/list/draft`, `/list/reply`,
  * `/list/view`) sits under Home, where a list starts and waits. One trailing slash is ignored,
  * so `/cards/` is still Cards.
  */

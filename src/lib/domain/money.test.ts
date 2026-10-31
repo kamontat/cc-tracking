@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	amountOf,
 	formatAmount,
 	formatAmountInput,
 	parseAmount,
@@ -71,5 +72,14 @@ describe("sumAmounts", () => {
 
 	test("is zero for nothing", () => {
 		expect(sumAmounts([])).toBe(0);
+	});
+});
+
+describe("amountOf", () => {
+	test("reads an amount, or null instead of throwing", () => {
+		expect(amountOf("1,200.50")).toBe(120_050);
+		expect(amountOf("")).toBeNull();
+		expect(amountOf("abc")).toBeNull();
+		expect(amountOf("0")).toBeNull();
 	});
 });

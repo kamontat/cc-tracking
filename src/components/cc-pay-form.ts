@@ -2,11 +2,7 @@ import "#components/cc-error-banner";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { displayDate, isValidDate } from "#lib/domain/date";
-import {
-	formatAmount,
-	formatAmountInput,
-	parseAmount,
-} from "#lib/domain/money";
+import { amountOf, formatAmount, formatAmountInput } from "#lib/domain/money";
 import { payPreview } from "#lib/domain/pay";
 import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
@@ -27,14 +23,6 @@ export type PayFigures = {
 	credit: number;
 	nextBill: number;
 	overdue: boolean;
-};
-
-const amountOf = (text: string): number | null => {
-	try {
-		return parseAmount(text);
-	} catch {
-		return null;
-	}
 };
 
 /** An amount that may wrap only after the baht sign or a comma, so no digit is left alone. */

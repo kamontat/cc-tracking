@@ -167,6 +167,8 @@ export function renderCardsPage(
 	const closeSheet = () => {
 		if (busy) return;
 		sheetFailed = false;
+		// The failed write's reason belongs to the sheet; it goes when the sheet does.
+		state.clear();
 		if (pushed) {
 			pushed = false;
 			// The pop that follows repaints without the sheet.
@@ -318,7 +320,7 @@ export function renderCardsPage(
 								>${icons.plus}${t("cards.page.add")}</a>
 						</div>
 						${
-							sheetFailed
+							sheetFailed || busy
 								? nothing
 								: html`<cc-error-banner .message=${state.error}
 									retry-label=${t("common.reload")}

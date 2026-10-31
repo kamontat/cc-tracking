@@ -15,6 +15,15 @@ export function parseAmount(input: string): number {
 	return value;
 }
 
+/** `parseAmount`, but null on anything that is not an amount instead of throwing. */
+export function amountOf(input: string): number | null {
+	try {
+		return parseAmount(input);
+	} catch {
+		return null;
+	}
+}
+
 export function formatAmount(satang: number): string {
 	const sign = satang < 0 ? "-" : "";
 	const absolute = Math.abs(satang);

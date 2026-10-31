@@ -216,8 +216,7 @@ export const th: Catalog = {
 	// backup.problem.*Cycle fragments below).
 	"cards.archived": "เก็บเข้าคลังแล้ว",
 	"cards.archivedList": "เก็บเข้าคลังแล้ว ({count})",
-	"cards.archive": "เก็บเข้าคลัง",
-	"cards.purchaseCount": "{count} รายการ",
+	"cards.page.noGroup": "ไม่มีกลุ่มวงเงิน",
 	"cards.locationReset":
 		"บัตรเหล่านี้เคยเก็บไว้ในที่ที่แอปไม่รู้จักแล้ว จึงตั้งที่เก็บเป็นกรุงเทพฯ: {names} แก้ไขแต่ละใบเพื่อเลือกที่เก็บที่ถูกต้อง",
 	"cards.error.read": "อ่านรายการบัตรไม่สำเร็จ",
@@ -283,6 +282,7 @@ export const th: Catalog = {
 	"card.stat.keptIn": "ที่อยู่บัตร",
 	"card.useOnList": "ใช้ในใบรายการซื้อ",
 	"card.pay": "ชำระเงิน",
+	"card.noGroupNote": "กำหนดกลุ่มวงเงินให้บัตรใบนี้ (แก้ไข) เพื่อใช้ในใบรายการซื้อ",
 	"card.archivedNote": "บัตรใบนี้เก็บเข้าคลังแล้ว จึงไม่แสดงในใบรายการซื้อ",
 	"card.statements": "ใบแจ้งยอด",
 	"card.purchase.edit": "แก้ไขรายการใช้จ่าย",

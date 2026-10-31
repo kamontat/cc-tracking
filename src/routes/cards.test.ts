@@ -459,6 +459,52 @@ test("a failed save keeps the sheet open with the reason, and a retry keeps the 
 	expect(address.calls).toEqual(["replace /cards"]);
 });
 
+test("closing the sheet after a failed save leaves the banner empty", async () => {
+	const repo = new FlakyGroupRepository();
+	await seed(repo);
+	repo.failures = 1;
+	const { root } = await setup("/cards?group=new", { repo, skipSeed: true });
+	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
+	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
+	await settle(5);
+	expect(sheet()?.error).toContain("disk is full");
+	sheet()?.dispatchEvent(new CustomEvent("close"));
+	await settle(5);
+	expect(sheet()).toBeNull();
+	expect(root.querySelector("cc-error-banner")?.message ?? "").toBe("");
+});
+
+class FailThenHoldRepository extends InMemoryRepository {
+	armed = false;
+	calls = 0;
+	release = () => {};
+	override async saveLimitGroup(group: LimitGroup): Promise<void> {
+		if (!this.armed) return super.saveLimitGroup(group);
+		this.calls++;
+		if (this.calls === 1) throw new Error("disk is full");
+		await new Promise<void>((resolve) => {
+			this.release = resolve;
+		});
+		return super.saveLimitGroup(group);
+	}
+}
+
+test("the page banner stays empty while a retry is under way", async () => {
+	const repo = new FailThenHoldRepository();
+	await seed(repo);
+	repo.armed = true;
+	const { root } = await setup("/cards?group=new", { repo, skipSeed: true });
+	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
+	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
+	await settle(5);
+	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
+	await settle(5);
+	expect(sheet()?.busy).toBe(true);
+	expect(root.querySelector("cc-error-banner")?.message ?? "").toBe("");
+	repo.release();
+	await settle(5);
+});
+
 class SlowGroupRepository extends InMemoryRepository {
 	release = () => {};
 	override async saveLimitGroup(group: LimitGroup): Promise<void> {

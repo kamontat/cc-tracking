@@ -81,6 +81,10 @@ export class CcCardsList extends LitElement {
 				color: var(--cc-warning);
 			}
 
+			.r small[data-tone="muted"] {
+				color: var(--cc-text-muted);
+			}
+
 			details.archive {
 				display: flex;
 				flex-direction: column;
@@ -146,9 +150,11 @@ export class CcCardsList extends LitElement {
 			note = html`<small data-tone="warn">${t("cards.page.used", { pct })}</small>`;
 		else if (credit > 0)
 			note = html`<small>${t("cards.page.credit", { amount: formatAmount(credit) })}</small>`;
+		if (!room)
+			return html`<span class="r"><small data-tone="muted">${t("cards.page.noGroup")}</small></span>`;
 		return html`<span class="r">
-			<b class="amount" data-numeric>${room ? formatAmount(room.room) : t("common.none")}</b>
-			${room ? note : nothing}
+			<b class="amount" data-numeric>${formatAmount(room.room)}</b>
+			${note}
 		</span>`;
 	}
 

@@ -126,6 +126,18 @@ test("the right side: room, N% used from 80% in the warn tone, or credit", async
 	expect(text(right("C"))).toBe("฿80,000.00 credit ฿250.00");
 });
 
+test("a card with no limit group, or a deleted one, says so in place of a dash", async () => {
+	const { root } = await mount({}, {}, [
+		(({ limitGroupId: _, ...rest }) => rest)(card("N")),
+		card("D", { limitGroupId: "gone" }),
+	]);
+	for (const id of ["N", "D"]) {
+		const right = root.querySelector(`a[data-card="${id}"] .r`);
+		expect(text(right)).toBe("No limit group");
+		expect(right?.querySelector("[data-numeric]")).toBeNull();
+	}
+});
+
 test("any other sort is one flat list headed N cards, rows adding place and holder", async () => {
 	const { root } = await mount({ sort: "name" });
 	expect(root.querySelector("section[data-location]")).toBeNull();

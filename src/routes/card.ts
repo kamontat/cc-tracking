@@ -116,6 +116,7 @@ export function renderCardPage(
 		if (busy) return;
 		editingId = null;
 		sheetFailed = false;
+		state.clear();
 		paint();
 	};
 
@@ -141,6 +142,8 @@ export function renderCardPage(
 		// An archived card takes no purchases wherever it is kept, so naming the place as the
 		// reason would send the reader to the wrong setting.
 		if (current.archived) return t("card.archivedNote");
+		// A list needs the card's group (DR-20), so without one *Use on a list* is a dead end.
+		if (data && !roomFor(current, data)) return t("card.noGroupNote");
 		if (!canPurchase(current, data?.settings ?? DEFAULT_SETTINGS))
 			return t("card.noPurchases", {
 				location: locationText(current.location),

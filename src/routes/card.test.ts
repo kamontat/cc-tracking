@@ -234,7 +234,8 @@ test("card payments settle the oldest statement first and leave credit past what
 
 test("Use on a list starts a list on this card, and Make a payment opens its next bill", async () => {
 	const repo = new InMemoryRepository();
-	await repo.saveCard({ ...card, id: "a b" });
+	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit: 500_000 });
+	await repo.saveCard({ ...card, id: "a b", limitGroupId: "pool" });
 	await repo.savePurchase({ ...purchase, cardId: "a b" });
 	const root = await open(repo, "a b");
 
@@ -253,7 +254,8 @@ test("Use on a list starts a list on this card, and Make a payment opens its nex
 
 test("a card kept where purchases are not ticked says so instead of Use on a list", async () => {
 	const repo = new InMemoryRepository();
-	await repo.saveCard({ ...card, location: "bangkok" });
+	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit: 500_000 });
+	await repo.saveCard({ ...card, location: "bangkok", limitGroupId: "pool" });
 	const root = await open(repo);
 
 	const actions = root.querySelector(".card-actions");
@@ -261,6 +263,27 @@ test("a card kept where purchases are not ticked says so instead of Use on a lis
 	expect(text(actions?.querySelector(".note"))).toBe(
 		"Bangkok takes no new purchases, so this card isn't offered on lists. Tick it under Purchases on the Settings page.",
 	);
+});
+
+const NO_GROUP_NOTE =
+	"Give this card a limit group (Edit) to use it on a list.";
+
+test("a card with no limit group says so instead of Use on a list", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const root = await open(repo);
+
+	expect(root.querySelector('[data-action="use-on-list"]')).toBeNull();
+	expect(text(root.querySelector(".card-actions .note"))).toBe(NO_GROUP_NOTE);
+});
+
+test("a card whose limit group was deleted says the same", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({ ...card, limitGroupId: "gone" });
+	const root = await open(repo);
+
+	expect(root.querySelector('[data-action="use-on-list"]')).toBeNull();
+	expect(text(root.querySelector(".card-actions .note"))).toBe(NO_GROUP_NOTE);
 });
 
 test("an archived card says it is archived: archiving, not the place, is why", async () => {
@@ -481,6 +504,24 @@ test("a failed edit keeps the sheet open with the message, the typing and the ol
 			?.value,
 	).toBe("typed");
 	expect(await repo.listPurchases("kbank")).toEqual([purchase]);
+});
+
+test("closing the sheet after a failed edit leaves the banner empty", async () => {
+	const repo = new RejectingPurchaseRepository();
+	await repo.saveCard(card);
+	await InMemoryRepository.prototype.savePurchase.call(repo, purchase);
+	const root = await open(repo);
+
+	const sheet = await openSheet(root);
+	await submitSheet(sheet);
+	await settle();
+	root
+		.querySelector("cc-purchase-sheet")
+		?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+
+	expect(root.querySelector("cc-purchase-sheet")).toBeNull();
+	expect(bannerMessage(root)).toBe("");
 });
 
 test("a failed edit never puts its reason in the page banner, not even for a moment", async () => {
