@@ -64,7 +64,7 @@ export class CcPayForm extends LitElement {
 				align-items: center;
 				justify-content: space-between;
 				gap: var(--cc-space-3);
-				font-size: var(--cc-text-xl);
+				font-size: var(--cc-text-2xl);
 				font-weight: 700;
 			}
 
@@ -75,7 +75,7 @@ export class CcPayForm extends LitElement {
 
 			dl {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(var(--cc-space-8), 1fr));
+				grid-template-columns: repeat(auto-fit, minmax(calc(var(--cc-space-7) * 2), 1fr));
 				gap: var(--cc-space-3);
 			}
 

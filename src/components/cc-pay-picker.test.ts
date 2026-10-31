@@ -131,3 +131,17 @@ test("search narrows the rows, and an empty result says what to do", async () =>
 		"No card matches. Clear the search.",
 	);
 });
+
+test("a card id with & and a space survives the link", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const el = document.createElement("cc-pay-picker");
+	el.choices = [
+		{ ...choices()[4], card: card("A&B 1", "Odd") },
+	] as unknown as PayChoice[];
+	el.today = "2026-10-31";
+	document.body.append(el);
+	await el.updateComplete;
+	const href = rows(el)[0]?.getAttribute("href") ?? "";
+	expect(new URLSearchParams(href.split("?")[1]).get("card")).toBe("A&B 1");
+});

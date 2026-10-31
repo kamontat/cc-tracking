@@ -57,11 +57,24 @@ test("a known card shows the form, amount prefilled", async () => {
 	expect(inner<HTMLInputElement>(el, '[name="amount"]').value).toBe("120.50");
 });
 
+const withStatement = async (repo: Repository) => {
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "A",
+		date: "2026-09-10",
+		amount: 10_000_00,
+		note: "fuel",
+	});
+};
+
 test("a paid payment is stored and the page leaves for Transactions", async () => {
-	const { root, repo, visited } = await open("?card=A");
+	const { root, repo, visited } = await open("?card=A", withStatement);
 	const el = form(root);
 	await fill(el, "amount", "100");
 	await submit(el);
+	expect((await repo.listStatementDates("A")).map((d) => d.period)).toEqual([
+		"2026-09",
+	]);
 	const stored = await repo.listCardPayments("A");
 	expect(stored).toHaveLength(1);
 	expect(stored[0]).toMatchObject({
@@ -74,11 +87,12 @@ test("a paid payment is stored and the page leaves for Transactions", async () =
 });
 
 test("a later date stores a planned payment", async () => {
-	const { root, repo, visited } = await open("?card=A");
+	const { root, repo, visited } = await open("?card=A", withStatement);
 	const el = form(root);
 	await fill(el, "amount", "100");
 	await fill(el, "date", "2026-11-05");
 	await submit(el);
+	expect(await repo.listStatementDates("A")).toEqual([]);
 	const [payment] = await repo.listCardPayments("A");
 	expect(payment).toMatchObject({ status: "planned", date: "2026-11-05" });
 	expect(visited).toEqual(["/transactions"]);
