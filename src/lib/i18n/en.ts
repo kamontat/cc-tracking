@@ -18,6 +18,7 @@ export const en = {
 	"title.card": "Card — cc-tracking",
 	"title.settings": "Settings — cc-tracking",
 	"title.transactions": "Transactions — cc-tracking",
+	"title.list": "Purchase list — cc-tracking",
 	"transactions.soon":
 		"Every purchase and payment in one list is coming in a later update. Until then, record a payment from the card's own page.",
 	"transactions.toCards": "Go to Cards",
@@ -33,6 +34,7 @@ export const en = {
 	"common.dismiss": "Dismiss",
 	"common.close": "Close",
 	"common.none": "—",
+	"common.back": "Back",
 
 	"about.title": "About",
 	"about.environment": "Environment",
@@ -423,4 +425,19 @@ export const en = {
 	"purchaseList.warn.datePassed":
 		"This date has passed. Lists are for purchases still to make; keep it only if you are recording something already bought.",
 	"purchaseList.warn.toToday": "Change to today",
+	"purchaseList.new": "New purchase list",
+	"purchaseList.draft": "Draft list",
+	"purchaseList.reviewTitle": "Review list",
+	"purchaseList.saveImage": "Save image",
+	"purchaseList.copied": "Copied. Paste it into the chat with the spender.",
+	"purchaseList.imageSaved":
+		"Image saved. Send it in the chat with the spender.",
+	"purchaseList.sendHint":
+		"Sent it in the chat? Mark it sent. It waits on Home until the spender replies.",
+	"purchaseList.markSent": "Mark as sent",
+	"purchaseList.saveDraft": "Save as draft instead",
+	"purchaseList.error.save": "Could not save the list.",
+	"purchaseList.error.read": "Could not read the list.",
+	"purchaseList.missing": "This list no longer exists.",
+	"purchaseList.toHome": "Go to Home",
 } as const;

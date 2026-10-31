@@ -30,6 +30,7 @@ test("current tab per path", () => {
 	expect(currentTab("/settings")).toBe("settings");
 	expect(currentTab("/cards/")).toBe("cards");
 	expect(currentTab("/settings/")).toBe("settings");
+	expect(currentTab("/list")).toBe("home");
 	expect(currentTab("/nope")).toBeNull();
 });
 

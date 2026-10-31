@@ -836,3 +836,74 @@ a:any-link:hover {
 		);
 	}
 }
+
+/*
+ * A sub page's heading: a square back control, then the title with its detail. The control is
+ * a link to a page or a quiet button for a step inside one; both get the same target.
+ */
+.back-header {
+	align-items: center;
+	gap: var(--cc-space-3);
+}
+
+.back-header > [data-action="back"] {
+	display: grid;
+	place-items: center;
+	flex: none;
+	align-self: center;
+	inline-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
+	block-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
+	padding: 0;
+	color: var(--cc-text);
+	background: var(--cc-surface-sunken);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.back-header .icon {
+	inline-size: var(--cc-icon-size);
+	block-size: var(--cc-icon-size);
+}
+
+.back-header h1 {
+	display: grid;
+	min-width: 0;
+	line-height: 1.25;
+}
+
+/* The review's share buttons side by side, and how the last one went. */
+.list-share {
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+}
+
+.list-share button,
+.page button[data-action="mark-sent"] {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cc-space-2);
+}
+
+.list-share .icon,
+.page button[data-action="mark-sent"] .icon {
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+}
+
+.page > .status {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-success);
+}
+
+.page > .status[data-failed] {
+	color: var(--cc-danger);
+}
+
+.page > .status:empty {
+	display: none;
+}
+
+.page > .note {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}

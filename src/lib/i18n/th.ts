@@ -27,6 +27,7 @@ export const th: Catalog = {
 	"title.card": "บัตร — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",
 	"title.transactions": "รายการเคลื่อนไหว — cc-tracking",
+	"title.list": "ใบรายการซื้อ — cc-tracking",
 	"transactions.soon":
 		"รายการซื้อและการชำระทั้งหมดในรายการเดียวจะมาในการอัปเดตครั้งถัดไป ระหว่างนี้บันทึกการชำระได้ที่หน้าของบัตรแต่ละใบ",
 	"transactions.toCards": "ไปที่บัตร",
@@ -42,6 +43,7 @@ export const th: Catalog = {
 	"common.dismiss": "ปิด",
 	"common.close": "ปิด",
 	"common.none": "—",
+	"common.back": "กลับ",
 
 	"about.title": "เกี่ยวกับ",
 	"about.environment": "สภาพแวดล้อม",
@@ -424,4 +426,18 @@ export const th: Catalog = {
 	"purchaseList.warn.datePassed":
 		"วันที่นี้ผ่านมาแล้ว ใบรายการซื้อมีไว้สำหรับการซื้อที่ยังไม่เกิดขึ้น ใช้วันที่นี้เฉพาะเมื่อบันทึกสิ่งที่ซื้อไปแล้ว",
 	"purchaseList.warn.toToday": "เปลี่ยนเป็นวันนี้",
+	"purchaseList.new": "ใบรายการซื้อใหม่",
+	"purchaseList.draft": "ใบรายการซื้อฉบับร่าง",
+	"purchaseList.reviewTitle": "ตรวจทานใบรายการซื้อ",
+	"purchaseList.saveImage": "บันทึกรูปภาพ",
+	"purchaseList.copied": "คัดลอกแล้ว วางในแชตกับผู้ใช้บัตรได้เลย",
+	"purchaseList.imageSaved": "บันทึกรูปแล้ว ส่งในแชตกับผู้ใช้บัตรได้เลย",
+	"purchaseList.sendHint":
+		"ส่งในแชตแล้วใช่ไหม กดบันทึกว่าส่งแล้ว ใบรายการจะรออยู่ที่หน้าหลักจนกว่าผู้ใช้บัตรจะตอบ",
+	"purchaseList.markSent": "บันทึกว่าส่งแล้ว",
+	"purchaseList.saveDraft": "บันทึกเป็นฉบับร่างแทน",
+	"purchaseList.error.save": "บันทึกใบรายการซื้อไม่สำเร็จ",
+	"purchaseList.error.read": "อ่านใบรายการซื้อไม่สำเร็จ",
+	"purchaseList.missing": "ไม่พบใบรายการซื้อนี้แล้ว",
+	"purchaseList.toHome": "ไปที่หน้าหลัก",
 };
