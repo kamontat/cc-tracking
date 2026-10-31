@@ -128,8 +128,8 @@ export class CcReadyPanel extends LitElement {
 								this.expanded = !this.expanded;
 							}}>${
 								this.expanded
-									? t("home.needs.less")
-									: t("home.needs.more", { count: count - READY_TOP })
+									? t("common.showLess")
+									: t("common.seeMore", { count: count - READY_TOP })
 							}</button>`
 					: nothing
 			}

@@ -1133,7 +1133,7 @@ a:any-link:hover {
 	background: var(--cc-surface-sunken);
 }
 
-/* The month so far: a title and the sign legend, then three figures in a row. */
+/* The month so far: a title, then three figures in a row. */
 .tx-summary {
 	display: flex;
 	flex-direction: column;
@@ -1231,7 +1231,7 @@ a:any-link:hover {
 /*
  * The new-list picker's selection bar: what is ticked on the left, its actions on the right. It
  * sticks to the bottom of the page as it scrolls, above the phone's tab bar. The picker is a
- * list page, so the floating Payment button is hidden there and the bar has the full width.
+ * list page, so the floating + New menu is hidden there and the bar has the full width.
  */
 .action-bar {
 	position: sticky;
@@ -1247,7 +1247,7 @@ a:any-link:hover {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--cc-space-1) var(--cc-space-3);
-	/* As tall as the floating Payment button; a bar that wraps grows past it. */
+	/* As tall as the floating + New button; a bar that wraps grows past it. */
 	min-block-size: var(--cc-bar-height);
 	padding: var(--cc-space-1) var(--cc-space-4);
 	background: var(--cc-surface);

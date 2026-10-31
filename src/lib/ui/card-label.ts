@@ -49,10 +49,6 @@ function swap(full: string, short: string): TemplateResult {
 export const cardLineHtml = (id: string, card: Card | undefined) =>
 	swap(cardLine(id, card), cardLine(id, card, { short: true }));
 
-/** The name form as markup, with `c-[id]` beside it for a narrow place. */
-export const cardNameHtml = (id: string, card: Card | undefined) =>
-	swap(cardName(id, card), cardShort(id));
-
 /**
  * Which of the four group pastels a card wears: its group's place in the stored group order,
  * four colours round (1 to 4). Null when it draws on no stored group.
@@ -93,13 +89,6 @@ export const cardPanel = (
 	big = false,
 ) =>
 	html`<span class="card-panel">${cardMini(card, groups, big)} ${cardPanelLabel(id, card)}</span>`;
-
-/**
- * The name form with the last 4 after it, for a sentence that must tell two cards of the same
- * name apart: `SCB Krabi (1029)`. A card no longer stored is `c-[id]` (DD-108).
- */
-export const cardNameLast4 = (id: string, card: Card | undefined): string =>
-	card ? `${card.name} (${card.last4})` : cardShort(id);
 
 /**
  * The name form with the cardholder after it, for the Needs you and Upcoming rows (DD-110):

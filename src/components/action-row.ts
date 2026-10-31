@@ -63,7 +63,7 @@ export const forWords = (days: number): string =>
 
 const listDate = (list: PurchaseList) => displayDate(list.date, getLocale());
 
-/** A waiting list; the total is the row's amount on the right (DD-111), not in the subtitle. */
+/** A waiting list; the total is the row's amount on the right (DD-108), not in the subtitle. */
 export function waitingText(
 	list: PurchaseList,
 	cards: Card[],
@@ -98,7 +98,7 @@ export function draftText(
 }
 
 /**
- * A planned payment: the amount is on the right (DD-111); the date sits under the title, and
+ * A planned payment: the amount is on the right (DD-108); the date sits under the title, and
  * Upcoming adds the payment's note.
  */
 export function plannedText(
@@ -144,8 +144,8 @@ export type ActionRowOptions = {
 	expanded?: boolean;
 	/** The right-hand figure, already signed, and its tone. */
 	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" };
-	/** ...or is plain text, with only its own buttons (a planned payment, DD-110).
-	 * The button under the figure. */
+	/** The buttons under the figure. With neither `href` nor `onToggle` the row is plain text
+	 * and these are its only controls (a planned payment, DD-110). */
 	action?: TemplateResult | undefined;
 	/** What opens under the row (a two-step confirm). */
 	below?: TemplateResult | typeof nothing;
@@ -321,7 +321,7 @@ export const actionRowStyles = css`
 	}
 
 	/* Below 900px the row stacks (DD-109): the title takes the full width beside the icon and
-	   may wrap, the subtitle and badge sit under it, then a last line holds the figure on the
+	   may wrap, the subtitle sits under it, then a last line holds the figure on the
 	   left and the button on the right, both in line with the text. */
 	@media (max-width: 899.98px) {
 		.a-row {

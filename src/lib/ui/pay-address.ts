@@ -7,7 +7,7 @@ export type PayRequest = { cardId?: string; amount?: number };
 /**
  * The address of the payment page: `/pay` alone shows the card picker, `/pay?card=<id>` opens
  * the payment sheet over it, and `&amount=<satang>` prefills the sheet's amount. Every way to
- * pay links here -- the floating Payment button, Home's overdue item, a Transactions *Owed*
+ * pay links here -- the + New menu's *Make a payment*, Home's overdue item, a Transactions *Owed*
  * row, the card page's *Make a payment*.
  */
 export function payAddress(request: PayRequest = {}): string {

@@ -21,7 +21,7 @@ export type ListPageOptions = {
 };
 
 /**
- * Marks `<html data-list-page>`, so the shell hides the floating Payment button on every list
+ * Marks `<html data-list-page>`, so the shell hides the floating + New menu on every list
  * page: the reader is mid-list, and the bottom bars need the full width.
  */
 export const markListPage = (root: HTMLElement): void => {

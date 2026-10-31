@@ -45,9 +45,9 @@
 	--cc-icon-size: 1.375rem;
 	--cc-icon-size-sm: 1.0625rem;
 	/* The four-tab bar measured 69px at 390px in English and Thai (no label wraps), before the
-	   bottom safe-area inset. The floating Payment button sits this far up, plus a gap. */
+	   bottom safe-area inset. The floating + New menu sits this far up, plus a gap. */
 	--cc-tabbar-height: 4.375rem;
-	/* One height for the floating Payment button (the round button's diameter, the pill's
+	/* One height for the floating + New button (the round button's diameter, the pill's
 	   height) and the selection bars at the foot of a page, so the two read as one family. */
 	--cc-bar-height: 3.125rem;
 	--cc-fab-shadow: 0 8px 18px

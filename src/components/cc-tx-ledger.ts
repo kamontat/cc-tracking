@@ -41,12 +41,12 @@ const MINUS = "−";
 /**
  * The ledger: purchases and paid payments, grouped under day headings (`groups`) or flat
  * (`entries`), and the *Upcoming* section above it. Each day (or the flat list) is one panel
- * of rows. A purchase row is a link; a payment row is a button that opens in place, where a
- * wrong payment is deleted in two steps (UI-09). Upcoming uses the shared action row (DD-108):
- * a waiting list links to its reply and has *Confirm*, which asks once more before it saves
- * every line as made (`confirm-list`); a planned payment is plain text with *Paid* (`mark-paid`) and a
- * *Delete* button after it, which asks once more (DD-110). The page owns `open`, for a paid
- * payment's delete; `confirming` is its second step and is dropped whenever another row opens.
+ * of rows. A purchase row is a link; a paid payment row is plain text with a *Delete* under its
+ * amount (DD-77). Upcoming uses the shared action row (DD-108): a waiting list links to its
+ * reply and has *Confirm*; a planned payment is plain text with *Paid* (`mark-paid`) and
+ * *Delete* (DD-110). Each second step swaps the buttons in place (UI-09) -- *Confirm* for *Save*
+ * and *Cancel* (`confirm-list`), *Delete* for an asking *Delete* and *Cancel*
+ * (`delete-payment`) -- and focus follows the swap, so the keyboard never drops to the page.
  */
 @customElement("cc-tx-ledger")
 export class CcTxLedger extends LitElement {

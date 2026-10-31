@@ -27,8 +27,8 @@ const SHOWN = 5;
  * What needs doing on Home, money at risk first (DD-62): bills past due, late plans, replies
  * to record, payments planned soon, drafts to finish. Each is the shared action row (DD-108):
  * its icon says the kind, and the whole row opens the item; the amount sits on the right
- * (DD-111), with no button. More than five show the first five and *See more (N)*, which opens the rest in
- * place, in the same order.
+ * (DD-108), with no button. More than five show the first five and *See more (N)*, which opens
+ * the rest in place, in the same order.
  */
 @customElement("cc-needs-you")
 export class CcNeedsYou extends LitElement {
@@ -146,8 +146,8 @@ export class CcNeedsYou extends LitElement {
 								this.expanded = !this.expanded;
 							}}>${
 								this.expanded
-									? t("home.needs.less")
-									: t("home.needs.more", { count: count - SHOWN })
+									? t("common.showLess")
+									: t("common.seeMore", { count: count - SHOWN })
 							}</button>`
 					: nothing
 			}

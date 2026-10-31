@@ -52,8 +52,8 @@ export type PayPageOptions = {
 };
 
 /**
- * Marks `<html data-pay-page>`, so the shell hides the floating Payment button here: the page
- * is where the button leads.
+ * Marks `<html data-pay-page>`, so the shell hides the floating + New menu here: the page
+ * is where its *Make a payment* leads.
  */
 const markPayPage = (root: HTMLElement): void => {
 	root.ownerDocument.documentElement.setAttribute("data-pay-page", "");

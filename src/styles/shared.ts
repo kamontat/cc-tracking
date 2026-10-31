@@ -612,7 +612,7 @@ export const actionBarStyles = css`
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--cc-space-1) var(--cc-space-3);
-		/* As tall as the floating Payment button (--cc-bar-height); a bar that wraps grows. */
+		/* As tall as the floating + New button (--cc-bar-height); a bar that wraps grows. */
 		min-block-size: var(--cc-bar-height);
 		padding: var(--cc-space-1) var(--cc-space-4);
 		background: var(--cc-surface);

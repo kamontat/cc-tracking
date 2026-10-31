@@ -8,7 +8,6 @@ import {
 	cardLines,
 	cardMini,
 	cardName,
-	cardNameHtml,
 	cardOwnerName,
 	cardPanel,
 	cardShort,
@@ -71,15 +70,6 @@ test("the line markup holds the full and the short form, for CSS to swap", () =>
 	expect(host.querySelector(".cl-short")?.getAttribute("aria-hidden")).toBe(
 		"true",
 	);
-});
-
-test("the name markup holds the name and c-[id], for CSS to swap", () => {
-	const host = document.createElement("div");
-	render(cardNameHtml("5", card), host);
-	expect(text(host.querySelector(".cl-full"))).toBe("Card A10");
-	expect(text(host.querySelector(".cl-short"))).toBe("c-[5]");
-	render(cardNameHtml("5", undefined), host);
-	expect(text(host.querySelector(".cl-full"))).toBe("c-[5]");
 });
 
 test("the panel form is the last-4 chip, then id) name", () => {
