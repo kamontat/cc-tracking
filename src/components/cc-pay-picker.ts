@@ -1,12 +1,12 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { matchesCard, type PayChoice } from "#lib/domain/pay";
 import type { PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
+import { t } from "#lib/i18n/index";
 import { cardLabelHtml } from "#lib/ui/card-label";
+import { payTag } from "#lib/ui/pay-tag";
 import { base, controls } from "#styles/shared";
 
 /** *Which card?*: every card a payment can go to, most pressing first, with a search box. */
@@ -90,39 +90,6 @@ export class CcPayPicker extends LitElement {
 		new LocaleController(this);
 	}
 
-	private tag(choice: PayChoice) {
-		if (choice.urgency === "overdue")
-			return {
-				urgency: "overdue",
-				text: t(
-					choice.days === 1 ? "pay.tag.overdue.one" : "pay.tag.overdue.many",
-					{ days: choice.days },
-				),
-			};
-		if (choice.urgency === "soon")
-			return {
-				urgency: "soon",
-				text: t(choice.days === 1 ? "pay.tag.soon.one" : "pay.tag.soon.many", {
-					days: choice.days,
-				}),
-			};
-		if (choice.urgency === "due" && choice.bill)
-			return {
-				urgency: "due",
-				text: t("pay.tag.due", {
-					date: displayDate(choice.bill.dueDate, getLocale()),
-				}),
-			};
-		if (choice.owed <= 0 && choice.credit > 0)
-			return {
-				urgency: "credit",
-				text: t("pay.tag.credit", { amount: formatAmount(choice.credit) }),
-			};
-		if (choice.owed <= 0)
-			return { urgency: "none", text: t("pay.tag.nothing") };
-		return null;
-	}
-
 	override render() {
 		const shown = this.choices.filter((c) => matchesCard(c.card, this.query));
 		return html`
@@ -135,7 +102,7 @@ export class CcPayPicker extends LitElement {
 				shown.length === 0
 					? html`<p class="empty">${t("pay.noMatch")}</p>`
 					: html`<div class="list">${shown.map((choice) => {
-							const tag = this.tag(choice);
+							const tag = payTag(choice);
 							return html`<a data-card=${choice.card.id}
 								href=${`/pay?card=${encodeURIComponent(choice.card.id)}`}>
 								<span class="what"><b>${cardLabelHtml(choice.card.id, choice.card)}</b></span>

@@ -1,0 +1,143 @@
+import { afterEach, expect, test } from "bun:test";
+import "#components/cc-tx-filter";
+import type { CcTxFilter } from "#components/cc-tx-filter";
+import {
+	DEFAULT_TX_FILTER,
+	type TxFilter,
+	type TxSort,
+} from "#lib/domain/transactions";
+import type { Card } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
+
+afterEach(() => setLocale("en"));
+
+const card = (id: string): Card => ({
+	id,
+	name: `Card ${id}`,
+	last4: "1111",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
+	archived: false,
+});
+
+const mount = async (props: Partial<CcTxFilter> = {}) => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-tx-filter") as CcTxFilter;
+	element.cards = [card("A"), card("B")];
+	element.filter = DEFAULT_TX_FILTER;
+	element.sort = "new";
+	element.count = (f: TxFilter, _s: TxSort) =>
+		f.types.length + f.cards.length + (f.range ? 1 : 0) + 5;
+	Object.assign(element, props);
+	document.body.append(element);
+	await element.updateComplete;
+	const modal = element.shadowRoot?.querySelector("cc-modal") as HTMLElement;
+	return { element, root: element.shadowRoot as ShadowRoot, modal };
+};
+
+const click = async (element: CcTxFilter, selector: string) => {
+	element.shadowRoot?.querySelector<HTMLElement>(selector)?.click();
+	await element.updateComplete;
+};
+
+test("sits in a modal with the apply button counting results", async () => {
+	const { element, root, modal } = await mount();
+	expect(modal.getAttribute("heading")).toBe("Filter and sort");
+	expect(root.querySelector("[data-action=apply]")?.textContent?.trim()).toBe(
+		"Show 5 results",
+	);
+	await click(element, "[data-type=purchase]");
+	expect(root.querySelector("[data-action=apply]")?.textContent?.trim()).toBe(
+		"Show 6 results",
+	);
+});
+
+test("one result reads singular and none disables the button", async () => {
+	const one = await mount({ count: () => 1 });
+	expect(
+		one.root.querySelector("[data-action=apply]")?.textContent?.trim(),
+	).toBe("Show 1 result");
+	const none = await mount({ count: () => 0 });
+	const apply = none.root.querySelector(
+		"[data-action=apply]",
+	) as HTMLButtonElement;
+	expect(apply.textContent?.trim()).toBe("Nothing matches");
+	expect(apply.disabled).toBe(true);
+});
+
+test("apply emits the draft filter and sort", async () => {
+	const { element } = await mount();
+	let detail: { filter: TxFilter; sort: TxSort } | undefined;
+	element.addEventListener("apply", (e) => {
+		detail = (e as CustomEvent).detail;
+	});
+	await click(element, "[data-type=payment]");
+	await click(element, "[data-card=B]");
+	await click(element, "[data-range=week]");
+	const sort = element.shadowRoot?.querySelector(
+		"select[name=sort]",
+	) as HTMLSelectElement;
+	sort.value = "big";
+	sort.dispatchEvent(new Event("change"));
+	await element.updateComplete;
+	await click(element, "[data-action=apply]");
+	expect(detail?.filter.types).toEqual(["payment"]);
+	expect(detail?.filter.cards).toEqual(["B"]);
+	expect(detail?.filter.range).toBe("week");
+	expect(detail?.sort).toBe("big");
+});
+
+test("types and cards toggle off again; the search text is kept", async () => {
+	const { element } = await mount({
+		filter: { ...DEFAULT_TX_FILTER, q: "abc", cards: ["A"] },
+	});
+	let detail: { filter: TxFilter } | undefined;
+	element.addEventListener("apply", (e) => {
+		detail = (e as CustomEvent).detail;
+	});
+	await click(element, "[data-card=A]");
+	await click(element, "[data-action=apply]");
+	expect(detail?.filter.cards).toEqual([]);
+	expect(detail?.filter.q).toBe("abc");
+});
+
+test("a custom range shows from and to", async () => {
+	const { element, root } = await mount();
+	expect(root.querySelector("input[name=from]")).toBeNull();
+	await click(element, "[data-range=custom]");
+	const from = root.querySelector("input[name=from]") as HTMLInputElement;
+	from.value = "2026-10-01";
+	from.dispatchEvent(new Event("input"));
+	let detail: { filter: TxFilter } | undefined;
+	element.addEventListener("apply", (e) => {
+		detail = (e as CustomEvent).detail;
+	});
+	await click(element, "[data-action=apply]");
+	expect(detail?.filter.range).toBe("custom");
+	expect(detail?.filter.from).toBe("2026-10-01");
+});
+
+test("Clear all resets the draft but keeps the sheet open", async () => {
+	const { element, root } = await mount({
+		filter: { ...DEFAULT_TX_FILTER, types: ["payment"], range: "month" },
+		sort: "old",
+	});
+	await click(element, "[data-action=clear]");
+	expect(
+		root.querySelector("[data-type=payment]")?.getAttribute("aria-pressed"),
+	).toBe("false");
+	expect(
+		root.querySelector("[data-range=month]")?.getAttribute("aria-pressed"),
+	).toBe("false");
+	expect(
+		(root.querySelector("select[name=sort]") as HTMLSelectElement).value,
+	).toBe("new");
+});
+
+test("close from the modal is passed on", async () => {
+	const { element, modal } = await mount();
+	let closed = 0;
+	element.addEventListener("close", () => closed++);
+	modal.dispatchEvent(new CustomEvent("close"));
+	expect(closed).toBe(1);
+});
