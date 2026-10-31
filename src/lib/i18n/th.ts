@@ -322,15 +322,15 @@ export const th: Catalog = {
 	"backup.here": "ในเบราว์เซอร์นี้",
 	"backup.incoming": "ในสำเนา",
 	"backup.counts":
-		"บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+		"บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม, ใบรายการซื้อ {lists} ใบ",
 	"backup.merge": "รวม",
 	"backup.mergeHint": "เก็บข้อมูลเดิมไว้ เพิ่มรายการจากสำเนา และอัปเดตรายการที่ซ้ำกัน",
 	"backup.replace": "แทนที่",
 	"backup.replaceHint": "ลบข้อมูลเดิมก่อน ให้เหลือเฉพาะรายการจากสำเนา",
 	"backup.imported":
-		"กู้คืน {file} แล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+		"กู้คืน {file} แล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม, ใบรายการซื้อ {lists} ใบ",
 	"backup.importedText":
-		"กู้คืนข้อความที่วางแล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม",
+		"กู้คืนข้อความที่วางแล้ว: บัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม, ใบรายการซื้อ {lists} ใบ",
 	"backup.error.read": "อ่านข้อมูลไม่สำเร็จ",
 	"backup.error.export": "ดาวน์โหลดสำเนาไม่สำเร็จ",
 	"backup.error.import": "กู้คืนสำเนานี้ไม่สำเร็จ",
@@ -342,7 +342,7 @@ export const th: Catalog = {
 		"ลบบัตร รายการซื้อ การชำระ กลุ่มวงเงิน และการตั้งค่าทั้งหมดในเบราว์เซอร์นี้ ส่งออกข้อมูลสำรองก่อนหากอาจต้องการกู้คืน",
 	"reset.start": "รีเซ็ต…",
 	"reset.confirm":
-		"จะลบบัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ และกลุ่มวงเงิน {limitGroups} กลุ่ม",
+		"จะลบบัตร {cards} ใบ, รายการซื้อ {purchases} รายการ, การชำระ {payments} รายการ, กลุ่มวงเงิน {limitGroups} กลุ่ม และใบรายการซื้อ {lists} ใบ",
 	"reset.delete": "ลบข้อมูลทั้งหมด",
 	"reset.done": "ลบข้อมูลทั้งหมดแล้ว",
 	"reset.error": "รีเซ็ตข้อมูลไม่สำเร็จ",

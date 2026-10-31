@@ -4,7 +4,7 @@ import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
-import { exportBackup, parseBackup } from "#lib/storage/transfer";
+import { exportBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3";
 import { prepareBackupFile, renderSettingsPage } from "./settings";
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
@@ -183,14 +183,16 @@ test("importing a backup merges it into a populated repository without wiping wh
 		amount: 10_000,
 		note: "fuel",
 	});
-	await backupSource.savePayment({
+	await backupSource.saveCardPayment({
+		id: "cp1",
 		cardId: "scb",
-		period: "2026-09",
-		paidAt: "2026-10-01",
-		closeDate: "2026-09-18",
-		dueDate: "2026-10-03",
+		date: "2026-10-01",
+		amount: 5_000,
+		status: "paid",
 	});
-	const backupText = JSON.stringify(await exportBackup(backupSource));
+	const backupText = JSON.stringify(
+		await exportBackupV3(backupSource, new Date()),
+	);
 
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard); // pre-existing card, not part of the backup
@@ -207,7 +209,7 @@ test("importing a backup merges it into a populated repository without wiping wh
 	expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank", "scb"]);
 	expect(await repo.getCard("kbank")).toEqual(sampleCard);
 	expect(await repo.listPurchases("scb")).toHaveLength(1);
-	expect(await repo.listPayments("scb")).toHaveLength(1);
+	expect(await repo.listCardPayments("scb")).toHaveLength(1);
 });
 
 test("importing a malformed file leaves a message in the banner and changes nothing", async () => {
@@ -224,7 +226,7 @@ test("importing a malformed file leaves a message in the banner and changes noth
 	expect(await repo.listCards()).toEqual([sampleCard]);
 });
 
-test("prepareBackupFile produces text that parseBackup accepts and that round-trips every card, purchase, and payment", async () => {
+test("prepareBackupFile produces text that parseAnyBackup accepts and that round-trips every card, purchase, and payment", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(sampleCard);
 	await repo.saveCard({
@@ -240,12 +242,12 @@ test("prepareBackupFile produces text that parseBackup accepts and that round-tr
 		amount: 10_000,
 		note: "fuel",
 	});
-	await repo.savePayment({
+	await repo.saveCardPayment({
+		id: "cp1",
 		cardId: "kbank",
-		period: "2026-09",
-		paidAt: "2026-10-01",
-		closeDate: "2026-09-18",
-		dueDate: "2026-10-03",
+		date: "2026-10-01",
+		amount: 5_000,
+		status: "paid",
 	});
 
 	const { filename, text } = await prepareBackupFile(
@@ -254,10 +256,10 @@ test("prepareBackupFile produces text that parseBackup accepts and that round-tr
 	);
 	expect(filename).toBe("cc-tracking-2026-09-21.json");
 
-	const backup = parseBackup(text);
+	const backup = parseAnyBackup(text);
 	expect(backup.cards).toEqual(await repo.listCards());
 	expect(backup.purchases).toEqual(await repo.listPurchases("kbank"));
-	expect(backup.payments).toEqual(await repo.listPayments("kbank"));
+	expect(backup.payments).toEqual(await repo.listCardPayments("kbank"));
 });
 
 test("clicking Export JSON does not raise an error", async () => {
@@ -319,7 +321,7 @@ const oneCardBackup = async (): Promise<string> => {
 		amount: 10_000,
 		note: "fuel",
 	});
-	return JSON.stringify(await exportBackup(source));
+	return JSON.stringify(await exportBackupV3(source, new Date()));
 };
 
 test("a successful import names the file and counts what it brought in", async () => {
@@ -333,7 +335,7 @@ test("a successful import names the file and counts what it brought in", async (
 
 	expect(bannerMessage(root)).toBe("");
 	expect(importStatus(root)).toBe(
-		"Restored cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
+		"Restored cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups, 0 lists.",
 	);
 	expect(root.querySelector(".import-status")?.getAttribute("role")).toBe(
 		"status",
@@ -377,7 +379,7 @@ test("the success message follows a language switch", async () => {
 test("importing a backup that carries settings shows them in the settings panel", async () => {
 	const source = new InMemoryRepository();
 	await source.saveSettings({ purchaseLocations: ["bangkok", "phichit"] });
-	const backupText = JSON.stringify(await exportBackup(source));
+	const backupText = JSON.stringify(await exportBackupV3(source, new Date()));
 
 	const repo = new InMemoryRepository();
 	const root = mount();
@@ -444,7 +446,7 @@ test("asks before resetting, counting what it would delete", async () => {
 	await settle();
 
 	expect(resetText(root)).toContain(
-		"This deletes 1 cards, 2 purchases, 0 payments and 1 limit groups.",
+		"This deletes 1 cards, 2 purchases, 0 payments, 1 limit groups and 0 lists.",
 	);
 	expect(root.querySelector('.reset [data-action="reset"]')).toBeNull();
 	expect(await repo.listCards()).toHaveLength(1);
@@ -568,8 +570,14 @@ test("importing into a browser that already holds data asks to merge or replace,
 		],
 	);
 	expect(rows).toEqual([
-		["In this browser", "1 cards, 2 purchases, 0 payments, 1 limit groups"],
-		["In the copy", "1 cards, 1 purchases, 0 payments, 0 limit groups"],
+		[
+			"In this browser",
+			"1 cards, 2 purchases, 0 payments, 1 limit groups, 0 lists",
+		],
+		[
+			"In the copy",
+			"1 cards, 1 purchases, 0 payments, 0 limit groups, 0 lists",
+		],
 	]);
 	expect(root.querySelector('.backup [data-action="open-paste"]')).toBeNull();
 	expect(
@@ -622,7 +630,11 @@ test("choosing replace leaves only what the backup carries", async () => {
 	renderSettingsPage(repo, root);
 	await settle();
 
-	chooseFile(root, JSON.stringify(await exportBackup(source)), "b.json");
+	chooseFile(
+		root,
+		JSON.stringify(await exportBackupV3(source, new Date())),
+		"b.json",
+	);
 	await settle();
 	clickBackup(root, "replace-import");
 	await settle();
@@ -631,7 +643,7 @@ test("choosing replace leaves only what the backup carries", async () => {
 	expect((await repo.listCards()).map((c) => c.id)).toEqual(["scb"]);
 	expect(await repo.listLimitGroups()).toEqual([]);
 	expect(importStatus(root)).toBe(
-		"Restored b.json: 1 cards, 0 purchases, 0 payments, 0 limit groups.",
+		"Restored b.json: 1 cards, 0 purchases, 0 payments, 0 limit groups, 0 lists.",
 	);
 	expect(
 		root.querySelector('.backup [data-action="replace-import"]'),
@@ -682,7 +694,7 @@ test("importing pasted text brings it in and closes the panel", async () => {
 	expect(bannerMessage(root)).toBe("");
 	expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank"]);
 	expect(importStatus(root)).toBe(
-		"Restored pasted text: 1 cards, 1 purchases, 0 payments, 0 limit groups.",
+		"Restored pasted text: 1 cards, 1 purchases, 0 payments, 0 limit groups, 0 lists.",
 	);
 	expect(pasteArea(root)).toBeNull();
 });
@@ -814,7 +826,7 @@ test("copy to clipboard writes the backup as compact JSON, and says so", async (
 			await settle();
 
 			expect(bannerMessage(root)).toBe("");
-			const copied = parseBackup(written);
+			const copied = parseAnyBackup(written);
 			expect(copied.cards).toEqual(await repo.listCards());
 			expect(copied.purchases).toHaveLength(2);
 			// Compact, not pretty-printed: pasted text is carried around, not read.
@@ -855,4 +867,85 @@ test("copy to clipboard is not offered where the browser cannot write to it", as
 			root.querySelector('.backup [data-action="copy-export"]'),
 		).toBeNull();
 	});
+});
+
+test("the downloaded file is version 3 and carries lists", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	await repo.savePurchaseList({
+		id: "l1",
+		date: "2026-10-01",
+		status: "draft",
+		lines: [{ cardId: "kbank", amount: 1_000 }],
+	});
+	const { text } = await prepareBackupFile(
+		repo,
+		new Date("2026-09-21T03:00:00Z"),
+	);
+	const parsed = JSON.parse(text);
+	expect(parsed.version).toBe(3);
+	expect(parsed.lists).toHaveLength(1);
+	expect(parsed.locations.length).toBeGreaterThan(0);
+});
+
+test("restoring a version 2 file into an empty browser converts it and counts the lists", async () => {
+	setLocale("en");
+	const repo = new InMemoryRepository();
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+	chooseFile(
+		root,
+		JSON.stringify({
+			version: 2,
+			exportedAt: "2026-09-21T00:00:00.000Z",
+			limitGroups: [],
+			cards: [sampleCard],
+			purchases: [
+				{
+					id: "p1",
+					cardId: "kbank",
+					date: "2026-09-05",
+					amount: 10_000,
+					note: "fuel",
+				},
+			],
+			payments: [
+				{
+					cardId: "kbank",
+					period: "2026-09",
+					paidAt: "2026-10-01",
+					closeDate: "2026-09-18",
+					dueDate: "2026-10-03",
+				},
+			],
+			settings: { purchaseLocations: ["bangkok"] },
+		}),
+		"old.json",
+	);
+	await settle();
+	expect(bannerMessage(root)).toBe("");
+	expect((await repo.listCardPayments("kbank")).length).toBe(1);
+	expect((await repo.getSettings()).purchaseLocations).toEqual(["bangkok"]);
+	expect(importStatus(root)).toContain("0 lists");
+});
+
+test("replace sets the payments marker so startup does not convert again", async () => {
+	setLocale("en");
+	const source = new InMemoryRepository();
+	await source.saveCard({ ...sampleCard, id: "scb", name: "SCB" });
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+	globalThis.localStorage.removeItem("cc:migration:payments");
+	chooseFile(
+		root,
+		JSON.stringify(await exportBackupV3(source, new Date())),
+		"b.json",
+	);
+	await settle();
+	clickBackup(root, "replace-import");
+	await settle();
+	expect(globalThis.localStorage.getItem("cc:migration:payments")).toBe("done");
 });

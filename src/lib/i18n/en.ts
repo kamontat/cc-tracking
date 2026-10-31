@@ -310,7 +310,7 @@ export const en = {
 	"backup.here": "In this browser",
 	"backup.incoming": "In the copy",
 	"backup.counts":
-		"{cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups",
+		"{cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists",
 	"backup.merge": "Merge",
 	"backup.mergeHint":
 		"Keep what is here, add the copy's records, and update any it shares.",
@@ -318,9 +318,9 @@ export const en = {
 	"backup.replaceHint":
 		"Delete what is here first, so only the copy's records remain.",
 	"backup.imported":
-		"Restored {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
+		"Restored {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists.",
 	"backup.importedText":
-		"Restored pasted text: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups.",
+		"Restored pasted text: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists.",
 	"backup.error.read": "Could not read your data.",
 	"backup.error.export": "Could not download a copy.",
 	"backup.error.import": "Could not restore that copy.",
@@ -332,7 +332,7 @@ export const en = {
 		"Deletes every card, purchase, payment, limit group and setting in this browser. Export a backup first if you may want them back.",
 	"reset.start": "Reset…",
 	"reset.confirm":
-		"This deletes {cards} cards, {purchases} purchases, {payments} payments and {limitGroups} limit groups.",
+		"This deletes {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups and {lists} lists.",
 	"reset.delete": "Delete all data",
 	"reset.done": "All data deleted.",
 	"reset.error": "Could not reset your data.",

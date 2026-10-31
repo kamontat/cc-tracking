@@ -10,13 +10,16 @@ import {
 	samplePurchaseList,
 	sampleStatementDates,
 } from "#lib/storage/contract";
+import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
 import { InMemoryRepository } from "#lib/storage/repository";
 import {
 	BACKUP_V3,
 	type BackupV3,
+	countRecordsV3,
 	exportBackupV3,
 	importBackupV3,
 	parseAnyBackup,
+	replaceWithBackupV3,
 } from "#lib/storage/transfer-v3";
 
 const NOW = new Date("2026-10-30T00:00:00.000Z");
@@ -144,6 +147,82 @@ describe("backup version 3", () => {
 			}),
 		);
 		expect(parsed.payments.map((p) => p.amount)).toEqual([4_000, 6_000]);
+	});
+
+	test("export reads default locations from settings while none are stored", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		const out = await exportBackupV3(repo, NOW);
+		expect(out.locations.map((l) => [l.id, l.takesPurchases])).toEqual([
+			["bangkok", true],
+			["phichit", false],
+			["krabi", false],
+		]);
+	});
+
+	test("a version 2 file with settings sets the purchase places on restore", async () => {
+		const repo = new InMemoryRepository();
+		await importBackupV3(
+			repo,
+			parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })),
+		);
+		expect((await repo.getSettings()).purchaseLocations).toEqual(["phichit"]);
+	});
+
+	test("purchase places skip locations that are unknown or take no purchases", async () => {
+		const repo = new InMemoryRepository();
+		await importBackupV3(
+			repo,
+			parseAnyBackup(
+				v3({
+					locations: [
+						sampleLocation({ id: "krabi", takesPurchases: false }),
+						sampleLocation({ id: "bangkok", takesPurchases: true }),
+						sampleLocation({ id: "chiang-mai", takesPurchases: true }),
+					],
+				}),
+			),
+		);
+		expect((await repo.getSettings()).purchaseLocations).toEqual(["bangkok"]);
+	});
+
+	test("restoring a version 2 file over converted data leaves no stale m: parts", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveCard(sampleCard());
+		for (const index of [0, 1, 2])
+			await repo.saveCardPayment(
+				sampleCardPayment({
+					id: `m:kbank:2026-09:${index}`,
+					period: "2026-09",
+				}),
+			);
+		await repo.saveCardPayment(sampleCardPayment({ id: "keep" }));
+		await importBackupV3(repo, parseAnyBackup(v2()));
+		const ids = (await repo.listCardPayments("kbank")).map((p) => p.id).sort();
+		expect(ids).toEqual(["keep", "m:kbank:2026-09:0"]);
+	});
+
+	test("replace sets the payments marker so startup does not convert again", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveCard(sampleCard({ id: "old" }));
+		const items = new Map<string, string>();
+		await replaceWithBackupV3(repo, parseAnyBackup(v3()), {
+			setItem: (key, value) => void items.set(key, value),
+		});
+		expect(items.get(PAYMENTS_MIGRATION_KEY)).toBe("done");
+		expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank"]);
+	});
+
+	test("counts include lists", async () => {
+		const repo = new InMemoryRepository();
+		await importBackupV3(repo, parseAnyBackup(v3()));
+		expect(await countRecordsV3(repo)).toEqual({
+			cards: 1,
+			purchases: 1,
+			payments: 1,
+			limitGroups: 1,
+			lists: 1,
+		});
 	});
 
 	test("a version 1 file is rejected", () => {
@@ -317,7 +396,7 @@ describe("backup version 3", () => {
 		);
 		const out = await exportBackupV3(repo, NOW);
 		expect(out.cards).toEqual([]);
-		expect(out.locations).toEqual([]);
+		expect(await repo.listLocations()).toEqual([]);
 		expect(out.limitGroups).toEqual([]);
 	});
 });
