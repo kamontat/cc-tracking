@@ -380,33 +380,8 @@ a:any-link:hover {
 	font-weight: 600;
 }
 
-/* A dashboard panel the reader can fold away. The heading is the toggle, so it keeps its
-   size and weight and sits inline beside the disclosure marker. */
-.page details.panel,
-.page section.panel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-3);
-}
-
-/* A column of panels inside `.split`, such as the dashboard's form and its sitting list. */
-.split__column {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-5);
-}
-
-.page details.panel > summary {
-	cursor: pointer;
-}
-
-.page details.panel > summary > h2 {
-	display: inline;
-}
-
 .page > article,
-.page .split > article,
-.page .split__column > article {
+.page .split > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -659,11 +634,6 @@ a:any-link:hover {
 		align-items: start;
 	}
 
-	/* The dashboard's form is the narrow side; due list and spendable need the width. */
-	.split.split--workspace {
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-	}
-
 	.split > .split__aside {
 		position: sticky;
 		/* Must clear the sticky .site-header, which is --cc-header-height tall. */
@@ -813,4 +783,56 @@ a:any-link:hover {
 
 .page > a[data-action="to-cards"] {
 	align-self: flex-start;
+}
+
+/*
+ * Home's selection bar: what is ticked on the left, its actions on the right. It sticks to the
+ * bottom of the page as it scrolls, above the phone's tab bar, and leaves room at its inline end
+ * for the floating Payment button so that button never covers Enter amounts.
+ */
+.action-bar {
+	position: sticky;
+	bottom: calc(
+		var(--cc-tabbar-height) +
+		var(--cc-space-3) +
+		env(safe-area-inset-bottom, 0px)
+	);
+	z-index: 5;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-3);
+	padding-block: var(--cc-space-3);
+	padding-inline: var(--cc-space-4)
+		calc(var(--cc-fab-size) + var(--cc-space-4) + var(--cc-space-4));
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-lg);
+}
+
+.action-bar__actions {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-2);
+}
+
+.action-bar__actions button {
+	align-self: center;
+}
+
+/* From 900px the tab bar is gone, and Payment grows into a pill wider than the inline-end room,
+   so the bar parks just above it instead. */
+@media (min-width: 900px) {
+	.action-bar {
+		bottom: calc(
+			var(--cc-space-5) +
+			var(--cc-fab-size) +
+			var(--cc-space-3) +
+			env(safe-area-inset-bottom, 0px)
+		);
+	}
 }

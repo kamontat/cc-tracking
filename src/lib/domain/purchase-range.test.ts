@@ -4,7 +4,6 @@ import {
 	presetRange,
 	purchasesInRange,
 	rangeSummary,
-	sittingPurchases,
 } from "#lib/domain/purchase-range";
 import type { Purchase } from "#lib/domain/types";
 
@@ -134,31 +133,5 @@ describe("rangeSummary", () => {
 
 	test("an empty list is all zeros", () => {
 		expect(rangeSummary([])).toEqual({ count: 0, total: 0, cards: 0 });
-	});
-});
-
-describe("sittingPurchases", () => {
-	const since = "2026-10-27T03:00:00.000Z";
-
-	test("keeps only purchases entered since the batch started, newest entered first", () => {
-		const list = sittingPurchases(
-			[
-				purchase({ id: "old", addedAt: "2026-10-27T02:59:59.000Z" }),
-				purchase({ id: "none" }),
-				purchase({ id: "bad", addedAt: "not a time" }),
-				purchase({
-					id: "first",
-					date: "2026-10-26",
-					addedAt: "2026-10-27T03:00:00.000Z",
-				}),
-				purchase({
-					id: "second",
-					date: "2026-10-01",
-					addedAt: "2026-10-27T03:05:00.000Z",
-				}),
-			],
-			since,
-		);
-		expect(list.map((entry) => entry.id)).toEqual(["second", "first"]);
 	});
 });

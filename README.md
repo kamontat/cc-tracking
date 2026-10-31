@@ -24,15 +24,14 @@ so About there reads as a development build with no build time.
 
 ## Pages
 
-- `/` — Home, a workspace for entering a pile of receipts. The purchase form is always
-  open, and offers only the cards that may take one; see *Which cards can take a
-  purchase* below. After each add it keeps the card and date and clears the
-  rest. Under it, *This sitting* lists what was entered since *Start new batch*
-  was last pressed, latest first, and survives reloads; purchases saved before
-  entry times were recorded never show there. Beside it, *Purchases by date*
-  counts purchases, their total and the cards used across every card (archived
-  ones included) for a preset or custom range of purchase dates, then *Due next*
-  and *Can spend now*.
+- `/` — Home. *Needs you* comes first: purchase lists waiting for the spender's
+  reply, overdue bills and draft lists, or *All caught up* when there are none.
+  Under it, *Ready to use* lists the cards that can take a purchase (see *Which
+  cards can take a purchase* below), each with its group's room, its close and due
+  dates, sortable by most room, longest to close or latest due. Ticking cards
+  shows a bar at the bottom with how many are selected, *Clear*, and *Enter
+  amounts*, which opens a new purchase list for those cards in the order they
+  were ticked.
 - `/transactions` — a placeholder until the Transactions page arrives; the + and
   Payment buttons open it for now.
 - `/cards` — the card registry and the limit groups, each list searchable,
@@ -54,14 +53,15 @@ so About there reads as a development build with no build time.
 
 The answer belongs to where a card is kept, not to the card. The *Purchases*
 section on `/settings` ticks the places that take new purchases; only unarchived
-cards kept in a ticked place appear in the dashboard's purchase form and in
-*Can spend now*. Every card still appears everywhere else, including the due
-list.
+cards kept in a ticked place, in a limit group, appear in Home's *Ready to use*.
+Every card still appears everywhere else, including the overdue bills in *Needs
+you*.
 
 Out of the box only Krabi is ticked, which reproduces the rule that was in force
 before: purchases were only ever entered against the Krabi cards. Unticking every
 place is kept as a real answer, and the purchase form then says that no card can
-take a purchase and points at Settings.
+take a purchase and *Ready to use* says that no card can be used and points at
+Settings.
 
 ## Limit groups and how much room is left
 
@@ -80,16 +80,17 @@ today — and each payment returns exactly its own amount. The statement counts
 as paid once its payments cover its total.
 
 An archived card still weighs on the group it shares. Archiving a card retires
-it from new purchases and from the dashboard, not from what it already owes,
-so its unpaid statements keep counting against the pool even though the card
-itself no longer appears in the panel below.
+it from new purchases and from Home, not from what it already owes, so its
+unpaid statements keep counting against the pool even though the card itself no
+longer appears in *Ready to use*. A purchase list already sent to the spender
+holds its amounts against the room too, until its reply is recorded.
 
-The dashboard's *Can spend now* panel lists only the cards that can take a
-purchase (see above), each showing the close and due dates of the statement a
-purchase made today would land on. Those are deliberately not the dates *Due
-next* shows: that list answers what has to be paid, this one answers what
-happens if you spend today, and on a card with an overdue statement the two
-disagree — both are correct for the question they answer.
+Home's *Ready to use* lists only the cards that can take a purchase (see above),
+each showing the close and due dates of the statement a purchase made today would
+land on. Those are deliberately not the dates of the bill an overdue card shows
+under *Needs you*: that answers what has to be paid, this answers what happens if
+you spend today, and on a card with an overdue statement the two disagree — both
+are correct for the question they answer.
 
 A purchase entered for more than a group's remaining credit is still saved.
 The app is a record of what happened, not a gate on what is allowed, and a
@@ -98,7 +99,7 @@ a real purchase goes unrecorded. The confirmation names the amount it went
 over by instead.
 
 A card stored before this feature existed has no group at all. It shows as
-unassigned in the card table and is left out of the dashboard's panel until it
+unassigned in the card table and is left out of *Ready to use* until it
 is edited once and a group is chosen — the card form will not save a card
 without one.
 
@@ -122,8 +123,8 @@ next one.
 Everything lives in this browser's `localStorage`, under keys shaped like
 `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
 `cc:payment:<cardId>:<period>`, and `cc:limitgroup:<id>`, plus `cc:settings`
-for the purchase places and `cc:batch-start` for when *This sitting* began. The
-batch start is working state for this browser, so backups leave it out. Those shapes hold
+for the purchase places. The old dashboard's `cc:batch-start` is no longer read
+or written; a leftover one stays until a reset in Settings clears it. Those shapes hold
 as written for an ordinary card id, date, and uuid; each segment is actually
 percent-encoded, so a card id containing `:` or other reserved characters
 produces a key that looks a little different from the documented shape,
