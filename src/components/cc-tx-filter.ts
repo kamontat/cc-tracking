@@ -1,4 +1,4 @@
-import { css, html, LitElement, nothing, type PropertyValues } from "lit";
+import { html, LitElement, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { RangePreset } from "#lib/domain/purchase-range";
 import {
@@ -10,7 +10,7 @@ import type { Card } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { cardLine } from "#lib/ui/card-label";
-import { base, cardBits, controls } from "#styles/shared";
+import { base, cardBits, controls, filterSheet } from "#styles/shared";
 import "#components/cc-modal";
 
 const RANGES: RangePreset[] = ["today", "week", "month", "lastMonth", "custom"];
@@ -28,89 +28,7 @@ const toggle = <T>(values: T[], value: T): T[] =>
  */
 @customElement("cc-tx-filter")
 export class CcTxFilter extends LitElement {
-	static override styles = [
-		base,
-		controls,
-		cardBits,
-		css`
-			:host {
-				display: contents;
-			}
-
-			fieldset {
-				display: flex;
-				flex-direction: column;
-				gap: var(--cc-space-1);
-				min-inline-size: 0;
-				padding: 0;
-				border: 0;
-			}
-
-			legend {
-				padding: 0;
-				margin-bottom: var(--cc-space-1);
-				font-size: var(--cc-text-sm);
-				font-weight: 400;
-				letter-spacing: normal;
-				text-transform: none;
-				color: var(--cc-text-muted);
-			}
-
-			.choices {
-				display: flex;
-				flex-direction: row;
-				flex-wrap: wrap;
-				gap: var(--cc-space-2);
-			}
-
-			.choices button {
-				padding: var(--cc-space-1) var(--cc-space-3);
-				font-weight: 400;
-				color: var(--cc-text);
-				background: var(--cc-surface-sunken);
-				border-color: transparent;
-				border-radius: var(--cc-radius-pill);
-			}
-
-			.choices button:hover {
-				background: var(--cc-border);
-			}
-
-			.choices button[aria-pressed="true"] {
-				font-weight: 600;
-				color: var(--cc-success);
-				background: var(--cc-accent-surface);
-			}
-
-			.dates {
-				display: flex;
-				flex-direction: row;
-				flex-wrap: wrap;
-				gap: var(--cc-space-3);
-				margin-top: var(--cc-space-2);
-			}
-
-			.dates label {
-				flex: 1 1 0;
-			}
-
-			.footer {
-				display: flex;
-				flex-direction: row;
-				gap: var(--cc-space-2);
-			}
-
-			.footer button {
-				padding-block: var(--cc-space-3);
-				font-size: var(--cc-text-md);
-				font-weight: 650;
-			}
-
-			.footer [data-action="apply"] {
-				flex: 1 1 auto;
-			}
-		`,
-	];
+	static override styles = [base, controls, cardBits, filterSheet];
 
 	@property({ attribute: false }) cards: Card[] = [];
 	@property({ attribute: false }) filter: TxFilter = DEFAULT_TX_FILTER;

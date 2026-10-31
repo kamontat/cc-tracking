@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { CcNeedsYou } from "#components/cc-needs-you";
-import type { CcReadyList } from "#components/cc-ready-list";
+import type { CcReadyPanel } from "#components/cc-ready-panel";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { LocalStorageRepository } from "#lib/storage/local";
@@ -51,44 +51,25 @@ const setup = async (repo: Repository = new InMemoryRepository()) => {
 	setLocale("en");
 	const root = mount();
 	await seed(repo);
-	const visited: string[] = [];
 	const time = movableClock();
-	renderHomePage(repo, root, {
-		clock: time.clock,
-		navigate: (url) => visited.push(url),
-	});
+	renderHomePage(repo, root, { clock: time.clock });
 	await settle();
-	return { root, repo, visited, time };
+	return { root, repo, time };
 };
 
-const readyList = async (root: HTMLElement): Promise<CcReadyList> => {
-	const list = root.querySelector<CcReadyList>("cc-ready-list");
-	if (!list) throw new Error("no ready list");
+const readyList = async (root: HTMLElement): Promise<CcReadyPanel> => {
+	const list = root.querySelector<CcReadyPanel>("cc-ready-panel");
+	if (!list) throw new Error("no ready panel");
 	await list.updateComplete;
 	return list;
 };
 
-const toggle = async (root: HTMLElement, cardId: string) => {
-	const list = await readyList(root);
-	list.dispatchEvent(
-		new CustomEvent("toggle", {
-			detail: { cardId },
-			bubbles: true,
-			composed: true,
-		}),
-	);
-	await settle();
-};
-
-const selectionBar = (root: HTMLElement) =>
-	root.querySelector<HTMLElement>('[data-testid="selection"]');
-
 test("needs you comes before ready to use", async () => {
 	const { root } = await setup();
-	const tags = [...root.querySelectorAll("cc-needs-you, cc-ready-list")].map(
+	const tags = [...root.querySelectorAll("cc-needs-you, cc-ready-panel")].map(
 		(element) => element.localName,
 	);
-	expect(tags).toEqual(["cc-needs-you", "cc-ready-list"]);
+	expect(tags).toEqual(["cc-needs-you", "cc-ready-panel"]);
 });
 
 test("no dashboard panel is left", async () => {
@@ -112,56 +93,22 @@ test("the batch start is never touched", async () => {
 	expect(localStorage.getItem("cc:batch-start")).toBeNull();
 });
 
-test("ticking cards shows the selection bar", async () => {
+test("Home has no selection: the short panel leads to the picker", async () => {
 	const { root } = await setup();
-	expect(selectionBar(root)).toBeNull();
-
-	await toggle(root, "A");
-	await toggle(root, "B");
-	expect(selectionBar(root)?.textContent).toContain("2 cards selected");
-
-	selectionBar(root)
-		?.querySelector<HTMLButtonElement>('[data-action="clear"]')
-		?.click();
-	await settle();
-	expect(selectionBar(root)).toBeNull();
-	expect((await readyList(root)).selected).toEqual([]);
+	const panel = await readyList(root);
+	expect(panel.rows.map((row) => row.card.id)).toEqual(["A", "B"]);
+	const shadow = panel.shadowRoot as ShadowRoot;
+	expect(shadow.querySelector(".tick")).toBeNull();
+	expect(
+		shadow.querySelector('[data-action="start"]')?.getAttribute("href"),
+	).toBe("/list/new");
+	expect(root.querySelector('[data-testid="selection"]')).toBeNull();
+	expect(document.documentElement.hasAttribute("data-selecting")).toBe(false);
 });
 
-test("ticking a card twice takes it back off", async () => {
-	const { root } = await setup();
-	await toggle(root, "A");
-	expect(selectionBar(root)?.textContent).toContain("1 card selected");
-	await toggle(root, "A");
-	expect(selectionBar(root)).toBeNull();
-});
-
-test("the floating Payment button steps aside while cards are selected", async () => {
-	const { root } = await setup();
-	const html = document.documentElement;
-	expect(html.hasAttribute("data-selecting")).toBe(false);
-	await toggle(root, "A");
-	expect(html.hasAttribute("data-selecting")).toBe(true);
-	selectionBar(root)
-		?.querySelector<HTMLButtonElement>('[data-action="clear"]')
-		?.click();
-	await settle();
-	expect(html.hasAttribute("data-selecting")).toBe(false);
-
+test("the floating Payment button stays on Home", async () => {
 	const css = await Bun.file("src/styles/app.css").text();
-	expect(css).toMatch(/:root\[data-selecting\] \.fab\s*\{\s*display: none;/);
-});
-
-test("enter amounts opens the list with the picked cards", async () => {
-	const { root, visited } = await setup();
-	await toggle(root, "B");
-	await toggle(root, "A");
-	expect((await readyList(root)).selected).toEqual(["B", "A"]);
-
-	selectionBar(root)
-		?.querySelector<HTMLButtonElement>('[data-action="enter-amounts"]')
-		?.click();
-	expect(visited).toEqual(["/list/new?card=B&card=A"]);
+	expect(css).not.toContain("data-selecting");
 });
 
 test("stored payments and sent lists move the room", async () => {
@@ -260,26 +207,6 @@ test("past midnight moves today", async () => {
 	time.set("2026-11-01T03:00:00Z");
 	await settle(30);
 	expect((await readyList(root)).today).toBe("2026-11-01");
-	root.remove();
-});
-
-test("a reload keeps the selection in tap order, pruned to cards still ready", async () => {
-	setLocale("en");
-	const repo = new InMemoryRepository();
-	await seed(repo);
-	await repo.saveCard(card("C"));
-	const root = mount();
-	const time = movableClock();
-	renderHomePage(repo, root, { clock: time.clock, tickMs: 5 });
-	await settle();
-	await toggle(root, "C");
-	await toggle(root, "A");
-	await toggle(root, "B");
-	await repo.saveCard(card("A", { archived: true }));
-
-	time.set("2026-11-01T03:00:00Z");
-	await settle(30);
-	expect((await readyList(root)).selected).toEqual(["C", "B"]);
 	root.remove();
 });
 

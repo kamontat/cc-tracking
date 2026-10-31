@@ -250,11 +250,11 @@ a:any-link:hover {
 	display: none;
 }
 
-/* Payment steps aside on the payment page, where it leads, on the purchase list pages, where
-   the reader is mid-list, and while Home's selection bar shows, so it never covers a bottom bar. */
+/* Payment steps aside on the payment page, where it leads, and on the purchase list pages
+   (the new-list picker among them), where the reader is mid-list and a bottom bar needs the
+   full width. */
 :root[data-pay-page] .fab,
-:root[data-list-page] .fab,
-:root[data-selecting] .fab {
+:root[data-list-page] .fab {
 	display: none;
 }
 
@@ -1124,9 +1124,9 @@ a:any-link:hover {
 }
 
 /*
- * Home's selection bar: what is ticked on the left, its actions on the right. It sticks to the
- * bottom of the page as it scrolls, above the phone's tab bar. The floating Payment button is
- * hidden while it shows (`:root[data-selecting]`), so the bar has the full width.
+ * The new-list picker's selection bar: what is ticked on the left, its actions on the right. It
+ * sticks to the bottom of the page as it scrolls, above the phone's tab bar. The picker is a
+ * list page, so the floating Payment button is hidden there and the bar has the full width.
  */
 .action-bar {
 	position: sticky;
@@ -1298,6 +1298,16 @@ a:any-link:hover {
 .list-layout .status:empty {
 	position: absolute;
 	clip-path: inset(50%);
+}
+
+/* The new-list picker with no card ready: what to do, on a sunken note. */
+.ready-empty {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	padding: var(--cc-space-3) var(--cc-space-4);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
 }
 
 .page > .note,

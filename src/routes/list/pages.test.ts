@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { renderEntryPage } from "./entry";
+import { renderPickerPage } from "./picker-page";
 import { renderReplyPage } from "./reply-page";
 import { mount, settle } from "./test-support";
 import { renderSavedPage } from "./view-page";
@@ -36,7 +37,9 @@ const ruleBody = (css: string, selector: string) => {
 test("every list page hides the floating Payment button", async () => {
 	const renders = [
 		(repo: Repository, root: HTMLElement) =>
-			renderEntryPage(repo, root, "new", { search: "", share: {} }),
+			renderPickerPage(repo, root, { search: "" }),
+		(repo: Repository, root: HTMLElement) =>
+			renderEntryPage(repo, root, "new", { search: "?card=A", share: {} }),
 		(repo: Repository, root: HTMLElement) =>
 			renderEntryPage(repo, root, "draft", { search: "", share: {} }),
 		(repo: Repository, root: HTMLElement) =>
@@ -52,7 +55,7 @@ test("every list page hides the floating Payment button", async () => {
 	await settle();
 	const css = await Bun.file("src/styles/app.css").text();
 	expect(css).toMatch(
-		/:root\[data-list-page\] \.fab,\s*:root\[data-selecting\] \.fab\s*\{\s*display: none;/,
+		/:root\[data-pay-page\] \.fab,\s*:root\[data-list-page\] \.fab\s*\{\s*display: none;/,
 	);
 });
 

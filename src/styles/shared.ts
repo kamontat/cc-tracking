@@ -597,7 +597,7 @@ export const listLayout = css`
 /**
  * The sticky bar at the foot of a list page: a summary on the left, its actions on the right.
  * It sticks above the phone's tab bar; `listLayout` turns it into a plain column in the side
- * panel from 900px. Home's selection bar is light DOM, so `app.css` keeps its own copy.
+ * panel from 900px. The new-list picker's selection bar is light DOM, so `app.css` keeps its own copy.
  */
 export const actionBarStyles = css`
 	.action-bar {
@@ -874,5 +874,89 @@ export const rowPanel = css`
 	.empty {
 		padding: var(--cc-space-4);
 		color: var(--cc-text-muted);
+	}
+`;
+
+/**
+ * A filter sheet's body (`cc-tx-filter`, `cc-ready-filter`): fieldsets of pill choices under a
+ * muted legend (`.choices`, `aria-pressed` marks a pick), optional `.dates`, and a `.footer`
+ * with a quiet *Clear all* and the full-width apply button (`data-action="apply"`).
+ */
+export const filterSheet = css`
+	:host {
+		display: contents;
+	}
+
+	fieldset {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-1);
+		min-inline-size: 0;
+		padding: 0;
+		border: 0;
+	}
+
+	legend {
+		padding: 0;
+		margin-bottom: var(--cc-space-1);
+		font-size: var(--cc-text-sm);
+		font-weight: 400;
+		letter-spacing: normal;
+		text-transform: none;
+		color: var(--cc-text-muted);
+	}
+
+	.choices {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: var(--cc-space-2);
+	}
+
+	.choices button {
+		padding: var(--cc-space-1) var(--cc-space-3);
+		font-weight: 400;
+		color: var(--cc-text);
+		background: var(--cc-surface-sunken);
+		border-color: transparent;
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.choices button:hover {
+		background: var(--cc-border);
+	}
+
+	.choices button[aria-pressed="true"] {
+		font-weight: 600;
+		color: var(--cc-success);
+		background: var(--cc-accent-surface);
+	}
+
+	.dates {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: var(--cc-space-3);
+		margin-top: var(--cc-space-2);
+	}
+
+	.dates label {
+		flex: 1 1 0;
+	}
+
+	.footer {
+		display: flex;
+		flex-direction: row;
+		gap: var(--cc-space-2);
+	}
+
+	.footer button {
+		padding-block: var(--cc-space-3);
+		font-size: var(--cc-text-md);
+		font-weight: 650;
+	}
+
+	.footer [data-action="apply"] {
+		flex: 1 1 auto;
 	}
 `;
