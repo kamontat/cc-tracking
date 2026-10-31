@@ -18,6 +18,7 @@ import type { Repository } from "#lib/storage/repository";
 import { backHeader } from "#lib/ui/back-header";
 import { cardLabelsText } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
+import { newListAddress } from "#lib/ui/list-address";
 import {
 	browserShare,
 	imageName,
@@ -44,6 +45,8 @@ export type EntryPageOptions = ListPageOptions & {
 	share?: ShareApi;
 	/** The id a new list is stored under; `crypto.randomUUID` by default. */
 	newId?: () => string;
+	/** Rewrites the address without a history entry; `history.replaceState` by default. */
+	replaceAddress?: (url: string) => void;
 };
 
 /** `elsewhere` is a draft page opened on an id that is not stored, or not a draft. */
@@ -76,6 +79,9 @@ export function renderEntryPage(
 	markListPage(root);
 	const share = options.share ?? browserShare();
 	const newId = options.newId ?? (() => crypto.randomUUID());
+	const replaceAddress =
+		options.replaceAddress ??
+		((url: string) => history.replaceState(history.state, "", url));
 	const now = today(clock());
 	let data: MoneyData | null = null;
 	let view: View = "loading";
@@ -157,14 +163,22 @@ export function renderEntryPage(
 		show("review");
 	};
 
+	// A new list's address names its cards, so a reload or shared link shows the same ones; a
+	// draft's cards come from the stored draft, so its address stays as it is.
+	const syncAddress = () => {
+		if (mode === "new") replaceAddress(newListAddress(cardIds, search));
+	};
+
 	const onRemove = (event: CustomEvent<{ cardId: string }>) => {
 		cardIds = cardIds.filter((id) => id !== event.detail.cardId);
+		syncAddress();
 		paint();
 	};
 
 	const onAdd = (event: CustomEvent<{ cardId: string }>) => {
 		if (!cardIds.includes(event.detail.cardId))
 			cardIds = [...cardIds, event.detail.cardId];
+		syncAddress();
 		paint();
 	};
 

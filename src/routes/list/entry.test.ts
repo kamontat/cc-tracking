@@ -47,6 +47,7 @@ const setup = async (
 		repo?: Repository;
 		search?: string;
 		share?: ShareApi;
+		replaced?: string[];
 		before?: (repo: Repository) => Promise<void>;
 	} = {},
 ) => {
@@ -57,6 +58,9 @@ const setup = async (
 				...pageOptions,
 				share: options.share ?? recordingShare(calls),
 				newId: () => "l-new",
+				replaceAddress: (url) => {
+					options.replaced?.push(url);
+				},
 			}),
 		{
 			repo: options.repo,
@@ -71,8 +75,15 @@ const setup = async (
 const setupDraft = (
 	before: (repo: Repository) => Promise<void>,
 	repo?: Repository,
+	replaced?: string[],
 ) =>
-	setup({ mode: "draft", search: "?id=d1", before, ...(repo ? { repo } : {}) });
+	setup({
+		mode: "draft",
+		search: "?id=d1",
+		before,
+		...(repo ? { repo } : {}),
+		...(replaced ? { replaced } : {}),
+	});
 
 const amounts = async (root: HTMLElement): Promise<CcListAmounts> => {
 	const element = root.querySelector<CcListAmounts>("cc-list-amounts");
@@ -533,4 +544,57 @@ test("a failed delete says so and stays", async () => {
 	expect((await stored(repo)).map((l) => l.id)).toEqual(["d1"]);
 	expect(visited).toEqual([]);
 	expect(root.querySelector("cc-list-amounts")).not.toBeNull();
+});
+
+test("add appends the card to the address, with replace not push", async () => {
+	const replaced: string[] = [];
+	const { root } = await setup({ replaced });
+	await fire(root, "add", { cardId: "B" });
+	expect(replaced).toEqual(["/list/new?card=A&card=B"]);
+});
+
+test("remove drops the card from the address and keeps order and other params", async () => {
+	const replaced: string[] = [];
+	const { root } = await setup({
+		replaced,
+		search: "?card=A&x=1&card=B",
+	});
+	await fire(root, "remove", { cardId: "A" });
+	expect(replaced).toEqual(["/list/new?x=1&card=B"]);
+	await fire(root, "remove", { cardId: "B" });
+	expect(replaced).toEqual(["/list/new?x=1&card=B", "/list/new?x=1"]);
+});
+
+test("ids with & or , survive in the address", async () => {
+	const replaced: string[] = [];
+	const { root } = await setup({
+		replaced,
+		search: "?card=A",
+		before: async (repo) => {
+			await repo.saveCard(card("a&b,c"));
+		},
+	});
+	await fire(root, "add", { cardId: "a&b,c" });
+	expect(replaced).toEqual(["/list/new?card=A&card=a%26b%2Cc"]);
+	expect(
+		new URLSearchParams(replaced[0]?.split("?")[1]).getAll("card"),
+	).toEqual(["A", "a&b,c"]);
+});
+
+test("a draft page leaves its address alone", async () => {
+	const replaced: string[] = [];
+	const { root } = await setupDraft(
+		(repo) =>
+			repo.savePurchaseList({
+				id: "d1",
+				date: "2026-11-02",
+				status: "draft",
+				lines: [{ cardId: "A", amount: 100 }],
+			}),
+		undefined,
+		replaced,
+	);
+	await fire(root, "add", { cardId: "B" });
+	await fire(root, "remove", { cardId: "A" });
+	expect(replaced).toEqual([]);
 });

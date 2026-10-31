@@ -11,11 +11,16 @@ const PAGE: Record<PurchaseList["status"], string> = {
 	saved: "/list/view",
 };
 
-/** A new purchase list for `cardIds`, one `card` parameter each, in the order given. */
-export function newListAddress(cardIds: string[]): string {
-	const query = new URLSearchParams();
+/**
+ * A new purchase list for `cardIds`, one `card` parameter each, in the order given. Any other
+ * parameter in `search` is kept, ahead of the cards.
+ */
+export function newListAddress(cardIds: string[], search = ""): string {
+	const query = new URLSearchParams(search);
+	query.delete("card");
 	for (const id of cardIds) query.append("card", id);
-	return `/list/new?${query.toString()}`;
+	const text = query.toString();
+	return text ? `/list/new?${text}` : "/list/new";
 }
 
 /** The page a stored list opens on, by its status. */
