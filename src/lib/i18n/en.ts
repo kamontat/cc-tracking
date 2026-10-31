@@ -199,6 +199,7 @@ export const en = {
 	"cards.page.credit": "credit {amount}",
 	"cards.page.noMatch": "No card matches. Clear the search or a filter.",
 	"cards.page.empty": "No cards yet. Add one with Add card.",
+	"cards.page.add": "Add card",
 	"cards.group.add": "Add group",
 	"cards.group.roomOf": "{room} of {limit}",
 	"cards.group.full": "getting full",

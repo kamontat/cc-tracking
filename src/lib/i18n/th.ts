@@ -212,6 +212,7 @@ export const th: Catalog = {
 	"cards.page.credit": "เครดิต {amount}",
 	"cards.page.noMatch": "ไม่มีบัตรที่ตรงกัน ล้างคำค้นหาหรือตัวกรองออก",
 	"cards.page.empty": "ยังไม่มีบัตร เพิ่มได้ที่ปุ่มเพิ่มบัตร",
+	"cards.page.add": "เพิ่มบัตร",
 	"cards.group.add": "เพิ่มกลุ่ม",
 	"cards.group.roomOf": "{room} จาก {limit}",
 	"cards.group.full": "ใกล้เต็ม",

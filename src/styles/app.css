@@ -1482,3 +1482,68 @@ a:any-link:hover {
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
 }
+
+/*
+ * Cards (prototype `vCards`): the heading with *Add card*, the controls and the results in one
+ * column, *Limit groups* under them on a phone and beside them from 900px.
+ */
+.cards-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--cc-space-5);
+	align-items: start;
+}
+
+.cards-main,
+.cards-groups {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-4);
+	min-inline-size: 0;
+}
+
+.cards-head {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-2) var(--cc-space-3);
+}
+
+/* A link drawn as the primary button, as `.page button` draws it. */
+.cards-head a.cards-add {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cc-space-1);
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 550;
+	line-height: 1.2;
+	color: var(--cc-accent-text);
+	text-decoration: none;
+	background: var(--cc-accent);
+	border: var(--cc-border-width) solid transparent;
+	border-radius: var(--cc-radius-sm);
+}
+
+.cards-head a.cards-add:hover {
+	text-decoration: none;
+	background: var(--cc-accent-hover);
+}
+
+.cards-head a.cards-add .icon {
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+}
+
+@media (min-width: 900px) {
+	.cards-grid {
+		grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
+		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
+	}
+
+	.cards-groups {
+		padding-block-start: var(--cc-space-1);
+	}
+}

@@ -50,7 +50,15 @@ export class CcGroupPanels extends LitElement {
 			}
 
 			[data-action="add-group"] {
+				display: inline-flex;
+				align-items: center;
+				gap: var(--cc-space-1);
 				align-self: flex-start;
+			}
+
+			[data-action="add-group"] .icon {
+				inline-size: var(--cc-icon-size-sm);
+				block-size: var(--cc-icon-size-sm);
 			}
 
 			.gpanel {
