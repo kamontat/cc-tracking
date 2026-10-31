@@ -328,7 +328,7 @@ export const en = {
 
 	"reset.title": "Reset",
 	"reset.warning":
-		"Deletes every card, purchase, payment, limit group and setting in this browser. Export a backup first if you may want them back.",
+		"Deletes every card, purchase, purchase list, payment, limit group and setting in this browser. Export a backup first if you may want them back.",
 	"reset.start": "Reset…",
 	"reset.confirm":
 		"This deletes {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups and {lists} lists.",

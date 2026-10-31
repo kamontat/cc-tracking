@@ -72,14 +72,23 @@ export async function exportBackupV3(
 	};
 }
 
-/** The stored location records, or the three defaults while none are stored. */
+/**
+ * The stored location records, or the three defaults while none are stored. Until phase 6,
+ * Settings' purchase places are the truth, so each record's `takesPurchases` follows them
+ * rather than a stale stored flag.
+ */
 async function storedOrDefaultLocations(
 	repo: Repository,
 ): Promise<LocationRecord[]> {
+	const settings = await repo.getSettings();
 	const stored = await repo.listLocations();
-	return stored.length > 0
-		? stored
-		: defaultLocations(await repo.getSettings());
+	if (stored.length === 0) return defaultLocations(settings);
+	return stored.map((record) => ({
+		...record,
+		takesPurchases: settings.purchaseLocations.some(
+			(place) => place === record.id,
+		),
+	}));
 }
 
 /** How many of each record a backup holds, or a repository holds now. */

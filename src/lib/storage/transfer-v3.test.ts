@@ -160,6 +160,44 @@ describe("backup version 3", () => {
 		]);
 	});
 
+	test("export takes takesPurchases from settings, not stale stored records", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveLocation(
+			sampleLocation({ id: "krabi", takesPurchases: true }),
+		);
+		await repo.saveLocation(
+			sampleLocation({ id: "bangkok", takesPurchases: false }),
+		);
+		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		const out = await exportBackupV3(repo, NOW);
+		expect(out.locations.map((l) => [l.id, l.takesPurchases]).sort()).toEqual([
+			["bangkok", true],
+			["krabi", false],
+		]);
+	});
+
+	test("a file whose places take no purchases restores an empty list", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		await importBackupV3(
+			repo,
+			parseAnyBackup(
+				v3({
+					locations: [
+						sampleLocation({ id: "krabi", takesPurchases: false }),
+						sampleLocation({ id: "chiang-mai", takesPurchases: true }),
+					],
+				}),
+			),
+		);
+		expect((await repo.getSettings()).purchaseLocations).toEqual([]);
+		const out = await exportBackupV3(repo, NOW);
+		expect(out.locations.every((l) => !l.takesPurchases)).toBe(true);
+		const again = new InMemoryRepository();
+		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)));
+		expect((await again.getSettings()).purchaseLocations).toEqual([]);
+	});
+
 	test("a version 2 file with settings sets the purchase places on restore", async () => {
 		const repo = new InMemoryRepository();
 		await importBackupV3(
