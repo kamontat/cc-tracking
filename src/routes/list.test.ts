@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import type { CcErrorBanner } from "#components/cc-error-banner";
 import type { CcListAmounts } from "#components/cc-list-amounts";
 import type { CcListReply } from "#components/cc-list-reply";
@@ -229,6 +229,97 @@ test("a draft opens into enter amounts and keeps its id", async () => {
 	expect(lists[0]?.status).toBe("sent");
 	expect(lists[0]?.date).toBe("2026-11-02");
 	expect(lists[0]?.lines).toEqual([{ cardId: "A", amount: 12_345_00 }]);
+});
+
+const draftWith = (cardIds: string[]) => (repo: Repository) =>
+	repo.savePurchaseList({
+		id: "d1",
+		date: "2026-11-02",
+		status: "draft",
+		lines: cardIds.map((cardId) => ({ cardId, amount: 100 })),
+	});
+
+const droppedNote = (root: HTMLElement) =>
+	flatText(root.querySelector("p.note[data-dropped]"));
+
+test("a reopened draft says which cards were left out and why", async () => {
+	const one = await setup({ search: "?id=d1", before: draftWith(["A", "Z"]) });
+	expect(droppedNote(one.root)).toBe(
+		"Z can no longer take purchases and was left out.",
+	);
+
+	const two = await setup({
+		search: "?id=d1",
+		before: async (repo) => {
+			await repo.saveCard(card("Y", { archived: true }));
+			await draftWith(["A", "Z", "Y"])(repo);
+		},
+	});
+	expect(droppedNote(two.root)).toBe(
+		"Z, Y can no longer take purchases and were left out.",
+	);
+
+	const none = await setup({ search: "?id=d1", before: draftWith(["A"]) });
+	expect(none.root.querySelector("p.note[data-dropped]")).toBeNull();
+});
+
+test("a draft sent or saved elsewhere is not saved over", async () => {
+	for (const action of ["mark-sent", "save-draft"]) {
+		const { root, repo, visited } = await setup({
+			search: "?id=d1",
+			before: draftWith(["A"]),
+		});
+		await fire(root, "review", {
+			date: "2026-11-02",
+			lines: [{ cardId: "A", amount: 100 }],
+		});
+		const elsewhere: PurchaseList = {
+			id: "d1",
+			date: "2026-11-02",
+			status: "sent",
+			sentAt: "2026-10-31T01:00:00.000Z",
+			lines: [{ cardId: "A", amount: 999 }],
+		};
+		await repo.savePurchaseList(elsewhere);
+		await click(root, action);
+		expect(bannerText(root)).toContain(
+			"This list was sent or saved elsewhere, so it was not changed.",
+		);
+		expect(await stored(repo)).toEqual([elsewhere]);
+		expect(visited).toEqual([]);
+		expect(root.querySelector("cc-list-table")).not.toBeNull();
+	}
+});
+
+test("a saved list replaces the page in history", async () => {
+	setLocale("en");
+	const repo = new InMemoryRepository();
+	await seed(repo);
+	const root = mount();
+	const replaced: string[] = [];
+	const assigned: string[] = [];
+	const replace = spyOn(location, "replace").mockImplementation((url) => {
+		replaced.push(String(url));
+	});
+	const assign = spyOn(location, "assign").mockImplementation((url) => {
+		assigned.push(String(url));
+	});
+	try {
+		renderListPage(repo, root, {
+			clock: () => new Date("2026-10-31T03:00:00Z"),
+			search: "?card=A",
+			share: {},
+			newId: () => "l-new",
+		});
+		await settle();
+		await typeAndReview(root, { A: "125" }, [{ cardId: "A", amount: 125_00 }]);
+		await click(root, "save-draft");
+		expect(replaced).toEqual(["/"]);
+		expect(assigned).toEqual([]);
+	} finally {
+		replace.mockRestore();
+		assign.mockRestore();
+	}
 });
 
 test("a sent list holds room on a new list", async () => {
@@ -534,14 +625,97 @@ test("a list already saved is refused", async () => {
 /** A repository whose savePurchaseList rejects once, after `failNext` is set. */
 class FlakyListRepository extends InMemoryRepository {
 	failNext = false;
+	/** Rejects the next write of a saved list only, after any draft it moves is written. */
+	failSaved = false;
 	override savePurchaseList(list: PurchaseList): Promise<void> {
-		if (this.failNext) {
+		if (this.failNext || (this.failSaved && list.status === "saved")) {
 			this.failNext = false;
+			this.failSaved = false;
 			return Promise.reject(new Error("disk is full"));
 		}
 		return super.savePurchaseList(list);
 	}
 }
+
+test("a retry with changed answers removes the draft a failed save moved", async () => {
+	const repo = new FlakyListRepository();
+	const { root } = await setup({ repo, search: "?id=w1", before: withW1 });
+	repo.failSaved = true;
+	await sendReply(root, true);
+	expect((await stored(repo)).map((l) => l.id).sort()).toEqual(["w1", "w1-2"]);
+
+	await sendReply(root, true, [
+		{ cardId: "A", amount: 1250000, made: false },
+		{ cardId: "B", amount: 480000, made: false },
+		{ cardId: "C", amount: 2200000, made: true },
+	]);
+	const lists = await stored(repo);
+	expect(lists.map((l) => l.id).sort()).toEqual(["w1", "w1-1"]);
+	expect(
+		lists.find((l) => l.id === "w1-1")?.lines.map((l) => l.cardId),
+	).toEqual(["A", "B"]);
+	expect(bannerText(root)).toBe("");
+});
+
+test("a retry without moving removes the draft a failed save moved", async () => {
+	const repo = new FlakyListRepository();
+	const { root } = await setup({
+		repo,
+		search: "?id=w1",
+		before: async (repo) => {
+			await withW1(repo);
+			// Another list's draft, by a name that only looks like ours.
+			await repo.savePurchaseList({
+				id: "w1-2-0",
+				date: "2026-11-01",
+				status: "draft",
+				lines: [{ cardId: "A", amount: 100 }],
+			});
+		},
+	});
+	repo.failSaved = true;
+	await sendReply(root, true);
+	await sendReply(root, false);
+	expect((await stored(repo)).map((l) => l.id).sort()).toEqual([
+		"w1",
+		"w1-2-0",
+	]);
+});
+
+test("a retry leaves alone purchases that are not this reply's", async () => {
+	const repo = new FlakyListRepository();
+	const { root } = await setup({
+		repo,
+		search: "?id=w1",
+		before: async (repo) => {
+			await withW1(repo);
+			const base = {
+				cardId: "A",
+				date: "2026-10-29",
+				amount: 100,
+				note: "",
+				addedAt: "2026-10-29T03:00:00.000Z",
+			};
+			await repo.savePurchase({
+				...base,
+				id: "6f1c2a4e-2b9d-4c11-9a8e-0d3f5b7c9e21",
+			});
+			// The purchase of a draft this list once moved (`w1-2`), saved since.
+			await repo.savePurchase({ ...base, id: "w1-2-0" });
+		},
+	});
+	repo.failNext = true;
+	await sendReply(root, false);
+	await sendReply(root, false, [
+		{ cardId: "A", amount: 1250000, made: false },
+		{ cardId: "B", amount: 480000, made: false },
+		{ cardId: "C", amount: 2200000, made: true },
+	]);
+	expect((await repo.listPurchases("A")).map((p) => p.id).sort()).toEqual([
+		"6f1c2a4e-2b9d-4c11-9a8e-0d3f5b7c9e21",
+		"w1-2-0",
+	]);
+});
 
 test("a retry after a failed write adds nothing twice", async () => {
 	const repo = new FlakyListRepository();

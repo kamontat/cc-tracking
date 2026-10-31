@@ -444,6 +444,12 @@ export const en = {
 	"purchaseList.saveDraft": "Save as draft instead",
 	"purchaseList.error.save": "Could not save the list.",
 	"purchaseList.error.read": "Could not read the list.",
+	"purchaseList.dropped.one":
+		"{cards} can no longer take purchases and was left out.",
+	"purchaseList.dropped.many":
+		"{cards} can no longer take purchases and were left out.",
+	"purchaseList.error.notDraft":
+		"This list was sent or saved elsewhere, so it was not changed.",
 	"purchaseList.missing": "This list no longer exists.",
 	"purchaseList.toHome": "Go to Home",
 	"reply.title": "Spender's reply",

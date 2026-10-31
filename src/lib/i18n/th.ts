@@ -444,6 +444,10 @@ export const th: Catalog = {
 	"purchaseList.saveDraft": "บันทึกเป็นฉบับร่างแทน",
 	"purchaseList.error.save": "บันทึกใบรายการซื้อไม่สำเร็จ",
 	"purchaseList.error.read": "อ่านใบรายการซื้อไม่สำเร็จ",
+	"purchaseList.dropped.one": "{cards} รับรายการซื้อไม่ได้แล้ว จึงไม่ได้ใส่ไว้ในใบรายการ",
+	"purchaseList.dropped.many": "{cards} รับรายการซื้อไม่ได้แล้ว จึงไม่ได้ใส่ไว้ในใบรายการ",
+	"purchaseList.error.notDraft":
+		"ใบรายการนี้ถูกส่งหรือบันทึกจากที่อื่นแล้ว จึงไม่ได้เปลี่ยนแปลง",
 	"purchaseList.missing": "ไม่พบใบรายการซื้อนี้แล้ว",
 	"purchaseList.toHome": "ไปที่หน้าหลัก",
 	"reply.title": "คำตอบของผู้ใช้บัตร",

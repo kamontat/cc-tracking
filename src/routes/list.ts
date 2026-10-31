@@ -45,7 +45,10 @@ export type ListPageOptions = {
 	clock?: () => Date;
 	/** The address's query; `location.search` unless a test passes its own. */
 	search?: string;
-	/** Opens another page; `location.assign` unless a test records it instead. */
+	/**
+	 * Leaves for another page after a save; `location.replace`, so Back does not reopen the
+	 * list just saved, unless a test records it instead.
+	 */
 	navigate?: (url: string) => void;
 	/** What this browser can do with the review's table; `browserShare()` by default. */
 	share?: ShareApi;
@@ -82,7 +85,7 @@ export function renderListPage(
 	{
 		clock = () => new Date(),
 		search = location.search,
-		navigate = (url) => location.assign(url),
+		navigate = (url) => location.replace(url),
 		share = browserShare(),
 		newId = () => crypto.randomUUID(),
 	}: ListPageOptions = {},
@@ -95,6 +98,8 @@ export function renderListPage(
 	// The id this page saves under, fixed on the first save so a retry overwrites, not doubles.
 	let saveId: string | undefined;
 	let cardIds: string[] = [];
+	// Cards a reopened draft (or this page) had that can no longer take purchases, left out.
+	let dropped: string[] = [];
 	let date: PlainDate = now;
 	let entries: Record<string, string> = {};
 	let reviewed: { date: PlainDate; lines: ListLine[] } | null = null;
@@ -128,9 +133,9 @@ export function renderListPage(
 		}
 		editingId = list.id;
 		date = list.date;
-		cardIds = unique(list.lines.map((line) => line.cardId)).filter((c) =>
-			ready.has(c),
-		);
+		const onList = unique(list.lines.map((line) => line.cardId));
+		cardIds = onList.filter((c) => ready.has(c));
+		dropped = onList.filter((c) => !ready.has(c));
 		entries = {};
 		for (const line of list.lines) {
 			if (cardIds.includes(line.cardId))
@@ -218,6 +223,16 @@ export function renderListPage(
 		if (!list) return;
 		let saved = false;
 		await state.guard(async () => {
+			// The draft as stored now: one sent or saved since (in another tab, say) is not
+			// overwritten, as onSaveReply refuses a list already saved.
+			if (editingId) {
+				const current = (await repo.listPurchaseLists()).find(
+					(l) => l.id === editingId,
+				);
+				if (!current) throw new MessageError("purchaseList.missing");
+				if (current.status !== "draft")
+					throw new MessageError("purchaseList.error.notDraft");
+			}
 			saveId ??= editingId ?? newId();
 			await repo.savePurchaseList(
 				composeList({
@@ -234,11 +249,17 @@ export function renderListPage(
 	};
 
 	/**
-	 * A failed save may already have written purchases under this list's ids, for answers that
-	 * have changed since (a line now not made, say). Each would count twice, so any purchase
-	 * named `<list id>-<n>` that this save does not write again is removed first.
+	 * A failed save may already have written purchases and a moved draft under this list's ids,
+	 * for answers that have changed since (a line now not made, say). Each purchase would count
+	 * twice and the draft would linger, so anything named `<list id>-<n>` that this save does
+	 * not write again is removed first. A longer name (`<list id>-2-0`, the moved draft's own
+	 * purchase) or any other id is not this save's and is left alone.
 	 */
-	const dropStale = async (list: PurchaseList, keep: Purchase[]) => {
+	const dropStale = async (
+		list: PurchaseList,
+		keep: Purchase[],
+		keepDraft: string | undefined,
+	) => {
 		const kept = new Set(keep.map((p) => `${p.cardId}/${p.id}`));
 		const prefix = `${list.id}-`;
 		const ours = (id: string) =>
@@ -248,6 +269,10 @@ export function renderListPage(
 				if (ours(purchase.id) && !kept.has(`${cardId}/${purchase.id}`))
 					await repo.deletePurchase(cardId, purchase.id);
 			}
+		}
+		for (const other of await repo.listPurchaseLists()) {
+			if (ours(other.id) && other.id !== keepDraft)
+				await repo.deletePurchaseList(other.id);
 		}
 	};
 
@@ -278,7 +303,7 @@ export function renderListPage(
 				},
 			);
 			if (!result.ok) throw new MessageError("reply.error.unanswered");
-			await dropStale(stored, result.purchases);
+			await dropStale(stored, result.purchases, result.draft?.id);
 			for (const purchase of result.purchases)
 				await repo.savePurchase(purchase);
 			if (result.draft) await repo.savePurchaseList(result.draft);
@@ -305,8 +330,12 @@ export function renderListPage(
 	const amountsView = (from: MoneyData) => {
 		const ready = readyCards(from);
 		const byId = new Map(ready.map((card) => [card.id, card]));
-		// A card that stopped being ready since the page opened drops off the list.
-		cardIds = cardIds.filter((id) => byId.has(id));
+		// A card that stopped being ready since the page opened drops off the list, and says so.
+		const gone = cardIds.filter((id) => !byId.has(id));
+		if (gone.length > 0) {
+			dropped = unique([...dropped, ...gone]);
+			cardIds = cardIds.filter((id) => byId.has(id));
+		}
 		const cards = cardIds.flatMap((id) => byId.get(id) ?? []);
 		const rooms = new Map<string, GroupRoom>();
 		for (const card of cards) {
@@ -319,6 +348,16 @@ export function renderListPage(
 				back: "/",
 			})}
 			${banner()}
+			${
+				dropped.length > 0
+					? html`<p class="note" data-dropped>${t(
+							dropped.length === 1
+								? "purchaseList.dropped.one"
+								: "purchaseList.dropped.many",
+							{ cards: dropped.join(", ") },
+						)}</p>`
+					: nothing
+			}
 			<cc-list-amounts
 				.cards=${cards}
 				.candidates=${ready.filter((card) => !cardIds.includes(card.id))}
