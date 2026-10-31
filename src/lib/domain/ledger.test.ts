@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	cardLedger,
+	ledgersFor,
 	ledgerUrgency,
 	newlyFrozen,
 	nextBill,
@@ -300,5 +301,21 @@ describe("nextBill", () => {
 		};
 		expect(nextBill(l, TODAY)).toBeNull();
 		expect(nextBill(l, "2026-10-31")?.period).toBe("2026-10");
+	});
+});
+
+describe("ledgersFor", () => {
+	test("ledgersFor gives every card a ledger, archived included", () => {
+		const a: Card = { ...card, id: "A" };
+		const z: Card = { ...card, id: "Z", archived: true };
+		const map = ledgersFor(
+			[a, z],
+			[{ ...purchase("p1", "2026-10-28", 5_000_00), cardId: "A" }],
+			[],
+			[],
+			"2026-10-31",
+		);
+		expect([...map.keys()]).toEqual(["A", "Z"]);
+		expect(map.get("A")?.owed).toBe(5_000_00);
 	});
 });
