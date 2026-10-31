@@ -307,3 +307,135 @@ test("a language switch re-renders in place", async () => {
 	expect(text(row(root, "2026-11")?.querySelector(".tag"))).toBe("รอบปัจจุบัน");
 	expect(text(row(root, "2026-11")?.querySelector(".name"))).toBe("พ.ย. 2026");
 });
+
+const payment = (
+	id: string,
+	date: string,
+	amount: number,
+): LedgerStatement["payments"][number]["payment"] => ({
+	id,
+	cardId: "kb",
+	date,
+	amount,
+	status: "paid",
+});
+
+const withPayments = statement({
+	period: "2026-10",
+	closeDate: "2026-10-10",
+	dueDate: "2026-11-04",
+	open: false,
+	purchases: [
+		purchase({ id: "p2", date: "2026-09-20", note: "rice", amount: 300_00 }),
+		purchase({ id: "p1", date: "2026-10-02", amount: 1_200_00 }),
+	],
+	total: 1_500_00,
+	paidAmount: 700_00,
+	payments: [
+		{ payment: payment("y1", "2026-09-25", 500_00), amount: 500_00 },
+		{ payment: payment("y2", "2026-10-20", 900_00), amount: 200_00 },
+	],
+	remaining: 800_00,
+});
+
+const lines = (root: ShadowRoot, period: string) => [
+	...(row(root, period)?.querySelectorAll<HTMLElement>(".purchases > li") ??
+		[]),
+];
+
+test("an unfolded statement lists its payment parts among its purchases, by date", async () => {
+	const { element, root } = await mount({ statements: [withPayments] });
+	row(root, "2026-10")
+		?.querySelector<HTMLButtonElement>("button.head")
+		?.click();
+	await element.updateComplete;
+	expect(
+		lines(root, "2026-10").map(
+			(li) =>
+				li.getAttribute("data-purchase") ?? li.getAttribute("data-payment"),
+		),
+	).toEqual(["p2", "y1", "p1", "y2"]);
+
+	const whole = root.querySelector<HTMLElement>('[data-payment="y1"]');
+	expect(text(whole?.querySelector(".pdate"))).toBe("25 Sep 2026");
+	expect(text(whole?.querySelector(".pnote"))).toBe("Payment");
+	expect(text(whole?.querySelector(".pamount"))).toBe("+฿500.00");
+	expect(whole?.querySelector(".pamount")?.hasAttribute("data-numeric")).toBe(
+		true,
+	);
+	expect(whole?.querySelector(".ppart")).toBeNull();
+
+	const split = root.querySelector<HTMLElement>('[data-payment="y2"]');
+	expect(text(split?.querySelector(".pamount"))).toBe("+฿200.00");
+	expect(text(split?.querySelector(".ppart"))).toBe("(part of ฿900.00)");
+});
+
+test("a payment part has no Edit or Delete", async () => {
+	const { element, root } = await mount({ statements: [withPayments] });
+	row(root, "2026-10")
+		?.querySelector<HTMLButtonElement>("button.head")
+		?.click();
+	await element.updateComplete;
+	for (const id of ["y1", "y2"]) {
+		const line = root.querySelector(`[data-payment="${id}"]`);
+		expect(line).not.toBeNull();
+		expect(line?.querySelector("button")).toBeNull();
+	}
+});
+
+test("two parts of one payment on one statement read as one line", async () => {
+	const y = payment("y1", "2026-09-25", 1_000_00);
+	const { element, root } = await mount({
+		statements: [
+			statement({
+				...withPayments,
+				payments: [
+					{ payment: y, amount: 300_00 },
+					{ payment: y, amount: 400_00 },
+				],
+			}),
+		],
+	});
+	row(root, "2026-10")
+		?.querySelector<HTMLButtonElement>("button.head")
+		?.click();
+	await element.updateComplete;
+	const lines = root.querySelectorAll('[data-payment="y1"]');
+	expect(lines.length).toBe(1);
+	expect(text(lines[0]?.querySelector(".pamount"))).toBe("+฿700.00");
+	expect(text(lines[0]?.querySelector(".ppart"))).toBe("(part of ฿1,000.00)");
+});
+
+test("a statement with payments and no purchases still unfolds", async () => {
+	const { element, root } = await mount({
+		statements: [
+			statement({
+				...withPayments,
+				purchases: [],
+				payments: [
+					{ payment: payment("y1", "2026-09-25", 500_00), amount: 500_00 },
+				],
+			}),
+		],
+	});
+	const head = row(root, "2026-10")?.querySelector<HTMLButtonElement>(
+		"button.head",
+	);
+	expect(head).not.toBeNull();
+	head?.click();
+	await element.updateComplete;
+	expect(root.querySelector('[data-payment="y1"]')).not.toBeNull();
+});
+
+test("a payment reads in Thai", async () => {
+	setLocale("th");
+	const { element, root } = await mount({ statements: [withPayments] });
+	row(root, "2026-10")
+		?.querySelector<HTMLButtonElement>("button.head")
+		?.click();
+	await element.updateComplete;
+	const split = root.querySelector<HTMLElement>('[data-payment="y2"]');
+	expect(text(split?.querySelector(".pnote"))).toBe(
+		"การชำระ (ส่วนหนึ่งของ ฿900.00)",
+	);
+});

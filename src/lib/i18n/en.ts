@@ -133,6 +133,7 @@ export const en = {
 	"common.none": "—",
 	"common.back": "Back",
 	"common.seeMore": "See more ({count})",
+	"common.more": "More",
 	"common.showLess": "Show less",
 
 	"about.title": "About",
@@ -275,6 +276,7 @@ export const en = {
 		"Give this card a limit group (Edit) to use it on a list.",
 	"card.archivedNote": "This card is archived, so it isn't offered on lists.",
 	"card.statements": "Statements",
+	"card.subtitle": "{id} · Kept in {location}",
 	"card.purchase.edit": "Edit purchase",
 	"card.purchase.editOne": "Edit the {amount} purchase of {date}",
 	"card.purchase.deleteOne": "Delete the {amount} purchase of {date}",
@@ -290,6 +292,8 @@ export const en = {
 	"statements.current": "Current",
 	"statements.quietRun": "{from} – {to} · no purchases",
 	"statements.quietOne": "{period} · no purchases",
+	"statements.payment": "Payment",
+	"statements.partOf": "(part of {total})",
 
 	"cycle.offset": "closes {closeDay}, due {days} days later",
 	"cycle.fixed": "closes {closeDay}, due on the {dueDay}",

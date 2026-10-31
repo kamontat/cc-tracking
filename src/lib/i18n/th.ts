@@ -141,6 +141,7 @@ export const th: Catalog = {
 	"common.none": "—",
 	"common.back": "กลับ",
 	"common.seeMore": "ดูเพิ่ม ({count})",
+	"common.more": "เพิ่มเติม",
 	"common.showLess": "ย่อลง",
 
 	"about.title": "เกี่ยวกับ",
@@ -287,6 +288,7 @@ export const th: Catalog = {
 	"card.noGroupNote": "กำหนดกลุ่มวงเงินให้บัตรใบนี้ (แก้ไข) เพื่อใช้ในใบรายการซื้อ",
 	"card.archivedNote": "บัตรใบนี้เก็บเข้าคลังแล้ว จึงไม่แสดงในใบรายการซื้อ",
 	"card.statements": "ใบแจ้งยอด",
+	"card.subtitle": "{id} · เก็บไว้ที่ {location}",
 	"card.purchase.edit": "แก้ไขรายการใช้จ่าย",
 	"card.purchase.editOne": "แก้ไขรายการ {amount} วันที่ {date}",
 	"card.purchase.deleteOne": "ลบรายการ {amount} วันที่ {date}",
@@ -301,6 +303,8 @@ export const th: Catalog = {
 	"statements.current": "รอบปัจจุบัน",
 	"statements.quietRun": "{from} – {to} · ไม่มีรายการใช้จ่าย",
 	"statements.quietOne": "{period} · ไม่มีรายการใช้จ่าย",
+	"statements.payment": "การชำระ",
+	"statements.partOf": "(ส่วนหนึ่งของ {total})",
 
 	"cycle.offset": "สรุปยอดวันที่ {closeDay} ครบกำหนดอีก {days} วัน",
 	"cycle.fixed": "สรุปยอดวันที่ {closeDay} ครบกำหนดวันที่ {dueDay}",

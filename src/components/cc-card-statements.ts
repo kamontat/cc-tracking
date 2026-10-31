@@ -8,12 +8,47 @@ import {
 } from "#lib/domain/date";
 import { ledgerUrgency } from "#lib/domain/ledger";
 import { formatAmount } from "#lib/domain/money";
-import type { LedgerStatement, PlainDate, Purchase } from "#lib/domain/types";
+import type {
+	CardPayment,
+	LedgerStatement,
+	PlainDate,
+	Purchase,
+} from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
 type Tag = { urgency?: "overdue" | "soon"; tone?: "ok"; text: string };
+
+type PaymentLine = { kind: "payment"; payment: CardPayment; amount: number };
+type Line = { kind: "purchase"; purchase: Purchase } | PaymentLine;
+
+/**
+ * What an unfolded statement lists: its purchases and the payment parts that settled it, in
+ * one run by date (a purchase before a payment on the same day). Two parts of one payment on
+ * one statement -- one naming the period, one from the pool -- read as one line.
+ */
+function linesOf(statement: LedgerStatement): Line[] {
+	const payments = new Map<string, PaymentLine>();
+	for (const part of statement.payments) {
+		const seen = payments.get(part.payment.id);
+		if (seen) seen.amount += part.amount;
+		else
+			payments.set(part.payment.id, {
+				kind: "payment",
+				payment: part.payment,
+				amount: part.amount,
+			});
+	}
+	const dateOf = (line: Line) =>
+		line.kind === "purchase" ? line.purchase.date : line.payment.date;
+	return [
+		...statement.purchases.map(
+			(purchase): Line => ({ kind: "purchase", purchase }),
+		),
+		...payments.values(),
+	].sort((a, b) => compareDates(dateOf(a), dateOf(b)));
+}
 
 /**
  * A card's statements, newest first (prototype `vCard`): one row each, `Mon YYYY` with a tag
@@ -41,9 +76,29 @@ export class CcCardStatements extends LitElement {
 				flex-direction: column;
 			}
 
+			/* The head reaches a little past the text into the panel's side padding, so its ring
+			   -- drawn inside, never clipped by the panel -- keeps clear of the text and of the
+			   panel's edge alike (the unfolded items stay on the text's line, inset from it). */
 			.head {
 				grid-template-columns: minmax(0, 1fr) auto;
-				inline-size: 100%;
+				inline-size: auto;
+				margin-inline: calc(var(--cc-space-2) * -1);
+				padding-inline: var(--cc-space-2);
+				border-radius: var(--cc-radius-sm);
+			}
+
+			button.head:focus-visible {
+				box-shadow: var(--cc-focus-ring-inset);
+			}
+
+			button.head:hover {
+				box-shadow:
+					calc(var(--cc-space-2) * -1) 0 0 var(--cc-surface-sunken),
+					var(--cc-space-2) 0 0 var(--cc-surface-sunken);
+			}
+
+			button.head:hover:focus-visible {
+				box-shadow: var(--cc-focus-ring-inset);
 			}
 
 			div.head {
@@ -122,6 +177,15 @@ export class CcCardStatements extends LitElement {
 			.pamount {
 				font-weight: 600;
 				white-space: nowrap;
+			}
+
+			.pamount.in {
+				color: var(--cc-success);
+			}
+
+			.ppart {
+				font-size: var(--cc-text-xs);
+				color: var(--cc-text-muted);
 			}
 
 			.pactions {
@@ -318,8 +382,9 @@ export class CcCardStatements extends LitElement {
 		const locale = getLocale();
 		const tag = this.tag(statement, statement.period === this.currentPeriod);
 		const paid = ledgerUrgency(statement, this.today) === "paid";
-		const hasPurchases = statement.purchases.length > 0;
-		const open = hasPurchases && this.openPeriods.has(statement.period);
+		const lines = linesOf(statement);
+		const hasLines = lines.length > 0;
+		const open = hasLines && this.openPeriods.has(statement.period);
 		const listId = `purchases-${statement.period}`;
 		const body = html`
 			<span class="what">
@@ -355,7 +420,7 @@ export class CcCardStatements extends LitElement {
 		`;
 		return html`<div class="statement" data-period=${statement.period}>
 			${
-				hasPurchases
+				hasLines
 					? html`<button type="button" class="crow head" aria-expanded=${open ? "true" : "false"}
 						aria-controls=${open ? listId : nothing}
 						@click=${() => this.toggle(statement.period)}>${body}</button>`
@@ -363,12 +428,31 @@ export class CcCardStatements extends LitElement {
 			}
 			${
 				open
-					? html`<ul class="purchases" id=${listId}>${statement.purchases.map(
-							(purchase) => this.purchase(purchase, statement.period),
+					? html`<ul class="purchases" id=${listId}>${lines.map((line) =>
+							line.kind === "purchase"
+								? this.purchase(line.purchase, statement.period)
+								: this.payment(line),
 						)}</ul>`
 					: nothing
 			}
 		</div>`;
+	}
+
+	/** A payment part: date, *Payment*, `+฿part`, and `(part of ฿total)` when split. No buttons. */
+	private payment(line: PaymentLine) {
+		const locale = getLocale();
+		const { payment, amount } = line;
+		return html`<li class="purchase payment" data-payment=${payment.id}>
+			<span class="pdate">${displayDate(payment.date, locale)}</span>
+			<span class="pnote">${t("statements.payment")}${
+				amount < payment.amount
+					? html` <small class="ppart">${t("statements.partOf", {
+							total: formatAmount(payment.amount),
+						})}</small>`
+					: nothing
+			}</span>
+			<span class="pamount in" data-numeric>+${formatAmount(amount)}</span>
+		</li>`;
 	}
 
 	private purchase(purchase: Purchase, period: string) {

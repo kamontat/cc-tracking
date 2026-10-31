@@ -42,6 +42,9 @@
 	/* The narrowest a settings tile gets before its row wraps to one per line. */
 	--cc-tile-min: 14rem;
 
+	/* The narrowest a More menu's list gets, so its buttons read as a list, not chips. */
+	--cc-menu-min: 12rem;
+
 	/* How much of the group's ink tints the card hero's bar track. */
 	--cc-hero-track: 18%;
 
@@ -136,6 +139,8 @@
 	--cc-urgency-soon: var(--cc-warning);
 
 	--cc-focus-ring: 0 0 0 3px rgb(54 125 95 / 0.4);
+	/* The same ring drawn inside the box, for a row that sits against a clipping edge. */
+	--cc-focus-ring-inset: inset 0 0 0 3px rgb(54 125 95 / 0.4);
 }
 
 @media (min-width: 640px) {
@@ -195,6 +200,7 @@
 		--cc-group-4-text: #f2a882;
 
 		--cc-focus-ring: 0 0 0 3px rgb(116 201 161 / 0.45);
+		--cc-focus-ring-inset: inset 0 0 0 3px rgb(116 201 161 / 0.45);
 	}
 }
 
@@ -238,6 +244,7 @@
 	--cc-group-4-text: #f2a882;
 
 	--cc-focus-ring: 0 0 0 3px rgb(116 201 161 / 0.45);
+	--cc-focus-ring-inset: inset 0 0 0 3px rgb(116 201 161 / 0.45);
 }
 
 /* Build tints, the same in both themes: a non-production build stamps `data-env` on `<html>`. */

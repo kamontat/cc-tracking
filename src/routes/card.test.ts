@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import type { CcErrorBanner } from "#components/cc-error-banner";
+import type { CcMoreMenu } from "#components/cc-more-menu";
 import type { CcPurchaseSheet } from "#components/cc-purchase-sheet";
 import { closeDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { addDays, addPeriods, today } from "#lib/domain/date";
@@ -8,6 +9,7 @@ import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { payAddress } from "#lib/ui/pay-address";
 import { renderCardPage } from "./card";
+import { draft, saved, sent } from "./list/test-support";
 
 afterEach(() => setLocale("en"));
 
@@ -80,9 +82,13 @@ class RejectingDeleteRepository extends InMemoryRepository {
 	}
 }
 
+/** Where the page went after a delete, through its `navigate` seam. */
+let visited: string[] = [];
+
 const open = async (repo: InMemoryRepository, id: string | null = "kbank") => {
 	const root = mount();
-	renderCardPage(repo, id, root);
+	visited = [];
+	renderCardPage(repo, id, root, { navigate: (url) => visited.push(url) });
 	await settle();
 	return root;
 };
@@ -139,20 +145,158 @@ const submitSheet = async (sheet: CcPurchaseSheet) => {
 	await settle();
 };
 
-test("a back header names the card, with Edit leading to the card form", async () => {
+test("a sub-header names the card and where it is kept, with Edit leading to the card form", async () => {
 	const repo = new InMemoryRepository();
-	await repo.saveCard({ ...card, id: "k b" });
+	await repo.saveLimitGroup({
+		id: "g1",
+		name: "Pool",
+		limit: 100_000_00,
+		owner: "RI",
+	});
+	await repo.saveCard({ ...card, id: "k b", limitGroupId: "g1" });
 	const root = await open(repo, "k b");
 
-	const header = root.querySelector(".back-header");
+	expect(root.querySelector(".back-header")).toBeNull();
+	const header = root.querySelector(".sub-header");
 	expect(
 		header?.querySelector('a[data-action="back"]')?.getAttribute("href"),
 	).toBe("/cards");
-	expect(text(header?.querySelector("h1"))).toStartWith("k b) KBank Visa");
-	expect(text(header?.querySelector("h1 small"))).toBe("KBank Visa · ••••4821");
+	expect(text(header?.querySelector("h1 .sub-header__title"))).toBe(
+		"KBank Visa · RI (4821)",
+	);
+	expect(text(header?.querySelector("h1 small"))).toBe("k b · Kept in Krabi");
 	const edit = header?.querySelector('a[data-action="edit"]');
 	expect(edit?.getAttribute("href")).toBe("/card/edit?id=k%20b");
 	expect(text(edit)).toBe("Edit");
+	expect(header?.querySelector(".sub-header__actions cc-more-menu")).not.toBe(
+		null,
+	);
+});
+
+const menu = (root: HTMLElement) => {
+	const element = root.querySelector<CcMoreMenu>(".sub-header cc-more-menu");
+	if (!element) throw new Error("no More menu");
+	return element;
+};
+
+/** The More menu's buttons by action, in order. */
+const menuActions = async (root: HTMLElement) => {
+	const element = menu(root);
+	await element.updateComplete;
+	return [
+		...(element.shadowRoot?.querySelectorAll(".more-menu button") ?? []),
+	].map((b) => b.getAttribute("data-action"));
+};
+
+/** Opens the More menu and presses one of its buttons, waiting for the page to settle. */
+const pick = async (root: HTMLElement, ...actions: string[]) => {
+	const element = menu(root);
+	await element.updateComplete;
+	const shadow = element.shadowRoot as ShadowRoot;
+	shadow.querySelector<HTMLButtonElement>("button.more")?.click();
+	await element.updateComplete;
+	for (const action of actions) {
+		const button = shadow.querySelector<HTMLButtonElement>(
+			`[data-action="${action}"]`,
+		);
+		if (!button) throw new Error(`no ${action} in the More menu`);
+		button.click();
+		await element.updateComplete;
+	}
+	await settle();
+	await settle();
+};
+
+test("More: Archive card archives the stored card and stays on its page", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const root = await open(repo);
+	expect(await menuActions(root)).toEqual(["archive", "delete"]);
+	expect(
+		text(menu(root).shadowRoot?.querySelector('[data-action="archive"]')),
+	).toBe("Archive card");
+	await pick(root, "archive");
+	expect((await repo.getCard("kbank"))?.archived).toBe(true);
+	expect(visited).toEqual([]);
+	expect([...root.querySelectorAll(".card-badges .badge")].map(text)).toEqual([
+		"Archived",
+	]);
+});
+
+test("More: Unarchive card on an archived one", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard({ ...card, archived: true });
+	const root = await open(repo);
+	expect(
+		text(menu(root).shadowRoot?.querySelector('[data-action="archive"]')),
+	).toBe("Unarchive card");
+	await pick(root, "archive");
+	expect((await repo.getCard("kbank"))?.archived).toBe(false);
+});
+
+test("More: a failed archive says why in the banner", async () => {
+	class FailingSave extends InMemoryRepository {
+		override saveCard(value: Card): Promise<void> {
+			if (value.archived) return Promise.reject(new Error("disk is full"));
+			return super.saveCard(value);
+		}
+	}
+	const repo = new FailingSave();
+	await repo.saveCard(card);
+	const root = await open(repo);
+	await pick(root, "archive");
+	expect((await repo.getCard("kbank"))?.archived).toBe(false);
+	expect(bannerMessage(root)).toContain("Could not archive the card.");
+});
+
+test("More: Delete card asks twice, naming the card, then goes to Cards", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchaseList(saved("old", ["kbank"]));
+	const root = await open(repo);
+	await pick(root, "delete");
+	expect(text(menu(root).shadowRoot?.querySelector(".ask"))).toBe(
+		"Delete KBank Visa?",
+	);
+	expect(await repo.getCard("kbank")).not.toBeNull();
+	menu(root)
+		.shadowRoot?.querySelector<HTMLButtonElement>('[data-action="confirm"]')
+		?.click();
+	await settle();
+	await settle();
+	expect(await repo.getCard("kbank")).toBeNull();
+	expect(visited).toEqual(["/cards"]);
+});
+
+test("More: no Delete card while the card has a purchase", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	const root = await open(repo);
+	expect(await menuActions(root)).toEqual(["archive"]);
+});
+
+test("More: no Delete card while a draft or a sent list holds it", async () => {
+	for (const list of [draft("d", ["kbank"]), sent("s", ["kbank"])]) {
+		const repo = new InMemoryRepository();
+		await repo.saveCard(card);
+		await repo.savePurchaseList(list);
+		const root = await open(repo);
+		expect(await menuActions(root)).toEqual(["archive"]);
+	}
+});
+
+test("More: a refused delete stays, with storage's reason, and Delete card goes", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	const root = await open(repo);
+	// Raced in after the page loaded: the button showed, storage still says no.
+	await repo.savePurchase(purchase);
+	await pick(root, "delete", "confirm");
+	expect(visited).toEqual([]);
+	expect(await repo.getCard("kbank")).not.toBeNull();
+	expect(bannerMessage(root)).toContain("Could not delete the card.");
+	expect(await menuActions(root)).toEqual(["archive"]);
 });
 
 test("badges an archived or supplementary card under the header", async () => {

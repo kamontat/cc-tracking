@@ -4,8 +4,10 @@ import "../styles/app.css";
 import "#components/cc-card-hero";
 import "#components/cc-card-statements";
 import "#components/cc-error-banner";
+import "#components/cc-more-menu";
 import "#components/cc-purchase-sheet";
 import { html, nothing, render } from "lit";
+import type { MoreItem } from "#components/cc-more-menu";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { compareDates, today } from "#lib/domain/date";
@@ -18,27 +20,49 @@ import { MessageError } from "#lib/i18n/error";
 import { locationText } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { backHeader } from "#lib/ui/back-header";
-import { cardLine } from "#lib/ui/card-label";
+import { cardTitle } from "#lib/ui/card-label";
 import { newListAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import { payAddress } from "#lib/ui/pay-address";
+import { subHeader } from "#lib/ui/sub-header";
 
 const PAGE_SIZE = 12;
 
+export type CardPageOptions = {
+	/** Leaves after a delete; `location.replace`, so Back does not reopen a card that is gone. */
+	navigate?: (url: string) => void;
+};
+
 /**
- * The card page (prototype `vCard`): a back header with *Edit*, the hero and stats, *Use on a
- * list* or why the card can't take one, *Make a payment*, and the statements, each unfolding to
- * its purchases to fix (*Edit* in a sheet, *Delete* asking twice). Purchases are added only from
- * purchase lists (DD-67). Exported for tests.
+ * Whether a card may be deleted: no purchases, and on no draft and no list waiting for the
+ * spender. Storage refuses the rest anyway (`deleteCard`); this only hides the button.
+ */
+async function canDelete(repo: Repository, id: string): Promise<boolean> {
+	if ((await repo.listPurchases(id)).length > 0) return false;
+	const lists = await repo.listPurchaseLists();
+	return !lists.some(
+		(list) =>
+			list.status !== "saved" && list.lines.some((line) => line.cardId === id),
+	);
+}
+
+/**
+ * The card page (prototype `vCard`): a compact sub-header -- the card's title, its id and where
+ * it is kept, *Edit*, and a *More* menu with *Archive card* / *Unarchive card* and, while the
+ * card can go, *Delete card* (asking twice; a delete lands on Cards) -- then the hero and stats,
+ * *Use on a list* or why the card can't take one, *Make a payment*, and the statements, each
+ * unfolding to its purchases to fix (*Edit* in a sheet, *Delete* asking twice) and the payments
+ * that settled it. Exported for tests.
  */
 export function renderCardPage(
 	repo: Repository,
 	cardId: string | null,
 	root: HTMLElement,
+	options: CardPageOptions = {},
 ): void {
+	const navigate = options.navigate ?? ((url: string) => location.replace(url));
 	const now = today();
 	let card: Card | null = null;
 	let purchases: Purchase[] = [];
@@ -49,6 +73,10 @@ export function renderCardPage(
 	// The purchase open in the sheet, by id, so a reload hands the sheet its fresh copy.
 	let editingId: string | null = null;
 	let busy = false;
+	// Whether *Delete card* is offered: no purchases, on no open list.
+	let deletable = false;
+	// A More menu write (archive, delete) in flight, so a second press waits for it.
+	let writing = false;
 	// Whether the open sheet's last save failed, so an older page error stays out of it.
 	let sheetFailed = false;
 	const state = createPageState({
@@ -62,6 +90,7 @@ export function renderCardPage(
 			}
 			data = await loadMoneyData(repo, now);
 			purchases = data.purchases.filter((entry) => entry.cardId === cardId);
+			deletable = await canDelete(repo, cardId);
 		},
 		fallbackKey: "card.error.read",
 		paint: () => paint(),
@@ -138,6 +167,56 @@ export function renderCardPage(
 		paint();
 	};
 
+	/** Archives or unarchives the card in place; a failure says why in the banner. */
+	const toggleArchive = async (current: Card) => {
+		writing = true;
+		paint();
+		await state.guard(
+			() => repo.saveCard({ ...current, archived: !current.archived }),
+			"cards.error.archive",
+		);
+		writing = false;
+		paint();
+	};
+
+	/** Deletes the card and leaves for Cards; a refusal stays, with storage's reason. */
+	const deleteCard = async (current: Card) => {
+		writing = true;
+		paint();
+		try {
+			await repo.deleteCard(current.id);
+		} catch (failure) {
+			await state.guard(() => Promise.reject(failure), "cards.error.delete");
+			writing = false;
+			paint();
+			return;
+		}
+		navigate("/cards");
+	};
+
+	const onMenu = (event: CustomEvent<{ action: string }>) => {
+		if (!card || writing) return;
+		if (event.detail.action === "archive") void toggleArchive(card);
+		else if (event.detail.action === "delete") void deleteCard(card);
+	};
+
+	const menuItems = (current: Card): MoreItem[] => [
+		{
+			action: "archive",
+			label: current.archived ? t("form.unarchive") : t("form.archive"),
+		},
+		...(deletable
+			? [
+					{
+						action: "delete",
+						label: t("form.delete"),
+						variant: "danger" as const,
+						ask: t("form.deleteAsk", { name: current.name }),
+					},
+				]
+			: []),
+	];
+
 	/** Why this card is not offered on lists, or nothing when it is (FR-22). */
 	const cannotPurchase = (current: Card): string | null => {
 		// An archived card takes no purchases wherever it is kept, so naming the place as the
@@ -184,6 +263,23 @@ export function renderCardPage(
 		></cc-purchase-sheet>`;
 	};
 
+	const header = (current: Card | null) =>
+		current
+			? subHeader({
+					title: cardTitle(current, data?.groups ?? []),
+					detail: t("card.subtitle", {
+						id: current.id,
+						location: locationText(current.location),
+					}),
+					back: "/cards",
+					actions: html`<a class="btn" data-variant="quiet" data-action="edit"
+							href=${`/card/edit?id=${encodeURIComponent(current.id)}`}
+							aria-label=${t("card.edit")}>${t("common.edit")}</a>
+						<cc-more-menu .items=${menuItems(current)} ?busy=${writing}
+							@menu-select=${onMenu}></cc-more-menu>`,
+				})
+			: subHeader({ title: t("cards.title"), back: "/cards" });
+
 	const page = (current: Card) => {
 		const ledger = data?.ledgers.get(current.id);
 		const next = ledger ? nextBill(ledger, now) : null;
@@ -192,14 +288,6 @@ export function renderCardPage(
 			current.supplementary ? t("form.supplementary") : null,
 		].filter((badge): badge is string => badge !== null);
 		return html`
-			${backHeader({
-				title: cardLine(current.id, current, { short: true }),
-				detail: `${current.name} · ••••${current.last4}`,
-				back: "/cards",
-				action: html`<a class="btn" data-variant="quiet" data-action="edit"
-					href=${`/card/edit?id=${encodeURIComponent(current.id)}`}
-					aria-label=${t("card.edit")}>${t("common.edit")}</a>`,
-			})}
 			${
 				badges.length > 0
 					? html`<p class="card-badges">${badges.map(
@@ -239,8 +327,9 @@ export function renderCardPage(
 	const paint = () =>
 		render(
 			html`
+				${header(card)}
 				<cc-error-banner .message=${sheetFailed || busy ? "" : state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				${card ? page(card) : backHeader({ title: t("cards.title"), back: "/cards" })}
+				${card ? page(card) : nothing}
 			`,
 			root,
 		);
