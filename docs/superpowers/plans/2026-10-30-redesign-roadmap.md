@@ -76,16 +76,24 @@ so most of them moved to the phase that builds what needs them.
 
 - Before group colour chips ship with Cards, darken the light `--cc-group-4-text` (4.21:1 on
   `--cc-group-4`) so it passes AA.
+  (Taken: `#b1532f` to `#a74e2c`, 4.63:1, DD-120.)
 - The `data-env` tint is applied after first paint; it could be folded into the head theme
   script later.
+  (Not taken: still set by `chrome.ts` after first paint; moved to phase 6.)
 - Refuse deleting a card that is on a list waiting for the spender or on a draft.
+  (Taken: `deleteCard` throws `guard.cardOnList`, tested in the contract suite, DD-119.)
 - Don't remove the `quickAdd.*`, `spendable.*` and `backup.copy*` catalog keys the list pages
   still use (or give those pages keys of their own first).
+  (Taken: only keys grep showed unused were removed; the purchase sheet reuses `quickAdd.*`.)
 - The card page's statement list is read-only (no per-statement *Mark paid*) until the new card
   page; a payment is made at `/pay?card=<id>` (DD-78).
+  (Taken: the new card page has *Make a payment* to `/pay?card=…&amount=<next bill>`, DD-118.)
 - `SpendRow` is hand-built in `card.ts`; it can go when `cc-quick-add` goes.
+  (Taken: both are gone.)
 - `cards.ts` recomputes each group's room on every paint; compute it once per load.
+  (Taken: DD-117.)
 - The card page's Add purchase dialog goes with the old card page (DD-67).
+  (Taken: DD-111.)
 
 ### Phase 6
 
@@ -96,3 +104,25 @@ so most of them moved to the phase that builds what needs them.
   holds (DD-95); tell the reader in the Merge help, or make Merge skip it.
 - Widen `Card.location` to any location id, and make backup version 3 check each card's
   location against the file's location ids (RD-17).
+- Once `Card.location` widens, let the Cards filter offer custom locations and
+  `readCardsView` (`cards-query.ts`) keep them in `loc`; today both take only the three fixed
+  places (DD-115). The edit screen's *Kept in* control also lists only `LOCATIONS`.
+- Apply the `data-env` tint before first paint (fold it into the head theme script); today
+  `chrome.ts` sets it after.
+- The Cards page has no "not assigned" filter, yet *Ready to use*'s *Assign them* links there
+  (US-06). Add a way to find cards with no limit group, or point the link elsewhere.
+- Small leftovers from phase 5, each still true at its last commit:
+  - Only archived cards match: the folded *Archived (N)* shows with no *No card matches* line
+    (`cc-cards-list`).
+  - The group sheet drops its *Delete NAME?* swap before a delete's result, so a failed delete
+    shows the plain *Delete group* again (`cc-group-sheet`).
+  - *Show older statements* shows even when there is nothing older (`card.ts`).
+  - `cc-card-hero` has literal `font-weight`, `line-height` and `letter-spacing` values
+    (UI-01: move them to tokens).
+  - The cards filter's radio ring uses `calc(var(--cc-border-width) * 2)`; a token would
+    be cleaner.
+  - Thai `title.cards` and `title.card` are both "บัตร — cc-tracking".
+  - The back header uses the large page heading; the prototype has a compact sub-header.
+  - The name sort uses `localeCompare` with no locale, so order can differ by browser.
+  - A group whose id is `new` would collide with the blank-sheet address `?group=new` (ids are
+    UUIDs, so only a restored or hand-made id could).
