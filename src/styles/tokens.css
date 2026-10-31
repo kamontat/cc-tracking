@@ -129,7 +129,7 @@
 	--cc-group-3: #efe5f7;
 	--cc-group-3-text: #7a45a8;
 	--cc-group-4: #fbe6dd;
-	--cc-group-4-text: #b1532f;
+	--cc-group-4-text: #a74e2c;
 
 	/* Resolved at use, so the dark block below re-points these for free. */
 	--cc-urgency-overdue: var(--cc-danger);
