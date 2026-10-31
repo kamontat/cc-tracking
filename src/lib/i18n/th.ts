@@ -100,7 +100,7 @@ export const th: Catalog = {
 	"tx.owed.sort.due": "วันครบกำหนด",
 	"tx.owed.sort.left": "ค้างมากสุด",
 	"tx.lists.noMatch": "ไม่มีใบรายการซื้อที่ตรงกับสถานะเหล่านี้ ยกเลิกสถานะหนึ่งเพื่อดูเพิ่ม",
-	"tx.view.ledger": "รายการ",
+	"tx.view.ledger": "บัญชีรายการ",
 	"tx.view.lists": "ใบรายการซื้อ",
 	"tx.view.owed": "ค้างชำระ",
 	"tx.search.placeholder": "ค้นหาบัตร บันทึก หรือจำนวนเงิน",

@@ -888,12 +888,12 @@ a:any-link:hover {
 		flex: 1 1 0;
 	}
 
-	.tx-grid > .tx-owed {
+	.tx-grid[data-view] > .tx-owed {
 		display: block;
 		flex: 0 0 var(--cc-side-panel);
 	}
 
-	.tx-grid[data-view="owed"] > .tx-main {
+	.tx-grid[data-view] > .tx-main {
 		display: flex;
 	}
 }

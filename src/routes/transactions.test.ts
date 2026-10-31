@@ -213,3 +213,10 @@ test("re-renders in Thai", async () => {
 	expect(root.querySelector("h1")?.textContent).toBe("รายการเคลื่อนไหว");
 	setLocale("en");
 });
+
+test("a custom range chip shows display dates", async () => {
+	const { root } = await open("?from=2026-10-30&to=2026-10-31");
+	const chip = root.querySelector('[data-chip="range"]');
+	expect(chip?.textContent).not.toContain("2026-10-30");
+	expect(chip?.textContent).toContain("30");
+});

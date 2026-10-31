@@ -8,7 +8,7 @@ import "#components/cc-tx-filter";
 import "#components/cc-tx-ledger";
 import { html, nothing, render } from "lit";
 import { searchBox } from "#components/list-controls";
-import { today } from "#lib/domain/date";
+import { displayDate, today } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { markPaid, plannedOf } from "#lib/domain/pay";
 import {
@@ -22,7 +22,7 @@ import {
 	type TxSort,
 } from "#lib/domain/transactions";
 import type { CardPayment, ListStatus } from "#lib/domain/types";
-import { subscribe, t } from "#lib/i18n/index";
+import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { cardLabelText } from "#lib/ui/card-label";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
@@ -126,7 +126,7 @@ export function renderTransactionsPage(
 		if (filter.range === "" && (filter.from || filter.to))
 			list.push({
 				key: "range",
-				label: `${filter.from || "…"} – ${filter.to || "…"}`,
+				label: `${filter.from ? displayDate(filter.from, getLocale()) : "…"} – ${filter.to ? displayDate(filter.to, getLocale()) : "…"}`,
 				clear: () => setFilter({ from: "", to: "" }),
 			});
 		if (view.sort !== DEFAULT_TX_VIEW.sort)
