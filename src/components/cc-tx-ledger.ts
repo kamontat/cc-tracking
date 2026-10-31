@@ -229,20 +229,23 @@ export class CcTxLedger extends LitElement {
 		</div>`;
 	}
 
-	/** A planned payment's second step: ask, then *Delete* or *Keep* (UI-09, DD-110). */
-	private planDeleteBlock(payment: CardPayment, card: Card | undefined) {
-		return html`<div class="actions" data-confirming=${payment.id}>
-			<p class="confirm">${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}</p>
-			<button type="button" data-variant="danger" data-action="confirm-delete"
+	/** A planned payment's buttons: *Paid* and *Delete*, which swap in place for *Delete* and *Cancel* (DD-110). */
+	private planButtons(payment: CardPayment, card: Card | undefined) {
+		if (this.confirmingPlan !== payment.id)
+			return html`<span class="a-btns"><button type="button" data-variant="quiet" data-action="mark-paid"
+				@click=${() => this.emit("mark-paid", { payment })}>${t("row.paid")}</button><button type="button" data-variant="danger" data-action="delete"
 				@click=${() => {
-					this.confirmingPlan = null;
-					this.emit("delete-payment", { payment });
-				}}>${t("common.delete")}</button>
-			<button type="button" data-action="keep"
-				@click=${() => {
-					this.confirmingPlan = null;
-				}}>${t("tx.keep")}</button>
-		</div>`;
+					this.confirmingPlan = payment.id;
+				}}>${t("common.delete")}</button></span>`;
+		return html`<span class="a-btns" data-confirming=${payment.id}><button type="button" data-variant="danger" data-action="confirm-delete"
+			aria-label=${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}
+			@click=${() => {
+				this.confirmingPlan = null;
+				this.emit("delete-payment", { payment });
+			}}>${t("common.delete")}</button><button type="button" data-action="cancel-delete"
+			@click=${() => {
+				this.confirmingPlan = null;
+			}}>${t("common.cancel")}</button></span>`;
 	}
 
 	private row(entry: TxEntry, showDate: boolean) {
@@ -285,21 +288,23 @@ export class CcTxLedger extends LitElement {
 		</div>`;
 	}
 
-	/** The second step of a waiting list's *Confirm*: nothing is written until *Save*. */
-	private confirmBlock(list: PurchaseList) {
+	/** A waiting list's button: *Confirm*, which swaps in place for *Save* and *Cancel*; nothing is written until *Save*. */
+	private listButtons(list: PurchaseList) {
+		if (this.confirmingList !== list.id)
+			return html`<button type="button" data-variant="quiet" data-action="confirm-list"
+				@click=${() => {
+					this.confirmingList = list.id;
+				}}>${t("row.confirm")}</button>`;
 		const count = list.lines.length;
-		return html`<div class="actions" data-confirming=${list.id}>
-			<p class="confirm">${count === 1 ? t("row.confirmAsk.one") : t("row.confirmAsk.many", { count })}</p>
-			<button type="button" data-action="save-list"
-				@click=${() => {
-					this.confirmingList = null;
-					this.emit("confirm-list", { list });
-				}}>${t("row.save")}</button>
-			<button type="button" data-variant="quiet" data-action="cancel-confirm"
-				@click=${() => {
-					this.confirmingList = null;
-				}}>${t("common.cancel")}</button>
-		</div>`;
+		return html`<span class="a-btns" data-confirming=${list.id}><button type="button" data-action="save-list"
+			aria-label=${count === 1 ? t("row.confirmAsk.one") : t("row.confirmAsk.many", { count })}
+			@click=${() => {
+				this.confirmingList = null;
+				this.emit("confirm-list", { list });
+			}}>${t("row.save")}</button><button type="button" data-variant="quiet" data-action="cancel-confirm"
+			@click=${() => {
+				this.confirmingList = null;
+			}}>${t("common.cancel")}</button></span>`;
 	}
 
 	private renderUpcoming() {
@@ -310,41 +315,23 @@ export class CcTxLedger extends LitElement {
 			<div class="sec-head"><h2>${t("tx.upcoming")}</h2></div>
 			<div class="panel">
 				${up.lists.map((list) =>
-					actionRow(waitingText(list, up.cards, this.limitGroups, false), {
+					actionRow(waitingText(list, up.cards, this.limitGroups), {
 						id: list.id,
 						href: listPageAddress(list),
 						amount: {
 							text: `${MINUS}${formatAmount(listTotal(list))}`,
 							tone: "muted",
 						},
-						action:
-							this.confirmingList === list.id
-								? undefined
-								: html`<button type="button" data-variant="quiet" data-action="confirm-list"
-									@click=${() => {
-										this.confirmingList = list.id;
-									}}>${t("row.confirm")}</button>`,
-						below:
-							this.confirmingList === list.id
-								? this.confirmBlock(list)
-								: nothing,
+						action: this.listButtons(list),
 					}),
 				)}
 				${up.planned.map(({ payment, card }) => {
-					const asking = this.confirmingPlan === payment.id;
 					return actionRow(
 						plannedText(payment, card, this.limitGroups, this.today, true),
 						{
 							id: payment.id,
 							amount: { text: `+${formatAmount(payment.amount)}`, tone: "in" },
-							action: asking
-								? undefined
-								: html`<span class="a-btns"><button type="button" data-variant="quiet" data-action="mark-paid"
-										@click=${() => this.emit("mark-paid", { payment })}>${t("row.paid")}</button><button type="button" data-variant="danger" data-action="delete"
-										@click=${() => {
-											this.confirmingPlan = payment.id;
-										}}>${t("common.delete")}</button></span>`,
-							below: asking ? this.planDeleteBlock(payment, card) : nothing,
+							action: this.planButtons(payment, card),
 						},
 					);
 				})}

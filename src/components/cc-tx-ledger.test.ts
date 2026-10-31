@@ -250,7 +250,7 @@ test("Upcoming uses the shared row: a waiting list with Confirm, a planned payme
 	expect((marked[0] as { payment: CardPayment }).payment.id).toBe("pl1");
 });
 
-test("a planned payment's Delete asks once more; Keep writes nothing", async () => {
+test("a planned payment's Delete swaps in place for Delete and Cancel; Cancel writes nothing", async () => {
 	const c = card("A");
 	const planned = payment("pl1", 900_00, "planned", c);
 	const { element, root } = await mount({
@@ -267,28 +267,31 @@ test("a planned payment's Delete asks once more; Keep writes nothing", async () 
 	);
 	(root.querySelector("[data-action=delete]") as HTMLElement).click();
 	await element.updateComplete;
-	expect(text(root, "[data-confirming=pl1] .confirm")).toBe(
+	// Nothing opens under the row: the same buttons swap in place.
+	expect(root.querySelector(".confirm")).toBeNull();
+	expect(root.querySelector("[data-row=pl1] .actions")).toBeNull();
+	const buttons = [...root.querySelectorAll("[data-row=pl1] .a-btns button")];
+	expect(buttons.map((b) => b.getAttribute("data-action"))).toEqual([
+		"confirm-delete",
+		"cancel-delete",
+	]);
+	expect(buttons[0]?.getAttribute("data-variant")).toBe("danger");
+	expect(buttons[1]?.getAttribute("data-variant")).toBeNull();
+	expect(buttons[0]?.getAttribute("aria-label")).toBe(
 		"Delete ฿900.00 to Card A?",
 	);
-	const keep = root.querySelector("[data-action=keep]") as HTMLElement;
-	expect(keep.getAttribute("data-variant")).toBeNull();
-	expect(
-		root
-			.querySelector("[data-action=confirm-delete]")
-			?.getAttribute("data-variant"),
-	).toBe("danger");
-	expect(root.querySelector(".a-btns")).toBeNull();
-	keep.click();
+	(buttons[1] as HTMLElement).click();
 	await element.updateComplete;
 	expect(deleted).toEqual([]);
 	expect(root.querySelector("[data-confirming]")).toBeNull();
+	expect(root.querySelector("[data-action=mark-paid]")).not.toBeNull();
 	(root.querySelector("[data-action=delete]") as HTMLElement).click();
 	await element.updateComplete;
 	(root.querySelector("[data-action=confirm-delete]") as HTMLElement).click();
 	expect((deleted[0] as { payment: CardPayment }).payment.id).toBe("pl1");
 });
 
-test("Confirm asks once more before it saves the list, and Cancel writes nothing", async () => {
+test("Confirm swaps in place for Save and Cancel, and Cancel writes nothing", async () => {
 	const sent: PurchaseList = {
 		id: "w1",
 		date: "2026-10-30",
@@ -307,9 +310,12 @@ test("Confirm asks once more before it saves the list, and Cancel writes nothing
 	(root.querySelector("[data-action=confirm-list]") as HTMLElement).click();
 	await element.updateComplete;
 	expect(saved).toEqual([]);
-	expect(text(root, "[data-confirming=w1] .confirm")).toBe(
-		"Save all 4 as made?",
-	);
+	expect(root.querySelector(".confirm")).toBeNull();
+	expect(
+		root
+			.querySelector("[data-confirming=w1] [data-action=save-list]")
+			?.getAttribute("aria-label"),
+	).toBe("Save all 4 as made?");
 	expect(root.querySelector("[data-action=confirm-list]")).toBeNull();
 	(root.querySelector("[data-action=cancel-confirm]") as HTMLElement).click();
 	await element.updateComplete;

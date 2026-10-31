@@ -87,6 +87,7 @@ const planned = (date: string): NeedsItem => ({
 const slots = (row: Element) => ({
 	title: text(row, ".a-title"),
 	subtitle: text(row, ".a-sub"),
+	amount: text(row, ".a-right .amount"),
 });
 
 test("each item opens its task", async () => {
@@ -110,7 +111,7 @@ test("each item opens its task", async () => {
 	]);
 });
 
-test("each kind fills the row's title and subtitle, with no badge, figure or button", async () => {
+test("each kind fills the row's title and subtitle, with the amount on the right and no badge or button", async () => {
 	const root = await mount(
 		[...items(), planned("2026-11-02")],
 		[
@@ -124,21 +125,24 @@ test("each kind fills the row's title and subtitle, with no badge, figure or but
 	] as Element[];
 	expect(slots(waiting as Element)).toEqual({
 		title: "Waiting on list for 30 Oct 2026",
-		subtitle: "c-[A], c-[B], c-[C] · ฿3.00",
+		subtitle: "c-[A], c-[B], c-[C]",
+		amount: "−฿3.00",
 	});
 	expect(slots(overdue as Element)).toEqual({
 		title: "Overdue: SCB K (RI)",
-		subtitle: "฿41,230.00 · for 16 days",
+		subtitle: "for 16 days",
+		amount: "฿41,230.00",
 	});
 	expect(slots(draft as Element)).toEqual({
 		title: "Draft list for 30 Oct 2026",
-		subtitle: "KBank S (RI), KBank K · ฿2.00",
+		subtitle: "KBank S (RI), KBank K",
+		amount: "−฿2.00",
 	});
 	expect(slots(plan as Element)).toEqual({
 		title: "Planned: pay SCB K (RI) in 2 days",
-		subtitle: "฿5,000.00",
+		subtitle: "02 Nov 2026",
+		amount: "+฿5,000.00",
 	});
-	expect(root.querySelector(".a-right")).toBeNull();
 	expect(root.querySelector(".a-row button")).toBeNull();
 	// The icon says the kind; no card chip besides (DD-106).
 	for (const row of root.querySelectorAll("[data-item]")) {
@@ -158,7 +162,7 @@ test("more than three cards read as a count", async () => {
 			total: 400,
 		},
 	]);
-	expect(text(root, ".a-sub")).toBe("4 cards · ฿4.00");
+	expect(text(root, ".a-sub")).toBe("4 cards");
 });
 
 test("the heading counts", async () => {
@@ -186,9 +190,7 @@ test("reads in Thai", async () => {
 	expect(text(root, '[data-item="overdue"] .a-title')).toBe(
 		"เลยกำหนด: SCB K (RI)",
 	);
-	expect(text(root, '[data-item="overdue"] .a-sub')).toBe(
-		"฿41,230.00 · เป็นเวลา 16 วัน",
-	);
+	expect(text(root, '[data-item="overdue"] .a-sub')).toBe("เป็นเวลา 16 วัน");
 });
 
 test("one day overdue reads in the singular", async () => {
@@ -198,7 +200,7 @@ test("one day overdue reads in the singular", async () => {
 	expect(text(root, '[data-item="overdue"] .a-title')).toBe(
 		"Overdue: SCB K (RI)",
 	);
-	expect(text(root, '[data-item="overdue"] .a-sub')).toBe("฿1.00 · for 1 day");
+	expect(text(root, '[data-item="overdue"] .a-sub')).toBe("for 1 day");
 });
 
 test("a list id is encoded in its link", async () => {

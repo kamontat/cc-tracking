@@ -1,7 +1,5 @@
 import { css, html, nothing, type TemplateResult } from "lit";
 import { daysBetween, displayDate } from "#lib/domain/date";
-import { formatAmount } from "#lib/domain/money";
-import { listTotal } from "#lib/domain/purchase-list";
 import type {
 	Card,
 	CardPayment,
@@ -65,12 +63,11 @@ export const forWords = (days: number): string =>
 
 const listDate = (list: PurchaseList) => displayDate(list.date, getLocale());
 
-/** A waiting list. Upcoming shows the total on the right, so its subtitle leaves it out. */
+/** A waiting list; the total is the row's amount on the right (DD-111), not in the subtitle. */
 export function waitingText(
 	list: PurchaseList,
 	cards: Card[],
 	groups: LimitGroup[],
-	withTotal: boolean,
 ): ActionRowText {
 	const named = cardsOrCount(
 		list.lines.map((l) => l.cardId),
@@ -80,7 +77,7 @@ export function waitingText(
 	return {
 		kind: "waiting",
 		title: t("row.waiting", { date: listDate(list) }),
-		subtitle: withTotal ? `${named} · ${formatAmount(listTotal(list))}` : named,
+		subtitle: named,
 	};
 }
 
@@ -92,17 +89,17 @@ export function draftText(
 	return {
 		kind: "draft",
 		title: t("row.draft", { date: listDate(list) }),
-		subtitle: `${cardsOrCount(
+		subtitle: cardsOrCount(
 			list.lines.map((l) => l.cardId),
 			cards,
 			groups,
-		)} · ${formatAmount(listTotal(list))}`,
+		),
 	};
 }
 
 /**
- * A planned payment. Needs you says the amount under the title; Upcoming shows the amount on
- * the right and the date (and the payment's note) under it.
+ * A planned payment: the amount is on the right (DD-111); the date sits under the title, and
+ * Upcoming adds the payment's note.
  */
 export function plannedText(
 	payment: CardPayment,
@@ -117,12 +114,10 @@ export function plannedText(
 			card: cardOwnerName(payment.cardId, card, groups),
 			when: whenWords(payment.date, today),
 		}),
-		subtitle: upcoming
-			? [
-					displayDate(payment.date, getLocale()),
-					...(payment.note ? [payment.note] : []),
-				].join(" · ")
-			: formatAmount(payment.amount),
+		subtitle: [
+			displayDate(payment.date, getLocale()),
+			...(upcoming && payment.note ? [payment.note] : []),
+		].join(" · "),
 	};
 }
 
@@ -130,7 +125,6 @@ export function plannedText(
 export function overdueText(
 	card: Card,
 	groups: LimitGroup[],
-	remaining: number,
 	days: number,
 ): ActionRowText {
 	return {
@@ -138,7 +132,7 @@ export function overdueText(
 		title: t("row.overdue", {
 			card: cardOwnerName(card.id, card, groups),
 		}),
-		subtitle: `${formatAmount(remaining)} · ${forWords(days)}`,
+		subtitle: forWords(days),
 	};
 }
 
@@ -149,7 +143,7 @@ export type ActionRowOptions = {
 	onToggle?: () => void;
 	expanded?: boolean;
 	/** The right-hand figure, already signed, and its tone. */
-	amount?: { text: string; tone: "out" | "in" | "muted" };
+	amount?: { text: string; tone: "out" | "in" | "muted" | "plain" };
 	/** ...or is plain text, with only its own buttons (a planned payment, DD-110).
 	 * The button under the figure. */
 	action?: TemplateResult | undefined;
@@ -313,10 +307,16 @@ export const actionRowStyles = css`
 		display: flex;
 		flex-direction: column;
 		align-items: flex-end;
+		justify-content: center;
 		gap: var(--cc-space-1);
 		padding-block: var(--cc-space-3);
 		line-height: 1.25;
 		text-align: end;
+	}
+
+	/* A lone button sits at the right edge, under the amount (shared.ts sets flex-start). */
+	.a-right > button {
+		align-self: flex-end;
 	}
 
 	/* Below 900px the row stacks (DD-109): the title takes the full width beside the icon and
@@ -340,6 +340,10 @@ export const actionRowStyles = css`
 			padding-block: 0 var(--cc-space-3);
 			padding-inline-start: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
 			text-align: start;
+		}
+
+		.a-right > button {
+			align-self: center;
 		}
 	}
 
