@@ -32,17 +32,23 @@ so About there reads as a development build with no build time.
   shows a bar at the bottom with how many are selected, *Clear*, and *Enter
   amounts*, which opens a new purchase list for those cards in the order they
   were ticked.
-- `/list` — a purchase list. `?card=<id>` (once per card) starts a new list for
-  those cards; `?id=<list id>` opens a stored one. Enter an amount per card and
-  the purchase date, with warnings that never block (over the group's room, room
-  held by lists waiting for the spender, a shared limit, an overdue bill, the
-  close date, a date that has passed). *Review* shows the dated table with *Copy
-  text* and *Save image* (on a phone that can share files, the image goes to the
-  share sheet; elsewhere it downloads), then *Mark as sent* or *Save as draft
-  instead*. A reopened draft names any card that can no longer take purchases
-  and leaves it out. A sent list opens the spender's reply: mark each line *Made*
-  or *Not made*, correct the real amount, optionally move the not-made lines to
-  a draft for the next day, and save; a saved list shows what was bought.
+- `/list/new?card=<id>` (once per card) — a new purchase list for those cards.
+  Enter an amount per card and the purchase date, with warnings that never block
+  (over the group's room, room held by lists waiting for the spender, a shared
+  limit, an overdue bill, the close date, a date that has passed). *Review* shows
+  the dated table with *Copy text* and *Save image* (on a phone that can share
+  files, the image goes to the share sheet; elsewhere it downloads), then *Mark
+  as sent* or *Save as draft instead*.
+- `/list/draft?id=<list id>` — the same two steps for a stored draft, which names
+  any card that can no longer take purchases and leaves it out, plus *Delete
+  draft*, which deletes it at once.
+- `/list/reply?id=<list id>` — the spender's reply to a waiting list: mark each
+  line *Made* or *Not made*, correct the real amount, optionally move the
+  not-made lines to a draft for the next day, and save. *Cancel list* deletes the
+  waiting list at once, so it stops holding room; nothing is bought.
+- `/list/view?id=<list id>` — a saved list, read-only: what was bought.
+  Each list page opened on a list in another state links to that list's own
+  page.
 - `/transactions` — a placeholder until the Transactions page arrives; the + and
   Payment buttons open it for now.
 - `/cards` — the card registry and the limit groups, each list searchable,
@@ -136,7 +142,8 @@ next one.
 Everything lives in this browser's `localStorage`, under keys shaped like
 `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
 `cc:payment:<cardId>:<period>`, `cc:limitgroup:<id>` and `cc:list:<id>` (a
-purchase list, with its lines and status), plus `cc:settings` for the purchase
+purchase list, with its lines and status; `/list/draft`, `/list/reply` or
+`/list/view` opens it by that status), plus `cc:settings` for the purchase
 places. A purchase saved from a spender's reply takes the id `<list id>-<n>`
 instead of a uuid, and a draft moved from it `<list id>-<n>` too, so a retried
 save overwrites what a failed one wrote instead of doubling it. The old dashboard's `cc:batch-start` is no longer read

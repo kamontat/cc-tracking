@@ -55,6 +55,9 @@ so most of them moved to the phase that builds what needs them.
 - A purchase links back to its list by dropping the last `-<n>` of its id (`<list id>-<n>`).
 - Opening a saved list uses `shareTable` with the list's status, so its table and copied text
   show what was bought (DD-65).
+- Lists view in Transactions: each list row opens its page by status through
+  `listPageAddress` (`#lib/ui/list-address`): a draft `/list/draft?id=`, a waiting list
+  `/list/reply?id=`, a saved one `/list/view?id=` (DD-75).
 - Move the action-bar CSS (`app.css`, `cc-list-amounts`, `cc-list-reply`) into `shared.ts`.
 - The range helpers in `purchase-range.ts` are test-only now; use them for *Purchases by date*
   or delete them.
