@@ -129,6 +129,8 @@ export type LedgerStatement = {
 	purchases: Purchase[];
 	total: number;
 	paidAmount: number;
+	/** The parts of payments that settled it, in the order they were spent; sums to `paidAmount`. */
+	payments: { payment: CardPayment; amount: number }[];
 	remaining: number;
 	paid: boolean;
 	open: boolean;

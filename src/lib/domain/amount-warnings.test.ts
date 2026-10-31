@@ -44,6 +44,7 @@ const statement = (dueDate: string, remaining: number): LedgerStatement => ({
 	purchases: [],
 	total: remaining,
 	paidAmount: 0,
+	payments: [],
 	remaining,
 	paid: false,
 	open: false,

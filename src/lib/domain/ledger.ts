@@ -36,9 +36,10 @@ export function cardLedger(
 	for (const p of mine) periods.add(periodOfPurchase(card.cycle, p.date));
 	const ascending = [...periods].sort(comparePeriods);
 
-	const paidPayments = payments.filter(
-		(p) => p.cardId === card.id && p.status === "paid",
-	);
+	// Date then id, so which payment a part came from never depends on the stored order.
+	const paidPayments = payments
+		.filter((p) => p.cardId === card.id && p.status === "paid")
+		.sort((a, b) => compareDates(a.date, b.date) || (a.id < b.id ? -1 : 1));
 
 	const frozenFor = (period: Period): StatementDates | undefined =>
 		frozen.find((f) => f.cardId === card.id && f.period === period);
@@ -52,30 +53,38 @@ export function cardLedger(
 			own,
 			total: sumAmounts(own.map((p) => p.amount)),
 			paid: 0,
+			parts: [] as { payment: CardPayment; amount: number }[],
 		};
 	});
 
 	// Payments naming a period go to that statement first, capped at its total.
-	let pool = 0;
+	const pool: { payment: CardPayment; amount: number }[] = [];
 	for (const payment of paidPayments) {
 		const row = payment.period
 			? rows.find((r) => r.period === payment.period)
 			: undefined;
 		if (!row) {
-			pool += payment.amount;
+			pool.push({ payment, amount: payment.amount });
 			continue;
 		}
 		const applied = Math.min(payment.amount, row.total - row.paid);
 		row.paid += applied;
-		pool += payment.amount - applied;
+		if (applied > 0) row.parts.push({ payment, amount: applied });
+		if (payment.amount > applied)
+			pool.push({ payment, amount: payment.amount - applied });
 	}
 
-	// The pool settles statements oldest first.
+	// The pool settles statements oldest first, spending payments in order.
 	for (const row of rows) {
-		const applied = Math.min(pool, row.total - row.paid);
-		row.paid += applied;
-		pool -= applied;
+		for (const part of pool) {
+			const applied = Math.min(part.amount, row.total - row.paid);
+			if (applied <= 0) continue;
+			row.paid += applied;
+			part.amount -= applied;
+			row.parts.push({ payment: part.payment, amount: applied });
+		}
 	}
+	const credit = sumAmounts(pool.map((part) => part.amount));
 
 	const statements: LedgerStatement[] = rows
 		.map((row): LedgerStatement => {
@@ -89,6 +98,7 @@ export function cardLedger(
 				purchases: row.own,
 				total: row.total,
 				paidAmount: row.paid,
+				payments: row.parts,
 				remaining,
 				paid: row.paid > 0 && remaining === 0,
 				open: row.period === open,
@@ -99,7 +109,7 @@ export function cardLedger(
 	return {
 		statements,
 		owed: sumAmounts(statements.map((s) => s.remaining)),
-		credit: pool,
+		credit,
 	};
 }
 

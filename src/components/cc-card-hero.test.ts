@@ -40,6 +40,7 @@ const bill = (overrides: Partial<LedgerStatement> = {}): LedgerStatement => ({
 	purchases: [],
 	total: 14_700_00,
 	paidAmount: 0,
+	payments: [],
 	remaining: 14_700_00,
 	paid: false,
 	open: false,

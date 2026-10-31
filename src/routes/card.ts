@@ -89,6 +89,7 @@ export function renderCardPage(
 					purchases: [],
 					total: 0,
 					paidAmount: 0,
+					payments: [],
 					remaining: 0,
 					paid: false,
 					open: period === open,

@@ -42,6 +42,7 @@ const overdueLedger = (): CardLedger => ({
 			purchases: [],
 			total: 5_000_00,
 			paidAmount: 0,
+			payments: [],
 			remaining: 5_000_00,
 			paid: false,
 			open: false,
