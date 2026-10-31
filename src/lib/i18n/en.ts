@@ -420,4 +420,13 @@ export const en = {
 		"Cards still use this limit group. Move them to another group first.",
 	"guard.locationInUse":
 		"Cards are still kept here. Move them to another location first.",
+	"home.needs.one": "1 thing needs you",
+	"home.needs.many": "{count} things need you",
+	"home.caughtUp": "All caught up",
+	"home.caughtUpDetail": "No replies to record and no bill overdue.",
+	"home.waiting": "Waiting for the spender",
+	"home.waitingDetail": "List for {date} · {count} cards · {total}",
+	"home.overdue": "{card} bill is {days} days overdue",
+	"home.overdueDetail": "{amount} left · open the card",
+	"home.draft": "Draft list for {date}",
 } as const;

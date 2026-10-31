@@ -424,4 +424,13 @@ export const th: Catalog = {
 	"guard.cardHasPurchases": "บัตรนี้มีรายการซื้อ จึงลบไม่ได้ เก็บเข้าคลังแทน",
 	"guard.groupInUse": "ยังมีบัตรใช้กลุ่มวงเงินนี้ ย้ายบัตรไปกลุ่มอื่นก่อน",
 	"guard.locationInUse": "ยังมีบัตรเก็บไว้ที่นี่ ย้ายบัตรไปที่อื่นก่อน",
+	"home.needs.one": "มี 1 เรื่องรอคุณ",
+	"home.needs.many": "มี {count} เรื่องรอคุณ",
+	"home.caughtUp": "เรียบร้อยหมดแล้ว",
+	"home.caughtUpDetail": "ไม่มีคำตอบให้บันทึก และไม่มีบิลที่เลยกำหนด",
+	"home.waiting": "รอคำตอบของผู้ใช้บัตร",
+	"home.waitingDetail": "ใบรายการซื้อวันที่ {date} · {count} ใบ · {total}",
+	"home.overdue": "บิลของ {card} เลยกำหนด {days} วัน",
+	"home.overdueDetail": "ค้างชำระ {amount} · เปิดหน้าบัตร",
+	"home.draft": "ใบรายการซื้อฉบับร่างวันที่ {date}",
 };
