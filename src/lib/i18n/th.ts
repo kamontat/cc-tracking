@@ -394,4 +394,29 @@ export const th: Catalog = {
 	"ready.overdue": "มีบิลเลยกำหนด",
 	"ready.empty": "ตอนนี้ยังไม่มีบัตรที่ใช้ได้",
 	"ready.toSettings": "เลือกสถานที่ในหน้าตั้งค่า",
+	"purchaseList.date": "วันที่ซื้อ",
+	"purchaseList.amountFor": "จำนวนเงินของ {card}",
+	"purchaseList.roomAfter": "วงเงินเหลือหลังซื้อ",
+	"purchaseList.remove": "เอาออก",
+	"purchaseList.addCard": "เพิ่มบัตรอีกใบ",
+	"purchaseList.noCards": "ยังไม่มีบัตรในใบรายการนี้ เพิ่มได้ด้านล่าง",
+	"purchaseList.total": "รวม · {count} ใบ",
+	"purchaseList.review": "ตรวจทาน",
+	"purchaseList.warn.lines.one": "1 บรรทัดมีคำเตือน",
+	"purchaseList.warn.lines.many": "{count} บรรทัดมีคำเตือน",
+	"purchaseList.warn.datePassedShort": "วันที่ผ่านมาแล้ว",
+	"purchaseList.warn.overRoom": "เกินวงเงินที่เหลือ {over} ธนาคารอาจปฏิเสธรายการนี้",
+	"purchaseList.warn.held":
+		"วงเงินที่เหลือคือ {room} เพราะมี {held} ถูกกันไว้ให้ใบรายการซื้อที่รอคำตอบของผู้ใช้บัตร",
+	"purchaseList.warn.lowerTo": "ลดเป็น {room}",
+	"purchaseList.warn.shared":
+		"วงเงินร่วม {cards} ใช้วงเงิน {group} ร่วมกัน รวมกันแล้วเกินวงเงินที่เหลือ {room} อยู่ {over}",
+	"purchaseList.warn.overdue":
+		"บิลเลยกำหนด บิลของ {card} ครบกำหนดวันที่ {date} ยังค้าง {remaining} ธนาคารอาจปฏิเสธบัตรนี้",
+	"purchaseList.warn.seeCard": "ดูบัตร",
+	"purchaseList.warn.closeDate":
+		"วันสรุปยอด {card} สรุปยอดวันที่ {date} ธนาคารอาจนำยอดนี้ไปไว้ในใบแจ้งยอดใบใดก็ได้",
+	"purchaseList.warn.datePassed":
+		"วันที่นี้ผ่านมาแล้ว ใบรายการซื้อมีไว้สำหรับการซื้อที่ยังไม่เกิดขึ้น ใช้วันที่นี้เฉพาะเมื่อบันทึกสิ่งที่ซื้อไปแล้ว",
+	"purchaseList.warn.toToday": "เปลี่ยนเป็นวันนี้",
 };

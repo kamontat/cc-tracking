@@ -391,4 +391,30 @@ export const en = {
 	"ready.overdue": "Overdue bill",
 	"ready.empty": "No card can be used right now",
 	"ready.toSettings": "Choose places in Settings",
+	"purchaseList.date": "Purchase date",
+	"purchaseList.amountFor": "Amount for {card}",
+	"purchaseList.roomAfter": "Room after",
+	"purchaseList.remove": "Remove",
+	"purchaseList.addCard": "Add another card",
+	"purchaseList.noCards": "No cards on this list yet. Add one below.",
+	"purchaseList.total": "Total · {count} cards",
+	"purchaseList.review": "Review",
+	"purchaseList.warn.lines.one": "1 line has warnings",
+	"purchaseList.warn.lines.many": "{count} lines have warnings",
+	"purchaseList.warn.datePassedShort": "date has passed",
+	"purchaseList.warn.overRoom":
+		"Over the room by {over}. The bank may decline it.",
+	"purchaseList.warn.held":
+		"Room is {room} because {held} is held by lists waiting for the spender.",
+	"purchaseList.warn.lowerTo": "Lower to {room}",
+	"purchaseList.warn.shared":
+		"Shared limit. {cards} share {group}; together they are {over} over its room of {room}.",
+	"purchaseList.warn.overdue":
+		"Overdue bill. {card}'s bill was due {date}, with {remaining} left. The bank may decline the card.",
+	"purchaseList.warn.seeCard": "See the card",
+	"purchaseList.warn.closeDate":
+		"Close date. {card} closes on {date}; the bank may put this on either statement.",
+	"purchaseList.warn.datePassed":
+		"This date has passed. Lists are for purchases still to make; keep it only if you are recording something already bought.",
+	"purchaseList.warn.toToday": "Change to today",
 } as const;
