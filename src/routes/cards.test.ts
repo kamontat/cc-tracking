@@ -459,6 +459,35 @@ test("a failed save keeps the sheet open with the reason, and a retry keeps the 
 	expect(address.calls).toEqual(["replace /cards"]);
 });
 
+class SlowGroupRepository extends InMemoryRepository {
+	release = () => {};
+	override async saveLimitGroup(group: LimitGroup): Promise<void> {
+		if (group.id === "g2" && group.name === "SCB 2")
+			await new Promise<void>((resolve) => {
+				this.release = resolve;
+			});
+		return super.saveLimitGroup(group);
+	}
+}
+
+test("opening another group while a save is under way is ignored", async () => {
+	const repo = new SlowGroupRepository();
+	const { root, address } = await setup("/cards?group=g2", { repo });
+	sheet()?.dispatchEvent(
+		new CustomEvent("save-group", { detail: { ...G2, name: "SCB 2" } }),
+	);
+	await settle();
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g1" } }),
+	);
+	await settle();
+	expect(address.calls).toEqual([]);
+	repo.release();
+	await settle(5);
+	expect(sheet()).toBeNull();
+	expect(address.now()).toBe("/cards");
+});
+
 test("an edited group saves under its own id", async () => {
 	const { repo } = await setup("/cards?group=g2");
 	sheet()?.dispatchEvent(

@@ -170,6 +170,63 @@ test("a statement with purchases is a button that unfolds them", async () => {
 	expect(root.querySelector('[data-purchase="p1"]')).toBeNull();
 });
 
+test("a folded statement points at no list, since none is rendered", async () => {
+	const { root } = await mount();
+	const head = row(root, "2026-10")?.querySelector("button.head");
+	expect(head?.hasAttribute("aria-controls")).toBe(false);
+});
+
+test("once a confirmed delete's row is gone, focus moves to the statement's button", async () => {
+	const { element, root } = await mount();
+	row(root, "2026-10")
+		?.querySelector<HTMLButtonElement>("button.head")
+		?.click();
+	await element.updateComplete;
+	const line = () => root.querySelector('[data-purchase="p1"]');
+	line()
+		?.querySelector<HTMLButtonElement>('[data-action="delete-purchase"]')
+		?.click();
+	await element.updateComplete;
+	line()
+		?.querySelector<HTMLButtonElement>('[data-action="confirm-delete"]')
+		?.click();
+	await element.updateComplete;
+	element.statements = [
+		current,
+		{ ...dueSoon, purchases: dueSoon.purchases.slice(1) },
+		quietA,
+		quietB,
+		paid,
+	];
+	await element.updateComplete;
+	expect(line()).toBeNull();
+	expect(root.activeElement).toBe(
+		row(root, "2026-10")?.querySelector("button.head") ?? null,
+	);
+});
+
+test("a delete that fails leaves focus where it was", async () => {
+	const { element, root } = await mount();
+	row(root, "2026-10")
+		?.querySelector<HTMLButtonElement>("button.head")
+		?.click();
+	await element.updateComplete;
+	const line = () => root.querySelector('[data-purchase="p1"]');
+	line()
+		?.querySelector<HTMLButtonElement>('[data-action="delete-purchase"]')
+		?.click();
+	await element.updateComplete;
+	line()
+		?.querySelector<HTMLButtonElement>('[data-action="confirm-delete"]')
+		?.click();
+	await element.updateComplete;
+	const before = root.activeElement;
+	element.statements = [current, dueSoon, quietA, quietB, paid];
+	await element.updateComplete;
+	expect(line()).not.toBeNull();
+	expect(root.activeElement).toBe(before);
+});
+
 test("a statement with nothing on it is not a button", async () => {
 	const { root } = await mount({
 		statements: [statement()],

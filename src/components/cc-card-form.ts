@@ -250,6 +250,14 @@ export class CcCardForm extends LitElement {
 		};
 		this.location = card?.location ?? DEFAULT_LOCATION;
 		this.groupId = card?.limitGroupId ?? "";
+		// A group deleted since the card was saved: the same fallback as the groups change below.
+		// With no groups loaded yet the id stays, for when they arrive.
+		if (
+			this.groupId &&
+			this.groups.length > 0 &&
+			!this.groups.some((group) => group.id === this.groupId)
+		)
+			this.groupId = "";
 		this.kind = rule?.kind ?? "offset";
 		this.supplementary = card?.supplementary ?? false;
 		this.owner = toOwner(card?.owner) ?? "";

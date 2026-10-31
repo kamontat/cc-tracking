@@ -1,4 +1,4 @@
-import { css, html, LitElement, nothing } from "lit";
+import { css, html, LitElement, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import {
 	compareDates,
@@ -170,13 +170,16 @@ export class CcCardStatements extends LitElement {
 	@state() private asking: string | null = null;
 	/** The button to focus once the delete swap has rendered. */
 	private refocus: { action: string; id: string } | null = null;
+	/** A confirmed delete waiting for its row to go, and the statement it was in. */
+	private deleted: { id: string; period: string } | null = null;
 
 	constructor() {
 		super();
 		new LocaleController(this);
 	}
 
-	protected override updated() {
+	protected override updated(changed: PropertyValues<this>) {
+		this.settleDelete(changed);
 		const want = this.refocus;
 		if (!want) return;
 		this.refocus = null;
@@ -185,6 +188,28 @@ export class CcCardStatements extends LitElement {
 				`[data-purchase="${CSS.escape(want.id)}"] [data-action="${want.action}"]`,
 			)
 			?.focus();
+	}
+
+	/**
+	 * Once the statements reload after a confirmed delete: with the row gone, focus would fall
+	 * to the page, so it moves to the statement's own button (any statement's, when that one has
+	 * nothing left to unfold). A row still there means the delete failed; focus stays as it is.
+	 */
+	private settleDelete(changed: PropertyValues<this>) {
+		const pending = this.deleted;
+		if (!pending || !changed.has("statements")) return;
+		this.deleted = null;
+		if (
+			this.renderRoot.querySelector(
+				`[data-purchase="${CSS.escape(pending.id)}"]`,
+			)
+		)
+			return;
+		(
+			this.renderRoot.querySelector<HTMLElement>(
+				`[data-period="${CSS.escape(pending.period)}"] button.head`,
+			) ?? this.renderRoot.querySelector<HTMLElement>("button.head")
+		)?.focus();
 	}
 
 	private swap(asking: string | null, action: string, id: string) {
@@ -332,21 +357,21 @@ export class CcCardStatements extends LitElement {
 			${
 				hasPurchases
 					? html`<button type="button" class="crow head" aria-expanded=${open ? "true" : "false"}
-						aria-controls=${listId}
+						aria-controls=${open ? listId : nothing}
 						@click=${() => this.toggle(statement.period)}>${body}</button>`
 					: html`<div class="crow head">${body}</div>`
 			}
 			${
 				open
 					? html`<ul class="purchases" id=${listId}>${statement.purchases.map(
-							(purchase) => this.purchase(purchase),
+							(purchase) => this.purchase(purchase, statement.period),
 						)}</ul>`
 					: nothing
 			}
 		</div>`;
 	}
 
-	private purchase(purchase: Purchase) {
+	private purchase(purchase: Purchase, period: string) {
 		const locale = getLocale();
 		const amount = formatAmount(purchase.amount);
 		const date = displayDate(purchase.date, locale);
@@ -360,6 +385,7 @@ export class CcCardStatements extends LitElement {
 						<button type="button" data-variant="danger" data-action="confirm-delete"
 							@click=${() => {
 								this.asking = null;
+								this.deleted = { id: purchase.id, period };
 								this.emit("delete-purchase", purchase);
 							}}>${t("common.delete")}</button>
 						<button type="button" data-variant="quiet" data-action="keep"

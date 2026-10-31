@@ -42,7 +42,7 @@ export async function bootstrap(
 		// not just once at the moment startup failed. Without this a locale change would
 		// rewrite the title and nav while the banner itself stayed frozen
 		// in whichever language `createRepository` happened to fail in -- the same class of
-		// bug 094668d already fixed for cc-card-form and cc-quick-add.
+		// bug 094668d already fixed for cc-card-form and the other forms.
 		const paintBanner = () => {
 			banner.message = messageOf(error, "startup.failed");
 			banner.retryLabel = t("common.reload");

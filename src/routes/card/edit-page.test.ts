@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { CcCardForm } from "#components/cc-card-form";
+import type { CcErrorBanner } from "#components/cc-error-banner";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
@@ -150,6 +151,30 @@ test("/card/edit: a failed save keeps the form, what was typed, and says why", a
 	expect(inner<HTMLInputElement>(root, '[name="name"]')?.value).toBe("Renamed");
 	// The reason sits in the form, not twice over in the page's banner too.
 	expect(bannerText(root)).toBe("");
+});
+
+test("/card/edit: a failed save never puts its reason in the page banner, not even for a moment", async () => {
+	const repo = new FailingRepo();
+	const { root } = await setup("edit", "?id=A", undefined, repo);
+	const banner = root.querySelector<CcErrorBanner>(":scope > cc-error-banner");
+	if (!banner) throw new Error("no banner");
+	const seen: string[] = [];
+	const proto = Object.getOwnPropertyDescriptor(
+		Object.getPrototypeOf(banner),
+		"message",
+	);
+	Object.defineProperty(banner, "message", {
+		configurable: true,
+		get: () => proto?.get?.call(banner),
+		set: (value: string) => {
+			seen.push(value);
+			proto?.set?.call(banner, value);
+		},
+	});
+	await fill(root, "name", "Renamed");
+	repo.fail = true;
+	await submit(root);
+	expect(seen.filter((message) => message !== "")).toEqual([]);
 });
 
 test("/card/edit: Archive card archives the stored card and goes to its page", async () => {

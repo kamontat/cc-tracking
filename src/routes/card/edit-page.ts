@@ -147,7 +147,7 @@ export function renderCardEditPage(
 		const showForm = loaded && (mode === "new" || card !== null);
 		render(
 			html`${header()}
-				<cc-error-banner .message=${writeFailed ? "" : state.error}
+				<cc-error-banner .message=${writeFailed || busy ? "" : state.error}
 					retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				${
 					showForm

@@ -235,7 +235,7 @@ export function renderCardPage(
 	const paint = () =>
 		render(
 			html`
-				<cc-error-banner .message=${sheetFailed ? "" : state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+				<cc-error-banner .message=${sheetFailed || busy ? "" : state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				${card ? page(card) : backHeader({ title: t("cards.title"), back: "/cards" })}
 			`,
 			root,

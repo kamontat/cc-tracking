@@ -27,6 +27,24 @@ const text = (el: Node | null | undefined) =>
 const bannerMessage = (root: HTMLElement): string =>
 	root.querySelector<CcErrorBanner>(":scope > cc-error-banner")?.message ?? "";
 
+/** Records every message the page banner is handed, so a one-frame flash of it shows up. */
+const watchBanner = (banner: CcErrorBanner): string[] => {
+	const seen: string[] = [];
+	const proto = Object.getOwnPropertyDescriptor(
+		Object.getPrototypeOf(banner),
+		"message",
+	);
+	Object.defineProperty(banner, "message", {
+		configurable: true,
+		get: () => proto?.get?.call(banner),
+		set: (value: string) => {
+			seen.push(value);
+			proto?.set?.call(banner, value);
+		},
+	});
+	return seen;
+};
+
 const card: Card = {
 	id: "kbank",
 	name: "KBank Visa",
@@ -463,6 +481,22 @@ test("a failed edit keeps the sheet open with the message, the typing and the ol
 			?.value,
 	).toBe("typed");
 	expect(await repo.listPurchases("kbank")).toEqual([purchase]);
+});
+
+test("a failed edit never puts its reason in the page banner, not even for a moment", async () => {
+	const repo = new RejectingPurchaseRepository();
+	await repo.saveCard(card);
+	await InMemoryRepository.prototype.savePurchase.call(repo, purchase);
+	const root = await open(repo);
+	const banner = root.querySelector<CcErrorBanner>(":scope > cc-error-banner");
+	if (!banner) throw new Error("no banner");
+	const seen = watchBanner(banner);
+
+	const sheet = await openSheet(root);
+	await submitSheet(sheet);
+	await settle();
+
+	expect(seen.filter((message) => message !== "")).toEqual([]);
 });
 
 test("renders in the chosen language and re-renders on a switch", async () => {

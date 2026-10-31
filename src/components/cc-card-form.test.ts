@@ -265,6 +265,15 @@ test("saves the holder of a supplementary card", async () => {
 	expect(saves[0]?.owner).toBe("NT");
 });
 
+test("a stored group that no longer exists falls back to the placeholder", async () => {
+	const element = await mount(stored());
+	element.card = stored({ id: "other", limitGroupId: "gone" });
+	await element.updateComplete;
+	// Tracked state, not the select's shown value: a select with no matching option shows blank
+	// either way, but a later render would write the stale id back.
+	expect((element as unknown as { groupId: string }).groupId).toBe("");
+});
+
 test("drops the owner once the card is no longer supplementary", async () => {
 	const element = await mount(stored({ supplementary: true, owner: "NT" }));
 	const saves = onSave(element);

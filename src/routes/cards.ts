@@ -153,6 +153,9 @@ export function renderCardsPage(
 	};
 
 	const openSheet = (id: string) => {
+		// A write under way closes the sheet it began in; opening another now would let that
+		// landing save close the wrong one.
+		if (busy) return;
 		sheetFailed = false;
 		pushed = true;
 		openedOnce = true;
