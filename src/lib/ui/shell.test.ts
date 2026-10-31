@@ -27,7 +27,7 @@ test("current tab per path", () => {
 	expect(currentTab("/transactions")).toBe("transactions");
 	expect(currentTab("/cards")).toBe("cards");
 	expect(currentTab("/card")).toBe("cards");
-	expect(currentTab("/pay")).toBeNull();
+	expect(currentTab("/pay")).toBe("transactions");
 	expect(currentTab("/settings")).toBe("settings");
 	expect(currentTab("/cards/")).toBe("cards");
 	expect(currentTab("/settings/")).toBe("settings");
@@ -123,8 +123,8 @@ test("one floating Payment button, outside both navs", () => {
 	expect(pay).toHaveLength(1);
 	const [fab] = pay;
 	expect(fab?.classList.contains("fab")).toBe(true);
-	expect(fab?.tagName).toBe("BUTTON");
-	expect(fab?.hasAttribute("href")).toBe(false);
+	expect(fab?.tagName).toBe("A");
+	expect(fab?.getAttribute("href")).toBe("/pay");
 	expect(fab?.getAttribute("aria-label")).toBe("Payment");
 	expect(fab?.querySelector(".fab__label")?.textContent).toBe("Payment");
 	expect(fab?.querySelector("svg")).not.toBeNull();
@@ -132,15 +132,12 @@ test("one floating Payment button, outside both navs", () => {
 	expect(fab?.closest("#site-header")).toBeNull();
 });
 
-test("the floating Payment button asks for the payment sheet", () => {
+test("the payment page marks the Transactions tab", () => {
 	mount();
-	renderShell(view());
-	const asked: unknown[] = [];
-	const listen = (event: Event) => asked.push((event as CustomEvent).detail);
-	document.addEventListener("cc:pay", listen);
-	document.querySelector<HTMLButtonElement>(".fab")?.click();
-	document.removeEventListener("cc:pay", listen);
-	expect(asked).toEqual([{}]);
+	renderShell(view({ path: "/pay" }));
+	expect(
+		all('[aria-current="page"]').map((link) => link.getAttribute("data-tab")),
+	).toEqual(["transactions", "transactions"]);
 });
 
 test("rendering again keeps one floating button", () => {

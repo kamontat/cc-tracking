@@ -22,6 +22,7 @@ export const en = {
 	"title.listDraft": "Draft list — cc-tracking",
 	"title.listReply": "Spender's reply — cc-tracking",
 	"title.listView": "Saved list — cc-tracking",
+	"title.pay": "Make a payment — cc-tracking",
 	"pay.title": "Make a payment",
 	"pay.pickHint":
 		"Which card is it for? Overdue and soon-due cards come first.",
@@ -46,6 +47,8 @@ export const en = {
 	"pay.owedUnder": "owed",
 	"pay.dateHint": "Any day of the month. A later date saves it as a plan.",
 	"pay.date": "Date",
+	"pay.noteLabel": "Note (optional)",
+	"pay.notePlaceholder": "paid from KBank savings",
 	"pay.note.extra":
 		"{extra} more than owed. It stays on {card} as credit for its next purchases.",
 	"pay.note.plan":
@@ -403,6 +406,7 @@ export const en = {
 	"backup.problem.badDueDay": "has a due day outside 1 to 31",
 	"backup.problem.badDueOffset": "has days until due outside 1 to 60",
 	"backup.problem.badPaymentStatus": "has a status that is not planned or paid",
+	"backup.problem.badNote": "has a note that is not text",
 	"backup.problem.badListStatus":
 		"has a status that is not draft, sent, or saved",
 	"backup.problem.badTakesPurchases":

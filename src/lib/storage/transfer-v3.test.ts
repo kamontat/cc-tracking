@@ -90,6 +90,23 @@ describe("backup version 3", () => {
 		expect(await exportBackupV3(again, NOW)).toEqual(out);
 	});
 
+	test("a payment's note survives export and import; a payment without one stays without", async () => {
+		const noted = sampleCardPayment({ id: "n1", note: "From savings" });
+		const plain = sampleCardPayment({ id: "n2" });
+		const repo = new InMemoryRepository();
+		await importBackupV3(
+			repo,
+			parseAnyBackup(v3({ payments: [noted, plain] })),
+		);
+		const out = await exportBackupV3(repo, NOW);
+		const byId = new Map(out.payments.map((p) => [p.id, p]));
+		expect(byId.get("n1")?.note).toBe("From savings");
+		expect(byId.get("n2") && "note" in byId.get("n2")!).toBe(false);
+		const again = new InMemoryRepository();
+		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)));
+		expect(await exportBackupV3(again, NOW)).toEqual(out);
+	});
+
 	test("a version 2 file converts", () => {
 		const parsed: BackupV3 = parseAnyBackup(v2());
 		expect(parsed.version).toBe(3);
@@ -302,6 +319,11 @@ describe("backup version 3", () => {
 		[
 			"a bad payment status",
 			v3({ payments: [sampleCardPayment({ status: "late" as never })] }),
+			"backup.cardPayment",
+		],
+		[
+			"a payment note that is not text",
+			v3({ payments: [sampleCardPayment({ note: 12 as never })] }),
 			"backup.cardPayment",
 		],
 		[

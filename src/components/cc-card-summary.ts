@@ -8,7 +8,7 @@ import type { GroupRoom } from "#lib/domain/room";
 import type { LedgerStatement, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { openPayment } from "#lib/ui/pay-sheet";
+import { payAddress } from "#lib/ui/pay-address";
 import { base, controls, usageBar } from "#styles/shared";
 
 /**
@@ -94,7 +94,7 @@ export class CcCardSummary extends LitElement {
 	@property({ attribute: false }) credit = 0;
 	/** The oldest closed statement still owing, from `nextBill`. */
 	@property({ attribute: false }) next: LedgerStatement | null = null;
-	/** The card *Make a payment* opens the payment sheet on; empty for no button. */
+	/** The card *Make a payment* leads to, its sheet prefilled with the next bill; empty for no link. */
 	@property() payCardId = "";
 	@property() today: PlainDate = "";
 
@@ -159,8 +159,8 @@ export class CcCardSummary extends LitElement {
 				}
 				${
 					this.payCardId
-						? html`<button type="button" data-variant="quiet" data-action="pay"
-								@click=${() => openPayment({ cardId: this.payCardId })}>${t("card.summary.pay")}</button>`
+						? html`<a data-action="pay"
+								href=${payAddress({ cardId: this.payCardId, amount: this.next?.remaining ?? 0 })}>${t("card.summary.pay")}</a>`
 						: nothing
 				}
 			</section>

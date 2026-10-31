@@ -46,17 +46,15 @@ const mount = async (props: Partial<CcOwedList> = {}) => {
 	return { element, root: element.shadowRoot as ShadowRoot };
 };
 
-test("each row opens the payment sheet on its card", async () => {
+test("each row leads to the payment sheet on its card", async () => {
 	const { root } = await mount();
 	const links = Array.from(
-		root.querySelectorAll<HTMLButtonElement>("button[data-card]"),
+		root.querySelectorAll<HTMLAnchorElement>("a[data-card]"),
 	);
-	const asked: unknown[] = [];
-	const listen = (event: Event) => asked.push((event as CustomEvent).detail);
-	document.addEventListener("cc:pay", listen);
-	for (const link of links) link.click();
-	document.removeEventListener("cc:pay", listen);
-	expect(asked).toEqual([{ cardId: "A" }, { cardId: "B/2" }]);
+	expect(links.map((link) => link.getAttribute("href"))).toEqual([
+		"/pay?card=A",
+		"/pay?card=B%2F2",
+	]);
 	expect(links[0]?.textContent).toContain("฿500.00");
 	expect(links[0]?.textContent).toContain("Overdue 3 days");
 	expect(links[1]?.textContent).toContain("Credit ฿120.00");
@@ -91,7 +89,7 @@ test("heads the panel and names each card in the panel form", async () => {
 		})),
 	});
 	expect(root.querySelector("h2")?.textContent).toBe("Owed on each card");
-	const first = root.querySelector("button[data-card]");
+	const first = root.querySelector("a[data-card]");
 	expect(first?.querySelector(".what b")?.textContent).toBe("A) Card A");
 	expect(first?.querySelector(".mini")?.textContent).toBe("1111");
 	expect(first?.querySelector(".mini")?.getAttribute("data-g")).toBe("1");

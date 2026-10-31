@@ -176,18 +176,21 @@ test("shows credit only when the card holds some", async () => {
 	);
 });
 
-test("Make a payment opens the payment sheet on this card", async () => {
+test("Make a payment leads to the payment sheet on this card and its next bill", async () => {
 	const element = await mount();
-	const button = element.shadowRoot?.querySelector<HTMLButtonElement>(
-		'button[data-action="pay"]',
+	const link = element.shadowRoot?.querySelector<HTMLAnchorElement>(
+		'a[data-action="pay"]',
 	);
-	expect(button?.textContent).toBe("Make a payment");
-	const asked: unknown[] = [];
-	const listen = (event: Event) => asked.push((event as CustomEvent).detail);
-	document.addEventListener("cc:pay", listen);
-	button?.click();
-	document.removeEventListener("cc:pay", listen);
-	expect(asked).toEqual([{ cardId: "kbank" }]);
+	expect(link?.textContent).toBe("Make a payment");
+	expect(link?.getAttribute("href")).toBe(
+		`/pay?card=kbank&amount=${element.next?.remaining}`,
+	);
+	const none = await mount({ next: null });
+	expect(
+		none.shadowRoot
+			?.querySelector('a[data-action="pay"]')
+			?.getAttribute("href"),
+	).toBe("/pay?card=kbank");
 });
 
 test("renders in the chosen language", async () => {

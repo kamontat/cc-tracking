@@ -203,7 +203,7 @@ a:any-link:hover {
 
 /* Payment floats at the bottom right of every page: a round + over the bar on a phone, a pill
    with its label from 900px. The primary button's colours, as `.page button` draws them. */
-.fab {
+.fab:any-link {
 	position: fixed;
 	z-index: 11;
 	right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
@@ -220,11 +220,8 @@ a:any-link:hover {
 	inline-size: var(--cc-bar-height);
 	block-size: var(--cc-bar-height);
 	padding: 0;
-	font: inherit;
 	font-weight: 650;
 	line-height: 1.2;
-	cursor: pointer;
-	border: 0;
 	color: var(--cc-accent-text);
 	white-space: nowrap;
 	text-decoration: none;
@@ -233,13 +230,13 @@ a:any-link:hover {
 	box-shadow: var(--cc-fab-shadow);
 }
 
-.fab:hover {
+.fab:any-link:hover {
 	text-decoration: none;
 	background: var(--cc-accent-hover);
 }
 
 /* The ring on top of the shadow: this rule outranks the global `:focus-visible` one. */
-.fab:focus-visible {
+.fab:any-link:focus-visible {
 	box-shadow: var(--cc-focus-ring), var(--cc-fab-shadow);
 }
 
@@ -253,8 +250,9 @@ a:any-link:hover {
 	display: none;
 }
 
-/* Payment steps aside on the purchase list pages, where the reader is mid-list, and while
-   Home's selection bar shows, so it never covers a bottom bar. */
+/* Payment steps aside on the payment page, where it leads, on the purchase list pages, where
+   the reader is mid-list, and while Home's selection bar shows, so it never covers a bottom bar. */
+:root[data-pay-page] .fab,
 :root[data-list-page] .fab,
 :root[data-selecting] .fab {
 	display: none;
@@ -324,7 +322,7 @@ a:any-link:hover {
 		flex: none;
 	}
 
-	.fab {
+	.fab:any-link {
 		right: calc(var(--cc-space-5) + env(safe-area-inset-right, 0px));
 		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
 		inline-size: auto;

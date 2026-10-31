@@ -102,7 +102,9 @@ test("the floating Payment button and the selection bars share one height token"
 	const tokens = await Bun.file("src/styles/tokens.css").text();
 	expect(tokens).toMatch(/--cc-bar-height:/);
 	const css = await Bun.file("src/styles/app.css").text();
-	expect(ruleBody(css, ".fab")).toContain("block-size: var(--cc-bar-height)");
+	expect(ruleBody(css, ".fab:any-link")).toContain(
+		"block-size: var(--cc-bar-height)",
+	);
 	expect(ruleBody(css, ".action-bar")).toContain(
 		"min-block-size: var(--cc-bar-height)",
 	);

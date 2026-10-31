@@ -173,6 +173,9 @@ function cardPaymentProblem(value: unknown): MessageKey | null {
 	const period = prop(value, "period");
 	if (period !== undefined && !isNonEmptyString(period))
 		return "backup.problem.missingPeriod";
+	const note = prop(value, "note");
+	if (note !== undefined && typeof note !== "string")
+		return "backup.problem.badNote";
 	return null;
 }
 

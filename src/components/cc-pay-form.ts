@@ -18,6 +18,8 @@ export type PayDetail = {
 	/** Satang. */
 	amount: number;
 	date: PlainDate;
+	/** What was typed in the optional Note field, trimmed; absent when it is blank. */
+	note?: string;
 };
 
 export type PayFigures = {
@@ -149,6 +151,10 @@ export class CcPayForm extends LitElement {
 				gap: var(--cc-space-3);
 			}
 
+			.fields .wide {
+				grid-column: 1 / -1;
+			}
+
 			.fields input {
 				min-inline-size: 0;
 				padding: var(--cc-space-3);
@@ -203,6 +209,7 @@ export class CcPayForm extends LitElement {
 
 	@state() private text = "";
 	@state() private date: PlainDate = "";
+	@state() private note = "";
 
 	constructor() {
 		super();
@@ -219,9 +226,12 @@ export class CcPayForm extends LitElement {
 		if (this.busy) return;
 		const amount = amountOf(this.text);
 		if (amount === null || !isValidDate(this.date)) return;
+		const note = this.note.trim();
 		this.dispatchEvent(
 			new CustomEvent<PayDetail>("pay", {
-				detail: { amount, date: this.date },
+				detail: note
+					? { amount, date: this.date, note }
+					: { amount, date: this.date },
 			}),
 		);
 	}
@@ -315,6 +325,12 @@ export class CcPayForm extends LitElement {
 						<input name="date" type="date" .value=${this.date}
 							@input=${(e: Event) => {
 								this.date = (e.target as HTMLInputElement).value;
+							}} /></label>
+					<label class="wide">${t("pay.noteLabel")}
+						<input name="note" .value=${this.note}
+							placeholder=${t("pay.notePlaceholder")}
+							@input=${(e: Event) => {
+								this.note = (e.target as HTMLInputElement).value;
 							}} /></label>
 				</div>
 				${

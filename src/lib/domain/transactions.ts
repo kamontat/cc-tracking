@@ -83,7 +83,9 @@ function matchesQuery(entry: TxEntry, query: string): boolean {
 		entryCardId(entry),
 		entry.card?.name ?? "",
 		entry.card?.last4 ?? "",
-		entry.kind === "purchase" ? entry.purchase.note : "",
+		entry.kind === "purchase"
+			? entry.purchase.note
+			: (entry.payment.note ?? ""),
 	];
 	if (text.some((t) => t.toLowerCase().includes(q))) return true;
 	const wanted = digits(q);

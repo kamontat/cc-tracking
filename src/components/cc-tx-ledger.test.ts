@@ -282,3 +282,24 @@ test("a card no longer stored keeps its id", async () => {
 	const { root } = await mount({ entries: [{ ...entry, card: undefined }] });
 	expect(root.querySelector("[data-kind] b")?.textContent).toBe("A) —");
 });
+
+test("a payment's note shows on its sub line, in the ledger and under Upcoming", async () => {
+	const c = card("A");
+	const paid: TxEntry = {
+		kind: "payment",
+		payment: { ...payment("p1", 700_00, "paid", c), note: "From savings" },
+		card: c,
+	};
+	const planned = {
+		...payment("pl1", 900_00, "planned", c),
+		note: "Salary day",
+	};
+	const { root } = await mount({
+		entries: [paid, payEntry("p2", 100_00)],
+		upcoming: { lists: [], planned: [{ payment: planned, card: c }] },
+	});
+	const rows = [...root.querySelectorAll("button[data-kind=payment]")];
+	expect(text(rows[0] as Element, ".sub")).toBe("From savings · 31 Oct 2026");
+	expect(text(rows[1] as Element, ".sub")).toBe("31 Oct 2026");
+	expect(text(root, "[data-planned=pl1] .sub")).toMatch(/ · Salary day$/);
+});

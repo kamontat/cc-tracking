@@ -86,6 +86,47 @@ export class CcModal extends LitElement {
 				font-weight: 700;
 			}
 
+			/* The sheet rises into view, and its backdrop fades in under it. */
+			@keyframes sheet-rise {
+				from {
+					transform: translateY(100%);
+				}
+			}
+
+			@keyframes sheet-grow {
+				from {
+					opacity: 0;
+					transform: scale(var(--cc-sheet-scale-from));
+				}
+			}
+
+			@keyframes backdrop-in {
+				from {
+					opacity: 0;
+				}
+			}
+
+			:host([sheet]) dialog[open] {
+				animation: sheet-rise var(--cc-sheet-motion) var(--cc-sheet-ease);
+			}
+
+			:host([sheet]) dialog[open]::backdrop {
+				animation: backdrop-in var(--cc-sheet-motion) var(--cc-sheet-ease);
+			}
+
+			@media (min-width: 900px) {
+				:host([sheet]) dialog[open] {
+					animation-name: sheet-grow;
+				}
+			}
+
+			@media (prefers-reduced-motion: reduce) {
+				:host([sheet]) dialog[open],
+				:host([sheet]) dialog[open]::backdrop {
+					animation: none;
+				}
+			}
+
 			@media (min-width: 900px) {
 				:host([sheet]) dialog {
 					inline-size: min(100% - 2 * var(--cc-space-4), var(--cc-sheet-max));

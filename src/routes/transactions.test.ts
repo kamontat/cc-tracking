@@ -167,18 +167,15 @@ test("with Owed open the Ledger button is marked current for wide screens", asyn
 	).toBe(false);
 });
 
-test("Owed rows open the payment sheet on the card", async () => {
+test("Owed rows lead to the payment sheet on the card", async () => {
 	const { root } = await open("?view=owed");
 	const owed = root.querySelector("cc-owed-list") as CcOwedList;
 	await owed.updateComplete;
-	const asked: unknown[] = [];
-	const listen = (event: Event) => asked.push((event as CustomEvent).detail);
-	document.addEventListener("cc:pay", listen);
-	owed.shadowRoot
-		?.querySelector<HTMLButtonElement>('button[data-card="A"]')
-		?.click();
-	document.removeEventListener("cc:pay", listen);
-	expect(asked).toEqual([{ cardId: "A" }]);
+	expect(
+		owed.shadowRoot
+			?.querySelector<HTMLAnchorElement>('a[data-card="A"]')
+			?.getAttribute("href"),
+	).toBe("/pay?card=A");
 });
 
 test("Mark paid moves a plan into the ledger and lowers owed", async () => {

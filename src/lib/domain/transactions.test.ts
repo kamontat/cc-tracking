@@ -75,13 +75,16 @@ describe("filterEntries", () => {
 			buy("p1", { amount: 4_123_000, note: "ตั๋วเครื่องบิน" }),
 			buy("p2", { cardId: "b", date: "2026-09-02", note: "Lunch" }),
 		],
-		[pay("m1", { amount: 500, date: "2026-10-31" })],
+		[
+			pay("m1", { amount: 500, date: "2026-10-31" }),
+			pay("m2", { amount: 700, date: "2026-10-30", note: "From savings" }),
+		],
 	);
 	const f = (extra: Partial<typeof DEFAULT_TX_FILTER>) =>
 		ids(filterEntries(entries, { ...DEFAULT_TX_FILTER, ...extra }, TODAY));
 
 	test("default keeps everything", () => {
-		expect(f({}).length).toBe(3);
+		expect(f({}).length).toBe(4);
 	});
 	test("search finds the amount as printed or as digits", () => {
 		expect(f({ q: "41230" })).toEqual(["p1"]);
@@ -99,17 +102,20 @@ describe("filterEntries", () => {
 		expect(f({ q: "LUNCH" })).toEqual(["p2"]);
 		expect(f({ q: "name b" })).toEqual(["p2"]);
 	});
+	test("search finds a payment by its note", () => {
+		expect(f({ q: "savings" })).toEqual(["m2"]);
+	});
 	test("type and card narrow", () => {
-		expect(f({ types: ["payment"] })).toEqual(["m1"]);
+		expect(f({ types: ["payment"] }).sort()).toEqual(["m1", "m2"]);
 		expect(f({ cards: ["b"] })).toEqual(["p2"]);
 	});
 	test("range month uses the preset", () => {
-		expect(f({ range: "month" }).sort()).toEqual(["m1", "p1"]);
+		expect(f({ range: "month" }).sort()).toEqual(["m1", "m2", "p1"]);
 	});
 	test("a backwards custom range is normalised", () => {
 		expect(
 			f({ range: "custom", from: "2026-10-31", to: "2026-10-01" }).sort(),
-		).toEqual(["m1", "p1"]);
+		).toEqual(["m1", "m2", "p1"]);
 	});
 });
 

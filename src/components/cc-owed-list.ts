@@ -7,7 +7,7 @@ import type { LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
-import { openPayment } from "#lib/ui/pay-sheet";
+import { payAddress } from "#lib/ui/pay-address";
 import { payTag } from "#lib/ui/pay-tag";
 import {
 	base,
@@ -104,8 +104,8 @@ export class CcOwedList extends LitElement {
 			${head}
 			<div class="panel">${this.rows.map((row) => {
 				const tag = payTag(row);
-				return html`<button type="button" class="crow" data-card=${row.card.id}
-					@click=${() => openPayment({ cardId: row.card.id })}>
+				return html`<a class="crow" data-card=${row.card.id}
+					href=${payAddress({ cardId: row.card.id })}>
 					${cardMini(row.card, this.groups)}
 					<span class="what"><b>${cardPanelLabel(row.card.id, row.card)}</b>${
 						tag
@@ -116,7 +116,7 @@ export class CcOwedList extends LitElement {
 						<b class="amount" data-numeric>${formatAmount(row.owed)}</b>
 						<small>${t("pay.owedUnder")}</small>
 					</span>
-				</button>`;
+				</a>`;
 			})}</div>
 		`;
 	}

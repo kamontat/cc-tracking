@@ -9,7 +9,7 @@ import { getLocale, t } from "#lib/i18n/index";
 import { cardLine, cardLines, cardMini } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { listPageAddress } from "#lib/ui/list-address";
-import { openPayment } from "#lib/ui/pay-sheet";
+import { payAddress } from "#lib/ui/pay-address";
 import { base, cardBits } from "#styles/shared";
 
 /** What needs doing on Home: replies to record, bills past due, drafts to finish. */
@@ -48,17 +48,6 @@ export class CcNeedsYou extends LitElement {
 				padding: var(--cc-space-3) var(--cc-panel-padding);
 				color: inherit;
 				text-decoration: none;
-			}
-
-			button.item {
-				inline-size: 100%;
-				padding: var(--cc-space-3) var(--cc-panel-padding);
-				font: inherit;
-				text-align: start;
-				cursor: pointer;
-				background: none;
-				border: 0;
-				border-radius: 0;
 			}
 
 			.item + .item {
@@ -159,8 +148,7 @@ export class CcNeedsYou extends LitElement {
 				};
 			case "overdue":
 				return {
-					href: null,
-					pay: { cardId: item.card.id, amount: item.remaining },
+					href: payAddress({ cardId: item.card.id, amount: item.remaining }),
 					icon: icons.alert,
 					chip: cardMini(item.card, this.groups),
 					title: t(item.days === 1 ? "home.overdue.one" : "home.overdue.many", {
@@ -216,12 +204,8 @@ export class CcNeedsYou extends LitElement {
 					const inside = html`<span class="chip">${row.icon}</span>
 						<span class="text"><b>${"chip" in row ? html`${row.chip} ` : ""}${row.title}</b><small>${row.detail}</small></span>
 						<span class="chevron" aria-hidden="true">›</span>`;
-					// An overdue bill opens the payment sheet over Home, on its card and what is left.
-					const pay = "pay" in row ? row.pay : null;
-					return pay
-						? html`<button type="button" class="item" data-item=${item.kind}
-								@click=${() => openPayment(pay)}>${inside}</button>`
-						: html`<a class="item" data-item=${item.kind} href=${row.href}>${inside}</a>`;
+					// An overdue bill leads to the payment sheet on its card and what is left.
+					return html`<a class="item" data-item=${item.kind} href=${row.href}>${inside}</a>`;
 				})}
 			</div>
 		`;

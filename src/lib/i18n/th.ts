@@ -31,6 +31,7 @@ export const th: Catalog = {
 	"title.listDraft": "ใบรายการซื้อฉบับร่าง — cc-tracking",
 	"title.listReply": "คำตอบของผู้ใช้บัตร — cc-tracking",
 	"title.listView": "ใบรายการซื้อที่บันทึกแล้ว — cc-tracking",
+	"title.pay": "ชำระเงิน — cc-tracking",
 	"pay.title": "ชำระเงิน",
 	"pay.pickHint": "ชำระให้บัตรใบไหน บัตรที่เลยกำหนดและใกล้ครบกำหนดอยู่ก่อน",
 	"pay.missing": "ไม่มีบัตรใบนี้อีกแล้ว",
@@ -54,6 +55,8 @@ export const th: Catalog = {
 	"pay.owedUnder": "ค้าง",
 	"pay.dateHint": "วันไหนของเดือนก็ได้ ถ้าเป็นวันหลังจากวันนี้จะบันทึกเป็นแผน",
 	"pay.date": "วันที่",
+	"pay.noteLabel": "หมายเหตุ (ไม่บังคับ)",
+	"pay.notePlaceholder": "จ่ายจากบัญชีออมทรัพย์ KBank",
 	"pay.note.extra":
 		"เกินยอดค้าง {extra} ส่วนที่เกินจะอยู่ที่ {card} เป็นเครดิตสำหรับการซื้อครั้งถัดไป",
 	"pay.note.plan":
@@ -411,6 +414,7 @@ export const th: Catalog = {
 	"backup.problem.badDueDay": "มีวันครบกำหนดที่ไม่อยู่ระหว่าง 1 ถึง 31",
 	"backup.problem.badDueOffset": "มีจำนวนวันถึงกำหนดที่ไม่อยู่ระหว่าง 1 ถึง 60",
 	"backup.problem.badPaymentStatus": "มีสถานะที่ไม่ใช่วางแผนไว้หรือชำระแล้ว",
+	"backup.problem.badNote": "มีหมายเหตุที่ไม่ใช่ข้อความ",
 	"backup.problem.badListStatus": "มีสถานะที่ไม่ใช่ร่าง ส่งแล้ว หรือบันทึกแล้ว",
 	"backup.problem.badTakesPurchases": "มี takesPurchases ที่ไม่ใช่ true หรือ false",
 

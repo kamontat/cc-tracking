@@ -64,6 +64,12 @@
 	   a bottom sheet the screen's full width. */
 	--cc-sheet-max: 32.5rem;
 
+	/* How the payment sheet arrives: it slides up from the bottom edge on a phone, and fades in
+	   from slightly smaller from 900px. None of it runs under prefers-reduced-motion. */
+	--cc-sheet-motion: 240ms;
+	--cc-sheet-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--cc-sheet-scale-from: 0.96;
+
 	/* The widest a page's content grows. */
 	--cc-page-width: 72rem;
 

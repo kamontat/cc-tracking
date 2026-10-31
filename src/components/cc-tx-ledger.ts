@@ -246,7 +246,8 @@ export class CcTxLedger extends LitElement {
 		const word = t(purchase ? "tx.type.purchase" : "tx.type.payment");
 		const list = purchase ? this.listOf(entry) : undefined;
 		const parts: string[] = [];
-		if (purchase && entry.purchase.note) parts.push(entry.purchase.note);
+		const note = purchase ? entry.purchase.note : entry.payment.note;
+		if (note) parts.push(note);
 		if (list)
 			parts.push(
 				t("tx.fromList", { date: headerDate(list.date, getLocale(), false) }),
@@ -308,7 +309,7 @@ export class CcTxLedger extends LitElement {
 								${this.chip(card)}
 								<span class="what">
 									${this.heading(payment.cardId, card, t("tx.type.payment"))}
-									<span class="sub">${t("tx.planned", { date: headerDate(payment.date, locale, false) })}</span>
+									<span class="sub">${[t("tx.planned", { date: headerDate(payment.date, locale, false) }), ...(payment.note ? [payment.note] : [])].join(" · ")}</span>
 								</span>
 							</button>
 							<span class="r">
