@@ -51,6 +51,7 @@ const recordingShare = (calls: Calls): ShareApi => ({
 	},
 	saveImage: async (table, filename) => {
 		calls.saveImage.push([table, filename]);
+		return "saved";
 	},
 });
 
@@ -300,6 +301,26 @@ test("save image is named by date and failure is said", async () => {
 	expect(statusText(failing.root)).toBe(
 		"Could not save the image. Use Copy text instead.",
 	);
+});
+
+test("a shared image says so, and a cancelled share says nothing", async () => {
+	const shared = await setup({ share: { saveImage: async () => "shared" } });
+	await typeAndReview(shared.root, { A: "125" }, [
+		{ cardId: "A", amount: 125_00 },
+	]);
+	await click(shared.root, "save-image");
+	expect(statusText(shared.root)).toBe(
+		"Image shared. Check it reached the spender.",
+	);
+
+	const cancelled = await setup({
+		share: { saveImage: async () => "cancelled" },
+	});
+	await typeAndReview(cancelled.root, { A: "125" }, [
+		{ cardId: "A", amount: 125_00 },
+	]);
+	await click(cancelled.root, "save-image");
+	expect(statusText(cancelled.root)).toBe("");
 });
 
 /** A repository whose savePurchaseList always rejects. */

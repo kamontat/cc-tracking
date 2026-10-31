@@ -437,6 +437,7 @@ export const en = {
 	"purchaseList.copied": "Copied. Paste it into the chat with the spender.",
 	"purchaseList.imageSaved":
 		"Image saved. Send it in the chat with the spender.",
+	"purchaseList.imageShared": "Image shared. Check it reached the spender.",
 	"purchaseList.sendHint":
 		"Sent it in the chat? Mark it sent. It waits on Home until the spender replies.",
 	"purchaseList.markSent": "Mark as sent",

@@ -64,6 +64,7 @@ type ShareStatus =
 	| { kind: "copied" }
 	| { kind: "copy-failed" }
 	| { kind: "image-saved" }
+	| { kind: "image-shared" }
 	| { kind: "image-failed"; failure: unknown };
 
 const unique = (ids: string[]): string[] => [...new Set(ids)];
@@ -200,8 +201,12 @@ export function renderListPage(
 		const words = table();
 		if (!share.saveImage || !words || !reviewed) return;
 		try {
-			await share.saveImage(words, imageName(reviewed.date));
-			status = { kind: "image-saved" };
+			const outcome = await share.saveImage(words, imageName(reviewed.date));
+			// Closing the share sheet is the reader changing their mind, not a failure.
+			status =
+				outcome === "cancelled"
+					? null
+					: { kind: outcome === "shared" ? "image-shared" : "image-saved" };
 		} catch (failure) {
 			status = { kind: "image-failed", failure };
 		}
@@ -290,6 +295,8 @@ export function renderListPage(
 				return t("backup.error.copy");
 			case "image-saved":
 				return t("purchaseList.imageSaved");
+			case "image-shared":
+				return t("purchaseList.imageShared");
 			case "image-failed":
 				return messageOf(status.failure, "purchaseList.error.image");
 		}

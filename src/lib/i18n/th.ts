@@ -437,6 +437,7 @@ export const th: Catalog = {
 	"purchaseList.saveImage": "บันทึกรูปภาพ",
 	"purchaseList.copied": "คัดลอกแล้ว วางในแชตกับผู้ใช้บัตรได้เลย",
 	"purchaseList.imageSaved": "บันทึกรูปแล้ว ส่งในแชตกับผู้ใช้บัตรได้เลย",
+	"purchaseList.imageShared": "แชร์รูปแล้ว ตรวจดูว่าส่งถึงผู้ใช้บัตรแล้ว",
 	"purchaseList.sendHint":
 		"ส่งในแชตแล้วใช่ไหม กดบันทึกว่าส่งแล้ว ใบรายการจะรออยู่ที่หน้าหลักจนกว่าผู้ใช้บัตรจะตอบ",
 	"purchaseList.markSent": "บันทึกว่าส่งแล้ว",

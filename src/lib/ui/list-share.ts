@@ -204,8 +204,19 @@ export function drawTablePng(
 	return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
 }
 
+/** Safari starts the download after `click()` returns, so the address must outlive it a while. */
+const REVOKE_DELAY_MS = 1000;
+
+export type DownloadDeps = {
+	schedule?: (run: () => void, ms: number) => unknown;
+};
+
 /** Hands `blob` to the browser as a file download. */
-export function downloadBlob(blob: Blob, filename: string): void {
+export function downloadBlob(
+	blob: Blob,
+	filename: string,
+	{ schedule = setTimeout }: DownloadDeps = {},
+): void {
 	const url = URL.createObjectURL(blob);
 	const link = document.createElement("a");
 	link.href = url;
@@ -213,12 +224,58 @@ export function downloadBlob(blob: Blob, filename: string): void {
 	document.body.append(link);
 	link.click();
 	link.remove();
-	URL.revokeObjectURL(url);
+	schedule(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS);
+}
+
+/** How Save image went: downloaded, handed to the share sheet, or the sheet was closed. */
+export type ImageOutcome = "saved" | "shared" | "cancelled";
+
+/** The part of `navigator` that shares files; absent pieces mean the browser cannot. */
+export type FileShare = {
+	canShare?: (data: ShareData) => boolean;
+	share?: (data: ShareData) => Promise<void>;
+};
+
+export type DeliverDeps = {
+	share?: FileShare;
+	download?: (blob: Blob, filename: string) => void;
+};
+
+const isAbort = (error: unknown): boolean =>
+	typeof error === "object" &&
+	error !== null &&
+	(error as { name?: unknown }).name === "AbortError";
+
+/**
+ * Where the browser can share files (a phone, mostly), the image goes to the share sheet and
+ * so straight to the chat app; elsewhere it downloads. Closing the sheet is not a failure. A
+ * share that fails any other way (the tap's permission ran out while drawing, say) downloads.
+ */
+export async function deliverImage(
+	blob: Blob,
+	filename: string,
+	{
+		share = typeof navigator === "undefined" ? undefined : navigator,
+		download = downloadBlob,
+	}: DeliverDeps = {},
+): Promise<ImageOutcome> {
+	const file = new File([blob], filename, { type: "image/png" });
+	const data: ShareData = { files: [file] };
+	if (share?.share && share.canShare?.(data)) {
+		try {
+			await share.share(data);
+			return "shared";
+		} catch (error) {
+			if (isAbort(error)) return "cancelled";
+		}
+	}
+	download(blob, filename);
+	return "saved";
 }
 
 export type ShareApi = {
 	copy?: (text: string) => Promise<void>;
-	saveImage?: (table: ShareTable, filename: string) => Promise<void>;
+	saveImage?: (table: ShareTable, filename: string) => Promise<ImageOutcome>;
 };
 
 /** Only what this browser can do: a button for an absent function is not offered. */
@@ -231,7 +288,7 @@ export function browserShare(): ShareApi {
 		api.saveImage = async (table, filename) => {
 			const blob = await drawTablePng(table);
 			if (!blob) throw new MessageError("purchaseList.error.image");
-			downloadBlob(blob, filename);
+			return deliverImage(blob, filename);
 		};
 	}
 	return api;
