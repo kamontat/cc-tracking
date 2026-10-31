@@ -9,6 +9,7 @@ import {
 	cardMini,
 	cardName,
 	cardNameHtml,
+	cardOwnerName,
 	cardPanel,
 	cardShort,
 	groupTone,
@@ -113,4 +114,19 @@ test("the mini chip shows the last 4 in the group's colour", () => {
 	expect(host.querySelector(".mini")?.hasAttribute("data-g")).toBe(false);
 	render(cardMini(undefined, groups), host);
 	expect(host.querySelector(".mini")?.getAttribute("aria-hidden")).toBe("true");
+});
+
+test("cardOwnerName adds the cardholder: the group's owner, or a supplementary card's own", () => {
+	const owned: LimitGroup[] = [{ id: "g2", name: "G", limit: 1, owner: "RI" }];
+	expect(cardOwnerName("10", card, owned)).toBe("Card A10 (RI)");
+	expect(
+		cardOwnerName("10", { ...card, supplementary: true, owner: "NT" }, owned),
+	).toBe("Card A10 (NT)");
+	// A group with no owner is the default holder; no group at all is no holder.
+	expect(cardOwnerName("10", card, [{ id: "g2", name: "G", limit: 1 }])).toBe(
+		"Card A10 (KC)",
+	);
+	const { limitGroupId: _unused, ...noGroup } = card;
+	expect(cardOwnerName("10", noGroup, owned)).toBe("Card A10");
+	expect(cardOwnerName("10", undefined, owned)).toBe("c-[10]");
 });

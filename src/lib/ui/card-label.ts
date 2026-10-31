@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from "lit";
+import { cardOwnerOf } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { t } from "#lib/i18n/index";
 
@@ -99,3 +100,19 @@ export const cardPanel = (
  */
 export const cardNameLast4 = (id: string, card: Card | undefined): string =>
 	card ? `${card.name} (${card.last4})` : cardShort(id);
+
+/**
+ * The name form with the cardholder after it, for the Needs you and Upcoming rows (DD-110):
+ * `Krungsri Bangkok (RI)`. The holder is `cardOwnerOf` (DR-13); with none it is just the name.
+ * A card no longer stored is `c-[id]`.
+ */
+export function cardOwnerName(
+	id: string,
+	card: Card | undefined,
+	groups: LimitGroup[],
+): string {
+	if (!card) return cardShort(id);
+	const group = groups.find((g) => g.id === card.limitGroupId) ?? null;
+	const owner = cardOwnerOf(card, group);
+	return owner ? `${card.name} (${owner})` : card.name;
+}

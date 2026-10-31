@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import "#components/cc-needs-you";
 import type { CcNeedsYou } from "#components/cc-needs-you";
 import type { NeedsItem } from "#lib/domain/home";
-import type { Card, PurchaseList } from "#lib/domain/types";
+import type { Card, LimitGroup, PurchaseList } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
 afterEach(() => setLocale("en"));
@@ -14,7 +14,12 @@ const card: Card = {
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
+	limitGroupId: "g1",
 };
+
+const { limitGroupId: _unused, ...noGroup } = card;
+
+const groups: LimitGroup[] = [{ id: "g1", name: "SCB", limit: 1, owner: "RI" }];
 
 const list = (
 	id: string,
@@ -51,11 +56,13 @@ const mount = async (
 	value: NeedsItem[],
 	cards: Card[] = [],
 	today = "2026-10-31",
+	limitGroups: LimitGroup[] = groups,
 ) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-needs-you") as CcNeedsYou;
 	element.items = value;
 	element.cards = cards;
+	element.groups = limitGroups;
 	element.today = today;
 	document.body.append(element);
 	await element.updateComplete;
@@ -79,8 +86,7 @@ const planned = (date: string): NeedsItem => ({
 
 const slots = (row: Element) => ({
 	title: text(row, ".a-title"),
-	subtitle: text(row, ".a-subtitle"),
-	badge: text(row, ".a-badge"),
+	subtitle: text(row, ".a-sub"),
 });
 
 test("each item opens its task", async () => {
@@ -104,10 +110,13 @@ test("each item opens its task", async () => {
 	]);
 });
 
-test("each kind fills the row's title, subtitle and badge, with no figure or button", async () => {
+test("each kind fills the row's title and subtitle, with no badge, figure or button", async () => {
 	const root = await mount(
 		[...items(), planned("2026-11-02")],
-		[{ ...card, id: "KB-S", name: "KBank S" }],
+		[
+			{ ...card, id: "KB-S", name: "KBank S" },
+			{ ...noGroup, id: "KS-K", name: "KBank K" },
+		],
 		"2026-10-31",
 	);
 	const [waiting, overdue, draft, plan] = [
@@ -115,23 +124,19 @@ test("each kind fills the row's title, subtitle and badge, with no figure or but
 	] as Element[];
 	expect(slots(waiting as Element)).toEqual({
 		title: "Waiting on list for 30 Oct 2026",
-		subtitle: "A) —, B) —, C) — · ฿3.00",
-		badge: "Purchase list",
+		subtitle: "c-[A], c-[B], c-[C] · ฿3.00",
 	});
 	expect(slots(overdue as Element)).toEqual({
-		title: "Overdue: SCB K (1111), due 16 days ago",
-		subtitle: "฿41,230.00",
-		badge: "Payment",
+		title: "Overdue: SCB K (RI)",
+		subtitle: "฿41,230.00 · for 16 days",
 	});
 	expect(slots(draft as Element)).toEqual({
 		title: "Draft list for 30 Oct 2026",
-		subtitle: "KB-S) KBank S, KS-K) — · ฿2.00",
-		badge: "Purchase list",
+		subtitle: "KBank S (RI), KBank K · ฿2.00",
 	});
 	expect(slots(plan as Element)).toEqual({
-		title: "Planned: pay SCB K (1111) in 2 days",
+		title: "Planned: pay SCB K (RI) in 2 days",
 		subtitle: "฿5,000.00",
-		badge: "Payment",
 	});
 	expect(root.querySelector(".a-right")).toBeNull();
 	expect(root.querySelector(".a-row button")).toBeNull();
@@ -153,7 +158,7 @@ test("more than three cards read as a count", async () => {
 			total: 400,
 		},
 	]);
-	expect(text(root, ".a-subtitle")).toBe("4 cards · ฿4.00");
+	expect(text(root, ".a-sub")).toBe("4 cards · ฿4.00");
 });
 
 test("the heading counts", async () => {
@@ -177,9 +182,12 @@ test("reads in Thai", async () => {
 	expect(text(root, '[data-item="waiting"] .a-title')).toBe(
 		"รอคำตอบใบรายการซื้อวันที่ 30 ต.ค. 2026",
 	);
-	expect(text(root, '[data-item="waiting"] .a-badge')).toBe("ใบรายการซื้อ");
+	expect(root.querySelector(".a-badge, .tag")).toBeNull();
 	expect(text(root, '[data-item="overdue"] .a-title')).toBe(
-		"เลยกำหนด: SCB K (1111) ครบกำหนดเมื่อ 16 วันที่แล้ว",
+		"เลยกำหนด: SCB K (RI)",
+	);
+	expect(text(root, '[data-item="overdue"] .a-sub')).toBe(
+		"฿41,230.00 · เป็นเวลา 16 วัน",
 	);
 });
 
@@ -188,8 +196,9 @@ test("one day overdue reads in the singular", async () => {
 		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-30", days: 1 },
 	]);
 	expect(text(root, '[data-item="overdue"] .a-title')).toBe(
-		"Overdue: SCB K (1111), due 1 day ago",
+		"Overdue: SCB K (RI)",
 	);
+	expect(text(root, '[data-item="overdue"] .a-sub')).toBe("฿1.00 · for 1 day");
 });
 
 test("a list id is encoded in its link", async () => {
@@ -207,13 +216,11 @@ test("a list id is encoded in its link", async () => {
 test("a planned payment says how far off it is, and a past plan says how long ago", async () => {
 	const title = async (date: string) =>
 		text(await mount([planned(date)], [], "2026-10-31"), ".a-title");
-	expect(await title("2026-10-31")).toBe("Planned: pay SCB K (1111) today");
-	expect(await title("2026-11-01")).toBe("Planned: pay SCB K (1111) tomorrow");
-	expect(await title("2026-11-03")).toBe("Planned: pay SCB K (1111) in 3 days");
-	expect(await title("2026-10-30")).toBe("Planned: pay SCB K (1111) 1 day ago");
-	expect(await title("2026-10-28")).toBe(
-		"Planned: pay SCB K (1111) 3 days ago",
-	);
+	expect(await title("2026-10-31")).toBe("Planned: pay SCB K (RI) today");
+	expect(await title("2026-11-01")).toBe("Planned: pay SCB K (RI) tomorrow");
+	expect(await title("2026-11-03")).toBe("Planned: pay SCB K (RI) in 3 days");
+	expect(await title("2026-10-30")).toBe("Planned: pay SCB K (RI) 1 day ago");
+	expect(await title("2026-10-28")).toBe("Planned: pay SCB K (RI) 3 days ago");
 });
 
 const many = (count: number): NeedsItem[] =>

@@ -250,9 +250,9 @@ test("Confirm refuses a list no longer waiting and writes nothing", async () => 
 test("deleting a payment needs the second step", async () => {
 	const { root, repo } = await open();
 	await press(inLedger(root, '[data-kind="payment"]'));
-	await press(inLedger(root, '[data-action="delete"]'));
+	await press(inLedger(root, '[data-open] [data-action="delete"]'));
 	expect(await repo.listCardPayments("A")).toHaveLength(2);
-	await press(inLedger(root, '[data-action="confirm-delete"]'));
+	await press(inLedger(root, '[data-open] [data-action="confirm-delete"]'));
 	await settle(5);
 	expect((await repo.listCardPayments("A")).map((p) => p.id)).toEqual(["c2"]);
 });
@@ -286,8 +286,8 @@ test("a failed delete names the delete, not a save", async () => {
 	const { root, repo } = await open();
 	repo.deleteCardPayment = () => Promise.reject(new Error("disk full"));
 	await press(inLedger(root, '[data-kind="payment"]'));
-	await press(inLedger(root, '[data-action="delete"]'));
-	await press(inLedger(root, '[data-action="confirm-delete"]'));
+	await press(inLedger(root, '[data-open] [data-action="delete"]'));
+	await press(inLedger(root, '[data-open] [data-action="confirm-delete"]'));
 	await settle(5);
 	const banner = root.querySelector("cc-error-banner");
 	expect(banner?.message).toContain("Could not delete the payment.");

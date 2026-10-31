@@ -2,14 +2,19 @@ import { css, html, nothing, type TemplateResult } from "lit";
 import { daysBetween, displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
-import type { Card, CardPayment, PurchaseList } from "#lib/domain/types";
+import type {
+	Card,
+	CardPayment,
+	LimitGroup,
+	PurchaseList,
+} from "#lib/domain/types";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLines, cardNameLast4 } from "#lib/ui/card-label";
+import { cardOwnerName } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 
 /*
  * One row shape for Home's *Needs you* and Transactions' *Upcoming* (DD-108): an icon that
- * says the kind, a bold title, a muted subtitle, a badge pill naming the kind in words, and on
+ * says the kind, a bold title, a muted subtitle, and on
  * the right an optional amount with an optional action button under it. The text builders
  * below are pure (given the locale), so both lists word a thing the same way.
  */
@@ -20,7 +25,6 @@ export type ActionRowText = {
 	kind: ActionKind;
 	title: string;
 	subtitle: string;
-	badge: string;
 };
 
 const ICONS: Record<ActionKind, TemplateResult> = {
@@ -30,10 +34,15 @@ const ICONS: Record<ActionKind, TemplateResult> = {
 	draft: icons.transactions,
 };
 
-/** A list's cards: their short line forms (`id) name`) when three or fewer, else "N cards". */
-export function cardsOrCount(ids: string[], cards: Card[]): string {
+/** A list's cards as `name (owner)` when three or fewer, else "N cards" (DD-110). */
+export function cardsOrCount(
+	ids: string[],
+	cards: Card[],
+	groups: LimitGroup[],
+): string {
+	const byId = new Map(cards.map((card) => [card.id, card]));
 	return ids.length <= 3
-		? cardLines(ids, cards, { short: true })
+		? ids.map((id) => cardOwnerName(id, byId.get(id), groups)).join(", ")
 		: t("row.cards", { count: ids.length });
 }
 
@@ -50,35 +59,44 @@ export function whenWords(date: string, today: string): string {
 export const agoWords = (days: number): string =>
 	days === 1 ? t("row.ago.one") : t("row.ago.many", { days });
 
+/** "for 1 day" / "for N days": how long a bill has been overdue. */
+export const forWords = (days: number): string =>
+	days === 1 ? t("row.for.one") : t("row.for.many", { days });
+
 const listDate = (list: PurchaseList) => displayDate(list.date, getLocale());
 
 /** A waiting list. Upcoming shows the total on the right, so its subtitle leaves it out. */
 export function waitingText(
 	list: PurchaseList,
 	cards: Card[],
+	groups: LimitGroup[],
 	withTotal: boolean,
 ): ActionRowText {
 	const named = cardsOrCount(
 		list.lines.map((l) => l.cardId),
 		cards,
+		groups,
 	);
 	return {
 		kind: "waiting",
 		title: t("row.waiting", { date: listDate(list) }),
 		subtitle: withTotal ? `${named} · ${formatAmount(listTotal(list))}` : named,
-		badge: t("row.badge.list"),
 	};
 }
 
-export function draftText(list: PurchaseList, cards: Card[]): ActionRowText {
+export function draftText(
+	list: PurchaseList,
+	cards: Card[],
+	groups: LimitGroup[],
+): ActionRowText {
 	return {
 		kind: "draft",
 		title: t("row.draft", { date: listDate(list) }),
 		subtitle: `${cardsOrCount(
 			list.lines.map((l) => l.cardId),
 			cards,
+			groups,
 		)} · ${formatAmount(listTotal(list))}`,
-		badge: t("row.badge.list"),
 	};
 }
 
@@ -89,13 +107,14 @@ export function draftText(list: PurchaseList, cards: Card[]): ActionRowText {
 export function plannedText(
 	payment: CardPayment,
 	card: Card | undefined,
+	groups: LimitGroup[],
 	today: string,
 	upcoming: boolean,
 ): ActionRowText {
 	return {
 		kind: "planned",
 		title: t("row.planned", {
-			card: cardNameLast4(payment.cardId, card),
+			card: cardOwnerName(payment.cardId, card, groups),
 			when: whenWords(payment.date, today),
 		}),
 		subtitle: upcoming
@@ -104,36 +123,35 @@ export function plannedText(
 					...(payment.note ? [payment.note] : []),
 				].join(" · ")
 			: formatAmount(payment.amount),
-		badge: t("row.badge.payment"),
 	};
 }
 
 /** A bill past its due date: `days` is how many days past it. */
 export function overdueText(
 	card: Card,
+	groups: LimitGroup[],
 	remaining: number,
 	days: number,
 ): ActionRowText {
 	return {
 		kind: "overdue",
 		title: t("row.overdue", {
-			card: cardNameLast4(card.id, card),
-			ago: agoWords(days),
+			card: cardOwnerName(card.id, card, groups),
 		}),
-		subtitle: formatAmount(remaining),
-		badge: t("row.badge.payment"),
+		subtitle: `${formatAmount(remaining)} · ${forWords(days)}`,
 	};
 }
 
 export type ActionRowOptions = {
 	/** The row opens a page... */
 	href?: string;
-	/** ...or toggles something in place (a planned payment's delete). */
+	/** ...or toggles something in place... */
 	onToggle?: () => void;
 	expanded?: boolean;
 	/** The right-hand figure, already signed, and its tone. */
 	amount?: { text: string; tone: "out" | "in" | "muted" };
-	/** The button under the figure. */
+	/** ...or is plain text, with only its own buttons (a planned payment, DD-110).
+	 * The button under the figure. */
 	action?: TemplateResult | undefined;
 	/** What opens under the row (a two-step confirm). */
 	below?: TemplateResult | typeof nothing;
@@ -160,11 +178,13 @@ export function actionRow(
 	const inside = html`<span class="a-ic" data-kind=${text.kind}>${ICONS[text.kind]}</span>
 		<span class="a-text">
 			<b class="a-title">${text.title}</b>
-			<span class="a-sub"><span class="a-subtitle">${text.subtitle}</span><span class="tag a-badge">${text.badge}</span></span>
+			<span class="a-sub">${text.subtitle}</span>
 		</span>`;
 	const hit = href
 		? html`<a class="a-hit" data-item=${text.kind} href=${href}>${inside}</a>`
-		: html`<button type="button" class="a-hit" data-item=${text.kind}
+		: !onToggle
+			? html`<div class="a-hit" data-item=${text.kind}>${inside}</div>`
+			: html`<button type="button" class="a-hit" data-item=${text.kind}
 				aria-expanded=${expanded ? "true" : "false"} @click=${() => onToggle?.()}>${inside}</button>`;
 	const right =
 		amount || action
@@ -180,7 +200,7 @@ export function actionRow(
 	</div>`;
 }
 
-/** The row's styles; the host also takes `cardBits` (the `.tag` pill) and `rowPanel`. */
+/** The row's styles; the host also takes `rowPanel`. */
 export const actionRowStyles = css`
 	.a-wrap {
 		display: flex;
@@ -194,17 +214,16 @@ export const actionRowStyles = css`
 		gap: var(--cc-space-3);
 	}
 
-	/* The quiet ground reaches the panel's inner edges (DD-105, DD-109); the badge and a
+	/* The quiet ground reaches the panel's inner edges (DD-105, DD-109); a
 	   neutral icon tile, whose fill is that ground, turn to the surface so they still show. */
-	.a-row:has(> .a-hit:hover) {
+	.a-row:has(> :is(a, button).a-hit:hover) {
 		background: var(--cc-surface-sunken);
 		box-shadow:
 			calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
 			var(--cc-space-4) 0 0 var(--cc-surface-sunken);
 	}
 
-	.a-row:has(> .a-hit:hover) .tag,
-	.a-row:has(> .a-hit:hover) .a-ic:not([data-kind="waiting"], [data-kind="overdue"]) {
+	.a-row:has(> :is(a, button).a-hit:hover) .a-ic:not([data-kind="waiting"], [data-kind="overdue"]) {
 		background: var(--cc-surface);
 	}
 
@@ -290,10 +309,6 @@ export const actionRowStyles = css`
 		color: var(--cc-text-muted);
 	}
 
-	.a-badge {
-		align-self: center;
-	}
-
 	.a-right {
 		display: flex;
 		flex-direction: column;
@@ -326,6 +341,14 @@ export const actionRowStyles = css`
 			padding-inline-start: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
 			text-align: start;
 		}
+	}
+
+	.a-btns {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: var(--cc-space-2);
 	}
 
 	.a-right button {

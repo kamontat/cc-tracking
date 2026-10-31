@@ -44,9 +44,9 @@ const MINUS = "−";
  * of rows. A purchase row is a link; a payment row is a button that opens in place, where a
  * wrong payment is deleted in two steps (UI-09). Upcoming uses the shared action row (DD-108):
  * a waiting list links to its reply and has *Confirm*, which asks once more before it saves
- * every line as made (`confirm-list`); a planned payment has *Paid* (`mark-paid`) and opens
- * the same way as a payment for its delete. The page owns `open`; `confirming` is the
- * second step and is dropped whenever another row opens.
+ * every line as made (`confirm-list`); a planned payment is plain text with *Paid* (`mark-paid`) and a
+ * *Delete* button after it, which asks once more (DD-110). The page owns `open`, for a paid
+ * payment's delete; `confirming` is its second step and is dropped whenever another row opens.
  */
 @customElement("cc-tx-ledger")
 export class CcTxLedger extends LitElement {
@@ -163,6 +163,8 @@ export class CcTxLedger extends LitElement {
 	@property({ type: Boolean }) filtered = false;
 	/** The waiting list whose *Confirm* asks its second step. */
 	@state() private confirmingList: string | null = null;
+	/** The planned payment whose *Delete* asks its second step. */
+	@state() private confirmingPlan: string | null = null;
 
 	constructor() {
 		super();
@@ -224,6 +226,22 @@ export class CcTxLedger extends LitElement {
 								this.confirming = true;
 							}}>${t("tx.deletePayment")}</button>`
 			}
+		</div>`;
+	}
+
+	/** A planned payment's second step: ask, then *Delete* or *Keep* (UI-09, DD-110). */
+	private planDeleteBlock(payment: CardPayment, card: Card | undefined) {
+		return html`<div class="actions" data-confirming=${payment.id}>
+			<p class="confirm">${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}</p>
+			<button type="button" data-variant="danger" data-action="confirm-delete"
+				@click=${() => {
+					this.confirmingPlan = null;
+					this.emit("delete-payment", { payment });
+				}}>${t("common.delete")}</button>
+			<button type="button" data-action="keep"
+				@click=${() => {
+					this.confirmingPlan = null;
+				}}>${t("tx.keep")}</button>
 		</div>`;
 	}
 
@@ -292,7 +310,7 @@ export class CcTxLedger extends LitElement {
 			<div class="sec-head"><h2>${t("tx.upcoming")}</h2></div>
 			<div class="panel">
 				${up.lists.map((list) =>
-					actionRow(waitingText(list, up.cards, false), {
+					actionRow(waitingText(list, up.cards, this.limitGroups, false), {
 						id: list.id,
 						href: listPageAddress(list),
 						amount: {
@@ -313,16 +331,22 @@ export class CcTxLedger extends LitElement {
 					}),
 				)}
 				${up.planned.map(({ payment, card }) => {
-					const open = this.open === payment.id;
-					return actionRow(plannedText(payment, card, this.today, true), {
-						id: payment.id,
-						onToggle: () => this.emit("toggle", { id: payment.id }),
-						expanded: open,
-						amount: { text: `+${formatAmount(payment.amount)}`, tone: "in" },
-						action: html`<button type="button" data-variant="quiet" data-action="mark-paid"
-							@click=${() => this.emit("mark-paid", { payment })}>${t("row.paid")}</button>`,
-						below: open ? this.deleteBlock(payment, card) : nothing,
-					});
+					const asking = this.confirmingPlan === payment.id;
+					return actionRow(
+						plannedText(payment, card, this.limitGroups, this.today, true),
+						{
+							id: payment.id,
+							amount: { text: `+${formatAmount(payment.amount)}`, tone: "in" },
+							action: asking
+								? undefined
+								: html`<span class="a-btns"><button type="button" data-variant="quiet" data-action="mark-paid"
+										@click=${() => this.emit("mark-paid", { payment })}>${t("row.paid")}</button><button type="button" data-variant="danger" data-action="delete"
+										@click=${() => {
+											this.confirmingPlan = payment.id;
+										}}>${t("common.delete")}</button></span>`,
+							below: asking ? this.planDeleteBlock(payment, card) : nothing,
+						},
+					);
 				})}
 			</div>
 		</section>`;
