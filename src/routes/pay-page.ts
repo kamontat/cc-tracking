@@ -67,7 +67,9 @@ const markPayPage = (root: HTMLElement): void => {
  * address, so Back closes the sheet; closing the sheet (Close, Escape, the backdrop, *Change*)
  * steps back over that pushed entry, or rewrites the address without the card when the page
  * was opened at `?card=` directly. A save leaves for Transactions by replacing this
- * page in history; a failed one keeps the sheet and what was typed, with the reason.
+ * page in history; a failed one keeps the sheet and what was typed, with the reason. When
+ * Back took the sheet away while the save was held, the reason shows in the page banner
+ * instead, whose *Try again* reopens that card's sheet on what was typed.
  */
 export function renderPayPage(
 	repo: Repository,
@@ -88,6 +90,11 @@ export function renderPayPage(
 	// (a link to `?card=`) is rewritten instead, since there is nothing of ours behind it.
 	let pushed = false;
 	let pickedOnce = false;
+	// A save that failed after its sheet had gone (Back while it was held): its card and what
+	// was typed, for the page banner's *Try again*.
+	let orphan: { cardId: string; detail: PayDetail } | null = null;
+	// What *Try again* types back into the sheet it reopens.
+	let kept: { cardId: string; detail: PayDetail } | null = null;
 	const sheetHost = root.ownerDocument.createElement("div");
 	sheetHost.id = "pay-sheet";
 
@@ -99,9 +106,17 @@ export function renderPayPage(
 		paint: () => paint(),
 	});
 
+	/** Lets a failed save's reason go, from the sheet or the page banner. */
+	const forget = () => {
+		if (saveFailed || orphan) state.clear();
+		saveFailed = false;
+		orphan = null;
+	};
+
 	const close = () => {
 		if (busy) return;
-		saveFailed = false;
+		forget();
+		kept = null;
 		if (pushed) {
 			pushed = false;
 			// The pop that follows repaints without the card.
@@ -135,9 +150,27 @@ export function renderPayPage(
 			navigate("/transactions");
 			return;
 		}
-		saveFailed = true;
 		busy = false;
+		// Back while the save was held took its sheet away: the page banner says why instead.
+		if (readPayAddress(address.search()).cardId === cardId) saveFailed = true;
+		else orphan = { cardId, detail };
 		paint();
+	};
+
+	/** Opens a card's sheet as a pick does: a pushed entry, so Back closes it. */
+	const open = (cardId: string) => {
+		pushed = true;
+		pickedOnce = true;
+		address.push(payAddress({ cardId }));
+		paint();
+	};
+
+	/** The page banner's *Try again*: reopens the failed save's sheet on what was typed. */
+	const retry = () => {
+		if (!orphan) return;
+		kept = orphan;
+		forget();
+		open(kept.cardId);
 	};
 
 	const sheet = (loaded: MoneyData, cardId: string, amount?: number) => {
@@ -145,7 +178,11 @@ export function renderPayPage(
 		const ledger = card ? loaded.ledgers.get(card.id) : undefined;
 		if (!card || !ledger) return nothing;
 		const figures = payFigures(ledger, now);
-		const start = amount ?? (figures.nextBill > 0 ? figures.nextBill : null);
+		const typed = kept?.cardId === card.id ? kept.detail : undefined;
+		const start =
+			typed?.amount ??
+			amount ??
+			(figures.nextBill > 0 ? figures.nextBill : null);
 		return html`<cc-modal sheet data-sheet="pay" heading=${t("pay.title")}
 			.held=${busy} @close=${close}>
 			<cc-pay-form
@@ -154,6 +191,8 @@ export function renderPayPage(
 				.figures=${figures}
 				.today=${now}
 				.amount=${start === null ? "" : formatAmountInput(start)}
+				.startDate=${typed?.date ?? ""}
+				.startNote=${typed?.note ?? ""}
 				.error=${saveFailed ? state.error : ""}
 				.busy=${busy}
 				@pay=${(event: CustomEvent<PayDetail>) => void save(card.id, event.detail)}
@@ -183,7 +222,14 @@ export function renderPayPage(
 		}
 		const known = cardId ? data.cards.some((c) => c.id === cardId) : false;
 		render(
-			html`${header}${saveFailed ? nothing : banner(state)}
+			html`${header}${
+				orphan
+					? html`<cc-error-banner .message=${state.error}
+							@retry=${retry}></cc-error-banner>`
+					: saveFailed
+						? nothing
+						: banner(state)
+			}
 				${
 					cardId && !known
 						? html`<p class="placeholder" data-missing>${t("pay.missing")}</p>`
@@ -193,11 +239,9 @@ export function renderPayPage(
 					.choices=${payChoices(data.cards, data.ledgers, now)}
 					.groups=${data.groups}
 					@pick=${(event: CustomEvent<PickDetail>) => {
-						saveFailed = false;
-						pushed = true;
-						pickedOnce = true;
-						address.push(payAddress({ cardId: event.detail.cardId }));
-						paint();
+						forget();
+						kept = null;
+						open(event.detail.cardId);
 					}}
 				></cc-pay-picker>`,
 			root,
@@ -208,8 +252,9 @@ export function renderPayPage(
 	};
 
 	address.onPop(() => {
-		if (busy) return;
-		saveFailed = false;
+		// Even while a save is held, so the page knows which entry it is on when the save ends.
+		forget();
+		kept = null;
 		// Back onto the picker, or Forward onto a card entry only a pick could have made.
 		pushed =
 			pickedOnce && readPayAddress(address.search()).cardId !== undefined;
