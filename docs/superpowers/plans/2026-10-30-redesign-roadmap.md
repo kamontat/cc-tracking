@@ -123,6 +123,21 @@ so most of them moved to the phase that builds what needs them.
     be cleaner.
   - Thai `title.cards` and `title.card` are both "บัตร — cc-tracking".
   - The back header uses the large page heading; the prototype has a compact sub-header.
+    (Taken for the card page and the edit page in the 2026-11-01 feedback round, DD-124; the
+    other sub-pages are listed below.)
   - The name sort uses `localeCompare` with no locale, so order can differ by browser.
   - A group whose id is `new` would collide with the blank-sheet address `?group=new` (ids are
     UUIDs, so only a restored or hand-made id could).
+- Small leftovers from the phase 5 feedback round (2026-11-01), each checked open at its last
+  commit:
+  - The other sub-pages still use the big back header (`backHeader`): `/pay`, `/purchase`, the
+    new-list picker and the list pages (enter amounts, draft, reply, saved list). Move them to
+    the compact sub-header (`subHeader`, DD-124).
+  - The sticky sub-header's `top` uses `--cc-header-height` (3.25rem, 52px) while the app header
+    measures 51px, so the bar sits 1px under the header (the header paints over it, so no gap
+    shows). Tie the two to one measure.
+  - The card page's *Add purchase* button and the *+ New* menu's *Add purchase* link both carry
+    `data-action="add-purchase"`; rename one so a selector needs no scope.
+  - `cc-card-form`'s section heading has a literal `letter-spacing: 0.06em` (as `cc-pay-form`'s
+    `.stat small`); move it to a token (UI-01).
+  - At 390px *Due days after close* wraps to two lines in the edit page's segmented control.
