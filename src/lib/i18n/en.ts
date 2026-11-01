@@ -19,7 +19,7 @@ export const en = {
 	"title.home": "Home — cc-tracking",
 	"title.cards": "Cards — cc-tracking",
 	"title.card": "Card — cc-tracking",
-	"title.cardNew": "Add card — cc-tracking",
+	"title.cardNew": "New card — cc-tracking",
 	"title.cardEdit": "Edit card — cc-tracking",
 	"title.settings": "Settings — cc-tracking",
 	"title.transactions": "Transactions — cc-tracking",

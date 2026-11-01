@@ -629,8 +629,8 @@ export const actionBarStyles = css`
 /**
  * The pieces a card's name is drawn from (card-label.ts, UI-14): `.mini`, the last-4 chip in the
  * group's pastel (`data-g` 1 to 4, `data-big` for the payment sheet's card), `.card-panel`, the
- * chip and `id) name` side by side, the `.cl-full` / `.cl-short` pair a narrow place swaps (a
- * component shows `.cl-short` and hides `.cl-full` in its own media or container query), and
+ * chip and `id) name` side by side, `.cl-short` hidden by default (a `cardLineHtml` pair shows its
+ * full form unless a narrow place swaps it in its own media or container query), and
  * `.tag`, a pill with a dot that carries a word as well as a colour (`data-urgency` from
  * `payTag`). app.css keeps a copy of `.mini` and `.card-panel` for the light-DOM pages.
  */

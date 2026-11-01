@@ -4,7 +4,7 @@ import "#components/cc-purchase-sheet";
 import { html, nothing, render } from "lit";
 import type { PickDetail } from "#components/cc-pay-picker";
 import { today } from "#lib/domain/date";
-import { type ReadyRow, readyRows, roomFor } from "#lib/domain/home";
+import { overRoom, type ReadyRow, readyRows } from "#lib/domain/home";
 import { LOCATIONS } from "#lib/domain/location";
 import type { Purchase } from "#lib/domain/types";
 import { subscribe, t } from "#lib/i18n/index";
@@ -117,8 +117,7 @@ export function renderPurchasePage(
 		busy = true;
 		paint();
 		// The room before this purchase: what it goes over by, said on the card page (DR-11).
-		const room = roomFor(card, loaded);
-		const over = room ? Math.max(0, purchase.amount - room.room) : 0;
+		const over = overRoom(card, loaded, purchase.amount);
 		let saved = false;
 		await state.guard(async () => {
 			await repo.savePurchase(purchase);

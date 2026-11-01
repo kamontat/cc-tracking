@@ -1,5 +1,12 @@
 import "#components/cc-error-banner";
-import { css, html, LitElement, nothing, type PropertyValues } from "lit";
+import {
+	css,
+	html,
+	LitElement,
+	nothing,
+	type PropertyValues,
+	type TemplateResult,
+} from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { byOwnerThenName } from "#lib/domain/list-view";
 import {
@@ -177,7 +184,6 @@ export class CcCardForm extends LitElement {
 				font-size: var(--cc-text-md);
 				font-weight: 650;
 			}
-
 		`,
 	];
 
@@ -379,7 +385,7 @@ export class CcCardForm extends LitElement {
 		const select = (setter: (value: string) => void) => (event: Event) =>
 			setter((event.target as HTMLSelectElement).value);
 		/** A panel named by its heading. */
-		const section = (id: string, key: MessageKey, body: unknown) =>
+		const section = (id: string, key: MessageKey, body: TemplateResult) =>
 			html`<section aria-labelledby=${`section-${id}`}>
 				<h2 id=${`section-${id}`}>${t(key)}</h2>
 				<article>${body}</article>

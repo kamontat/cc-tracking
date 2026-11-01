@@ -11,7 +11,7 @@ import type { MoreItem } from "#components/cc-more-menu";
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { compareDates, today } from "#lib/domain/date";
-import { roomFor } from "#lib/domain/home";
+import { overRoom as overRoomOf, roomFor } from "#lib/domain/home";
 import { nextBill } from "#lib/domain/ledger";
 import { formatAmount } from "#lib/domain/money";
 import { DEFAULT_SETTINGS } from "#lib/domain/settings";
@@ -27,6 +27,7 @@ import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import { payAddress } from "#lib/ui/pay-address";
+import { readOverRoom } from "#lib/ui/purchase-address";
 import { subHeader } from "#lib/ui/sub-header";
 
 const PAGE_SIZE = 12;
@@ -179,8 +180,8 @@ export function renderCardPage(
 		busy = true;
 		sheetFailed = false;
 		paint();
-		const room = adding && card && data ? roomFor(card, data) : null;
-		const over = room ? event.detail.amount - room.room : 0;
+		const over =
+			adding && card && data ? overRoomOf(card, data, event.detail.amount) : 0;
 		let done = false;
 		await state.guard(
 			async () => {
@@ -193,7 +194,7 @@ export function renderCardPage(
 		if (done) {
 			editingId = null;
 			adding = false;
-			overRoom = Math.max(0, over);
+			overRoom = over;
 		} else sheetFailed = true;
 		paint();
 	};
@@ -388,12 +389,12 @@ bootstrap("title.card", (repo) => {
 	const params = new URLSearchParams(location.search);
 	const cardId = params.get("id");
 	// `over` comes from `/purchase` once; it leaves the address so a reload does not repeat it.
-	const over = Number(params.get("over"));
+	const over = readOverRoom(location.search);
 	if (params.has("over")) {
 		params.delete("over");
 		history.replaceState(null, "", `${location.pathname}?${params}`);
 	}
 	renderCardPage(repo, cardId, root, {
-		...(Number.isSafeInteger(over) && over > 0 ? { overRoom: over } : {}),
+		...(over > 0 ? { overRoom: over } : {}),
 	});
 });

@@ -9,8 +9,9 @@ import { t } from "#lib/i18n/index";
  * - line: `id) name (last4)` -- single-line text, the copied list text, pickers and filter
  *   chips; short `id) name`;
  * - name: the name -- buttons, notices and sentences; short `c-[id]`.
- * A short form is for a small space. The markup helpers hold both forms (`.cl-full` and
- * `.cl-short`) and the page's CSS swaps them (`cardBits` in shared.ts); nothing measures widths.
+ * A short form is for a small space. `cardLineHtml` holds both forms (`.cl-full` and
+ * `.cl-short`) for the Transactions filter chips, and app.css swaps them on a phone; nothing
+ * measures widths. The Cards rows, the card page and the edit page use `cardTitle` instead.
  * A card that is no longer stored keeps its id: `id) —`, and `c-[id]` for its name.
  */
 

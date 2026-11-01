@@ -28,7 +28,7 @@ export const th: Catalog = {
 	"title.home": "หน้าหลัก — cc-tracking",
 	"title.cards": "บัตร — cc-tracking",
 	"title.card": "บัตร — cc-tracking",
-	"title.cardNew": "เพิ่มบัตร — cc-tracking",
+	"title.cardNew": "บัตรใหม่ — cc-tracking",
 	"title.cardEdit": "แก้ไขบัตร — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",
 	"title.transactions": "รายการเคลื่อนไหว — cc-tracking",

@@ -23,3 +23,14 @@ export function savedPurchaseAddress(cardId: string, over: number): string {
 	if (over > 0) params.set("over", String(over));
 	return `/card?${params}`;
 }
+
+/**
+ * The satang a card page address says the last purchase went over the room: only a whole
+ * number above 0 that fits a safe integer counts; anything else, typed by hand, reads as 0.
+ */
+export function readOverRoom(search: string): number {
+	const raw = new URLSearchParams(search).get("over") ?? "";
+	if (!/^\d+$/.test(raw)) return 0;
+	const over = Number(raw);
+	return Number.isSafeInteger(over) && over > 0 ? over : 0;
+}

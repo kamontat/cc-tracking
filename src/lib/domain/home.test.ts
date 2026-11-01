@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	isReady,
 	needsYou,
+	overRoom,
 	READY_SORTS,
 	type ReadyRow,
 	type RoomData,
@@ -123,6 +124,30 @@ describe("readyRows", () => {
 		expect(
 			readyRows(data([a], p, [], [paid]), settings, TODAY)[0]?.overdue,
 		).toBe(false);
+	});
+});
+
+describe("overRoom", () => {
+	const a = mk("A");
+	test("a purchase that fits goes over by nothing", () => {
+		expect(overRoom(a, data([a]), 40_000_00)).toBe(0);
+		expect(overRoom(a, data([a]), 100_000_00)).toBe(0);
+	});
+
+	test("a purchase past a positive room goes over by the difference", () => {
+		const d = data([a], [buy("p", "A", "2026-10-28", 90_000_00)]);
+		expect(overRoom(a, d, 25_000_00)).toBe(15_000_00);
+	});
+
+	test("with the room already gone, the whole purchase is over, never more", () => {
+		const d = data([a], [buy("p", "A", "2026-10-28", 120_000_00)]);
+		expect(roomFor(a, d)?.room).toBe(-20_000_00);
+		expect(overRoom(a, d, 5_000_00)).toBe(5_000_00);
+	});
+
+	test("a card in no group goes over nothing", () => {
+		const b = mk("B", { limitGroupId: "gone" });
+		expect(overRoom(b, data([b]), 5_000_00)).toBe(0);
 	});
 });
 
