@@ -135,7 +135,7 @@ test("one floating + New menu, outside both navs", async () => {
 		[...(menu?.querySelectorAll("a.fab-menu__item") ?? [])].map((a) =>
 			a.getAttribute("href"),
 		),
-	).toEqual(["/list/new", "/purchase", "/pay"]);
+	).toEqual(["/list/new", "/pay"]);
 	expect(menu?.closest("nav")).toBeNull();
 	expect(menu?.closest("#site-header")).toBeNull();
 });
