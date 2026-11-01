@@ -34,7 +34,7 @@ export type PayAddressBar = {
 	back: () => void;
 };
 
-/** The browser's own address bar, as the payment and purchase pages use it. */
+/** The browser's own address bar, as the payment page uses it. */
 export const browserBar = (): PayAddressBar => ({
 	search: () => location.search,
 	push: (url) => history.pushState(null, "", url),

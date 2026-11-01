@@ -22,9 +22,8 @@ export const TABS: readonly (readonly [
 ];
 
 /**
- * The tab a path belongs to. The payment page (`/pay`) and the purchase page (`/purchase`) sit
- * under Transactions, where payments and purchases are listed. A card's own page (`/card`) sits under Cards, where the link
- * to it leads from; every purchase list page (`/list/new`, `/list/draft`, `/list/reply`,
+ * The tab a path belongs to. The payment page (`/pay`) sits under Transactions, where payments
+ * are listed. A card's own page (`/card`) sits under Cards, where the link to it leads from; every purchase list page (`/list/new`, `/list/draft`, `/list/reply`,
  * `/list/view`) sits under Home, where a list starts and waits. One trailing slash is ignored,
  * so `/cards/` is still Cards.
  */
@@ -32,7 +31,7 @@ export function currentTab(path: string): Tab | null {
 	const bare = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 	if (bare === "/card" || bare === "/card/new" || bare === "/card/edit")
 		return "cards";
-	if (bare === "/pay" || bare === "/purchase") return "transactions";
+	if (bare === "/pay") return "transactions";
 	if (bare.startsWith("/list/")) return "home";
 	return TABS.find(([, tabPath]) => tabPath === bare)?.[0] ?? null;
 }

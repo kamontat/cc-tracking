@@ -27,14 +27,6 @@ export const en = {
 	"title.listReply": "Spender's reply — cc-tracking",
 	"title.listView": "Saved list — cc-tracking",
 	"title.pay": "Make a payment — cc-tracking",
-	"title.purchase": "Add purchase — cc-tracking",
-	"purchase.title": "Add purchase",
-	"purchase.pickHint":
-		"Which card was it bought on? Cards that can take a purchase, by place.",
-	"purchase.missing":
-		"That card isn't here any more, or can't take a purchase.",
-	"purchase.error.save": "Could not save the purchase.",
-	"purchase.error.read": "Could not read your cards.",
 	"pay.title": "Make a payment",
 	"pay.pickHint":
 		"Which card is it for? Overdue and soon-due cards come first.",

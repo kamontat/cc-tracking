@@ -543,17 +543,6 @@ test("a purchase over the room is saved, and the page says by how much over whic
 	expect(root.querySelector("[data-over-room]")).toBeNull();
 });
 
-test("an over-room note handed over by the purchase page shows on arrival", async () => {
-	const repo = new InMemoryRepository();
-	await pooled(repo);
-	const root = mount();
-	renderCardPage(repo, "kbank", root, { overRoom: 12_345 });
-	await settle();
-	expect(text(root.querySelector("[data-over-room]"))).toBe(
-		"Saved. It went ฿123.45 over the room of Pool.",
-	);
-});
-
 test("a failed add keeps the sheet, the typing and the reason", async () => {
 	const repo = new RejectingPurchaseRepository();
 	await pooled(repo);

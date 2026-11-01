@@ -32,7 +32,6 @@ test("current tab per path", () => {
 	expect(currentTab("/card/edit")).toBe("cards");
 	expect(currentTab("/card/nope")).toBeNull();
 	expect(currentTab("/pay")).toBe("transactions");
-	expect(currentTab("/purchase")).toBe("transactions");
 	expect(currentTab("/settings")).toBe("settings");
 	expect(currentTab("/cards/")).toBe("cards");
 	expect(currentTab("/settings/")).toBe("settings");

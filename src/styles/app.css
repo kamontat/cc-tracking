@@ -349,10 +349,9 @@ a:any-link:hover {
 	}
 }
 
-/* + New steps aside on the payment and purchase pages and on the purchase list pages (the new-list picker
+/* + New steps aside on the payment page and on the purchase list pages (the new-list picker
    among them), where the reader is mid-task and a bottom bar needs the full width, and on the
    card form, where it would sit over the form's buttons on a phone. */
-:root[data-purchase-page] .fab-menu,
 :root[data-pay-page] .fab-menu,
 :root[data-list-page] .fab-menu,
 :root[data-form-page] .fab-menu {

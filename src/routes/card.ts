@@ -27,7 +27,6 @@ import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import { payAddress } from "#lib/ui/pay-address";
-import { readOverRoom } from "#lib/ui/purchase-address";
 import { subHeader } from "#lib/ui/sub-header";
 
 const PAGE_SIZE = 12;
@@ -35,11 +34,6 @@ const PAGE_SIZE = 12;
 export type CardPageOptions = {
 	/** Leaves after a delete; `location.replace`, so Back does not reopen a card that is gone. */
 	navigate?: (url: string) => void;
-	/**
-	 * Satang a purchase just added on `/purchase` went over the group's room: the page opens
-	 * saying so (FR-19, DR-11).
-	 */
-	overRoom?: number;
 };
 
 /**
@@ -84,7 +78,7 @@ export function renderCardPage(
 	// The add sheet is open (*Add purchase*).
 	let adding = false;
 	// Satang the last added purchase went over the room, said once under the hero (DR-11).
-	let overRoom = options.overRoom ?? 0;
+	let overRoom = 0;
 	let busy = false;
 	// Whether *Delete card* is offered: no purchases, on no open list.
 	let deletable = false;
@@ -386,15 +380,6 @@ export function renderCardPage(
 bootstrap("title.card", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (!root) return;
-	const params = new URLSearchParams(location.search);
-	const cardId = params.get("id");
-	// `over` comes from `/purchase` once; it leaves the address so a reload does not repeat it.
-	const over = readOverRoom(location.search);
-	if (params.has("over")) {
-		params.delete("over");
-		history.replaceState(null, "", `${location.pathname}?${params}`);
-	}
-	renderCardPage(repo, cardId, root, {
-		...(over > 0 ? { overRoom: over } : {}),
-	});
+	const cardId = new URLSearchParams(location.search).get("id");
+	renderCardPage(repo, cardId, root);
 });
