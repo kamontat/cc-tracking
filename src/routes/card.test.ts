@@ -156,7 +156,6 @@ test("a sub-header names the card and where it is kept, with Edit leading to the
 	await repo.saveCard({ ...card, id: "k b", limitGroupId: "g1" });
 	const root = await open(repo, "k b");
 
-	expect(root.querySelector(".back-header")).toBeNull();
 	const header = root.querySelector(".sub-header");
 	expect(
 		header?.querySelector('a[data-action="back"]')?.getAttribute("href"),

@@ -3,9 +3,9 @@ import { html, type TemplateResult } from "lit";
 import type { PurchaseList } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { t } from "#lib/i18n/index";
-import { backHeader } from "#lib/ui/back-header";
 import { listPageAddress } from "#lib/ui/list-address";
 import type { PageState } from "#lib/ui/page-state";
+import { subHeader } from "#lib/ui/sub-header";
 
 /** What every list page takes from a test; the browser's own by default. */
 export type ListPageOptions = {
@@ -60,7 +60,7 @@ export const elsewhereView = (
 	list: PurchaseList | undefined,
 	state: PageState,
 ): TemplateResult => html`
-	${backHeader({ title: t("purchaseList.title"), back: "/" })}
+	${subHeader({ title: t("purchaseList.title"), back: "/" })}
 	${banner(state)}
 	${
 		list

@@ -5,11 +5,11 @@ import type { ListLine, PurchaseList } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { backHeader } from "#lib/ui/back-header";
 import { listPageAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
 import { writeListReply } from "#lib/ui/save-list-reply";
+import { subHeader } from "#lib/ui/sub-header";
 import {
 	banner,
 	elsewhereView,
@@ -83,7 +83,7 @@ export function renderReplyPage(
 	};
 
 	const replyView = (list: PurchaseList, from: MoneyData) => html`
-		${backHeader({
+		${subHeader({
 			title: t("reply.title"),
 			detail: t("reply.listFor", {
 				date: headerDate(list.date, getLocale(), false),

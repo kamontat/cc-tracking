@@ -17,7 +17,6 @@ import {
 import { locationText } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { backHeader } from "#lib/ui/back-header";
 import { newListAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
@@ -26,6 +25,7 @@ import {
 	readReadyView,
 	readyViewAddress,
 } from "#lib/ui/ready-query";
+import { subHeader } from "#lib/ui/sub-header";
 import { banner, markListPage } from "./common";
 
 export type PickerPageOptions = {
@@ -220,7 +220,7 @@ export function renderPickerPage(
 			.map(locationText)
 			.join(", ");
 		render(
-			html`${backHeader({
+			html`${subHeader({
 				title: t("purchaseList.new"),
 				...(data && all.length > 0
 					? {

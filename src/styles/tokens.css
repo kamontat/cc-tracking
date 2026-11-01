@@ -39,6 +39,11 @@
 	   into the padding and add nothing. Keep this in step if the header's padding or contents change. */
 	--cc-header-height: 3.25rem;
 
+	/* The sticky `.sub-header` under it, so a list page's sticky side panel parks below both:
+	   the back control (an icon and its padding) and the bar's own block padding. The title
+	   and its muted line are shorter than the control, so they add nothing. */
+	--cc-sub-header-height: calc(var(--cc-icon-size) + 4 * var(--cc-space-2));
+
 	/* The narrowest a settings tile gets before its row wraps to one per line. */
 	--cc-tile-min: 14rem;
 

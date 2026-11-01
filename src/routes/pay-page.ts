@@ -11,11 +11,11 @@ import { payChoices, payFigures } from "#lib/domain/pay";
 import type { CardPayment } from "#lib/domain/types";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { backHeader } from "#lib/ui/back-header";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
 import { payAddress, readPayAddress } from "#lib/ui/pay-address";
 import { savePayment } from "#lib/ui/record-payment";
+import { subHeader } from "#lib/ui/sub-header";
 import { banner } from "./list/common";
 
 /** The address bar as the payment page uses it; the browser's own unless a test passes one. */
@@ -61,7 +61,7 @@ const markPayPage = (root: HTMLElement): void => {
 };
 
 /**
- * The payment page (DD-76). `/pay` is the card picker, a full page under a back header.
+ * The payment page (DD-76). `/pay` is the card picker, a full page under a sub-header.
  * `/pay?card=<id>` shows the picker with the payment sheet risen over it, the amount
  * prefilled from `&amount=<satang>` or else the card's next bill. Picking a card pushes its
  * address, so Back closes the sheet; closing the sheet (Close, Escape, the backdrop, *Change*)
@@ -210,7 +210,7 @@ export function renderPayPage(
 
 	const paint = () => {
 		const { cardId, amount } = readPayAddress(address.search());
-		const header = backHeader({
+		const header = subHeader({
 			title: t("pay.title"),
 			back: () =>
 				address.length() > 1 ? address.back() : navigate("/transactions"),

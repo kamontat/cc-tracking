@@ -58,3 +58,26 @@ test("the back label is translated", () => {
 		root.querySelector('[data-action="back"]')?.getAttribute("aria-label"),
 	).toBe("กลับ");
 });
+
+test("a function back is a quiet button that calls it", () => {
+	const root = mount();
+	let calls = 0;
+	render(
+		subHeader({
+			title: "Title",
+			back: () => {
+				calls++;
+			},
+		}),
+		root,
+	);
+	const button = root.querySelector<HTMLButtonElement>(
+		'.sub-header > button[data-action="back"]',
+	);
+	expect(button?.getAttribute("type")).toBe("button");
+	expect(button?.getAttribute("data-variant")).toBe("quiet");
+	expect(button?.getAttribute("aria-label")).toBe("Back");
+	expect(button?.querySelector("svg")).not.toBeNull();
+	button?.click();
+	expect(calls).toBe(1);
+});

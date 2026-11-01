@@ -129,11 +129,9 @@ const amountValue = async () => {
 
 const submitText = () => flatText(inner(form(), 'button[type="submit"]')) ?? "";
 
-test("/pay is the card picker under a back header, with no sheet, and hides the Payment button", async () => {
+test("/pay is the card picker under a sub-header, with no sheet, and hides the Payment button", async () => {
 	const { root } = await setup("/pay");
-	expect(flatText(root.querySelector(".back-header h1"))).toBe(
-		"Make a payment",
-	);
+	expect(flatText(root.querySelector(".sub-header h1"))).toBe("Make a payment");
 	expect((await pickerRows()).map((r) => r.dataset["card"])).toEqual([
 		"A",
 		"B",

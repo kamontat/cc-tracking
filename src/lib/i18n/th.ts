@@ -543,6 +543,8 @@ export const th: Catalog = {
 	"purchaseList.new": "ใบรายการซื้อใหม่",
 	"purchaseList.draft": "ใบรายการซื้อฉบับร่าง",
 	"purchaseList.reviewTitle": "ตรวจทานใบรายการซื้อ",
+	"purchaseList.subtitle.one": "{date} · 1 ใบ",
+	"purchaseList.subtitle.many": "{date} · {count} ใบ",
 	"purchaseList.saveImage": "บันทึกรูปภาพ",
 	"purchaseList.copied": "คัดลอกแล้ว วางในแชตกับผู้ใช้บัตรได้เลย",
 	"purchaseList.imageSaved": "บันทึกรูปแล้ว ส่งในแชตกับผู้ใช้บัตรได้เลย",

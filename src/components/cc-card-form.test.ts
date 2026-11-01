@@ -417,7 +417,7 @@ test("keeps what was typed when the page hands back a fresh copy of the same car
 	expect($<HTMLInputElement>(element, '[name="name"]')?.value).toBe("Typed");
 });
 
-test("a new card has no archive, no delete and no cancel -- the back header leaves", async () => {
+test("a new card has no archive, no delete and no cancel -- the sub-header leaves", async () => {
 	const element = await mount();
 	expect($(element, '[data-action="archive"]')).toBeNull();
 	expect($(element, '[data-action="delete-card"]')).toBeNull();

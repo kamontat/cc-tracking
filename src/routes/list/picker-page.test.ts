@@ -97,15 +97,15 @@ const inSheet = async (root: HTMLElement, selector: string) => {
 	await element.updateComplete;
 };
 
-test("a list page under a back header to Home, with the ready cards by most room", async () => {
+test("a list page under a sub-header to Home, with the ready cards by most room", async () => {
 	const { root } = await setup();
 	expect(document.documentElement.hasAttribute("data-list-page")).toBe(true);
-	expect(flat(root.querySelector(".back-header h1"))).toBe(
+	expect(flat(root.querySelector(".sub-header h1"))).toBe(
 		"New purchase list4 cards in Krabi, Bangkok",
 	);
 	expect(
 		root
-			.querySelector('.back-header [data-action="back"]')
+			.querySelector('.sub-header [data-action="back"]')
 			?.getAttribute("href"),
 	).toBe("/");
 	expect(await order(root)).toEqual(["A", "C", "B", "D"]);
@@ -235,7 +235,7 @@ test("nothing ready names the next step; not-assigned cards are counted", async 
 	expect(
 		root.querySelector('[data-action="settings"]')?.getAttribute("href"),
 	).toBe("/settings");
-	expect(root.querySelector(".back-header small")).toBeNull();
+	expect(root.querySelector(".sub-header small")).toBeNull();
 });
 
 test("cards with no limit group are counted, with the way to assign them", async () => {

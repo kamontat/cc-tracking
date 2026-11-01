@@ -1142,40 +1142,6 @@ a:any-link:hover {
 }
 
 /*
- * A sub page's heading: a square back control, then the title with its detail. The control is
- * a link to a page or a quiet button for a step inside one; both get the same target.
- */
-.back-header {
-	align-items: center;
-	gap: var(--cc-space-3);
-}
-
-.back-header > [data-action="back"] {
-	display: grid;
-	place-items: center;
-	flex: none;
-	align-self: center;
-	inline-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
-	block-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
-	padding: 0;
-	color: var(--cc-text);
-	background: var(--cc-surface-sunken);
-	border: var(--cc-border-width) solid var(--cc-border);
-	border-radius: var(--cc-radius-sm);
-}
-
-.back-header .icon {
-	inline-size: var(--cc-icon-size);
-	block-size: var(--cc-icon-size);
-}
-
-.back-header h1 {
-	display: grid;
-	min-width: 0;
-	line-height: 1.25;
-}
-
-/*
  * A sub page's compact heading (prototype `subHead`): a slim bar that sticks under the app
  * header as the page scrolls -- back, the title over its muted line, actions at the end. It sits
  * in the page's top padding, flush under the header, and tucks a rule's width under the header
@@ -1194,6 +1160,7 @@ a:any-link:hover {
 	flex-direction: row;
 	align-items: center;
 	gap: var(--cc-space-3);
+	min-block-size: var(--cc-sub-header-height);
 	margin-block-start: calc(var(--cc-space-5) * -1);
 	padding-block: var(--cc-space-2);
 	border-image:
@@ -1214,6 +1181,14 @@ a:any-link:hover {
 	color: var(--cc-text);
 	background: var(--cc-surface-sunken);
 	border-radius: var(--cc-radius-sm);
+}
+
+/* A step inside one page (the review's back to the amounts, the payment page's back) is a
+   button: it keeps the link's square, not a button's padding and border. */
+.page .sub-header > button[data-action="back"] {
+	align-self: center;
+	padding: 0;
+	border-color: transparent;
 }
 
 .sub-header .icon {
@@ -1276,7 +1251,7 @@ a:any-link:hover {
  * The purchase list's views (review, saved; amounts and reply draw the same in their shadow
  * roots, from `listLayout`). On a phone the side panel's pieces flow into the one column
  * (`display: contents`), a `data-place="start"` piece above the lines and the rest below. From
- * 900px the panel parks beside the lines, sticky under the header.
+ * 900px the panel parks beside the lines, sticky under the sub-header.
  */
 .list-layout {
 	gap: var(--cc-space-5);
@@ -1304,7 +1279,11 @@ a:any-link:hover {
 
 	.list-layout__side {
 		position: sticky;
-		top: calc(var(--cc-header-height) + var(--cc-space-4));
+		top: calc(
+			var(--cc-header-height) +
+			var(--cc-sub-header-height) +
+			var(--cc-space-4)
+		);
 		display: flex;
 		flex-direction: column;
 		gap: var(--cc-space-3);
@@ -1494,17 +1473,13 @@ a:any-link:hover {
 }
 
 /*
- * The card page (prototype `vCard`): one narrow column -- the back header with *Edit*, badges,
+ * The card page (prototype `vCard`): one narrow column -- the sub-header with *Edit*, badges,
  * the hero and stats (cc-card-hero), the comment, the two actions side by side, then the
  * statements and *Show older statements*.
  */
 .card-page {
 	max-width: var(--cc-page-narrow);
 	gap: var(--cc-space-4);
-}
-
-.back-header > .back-header__action {
-	margin-inline-start: auto;
 }
 
 .card-page a.btn {

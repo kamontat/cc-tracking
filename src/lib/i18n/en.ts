@@ -547,6 +547,8 @@ export const en = {
 	"purchaseList.new": "New purchase list",
 	"purchaseList.draft": "Draft list",
 	"purchaseList.reviewTitle": "Review list",
+	"purchaseList.subtitle.one": "{date} · 1 card",
+	"purchaseList.subtitle.many": "{date} · {count} cards",
 	"purchaseList.saveImage": "Save image",
 	"purchaseList.copied": "Copied. Paste it into the chat with the spender.",
 	"purchaseList.imageSaved":
