@@ -454,13 +454,122 @@ test("the comment shows under the stats when set", async () => {
 	expect(again.querySelector(".card-comment")).toBeNull();
 });
 
-test("no purchase can be added here any more", async () => {
+const pooled = async (repo: InMemoryRepository, limit = 500_000) => {
+	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit });
+	await repo.saveCard({ ...card, limitGroupId: "pool" });
+};
+
+const openAddSheet = async (root: HTMLElement) => {
+	root.querySelector<HTMLElement>('[data-action="add-purchase"]')?.click();
+	await settle();
+	const sheet = root.querySelector<CcPurchaseSheet>("cc-purchase-sheet");
+	if (!sheet) throw new Error("the add sheet did not open");
+	await sheet.updateComplete;
+	return sheet;
+};
+
+test("the actions read Use on a list, Add purchase, Make a payment", async () => {
+	const repo = new InMemoryRepository();
+	await pooled(repo);
+	const root = await open(repo);
+	const actions = [
+		...(root.querySelectorAll<HTMLElement>(".card-actions [data-action]") ??
+			[]),
+	];
+	expect(actions.map((el) => el.dataset["action"])).toEqual([
+		"use-on-list",
+		"add-purchase",
+		"pay",
+	]);
+	expect(actions.map((el) => text(el))).toEqual([
+		"Use on a list",
+		"Add purchase",
+		"Make a payment",
+	]);
+});
+
+test("a card that can't take a purchase shows the note instead of Add purchase", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(card);
 	const root = await open(repo);
 	expect(root.querySelector('[data-action="add-purchase"]')).toBeNull();
-	expect(root.querySelector("cc-quick-add")).toBeNull();
-	expect(root.querySelector("cc-modal")).toBeNull();
+	expect(text(root.querySelector(".card-actions .note"))).toBe(NO_GROUP_NOTE);
+});
+
+test("Add purchase opens a blank sheet on this card; a save stores it, stays and reloads", async () => {
+	const repo = new InMemoryRepository();
+	await pooled(repo);
+	const root = await open(repo);
+	const sheet = await openAddSheet(root);
+	expect(sheet.purchase).toBeNull();
+	expect(sheet.card?.id).toBe("kbank");
+	await setField(sheet, "amount", "100");
+	await setField(sheet, "note", "stamps");
+	await submitSheet(sheet);
+
+	expect(root.querySelector("cc-purchase-sheet")).toBeNull();
+	expect(visited).toEqual([]);
+	const stored = await repo.listPurchases("kbank");
+	expect(stored).toHaveLength(1);
+	expect(stored[0]).toMatchObject({
+		cardId: "kbank",
+		date: today(),
+		amount: 10_000,
+		note: "stamps",
+	});
+	expect(stored[0]?.addedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+	// Within the room, nothing more is said.
+	expect(root.querySelector("[data-over-room]")).toBeNull();
+	// The page reloaded: the hero counts the new purchase.
+	expect(
+		root.querySelector<HTMLElement & { owed: number }>("cc-card-hero")?.owed,
+	).toBe(10_000);
+});
+
+test("a purchase over the room is saved, and the page says by how much over which group", async () => {
+	const repo = new InMemoryRepository();
+	await pooled(repo, 50_000);
+	const root = await open(repo);
+	const sheet = await openAddSheet(root);
+	await setField(sheet, "amount", "600");
+	await submitSheet(sheet);
+
+	expect(await repo.listPurchases("kbank")).toHaveLength(1);
+	expect(text(root.querySelector("[data-over-room]"))).toBe(
+		"Saved. It went ฿100.00 over the room of Pool.",
+	);
+	// Opening the sheet again clears it.
+	await openAddSheet(root);
+	expect(root.querySelector("[data-over-room]")).toBeNull();
+});
+
+test("an over-room note handed over by the purchase page shows on arrival", async () => {
+	const repo = new InMemoryRepository();
+	await pooled(repo);
+	const root = mount();
+	renderCardPage(repo, "kbank", root, { overRoom: 12_345 });
+	await settle();
+	expect(text(root.querySelector("[data-over-room]"))).toBe(
+		"Saved. It went ฿123.45 over the room of Pool.",
+	);
+});
+
+test("a failed add keeps the sheet, the typing and the reason", async () => {
+	const repo = new RejectingPurchaseRepository();
+	await pooled(repo);
+	const root = await open(repo);
+	const sheet = await openAddSheet(root);
+	await setField(sheet, "amount", "100");
+	await submitSheet(sheet);
+	const still = root.querySelector<CcPurchaseSheet>("cc-purchase-sheet");
+	expect(still).not.toBeNull();
+	await still?.updateComplete;
+	expect(still?.error).toContain("Could not save the purchase.");
+	expect(
+		still?.shadowRoot?.querySelector<HTMLInputElement>('input[name="amount"]')
+			?.value,
+	).toBe("100");
+	expect(bannerMessage(root)).toBe("");
 });
 
 test("an unknown card id shows a message instead of a blank page", async () => {

@@ -4,6 +4,7 @@ export const en = {
 	"nav.transactions": "Transactions",
 	"fab.new": "New",
 	"fab.newList": "New purchase list",
+	"fab.addPurchase": "Add purchase",
 	"fab.pay": "Make a payment",
 	"nav.pages": "Pages",
 	"nav.cards": "Cards",
@@ -27,6 +28,14 @@ export const en = {
 	"title.listReply": "Spender's reply — cc-tracking",
 	"title.listView": "Saved list — cc-tracking",
 	"title.pay": "Make a payment — cc-tracking",
+	"title.purchase": "Add purchase — cc-tracking",
+	"purchase.title": "Add purchase",
+	"purchase.pickHint":
+		"Which card was it bought on? Cards that can take a purchase, by place.",
+	"purchase.missing":
+		"That card isn't here any more, or can't take a purchase.",
+	"purchase.error.save": "Could not save the purchase.",
+	"purchase.error.read": "Could not read your cards.",
 	"pay.title": "Make a payment",
 	"pay.pickHint":
 		"Which card is it for? Overdue and soon-due cards come first.",
@@ -278,6 +287,10 @@ export const en = {
 	"card.statements": "Statements",
 	"card.subtitle": "{id} · Kept in {location}",
 	"card.purchase.edit": "Edit purchase",
+	"card.purchase.add": "Add purchase",
+	"card.purchase.saveNew": "Save purchase",
+	"card.overRoom": "Saved. It went {over} over the room of {group}.",
+	"card.error.addPurchase": "Could not save the purchase.",
 	"card.purchase.editOne": "Edit the {amount} purchase of {date}",
 	"card.purchase.deleteOne": "Delete the {amount} purchase of {date}",
 	"card.purchase.deleteAsk": "Delete {amount}?",

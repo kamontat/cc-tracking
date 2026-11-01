@@ -174,3 +174,68 @@ test("closing the modal asks the page to close", async () => {
 	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
 	expect(closed).toBe(1);
 });
+
+const NOW = new Date("2026-10-30T05:00:00.000Z");
+
+test("with no purchase the sheet adds one: headed Add purchase, blank, dated today", async () => {
+	const { root } = await mount({ purchase: null });
+	expect(root.querySelector("cc-modal")?.getAttribute("heading")).toBe(
+		"Add purchase",
+	);
+	expect(text(root.querySelector('[data-field="card"] .card-label'))).toBe(
+		"kb) KBank Visa",
+	);
+	expect(input(root, "date")?.value).toBe("2026-10-30");
+	expect(input(root, "amount")?.value).toBe("");
+	expect(input(root, "note")?.value).toBe("");
+	expect(text(root.querySelector('button[type="submit"]'))).toBe(
+		"Save purchase",
+	);
+});
+
+test("adding hands back a new purchase on the card, stamped addedAt now", async () => {
+	const { element } = await mount({ purchase: null, now: () => NOW });
+	const got = saved(element);
+	await type(element, "amount", "250");
+	await type(element, "note", " lunch ");
+	await submit(element);
+	expect(got).toHaveLength(1);
+	expect(got[0]).toMatchObject({
+		cardId: "kb",
+		date: "2026-10-30",
+		amount: 250_00,
+		note: "lunch",
+		addedAt: NOW.toISOString(),
+	});
+	expect(got[0]?.id).toMatch(/\S/);
+});
+
+test("a retried add keeps the id made when the sheet opened, and the typing", async () => {
+	const { element, root } = await mount({ purchase: null, now: () => NOW });
+	const got = saved(element);
+	await type(element, "amount", "250");
+	await submit(element);
+	element.error = "Could not save. disk is full";
+	element.groups = [{ ...group }];
+	await element.updateComplete;
+	expect(input(root, "amount")?.value).toBe("250");
+	await submit(element);
+	expect(got).toHaveLength(2);
+	expect(got[1]?.id).toBe(got[0]?.id ?? "");
+});
+
+test("adding warns about a future date or the close day, without refusing", async () => {
+	const { element, root } = await mount({ purchase: null });
+	const got = saved(element);
+	await type(element, "amount", "10");
+	await type(element, "date", "2026-10-18");
+	expect(root.querySelector('[data-testid="close-date-warning"]')).not.toBe(
+		null,
+	);
+	await type(element, "date", "2026-11-02");
+	expect(root.querySelector('[data-testid="future-date-warning"]')).not.toBe(
+		null,
+	);
+	await submit(element);
+	expect(got).toHaveLength(1);
+});

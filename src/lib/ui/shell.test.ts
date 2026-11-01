@@ -32,6 +32,7 @@ test("current tab per path", () => {
 	expect(currentTab("/card/edit")).toBe("cards");
 	expect(currentTab("/card/nope")).toBeNull();
 	expect(currentTab("/pay")).toBe("transactions");
+	expect(currentTab("/purchase")).toBe("transactions");
 	expect(currentTab("/settings")).toBe("settings");
 	expect(currentTab("/cards/")).toBe("cards");
 	expect(currentTab("/settings/")).toBe("settings");
@@ -134,7 +135,7 @@ test("one floating + New menu, outside both navs", async () => {
 		[...(menu?.querySelectorAll("a.fab-menu__item") ?? [])].map((a) =>
 			a.getAttribute("href"),
 		),
-	).toEqual(["/list/new", "/pay"]);
+	).toEqual(["/list/new", "/purchase", "/pay"]);
 	expect(menu?.closest("nav")).toBeNull();
 	expect(menu?.closest("#site-header")).toBeNull();
 });

@@ -5,13 +5,14 @@ import { t } from "#lib/i18n/index";
 import { icons } from "#lib/ui/icons";
 import { afterExit } from "#lib/ui/motion";
 import { payAddress } from "#lib/ui/pay-address";
+import { purchaseAddress } from "#lib/ui/purchase-address";
 
 const MENU_ID = "fab-menu";
 
 /**
  * The floating *+ New* button (DD-104): a speed dial over every page but the list pages and
- * the payment page. Tapping it opens a small menu above it with the two ways to start -- a new
- * purchase list and a payment -- and moves focus to the first. Escape, a tap outside or the
+ * the payment and purchase pages. Tapping it opens a small menu above it with the three ways to
+ * start -- a new purchase list, a purchase, a payment -- and moves focus to the first. Escape, a tap outside or the
  * button again close it; Escape and the button hand focus back. The menu slides in and out
  * (none of it under prefers-reduced-motion) and hides only once its exit has played.
  *
@@ -99,6 +100,9 @@ export class CcFabMenu extends LitElement {
 			<div class="fab-menu__list" id=${MENU_ID} ?hidden=${!this.open}>
 				<a class="fab-menu__item" data-action="new-list" href="/list/new"
 					>${icons.list}<span>${t("fab.newList")}</span></a
+				>
+				<a class="fab-menu__item" data-action="add-purchase" href=${purchaseAddress()}
+					>${icons.cards}<span>${t("fab.addPurchase")}</span></a
 				>
 				<a class="fab-menu__item" data-action="pay" href=${payAddress()}
 					>${icons.wallet}<span>${t("fab.pay")}</span></a

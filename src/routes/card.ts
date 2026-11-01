@@ -13,6 +13,7 @@ import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { compareDates, today } from "#lib/domain/date";
 import { roomFor } from "#lib/domain/home";
 import { nextBill } from "#lib/domain/ledger";
+import { formatAmount } from "#lib/domain/money";
 import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import { openPeriod, recentPeriods } from "#lib/domain/statement";
 import type { Card, LedgerStatement, Purchase } from "#lib/domain/types";
@@ -33,6 +34,11 @@ const PAGE_SIZE = 12;
 export type CardPageOptions = {
 	/** Leaves after a delete; `location.replace`, so Back does not reopen a card that is gone. */
 	navigate?: (url: string) => void;
+	/**
+	 * Satang a purchase just added on `/purchase` went over the group's room: the page opens
+	 * saying so (FR-19, DR-11).
+	 */
+	overRoom?: number;
 };
 
 /**
@@ -52,7 +58,9 @@ async function canDelete(repo: Repository, id: string): Promise<boolean> {
  * The card page (prototype `vCard`): a compact sub-header -- the card's title, its id and where
  * it is kept, *Edit*, and a *More* menu with *Archive card* / *Unarchive card* and, while the
  * card can go, *Delete card* (asking twice; a delete lands on Cards) -- then the hero and stats,
- * *Use on a list* or why the card can't take one, *Make a payment*, and the statements, each
+ * *Use on a list* and *Add purchase* (the purchase sheet over the page, staying on it after a
+ * save, and saying by how much a purchase went over the room) or why the card can't take one,
+ * *Make a payment*, and the statements, each
  * unfolding to its purchases to fix (*Edit* in a sheet, *Delete* asking twice) and the payments
  * that settled it. Exported for tests.
  */
@@ -72,6 +80,10 @@ export function renderCardPage(
 	let shown = PAGE_SIZE;
 	// The purchase open in the sheet, by id, so a reload hands the sheet its fresh copy.
 	let editingId: string | null = null;
+	// The add sheet is open (*Add purchase*).
+	let adding = false;
+	// Satang the last added purchase went over the room, said once under the hero (DR-11).
+	let overRoom = options.overRoom ?? 0;
 	let busy = false;
 	// Whether *Delete card* is offered: no purchases, on no open list.
 	let deletable = false;
@@ -139,31 +151,50 @@ export function renderCardPage(
 	const onEdit = (event: CustomEvent<{ purchase: Purchase }>) => {
 		editingId = event.detail.purchase.id;
 		sheetFailed = false;
+		overRoom = 0;
+		paint();
+	};
+
+	const onAdd = () => {
+		adding = true;
+		sheetFailed = false;
+		overRoom = 0;
 		paint();
 	};
 
 	const closeSheet = () => {
 		if (busy) return;
 		editingId = null;
+		adding = false;
 		sheetFailed = false;
 		state.clear();
 		paint();
 	};
 
 	// Closes the sheet only once the purchase is stored; a failure keeps it, with the reason.
+	// A new purchase over the room is saved all the same, and the page then says by how much
+	// (FR-19); an edit never does, since the room already counts the old amount (DR-11).
 	const onSave = async (event: CustomEvent<Purchase>) => {
 		if (busy) return;
 		busy = true;
 		sheetFailed = false;
 		paint();
+		const room = adding && card && data ? roomFor(card, data) : null;
+		const over = room ? event.detail.amount - room.room : 0;
 		let done = false;
-		await state.guard(async () => {
-			await repo.savePurchase(event.detail);
-			done = true;
-		}, "card.error.editPurchase");
+		await state.guard(
+			async () => {
+				await repo.savePurchase(event.detail);
+				done = true;
+			},
+			adding ? "card.error.addPurchase" : "card.error.editPurchase",
+		);
 		busy = false;
-		if (done) editingId = null;
-		else sheetFailed = true;
+		if (done) {
+			editingId = null;
+			adding = false;
+			overRoom = Math.max(0, over);
+		} else sheetFailed = true;
 		paint();
 	};
 
@@ -238,7 +269,9 @@ export function renderCardPage(
 				reason
 					? html`<p class="note">${reason}</p>`
 					: html`<a class="btn" data-action="use-on-list"
-							href=${newListAddress([current.id])}>${t("card.useOnList")}</a>`
+							href=${newListAddress([current.id])}>${t("card.useOnList")}</a>
+						<button type="button" data-variant="quiet" data-action="add-purchase"
+							@click=${onAdd}>${t("card.purchase.add")}</button>`
 			}
 			<a class="btn" data-variant="quiet" data-action="pay"
 				href=${payAddress({ cardId: current.id, amount: next?.remaining ?? 0 })}
@@ -250,11 +283,11 @@ export function renderCardPage(
 		const editing = editingId
 			? purchases.find((entry) => entry.id === editingId)
 			: undefined;
-		if (!editing) return nothing;
+		if (!editing && !adding) return nothing;
 		return html`<cc-purchase-sheet
 			.card=${current}
 			.groups=${data?.groups ?? []}
-			.purchase=${editing}
+			.purchase=${editing ?? null}
 			.today=${now}
 			.error=${sheetFailed ? state.error : ""}
 			.busy=${busy}
@@ -279,6 +312,16 @@ export function renderCardPage(
 							@menu-select=${onMenu}></cc-more-menu>`,
 				})
 			: subHeader({ title: t("cards.title"), back: "/cards" });
+
+	/** After a purchase went over the room: by how much, over which group (FR-19). */
+	const overNote = (current: Card) => {
+		const group = data?.groups.find((g) => g.id === current.limitGroupId);
+		if (overRoom <= 0 || !group) return nothing;
+		return html`<p class="card-over" role="status" data-over-room>${t(
+			"card.overRoom",
+			{ over: formatAmount(overRoom), group: group.name },
+		)}</p>`;
+	};
 
 	const page = (current: Card) => {
 		const ledger = data?.ledgers.get(current.id);
@@ -306,6 +349,7 @@ export function renderCardPage(
 				.today=${now}
 			></cc-card-hero>
 			${current.comment ? html`<p class="card-comment">${current.comment}</p>` : nothing}
+			${overNote(current)}
 			${actions(current, next)}
 			<section class="card-statements">
 				<h2>${t("card.statements")}</h2>
@@ -341,6 +385,15 @@ export function renderCardPage(
 bootstrap("title.card", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (!root) return;
-	const cardId = new URLSearchParams(location.search).get("id");
-	renderCardPage(repo, cardId, root);
+	const params = new URLSearchParams(location.search);
+	const cardId = params.get("id");
+	// `over` comes from `/purchase` once; it leaves the address so a reload does not repeat it.
+	const over = Number(params.get("over"));
+	if (params.has("over")) {
+		params.delete("over");
+		history.replaceState(null, "", `${location.pathname}?${params}`);
+	}
+	renderCardPage(repo, cardId, root, {
+		...(Number.isSafeInteger(over) && over > 0 ? { overRoom: over } : {}),
+	});
 });

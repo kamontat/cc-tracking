@@ -349,9 +349,10 @@ a:any-link:hover {
 	}
 }
 
-/* + New steps aside on the payment page and on the purchase list pages (the new-list picker
+/* + New steps aside on the payment and purchase pages and on the purchase list pages (the new-list picker
    among them), where the reader is mid-task and a bottom bar needs the full width, and on the
    card form, where it would sit over the form's buttons on a phone. */
+:root[data-purchase-page] .fab-menu,
 :root[data-pay-page] .fab-menu,
 :root[data-list-page] .fab-menu,
 :root[data-form-page] .fab-menu {
@@ -1554,13 +1555,39 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
+/* On a phone *Use on a list* (or the note) takes the first row and the other two share the
+   second; from 640px all three sit in one row, the note in the first two's place. */
 .card-actions {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--cc-space-3);
 }
 
-.card-actions a.btn {
+.card-actions > :first-child,
+.card-actions > :last-child:nth-child(2) {
+	grid-column: 1 / -1;
+}
+
+@media (min-width: 640px) {
+	.card-actions {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.card-actions > :first-child {
+		grid-column: auto;
+	}
+
+	.card-actions > .note:first-child {
+		grid-column: span 2;
+	}
+
+	.card-actions > :last-child:nth-child(2) {
+		grid-column: auto;
+	}
+}
+
+.card-actions a.btn,
+.card-actions button {
 	padding: var(--cc-space-3) var(--cc-space-4);
 	font-size: var(--cc-text-md);
 	border-radius: var(--cc-radius-md);
@@ -1571,6 +1598,15 @@ a:any-link:hover {
 	font-size: var(--cc-text-sm);
 	line-height: 1.5;
 	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-md);
+}
+
+/* Said once after a purchase went over the room (FR-19). */
+.card-over {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	color: var(--cc-warning);
+	background: var(--cc-warning-surface);
 	border-radius: var(--cc-radius-md);
 }
 

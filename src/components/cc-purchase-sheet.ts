@@ -13,10 +13,13 @@ import { cardPanel } from "#lib/ui/card-label";
 import { base, cardBits, controls } from "#styles/shared";
 
 /**
- * One saved purchase in a sheet over the card page: the card fixed and named (FR-21), then its
- * date, amount and note, and *Save changes*. A date ahead of today or on the close day is warned
- * about, not refused. Emits `save-purchase` with the purchase -- its id, card and `addedAt`
- * kept -- and `close`. `error` says why a save failed; what was typed stays (UI-11).
+ * A purchase in a sheet, the card fixed and named (FR-21), then its date, amount and note.
+ * Given a saved `purchase` it edits it, with *Save changes*, keeping its id, card and
+ * `addedAt`. With none it adds one, with *Save purchase*: dated today, blank otherwise, its id
+ * made once when the sheet opens -- so a failed save retried writes the same record -- and
+ * stamped `addedAt` now (DR-15). A date ahead of today or on the close day is warned about,
+ * not refused (FR-20). Emits `save-purchase` with the purchase, and `close`. `error` says why
+ * a save failed; what was typed stays (UI-11).
  */
 @customElement("cc-purchase-sheet")
 export class CcPurchaseSheet extends LitElement {
@@ -92,7 +95,10 @@ export class CcPurchaseSheet extends LitElement {
 	@property({ attribute: false }) card: Card | null = null;
 	/** Every stored group, for the card chip's pastel. */
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** The purchase to edit; none adds a new one. */
 	@property({ attribute: false }) purchase: Purchase | null = null;
+	/** The clock a new purchase's `addedAt` is read from. */
+	@property({ attribute: false }) now: () => Date = () => new Date();
 	@property() today: PlainDate = "";
 	/** Why the last save failed; typing is kept. */
 	@property() error = "";
@@ -106,6 +112,8 @@ export class CcPurchaseSheet extends LitElement {
 	@state() private errorKey: MessageKey | "" = "";
 	/** The purchase id the fields were last filled from; unset before the first fill. */
 	private filledFor: string | undefined = undefined;
+	/** A new purchase's id, made when the add sheet opens on a card. */
+	private newId = "";
 
 	constructor() {
 		super();
@@ -117,9 +125,21 @@ export class CcPurchaseSheet extends LitElement {
 	 * the same purchase -- a reload after a failed save -- keeps what was typed.
 	 */
 	protected override willUpdate(changed: PropertyValues<this>) {
-		if (!changed.has("purchase")) return;
+		if (!changed.has("purchase") && !changed.has("card")) return;
 		const purchase = this.purchase;
-		if (!purchase || purchase.id === this.filledFor) return;
+		if (!purchase) {
+			// Adding: a fresh, blank purchase each time the sheet turns to another card.
+			const key = this.card ? `new:${this.card.id}` : undefined;
+			if (!key || key === this.filledFor) return;
+			this.filledFor = key;
+			this.newId = crypto.randomUUID();
+			this.date = this.today;
+			this.amount = "";
+			this.note = "";
+			this.errorKey = "";
+			return;
+		}
+		if (purchase.id === this.filledFor) return;
 		this.filledFor = purchase.id;
 		this.date = purchase.date;
 		this.amount = formatAmountInput(purchase.amount);
@@ -141,8 +161,10 @@ export class CcPurchaseSheet extends LitElement {
 
 	private onSubmit(event: Event) {
 		event.preventDefault();
+		if (this.busy) return;
 		const purchase = this.purchase;
-		if (this.busy || !purchase) return;
+		const card = this.card;
+		if (!purchase && !card) return;
 		const date = this.date.trim();
 		if (!isValidDate(date)) {
 			this.errorKey = "quickAdd.error.badDate";
@@ -154,18 +176,25 @@ export class CcPurchaseSheet extends LitElement {
 			return;
 		}
 		this.errorKey = "";
-		this.dispatchEvent(
-			new CustomEvent<Purchase>("save-purchase", {
-				detail: {
+		const note = this.note.trim();
+		const detail: Purchase = purchase
+			? {
 					id: purchase.id,
 					cardId: purchase.cardId,
 					date,
 					amount,
-					note: this.note.trim(),
+					note,
 					...(purchase.addedAt ? { addedAt: purchase.addedAt } : {}),
-				},
-			}),
-		);
+				}
+			: {
+					id: this.newId,
+					cardId: card?.id ?? "",
+					date,
+					amount,
+					note,
+					addedAt: this.now().toISOString(),
+				};
+		this.dispatchEvent(new CustomEvent<Purchase>("save-purchase", { detail }));
 	}
 
 	private field(
@@ -186,8 +215,9 @@ export class CcPurchaseSheet extends LitElement {
 
 	override render() {
 		const card = this.card;
+		const adding = this.purchase === null;
 		return html`<cc-modal sheet .held=${this.busy}
-			heading=${t("card.purchase.edit")}
+			heading=${t(adding ? "card.purchase.add" : "card.purchase.edit")}
 			@close=${(event: Event) => {
 				event.stopPropagation();
 				this.dispatchEvent(new CustomEvent("close"));
@@ -223,7 +253,7 @@ export class CcPurchaseSheet extends LitElement {
 						? html`<p class="warning" data-testid="close-date-warning">${t("quickAdd.closeDateWarning")}</p>`
 						: nothing
 				}
-				<button type="submit" ?disabled=${this.busy}>${t("quickAdd.save")}</button>
+				<button type="submit" ?disabled=${this.busy}>${t(adding ? "card.purchase.saveNew" : "quickAdd.save")}</button>
 			</form>
 		</cc-modal>`;
 	}
