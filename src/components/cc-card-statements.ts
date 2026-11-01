@@ -137,7 +137,8 @@ export class CcCardStatements extends LitElement {
 				display: grid;
 				grid-template-columns: auto minmax(0, 1fr) auto auto;
 				gap: 0 var(--cc-space-3);
-				padding: 0 0 var(--cc-space-3);
+				/* A gap above the items, so the head's hover tint never runs into them. */
+				padding: var(--cc-space-2) 0 var(--cc-space-3);
 				margin: 0;
 				text-align: start;
 				list-style: none;
