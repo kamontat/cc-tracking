@@ -97,16 +97,20 @@ test("Escape closes it and hands focus back to ⋯", async () => {
 	expect(focused(element)).toBe(toggle);
 });
 
-test("a click outside closes it; a click inside does not", async () => {
+test("a click outside closes it, leaving focus to what was clicked; a click inside does not", async () => {
 	const { element, root, toggle } = await mount();
 	await openMenu(element, toggle);
 	list(root)?.click();
 	await element.updateComplete;
 	expect(list(root)?.hidden).toBe(false);
-	document.querySelector<HTMLElement>("#outside")?.click();
+	const outside = document.querySelector<HTMLButtonElement>("#outside");
+	outside?.focus();
+	outside?.click();
 	await element.updateComplete;
 	expect(list(root)?.hidden).toBe(true);
-	expect(focused(element)).toBe(toggle);
+	expect(toggle.getAttribute("aria-expanded")).toBe("false");
+	expect(focused(element)).not.toBe(toggle);
+	expect(document.activeElement).toBe(outside);
 });
 
 test("an item with a question asks twice: Delete and Keep, focus following", async () => {

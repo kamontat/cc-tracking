@@ -16,8 +16,8 @@ const MENU_ID = "more-menu";
 
 /**
  * A *More* (`⋯`) button that opens a small list of buttons under it (prototype `subHead`'s
- * actions). Opening focuses the first; Escape or a click outside closes it and hands focus back
- * to `⋯`. An item with `ask` swaps the list for the question with *Delete* (danger) and *Keep*
+ * actions). Opening focuses the first; Escape or a click outside closes it. Escape and a choice
+ * hand focus back to `⋯`; a click outside leaves it with what was clicked. An item with `ask` swaps the list for the question with *Delete* (danger) and *Keep*
  * (UI-09), focus following each swap. Emits `menu-select` with `{ action }` and closes.
  */
 @customElement("cc-more-menu")
@@ -95,7 +95,7 @@ export class CcMoreMenu extends LitElement {
 	private refocus: string | null = null;
 
 	private readonly onDocumentClick = (event: Event) => {
-		if (this.open && !event.composedPath().includes(this)) this.close();
+		if (this.open && !event.composedPath().includes(this)) this.close(false);
 	};
 
 	constructor() {
@@ -129,11 +129,14 @@ export class CcMoreMenu extends LitElement {
 		this.refocus = this.items[0]?.action ?? null;
 	}
 
-	/** Closes the list, forgets any question, and hands focus back to `⋯`. */
-	private close() {
+	/**
+	 * Closes the list and forgets any question. `refocus` hands focus back to `⋯` (Escape, a
+	 * choice); a click outside leaves it with whatever was clicked.
+	 */
+	private close(refocus = true) {
 		this.open = false;
 		this.asking = null;
-		this.toggleButton?.focus();
+		if (refocus) this.toggleButton?.focus();
 	}
 
 	private pick(item: MoreItem) {

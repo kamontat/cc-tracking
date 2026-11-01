@@ -130,23 +130,43 @@ export class CcCardStatements extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
+			/* One grid for the whole list -- date, note, amount, actions -- that each line takes
+			   up as a subgrid, so dates, notes and amounts line up from line to line, a payment
+			   line (which has no actions) included. */
 			.purchases {
-				display: flex;
-				flex-direction: column;
-				gap: 0;
+				display: grid;
+				grid-template-columns: auto minmax(0, 1fr) auto auto;
+				gap: 0 var(--cc-space-3);
 				padding: 0 0 var(--cc-space-3);
 				margin: 0;
+				text-align: start;
 				list-style: none;
 			}
 
 			.purchase {
 				display: grid;
-				grid-template-columns: auto minmax(0, 1fr) auto auto;
+				grid-column: 1 / -1;
+				grid-template-columns: subgrid;
 				align-items: center;
-				gap: var(--cc-space-1) var(--cc-space-3);
+				row-gap: var(--cc-space-1);
 				padding: var(--cc-space-2) var(--cc-space-3);
 				font-size: var(--cc-text-sm);
 				background: var(--cc-surface-sunken);
+			}
+
+			/* A payment line reads along one baseline -- date, *Payment*, amount -- with
+			   *(part of ฿X)* on its own line under *Payment*. */
+			.payment {
+				align-items: baseline;
+			}
+
+			.payment .pnote {
+				display: grid;
+				justify-items: start;
+			}
+
+			.payment .pamount {
+				grid-column: 3;
 			}
 
 			.purchase:first-child {
@@ -174,7 +194,9 @@ export class CcCardStatements extends LitElement {
 				overflow-wrap: anywhere;
 			}
 
+			/* Amounts share the list's column, flush right in it, so they line up. */
 			.pamount {
+				justify-self: end;
 				font-weight: 600;
 				white-space: nowrap;
 			}
@@ -184,6 +206,8 @@ export class CcCardStatements extends LitElement {
 			}
 
 			.ppart {
+				display: block;
+				white-space: nowrap;
 				font-size: var(--cc-text-xs);
 				color: var(--cc-text-muted);
 			}
@@ -208,7 +232,7 @@ export class CcCardStatements extends LitElement {
 
 			/* On a phone the buttons take their own line under the date, note and amount. */
 			@media (max-width: 639px) {
-				.purchase {
+				.purchases {
 					grid-template-columns: auto minmax(0, 1fr) auto;
 				}
 
@@ -444,7 +468,7 @@ export class CcCardStatements extends LitElement {
 		const { payment, amount } = line;
 		return html`<li class="purchase payment" data-payment=${payment.id}>
 			<span class="pdate">${displayDate(payment.date, locale)}</span>
-			<span class="pnote">${t("statements.payment")}${
+			<span class="pnote"><span>${t("statements.payment")}</span>${
 				amount < payment.amount
 					? html` <small class="ppart">${t("statements.partOf", {
 							total: formatAmount(payment.amount),
