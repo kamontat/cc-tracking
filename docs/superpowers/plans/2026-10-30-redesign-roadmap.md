@@ -122,17 +122,11 @@ so most of them moved to the phase that builds what needs them.
   - The cards filter's radio ring uses `calc(var(--cc-border-width) * 2)`; a token would
     be cleaner.
   - Thai `title.cards` and `title.card` are both "บัตร — cc-tracking".
-  - The back header uses the large page heading; the prototype has a compact sub-header.
-    (Taken for the card page and the edit page in the 2026-11-01 feedback round, DD-124; the
-    other sub-pages are listed below.)
   - The name sort uses `localeCompare` with no locale, so order can differ by browser.
   - A group whose id is `new` would collide with the blank-sheet address `?group=new` (ids are
     UUIDs, so only a restored or hand-made id could).
 - Small leftovers from the phase 5 feedback round (2026-11-01), each checked open at its last
   commit:
-  - The other sub-pages still use the big back header (`backHeader`): `/pay`, the
-    new-list picker and the list pages (enter amounts, draft, reply, saved list). Move them to
-    the compact sub-header (`subHeader`, DD-124).
   - The sticky sub-header's `top` uses `--cc-header-height` (3.25rem, 52px) while the app header
     measures 51px, so the bar sits 1px under the header (the header paints over it, so no gap
     shows). Tie the two to one measure.
