@@ -77,7 +77,8 @@ export function renderCardPage(
 	let editingId: string | null = null;
 	// The add sheet is open (*Add purchase*).
 	let adding = false;
-	// Satang the last added purchase went over the room, said once under the hero (DR-11).
+	// Satang the last added purchase went over the room, said once under the hero (DR-11),
+	// until the next write on the page (DD-126).
 	let overRoom = 0;
 	let busy = false;
 	// Whether *Delete card* is offered: no purchases, on no open list.
@@ -135,6 +136,7 @@ export function renderCardPage(
 
 	const onDelete = (event: CustomEvent<{ purchase: Purchase }>) => {
 		const { purchase } = event.detail;
+		overRoom = 0;
 		return state.guard(
 			() => repo.deletePurchase(purchase.cardId, purchase.id),
 			"card.error.deletePurchase",
@@ -196,6 +198,7 @@ export function renderCardPage(
 	/** Archives or unarchives the card in place; a failure says why in the banner. */
 	const toggleArchive = async (current: Card) => {
 		writing = true;
+		overRoom = 0;
 		paint();
 		await state.guard(
 			() => repo.saveCard({ ...current, archived: !current.archived }),
@@ -208,6 +211,7 @@ export function renderCardPage(
 	/** Deletes the card and leaves for Cards; a refusal stays, with storage's reason. */
 	const deleteCard = async (current: Card) => {
 		writing = true;
+		overRoom = 0;
 		paint();
 		try {
 			await repo.deleteCard(current.id);

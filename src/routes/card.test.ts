@@ -795,3 +795,75 @@ test("renders in the chosen language and re-renders on a switch", async () => {
 	expect(root.textContent).toContain("ดูใบแจ้งยอดเก่ากว่านี้");
 	expect(text(root.querySelector(".card-statements h2"))).toBe("ใบแจ้งยอด");
 });
+
+/** Opens the page on a pooled card and adds a purchase ฿100 over the room, so the note shows. */
+const overRoomShown = async (
+	repo: InMemoryRepository,
+	beforeSubmit?: () => Promise<void>,
+) => {
+	await pooled(repo, 50_000);
+	await repo.savePurchase(purchase);
+	const root = await open(repo);
+	const sheet = await openAddSheet(root);
+	await setField(sheet, "amount", "600");
+	await beforeSubmit?.();
+	await submitSheet(sheet);
+	expect(root.querySelector("[data-over-room]")).not.toBeNull();
+	return root;
+};
+
+test("the over-room note clears when the card is archived", async () => {
+	const repo = new InMemoryRepository();
+	const root = await overRoomShown(repo);
+	await pick(root, "archive");
+	expect((await repo.getCard("kbank"))?.archived).toBe(true);
+	expect(root.querySelector("[data-over-room]")).toBeNull();
+});
+
+test("the over-room note clears when the card is unarchived", async () => {
+	const repo = new InMemoryRepository();
+	// Archived elsewhere while the sheet was open, so the page reloads on an archived card.
+	const root = await overRoomShown(repo, async () => {
+		await repo.saveCard({ ...card, limitGroupId: "pool", archived: true });
+	});
+	expect(
+		text(menu(root).shadowRoot?.querySelector('[data-action="archive"]')),
+	).toBe("Unarchive card");
+	await pick(root, "archive");
+	expect((await repo.getCard("kbank"))?.archived).toBe(false);
+	expect(root.querySelector("[data-over-room]")).toBeNull();
+});
+
+test("the over-room note clears when a purchase is edited", async () => {
+	const repo = new InMemoryRepository();
+	const root = await overRoomShown(repo);
+	const sheet = await openSheet(root);
+	expect(root.querySelector("[data-over-room]")).toBeNull();
+	await setField(sheet, "note", "diesel");
+	await submitSheet(sheet);
+	expect((await repo.listPurchases("kbank")).map((p) => p.note)).toContain(
+		"diesel",
+	);
+	expect(root.querySelector("[data-over-room]")).toBeNull();
+});
+
+test("the over-room note clears when a purchase is deleted", async () => {
+	const repo = new InMemoryRepository();
+	const root = await overRoomShown(repo);
+	const shadow = await unfold(root, period);
+	shadow
+		.querySelector<HTMLButtonElement>(
+			'[data-purchase="a"] [data-action="delete-purchase"]',
+		)
+		?.click();
+	await settle();
+	shadow
+		.querySelector<HTMLButtonElement>('[data-action="confirm-delete"]')
+		?.click();
+	await settle();
+	await settle();
+	expect((await repo.listPurchases("kbank")).map((p) => p.id)).not.toContain(
+		"a",
+	);
+	expect(root.querySelector("[data-over-room]")).toBeNull();
+});
