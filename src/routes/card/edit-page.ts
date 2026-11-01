@@ -5,9 +5,9 @@ import type { Card, LimitGroup } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { backHeader } from "#lib/ui/back-header";
-import { cardLine } from "#lib/ui/card-label";
+import { cardTitle } from "#lib/ui/card-label";
 import { createPageState } from "#lib/ui/page-state";
+import { subHeader } from "#lib/ui/sub-header";
 
 export type CardEditOptions = {
 	/** The address's query; `location.search` unless a test passes its own. */
@@ -21,24 +21,12 @@ export const cardAddress = (id: string): string =>
 	`/card?id=${encodeURIComponent(id)}`;
 
 /**
- * Whether a card may be deleted: no purchases, and on no draft and no list waiting for the
- * spender. Storage refuses the rest anyway (`deleteCard`); this only hides the button.
- */
-async function canDelete(repo: Repository, id: string): Promise<boolean> {
-	if ((await repo.listPurchases(id)).length > 0) return false;
-	const lists = await repo.listPurchaseLists();
-	return !lists.some(
-		(list) =>
-			list.status !== "saved" && list.lines.some((line) => line.cardId === id),
-	);
-}
-
-/**
- * The full-screen card form: `/card/new` and `/card/edit?id=<id>` share it under a back header
- * (to Cards, or to the card's page). A save replaces the address with the card's page; a failed
- * one keeps the form and what was typed, with the reason. Editing adds *Archive card* /
- * *Unarchive card*, and *Delete card* (asking twice) while the card can go; a delete lands on
- * Cards. A new card's id must not be stored already.
+ * The full-screen card form: `/card/new` and `/card/edit?id=<id>` share it under the compact
+ * sub-header -- *New card* back to Cards, or the stored card's title (`name · holder (last4)`,
+ * steady while the form is typed in) over *Card id can't change*, back to its page. A save
+ * replaces the address with the card's page; a failed one keeps the form and what was typed,
+ * with the reason. A new card's id must not be stored already. Archive and Delete are on the
+ * card page's More menu.
  */
 export function renderCardEditPage(
 	repo: Repository,
@@ -54,7 +42,6 @@ export function renderCardEditPage(
 
 	let card: Card | null = null;
 	let groups: LimitGroup[] = [];
-	let deletable = false;
 	let loaded = false;
 	let busy = false;
 	// The last write failed: its reason shows in the form rather than the page's banner.
@@ -70,7 +57,6 @@ export function renderCardEditPage(
 			if (!cardId) throw new MessageError("card.error.noSelection");
 			card = await repo.getCard(cardId);
 			if (!card) throw new MessageError("card.error.notFound", { id: cardId });
-			deletable = await canDelete(repo, cardId);
 			loaded = true;
 		},
 		fallbackKey: "card.error.read",
@@ -115,30 +101,13 @@ export function renderCardEditPage(
 		);
 	};
 
-	const onArchive = (event: CustomEvent<{ card: Card }>) => {
-		const current = event.detail.card;
-		return write(
-			() => repo.saveCard({ ...current, archived: !current.archived }),
-			"cards.error.archive",
-			cardAddress(current.id),
-		);
-	};
-
-	const onDelete = (event: CustomEvent<{ card: Card }>) =>
-		write(
-			() => repo.deleteCard(event.detail.card.id),
-			"cards.error.delete",
-			"/cards",
-		);
-
 	const header = () => {
 		if (mode === "new")
-			return backHeader({ title: t("cards.page.add"), back: "/cards" });
-		if (!card) return backHeader({ title: t("cards.title"), back: "/cards" });
-		return backHeader({
-			title: t("cards.edit", {
-				name: cardLine(card.id, card, { short: true }),
-			}),
+			return subHeader({ title: t("cards.page.new"), back: "/cards" });
+		if (!card) return subHeader({ title: t("cards.title"), back: "/cards" });
+		return subHeader({
+			title: cardTitle(card, groups),
+			detail: t("form.idImmutable"),
 			back: cardAddress(card.id),
 		});
 	};
@@ -154,12 +123,9 @@ export function renderCardEditPage(
 						? html`<cc-card-form
 								.card=${card}
 								.groups=${groups}
-								.deletable=${deletable}
 								.busy=${busy}
 								.error=${writeFailed ? state.error : ""}
 								@save=${onSave}
-								@archive=${onArchive}
-								@delete-card=${onDelete}
 							></cc-card-form>`
 						: ""
 				}`,

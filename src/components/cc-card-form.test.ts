@@ -335,14 +335,15 @@ test("shows a four-digit example in the id field", async () => {
 	expect($<HTMLInputElement>(element, '[name="id"]')?.placeholder).toBe("0001");
 });
 
-test("shows the id of a saved card disabled, saying it can't change, and saves under it", async () => {
+test("shows the id of a saved card disabled, and saves under it", async () => {
 	const element = await mount(stored());
 	const saves = onSave(element);
 
 	const id = $<HTMLInputElement>(element, '[name="id"]');
 	expect(id?.disabled).toBe(true);
 	expect(id?.value).toBe("kbank");
-	expect(element.shadowRoot?.textContent).toContain("Card id can't change");
+	// The page's sub-header says the id can't change; the form does not repeat it.
+	expect(element.shadowRoot?.textContent).not.toContain("Card id can't change");
 
 	fill(element, "name", "Renamed");
 	await submit(element);
@@ -417,7 +418,7 @@ test("keeps what was typed when the page hands back a fresh copy of the same car
 });
 
 test("a new card has no archive, no delete and no cancel -- the back header leaves", async () => {
-	const element = await mount(null, groups, { deletable: true });
+	const element = await mount();
 	expect($(element, '[data-action="archive"]')).toBeNull();
 	expect($(element, '[data-action="delete-card"]')).toBeNull();
 	expect($(element, '[data-action="cancel"]')).toBeNull();
@@ -426,61 +427,56 @@ test("a new card has no archive, no delete and no cancel -- the back header leav
 	);
 });
 
-test("editing saves changes, and archives or unarchives as a quiet button", async () => {
+test("editing saves changes, with no Archive or Delete -- they live on the card page", async () => {
 	const element = await mount(stored());
 	expect($(element, 'button[type="submit"]')?.textContent?.trim()).toBe(
 		"Save changes",
 	);
-	const archive = $(element, '[data-action="archive"]');
-	expect(archive?.getAttribute("data-variant")).toBe("quiet");
-	expect(archive?.textContent?.trim()).toBe("Archive card");
-
-	const asked: Card[] = [];
-	element.addEventListener("archive", (event) =>
-		asked.push((event as CustomEvent<{ card: Card }>).detail.card),
-	);
-	await press(element, '[data-action="archive"]');
-	expect(asked.map((card) => card.id)).toEqual(["kbank"]);
-
-	element.card = stored({ archived: true });
-	await element.updateComplete;
-	expect($(element, '[data-action="archive"]')?.textContent?.trim()).toBe(
-		"Unarchive card",
-	);
-});
-
-test("offers Delete card only when the page says it can go", async () => {
-	const element = await mount(stored());
+	expect($(element, '[data-action="archive"]')).toBeNull();
 	expect($(element, '[data-action="delete-card"]')).toBeNull();
-	element.deletable = true;
-	await element.updateComplete;
-	expect(
-		$(element, '[data-action="delete-card"]')?.getAttribute("data-variant"),
-	).toBe("danger");
+	expect(element.shadowRoot?.textContent).not.toContain("Archive card");
+	expect(element.shadowRoot?.textContent).not.toContain("Delete card");
 });
 
-test("Delete card asks twice, focus following the swap, and Keep steps back", async () => {
-	const element = await mount(stored(), groups, { deletable: true });
-	const deleted: Card[] = [];
-	element.addEventListener("delete-card", (event) =>
-		deleted.push((event as CustomEvent<{ card: Card }>).detail.card),
-	);
-
-	await press(element, '[data-action="delete-card"]');
-	expect(element.shadowRoot?.textContent).toContain("Delete KBank Visa?");
-	expect(element.shadowRoot?.activeElement?.getAttribute("data-action")).toBe(
-		"confirm-delete",
-	);
-
-	await press(element, '[data-action="keep"]');
-	expect($(element, '[data-action="confirm-delete"]')).toBeNull();
-	expect(element.shadowRoot?.activeElement?.getAttribute("data-action")).toBe(
-		"delete-card",
-	);
-
-	await press(element, '[data-action="delete-card"]');
-	await press(element, '[data-action="confirm-delete"]');
-	expect(deleted.map((card) => card.id)).toEqual(["kbank"]);
+test("groups the fields in sections: Card, Where and who, Billing cycle, Comment, then Save", async () => {
+	const element = await mount(stored());
+	const sections = [
+		...(element.shadowRoot?.querySelectorAll("form > section") ?? []),
+	];
+	expect(
+		sections.map((section) => section.querySelector("h2")?.textContent?.trim()),
+	).toEqual(["Card", "Where and who", "Billing cycle", "Comment"]);
+	const names = (section: Element | undefined) =>
+		[
+			...(section?.querySelectorAll("[name], [data-location], [data-kind]") ??
+				[]),
+		].map(
+			(field) =>
+				field.getAttribute("name") ??
+				(field.hasAttribute("data-location") ? "location" : "kind"),
+		);
+	expect(names(sections[0])).toEqual(["name", "id", "last4"]);
+	expect([...new Set(names(sections[1]))]).toEqual([
+		"location",
+		"limitGroupId",
+		"holder",
+	]);
+	expect([...new Set(names(sections[2]))]).toEqual([
+		"kind",
+		"closeDay",
+		"dueOffsetDays",
+	]);
+	expect(names(sections[3])).toEqual(["comment"]);
+	// Each section is named by its heading.
+	for (const section of sections) {
+		const id = section.getAttribute("aria-labelledby");
+		expect(id && section.querySelector(`#${id}`)?.tagName).toBe("H2");
+	}
+	// Save closes the form, after the last section.
+	const form = $(element, "form");
+	expect(
+		form?.lastElementChild?.querySelector('button[type="submit"]'),
+	).not.toBeNull();
 });
 
 test("shows the page's reason a write failed, and holds the buttons while busy", async () => {

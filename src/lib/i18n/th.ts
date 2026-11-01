@@ -210,6 +210,7 @@ export const th: Catalog = {
 	"cards.page.noMatch": "ไม่มีบัตรที่ตรงกัน ล้างคำค้นหาหรือตัวกรองออก",
 	"cards.page.empty": "ยังไม่มีบัตร เพิ่มได้ที่ปุ่มเพิ่มบัตร",
 	"cards.page.add": "เพิ่มบัตร",
+	"cards.page.new": "บัตรใหม่",
 	"cards.group.add": "เพิ่มกลุ่ม",
 	"cards.group.roomOf": "{room} จาก {limit}",
 	"cards.group.full": "ใกล้เต็ม",
@@ -219,7 +220,6 @@ export const th: Catalog = {
 	"cards.group.keep": "เก็บไว้",
 
 	"cards.title": "บัตร",
-	"cards.edit": "แก้ไข {name}",
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
 	// backup.problem.*Cycle fragments below).
 	"cards.archived": "เก็บเข้าคลังแล้ว",
@@ -237,6 +237,8 @@ export const th: Catalog = {
 	"cards.error.deleteGroup": "ลบกลุ่มวงเงินไม่สำเร็จ",
 	"cards.error.duplicateId": 'มีบัตรรหัส "{id}" อยู่แล้ว รหัสบัตรต้องไม่ซ้ำกัน',
 
+	"form.section.card": "บัตร",
+	"form.section.where": "ที่เก็บและผู้ถือบัตร",
 	"form.id": "รหัสบัตร",
 	"form.idImmutable": "เปลี่ยนรหัสบัตรไม่ได้",
 	"form.idPlaceholder": "0001",

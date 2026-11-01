@@ -200,6 +200,7 @@ export const en = {
 	"cards.page.noMatch": "No card matches. Clear the search or a filter.",
 	"cards.page.empty": "No cards yet. Add one with Add card.",
 	"cards.page.add": "Add card",
+	"cards.page.new": "New card",
 	"cards.group.add": "Add group",
 	"cards.group.roomOf": "{room} of {limit}",
 	"cards.group.full": "getting full",
@@ -209,7 +210,6 @@ export const en = {
 	"cards.group.keep": "Keep",
 
 	"cards.title": "Cards",
-	"cards.edit": "Edit {name}",
 	"cards.archived": "Archived",
 	"cards.archivedList": "Archived ({count})",
 	"cards.page.noGroup": "No limit group",
@@ -226,6 +226,8 @@ export const en = {
 	"cards.error.duplicateId":
 		'A card with id "{id}" already exists. Card ids must be unique.',
 
+	"form.section.card": "Card",
+	"form.section.where": "Where and who",
 	"form.id": "Card id",
 	"form.idImmutable": "Card id can't change",
 	"form.idPlaceholder": "0001",

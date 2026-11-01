@@ -6,12 +6,9 @@ import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import {
 	bannerText,
-	draft,
 	flatText,
 	mount,
-	saved,
 	seed,
-	sent,
 	settle,
 } from "../list/test-support";
 import { renderCardEditPage } from "./edit-page";
@@ -53,14 +50,6 @@ const fill = async (root: HTMLElement, name: string, value: string) => {
 	await form(root)?.updateComplete;
 };
 
-const press = async (root: HTMLElement, action: string) => {
-	const button = inner(root, `[data-action="${action}"]`);
-	if (!button) throw new Error(`no ${action}`);
-	button.click();
-	await form(root)?.updateComplete;
-	await settle(5);
-};
-
 const submit = async (root: HTMLElement) => {
 	inner(root, "form")?.dispatchEvent(new Event("submit", { cancelable: true }));
 	await settle(5);
@@ -84,12 +73,13 @@ class FailingRepo extends InMemoryRepository {
 	}
 }
 
-test("/card/new: a back header to Cards over an empty form", async () => {
+test("/card/new: a compact sub-header to Cards, New card with no subtitle, over an empty form", async () => {
 	const { root } = await setup("new", "");
-	expect(flatText(root.querySelector(".back-header h1"))).toBe("Add card");
+	expect(flatText(root.querySelector(".sub-header__title"))).toBe("New card");
+	expect(root.querySelector(".sub-header__detail")).toBeNull();
 	expect(
 		root
-			.querySelector('.back-header [data-action="back"]')
+			.querySelector('.sub-header [data-action="back"]')
 			?.getAttribute("href"),
 	).toBe("/cards");
 	expect(form(root)?.card).toBeNull();
@@ -118,14 +108,28 @@ test("/card/new: an id already stored is refused, the typing kept", async () => 
 	);
 });
 
-test("/card/edit: the stored card in the form under a back header to its page", async () => {
+test("/card/edit: the title keeps the stored card's name while the form is typed in", async () => {
 	const { root } = await setup("edit", "?id=A");
-	expect(flatText(root.querySelector(".back-header h1"))).toBe(
-		"Edit A) A card",
+	await fill(root, "name", "Renamed");
+	await settle(5);
+	expect(flatText(root.querySelector(".sub-header__title"))).toBe(
+		"A card · KC (1234)",
+	);
+});
+
+test("/card/edit: the stored card in the form under a sub-header to its page", async () => {
+	const { root } = await setup("edit", "?id=A", (r) =>
+		r.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00, owner: "RI" }),
+	);
+	expect(flatText(root.querySelector(".sub-header__title"))).toBe(
+		"A card · RI (1234)",
+	);
+	expect(flatText(root.querySelector(".sub-header__detail"))).toBe(
+		"Card id can't change",
 	);
 	expect(
 		root
-			.querySelector('.back-header [data-action="back"]')
+			.querySelector('.sub-header [data-action="back"]')
 			?.getAttribute("href"),
 	).toBe("/card?id=A");
 	expect(form(root)?.card?.id).toBe("A");
@@ -177,71 +181,11 @@ test("/card/edit: a failed save never puts its reason in the page banner, not ev
 	expect(seen.filter((message) => message !== "")).toEqual([]);
 });
 
-test("/card/edit: Archive card archives the stored card and goes to its page", async () => {
-	const { root, repo, visited } = await setup("edit", "?id=A");
-	await press(root, "archive");
-	expect((await repo.getCard("A"))?.archived).toBe(true);
-	expect(visited).toEqual(["/card?id=A"]);
-});
-
-test("/card/edit: Unarchive card on an archived one", async () => {
-	const { root, repo } = await setup("edit", "?id=Z");
-	expect(flatText(inner(root, '[data-action="archive"]'))).toBe(
-		"Unarchive card",
-	);
-	await press(root, "archive");
-	expect((await repo.getCard("Z"))?.archived).toBe(false);
-});
-
-test("/card/edit: Delete card for a card with no purchases and on no open list, then Cards", async () => {
-	const { root, repo, visited } = await setup("edit", "?id=A", (r) =>
-		r.savePurchaseList(saved("old", ["A"])),
-	);
-	expect(form(root)?.deletable).toBe(true);
-	await press(root, "delete-card");
-	await press(root, "confirm-delete");
-	expect(await repo.getCard("A")).toBeNull();
-	expect(visited).toEqual(["/cards"]);
-});
-
-test("/card/edit: no Delete card while the card has a purchase", async () => {
-	const { root } = await setup("edit", "?id=A", (r) =>
-		r.savePurchase({
-			id: "p1",
-			cardId: "A",
-			date: "2026-10-01",
-			amount: 100,
-			note: "x",
-		}),
-	);
-	expect(form(root)?.deletable).toBe(false);
-});
-
-test("/card/edit: no Delete card while a draft or a sent list holds it", async () => {
-	for (const list of [draft("d", ["A"]), sent("s", ["A"])]) {
-		const { root } = await setup("edit", "?id=A", (r) =>
-			r.savePurchaseList(list),
-		);
-		expect(form(root)?.deletable).toBe(false);
-	}
-});
-
-test("/card/edit: a refused delete stays, with storage's reason", async () => {
-	const { root, repo, visited } = await setup("edit", "?id=A");
-	// Raced in after the page loaded: the button showed, storage still says no.
-	await repo.savePurchase({
-		id: "p1",
-		cardId: "A",
-		date: "2026-10-01",
-		amount: 100,
-		note: "x",
-	});
-	await press(root, "delete-card");
-	await press(root, "confirm-delete");
-	expect(visited).toEqual([]);
-	expect(await repo.getCard("A")).not.toBeNull();
-	expect(form(root)?.error).toContain("Could not delete the card.");
-	expect(form(root)?.deletable).toBe(false);
+test("/card/edit: no Archive or Delete on the edit page -- the card page's More menu has them", async () => {
+	const { root } = await setup("edit", "?id=A");
+	expect(inner(root, '[data-action="archive"]')).toBeNull();
+	expect(inner(root, '[data-action="delete-card"]')).toBeNull();
+	expect(root.querySelector("cc-more-menu")).toBeNull();
 });
 
 test("/card/edit: an unknown id says so, with no form", async () => {
@@ -250,7 +194,7 @@ test("/card/edit: an unknown id says so, with no form", async () => {
 	expect(bannerText(root)).toContain("No card with the id nope.");
 	expect(
 		root
-			.querySelector('.back-header [data-action="back"]')
+			.querySelector('.sub-header [data-action="back"]')
 			?.getAttribute("href"),
 	).toBe("/cards");
 });
@@ -265,8 +209,8 @@ test("re-renders its header in place on a language switch", async () => {
 	const { root } = await setup("new", "");
 	setLocale("th");
 	await settle();
-	expect(flatText(root.querySelector(".back-header h1"))).toBe("เพิ่มบัตร");
+	expect(flatText(root.querySelector(".sub-header__title"))).toBe("บัตรใหม่");
 	setLocale("en");
 	await settle();
-	expect(flatText(root.querySelector(".back-header h1"))).toBe("Add card");
+	expect(flatText(root.querySelector(".sub-header__title"))).toBe("New card");
 });

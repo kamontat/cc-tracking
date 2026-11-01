@@ -21,7 +21,7 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
-import { base, controls } from "#styles/shared";
+import { base, controls, panel } from "#styles/shared";
 
 type Kind = CycleRule["kind"];
 
@@ -48,28 +48,36 @@ const numberOf = (text: string): number => {
 };
 
 /**
- * The card form, the whole of `/card/new` and `/card/edit` under their back header: name; card
- * id (disabled when editing, *Card id can't change*) beside last 4; *Kept in* as a segmented
- * control of the locations; the limit group (`name (holder) · limit`); the billing cycle (the
- * close day, then *due days after close* or *due on day*); the cardholder (the group's account
- * holder, or a supplementary card with its own holder); the comment; then the submit. Editing
- * adds *Archive card* / *Unarchive card* (quiet) and, when `deletable`, *Delete card* (danger),
- * which swaps in place for *Delete NAME?* with *Delete* and *Keep* (UI-09), focus following.
+ * The card form, the whole of `/card/new` and `/card/edit` under their sub-header, in panels:
+ * *Card* (name; card id, disabled when editing, beside last 4), *Where and who* (*Kept in* as a
+ * segmented control of the locations; the limit group, `name (holder) · limit`; the cardholder,
+ * the group's account holder or a supplementary card with its own holder), *Billing cycle* (the
+ * kind, then the close day beside *due days after close* or *due on day*) and *Comment*; then the
+ * submit. Archive and Delete live on the card page's More menu, not here.
  *
- * Emits `save` with the card, `archive` and `delete-card` with `{ card }` (the stored card, not
- * what is typed). `error` is the page's reason a write failed; what was typed stays, since the
- * fields fill from `card` only when it turns to another card (UI-11).
+ * Emits `save` with the card. `error` is the page's reason a write failed; what was typed stays,
+ * since the fields fill from `card` only when it turns to another card (UI-11).
  */
 @customElement("cc-card-form")
 export class CcCardForm extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		panel,
 		css`
 			form {
 				display: flex;
 				flex-direction: column;
 				gap: var(--cc-space-4);
+			}
+
+			/* A section's name: small and muted over its panel, like the prototype's labels. */
+			h2 {
+				font-size: var(--cc-text-xs);
+				font-weight: 650;
+				color: var(--cc-text-muted);
+				text-transform: uppercase;
+				letter-spacing: 0.06em;
 			}
 
 			.pair {
@@ -152,10 +160,15 @@ export class CcCardForm extends LitElement {
 				border-color: var(--cc-border);
 			}
 
-			.actions {
+			section {
 				display: flex;
 				flex-direction: column;
 				gap: var(--cc-space-2);
+			}
+
+			.actions {
+				display: flex;
+				flex-direction: column;
 			}
 
 			.actions > button {
@@ -165,33 +178,12 @@ export class CcCardForm extends LitElement {
 				font-weight: 650;
 			}
 
-			.danger {
-				display: flex;
-				flex-direction: row;
-				align-self: stretch;
-				flex-wrap: wrap;
-				align-items: center;
-				gap: var(--cc-space-2);
-			}
-
-			.danger > button[data-action="delete-card"] {
-				flex: 1 1 auto;
-				padding: var(--cc-space-3) var(--cc-space-4);
-				font-size: var(--cc-text-md);
-			}
-
-			.ask {
-				flex: 1 1 auto;
-				font-weight: 600;
-			}
 		`,
 	];
 
 	/** The card to edit; null for a new one. */
 	@property({ attribute: false }) card: Card | null = null;
 	@property({ attribute: false }) groups: LimitGroup[] = [];
-	/** The card may go: no purchases, on no draft and no list waiting for the spender. */
-	@property({ type: Boolean }) deletable = false;
 	/** Why the page's last write failed; typing is kept. */
 	@property() error = "";
 	/** A write is under way: the buttons wait. */
@@ -206,13 +198,10 @@ export class CcCardForm extends LitElement {
 	// Kept while the card is set back to the account holder, so switching straight back does not
 	// lose the choice; written into the saved card only for a supplementary one.
 	@state() private owner: Owner | "" = "";
-	@state() private asking = false;
 	// The catalog key, so a language switch re-renders the message in place.
 	@state() private errorKey: MessageKey | "" = "";
 	/** The id the fields were last filled from (`null` for a new card); unset before the first fill. */
 	private filledFor: string | null | undefined = undefined;
-	/** The button to focus once the delete swap has rendered. */
-	private refocus: string | null = null;
 
 	constructor() {
 		super();
@@ -261,7 +250,6 @@ export class CcCardForm extends LitElement {
 		this.kind = rule?.kind ?? "offset";
 		this.supplementary = card?.supplementary ?? false;
 		this.owner = toOwner(card?.owner) ?? "";
-		this.asking = false;
 		this.errorKey = "";
 	}
 
@@ -277,18 +265,6 @@ export class CcCardForm extends LitElement {
 		select("limitGroupId", this.groupId);
 		select("holder", this.supplementary ? "supplementary" : "account");
 		select("owner", this.owner);
-
-		const want = this.refocus;
-		if (!want) return;
-		this.refocus = null;
-		this.renderRoot
-			.querySelector<HTMLElement>(`[data-action="${want}"]`)
-			?.focus();
-	}
-
-	private swap(asking: boolean, focus: string) {
-		this.refocus = focus;
-		this.asking = asking;
 	}
 
 	private fail(key: MessageKey) {
@@ -361,6 +337,8 @@ export class CcCardForm extends LitElement {
 			min?: number;
 			max?: number;
 			placeholder?: string;
+			/** The id of the heading that names it, when no label wraps it. */
+			labelledBy?: string;
 		} = {},
 	) {
 		const ranged = extra.min !== undefined;
@@ -369,6 +347,7 @@ export class CcCardForm extends LitElement {
 			type=${ranged ? "number" : "text"}
 			min=${extra.min ?? nothing} max=${extra.max ?? nothing}
 			placeholder=${extra.placeholder ?? nothing}
+			aria-labelledby=${extra.labelledBy ?? nothing}
 			autocomplete="off"
 			@input=${(event: Event) => {
 				this.text = {
@@ -394,145 +373,134 @@ export class CcCardForm extends LitElement {
 		return group ? ownerOf(group) : DEFAULT_OWNER;
 	}
 
-	private deleteRow(card: Card) {
-		if (!this.asking)
-			return html`<div class="danger">
-				<button type="button" data-variant="danger" data-action="delete-card"
-					?disabled=${this.busy}
-					@click=${() => this.swap(true, "confirm-delete")}>${t("form.delete")}</button>
-			</div>`;
-		return html`<div class="danger">
-			<span class="ask">${t("form.deleteAsk", { name: card.name })}</span>
-			<button type="button" data-variant="danger" data-action="confirm-delete"
-				?disabled=${this.busy}
-				@click=${() => {
-					this.asking = false;
-					this.dispatchEvent(
-						new CustomEvent("delete-card", { detail: { card } }),
-					);
-				}}>${t("common.delete")}</button>
-			<button type="button" data-variant="quiet" data-action="keep"
-				@click=${() => this.swap(false, "delete-card")}>${t("form.keep")}</button>
-		</div>`;
-	}
-
 	override render() {
 		const card = this.card;
 		const groups = [...this.groups].sort(byOwnerThenName);
 		const select = (setter: (value: string) => void) => (event: Event) =>
 			setter((event.target as HTMLSelectElement).value);
+		/** A panel named by its heading. */
+		const section = (id: string, key: MessageKey, body: unknown) =>
+			html`<section aria-labelledby=${`section-${id}`}>
+				<h2 id=${`section-${id}`}>${t(key)}</h2>
+				<article>${body}</article>
+			</section>`;
 		return html`<form @submit=${this.onSubmit} novalidate>
 			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
 			${this.errorKey ? html`<p role="alert">${t(this.errorKey)}</p>` : nothing}
 
-			<label>${t("form.name")} ${this.input("name")}</label>
+			${section(
+				"card",
+				"form.section.card",
+				html`<label>${t("form.name")} ${this.input("name")}</label>
+					<div class="pair">
+						<label>${t("form.id")}
+							${
+								card
+									? html`<input name="id" .value=${card.id} disabled />`
+									: this.input("id", { placeholder: t("form.idPlaceholder") })
+							}
+						</label>
+						<label>${t("form.last4")} ${this.input("last4", { numeric: true })}</label>
+					</div>`,
+			)}
 
-			<div class="pair">
-				<label>${t("form.id")}
-					${
-						card
-							? html`<input name="id" .value=${card.id} disabled />
-								<small>${t("form.idImmutable")}</small>`
-							: this.input("id", { placeholder: t("form.idPlaceholder") })
-					}
-				</label>
-				<label>${t("form.last4")} ${this.input("last4", { numeric: true })}</label>
-			</div>
+			${section(
+				"where",
+				"form.section.where",
+				html`<fieldset>
+						<legend>${t("form.location")}</legend>
+						${this.seg(
+							LOCATIONS,
+							this.location,
+							(
+								value,
+								pressed,
+							) => html`<button type="button" data-location=${value}
+								aria-pressed=${pressed} @click=${() => {
+									this.location = value;
+								}}>${locationText(value)}</button>`,
+						)}
+					</fieldset>
 
-			<fieldset>
-				<legend>${t("form.location")}</legend>
-				${this.seg(
-					LOCATIONS,
-					this.location,
-					(value, pressed) => html`<button type="button" data-location=${value}
-						aria-pressed=${pressed} @click=${() => {
-							this.location = value;
-						}}>${locationText(value)}</button>`,
-				)}
-			</fieldset>
+					<label>${t("form.limitGroup")}
+						<select name="limitGroupId" ?disabled=${groups.length === 0}
+							@input=${select((value) => {
+								this.groupId = value;
+							})}
+							@change=${select((value) => {
+								this.groupId = value;
+							})}>
+							<option value="">${t("form.limitGroupNone")}</option>
+							${groups.map(
+								(group) =>
+									html`<option value=${group.id}>${groupLabel(group)} · ${formatAmount(group.limit)}</option>`,
+							)}
+						</select>
+					</label>
 
-			<label>${t("form.limitGroup")}
-				<select name="limitGroupId" ?disabled=${groups.length === 0}
-					@input=${select((value) => {
-						this.groupId = value;
-					})}
-					@change=${select((value) => {
-						this.groupId = value;
-					})}>
-					<option value="">${t("form.limitGroupNone")}</option>
-					${groups.map(
-						(group) =>
-							html`<option value=${group.id}>${groupLabel(group)} · ${formatAmount(group.limit)}</option>`,
-					)}
-				</select>
-			</label>
-
-			<fieldset>
-				<legend>${t("form.cycle")}</legend>
-				${this.seg(
-					["offset", "fixed"] as const,
-					this.kind,
-					(kind, pressed) => html`<button type="button" data-kind=${kind}
-						aria-pressed=${pressed} @click=${() => {
-							this.kind = kind;
-						}}>${t(kind === "offset" ? "form.cycleOffset" : "form.cycleFixed")}</button>`,
-				)}
-				<div class="pair">
-					<label>${t("form.closeDay")} ${this.input("closeDay", { numeric: true, min: 1, max: 31 })}</label>
-					${
-						this.kind === "offset"
-							? html`<label>${t("form.dueOffsetDays")} ${this.input("dueOffsetDays", { numeric: true, min: 1, max: 60 })}</label>`
-							: html`<label>${t("form.dueDay")} ${this.input("dueDay", { numeric: true, min: 1, max: 31 })}</label>`
-					}
-				</div>
-			</fieldset>
-
-			<div class="field">
-				<label>${t("form.holder")}
-					<select name="holder"
-						@input=${select((value) => {
-							this.supplementary = value === "supplementary";
-						})}
-						@change=${select((value) => {
-							this.supplementary = value === "supplementary";
-						})}>
-						<option value="account">${t("form.holderAccount", { owner: this.holderOf() })}</option>
-						<option value="supplementary">${t("form.supplementary")}</option>
-					</select>
-				</label>
-				${
-					this.supplementary
-						? html`<label>${t("form.owner")}
-							<select name="owner"
+					<div class="field">
+						<label>${t("form.holder")}
+							<select name="holder"
 								@input=${select((value) => {
-									this.owner = toOwner(value) ?? "";
+									this.supplementary = value === "supplementary";
 								})}
 								@change=${select((value) => {
-									this.owner = toOwner(value) ?? "";
+									this.supplementary = value === "supplementary";
 								})}>
-								<option value="">${t("form.ownerNone")}</option>
-								${OWNERS.map((value) => html`<option value=${value}>${value}</option>`)}
+								<option value="account">${t("form.holderAccount", { owner: this.holderOf() })}</option>
+								<option value="supplementary">${t("form.supplementary")}</option>
 							</select>
-						</label>`
-						: nothing
-				}
-			</div>
+						</label>
+						${
+							this.supplementary
+								? html`<label>${t("form.owner")}
+									<select name="owner"
+										@input=${select((value) => {
+											this.owner = toOwner(value) ?? "";
+										})}
+										@change=${select((value) => {
+											this.owner = toOwner(value) ?? "";
+										})}>
+										<option value="">${t("form.ownerNone")}</option>
+										${OWNERS.map((value) => html`<option value=${value}>${value}</option>`)}
+									</select>
+								</label>`
+								: nothing
+						}
+					</div>`,
+			)}
 
-			<label>${t("form.comment")} ${this.input("comment")}</label>
+			${section(
+				"cycle",
+				"form.cycle",
+				html`<div role="group" aria-labelledby="section-cycle">
+						${this.seg(
+							["offset", "fixed"] as const,
+							this.kind,
+							(kind, pressed) => html`<button type="button" data-kind=${kind}
+								aria-pressed=${pressed} @click=${() => {
+									this.kind = kind;
+								}}>${t(kind === "offset" ? "form.cycleOffset" : "form.cycleFixed")}</button>`,
+						)}
+					</div>
+					<div class="pair">
+						<label>${t("form.closeDay")} ${this.input("closeDay", { numeric: true, min: 1, max: 31 })}</label>
+						${
+							this.kind === "offset"
+								? html`<label>${t("form.dueOffsetDays")} ${this.input("dueOffsetDays", { numeric: true, min: 1, max: 60 })}</label>`
+								: html`<label>${t("form.dueDay")} ${this.input("dueDay", { numeric: true, min: 1, max: 31 })}</label>`
+						}
+					</div>`,
+			)}
+
+			${section(
+				"comment",
+				"form.comment",
+				this.input("comment", { labelledBy: "section-comment" }),
+			)}
 
 			<div class="actions">
 				<button type="submit" ?disabled=${this.busy}>${card ? t("form.save") : t("form.add")}</button>
-				${
-					card
-						? html`<button type="button" data-variant="quiet" data-action="archive"
-								?disabled=${this.busy}
-								@click=${() =>
-									this.dispatchEvent(
-										new CustomEvent("archive", { detail: { card } }),
-									)}>${card.archived ? t("form.unarchive") : t("form.archive")}</button>`
-						: nothing
-				}
-				${card && this.deletable ? this.deleteRow(card) : nothing}
 			</div>
 		</form>`;
 	}

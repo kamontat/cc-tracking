@@ -110,10 +110,12 @@ test("translates a key", () => {
 test("substitutes named parameters", () => {
 	setLocale("en");
 	expect(t("cards.archivedList", { count: 3 })).toBe("Archived (3)");
-	expect(t("cards.edit", { name: "KBank Visa" })).toBe("Edit KBank Visa");
+	expect(t("form.deleteAsk", { name: "KBank Visa" })).toBe(
+		"Delete KBank Visa?",
+	);
 });
 
 test("leaves an unsupplied placeholder alone rather than printing undefined", () => {
 	setLocale("en");
-	expect(t("cards.edit")).toBe("Edit {name}");
+	expect(t("form.deleteAsk")).toBe("Delete {name}?");
 });
