@@ -35,7 +35,7 @@ test("a closed + New button, named, that says it controls a hidden menu", async 
 	expect(menu.hidden).toBe(true);
 });
 
-test("tapping it opens the menu with its three actions, each with an icon, and focuses the first", async () => {
+test("tapping it opens the menu with its two actions, each with an icon, and focuses the first", async () => {
 	const { element, button, menu } = await mount();
 	button.click();
 	await element.updateComplete;
@@ -44,17 +44,14 @@ test("tapping it opens the menu with its three actions, each with an icon, and f
 	const links = items(menu);
 	expect(links.map((a) => a.getAttribute("href"))).toEqual([
 		"/list/new",
-		"/purchase",
 		"/pay",
 	]);
 	expect(links.map((a) => a.textContent?.trim())).toEqual([
 		"New purchase list",
-		"Add purchase",
 		"Make a payment",
 	]);
 	expect(links.map((a) => a.getAttribute("data-action"))).toEqual([
 		"new-list",
-		"add-purchase",
 		"pay",
 	]);
 	for (const link of links) expect(link.querySelector("svg")).not.toBeNull();
@@ -102,19 +99,17 @@ test("a tap outside closes it without taking focus back", async () => {
 	expect(menu.hidden).toBe(false);
 });
 
-test("the arrow keys move between the three actions, round", async () => {
+test("the arrow keys move between the two actions, round", async () => {
 	const { element, button, menu } = await mount();
 	button.click();
 	await element.updateComplete;
-	const [first, second, third] = items(menu);
+	const [first, second] = items(menu);
 	press(first as Element, "ArrowDown");
 	expect(document.activeElement).toBe(second ?? null);
 	press(second as Element, "ArrowDown");
-	expect(document.activeElement).toBe(third ?? null);
-	press(third as Element, "ArrowDown");
 	expect(document.activeElement).toBe(first ?? null);
 	press(first as Element, "ArrowUp");
-	expect(document.activeElement).toBe(third ?? null);
+	expect(document.activeElement).toBe(second ?? null);
 });
 
 test("closing waits for the menu's exit animation before it hides", async () => {
@@ -149,7 +144,6 @@ test("Thai labels", async () => {
 	expect(button.querySelector(".fab__label")?.textContent).toBe("ใหม่");
 	expect(items(menu).map((a) => a.textContent?.trim())).toEqual([
 		"ใบรายการซื้อใหม่",
-		"เพิ่มรายการใช้จ่าย",
 		"ชำระเงิน",
 	]);
 });

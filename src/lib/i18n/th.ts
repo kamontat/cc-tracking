@@ -13,7 +13,6 @@ export const th: Catalog = {
 	"nav.transactions": "รายการเคลื่อนไหว",
 	"fab.new": "ใหม่",
 	"fab.newList": "ใบรายการซื้อใหม่",
-	"fab.addPurchase": "เพิ่มรายการใช้จ่าย",
 	"fab.pay": "ชำระเงิน",
 	"nav.pages": "หน้า",
 	"nav.cards": "บัตร",

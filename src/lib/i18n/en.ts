@@ -4,7 +4,6 @@ export const en = {
 	"nav.transactions": "Transactions",
 	"fab.new": "New",
 	"fab.newList": "New purchase list",
-	"fab.addPurchase": "Add purchase",
 	"fab.pay": "Make a payment",
 	"nav.pages": "Pages",
 	"nav.cards": "Cards",
