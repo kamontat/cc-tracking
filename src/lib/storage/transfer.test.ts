@@ -72,7 +72,8 @@ describe("exportBackup", () => {
 			samplePayment({ cardId: "kbank", period: "2026-09" }),
 		);
 
-		// Delete the card
+		// Delete the purchase, then the card (a card with purchases cannot be deleted)
+		await repo.deletePurchase("kbank", "p1");
 		await repo.deleteCard("kbank");
 
 		// Create a new card with the same id (mimics user deleting and re-adding a card)

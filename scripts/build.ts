@@ -12,8 +12,15 @@ import { resolveBuildEnv } from "./build-env";
  */
 const git = await $`git rev-parse HEAD`.nothrow().quiet();
 const sha = git.exitCode === 0 ? git.stdout.toString() : "";
+const ref = await $`git rev-parse --abbrev-ref HEAD`.nothrow().quiet();
+const branch = ref.exitCode === 0 ? ref.stdout.toString() : "";
 
-const built = resolveBuildEnv({ sha, now: new Date(), env: process.env });
+const built = resolveBuildEnv({
+	sha,
+	branch,
+	now: new Date(),
+	env: process.env,
+});
 const proc = Bun.spawn(["bunx", "bun-server", "build", ...Bun.argv.slice(2)], {
 	stdio: ["inherit", "inherit", "inherit"],
 	env: { ...process.env, ...built },

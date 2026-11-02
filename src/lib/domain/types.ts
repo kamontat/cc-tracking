@@ -98,3 +98,73 @@ export type Statement = {
 	paid: boolean;
 	payment: StatementPayment | null;
 };
+
+export type PaymentStatus = "planned" | "paid";
+
+/** Money paid toward a card. `period` is set only on records converted from the old model. */
+export type CardPayment = {
+	id: string;
+	cardId: string;
+	date: PlainDate;
+	amount: number;
+	status: PaymentStatus;
+	period?: Period;
+};
+
+/** Close and due dates kept once money first reached a statement. */
+export type StatementDates = {
+	cardId: string;
+	period: Period;
+	closeDate: PlainDate;
+	dueDate: PlainDate;
+};
+
+export type LedgerStatement = {
+	cardId: string;
+	period: Period;
+	closeDate: PlainDate;
+	dueDate: PlainDate;
+	purchases: Purchase[];
+	total: number;
+	paidAmount: number;
+	remaining: number;
+	paid: boolean;
+	open: boolean;
+};
+
+export type CardLedger = {
+	statements: LedgerStatement[];
+	owed: number;
+	credit: number;
+};
+
+export type ListStatus = "draft" | "sent" | "saved";
+
+export type ListLine = {
+	cardId: string;
+	/** Satang planned. A positive integer. */
+	amount: number;
+	/** Absent until the spender answers. */
+	made?: boolean;
+	/** Satang really spent, when it differs from the plan. */
+	actual?: number;
+};
+
+export type PurchaseList = {
+	id: string;
+	date: PlainDate;
+	status: ListStatus;
+	lines: ListLine[];
+	/** ISO 8601 instants. */
+	sentAt?: string;
+	savedAt?: string;
+	/** Id of the draft that took this list's not-made lines. */
+	movedTo?: string;
+};
+
+/** A place cards are kept, as a record the user can rename and extend. */
+export type LocationRecord = {
+	id: string;
+	name: string;
+	takesPurchases: boolean;
+};

@@ -1,0 +1,301 @@
+import { defaultLocations } from "#lib/domain/locations";
+import { toSettings } from "#lib/domain/settings";
+import type {
+	Card,
+	CardPayment,
+	LimitGroup,
+	LocationRecord,
+	Purchase,
+	PurchaseList,
+	StatementDates,
+	StatementPayment,
+} from "#lib/domain/types";
+import type { MessageKey } from "#lib/i18n/catalog";
+import { MessageError } from "#lib/i18n/error";
+import { convertPayments } from "#lib/storage/migrate-payments";
+import type { Repository } from "#lib/storage/repository";
+import {
+	cardProblem,
+	isInteger,
+	isList,
+	isNonEmptyString,
+	isPlainDate,
+	isPlainObject,
+	limitGroupProblem,
+	paymentProblem,
+	prop,
+	purchaseProblem,
+} from "#lib/storage/transfer";
+
+export const BACKUP_V3 = 3;
+
+export type BackupV3 = {
+	version: 3;
+	exportedAt: string;
+	limitGroups: LimitGroup[];
+	cards: Card[];
+	purchases: Purchase[];
+	payments: CardPayment[];
+	statementDates: StatementDates[];
+	lists: PurchaseList[];
+	locations: LocationRecord[];
+};
+
+export async function exportBackupV3(
+	repo: Repository,
+	now: Date,
+): Promise<BackupV3> {
+	const limitGroups = await repo.listLimitGroups();
+	const cards = await repo.listCards();
+	const purchases: Purchase[] = [];
+	const payments: CardPayment[] = [];
+	const statementDates: StatementDates[] = [];
+	for (const card of cards) {
+		purchases.push(...(await repo.listPurchases(card.id)));
+		payments.push(...(await repo.listCardPayments(card.id)));
+		statementDates.push(...(await repo.listStatementDates(card.id)));
+	}
+	return {
+		version: BACKUP_V3,
+		exportedAt: now.toISOString(),
+		limitGroups,
+		cards,
+		purchases,
+		payments,
+		statementDates,
+		lists: await repo.listPurchaseLists(),
+		locations: await repo.listLocations(),
+	};
+}
+
+/** A positive whole number of satang (DR-01). */
+const isPositiveAmount = (value: unknown): boolean =>
+	isInteger(value) && value > 0;
+
+const inRange = (value: unknown, low: number, high: number): boolean =>
+	isInteger(value) && value >= low && value <= high;
+
+/** DR-25 and DR-26, checked once the card's shape is known to be sound. */
+function cardRangeProblem(card: Record<string, unknown>): MessageKey | null {
+	if (!/^\d{4}$/.test(String(prop(card, "last4"))))
+		return "backup.problem.badLast4";
+	const cycle = prop(card, "cycle");
+	if (!isPlainObject(cycle)) return null;
+	if (!inRange(prop(cycle, "closeDay"), 1, 31))
+		return "backup.problem.badCloseDay";
+	if (prop(cycle, "kind") === "fixed") {
+		return inRange(prop(cycle, "dueDay"), 1, 31)
+			? null
+			: "backup.problem.badDueDay";
+	}
+	return inRange(prop(cycle, "dueOffsetDays"), 1, 60)
+		? null
+		: "backup.problem.badDueOffset";
+}
+
+function cardAllProblem(value: unknown): MessageKey | null {
+	const problem = cardProblem(value);
+	if (problem) return problem;
+	return cardRangeProblem(value as Record<string, unknown>);
+}
+
+function purchaseAllProblem(value: unknown): MessageKey | null {
+	const problem = purchaseProblem(value);
+	if (problem) return problem;
+	return isPositiveAmount(prop(value as Record<string, unknown>, "amount"))
+		? null
+		: "backup.problem.badAmountRange";
+}
+
+function limitGroupAllProblem(value: unknown): MessageKey | null {
+	const problem = limitGroupProblem(value);
+	if (problem) return problem;
+	return isPositiveAmount(prop(value as Record<string, unknown>, "limit"))
+		? null
+		: "backup.problem.badLimitRange";
+}
+
+function cardPaymentProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
+	if (!isNonEmptyString(prop(value, "cardId")))
+		return "backup.problem.missingCardId";
+	if (!isPlainDate(prop(value, "date"))) return "backup.problem.badDate";
+	if (!isPositiveAmount(prop(value, "amount")))
+		return "backup.problem.badAmountRange";
+	const status = prop(value, "status");
+	if (status !== "planned" && status !== "paid")
+		return "backup.problem.badPaymentStatus";
+	const period = prop(value, "period");
+	if (period !== undefined && !isNonEmptyString(period))
+		return "backup.problem.missingPeriod";
+	return null;
+}
+
+function statementDatesProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "cardId")))
+		return "backup.problem.missingCardId";
+	if (!isNonEmptyString(prop(value, "period")))
+		return "backup.problem.missingPeriod";
+	if (!isPlainDate(prop(value, "closeDate")))
+		return "backup.problem.badCloseDate";
+	if (!isPlainDate(prop(value, "dueDate"))) return "backup.problem.badDueDate";
+	return null;
+}
+
+function listProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
+	if (!isPlainDate(prop(value, "date"))) return "backup.problem.badDate";
+	const status = prop(value, "status");
+	if (status !== "draft" && status !== "sent" && status !== "saved")
+		return "backup.problem.badListStatus";
+	const lines = prop(value, "lines");
+	if (!isList(lines)) return "backup.problem.badLines";
+	for (const line of lines) {
+		if (!isPlainObject(line) || !isNonEmptyString(prop(line, "cardId")))
+			return "backup.problem.badLines";
+		if (!isPositiveAmount(prop(line, "amount")))
+			return "backup.problem.badLineAmount";
+		const made = prop(line, "made");
+		if (made !== undefined && typeof made !== "boolean")
+			return "backup.problem.badLineMade";
+		const actual = prop(line, "actual");
+		if (actual !== undefined && !isPositiveAmount(actual))
+			return "backup.problem.badLineActual";
+	}
+	return null;
+}
+
+function locationProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject";
+	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
+	if (!isNonEmptyString(prop(value, "name")))
+		return "backup.problem.missingName";
+	if (typeof prop(value, "takesPurchases") !== "boolean")
+		return "backup.problem.badTakesPurchases";
+	return null;
+}
+
+function check(
+	records: unknown[],
+	key: MessageKey,
+	problemOf: (value: unknown) => MessageKey | null,
+): void {
+	for (const [index, record] of records.entries()) {
+		const problem = problemOf(record);
+		if (problem) throw new MessageError(key, { index: index + 1, problem });
+	}
+}
+
+/**
+ * Reads a version 2 or version 3 file as version 3, rejecting the whole file before
+ * anything is written when any record breaks a shape or range rule (RD-06). A version 2
+ * file's payments convert to card payments, its locations come from its settings (none when
+ * it has no settings, so stored locations are left alone, DC-05), and it has no lists.
+ */
+export function parseAnyBackup(text: string): BackupV3 {
+	let value: unknown;
+	try {
+		value = JSON.parse(text);
+	} catch (cause) {
+		const failure = new MessageError("backup.unreadable");
+		failure.cause = cause;
+		throw failure;
+	}
+	if (!isPlainObject(value)) throw new MessageError("backup.unreadable");
+
+	const version = prop(value, "version");
+	if (version !== 2 && version !== BACKUP_V3) {
+		throw new MessageError("backup.version", {
+			found: JSON.stringify(version),
+			expected: BACKUP_V3,
+		});
+	}
+
+	const limitGroups = prop(value, "limitGroups");
+	const cards = prop(value, "cards");
+	const purchases = prop(value, "purchases");
+	const payments = prop(value, "payments");
+	if (
+		!isList(limitGroups) ||
+		!isList(cards) ||
+		!isList(purchases) ||
+		!isList(payments)
+	) {
+		throw new MessageError("backup.unreadable");
+	}
+	const stamp = prop(value, "exportedAt");
+	const exportedAt = isNonEmptyString(stamp)
+		? stamp
+		: new Date(0).toISOString();
+
+	check(limitGroups, "backup.limitGroup", limitGroupAllProblem);
+	check(cards, "backup.card", cardAllProblem);
+	check(purchases, "backup.purchase", purchaseAllProblem);
+
+	if (version === 2) {
+		check(payments, "backup.payment", paymentProblem);
+		// A file without settings leaves stored settings alone (DC-05), so it brings no
+		// locations either: only a file that carries settings may say where purchases happen.
+		const settings = prop(value, "settings");
+		const locations = isPlainObject(settings)
+			? defaultLocations(toSettings(settings))
+			: [];
+		const converted = convertPayments(
+			cards as Card[],
+			purchases as Purchase[],
+			payments as StatementPayment[],
+		);
+		return {
+			version: BACKUP_V3,
+			exportedAt,
+			limitGroups: limitGroups as LimitGroup[],
+			cards: cards as Card[],
+			purchases: purchases as Purchase[],
+			payments: converted.payments,
+			statementDates: converted.dates,
+			lists: [],
+			locations,
+		};
+	}
+
+	const statementDates = prop(value, "statementDates");
+	const lists = prop(value, "lists");
+	const locations = prop(value, "locations");
+	if (!isList(statementDates) || !isList(lists) || !isList(locations)) {
+		throw new MessageError("backup.unreadable");
+	}
+	check(payments, "backup.cardPayment", cardPaymentProblem);
+	check(statementDates, "backup.statementDates", statementDatesProblem);
+	check(lists, "backup.list", listProblem);
+	check(locations, "backup.location", locationProblem);
+
+	return {
+		version: BACKUP_V3,
+		exportedAt,
+		limitGroups: limitGroups as LimitGroup[],
+		cards: cards as Card[],
+		purchases: purchases as Purchase[],
+		payments: payments as CardPayment[],
+		statementDates: statementDates as StatementDates[],
+		lists: lists as PurchaseList[],
+		locations: locations as LocationRecord[],
+	};
+}
+
+/** Additive: writes every record over whatever shares its key, and deletes nothing. */
+export async function importBackupV3(
+	repo: Repository,
+	backup: BackupV3,
+): Promise<void> {
+	for (const group of backup.limitGroups) await repo.saveLimitGroup(group);
+	for (const location of backup.locations) await repo.saveLocation(location);
+	for (const card of backup.cards) await repo.saveCard(card);
+	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
+	for (const payment of backup.payments) await repo.saveCardPayment(payment);
+	for (const dates of backup.statementDates)
+		await repo.saveStatementDates(dates);
+	for (const list of backup.lists) await repo.savePurchaseList(list);
+}

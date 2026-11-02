@@ -30,6 +30,9 @@ jobs:
         env:
           ## Inlined by the bundler; the pages suffix their title and brand with `(pr-<n>)`
           BUN_PUBLIC_PR_NUMBER: ${{ github.event.number }}
+          ## Stamps for the header tint and tab title; the checkout is detached, so name the branch
+          BUN_PUBLIC_ENVIRONMENT: preview
+          BUN_PUBLIC_BRANCH: ${{ github.head_ref }}
         with:
           command: versions upload --preview-alias pr-${{ github.event.number }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
