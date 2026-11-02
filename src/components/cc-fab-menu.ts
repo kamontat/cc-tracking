@@ -10,8 +10,8 @@ const MENU_ID = "fab-menu";
 
 /**
  * The floating *+ New* button (DD-104): a speed dial over every page but the list pages and
- * the payment page. Tapping it opens a small menu above it with the two ways to start -- a new
- * purchase list and a payment -- and moves focus to the first. Escape, a tap outside or the
+ * the payment page. Tapping it opens a small menu above it with the two ways to
+ * start -- a new purchase list, a payment -- and moves focus to the first. Escape, a tap outside or the
  * button again close it; Escape and the button hand focus back. The menu slides in and out
  * (none of it under prefers-reduced-motion) and hides only once its exit has played.
  *

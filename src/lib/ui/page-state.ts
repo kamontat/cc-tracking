@@ -25,6 +25,9 @@ export type PageState = {
 	readonly error: string;
 	load(preserveError?: boolean): Promise<void>;
 	guard(action: () => Promise<void>, messageKey: MessageKey): Promise<void>;
+	/** Forgets the current error without reloading; the caller paints. For a failed write's
+	 * reason once the sheet it was shown in closes. */
+	clear(): void;
 };
 
 /** What `load` failed on, kept raw so it can be re-translated on every read of `error`. */
@@ -97,5 +100,8 @@ export function createPageState(options: {
 		},
 		load,
 		guard,
+		clear: () => {
+			source = null;
+		},
 	};
 }

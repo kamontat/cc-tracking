@@ -350,9 +350,11 @@ a:any-link:hover {
 }
 
 /* + New steps aside on the payment page and on the purchase list pages (the new-list picker
-   among them), where the reader is mid-task and a bottom bar needs the full width. */
+   among them), where the reader is mid-task and a bottom bar needs the full width, and on the
+   card form, where it would sit over the form's buttons on a phone. */
 :root[data-pay-page] .fab-menu,
-:root[data-list-page] .fab-menu {
+:root[data-list-page] .fab-menu,
+:root[data-form-page] .fab-menu {
 	display: none;
 }
 
@@ -465,6 +467,11 @@ a:any-link:hover {
 	max-width: var(--cc-page-narrow);
 }
 
+/* A form page (the card form) keeps its narrow measure at every width. */
+.page--form {
+	max-width: var(--cc-page-narrow);
+}
+
 @media (min-width: 900px) {
 	.page--narrow {
 		max-width: var(--cc-page-width);
@@ -505,8 +512,7 @@ a:any-link:hover {
 	font-weight: 600;
 }
 
-.page > article,
-.page .split > article {
+.page > article {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
@@ -517,9 +523,8 @@ a:any-link:hover {
 	box-shadow: var(--cc-shadow-sm);
 }
 
-/* The settings page's confirmations after a backup copy, import or reset, matching the purchase
-   confirmation's `.purchase-status`. Each element stays in the DOM so its live region is in place before the message
-   arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
+/* The settings page's confirmations after a backup copy, import or reset. Each element stays in
+   the DOM so its live region is in place before the message arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
 .export-status,
 .import-status,
 .reset-status {
@@ -744,107 +749,6 @@ a:any-link:hover {
 	background: var(--cc-border);
 }
 
-/*
- * Below 960px this is the reset's default column flex, the aside -- reference, not the task --
- * following the main column. At 960px it becomes a grid with the aside parked beside it.
- */
-.split {
-	gap: var(--cc-space-5);
-}
-
-@media (min-width: 960px) {
-	.split {
-		display: grid;
-		grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-		align-items: start;
-	}
-
-	.split > .split__aside {
-		position: sticky;
-		/* Must clear the sticky .site-header, which is --cc-header-height tall. */
-		top: calc(var(--cc-header-height) + var(--cc-space-4));
-	}
-}
-
-/*
- * A page's heading with its one action -- Add a purchase -- at the right. On a phone the button
- * wraps under the heading rather than squeezing it.
- */
-.page-title {
-	flex-wrap: wrap;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--cc-space-3);
-}
-
-/* Where a saved purchase lands, under the heading. Matches the settings page's confirmations. */
-.purchase-status {
-	flex-direction: row;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--cc-space-2);
-	padding: var(--cc-space-2) var(--cc-space-3);
-	font-size: var(--cc-text-sm);
-	color: var(--cc-success);
-	background: var(--cc-surface-sunken);
-	border-radius: var(--cc-radius-sm);
-}
-
-.purchase-status:empty {
-	display: none;
-}
-
-/* A registry list's add button, lifted onto its list's title line at the panel's top right rather
-   than costing a row of its own. The title lives in the table's shadow root, so the button cannot
-   join it there; the titles are short words in both languages, so the corner is always clear. */
-.page > article:has(> .list-actions) {
-	position: relative;
-}
-
-.list-actions {
-	position: absolute;
-	top: var(--cc-space-3);
-	right: var(--cc-panel-padding);
-}
-
-/* The card page's statement column: the list, then its "show older" button beneath it. */
-.card-statements {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-5);
-	min-width: 0;
-}
-
-.page-heading {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-1);
-}
-
-.page-heading h1 {
-	display: flex;
-	flex-wrap: wrap;
-	gap: var(--cc-space-2);
-	align-items: center;
-}
-
-.page-heading p {
-	color: var(--cc-text-muted);
-	font-size: var(--cc-text-sm);
-}
-
-.page-heading .comment {
-	font-style: italic;
-}
-
-/* Sits tight above the heading it leads away from, rather than a full page gap apart. */
-.page > a.back {
-	align-self: flex-start;
-	margin-bottom: calc(var(--cc-space-5) * -1 + var(--cc-space-2));
-	font-size: var(--cc-text-sm);
-}
-
 /* The light-DOM twin of `badge` in shared.ts. */
 .page .badge {
 	display: inline-block;
@@ -857,43 +761,6 @@ a:any-link:hover {
 	background: var(--cc-surface-sunken);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-sm);
-}
-
-/* The card page's facts panel: label and value on one line each. */
-.facts {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-2);
-	margin: 0;
-	font-size: var(--cc-text-sm);
-}
-
-.facts__row {
-	justify-content: space-between;
-	gap: var(--cc-space-3);
-}
-
-.facts dt {
-	color: var(--cc-text-muted);
-}
-
-.facts dd {
-	margin: 0;
-	text-align: right;
-}
-
-.card-details .note {
-	padding: var(--cc-space-2) var(--cc-space-3);
-	font-size: var(--cc-text-sm);
-	color: var(--cc-warning);
-	background: var(--cc-warning-surface);
-	border-radius: var(--cc-radius-sm);
-}
-
-.card-details a.edit {
-	align-self: flex-start;
-	font-size: var(--cc-text-sm);
-	font-weight: 550;
 }
 
 /* The placeholder page: a muted line of readable width, and a link that is only as wide as its text. */
@@ -1275,37 +1142,90 @@ a:any-link:hover {
 }
 
 /*
- * A sub page's heading: a square back control, then the title with its detail. The control is
- * a link to a page or a quiet button for a step inside one; both get the same target.
+ * A sub page's compact heading (prototype `subHead`): a slim bar that sticks under the app
+ * header as the page scrolls -- back, the title over its muted line, actions at the end. It sits
+ * in the page's top padding, flush under the header, and tucks a rule's width under the header
+ * so no sliver of the page shows between them. Its ground and bottom rule bleed to the window's
+ * edges through a border image, which paints outside the box without widening the page.
  */
-.back-header {
+.sub-header {
+	position: sticky;
+	top: calc(
+		var(--cc-header-height) -
+		var(--cc-rule-width) +
+		env(safe-area-inset-top, 0px)
+	);
+	z-index: 5;
+	display: flex;
+	flex-direction: row;
 	align-items: center;
 	gap: var(--cc-space-3);
+	min-block-size: var(--cc-sub-header-height);
+	margin-block-start: calc(var(--cc-space-5) * -1);
+	padding-block: var(--cc-space-2);
+	border-image:
+		linear-gradient(
+			to top,
+			var(--cc-border) var(--cc-border-width),
+			var(--cc-bg) 0
+		)
+		fill 0 / 0 / 0 100vmax;
 }
 
-.back-header > [data-action="back"] {
+.sub-header > [data-action="back"] {
 	display: grid;
 	place-items: center;
 	flex: none;
-	align-self: center;
 	inline-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
 	block-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
-	padding: 0;
 	color: var(--cc-text);
 	background: var(--cc-surface-sunken);
-	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-sm);
 }
 
-.back-header .icon {
+/* A step inside one page (the review's back to the amounts, the payment page's back) is a
+   button: it keeps the link's square, not a button's padding and border. */
+.page .sub-header > button[data-action="back"] {
+	align-self: center;
+	padding: 0;
+	border-color: transparent;
+}
+
+.sub-header .icon {
 	inline-size: var(--cc-icon-size);
 	block-size: var(--cc-icon-size);
 }
 
-.back-header h1 {
+.sub-header h1 {
 	display: grid;
-	min-width: 0;
+	flex: 1 1 auto;
+	min-inline-size: 0;
+	font-size: var(--cc-text-md);
+	font-weight: 700;
 	line-height: 1.25;
+}
+
+.sub-header__title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.page .sub-header__detail {
+	overflow: hidden;
+	font-size: var(--cc-text-xs);
+	font-weight: 400;
+	color: var(--cc-text-muted);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sub-header__actions {
+	display: flex;
+	flex-direction: row;
+	flex: none;
+	align-items: center;
+	gap: var(--cc-space-2);
 }
 
 /* The review's share buttons side by side, and how the last one went. */
@@ -1331,7 +1251,7 @@ a:any-link:hover {
  * The purchase list's views (review, saved; amounts and reply draw the same in their shadow
  * roots, from `listLayout`). On a phone the side panel's pieces flow into the one column
  * (`display: contents`), a `data-place="start"` piece above the lines and the rest below. From
- * 900px the panel parks beside the lines, sticky under the header.
+ * 900px the panel parks beside the lines, sticky under the sub-header.
  */
 .list-layout {
 	gap: var(--cc-space-5);
@@ -1359,7 +1279,11 @@ a:any-link:hover {
 
 	.list-layout__side {
 		position: sticky;
-		top: calc(var(--cc-header-height) + var(--cc-space-4));
+		top: calc(
+			var(--cc-header-height) +
+			var(--cc-sub-header-height) +
+			var(--cc-space-4)
+		);
 		display: flex;
 		flex-direction: column;
 		gap: var(--cc-space-3);
@@ -1481,4 +1405,199 @@ a:any-link:hover {
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
+}
+
+/*
+ * Cards (prototype `vCards`): the heading with *Add card*, the controls and the results in one
+ * column, *Limit groups* under them on a phone and beside them from 900px.
+ */
+.cards-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--cc-space-5);
+	align-items: start;
+}
+
+.cards-main,
+.cards-groups {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-4);
+	min-inline-size: 0;
+}
+
+.cards-head {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--cc-space-2) var(--cc-space-3);
+}
+
+/* A link drawn as the primary button, as `.page button` draws it. */
+.cards-head a.cards-add {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cc-space-1);
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 550;
+	line-height: 1.2;
+	color: var(--cc-accent-text);
+	text-decoration: none;
+	background: var(--cc-accent);
+	border: var(--cc-border-width) solid transparent;
+	border-radius: var(--cc-radius-sm);
+}
+
+.cards-head a.cards-add:hover {
+	text-decoration: none;
+	background: var(--cc-accent-hover);
+}
+
+.cards-head a.cards-add .icon {
+	inline-size: var(--cc-icon-size-sm);
+	block-size: var(--cc-icon-size-sm);
+}
+
+@media (min-width: 900px) {
+	.cards-grid {
+		grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
+		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
+	}
+
+	.cards-groups {
+		padding-block-start: var(--cc-space-1);
+	}
+}
+
+/*
+ * The card page (prototype `vCard`): one narrow column -- the sub-header with *Edit*, badges,
+ * the hero and stats (cc-card-hero), the comment, the two actions side by side, then the
+ * statements and *Show older statements*.
+ */
+.card-page {
+	max-width: var(--cc-page-narrow);
+	gap: var(--cc-space-4);
+}
+
+.card-page a.btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 600;
+	line-height: 1.2;
+	color: var(--cc-accent-text);
+	text-align: center;
+	text-decoration: none;
+	background: var(--cc-accent);
+	border: var(--cc-border-width) solid transparent;
+	border-radius: var(--cc-radius-sm);
+}
+
+.card-page a.btn:hover {
+	text-decoration: none;
+	background: var(--cc-accent-hover);
+}
+
+.card-page a.btn[data-variant="quiet"] {
+	color: var(--cc-text);
+	background: var(--cc-surface-sunken);
+	border-color: var(--cc-border);
+}
+
+.card-page a.btn[data-variant="quiet"]:hover {
+	background: var(--cc-border);
+}
+
+.card-badges {
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+	margin-block-start: calc(var(--cc-space-2) * -1);
+}
+
+.card-comment {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-style: italic;
+	color: var(--cc-text-muted);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-sm);
+}
+
+/* On a phone *Use on a list* (or the note) takes the first row and the other two share the
+   second; from 640px all three sit in one row, the note in the first two's place. */
+.card-actions {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: var(--cc-space-3);
+}
+
+.card-actions > :first-child,
+.card-actions > :last-child:nth-child(2) {
+	grid-column: 1 / -1;
+}
+
+@media (min-width: 640px) {
+	.card-actions {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
+	.card-actions > :first-child {
+		grid-column: auto;
+	}
+
+	.card-actions > .note:first-child {
+		grid-column: span 2;
+	}
+
+	.card-actions > :last-child:nth-child(2) {
+		grid-column: auto;
+	}
+}
+
+.card-actions a.btn,
+.card-actions button {
+	padding: var(--cc-space-3) var(--cc-space-4);
+	font-size: var(--cc-text-md);
+	border-radius: var(--cc-radius-md);
+}
+
+.card-actions .note {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	line-height: 1.5;
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-md);
+}
+
+/* Said once after a purchase went over the room (FR-19). */
+.card-over {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	color: var(--cc-warning);
+	background: var(--cc-warning-surface);
+	border-radius: var(--cc-radius-md);
+}
+
+.card-statements {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	min-width: 0;
+	margin-block-start: var(--cc-space-2);
+}
+
+.card-page .card-statements h2 {
+	font-size: var(--cc-text-md);
+	font-weight: 700;
+}
+
+.card-statements button[data-action="show-older"] {
+	align-self: center;
+	margin-block-start: var(--cc-space-2);
 }

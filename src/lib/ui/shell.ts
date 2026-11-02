@@ -23,14 +23,14 @@ export const TABS: readonly (readonly [
 
 /**
  * The tab a path belongs to. The payment page (`/pay`) sits under Transactions, where payments
- * are listed. A card's own page (`/card`) sits under Cards, where its link in
- * the registry leads from; every purchase list page (`/list/new`, `/list/draft`, `/list/reply`,
+ * are listed. A card's own page (`/card`) sits under Cards, where the link to it leads from; every purchase list page (`/list/new`, `/list/draft`, `/list/reply`,
  * `/list/view`) sits under Home, where a list starts and waits. One trailing slash is ignored,
  * so `/cards/` is still Cards.
  */
 export function currentTab(path: string): Tab | null {
 	const bare = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
-	if (bare === "/card") return "cards";
+	if (bare === "/card" || bare === "/card/new" || bare === "/card/edit")
+		return "cards";
 	if (bare === "/pay") return "transactions";
 	if (bare.startsWith("/list/")) return "home";
 	return TABS.find(([, tabPath]) => tabPath === bare)?.[0] ?? null;
@@ -58,7 +58,7 @@ const tabLink = (
 
 /**
  * Renders the header into `#site-header`, and the bottom tab bar and the floating *+ New*
- * menu (`cc-fab-menu`: a new purchase list or a payment) into `#tabbar`. Both navs are always in the document; the stylesheet shows the bottom
+ * menu (`cc-fab-menu`: a new purchase list, a purchase or a payment) into `#tabbar`. Both navs are always in the document; the stylesheet shows the bottom
  * bar on a phone and the header tabs from 900px, so the current page is marked in both. The
  * header date carries both of its forms, and the stylesheet shows one per screen size.
  */

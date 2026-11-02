@@ -14,10 +14,10 @@ const clock = () => new Date("2026-10-30T03:00:00Z");
 test("title carries the build mark", () => {
 	mount();
 	const cases = [
-		["preview", "42", "Card registry — cc-tracking (pr-42)"],
-		["local", "", "Card registry — cc-tracking (local)"],
-		["production", "", "Card registry — cc-tracking"],
-		["preview", "", "Card registry — cc-tracking (preview)"],
+		["preview", "42", "Cards — cc-tracking (pr-42)"],
+		["local", "", "Cards — cc-tracking (local)"],
+		["production", "", "Cards — cc-tracking"],
+		["preview", "", "Cards — cc-tracking (preview)"],
 	] as const;
 	for (const [environment, pr, title] of cases) {
 		applyChrome("title.cards", {

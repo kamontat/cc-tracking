@@ -5,11 +5,11 @@ import { listTotal } from "#lib/domain/purchase-list";
 import type { PurchaseList } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { backHeader } from "#lib/ui/back-header";
 import { cardLines, cardPanel } from "#lib/ui/card-label";
 import { listPageAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
+import { subHeader } from "#lib/ui/sub-header";
 import {
 	banner,
 	elsewhereView,
@@ -54,7 +54,7 @@ export function renderSavedPage(
 			{ short: true },
 		);
 		return html`
-			${backHeader({
+			${subHeader({
 				title: headerDate(list.date, locale, true),
 				detail: t("saved.detail"),
 				back: "/",

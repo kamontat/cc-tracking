@@ -2,11 +2,7 @@ import "#components/cc-error-banner";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { displayDate, isValidDate } from "#lib/domain/date";
-import {
-	formatAmount,
-	formatAmountInput,
-	parseAmount,
-} from "#lib/domain/money";
+import { amountOf, formatAmount, formatAmountInput } from "#lib/domain/money";
 import { payPreview } from "#lib/domain/pay";
 import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
@@ -27,14 +23,6 @@ export type PayFigures = {
 	credit: number;
 	nextBill: number;
 	overdue: boolean;
-};
-
-const amountOf = (text: string): number | null => {
-	try {
-		return parseAmount(text);
-	} catch {
-		return null;
-	}
 };
 
 /** An amount that may wrap only after the baht sign or a comma, so no digit is left alone. */
@@ -225,6 +213,11 @@ export class CcPayForm extends LitElement {
 	/** A save is under way; the button waits so a second tap cannot record it twice. */
 	@property({ type: Boolean }) busy = false;
 
+	/** The date's first value, for a sheet reopened on what was typed before; else today. */
+	@property() startDate: PlainDate = "";
+	/** The note's first text, for a sheet reopened on what was typed before. */
+	@property() startNote = "";
+
 	@state() private text = "";
 	@state() private date: PlainDate = "";
 	@state() private note = "";
@@ -236,6 +229,8 @@ export class CcPayForm extends LitElement {
 
 	override willUpdate(changed: Map<string, unknown>) {
 		if (changed.has("amount")) this.text = this.amount;
+		if (changed.has("startDate") && this.startDate) this.date = this.startDate;
+		if (changed.has("startNote")) this.note = this.startNote;
 		if (changed.has("today") && this.date === "") this.date = this.today;
 	}
 

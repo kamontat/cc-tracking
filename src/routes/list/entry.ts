@@ -1,7 +1,7 @@
 import "#components/cc-list-amounts";
 import "#components/cc-list-table";
 import { html, nothing, render } from "lit";
-import { today } from "#lib/domain/date";
+import { headerDate, isValidDate, today } from "#lib/domain/date";
 import { isReady, roomFor } from "#lib/domain/home";
 import { composeList, lineAmount, listLines } from "#lib/domain/list-entry";
 import { formatAmountInput } from "#lib/domain/money";
@@ -14,9 +14,8 @@ import type {
 	PurchaseList,
 } from "#lib/domain/types";
 import { MessageError, messageOf } from "#lib/i18n/error";
-import { subscribe, t } from "#lib/i18n/index";
+import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
-import { backHeader } from "#lib/ui/back-header";
 import { cardLines } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { newListAddress } from "#lib/ui/list-address";
@@ -29,6 +28,7 @@ import {
 } from "#lib/ui/list-share";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
+import { subHeader } from "#lib/ui/sub-header";
 import {
 	banner,
 	elsewhereView,
@@ -157,10 +157,24 @@ export function renderEntryPage(
 			notes?: Record<string, string>;
 		}>,
 	) => {
+		const moved = event.detail.date !== date;
 		date = event.detail.date;
 		entries = { ...event.detail.entries };
 		notes = { ...event.detail.notes };
+		// The sub-header names the date; typing an amount repaints nothing.
+		if (moved) paint();
 	};
+
+	/** The sub-header's muted line: the list's date and how many cards are on it. */
+	const subtitle = (count: number, on: PlainDate): string | undefined =>
+		isValidDate(on)
+			? t(
+					count === 1
+						? "purchaseList.subtitle.one"
+						: "purchaseList.subtitle.many",
+					{ date: headerDate(on, getLocale(), true), count },
+				)
+			: undefined;
 
 	const onReview = (event: CustomEvent<{ date: PlainDate }>) => {
 		date = event.detail.date;
@@ -309,8 +323,9 @@ export function renderEntryPage(
 			if (room) rooms.set(card.id, room);
 		}
 		return html`
-			${backHeader({
+			${subHeader({
 				title: t(editingId ? "purchaseList.draft" : "purchaseList.new"),
+				detail: subtitle(cards.length, date),
 				// A new list goes back to the picker it came from; a draft goes Home (DD-103).
 				back: mode === "new" ? "/list/new" : "/",
 			})}
@@ -346,8 +361,11 @@ export function renderEntryPage(
 	};
 
 	const reviewView = (from: MoneyData) => html`
-		${backHeader({
+		${subHeader({
 			title: t("purchaseList.reviewTitle"),
+			detail: reviewed
+				? subtitle(reviewed.lines.length, reviewed.date)
+				: undefined,
 			back: () => show("amounts"),
 		})}
 		${banner(state)}

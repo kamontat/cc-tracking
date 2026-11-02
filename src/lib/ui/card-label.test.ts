@@ -10,7 +10,9 @@ import {
 	cardName,
 	cardOwnerName,
 	cardPanel,
+	cardRowTitle,
 	cardShort,
+	cardTitle,
 	groupTone,
 } from "#lib/ui/card-label";
 
@@ -119,4 +121,17 @@ test("cardOwnerName adds the cardholder: the group's owner, or a supplementary c
 	const { limitGroupId: _unused, ...noGroup } = card;
 	expect(cardOwnerName("10", noGroup, owned)).toBe("Card A10");
 	expect(cardOwnerName("10", undefined, owned)).toBe("c-[10]");
+});
+
+test("card titles read name · holder (last4); holder and digits drop out when unknown", () => {
+	const owned: LimitGroup[] = [{ id: "g2", name: "G", limit: 1, owner: "RI" }];
+	expect(cardTitle(card, owned)).toBe("Card A10 · RI (4412)");
+	expect(cardRowTitle(card, owned)).toBe("10) Card A10 · RI (4412)");
+	expect(cardTitle({ ...card, supplementary: true, owner: "NT" }, owned)).toBe(
+		"Card A10 · NT (4412)",
+	);
+	const { limitGroupId: _unused, ...noGroup } = card;
+	expect(cardTitle(noGroup, owned)).toBe("Card A10 (4412)");
+	expect(cardTitle({ ...noGroup, last4: "" }, owned)).toBe("Card A10");
+	expect(cardRowTitle({ ...card, last4: "" }, owned)).toBe("10) Card A10 · RI");
 });

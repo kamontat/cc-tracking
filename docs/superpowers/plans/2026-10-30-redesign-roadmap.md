@@ -13,7 +13,7 @@ on guesses.
 | 2. Shell and look | New tokens and look in both themes; page shell (header with the boxed mark, phone bottom bar with +, desktop tabs with a Payment button, build tint and badge, tab title); a placeholder Transactions page that + and Payment open until phase 4; theme before first paint; the footer dropped for About in Settings. Existing panels restyle through the tokens; their layouts don't change. | RD-03, RD-05, RD-08, RD-20, RD-21 | [phase 2](2026-10-30-redesign-phase-2-shell-and-look.md) |
 | 3. Home and purchase lists | Home (*Needs you*, *Ready to use*), entering amounts with warnings, review with copy text and save image, the spender's reply, saved list. Removes the dashboard's purchase form, *This sitting* and the batch start. | RD-09, RD-10, RD-15 | [phase 3](2026-10-31-redesign-phase-3-home-and-lists.md) |
 | 4. Transactions and payments | The Transactions ledger with search, filter and sort; *Upcoming*; the payment form with the card picker; planned payments. Runs the payment conversion at startup and switches download and restore to backup version 3. Rebuilds *Due next* and *Purchases by date* in Transactions: phase 3 already took them off Home, and their components and most of `purchase-range.ts` are gone or test-only. Removes the old payment dialog and the placeholder Transactions page. | RD-11 to RD-14 | [phase 4](2026-10-31-redesign-phase-4-transactions-and-payments.md) |
-| 5. Cards | Cards page with grouping, search, filter and sort; card page; full edit screen; limit groups. Removes the registry dialogs and the `/cards` query view. | RD-16 | written after phase 4 |
+| 5. Cards | Cards page with grouping, search, filter and sort; card page; full edit screen; limit groups. Removes the registry dialogs and the `/cards` query view. | RD-16 | [phase 5](2026-10-31-redesign-phase-5-cards.md) |
 | 6. Settings | Display, Locations (`/settings/locations`) with `Card.location` widened to any location id and backup version 3 checking each card's location, Backup (download, copy as text, restore a copy, all version 3 from phase 4), Reset (delete old purchases, delete all data); About already shipped in phase 2. Then the PRD's acceptance criteria are walked on the preview. | RD-17, RD-18, RD-19 | written after phase 5 |
 
 Each phase updates `PRD.md` and `PRD_TH.md` for what it ships (the overridden rows are updated
@@ -76,16 +76,24 @@ so most of them moved to the phase that builds what needs them.
 
 - Before group colour chips ship with Cards, darken the light `--cc-group-4-text` (4.21:1 on
   `--cc-group-4`) so it passes AA.
+  (Taken: `#b1532f` to `#a74e2c`, 4.63:1, DD-120.)
 - The `data-env` tint is applied after first paint; it could be folded into the head theme
   script later.
+  (Not taken: still set by `chrome.ts` after first paint; moved to phase 6.)
 - Refuse deleting a card that is on a list waiting for the spender or on a draft.
+  (Taken: `deleteCard` throws `guard.cardOnList`, tested in the contract suite, DD-119.)
 - Don't remove the `quickAdd.*`, `spendable.*` and `backup.copy*` catalog keys the list pages
   still use (or give those pages keys of their own first).
+  (Taken: only keys grep showed unused were removed; the purchase sheet reuses `quickAdd.*`.)
 - The card page's statement list is read-only (no per-statement *Mark paid*) until the new card
   page; a payment is made at `/pay?card=<id>` (DD-78).
+  (Taken: the new card page has *Make a payment* to `/pay?card=…&amount=<next bill>`, DD-118.)
 - `SpendRow` is hand-built in `card.ts`; it can go when `cc-quick-add` goes.
+  (Taken: both are gone.)
 - `cards.ts` recomputes each group's room on every paint; compute it once per load.
+  (Taken: DD-117.)
 - The card page's Add purchase dialog goes with the old card page (DD-67).
+  (Taken: DD-111.)
 
 ### Phase 6
 
@@ -96,3 +104,32 @@ so most of them moved to the phase that builds what needs them.
   holds (DD-95); tell the reader in the Merge help, or make Merge skip it.
 - Widen `Card.location` to any location id, and make backup version 3 check each card's
   location against the file's location ids (RD-17).
+- Once `Card.location` widens, let the Cards filter offer custom locations and
+  `readCardsView` (`cards-query.ts`) keep them in `loc`; today both take only the three fixed
+  places (DD-115). The edit screen's *Kept in* control also lists only `LOCATIONS`.
+- Apply the `data-env` tint before first paint (fold it into the head theme script); today
+  `chrome.ts` sets it after.
+- The Cards page has no "not assigned" filter, yet *Ready to use*'s *Assign them* links there
+  (US-06). Add a way to find cards with no limit group, or point the link elsewhere.
+- Small leftovers from phase 5, each still true at its last commit:
+  - Only archived cards match: the folded *Archived (N)* shows with no *No card matches* line
+    (`cc-cards-list`).
+  - The group sheet drops its *Delete NAME?* swap before a delete's result, so a failed delete
+    shows the plain *Delete group* again (`cc-group-sheet`).
+  - *Show older statements* shows even when there is nothing older (`card.ts`).
+  - `cc-card-hero` has literal `font-weight`, `line-height` and `letter-spacing` values
+    (UI-01: move them to tokens).
+  - The cards filter's radio ring uses `calc(var(--cc-border-width) * 2)`; a token would
+    be cleaner.
+  - Thai `title.cards` and `title.card` are both "บัตร — cc-tracking".
+  - The name sort uses `localeCompare` with no locale, so order can differ by browser.
+  - A group whose id is `new` would collide with the blank-sheet address `?group=new` (ids are
+    UUIDs, so only a restored or hand-made id could).
+- Small leftovers from the phase 5 feedback round (2026-11-01), each checked open at its last
+  commit:
+  - The sticky sub-header's `top` uses `--cc-header-height` (3.25rem, 52px) while the app header
+    measures 51px, so the bar sits 1px under the header (the header paints over it, so no gap
+    shows). Tie the two to one measure.
+  - `cc-card-form`'s section heading has a literal `letter-spacing: 0.06em` (as `cc-pay-form`'s
+    `.stat small`); move it to a token (UI-01).
+  - At 390px *Due days after close* wraps to two lines in the edit page's segmented control.

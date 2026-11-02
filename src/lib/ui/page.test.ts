@@ -60,7 +60,7 @@ test("applies chrome in the current language even when storage is unavailable an
 		// The test run has no inlined build, so the title carries whatever mark that reads as.
 		const { environment, pr } = buildInfo();
 		expect(document.title).toBe(
-			`ทะเบียนบัตร — cc-tracking${titleMark(environment, pr)}`,
+			`บัตร — cc-tracking${titleMark(environment, pr)}`,
 		);
 		expect(tabTexts("home")).toEqual(["หน้าหลัก", "หน้าหลัก"]);
 		expect(tabTexts("cards")).toEqual(["บัตร", "บัตร"]);

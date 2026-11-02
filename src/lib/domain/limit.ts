@@ -1,19 +1,4 @@
-import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
-
-/** One spendable card, with the room left on the pool it draws from. */
-export type SpendRow = {
-	card: Card;
-	group: LimitGroup;
-	/** Unpaid total across every card in the group. */
-	used: number;
-	/** `group.limit - used`. Negative when the group is over its limit. */
-	available: number;
-	/** The open period's dates: the statement a purchase made today lands on. */
-	closeDate: PlainDate;
-	dueDate: PlainDate;
-	/** How many other cards share this group. 0 means the card has it to itself. */
-	sharedWith: number;
-};
+import type { Card, LimitGroup } from "#lib/domain/types";
 
 /** How close a pool is to its limit, for tinting its usage bar. */
 export type UsageLevel = "within" | "high" | "over";

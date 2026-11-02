@@ -129,11 +129,9 @@ const amountValue = async () => {
 
 const submitText = () => flatText(inner(form(), 'button[type="submit"]')) ?? "";
 
-test("/pay is the card picker under a back header, with no sheet, and hides the Payment button", async () => {
+test("/pay is the card picker under a sub-header, with no sheet, and hides the Payment button", async () => {
 	const { root } = await setup("/pay");
-	expect(flatText(root.querySelector(".back-header h1"))).toBe(
-		"Make a payment",
-	);
+	expect(flatText(root.querySelector(".sub-header h1"))).toBe("Make a payment");
 	expect((await pickerRows()).map((r) => r.dataset["card"])).toEqual([
 		"A",
 		"B",
@@ -382,4 +380,88 @@ test("while a save is in flight the sheet is held, so Escape cannot slide it awa
 	expect(address.bar.search()).toContain("card=A");
 	release();
 	await settle(10);
+});
+
+/** A repository whose payment save waits for `settle(ok)`: true saves, false fails. */
+const heldSave = () => {
+	const held: { settle: (ok: boolean) => void } = { settle: () => {} };
+	const before = async (repo: Repository) => {
+		const save = repo.saveCardPayment.bind(repo);
+		repo.saveCardPayment = (payment) =>
+			new Promise((resolve, reject) => {
+				held.settle = (ok) =>
+					ok ? resolve(save(payment)) : reject(new Error("disk full"));
+			});
+	};
+	return { held, before };
+};
+
+const pageBanner = (root: HTMLElement) =>
+	root.querySelector<HTMLElement & { message: string; retryLabel: string }>(
+		"cc-error-banner",
+	);
+
+test("Back during a save that then fails says why on the page, and Try again reopens the sheet with the typing", async () => {
+	const { held, before } = heldSave();
+	const { root, address, visited } = await setup("/pay", async (repo) => {
+		await withStatement(repo);
+		await before(repo);
+	});
+	(await pickerRows())[0]?.click();
+	await settle();
+	await fill("amount", "100");
+	await fill("note", "From savings");
+	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(
+		new Event("submit", { cancelable: true }),
+	);
+	await settle(5);
+	// The browser's Back while the save is held: the address drops the card.
+	address.bar.back();
+	await settle();
+	expect(address.now()).toBe("/pay");
+	held.settle(false);
+	await settle(10);
+	expect(visited).toEqual([]);
+	expect(modal()).toBeNull();
+	const shown = pageBanner(root);
+	expect(shown?.message).toContain("Could not save the payment.");
+	expect(shown?.message).toContain("disk full");
+	await (shown as unknown as { updateComplete: Promise<void> })?.updateComplete;
+	const retry = shown?.shadowRoot?.querySelector<HTMLButtonElement>("button");
+	expect(flatText(retry)).toBe("Try again");
+	retry?.click();
+	await settle();
+	expect(address.calls.slice(-1)).toEqual(["push /pay?card=A"]);
+	expect(form()?.card?.id).toBe("A");
+	expect(await amountValue()).toBe("100");
+	expect(inner<HTMLInputElement>(form(), '[name="note"]')?.value).toBe(
+		"From savings",
+	);
+	expect(pageBanner(root)?.message ?? "").toBe("");
+	// Closing the reopened sheet steps back over the entry Try again pushed.
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
+	await settle();
+	expect(address.calls.slice(-1)).toEqual(["back"]);
+	expect(address.now()).toBe("/pay");
+});
+
+test("Back during a save that then succeeds leaves for Transactions once, with no extra history step", async () => {
+	const { held, before } = heldSave();
+	const { address, visited } = await setup("/pay", async (repo) => {
+		await withStatement(repo);
+		await before(repo);
+	});
+	(await pickerRows())[0]?.click();
+	await settle();
+	await fill("amount", "100");
+	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(
+		new Event("submit", { cancelable: true }),
+	);
+	await settle(5);
+	address.bar.back();
+	await settle();
+	held.settle(true);
+	await settle(10);
+	expect(visited).toEqual(["/transactions"]);
+	expect(address.calls).toEqual(["push /pay?card=A", "back"]);
 });

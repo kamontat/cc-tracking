@@ -511,7 +511,7 @@ export const listControls = css`
  * The purchase list's two columns, for the steps drawn in a shadow root (amounts, reply); the
  * page's own `.list-layout` in app.css draws the review and saved views the same way. On a
  * phone the side panel's pieces flow into the one column, a `data-place="start"` piece above
- * the lines; from 900px the panel parks beside them, sticky under the header, and the bottom
+ * the lines; from 900px the panel parks beside them, sticky under the sub-header, and the bottom
  * action bar inside it loses its own frame.
  */
 export const listLayout = css`
@@ -553,7 +553,9 @@ export const listLayout = css`
 
 		.list-layout__side {
 			position: sticky;
-			top: calc(var(--cc-header-height) + var(--cc-space-4));
+			top: calc(
+				var(--cc-header-height) + var(--cc-sub-header-height) + var(--cc-space-4)
+			);
 			display: flex;
 			flex-direction: column;
 			gap: var(--cc-space-3);
@@ -629,8 +631,8 @@ export const actionBarStyles = css`
 /**
  * The pieces a card's name is drawn from (card-label.ts, UI-14): `.mini`, the last-4 chip in the
  * group's pastel (`data-g` 1 to 4, `data-big` for the payment sheet's card), `.card-panel`, the
- * chip and `id) name` side by side, the `.cl-full` / `.cl-short` pair a narrow place swaps (a
- * component shows `.cl-short` and hides `.cl-full` in its own media or container query), and
+ * chip and `id) name` side by side, `.cl-short` hidden by default (a `cardLineHtml` pair shows its
+ * full form unless a narrow place swaps it in its own media or container query), and
  * `.tag`, a pill with a dot that carries a word as well as a colour (`data-urgency` from
  * `payTag`). app.css keeps a copy of `.mini` and `.card-panel` for the light-DOM pages.
  */

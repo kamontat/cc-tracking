@@ -57,6 +57,17 @@ export function roomFor(
 	);
 }
 
+/**
+ * Satang a new purchase of `amount` goes over the card's group room (FR-19, DR-11): its own
+ * overshoot, `amount - max(room, 0)`, never more than the purchase. Measured before it is saved;
+ * 0 when it fits or the card draws on no group.
+ */
+export function overRoom(card: Card, data: RoomData, amount: number): number {
+	const room = roomFor(card, data);
+	if (!room) return 0;
+	return Math.max(0, amount - Math.max(room.room, 0));
+}
+
 export type ReadyRow = {
 	card: Card;
 	room: GroupRoom;

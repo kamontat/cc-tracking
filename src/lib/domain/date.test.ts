@@ -13,6 +13,7 @@ import {
 	isValidDate,
 	monthName,
 	parseDate,
+	periodLabel,
 	periodOf,
 	periodParts,
 	today,
@@ -198,5 +199,12 @@ describe("monthName", () => {
 		expect(monthName("2026-10-31", "en")).toBe("October");
 		expect(monthName("2026-01-01", "th")).toBe("มกราคม");
 		expect(monthName("2026-12-05", "th")).toBe("ธันวาคม");
+	});
+});
+
+describe("periodLabel", () => {
+	test("names a statement month as Mon YYYY, the year Gregorian in both languages", () => {
+		expect(periodLabel("2026-11", "en")).toBe("Nov 2026");
+		expect(periodLabel("2026-01", "th")).toBe("ม.ค. 2026");
 	});
 });

@@ -1,0 +1,143 @@
+import { afterEach, expect, test } from "bun:test";
+import "#components/cc-cards-filter";
+import {
+	type CcCardsFilter,
+	cardsSortLabel,
+} from "#components/cc-cards-filter";
+import { type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
+import { setLocale } from "#lib/i18n/index";
+
+afterEach(() => setLocale("en"));
+
+const mount = async (props: Partial<CcCardsFilter> = {}) => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-cards-filter") as CcCardsFilter;
+	element.view = DEFAULT_CARDS_VIEW;
+	element.count = (v: CardsView) => 5 - v.locations.length - v.owners.length;
+	Object.assign(element, props);
+	document.body.append(element);
+	await element.updateComplete;
+	return { element, root: element.shadowRoot as ShadowRoot };
+};
+
+const click = async (element: CcCardsFilter, selector: string) => {
+	element.shadowRoot?.querySelector<HTMLElement>(selector)?.click();
+	await element.updateComplete;
+};
+
+const text = (el: Element | null | undefined) =>
+	el?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+
+test("offers Kept in, Account holder and Sort by, counting cards live", async () => {
+	const { element, root } = await mount();
+	expect([...root.querySelectorAll("legend")].map((l) => text(l))).toEqual([
+		"Kept in",
+		"Account holder",
+		"Sort by",
+	]);
+	expect(
+		[...root.querySelectorAll("[data-location]")].map((b) => text(b)),
+	).toEqual(["Bangkok", "Phichit", "Krabi"]);
+	expect(
+		[...root.querySelectorAll("[data-owner]")].map((b) => text(b)),
+	).toEqual(["KC", "NT", "RI"]);
+	const group = root.querySelector("[role=radiogroup]");
+	expect(
+		[...(group?.querySelectorAll("label") ?? [])].map((b) => text(b)),
+	).toEqual(["By place", "Most room", "Name", "Close day"]);
+	expect(
+		[
+			...root.querySelectorAll<HTMLInputElement>(
+				"input[type=radio][name=sort]",
+			),
+		].map((r) => [r.value, r.checked]),
+	).toEqual([
+		["place", true],
+		["room", false],
+		["name", false],
+		["close", false],
+	]);
+	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 5 cards");
+	await click(element, "[data-owner=NT]");
+	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 4 cards");
+});
+
+test("the sheet is titled Filter cards", async () => {
+	const { root } = await mount();
+	expect(root.querySelector("cc-modal")?.getAttribute("heading")).toBe(
+		"Filter cards",
+	);
+});
+
+test("the route names the places", async () => {
+	const { root } = await mount({ locationName: (id) => `P-${id}` });
+	expect(text(root.querySelector("[data-location=krabi]"))).toBe("P-krabi");
+});
+
+test("one card reads singular; none disables the button", async () => {
+	const one = await mount({ count: () => 1 });
+	expect(text(one.root.querySelector("[data-action=apply]"))).toBe(
+		"Show 1 card",
+	);
+	const none = await mount({ count: () => 0 });
+	const apply = none.root.querySelector(
+		"[data-action=apply]",
+	) as HTMLButtonElement;
+	expect(text(apply)).toBe("Nothing matches");
+	expect(apply.disabled).toBe(true);
+});
+
+test("apply emits the draft view", async () => {
+	const { element } = await mount({
+		view: { ...DEFAULT_CARDS_VIEW, q: "kb" },
+	});
+	let detail: CardsView | undefined;
+	element.addEventListener("apply", (e) => {
+		detail = (e as CustomEvent<CardsView>).detail;
+	});
+	await click(element, "[data-location=krabi]");
+	await click(element, "[data-owner=RI]");
+	await click(element, "input[name=sort][value=room]");
+	expect(
+		element.shadowRoot?.querySelector<HTMLInputElement>(
+			"input[name=sort][value=room]",
+		)?.checked,
+	).toBe(true);
+	await click(element, "[data-action=apply]");
+	expect(detail).toEqual({
+		q: "kb",
+		locations: ["krabi"],
+		owners: ["RI"],
+		sort: "room",
+	});
+});
+
+test("Clear all resets the draft but keeps the search", async () => {
+	const { element } = await mount({
+		view: { q: "kb", locations: ["krabi"], owners: ["KC"], sort: "name" },
+	});
+	let detail: CardsView | undefined;
+	element.addEventListener("apply", (e) => {
+		detail = (e as CustomEvent<CardsView>).detail;
+	});
+	await click(element, "[data-action=clear]");
+	await click(element, "[data-action=apply]");
+	expect(detail).toEqual({ ...DEFAULT_CARDS_VIEW, q: "kb" });
+});
+
+test("Close re-emits close", async () => {
+	const { element, root } = await mount();
+	let closed = false;
+	element.addEventListener("close", () => {
+		closed = true;
+	});
+	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
+	expect(closed).toBe(true);
+});
+
+test("each sort has its words", () => {
+	expect(cardsSortLabel("place")).toBe("By place");
+	expect(cardsSortLabel("close")).toBe("Close day");
+	setLocale("th");
+	expect(cardsSortLabel("room")).not.toBe("Most room");
+});

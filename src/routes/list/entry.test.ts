@@ -606,3 +606,28 @@ test("a draft page leaves its address alone", async () => {
 	await fire(root, "remove", { cardId: "A" });
 	expect(replaced).toEqual([]);
 });
+
+const subtitleOf = (root: HTMLElement) =>
+	flatText(root.querySelector(".sub-header h1 .sub-header__detail"));
+
+test("the sub-header's muted line names the list's date and how many cards it has", async () => {
+	const { root } = await setup({ search: "?card=B&card=A" });
+	expect(flatText(root.querySelector(".sub-header .sub-header__title"))).toBe(
+		"New purchase list",
+	);
+	expect(subtitleOf(root)).toBe("Sat, 31 Oct 2026 · 2 cards");
+	// A new date shows at once; review counts the lines that carry an amount.
+	await fire(root, "entry-change", {
+		date: "2026-11-03",
+		entries: { B: "1" },
+	});
+	expect(subtitleOf(root)).toBe("Tue, 03 Nov 2026 · 2 cards");
+	await fire(root, "review", {
+		date: "2026-11-03",
+		lines: [{ cardId: "B", amount: 100 }],
+	});
+	expect(subtitleOf(root)).toBe("Tue, 03 Nov 2026 · 1 card");
+
+	const opened = await setupDraft(draftWith(["A"]));
+	expect(subtitleOf(opened.root)).toBe("Mon, 02 Nov 2026 · 1 card");
+});

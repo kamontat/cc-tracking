@@ -189,6 +189,7 @@ const stmt = (
 	purchases: [],
 	total: 1_000,
 	paidAmount: 0,
+	payments: [],
 	remaining: 1_000,
 	paid: false,
 	open: false,
@@ -317,5 +318,59 @@ describe("ledgersFor", () => {
 		);
 		expect([...map.keys()]).toEqual(["A", "Z"]);
 		expect(map.get("A")?.owed).toBe(5_000_00);
+	});
+});
+
+describe("payment parts", () => {
+	const parts = (l: CardLedger, period: string) =>
+		of(l, period).payments.map((x) => [x.payment.id, x.amount]);
+
+	test("a payment naming a period settles it, capped; the overshoot goes to the pool", () => {
+		const l = ledger(
+			[purchase("a", "2026-09-05", 100), purchase("b", "2026-10-05", 200)],
+			[payment("p1", 150, { period: "2026-09" })],
+		);
+		expect(parts(l, "2026-09")).toEqual([["p1", 100]]);
+		expect(parts(l, "2026-10")).toEqual([["p1", 50]]);
+	});
+
+	test("one pool payment splits across two statements, oldest first", () => {
+		const l = ledger(
+			[purchase("a", "2026-09-05", 100), purchase("b", "2026-10-05", 200)],
+			[payment("p1", 250)],
+		);
+		expect(parts(l, "2026-09")).toEqual([["p1", 100]]);
+		expect(parts(l, "2026-10")).toEqual([["p1", 150]]);
+	});
+
+	test("pool payments are spent by date, then id", () => {
+		const l = ledger(
+			[purchase("a", "2026-09-05", 100), purchase("b", "2026-10-05", 200)],
+			[
+				payment("p3", 60, { date: "2026-10-02" }),
+				payment("p2", 60, { date: "2026-10-01" }),
+				payment("p1", 60, { date: "2026-10-01" }),
+			],
+		);
+		expect(parts(l, "2026-09")).toEqual([
+			["p1", 60],
+			["p2", 40],
+		]);
+		expect(parts(l, "2026-10")).toEqual([
+			["p2", 20],
+			["p3", 60],
+		]);
+	});
+
+	test("parts sum to paidAmount; credit is left over; planned payments are ignored", () => {
+		const l = ledger(
+			[purchase("a", "2026-09-05", 100)],
+			[payment("p1", 130), payment("p2", 500, { status: "planned" })],
+		);
+		const s = of(l, "2026-09");
+		expect(s.payments.reduce((n, x) => n + x.amount, 0)).toBe(s.paidAmount);
+		expect(s.payments.map((x) => x.payment.id)).toEqual(["p1"]);
+		expect(l.credit).toBe(30);
+		expect(of(l, "2026-11").payments).toEqual([]);
 	});
 });
