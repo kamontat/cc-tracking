@@ -1,0 +1,292 @@
+{
+	"//": "localStorage as main (4876074) saved it, and what main read back. Made by running main's LocalStorageRepository; do not edit by hand.",
+	"today": "2026-11-03",
+	"storage": {
+		"cc:batch-start": "\"2026-10-30T02:00:00.000Z\"",
+		"cc:card:1": "{\"id\":\"1\",\"name\":\"SCB Visa\",\"last4\":\"4412\",\"location\":\"krabi\",\"cycle\":{\"kind\":\"offset\",\"closeDay\":18,\"dueOffsetDays\":15},\"archived\":false,\"limitGroupId\":\"scb\",\"comment\":\"main card\"}",
+		"cc:card:2": "{\"id\":\"2\",\"name\":\"SCB Sub\",\"last4\":\"7765\",\"location\":\"bangkok\",\"cycle\":{\"kind\":\"fixed\",\"closeDay\":25,\"dueDay\":10},\"archived\":false,\"limitGroupId\":\"scb\",\"supplementary\":true,\"owner\":\"RI\"}",
+		"cc:card:3%2Fx": "{\"id\":\"3/x\",\"name\":\"UOB Krabi\",\"last4\":\"0001\",\"location\":\"phichit\",\"cycle\":{\"kind\":\"offset\",\"closeDay\":1,\"dueOffsetDays\":20},\"archived\":false,\"limitGroupId\":\"uob\"}",
+		"cc:card:4": "{\"id\":\"4\",\"name\":\"Old card\",\"last4\":\"9999\",\"location\":\"bangkok\",\"cycle\":{\"kind\":\"fixed\",\"closeDay\":5,\"dueDay\":25},\"archived\":true,\"limitGroupId\":\"old\"}",
+		"cc:card:5": "{\"id\":\"5\",\"name\":\"No group\",\"last4\":\"1234\",\"location\":\"krabi\",\"cycle\":{\"kind\":\"offset\",\"closeDay\":10,\"dueOffsetDays\":20},\"archived\":false}",
+		"cc:limitgroup:old": "{\"id\":\"old\",\"name\":\"Old pool\",\"limit\":1000000}",
+		"cc:limitgroup:scb": "{\"id\":\"scb\",\"name\":\"SCB Business\",\"limit\":20000000,\"owner\":\"KC\"}",
+		"cc:limitgroup:uob": "{\"id\":\"uob\",\"name\":\"UOB\",\"limit\":5000000,\"owner\":\"NT\"}",
+		"cc:payment:1:2026-08": "{\"cardId\":\"1\",\"period\":\"2026-08\",\"paidAt\":\"2026-09-01\",\"closeDate\":\"2026-08-18\",\"dueDate\":\"2026-09-02\"}",
+		"cc:payment:1:2026-09": "{\"cardId\":\"1\",\"period\":\"2026-09\",\"paidAt\":\"2026-10-05\",\"closeDate\":\"2026-09-18\",\"dueDate\":\"2026-10-03\",\"parts\":[{\"paidAt\":\"2026-09-30\",\"amount\":500000},{\"paidAt\":\"2026-10-05\",\"amount\":225050}]}",
+		"cc:payment:3%2Fx:2026-10": "{\"cardId\":\"3/x\",\"period\":\"2026-10\",\"paidAt\":\"2026-10-10\",\"closeDate\":\"2026-10-01\",\"dueDate\":\"2026-10-21\",\"parts\":[{\"paidAt\":\"2026-10-10\",\"amount\":1500000}]}",
+		"cc:payment:4:2026-07": "{\"cardId\":\"4\",\"period\":\"2026-07\",\"paidAt\":\"2026-07-20\",\"closeDate\":\"2026-07-05\",\"dueDate\":\"2026-07-25\"}",
+		"cc:purchase:1:2026-08-02:a": "{\"id\":\"a\",\"cardId\":\"1\",\"date\":\"2026-08-02\",\"amount\":1250000,\"note\":\"note a\"}",
+		"cc:purchase:1:2026-08-20:b": "{\"id\":\"b\",\"cardId\":\"1\",\"date\":\"2026-08-20\",\"amount\":300000,\"note\":\"note b\"}",
+		"cc:purchase:1:2026-09-10:c": "{\"id\":\"c\",\"cardId\":\"1\",\"date\":\"2026-09-10\",\"amount\":725050,\"note\":\"note c\"}",
+		"cc:purchase:1:2026-10-15:d": "{\"id\":\"d\",\"cardId\":\"1\",\"date\":\"2026-10-15\",\"amount\":400000,\"note\":\"note d\"}",
+		"cc:purchase:1:2026-10-30:e": "{\"id\":\"e\",\"cardId\":\"1\",\"date\":\"2026-10-30\",\"amount\":199999,\"note\":\"note e\"}",
+		"cc:purchase:2:2026-09-01:f": "{\"id\":\"f\",\"cardId\":\"2\",\"date\":\"2026-09-01\",\"amount\":200000,\"note\":\"note f\"}",
+		"cc:purchase:2:2026-10-26:g": "{\"id\":\"g\",\"cardId\":\"2\",\"date\":\"2026-10-26\",\"amount\":800000,\"note\":\"note g\"}",
+		"cc:purchase:3%2Fx:2026-09-15:h": "{\"id\":\"h\",\"cardId\":\"3/x\",\"date\":\"2026-09-15\",\"amount\":2000000,\"note\":\"note h\"}",
+		"cc:purchase:3%2Fx:2026-10-20:i": "{\"id\":\"i\",\"cardId\":\"3/x\",\"date\":\"2026-10-20\",\"amount\":3106500,\"note\":\"note i\"}",
+		"cc:purchase:4:2026-07-01:j": "{\"id\":\"j\",\"cardId\":\"4\",\"date\":\"2026-07-01\",\"amount\":500000,\"note\":\"note j\"}",
+		"cc:purchase:5:2026-10-05:k": "{\"id\":\"k\",\"cardId\":\"5\",\"date\":\"2026-10-05\",\"amount\":100000,\"note\":\"note k\"}",
+		"cc:settings": "{\"purchaseLocations\":[\"krabi\",\"bangkok\"]}"
+	},
+	"expected": {
+		"cards": [
+			{
+				"id": "1",
+				"name": "SCB Visa",
+				"last4": "4412",
+				"location": "krabi",
+				"cycle": {
+					"kind": "offset",
+					"closeDay": 18,
+					"dueOffsetDays": 15
+				},
+				"archived": false,
+				"limitGroupId": "scb",
+				"comment": "main card"
+			},
+			{
+				"id": "2",
+				"name": "SCB Sub",
+				"last4": "7765",
+				"location": "bangkok",
+				"cycle": {
+					"kind": "fixed",
+					"closeDay": 25,
+					"dueDay": 10
+				},
+				"archived": false,
+				"limitGroupId": "scb",
+				"supplementary": true,
+				"owner": "RI"
+			},
+			{
+				"id": "3/x",
+				"name": "UOB Krabi",
+				"last4": "0001",
+				"location": "phichit",
+				"cycle": {
+					"kind": "offset",
+					"closeDay": 1,
+					"dueOffsetDays": 20
+				},
+				"archived": false,
+				"limitGroupId": "uob"
+			},
+			{
+				"id": "4",
+				"name": "Old card",
+				"last4": "9999",
+				"location": "bangkok",
+				"cycle": {
+					"kind": "fixed",
+					"closeDay": 5,
+					"dueDay": 25
+				},
+				"archived": true,
+				"limitGroupId": "old"
+			},
+			{
+				"id": "5",
+				"name": "No group",
+				"last4": "1234",
+				"location": "krabi",
+				"cycle": {
+					"kind": "offset",
+					"closeDay": 10,
+					"dueOffsetDays": 20
+				},
+				"archived": false
+			}
+		],
+		"groups": [
+			{
+				"id": "old",
+				"name": "Old pool",
+				"limit": 1000000
+			},
+			{
+				"id": "scb",
+				"name": "SCB Business",
+				"limit": 20000000,
+				"owner": "KC"
+			},
+			{
+				"id": "uob",
+				"name": "UOB",
+				"limit": 5000000,
+				"owner": "NT"
+			}
+		],
+		"purchases": [
+			{
+				"id": "a",
+				"cardId": "1",
+				"date": "2026-08-02",
+				"amount": 1250000,
+				"note": "note a"
+			},
+			{
+				"id": "b",
+				"cardId": "1",
+				"date": "2026-08-20",
+				"amount": 300000,
+				"note": "note b"
+			},
+			{
+				"id": "c",
+				"cardId": "1",
+				"date": "2026-09-10",
+				"amount": 725050,
+				"note": "note c"
+			},
+			{
+				"id": "d",
+				"cardId": "1",
+				"date": "2026-10-15",
+				"amount": 400000,
+				"note": "note d"
+			},
+			{
+				"id": "e",
+				"cardId": "1",
+				"date": "2026-10-30",
+				"amount": 199999,
+				"note": "note e"
+			},
+			{
+				"id": "f",
+				"cardId": "2",
+				"date": "2026-09-01",
+				"amount": 200000,
+				"note": "note f"
+			},
+			{
+				"id": "g",
+				"cardId": "2",
+				"date": "2026-10-26",
+				"amount": 800000,
+				"note": "note g"
+			},
+			{
+				"id": "h",
+				"cardId": "3/x",
+				"date": "2026-09-15",
+				"amount": 2000000,
+				"note": "note h"
+			},
+			{
+				"id": "i",
+				"cardId": "3/x",
+				"date": "2026-10-20",
+				"amount": 3106500,
+				"note": "note i"
+			},
+			{
+				"id": "j",
+				"cardId": "4",
+				"date": "2026-07-01",
+				"amount": 500000,
+				"note": "note j"
+			},
+			{
+				"id": "k",
+				"cardId": "5",
+				"date": "2026-10-05",
+				"amount": 100000,
+				"note": "note k"
+			}
+		],
+		"statements": [
+			{
+				"cardId": "1",
+				"period": "2026-08",
+				"closeDate": "2026-08-18",
+				"dueDate": "2026-09-02",
+				"total": 1250000,
+				"paidAmount": 1250000,
+				"remaining": 0
+			},
+			{
+				"cardId": "1",
+				"period": "2026-09",
+				"closeDate": "2026-09-18",
+				"dueDate": "2026-10-03",
+				"total": 1025050,
+				"paidAmount": 725050,
+				"remaining": 300000
+			},
+			{
+				"cardId": "1",
+				"period": "2026-10",
+				"closeDate": "2026-10-18",
+				"dueDate": "2026-11-02",
+				"total": 400000,
+				"paidAmount": 0,
+				"remaining": 400000
+			},
+			{
+				"cardId": "1",
+				"period": "2026-11",
+				"closeDate": "2026-11-18",
+				"dueDate": "2026-12-03",
+				"total": 199999,
+				"paidAmount": 0,
+				"remaining": 199999
+			},
+			{
+				"cardId": "2",
+				"period": "2026-09",
+				"closeDate": "2026-09-25",
+				"dueDate": "2026-10-10",
+				"total": 200000,
+				"paidAmount": 0,
+				"remaining": 200000
+			},
+			{
+				"cardId": "2",
+				"period": "2026-11",
+				"closeDate": "2026-11-25",
+				"dueDate": "2026-12-10",
+				"total": 800000,
+				"paidAmount": 0,
+				"remaining": 800000
+			},
+			{
+				"cardId": "3/x",
+				"period": "2026-10",
+				"closeDate": "2026-10-01",
+				"dueDate": "2026-10-21",
+				"total": 2000000,
+				"paidAmount": 1500000,
+				"remaining": 500000
+			},
+			{
+				"cardId": "3/x",
+				"period": "2026-11",
+				"closeDate": "2026-11-01",
+				"dueDate": "2026-11-21",
+				"total": 3106500,
+				"paidAmount": 0,
+				"remaining": 3106500
+			},
+			{
+				"cardId": "4",
+				"period": "2026-07",
+				"closeDate": "2026-07-05",
+				"dueDate": "2026-07-25",
+				"total": 500000,
+				"paidAmount": 500000,
+				"remaining": 0
+			},
+			{
+				"cardId": "5",
+				"period": "2026-10",
+				"closeDate": "2026-10-10",
+				"dueDate": "2026-10-30",
+				"total": 100000,
+				"paidAmount": 0,
+				"remaining": 100000
+			}
+		]
+	}
+}
