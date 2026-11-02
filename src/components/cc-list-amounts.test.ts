@@ -183,7 +183,7 @@ test("cards sharing a limit are warned together", async () => {
 		const warning = line(root, id).querySelector(
 			'[data-warning="shared-limit"]',
 		);
-		expect(flat(warning)).toContain("A, B");
+		expect(flat(warning)).toContain("Card A, Card B");
 	}
 });
 
@@ -294,11 +294,11 @@ test("the total counts one card or many", async () => {
 	);
 });
 
-test("a line is headed by the card's label, Remove beside it", async () => {
+test("a line is headed by the card in the panel form, Remove beside it", async () => {
 	const { root } = await mount({ cards: [A] });
 	const top = line(root, "A").querySelector(".top");
-	expect(flat(top?.querySelector(".card-label"))).toBe("A) Card A (1111)");
-	expect(top?.querySelector(".last4")?.textContent).toBe("(1111)");
+	expect(flat(top?.querySelector(".card-label"))).toBe("A) Card A");
+	expect(flat(top?.querySelector(".mini"))).toBe("1111");
 	expect(top?.querySelector('[data-action="remove"]')).not.toBeNull();
 });
 
@@ -332,4 +332,108 @@ test("the side panel takes the page's own actions after Review", async () => {
 	expect(slot?.previousElementSibling?.classList.contains("action-bar")).toBe(
 		true,
 	);
+});
+
+test("the over-room note shows planned payments due by the list date", async () => {
+	const plan = (id: string, cardId: string, date: string, amount: number) => ({
+		id,
+		cardId,
+		date,
+		amount,
+		status: "planned" as const,
+	});
+	const { element, root } = await mount({
+		allCards: [A, B, C],
+		cards: [A],
+		planned: [
+			plan("p1", "B", "2026-10-31", 3_000_00),
+			plan("p2", "A", "2026-12-01", 9_000_00),
+			plan("p3", "C", "2026-10-31", 7_000_00),
+		],
+	});
+	await type(element, root, "A", "60,000");
+	const part = line(root, "A").querySelector('[data-part="planned"]');
+	expect(flat(part)).toBe("฿3,000.00 planned to be paid by then");
+});
+
+test("no planned note when nothing is planned by then", async () => {
+	const { element, root } = await mount();
+	await type(element, root, "A", "60,000");
+	expect(line(root, "A").querySelector('[data-part="planned"]')).toBeNull();
+});
+
+const noteInput = (root: ParentNode, id: string) =>
+	line(root, id).querySelector('[data-field="note"]') as HTMLInputElement;
+
+const typeNote = async (
+	element: CcListAmounts,
+	root: ParentNode,
+	id: string,
+	text: string,
+) => {
+	const input = noteInput(root, id);
+	input.value = text;
+	input.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+	await element.updateComplete;
+};
+
+test("each line has an optional Note under its amount, sent with the entries and the review", async () => {
+	const { element, root } = await mount({ cards: [A, B] });
+	const changes = listen<{ notes: Record<string, string> }>(
+		element,
+		"entry-change",
+	);
+	const reviews = listen(element, "review");
+	const label = noteInput(root, "A").closest("label");
+	expect(flat(label)).toBe("Note (optional)");
+	// The note follows the amount in the line.
+	const fields = [...line(root, "A").querySelectorAll("[data-field]")].map(
+		(el) => (el as HTMLElement).dataset["field"],
+	);
+	expect(fields).toEqual(["amount", "note"]);
+	await type(element, root, "A", "100");
+	await type(element, root, "B", "50");
+	await typeNote(element, root, "A", " fuel ");
+	expect(changes.at(-1)?.notes).toEqual({ A: " fuel " });
+	reviewButton(root).click();
+	expect(reviews).toEqual([
+		{
+			date: "2026-10-31",
+			lines: [
+				{ cardId: "A", amount: 10000, note: "fuel" },
+				{ cardId: "B", amount: 5000 },
+			],
+		},
+	]);
+});
+
+test("starting notes show, and a language switch keeps a typed note", async () => {
+	const { element, root } = await mount({
+		cards: [A, B],
+		notes: { A: "office" },
+	});
+	expect(noteInput(root, "A").value).toBe("office");
+	await typeNote(element, root, "B", "van fuel");
+	setLocale("th");
+	await element.updateComplete;
+	expect(noteInput(root, "A").value).toBe("office");
+	expect(noteInput(root, "B").value).toBe("van fuel");
+	expect(flat(noteInput(root, "B").closest("label"))).toBe("หมายเหตุ (ไม่บังคับ)");
+});
+
+test("each note box is named for its card", async () => {
+	const { root } = await mount();
+	expect(
+		line(root, "B")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("Note for Card B");
+	setLocale("th");
+	await (root.host as CcListAmounts).updateComplete;
+	expect(
+		line(root, "B")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("หมายเหตุของ Card B");
+	setLocale("en");
 });

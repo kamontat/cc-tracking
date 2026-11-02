@@ -6,7 +6,7 @@ import type { PurchaseList } from "#lib/domain/types";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { backHeader } from "#lib/ui/back-header";
-import { cardLabelHtml } from "#lib/ui/card-label";
+import { cardLines, cardPanel } from "#lib/ui/card-label";
 import { listPageAddress } from "#lib/ui/list-address";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
@@ -48,10 +48,11 @@ export function renderSavedPage(
 		const byId = new Map(from.cards.map((card) => [card.id, card]));
 		const made = list.lines.filter((line) => line.made).length;
 		const total = formatAmount(listTotal(list));
-		const moved = list.lines
-			.filter((line) => !line.made)
-			.map((line) => line.cardId)
-			.join(", ");
+		const moved = cardLines(
+			list.lines.filter((line) => !line.made).map((line) => line.cardId),
+			from.cards,
+			{ short: true },
+		);
 		return html`
 			${backHeader({
 				title: headerDate(list.date, locale, true),
@@ -69,7 +70,11 @@ export function renderSavedPage(
 									? html`<small>${t("reply.planned", { amount: formatAmount(line.amount) })}</small>`
 									: nothing;
 							return html`<li data-card=${line.cardId}>
-								<span class="what"><b>${cardLabelHtml(line.cardId, byId.get(line.cardId))}</b>${planned}</span>
+								<span class="what"><b>${cardPanel(line.cardId, byId.get(line.cardId), from.groups)}</b>${planned}${
+									line.note
+										? html`<small class="line-note">${line.note}</small>`
+										: nothing
+								}</span>
 								${
 									line.made
 										? html`<b class="amount">${formatAmount(real)}</b>`

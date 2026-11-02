@@ -4,6 +4,7 @@ import { messageOf } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import { createRepository } from "#lib/storage/index";
 import { migrateLocations } from "#lib/storage/migrate-locations";
+import { migratePayments } from "#lib/storage/migrate-payments";
 import type { Repository } from "#lib/storage/repository";
 import { applyChrome } from "#lib/ui/chrome";
 
@@ -19,15 +20,21 @@ import { applyChrome } from "#lib/ui/chrome";
  * whose browser refuses storage still gets a translated title and nav under the banner,
  * and no route can structurally miss that path the way a `render`-side call always would.
  */
-export function bootstrap(
+export type BootstrapOptions = {
+	storage?: Storage;
+	createRepo?: () => Repository;
+};
+
+export async function bootstrap(
 	titleKey: MessageKey,
 	render: (repo: Repository) => void,
-): void {
+	options: BootstrapOptions = {},
+): Promise<void> {
 	applyChrome(titleKey);
 
 	let repo: Repository;
 	try {
-		repo = createRepository();
+		repo = (options.createRepo ?? createRepository)();
 	} catch (error) {
 		console.error(error);
 		const banner = document.createElement("cc-error-banner");
@@ -48,13 +55,34 @@ export function bootstrap(
 		return;
 	}
 
-	// The page renders whether or not the migration succeeded. A location that could not be
-	// rewritten is a cosmetic problem; refusing to render would turn it into an outage.
-	void migrateLocations(repo, globalThis.localStorage)
-		.catch((failure: unknown) => {
-			console.error(failure);
-		})
-		.then(() => {
-			render(repo);
-		});
+	const storage = options.storage ?? globalThis.localStorage;
+
+	// The page renders whether or not the location migration succeeded. A location that
+	// could not be rewritten is a cosmetic problem; refusing to render would turn it into
+	// an outage.
+	try {
+		await migrateLocations(repo, storage);
+	} catch (failure) {
+		console.error(failure);
+	}
+
+	// Payments are different: numbers read from half-converted payments would be wrong, so a
+	// failure shows the banner instead of the page. The marker stays unset; a reload retries.
+	try {
+		await migratePayments(repo, storage);
+	} catch (failure) {
+		console.error(failure);
+		const banner = document.createElement("cc-error-banner");
+		const paint = () => {
+			banner.message = t("startup.paymentsFailed");
+			banner.retryLabel = t("common.reload");
+		};
+		paint();
+		subscribe(paint);
+		banner.addEventListener("retry", () => location.reload());
+		(document.querySelector("main") ?? document.body).prepend(banner);
+		return;
+	}
+
+	render(repo);
 }

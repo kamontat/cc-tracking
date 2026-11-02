@@ -9,19 +9,15 @@ import "#components/cc-limit-group-table";
 import "#components/cc-modal";
 import { html, nothing, render } from "lit";
 import { today } from "#lib/domain/date";
-import { groupUsage } from "#lib/domain/limit";
 import type { CardView, GroupView } from "#lib/domain/list-view";
-import type {
-	Card,
-	LimitGroup,
-	Purchase,
-	StatementPayment,
-} from "#lib/domain/types";
+import { groupRoom } from "#lib/domain/room";
+import type { Card, LimitGroup } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import { readViews, type Views, writeViews } from "#lib/ui/list-view-query";
+import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -41,8 +37,7 @@ export function renderCardsPage(
 	onQuery: (query: URLSearchParams) => void = () => {},
 ): void {
 	let cards: Card[] = [];
-	let purchases: Purchase[] = [];
-	let payments: StatementPayment[] = [];
+	let money: MoneyData | null = null;
 	let counts: Record<string, number> = {};
 	let groups: LimitGroup[] = [];
 	// Which dialog is open, and on what: `null` is closed, a `null` record is an add. Only one
@@ -87,18 +82,14 @@ export function renderCardsPage(
 
 	const state = createPageState({
 		fetch: async () => {
-			cards = await repo.listCards();
-			groups = await repo.listLimitGroups();
-			purchases = (
-				await Promise.all(cards.map((card) => repo.listPurchases(card.id)))
-			).flat();
-			payments = (
-				await Promise.all(cards.map((card) => repo.listPayments(card.id)))
-			).flat();
+			money = await loadMoneyData(repo, now);
+			({ cards, groups } = money);
 			counts = Object.fromEntries(
 				cards.map((card) => [
 					card.id,
-					purchases.filter((purchase) => purchase.cardId === card.id).length,
+					(money?.purchases ?? []).filter(
+						(purchase) => purchase.cardId === card.id,
+					).length,
 				]),
 			);
 			if (pendingEdit !== null) {
@@ -198,11 +189,17 @@ export function renderCardsPage(
 		`;
 	};
 
+	const usedAndHeld = (room: { used: number; held: number }) =>
+		room.used + room.held;
+
 	const usage = (): Record<string, number> =>
 		Object.fromEntries(
 			groups.map((group) => [
 				group.id,
-				groupUsage(group, cards, purchases, payments, now),
+				// Used plus what sent lists hold, the same count Home's room subtracts.
+				money
+					? usedAndHeld(groupRoom(group, cards, money.ledgers, money.lists, ""))
+					: 0,
 			]),
 		);
 

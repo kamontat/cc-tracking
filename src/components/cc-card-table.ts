@@ -23,8 +23,16 @@ import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { describeCycleText, locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
+import { cardLine, cardMini } from "#lib/ui/card-label";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
-import { badge, base, controls, dataTable, listControls } from "#styles/shared";
+import {
+	badge,
+	base,
+	cardBits,
+	controls,
+	dataTable,
+	listControls,
+} from "#styles/shared";
 
 /** What the narrow layout's sort chip calls each sort; the wide one uses the headings. */
 const SORT_LABELS: Record<Exclude<CardSort, "default">, MessageKey> = {
@@ -38,6 +46,7 @@ const SORT_LABELS: Record<Exclude<CardSort, "default">, MessageKey> = {
 export class CcCardTable extends LitElement {
 	static override styles = [
 		base,
+		cardBits,
 		controls,
 		dataTable,
 		badge,
@@ -90,11 +99,6 @@ export class CcCardTable extends LitElement {
 			.meta {
 				font-size: var(--cc-text-xs);
 				color: var(--cc-text-muted);
-			}
-
-			.card-id {
-				font-family: var(--cc-font-mono);
-				font-size: var(--cc-text-xs);
 			}
 
 			.comment {
@@ -282,21 +286,19 @@ export class CcCardTable extends LitElement {
 		const group =
 			this.groups.find(({ id }) => id === card.limitGroupId) ?? null;
 		const owner = cardOwnerOf(card, group);
-		const meta = [
-			html`••••${card.last4}`,
-			...(count > 0
+		const meta =
+			count > 0
 				? [
 						count === 1
 							? t("cards.purchaseCountOne")
 							: t("cards.purchaseCount", { count }),
 					]
-				: []),
-		];
+				: [];
 		return html`
 			<tr>
 				<td class="card">
 					<span class="name-line">
-						<span class="card-line"><span class="card-id">${card.id})</span> <a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${card.name}</a></span>
+						<span class="card-line card-panel">${cardMini(card, this.groups)} <a class="card-name" href=${`/card?id=${encodeURIComponent(card.id)}`}>${cardLine(card.id, card, { short: true })}</a></span>
 						${card.archived ? html`<span class="badge archived">${t("cards.archived")}</span>` : nothing}
 						${
 							card.supplementary
@@ -304,7 +306,7 @@ export class CcCardTable extends LitElement {
 								: nothing
 						}
 					</span>
-					<div class="meta" block>${meta.map((part, index) => html`${index > 0 ? " · " : ""}${part}`)}</div>
+					${meta.length > 0 ? html`<div class="meta" block>${meta.join(" · ")}</div>` : nothing}
 					${card.comment ? html`<div class="comment">${card.comment}</div>` : nothing}
 				</td>
 				<td class="location" data-label=${t("cards.column.location")}>${locationText(card.location)}</td>

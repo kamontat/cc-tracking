@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import type { CcFabMenu } from "#components/cc-fab-menu";
 import { setLocale } from "#lib/i18n/index";
 import type { Environment } from "#lib/ui/build-info";
 import { currentTab, renderShell, type ShellView } from "#lib/ui/shell";
@@ -27,6 +28,7 @@ test("current tab per path", () => {
 	expect(currentTab("/transactions")).toBe("transactions");
 	expect(currentTab("/cards")).toBe("cards");
 	expect(currentTab("/card")).toBe("cards");
+	expect(currentTab("/pay")).toBe("transactions");
 	expect(currentTab("/settings")).toBe("settings");
 	expect(currentTab("/cards/")).toBe("cards");
 	expect(currentTab("/settings/")).toBe("settings");
@@ -114,28 +116,52 @@ test("bottom bar is exactly the four tabs, with no add button", () => {
 	expect(document.querySelector(".tabbar__add")).toBeNull();
 });
 
-test("one floating Payment button, outside both navs", () => {
+test("one floating + New menu, outside both navs", async () => {
 	mount();
 	renderShell(view());
 
-	const pay = all('[data-action="pay"]');
-	expect(pay).toHaveLength(1);
-	const [fab] = pay;
-	expect(fab?.classList.contains("fab")).toBe(true);
-	expect(fab?.getAttribute("href")).toBe("/transactions");
-	expect(fab?.getAttribute("aria-label")).toBe("Payment");
-	expect(fab?.querySelector(".fab__label")?.textContent).toBe("Payment");
-	expect(fab?.querySelector("svg")).not.toBeNull();
-	expect(fab?.closest("nav")).toBeNull();
-	expect(fab?.closest("#site-header")).toBeNull();
+	const menus = all("cc-fab-menu");
+	expect(menus).toHaveLength(1);
+	const [menu] = menus as CcFabMenu[];
+	await menu?.updateComplete;
+	const button = menu?.querySelector("button.fab");
+	expect(button?.getAttribute("aria-expanded")).toBe("false");
+	expect(button?.querySelector(".fab__label")?.textContent).toBe("New");
+	expect(
+		[...(menu?.querySelectorAll("a.fab-menu__item") ?? [])].map((a) =>
+			a.getAttribute("href"),
+		),
+	).toEqual(["/list/new", "/pay"]);
+	expect(menu?.closest("nav")).toBeNull();
+	expect(menu?.closest("#site-header")).toBeNull();
 });
 
-test("rendering again keeps one floating button", () => {
+test("the tab bar holds no stray text beside the nav and the menu", () => {
+	mount();
+	renderShell(view());
+
+	const tabbar = document.querySelector("#tabbar");
+	const text = [...(tabbar?.childNodes ?? [])]
+		.filter((node) => node.nodeType === Node.TEXT_NODE)
+		.map((node) => node.textContent?.trim())
+		.filter(Boolean);
+	expect(text).toEqual([]);
+});
+
+test("the payment page marks the Transactions tab", () => {
+	mount();
+	renderShell(view({ path: "/pay" }));
+	expect(
+		all('[aria-current="page"]').map((link) => link.getAttribute("data-tab")),
+	).toEqual(["transactions", "transactions"]);
+});
+
+test("rendering again keeps one floating menu", () => {
 	mount();
 	renderShell(view());
 	renderShell(view({ path: "/" }));
 
-	expect(all('[data-action="pay"]')).toHaveLength(1);
+	expect(all("cc-fab-menu")).toHaveLength(1);
 });
 
 test("the current tab is marked in both navs", () => {
@@ -179,7 +205,7 @@ test("build mark per build, as plain text", () => {
 	}
 });
 
-test("Thai labels", () => {
+test("Thai labels", async () => {
 	setLocale("th");
 	mount();
 	renderShell(view());
@@ -190,14 +216,28 @@ test("Thai labels", () => {
 		"บัตร",
 		"ตั้งค่า",
 	]);
-	const fab = document.querySelector('[data-action="pay"]');
-	expect(fab?.getAttribute("aria-label")).toBe("ชำระ");
-	expect(fab?.querySelector(".fab__label")?.textContent).toBe("ชำระ");
+	await document.querySelector<CcFabMenu>("cc-fab-menu")?.updateComplete;
+	const fab = document.querySelector("button.fab");
+	expect(fab?.getAttribute("aria-label")).toBe("ใหม่");
+	expect(fab?.querySelector(".fab__label")?.textContent).toBe("ใหม่");
 	const date = document.querySelector('[data-testid="today"]');
 	expect(date?.querySelector(".site-header__date-short")?.textContent).toBe(
 		"ศ., 30 ต.ค.",
 	);
 	expect(date?.querySelector(".site-header__date-long")?.textContent).toBe(
 		"ศ., 30 ต.ค. 2026",
+	);
+});
+
+test("from 900px the header tabs reach up as far as down, so they share the brand's centre line", async () => {
+	const css = await Bun.file("src/styles/app.css").text();
+	const tabs = css.match(/\n\t\.site-header__tabs \{([^}]*)\}/)?.[1] ?? "";
+	expect(tabs).toMatch(
+		/margin-block: calc\(var\(--cc-space-3\) \* -1\)\s*calc\(\(var\(--cc-space-3\) \+ var\(--cc-rule-width\)\) \* -1\)/,
+	);
+	const link =
+		css.match(/\n\t\.site-header__tabs a:any-link \{([^}]*)\}/)?.[1] ?? "";
+	expect(link).toContain(
+		"padding-block-start: calc(var(--cc-env-rule-width) - var(--cc-rule-width))",
 	);
 });

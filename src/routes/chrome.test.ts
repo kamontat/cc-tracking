@@ -119,3 +119,22 @@ test("leading leaves room for Thai", () => {
 	expect(Number.parseFloat(value("--cc-leading"))).toBeGreaterThanOrEqual(1.65);
 	expect(value("--cc-font-sans")).toContain('"Noto Sans Thai"');
 });
+
+test("the page ends with room for the floating + New button, on a phone and from 900px", async () => {
+	const css = await Bun.file("src/styles/app.css").text();
+	const rule = (from: number) => {
+		const block = css.slice(css.indexOf("\n.page {", from));
+		return block.slice(0, block.indexOf("}"));
+	};
+	const phone = rule(0);
+	for (const token of [
+		"--cc-tabbar-height",
+		"--cc-bar-height",
+		"safe-area-inset-bottom",
+	])
+		expect(phone).toContain(token);
+	const wide = css.slice(css.indexOf("From 900px the bar is gone"));
+	const wideRule = wide.slice(0, wide.indexOf("}\n}"));
+	for (const token of ["--cc-bar-height", "safe-area-inset-bottom"])
+		expect(wideRule).toContain(token);
+});

@@ -70,4 +70,20 @@ describe("purchase list", () => {
 		expect(r.draft).toBeNull();
 		expect(r.purchases[0]?.amount).toBe(100);
 	});
+
+	test("a line's note becomes its purchase's note, and a moved line keeps it", () => {
+		const l = list({
+			lines: [
+				{ cardId: "a", amount: 100, made: true, note: "fuel" },
+				{ cardId: "b", amount: 200, made: true },
+				{ cardId: "c", amount: 300, made: false, note: "next time" },
+			],
+		});
+		const r = saveReply(l, opts);
+		if (!r.ok) throw new Error("expected ok");
+		expect(r.purchases.map((p) => p.note)).toEqual(["fuel", ""]);
+		expect(r.draft?.lines).toEqual([
+			{ cardId: "c", amount: 300, note: "next time" },
+		]);
+	});
 });

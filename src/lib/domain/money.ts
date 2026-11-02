@@ -1,5 +1,8 @@
 const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
 
+/** The minus sign (U+2212) a signed amount reads with, not the hyphen. */
+export const MINUS = "−";
+
 /** Parse user-typed THB into satang. Throws RangeError on anything that is not a positive amount. */
 export function parseAmount(input: string): number {
 	const cleaned = input.trim().replace(/,/g, "");

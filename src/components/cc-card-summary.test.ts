@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
 import "#components/cc-card-summary";
+import type { GroupRoom } from "#lib/domain/room";
 import { buildStatement } from "#lib/domain/statement";
-import type { Card, LimitGroup, Purchase } from "#lib/domain/types";
+import type {
+	Card,
+	LedgerStatement,
+	LimitGroup,
+	Purchase,
+} from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
 const card: Card = {
@@ -23,12 +29,44 @@ const purchase: Purchase = {
 	note: "fuel",
 };
 
+/** A ledger statement, `paidAmount` of it settled. */
+const stmt = (
+	period: string,
+	list: Purchase[],
+	paidAmount = 0,
+): LedgerStatement => {
+	const built = buildStatement(card, period, list);
+	return {
+		cardId: built.cardId,
+		period,
+		closeDate: built.closeDate,
+		dueDate: built.dueDate,
+		purchases: built.purchases,
+		total: built.total,
+		paidAmount,
+		remaining: built.total - paidAmount,
+		paid: paidAmount > 0 && built.total === paidAmount,
+		open: false,
+	};
+};
+
+const roomOf = (used: number, sharedWith = 0): GroupRoom => ({
+	group,
+	used,
+	available: group.limit - used,
+	held: 0,
+	room: group.limit - used,
+	level:
+		used > group.limit ? "over" : used >= group.limit * 0.8 ? "high" : "within",
+	sharedWith,
+});
+
 type Props = {
-	group: LimitGroup | null;
-	used: number;
-	sharedWith: number;
+	room: GroupRoom | null;
 	owed: number;
-	next: ReturnType<typeof buildStatement> | null;
+	credit: number;
+	next: LedgerStatement | null;
+	payCardId: string;
 	today: string;
 };
 
@@ -37,12 +75,12 @@ const mount = async (overrides: Partial<Props> = {}) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-card-summary");
 	Object.assign(element, {
-		group,
-		used: 85_000,
-		sharedWith: 0,
+		room: roomOf(85_000),
 		owed: 85_000,
+		credit: 0,
 		// 2026-08 closes 18 Aug, due 02 Sep; today is 2026-08-30, so due soon.
-		next: buildStatement(card, "2026-08", [purchase]),
+		next: stmt("2026-08", [purchase]),
+		payCardId: "kbank",
 		today: "2026-08-30",
 		...overrides,
 	});
@@ -65,18 +103,32 @@ test("shows what the group has left, of what limit, with a bar tinted as it runs
 	expect(available?.dataset["level"]).toBe("high");
 });
 
+test("the bar counts what lists hold, so it agrees with the room figure", async () => {
+	const room = { ...roomOf(50_000), held: 40_000, room: 10_000 };
+	const bar = tile(
+		await mount({ room }),
+		"available",
+	)?.querySelector<HTMLElement>(".usage > span");
+	expect(bar?.getAttribute("style")).toContain("inline-size: 90%");
+	expect(
+		tile(await mount({ room }), "available")
+			?.querySelector(".usage")
+			?.getAttribute("data-level"),
+	).toBe("high");
+});
+
 test("says how many other cards share the group, one or many", async () => {
 	expect(tile(await mount(), "available")?.textContent).not.toContain("Shared");
 	expect(
-		tile(await mount({ sharedWith: 1 }), "available")?.textContent,
+		tile(await mount({ room: roomOf(85_000, 1) }), "available")?.textContent,
 	).toContain("Shared with 1 other card");
 	expect(
-		tile(await mount({ sharedWith: 3 }), "available")?.textContent,
+		tile(await mount({ room: roomOf(85_000, 3) }), "available")?.textContent,
 	).toContain("Shared with 3 other cards");
 });
 
 test("says so when the card draws on no group", async () => {
-	const element = await mount({ group: null });
+	const element = await mount({ room: null });
 	expect(tile(element, "available")?.textContent).toContain(
 		"This card draws on no limit group.",
 	);
@@ -98,14 +150,7 @@ test("shows the next statement due, its amount, and how urgent it is", async () 
 
 test("shows only what is left on a partly paid next statement", async () => {
 	const element = await mount({
-		next: buildStatement(card, "2026-08", [purchase], {
-			cardId: "kbank",
-			period: "2026-08",
-			paidAt: "2026-08-25",
-			closeDate: "2026-08-18",
-			dueDate: "2026-09-02",
-			parts: [{ paidAt: "2026-08-25", amount: 35_000 }],
-		}),
+		next: stmt("2026-08", [purchase], 35_000),
 	});
 	expect(tile(element, "next")?.textContent).toContain("฿500.00");
 });
@@ -114,14 +159,38 @@ test("names the closing date of a statement that is still open", async () => {
 	const element = await mount({ today: "2026-08-12" });
 	const next = tile(element, "next");
 	expect(next?.textContent).toContain("Still open, closes 18 Aug 2026");
-	expect(next?.dataset["urgency"]).toBe("future");
+	expect(next?.dataset["urgency"]).toBe("open");
 });
 
 test("says nothing is due when the next statement owes nothing", async () => {
 	const element = await mount({
-		next: buildStatement(card, "2026-09", []),
+		next: stmt("2026-09", []),
 	});
 	expect(tile(element, "next")?.textContent).toContain("Nothing due");
+});
+
+test("shows credit only when the card holds some", async () => {
+	expect(tile(await mount(), "owed")?.textContent).not.toContain("Credit");
+	expect(tile(await mount({ credit: 5_000 }), "owed")?.textContent).toContain(
+		"Credit ฿50.00",
+	);
+});
+
+test("Make a payment leads to the payment sheet on this card and its next bill", async () => {
+	const element = await mount();
+	const link = element.shadowRoot?.querySelector<HTMLAnchorElement>(
+		'a[data-action="pay"]',
+	);
+	expect(link?.textContent).toBe("Make a payment");
+	expect(link?.getAttribute("href")).toBe(
+		`/pay?card=kbank&amount=${element.next?.remaining}`,
+	);
+	const none = await mount({ next: null });
+	expect(
+		none.shadowRoot
+			?.querySelector('a[data-action="pay"]')
+			?.getAttribute("href"),
+	).toBe("/pay?card=kbank");
 });
 
 test("renders in the chosen language", async () => {

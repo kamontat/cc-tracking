@@ -36,13 +36,19 @@ export function saveReply(
 			cardId: line.cardId,
 			date: list.date,
 			amount: line.actual ?? line.amount,
-			note: "",
+			note: line.note ?? "",
 			addedAt: opts.now,
 		}));
 
 	const unmade: ListLine[] = list.lines
 		.filter((line) => !line.made)
-		.map((line) => ({ cardId: line.cardId, amount: line.amount }));
+		.map(
+			(line): ListLine => ({
+				cardId: line.cardId,
+				amount: line.amount,
+				...(line.note ? { note: line.note } : {}),
+			}),
+		);
 
 	const draft: PurchaseList | null =
 		opts.moveUnmade && unmade.length > 0

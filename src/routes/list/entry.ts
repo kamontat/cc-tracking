@@ -5,6 +5,7 @@ import { today } from "#lib/domain/date";
 import { isReady, roomFor } from "#lib/domain/home";
 import { composeList, lineAmount, listLines } from "#lib/domain/list-entry";
 import { formatAmountInput } from "#lib/domain/money";
+import { plannedOf } from "#lib/domain/pay";
 import type { GroupRoom } from "#lib/domain/room";
 import type {
 	Card,
@@ -16,7 +17,7 @@ import { MessageError, messageOf } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { backHeader } from "#lib/ui/back-header";
-import { cardLabelsText } from "#lib/ui/card-label";
+import { cardLines } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { newListAddress } from "#lib/ui/list-address";
 import {
@@ -96,6 +97,7 @@ export function renderEntryPage(
 	let dropped: string[] = [];
 	let date: PlainDate = now;
 	let entries: Record<string, string> = {};
+	let notes: Record<string, string> = {};
 	let reviewed: { date: PlainDate; lines: ListLine[] } | null = null;
 	let status: ShareStatus | null = null;
 
@@ -124,9 +126,11 @@ export function renderEntryPage(
 		cardIds = onList.filter((c) => ready.has(c));
 		dropped = onList.filter((c) => !ready.has(c));
 		entries = {};
+		notes = {};
 		for (const line of list.lines) {
-			if (cardIds.includes(line.cardId))
-				entries[line.cardId] = formatAmountInput(line.amount);
+			if (!cardIds.includes(line.cardId)) continue;
+			entries[line.cardId] = formatAmountInput(line.amount);
+			if (line.note) notes[line.cardId] = line.note;
 		}
 		view = "amounts";
 	};
@@ -147,10 +151,15 @@ export function renderEntryPage(
 	};
 
 	const onEntryChange = (
-		event: CustomEvent<{ date: PlainDate; entries: Record<string, string> }>,
+		event: CustomEvent<{
+			date: PlainDate;
+			entries: Record<string, string>;
+			notes?: Record<string, string>;
+		}>,
 	) => {
 		date = event.detail.date;
 		entries = { ...event.detail.entries };
+		notes = { ...event.detail.notes };
 	};
 
 	const onReview = (event: CustomEvent<{ date: PlainDate }>) => {
@@ -159,7 +168,7 @@ export function renderEntryPage(
 		// card that was removed.
 		const amounts: Record<string, number> = {};
 		for (const id of cardIds) amounts[id] = lineAmount(entries[id] ?? "") ?? 0;
-		reviewed = { date, lines: listLines(cardIds, amounts) };
+		reviewed = { date, lines: listLines(cardIds, amounts, notes) };
 		show("review");
 	};
 
@@ -302,7 +311,8 @@ export function renderEntryPage(
 		return html`
 			${backHeader({
 				title: t(editingId ? "purchaseList.draft" : "purchaseList.new"),
-				back: "/",
+				// A new list goes back to the picker it came from; a draft goes Home (DD-103).
+				back: mode === "new" ? "/list/new" : "/",
 			})}
 			${banner(state)}
 			${
@@ -311,18 +321,22 @@ export function renderEntryPage(
 							dropped.length === 1
 								? "purchaseList.dropped.one"
 								: "purchaseList.dropped.many",
-							{ cards: cardLabelsText(dropped, from.cards) },
+							{ cards: cardLines(dropped, from.cards) },
 						)}</p>`
 					: nothing
 			}
 			<cc-list-amounts
 				.cards=${cards}
+				.allCards=${from.cards}
+				.groups=${from.groups}
+				.planned=${plannedOf(from.payments)}
 				.candidates=${ready.filter((card) => !cardIds.includes(card.id))}
 				.rooms=${rooms}
 				.ledgers=${from.ledgers}
 				.today=${now}
 				.date=${date}
 				.entries=${entries}
+				.notes=${notes}
 				@entry-change=${onEntryChange}
 				@review=${onReview}
 				@remove=${onRemove}

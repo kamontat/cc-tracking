@@ -1,10 +1,9 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import { compareDates, displayDate } from "#lib/domain/date";
+import { ledgerUrgency } from "#lib/domain/ledger";
 import { formatAmount } from "#lib/domain/money";
-import { partsOf } from "#lib/domain/payment";
-import { urgencyOf } from "#lib/domain/statement";
-import type { PlainDate, Statement } from "#lib/domain/types";
+import type { LedgerStatement, PlainDate } from "#lib/domain/types";
 
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
@@ -105,96 +104,6 @@ export class CcStatementList extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			/*
-			 * Payments share the purchases' columns, so every amount and button lines up, and are
-			 * ruled off from them and set muted: they come off the total rather than add to it.
-			 */
-			tbody.payments tr:first-child td {
-				border-top: var(--cc-border-width) solid var(--cc-border);
-			}
-
-			tr.payment td {
-				color: var(--cc-text-muted);
-			}
-
-			/* A payment's minus sign must not break away from its amount. */
-			td[data-numeric] {
-				white-space: nowrap;
-			}
-
-			/* Reads as a closing row of the table, not as a second set of column headings. */
-			tfoot th,
-			tfoot td {
-				padding: var(--cc-space-2);
-				font-size: inherit;
-				font-weight: 600;
-				color: inherit;
-				text-align: left;
-				text-transform: none;
-				letter-spacing: normal;
-				border-top: var(--cc-border-width) solid var(--cc-border);
-				border-bottom: 0;
-			}
-
-			/*
-			 * The details' flex gap does not reach its content in every browser, so the actions
-			 * under a table space themselves off it.
-			 */
-			table + .statement-actions {
-				margin-top: var(--cc-space-3);
-			}
-
-			tfoot td[data-numeric] {
-				text-align: right;
-			}
-
-			/*
-			 * Stacked, a payment would spend four lines on a date, one word and an amount. It
-			 * keeps one line instead -- date, amount, undo -- and the footer likewise reads as a
-			 * single "Left to pay ... amount" line under one rule, not one rule per cell.
-			 */
-			@media (max-width: 639px) {
-				tr.payment,
-				tfoot tr {
-					flex-direction: row;
-					align-items: center;
-				}
-
-				tr.payment .note {
-					display: none;
-				}
-
-				tr.payment td[data-numeric] {
-					margin-left: auto;
-				}
-
-				tbody.payments tr:first-child td,
-				tfoot th,
-				tfoot td {
-					border-top: 0;
-					border-bottom: 0;
-				}
-
-				tbody.payments tr:first-child,
-				tfoot tr {
-					border-top: var(--cc-border-width) solid var(--cc-border);
-				}
-
-				tfoot tr {
-					justify-content: space-between;
-					border-bottom: 0;
-				}
-
-				tfoot td:empty {
-					display: none;
-				}
-			}
-
-			.statement-actions {
-				gap: var(--cc-space-2);
-				align-items: center;
-			}
-
 			/* Months with nothing in them: a line of text between panels, not a panel of its own. */
 			.quiet {
 				padding: var(--cc-space-1) var(--cc-space-3);
@@ -238,7 +147,7 @@ export class CcStatementList extends LitElement {
 		`,
 	];
 
-	@property({ attribute: false }) statements: Statement[] = [];
+	@property({ attribute: false }) statements: LedgerStatement[] = [];
 	@property() today: PlainDate = "";
 
 	constructor() {
@@ -265,16 +174,15 @@ export class CcStatementList extends LitElement {
 	 * Statements in order, with each run of quiet ones -- closed, nothing spent, nothing paid --
 	 * gathered into an array. A year of an unused card is otherwise a dozen identical panels
 	 * saying ฿0.00, burying the one month that has anything on it. The open period stays whole
-	 * even when empty (it is where the next purchase lands), and so does a paid one (its payment
-	 * can still be undone).
+	 * even when empty (it is where the next purchase lands).
 	 */
-	private segments(): (Statement | Statement[])[] {
-		const segments: (Statement | Statement[])[] = [];
+	private segments(): (LedgerStatement | LedgerStatement[])[] {
+		const segments: (LedgerStatement | LedgerStatement[])[] = [];
 		for (const statement of this.statements) {
 			const quiet =
 				statement.purchases.length === 0 &&
-				statement.payment === null &&
-				urgencyOf(statement, this.today) !== "future";
+				statement.paidAmount === 0 &&
+				ledgerUrgency(statement, this.today) !== "open";
 			const last = segments.at(-1);
 			if (!quiet) segments.push(statement);
 			else if (Array.isArray(last)) last.push(statement);
@@ -283,7 +191,7 @@ export class CcStatementList extends LitElement {
 		return segments;
 	}
 
-	private quietLine(run: Statement[]) {
+	private quietLine(run: LedgerStatement[]) {
 		// Statements arrive newest first; the range reads oldest to newest.
 		const newest = run[0]?.period ?? "";
 		const oldest = run.at(-1)?.period ?? "";
@@ -299,7 +207,7 @@ export class CcStatementList extends LitElement {
 	 * exist only when a purchase is dated ahead, and are not current.
 	 */
 	private get currentPeriod(): string | null {
-		let current: Statement | null = null;
+		let current: LedgerStatement | null = null;
 		for (const statement of this.statements) {
 			if (compareDates(this.today, statement.closeDate) > 0) continue;
 			if (!current || compareDates(statement.closeDate, current.closeDate) < 0)
@@ -308,10 +216,9 @@ export class CcStatementList extends LitElement {
 		return current?.period ?? null;
 	}
 
-	private statement(statement: Statement) {
-		const urgency = urgencyOf(statement, this.today);
+	private statement(statement: LedgerStatement) {
+		const urgency = ledgerUrgency(statement, this.today);
 		const current = statement.period === this.currentPeriod;
-		const parts = partsOf(statement.payment, statement.total);
 		return html`
 					<article data-urgency=${urgency} ?data-current=${current}>
 						<details ?open=${statement.purchases.length > 0}>
@@ -324,8 +231,8 @@ export class CcStatementList extends LitElement {
 										due: displayDate(statement.dueDate, getLocale()),
 									})}</span>
 									${
-										statement.paid && statement.payment
-											? html`<small>${t("statements.paid", { date: displayDate(statement.payment.paidAt, getLocale()) })}</small>`
+										statement.paid
+											? html`<small>${t("statements.paid")}</small>`
 											: nothing
 									}
 									<span class="total">
@@ -345,7 +252,7 @@ export class CcStatementList extends LitElement {
 									: nothing
 							}
 							${
-								statement.purchases.length === 0 && parts.length === 0
+								statement.purchases.length === 0
 									? nothing
 									: html`
 										<table>
@@ -374,58 +281,14 @@ export class CcStatementList extends LitElement {
 													`,
 												)}
 											</tbody>
-											${
-												parts.length === 0
-													? nothing
-													: html`
-														<tbody class="payments">
-															${parts.map(
-																(part, index) => html`
-																	<tr class="payment">
-																		<td class="date">${displayDate(part.paidAt, getLocale())}</td>
-																		<td class="note">${t("statements.payment")}</td>
-																		<td data-numeric>${formatAmount(-part.amount)}</td>
-																		<td class="purchase-actions"><div class="actions" row>
-																			<button data-action="unmark-paid" data-variant="quiet"
-																				@click=${() =>
-																					this.emit("unmark-paid", {
-																						cardId: statement.cardId,
-																						period: statement.period,
-																						index,
-																					})}>${t("statements.unmark")}</button>
-																		</div></td>
-																	</tr>
-																`,
-															)}
-														</tbody>
-														<tfoot>
-															<tr>
-																<td></td>
-																<th scope="row" class="note">${t("statements.leftToPay")}</th>
-																<td data-numeric>${formatAmount(statement.remaining)}</td>
-																<td></td>
-															</tr>
-														</tfoot>
-													`
-											}
 										</table>
 									`
 							}
-
-							<div class="statement-actions" row>
-								${
-									statement.paid
-										? nothing
-										: urgency === "future"
-											? html`<small>${t("due.stillOpen")}</small>`
-											: html`<button data-action="mark-paid"
-												@click=${() =>
-													this.emit("mark-paid", {
-														cardId: statement.cardId,
-														period: statement.period,
-													})}>${t("statements.markPaid")}</button>`
-								}
-							</div>
+							${
+								statement.paidAmount > 0
+									? html`<p><small>${t("statements.paidAmount", { amount: formatAmount(statement.paidAmount) })}</small></p>`
+									: nothing
+							}
 						</details>
 					</article>
 				`;

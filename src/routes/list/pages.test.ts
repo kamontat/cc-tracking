@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { renderEntryPage } from "./entry";
+import { renderPickerPage } from "./picker-page";
 import { renderReplyPage } from "./reply-page";
 import { mount, settle } from "./test-support";
 import { renderSavedPage } from "./view-page";
@@ -36,7 +37,9 @@ const ruleBody = (css: string, selector: string) => {
 test("every list page hides the floating Payment button", async () => {
 	const renders = [
 		(repo: Repository, root: HTMLElement) =>
-			renderEntryPage(repo, root, "new", { search: "", share: {} }),
+			renderPickerPage(repo, root, { search: "" }),
+		(repo: Repository, root: HTMLElement) =>
+			renderEntryPage(repo, root, "new", { search: "?card=A", share: {} }),
 		(repo: Repository, root: HTMLElement) =>
 			renderEntryPage(repo, root, "draft", { search: "", share: {} }),
 		(repo: Repository, root: HTMLElement) =>
@@ -52,7 +55,7 @@ test("every list page hides the floating Payment button", async () => {
 	await settle();
 	const css = await Bun.file("src/styles/app.css").text();
 	expect(css).toMatch(
-		/:root\[data-list-page\] \.fab:any-link,\s*:root\[data-selecting\] \.fab:any-link\s*\{\s*display: none;/,
+		/:root\[data-pay-page\] \.fab-menu,\s*:root\[data-list-page\] \.fab-menu\s*\{\s*display: none;/,
 	);
 });
 
@@ -93,6 +96,21 @@ test("the list bottom bars reserve no room for the Payment button", async () => 
 		const css = (element.styles as { cssText: string }[])
 			.map((s) => s.cssText)
 			.join("\n");
-		expect(css).not.toContain("--cc-fab-size");
+		// The bar shares the Payment button's height token, but never sits above the button.
+		expect(css).not.toMatch(/bottom:[^;]*--cc-bar-height/);
 	}
+});
+
+test("the floating + New button and the selection bars share one height token", async () => {
+	const tokens = await Bun.file("src/styles/tokens.css").text();
+	expect(tokens).toMatch(/--cc-bar-height:/);
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(ruleBody(css, ".fab")).toContain("block-size: var(--cc-bar-height)");
+	expect(ruleBody(css, ".action-bar")).toContain(
+		"min-block-size: var(--cc-bar-height)",
+	);
+	const { actionBarStyles } = await import("#styles/shared");
+	expect(actionBarStyles.cssText).toContain(
+		"min-block-size: var(--cc-bar-height)",
+	);
 });

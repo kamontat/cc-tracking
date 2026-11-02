@@ -123,6 +123,14 @@ test("a new list opens with the picked cards and today", async () => {
 	expect(element.cards.map((c) => c.id)).toEqual(["B", "A"]);
 	expect(element.date).toBe("2026-10-31");
 	expect(root.querySelector("h1")?.textContent).toContain("New purchase list");
+	// Back goes to the picker the cards came from (DD-103).
+	expect(root.querySelector('[data-action="back"]')?.getAttribute("href")).toBe(
+		"/list/new",
+	);
+});
+
+test("a draft's back still goes Home", async () => {
+	const { root } = await setupDraft(draftWith(["A"]));
 	expect(root.querySelector('[data-action="back"]')?.getAttribute("href")).toBe(
 		"/",
 	);

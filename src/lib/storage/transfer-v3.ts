@@ -1,3 +1,4 @@
+import { type Location, toLocation } from "#lib/domain/location";
 import { defaultLocations } from "#lib/domain/locations";
 import { toSettings } from "#lib/domain/settings";
 import type {
@@ -12,7 +13,10 @@ import type {
 } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { MessageError } from "#lib/i18n/error";
-import { convertPayments } from "#lib/storage/migrate-payments";
+import {
+	convertPayments,
+	PAYMENTS_MIGRATION_KEY,
+} from "#lib/storage/migrate-payments";
 import type { Repository } from "#lib/storage/repository";
 import {
 	cardProblem,
@@ -64,8 +68,48 @@ export async function exportBackupV3(
 		payments,
 		statementDates,
 		lists: await repo.listPurchaseLists(),
-		locations: await repo.listLocations(),
+		locations: await storedOrDefaultLocations(repo),
 	};
+}
+
+/**
+ * The stored location records, or the three defaults while none are stored. Until phase 6,
+ * Settings' purchase places are the truth, so each record's `takesPurchases` follows them
+ * rather than a stale stored flag.
+ */
+async function storedOrDefaultLocations(
+	repo: Repository,
+): Promise<LocationRecord[]> {
+	const settings = await repo.getSettings();
+	const stored = await repo.listLocations();
+	if (stored.length === 0) return defaultLocations(settings);
+	return stored.map((record) => ({
+		...record,
+		takesPurchases: settings.purchaseLocations.some(
+			(place) => place === record.id,
+		),
+	}));
+}
+
+/** How many of each record a backup holds, or a repository holds now. */
+export type V3Counts = {
+	cards: number;
+	purchases: number;
+	payments: number;
+	limitGroups: number;
+	lists: number;
+};
+
+export const backupCounts = (backup: BackupV3): V3Counts => ({
+	cards: backup.cards.length,
+	purchases: backup.purchases.length,
+	payments: backup.payments.length,
+	limitGroups: backup.limitGroups.length,
+	lists: backup.lists.length,
+});
+
+export async function countRecordsV3(repo: Repository): Promise<V3Counts> {
+	return backupCounts(await exportBackupV3(repo, new Date()));
 }
 
 /** A positive whole number of satang (DR-01). */
@@ -129,6 +173,9 @@ function cardPaymentProblem(value: unknown): MessageKey | null {
 	const period = prop(value, "period");
 	if (period !== undefined && !isNonEmptyString(period))
 		return "backup.problem.missingPeriod";
+	const note = prop(value, "note");
+	if (note !== undefined && typeof note !== "string")
+		return "backup.problem.badNote";
 	return null;
 }
 
@@ -164,6 +211,9 @@ function listProblem(value: unknown): MessageKey | null {
 		const actual = prop(line, "actual");
 		if (actual !== undefined && !isPositiveAmount(actual))
 			return "backup.problem.badLineActual";
+		const note = prop(line, "note");
+		if (note !== undefined && typeof note !== "string")
+			return "backup.problem.badNote";
 	}
 	return null;
 }
@@ -187,6 +237,14 @@ function check(
 		const problem = problemOf(record);
 		if (problem) throw new MessageError(key, { index: index + 1, problem });
 	}
+}
+
+/** A record whose note is trimmed, and absent when blank (DC-07), as the app saves it. */
+function trimmedNote<T extends { note?: string }>(record: T): T {
+	if (record.note === undefined) return record;
+	const { note, ...rest } = record;
+	const trimmed = note.trim();
+	return (trimmed ? { ...rest, note: trimmed } : rest) as T;
 }
 
 /**
@@ -278,24 +336,71 @@ export function parseAnyBackup(text: string): BackupV3 {
 		limitGroups: limitGroups as LimitGroup[],
 		cards: cards as Card[],
 		purchases: purchases as Purchase[],
-		payments: payments as CardPayment[],
+		payments: (payments as CardPayment[]).map(trimmedNote),
 		statementDates: statementDates as StatementDates[],
-		lists: lists as PurchaseList[],
+		lists: (lists as PurchaseList[]).map((list) => ({
+			...list,
+			lines: list.lines.map(trimmedNote),
+		})),
 		locations: locations as LocationRecord[],
 	};
 }
 
-/** Additive: writes every record over whatever shares its key, and deletes nothing. */
+/**
+ * Additive: writes every record over whatever shares its key. The one deletion is a converted
+ * payment's stale parts: before writing an `m:` payment with a period, the card's stored
+ * `m:<card>:<period>:` payments go, so a record that now converts to fewer parts leaves none
+ * behind. A file with locations also sets which known places take purchases, because Home
+ * still reads that from settings.
+ */
 export async function importBackupV3(
 	repo: Repository,
 	backup: BackupV3,
 ): Promise<void> {
 	for (const group of backup.limitGroups) await repo.saveLimitGroup(group);
 	for (const location of backup.locations) await repo.saveLocation(location);
+	if (backup.locations.length > 0) {
+		const purchaseLocations: Location[] = [];
+		for (const location of backup.locations) {
+			const known = toLocation(location.id);
+			if (location.takesPurchases && known) purchaseLocations.push(known);
+		}
+		await repo.saveSettings({
+			...(await repo.getSettings()),
+			purchaseLocations,
+		});
+	}
 	for (const card of backup.cards) await repo.saveCard(card);
 	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
-	for (const payment of backup.payments) await repo.saveCardPayment(payment);
+	const cleared = new Set<string>();
+	for (const payment of backup.payments) {
+		if (payment.id.startsWith("m:") && payment.period) {
+			const prefix = `m:${payment.cardId}:${payment.period}:`;
+			if (!cleared.has(prefix)) {
+				cleared.add(prefix);
+				for (const stored of await repo.listCardPayments(payment.cardId)) {
+					if (stored.id.startsWith(prefix))
+						await repo.deleteCardPayment(payment.cardId, stored.id);
+				}
+			}
+		}
+		await repo.saveCardPayment(payment);
+	}
 	for (const dates of backup.statementDates)
 		await repo.saveStatementDates(dates);
 	for (const list of backup.lists) await repo.savePurchaseList(list);
+}
+
+/**
+ * Destructive: forgets everything stored, then writes the backup. The payments marker is
+ * set again afterwards, so the startup conversion does not run over the restored data.
+ */
+export async function replaceWithBackupV3(
+	repo: Repository,
+	backup: BackupV3,
+	storage: Pick<Storage, "setItem">,
+): Promise<void> {
+	await repo.clearAll();
+	await importBackupV3(repo, backup);
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done");
 }

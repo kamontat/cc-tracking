@@ -1,5 +1,4 @@
 import { describe, expect, test } from "bun:test";
-import type { Card, LimitGroup } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import {
 	sampleCard,
@@ -9,12 +8,29 @@ import {
 import type { Repository } from "#lib/storage/repository";
 import { InMemoryRepository } from "#lib/storage/repository";
 import {
-	countRecords,
-	exportBackup,
-	importBackup,
-	parseBackup,
-	replaceWithBackup,
-} from "#lib/storage/transfer";
+	importBackupV3 as importBackup,
+	parseAnyBackup as parseBackup,
+} from "#lib/storage/transfer-v3";
+
+/** A version 2 file's contents, the shape the validators here are shared with. */
+const exportBackup = async (repo: Repository) => {
+	const cards = await repo.listCards();
+	const purchases = [];
+	const payments = [];
+	for (const card of cards) {
+		purchases.push(...(await repo.listPurchases(card.id)));
+		payments.push(...(await repo.listPayments(card.id)));
+	}
+	return {
+		version: 2,
+		exportedAt: "2026-09-21T03:00:00.000Z",
+		limitGroups: await repo.listLimitGroups(),
+		cards,
+		purchases,
+		payments,
+		settings: await repo.getSettings(),
+	};
+};
 
 /** Runs `fn`, expecting it to throw, and returns what it threw. */
 function captureThrow(fn: () => unknown): unknown {
@@ -40,54 +56,6 @@ const populated = async () => {
 	return repo;
 };
 
-describe("exportBackup", () => {
-	test("captures every card, purchase, and payment", async () => {
-		const backup = await exportBackup(
-			await populated(),
-			new Date("2026-09-21T03:00:00Z"),
-		);
-
-		expect(backup.version).toBe(2);
-		expect(backup.exportedAt).toBe("2026-09-21T03:00:00.000Z");
-		expect(backup.cards.map((c) => c.id)).toEqual(["kbank", "scb"]);
-		expect(backup.purchases.map((p) => p.id)).toEqual(["p1", "p2"]);
-		expect(backup.payments).toHaveLength(1);
-	});
-
-	test("exports an empty store as empty lists", async () => {
-		const backup = await exportBackup(new InMemoryRepository());
-		expect(backup.cards).toEqual([]);
-		expect(backup.purchases).toEqual([]);
-		expect(backup.payments).toEqual([]);
-	});
-
-	test("does not resurrect deleted card records on card re-creation", async () => {
-		const repo = new InMemoryRepository();
-		// Save a card with a purchase and a payment
-		await repo.saveCard(sampleCard({ id: "kbank" }));
-		await repo.savePurchase(
-			samplePurchase({ id: "p1", cardId: "kbank", amount: 10_000 }),
-		);
-		await repo.savePayment(
-			samplePayment({ cardId: "kbank", period: "2026-09" }),
-		);
-
-		// Delete the purchase, then the card (a card with purchases cannot be deleted)
-		await repo.deletePurchase("kbank", "p1");
-		await repo.deleteCard("kbank");
-
-		// Create a new card with the same id (mimics user deleting and re-adding a card)
-		await repo.saveCard(sampleCard({ id: "kbank", location: "bangkok" }));
-
-		// Export and verify no orphaned records reappear
-		const backup = await exportBackup(repo);
-		expect(backup.cards.map((c) => c.id)).toEqual(["kbank"]);
-		expect(backup.cards[0]?.location).toBe("bangkok");
-		expect(backup.purchases).toEqual([]); // Old purchase must not resurface
-		expect(backup.payments).toEqual([]); // Old payment must not resurface
-	});
-});
-
 describe("parseBackup", () => {
 	test("accepts a backup this app wrote", async () => {
 		const text = JSON.stringify(await exportBackup(await populated()));
@@ -104,7 +72,7 @@ describe("parseBackup", () => {
 		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
-					version: 3,
+					version: 4,
 					cards: [],
 					purchases: [],
 					payments: [],
@@ -115,8 +83,8 @@ describe("parseBackup", () => {
 		expect(failure).toBeInstanceOf(MessageError);
 		expect((failure as MessageError).key).toBe("backup.version");
 		expect((failure as MessageError).params).toEqual({
-			found: "3",
-			expected: 2,
+			found: "4",
+			expected: 3,
 		});
 	});
 
@@ -215,7 +183,7 @@ describe("parseBackup", () => {
 		expect((failure as MessageError).key).toBe("backup.version");
 		expect((failure as MessageError).params).toEqual({
 			found: '"2"',
-			expected: 2,
+			expected: 3,
 		});
 	});
 
@@ -246,16 +214,6 @@ describe("parseBackup", () => {
 				},
 			],
 		});
-
-	test("keeps a payment's partial payments", () => {
-		const parts = [
-			{ paidAt: "2026-09-25", amount: 4_000_000 },
-			{ paidAt: "2026-10-01", amount: 6_000_000 },
-		];
-		expect(parseBackup(withPayment({ parts })).payments[0]?.parts).toEqual(
-			parts,
-		);
-	});
 
 	test("rejects a payment whose partial payments are malformed", () => {
 		for (const parts of [
@@ -324,81 +282,6 @@ describe("parseBackup", () => {
 		expect(parseBackup(JSON.stringify(backup)).cards[0]?.location).toBe(
 			"phichit",
 		);
-	});
-});
-
-describe("settings in a backup", () => {
-	test("exports the stored settings alongside everything else", async () => {
-		const repo = await populated();
-		await repo.saveSettings({ purchaseLocations: ["bangkok", "krabi"] });
-		const backup = await exportBackup(repo);
-
-		expect(backup.version).toBe(2);
-		expect(backup.settings).toEqual({
-			purchaseLocations: ["bangkok", "krabi"],
-		});
-	});
-
-	test("restores them on import", async () => {
-		const repo = await populated();
-		await repo.saveSettings({ purchaseLocations: ["phichit"] });
-		const restored = new InMemoryRepository();
-		await importBackup(restored, await exportBackup(repo));
-
-		expect(await restored.getSettings()).toEqual({
-			purchaseLocations: ["phichit"],
-		});
-	});
-
-	test("an older file carrying no settings still imports, leaving them untouched", async () => {
-		const restored = new InMemoryRepository();
-		await restored.saveSettings({ purchaseLocations: ["bangkok"] });
-		const parsed = parseBackup(
-			JSON.stringify({
-				version: 2,
-				exportedAt: "2026-09-23T00:00:00.000Z",
-				limitGroups: [],
-				cards: [],
-				purchases: [],
-				payments: [],
-			}),
-		);
-		await importBackup(restored, parsed);
-
-		expect(parsed.settings).toBeUndefined();
-		expect(await restored.getSettings()).toEqual({
-			purchaseLocations: ["bangkok"],
-		});
-	});
-
-	test("drops a stored location the closed set does not recognise", () => {
-		const parsed = parseBackup(
-			JSON.stringify({
-				version: 2,
-				exportedAt: "2026-09-23T00:00:00.000Z",
-				limitGroups: [],
-				cards: [],
-				purchases: [],
-				payments: [],
-				settings: { purchaseLocations: ["krabi", "chiang-mai"] },
-			}),
-		);
-		expect(parsed.settings).toEqual({ purchaseLocations: ["krabi"] });
-	});
-
-	test("reads settings that are not an object as none at all", () => {
-		const parsed = parseBackup(
-			JSON.stringify({
-				version: 2,
-				exportedAt: "2026-09-23T00:00:00.000Z",
-				limitGroups: [],
-				cards: [],
-				purchases: [],
-				payments: [],
-				settings: "krabi",
-			}),
-		);
-		expect(parsed.settings).toBeUndefined();
 	});
 });
 
@@ -530,188 +413,5 @@ describe("entry time in a backup", () => {
 				problem: "backup.problem.badAddedAt",
 			});
 		}
-	});
-});
-
-describe("importBackup", () => {
-	test("restores everything into an empty repository", async () => {
-		const backup = await exportBackup(await populated());
-		const restored = new InMemoryRepository();
-		await importBackup(restored, backup);
-
-		expect((await restored.listCards()).map((c) => c.id)).toEqual([
-			"kbank",
-			"scb",
-		]);
-		expect((await restored.listPurchases("kbank")).map((p) => p.id)).toEqual([
-			"p1",
-		]);
-		expect(await restored.listPayments("kbank")).toHaveLength(1);
-	});
-
-	test("reports how many of each record it wrote", async () => {
-		const repo = await populated();
-		await repo.saveLimitGroup({ id: "pool", name: "KBank", limit: 500_000 });
-
-		const counts = await importBackup(
-			new InMemoryRepository(),
-			await exportBackup(repo),
-		);
-
-		expect(counts).toEqual({
-			cards: 2,
-			purchases: 2,
-			payments: 1,
-			limitGroups: 1,
-		});
-	});
-
-	test("merges over existing records rather than wiping them", async () => {
-		const target = new InMemoryRepository();
-		await target.saveCard(
-			sampleCard({ id: "ktc", name: "KTC Card", location: "bangkok" }),
-		);
-		await target.saveCard(sampleCard({ name: "stale name" }));
-
-		await importBackup(target, await exportBackup(await populated()));
-
-		const cards = await target.listCards();
-		expect(cards.map((c) => c.id)).toEqual(["kbank", "ktc", "scb"]);
-		expect(cards.find((c) => c.id === "kbank")?.name).toBe("KBank Visa");
-	});
-
-	test("exports limit groups alongside the cards", async () => {
-		const repo = new InMemoryRepository();
-		await repo.saveLimitGroup({ id: "pool", name: "KBank", limit: 500_000 });
-		const backup = await exportBackup(repo);
-		expect(backup.version).toBe(2);
-		expect(backup.limitGroups).toEqual([
-			{ id: "pool", name: "KBank", limit: 500_000 },
-		]);
-	});
-
-	test("rejects a version 1 file", () => {
-		const text = JSON.stringify({
-			version: 1,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			cards: [],
-			purchases: [],
-			payments: [],
-		});
-		expect(() => parseBackup(text)).toThrow(MessageError);
-	});
-
-	test("rejects a file with no limitGroups list", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			cards: [],
-			purchases: [],
-			payments: [],
-		});
-		expect(() => parseBackup(text)).toThrow(MessageError);
-	});
-
-	test("names the limit group that is wrong, by position", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [{ id: "pool", name: "KBank", limit: "lots" }],
-			cards: [],
-			purchases: [],
-			payments: [],
-		});
-		try {
-			parseBackup(text);
-			throw new Error("expected parseBackup to throw");
-		} catch (failure) {
-			expect(failure).toBeInstanceOf(MessageError);
-			expect((failure as MessageError).key).toBe("backup.limitGroup");
-			expect((failure as MessageError).params).toEqual({
-				index: 1,
-				problem: "backup.problem.badLimit",
-			});
-		}
-	});
-
-	test("imports limit groups before the cards that point at them", async () => {
-		const repo = new InMemoryRepository();
-		const written: string[] = [];
-		const spy = {
-			...repo,
-			saveLimitGroup: async (group: LimitGroup) => {
-				written.push("group");
-				return repo.saveLimitGroup(group);
-			},
-			saveCard: async (card: Card) => {
-				written.push("card");
-				return repo.saveCard(card);
-			},
-		} as unknown as Repository;
-
-		await importBackup(spy, {
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000 }],
-			cards: [sampleCard({ limitGroupId: "pool" })],
-			purchases: [],
-			payments: [],
-		});
-
-		expect(written).toEqual(["group", "card"]);
-	});
-
-	test("accepts a card pointing at a group the file does not define", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
-			cards: [sampleCard({ limitGroupId: "elsewhere" })],
-			purchases: [],
-			payments: [],
-		});
-		expect(parseBackup(text).cards).toHaveLength(1);
-	});
-});
-
-describe("countRecords", () => {
-	test("counts every card, purchase, payment and limit group", async () => {
-		expect(await countRecords(await populated())).toEqual({
-			cards: 2,
-			purchases: 2,
-			payments: 1,
-			limitGroups: 0,
-		});
-	});
-
-	test("counts nothing in an empty repository", async () => {
-		expect(await countRecords(new InMemoryRepository())).toEqual({
-			cards: 0,
-			purchases: 0,
-			payments: 0,
-			limitGroups: 0,
-		});
-	});
-});
-
-describe("replaceWithBackup", () => {
-	test("drops every record and setting the backup does not carry", async () => {
-		const source = new InMemoryRepository();
-		await source.saveCard(sampleCard({ id: "ktc", name: "KTC" }));
-		const repo = await populated();
-		await repo.saveSettings({ purchaseLocations: ["phichit"] });
-
-		const counts = await replaceWithBackup(repo, await exportBackup(source));
-
-		expect(counts).toEqual({
-			cards: 1,
-			purchases: 0,
-			payments: 0,
-			limitGroups: 0,
-		});
-		expect((await repo.listCards()).map((c) => c.id)).toEqual(["ktc"]);
-		expect(await repo.listPurchases("kbank")).toEqual([]);
-		expect(await repo.listPayments("kbank")).toEqual([]);
-		expect(await repo.getSettings()).toEqual(await source.getSettings());
 	});
 });

@@ -10,14 +10,15 @@ import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import {
-	type Backup,
-	countRecords,
-	exportBackup,
-	type ImportCounts,
-	importBackup,
-	parseBackup,
-	replaceWithBackup,
-} from "#lib/storage/transfer";
+	type BackupV3,
+	backupCounts,
+	countRecordsV3,
+	exportBackupV3,
+	importBackupV3,
+	parseAnyBackup,
+	replaceWithBackupV3,
+	type V3Counts,
+} from "#lib/storage/transfer-v3";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -30,7 +31,7 @@ export async function prepareBackupFile(
 	repo: Repository,
 	now: Date = new Date(),
 ): Promise<{ filename: string; text: string }> {
-	const backup = await exportBackup(repo, now);
+	const backup = await exportBackupV3(repo, now);
 	return {
 		text: JSON.stringify(backup, null, 2),
 		filename: `cc-tracking-${backup.exportedAt.slice(0, 10)}.json`,
@@ -77,7 +78,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		return state.guard(async () => {
 			// Compact, unlike the file: pasted text is carried around, not read, so skip the indent.
 			await navigator.clipboard.writeText(
-				JSON.stringify(await exportBackup(repo)),
+				JSON.stringify(await exportBackupV3(repo, new Date())),
 			);
 			copied = true;
 		}, "backup.error.copy");
@@ -85,29 +86,34 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language. No filename means the text was pasted.
-	let imported: ({ file?: string } & ImportCounts) | null = null;
+	let imported: ({ file?: string } & V3Counts) | null = null;
 	// Counts rather than a sentence, for the same reason: the reset question must re-render in
 	// the new language if the reader switches while it is on screen.
-	let resetCounts: ImportCounts | null = null;
+	let resetCounts: V3Counts | null = null;
 	let resetDone = false;
 
 	// A parsed backup waiting on the reader's merge-or-replace answer, because this browser
 	// already holds records it would land on top of.
 	let pending: {
 		file: string | undefined;
-		backup: Backup;
-		existing: ImportCounts;
-		incoming: ImportCounts;
+		backup: BackupV3;
+		existing: V3Counts;
+		incoming: V3Counts;
 	} | null = null;
 	let pasteOpen = false;
 	let pasteText = "";
 
+	type BackupWriter = (repo: Repository, backup: BackupV3) => Promise<void>;
+	const replaceWriter: BackupWriter = (target, backup) =>
+		replaceWithBackupV3(target, backup, globalThis.localStorage);
+
 	const finishImport = async (
 		file: string | undefined,
-		backup: Backup,
-		write: typeof importBackup,
+		backup: BackupV3,
+		write: BackupWriter,
 	) => {
-		const counts = await write(repo, backup);
+		await write(repo, backup);
+		const counts = backupCounts(backup);
 		imported = file === undefined ? counts : { file, ...counts };
 		pending = null;
 		if (file === undefined) {
@@ -122,18 +128,12 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		pending = null;
 		resetDone = false;
 		return state.guard(async () => {
-			const backup = parseBackup(text);
-			const existing = await countRecords(repo);
+			const backup = parseAnyBackup(text);
+			const existing = await countRecordsV3(repo);
 			if (Object.values(existing).some((count) => count > 0)) {
-				const incoming = {
-					cards: backup.cards.length,
-					purchases: backup.purchases.length,
-					payments: backup.payments.length,
-					limitGroups: backup.limitGroups.length,
-				};
-				pending = { file, backup, existing, incoming };
+				pending = { file, backup, existing, incoming: backupCounts(backup) };
 			} else {
-				await finishImport(file, backup, importBackup);
+				await finishImport(file, backup, importBackupV3);
 			}
 		}, "backup.error.import");
 	};
@@ -148,7 +148,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 
 	const onImportText = () => startImport(undefined, pasteText);
 
-	const answerImport = (write: typeof importBackup) => () => {
+	const answerImport = (write: BackupWriter) => () => {
 		const waiting = pending;
 		if (!waiting) return;
 		return state.guard(
@@ -180,7 +180,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	const onStartReset = () => {
 		resetDone = false;
 		return state.guard(async () => {
-			resetCounts = await countRecords(repo);
+			resetCounts = await countRecordsV3(repo);
 		}, "reset.error");
 	};
 
@@ -267,11 +267,11 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			<div><dt>${t("backup.incoming")}</dt><dd>${t("backup.counts", waiting.incoming)}</dd></div>
 		</dl>
 		<div class="backup__choices">
-			<button class="backup__choice" type="button" data-action="merge-import" @click=${answerImport(importBackup)}>
+			<button class="backup__choice" type="button" data-action="merge-import" @click=${answerImport(importBackupV3)}>
 				<strong>${t("backup.merge")}</strong>
 				<span>${t("backup.mergeHint")}</span>
 			</button>
-			<button class="backup__choice" data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWithBackup)}>
+			<button class="backup__choice" data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWriter)}>
 				<strong>${t("backup.replace")}</strong>
 				<span>${t("backup.replaceHint")}</span>
 			</button>

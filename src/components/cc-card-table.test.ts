@@ -51,17 +51,18 @@ test("links the card's name to its detail page", async () => {
 	const element = await mount([{ ...card, id: "k b" }]);
 	const link =
 		element.shadowRoot?.querySelector<HTMLAnchorElement>("a.card-name");
-	expect(link?.textContent?.trim()).toBe("KBank Visa");
+	expect(link?.textContent?.trim()).toBe("k b) KBank Visa");
 	expect(link?.getAttribute("href")).toBe("/card?id=k%20b");
 });
 
-test("puts the card's id before its name, not in its details", async () => {
+test("names the card in the panel form: the last-4 chip, then id) name", async () => {
 	const element = await mount([card]);
 	const line = element.shadowRoot?.querySelector(".card-line");
 	expect(line?.textContent?.replace(/\s+/g, " ").trim()).toBe(
-		"kbank) KBank Visa",
+		"4821 kbank) KBank Visa",
 	);
-	expect(element.shadowRoot?.querySelector(".meta .card-id")).toBeNull();
+	expect(line?.querySelector(".mini")?.textContent).toBe("4821");
+	expect(element.shadowRoot?.querySelector(".meta")).toBeNull();
 });
 
 test("counts purchases in the card's details and drops delete once it has any", async () => {
@@ -284,7 +285,7 @@ test("lists the cards its view lets through, in the view's order", async () => {
 	]);
 	element.view = { ...DEFAULT_CARD_VIEW, location: "krabi", sort: "name" };
 	await element.updateComplete;
-	expect(names(element)).toEqual(["Alpha", "Bravo"]);
+	expect(names(element)).toEqual(["a) Alpha", "b) Bravo"]);
 });
 
 test("says nothing matches when the view filters every card out", async () => {

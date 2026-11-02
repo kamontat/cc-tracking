@@ -136,7 +136,7 @@ test("names its only card as a plain field rather than a one-option picker", asy
 	expect(element.shadowRoot?.querySelector('[name="cardId"]')).toBeNull();
 	const field = element.shadowRoot?.querySelector('[data-field="card"]');
 	expect(field?.textContent).toContain("Card");
-	expect(field?.textContent).toContain("kbank — KBank Visa");
+	expect(field?.textContent).toContain("kbank) KBank Visa (4821)");
 
 	fill(element, "amount", "100");
 	submit(element);

@@ -16,11 +16,24 @@ import {
 } from "#lib/domain/list-entry";
 import { formatAmount, formatAmountInput } from "#lib/domain/money";
 import type { GroupRoom } from "#lib/domain/room";
-import type { Card, CardLedger, ListLine, PlainDate } from "#lib/domain/types";
+import type {
+	Card,
+	CardLedger,
+	CardPayment,
+	LimitGroup,
+	ListLine,
+	PlainDate,
+} from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLabelHtml, cardLabelText } from "#lib/ui/card-label";
-import { base, controls, listLayout } from "#styles/shared";
+import { cardLine, cardName, cardPanel } from "#lib/ui/card-label";
+import {
+	actionBarStyles,
+	base,
+	cardBits,
+	controls,
+	listLayout,
+} from "#styles/shared";
 
 /**
  * Step 2 of a purchase list: a date and one amount per card, each line warned about what the
@@ -31,8 +44,10 @@ import { base, controls, listLayout } from "#styles/shared";
 export class CcListAmounts extends LitElement {
 	static override styles = [
 		base,
+		cardBits,
 		controls,
 		listLayout,
+		actionBarStyles,
 		css`
 			:host {
 				display: block;
@@ -111,6 +126,18 @@ export class CcListAmounts extends LitElement {
 				color: var(--cc-danger);
 			}
 
+			.line-note {
+				gap: var(--cc-space-1);
+				font-size: var(--cc-text-sm);
+				color: var(--cc-text-muted);
+			}
+
+			.line-note input {
+				min-inline-size: 0;
+				font-size: var(--cc-text-md);
+				color: var(--cc-text);
+			}
+
 			.note {
 				display: grid;
 				gap: var(--cc-space-2);
@@ -135,26 +162,6 @@ export class CcListAmounts extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			.action-bar {
-				position: sticky;
-				bottom: calc(
-					var(--cc-tabbar-height) +
-					var(--cc-space-3) +
-					env(safe-area-inset-bottom, 0px)
-				);
-				z-index: 5;
-				display: flex;
-				flex-wrap: wrap;
-				align-items: center;
-				justify-content: space-between;
-				gap: var(--cc-space-3);
-				padding: var(--cc-space-3) var(--cc-space-4);
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
-				box-shadow: var(--cc-shadow-lg);
-			}
-
 
 			.summary {
 				font-size: var(--cc-text-sm);
@@ -170,15 +177,17 @@ export class CcListAmounts extends LitElement {
 				font-size: var(--cc-text-lg);
 				font-variant-numeric: tabular-nums;
 			}
-
-			.action-bar button {
-				align-self: center;
-			}
 		`,
 	];
 
 	/** The list's cards, in order. */
 	@property({ attribute: false }) cards: Card[] = [];
+	/** The stored limit groups, in order: a card's chip takes its group's colour. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** Every card, so a planned payment on a group-mate not on the list still counts. */
+	@property({ attribute: false }) allCards: Card[] = [];
+	/** Planned payments (`plannedOf`). */
+	@property({ attribute: false }) planned: CardPayment[] = [];
 	/** Ready cards not on the list, offered by Add another card. */
 	@property({ attribute: false }) candidates: Card[] = [];
 	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
@@ -188,9 +197,12 @@ export class CcListAmounts extends LitElement {
 	@property() date: PlainDate = "";
 	/** Read once, as the starting amounts. */
 	@property({ attribute: false }) entries: Record<string, string> = {};
+	/** Read once, as the starting notes, by card. */
+	@property({ attribute: false }) notes: Record<string, string> = {};
 
 	// What the reader typed lives here, not in the inputs, so a re-render keeps it.
 	@state() private typed: Record<string, string> = {};
+	@state() private typedNotes: Record<string, string> = {};
 	@state() private dateText = "";
 	@state() private picking = false;
 	private started = false;
@@ -205,6 +217,7 @@ export class CcListAmounts extends LitElement {
 		if (!this.started) {
 			this.started = true;
 			this.typed = { ...this.entries };
+			this.typedNotes = { ...this.notes };
 			this.dateText = this.date;
 		}
 	}
@@ -232,7 +245,13 @@ export class CcListAmounts extends LitElement {
 		this.emit("entry-change", {
 			date: this.effectiveDate,
 			entries: { ...this.typed },
+			notes: { ...this.typedNotes },
 		});
+	}
+
+	private setNote(cardId: string, text: string) {
+		this.typedNotes = { ...this.typedNotes, [cardId]: text };
+		this.changed();
 	}
 
 	private setAmount(cardId: string, text: string) {
@@ -243,6 +262,19 @@ export class CcListAmounts extends LitElement {
 	private setDate(text: string) {
 		this.dateText = text;
 		this.changed();
+	}
+
+	/** Cards' names for a notice, comma separated (the name form, UI-14). */
+	private names(ids: string[]): string {
+		const all = this.allCards.length > 0 ? this.allCards : this.cards;
+		return ids
+			.map((id) =>
+				cardName(
+					id,
+					all.find((card) => card.id === id),
+				),
+			)
+			.join(", ");
 	}
 
 	private warningNote(card: Card, warning: AmountWarning, line: DraftLine) {
@@ -261,6 +293,16 @@ export class CcListAmounts extends LitElement {
 								: nothing
 						}
 						${
+							warning.plannedBefore > 0
+								? html`<span data-part="planned">${t(
+										"purchaseList.warn.planned",
+										{
+											amount: formatAmount(warning.plannedBefore),
+										},
+									)}</span>`
+								: nothing
+						}
+						${
 							warning.room > 0
 								? html`<button data-variant="quiet" data-action="lower"
 									@click=${() => this.setAmount(card.id, formatAmountInput(warning.room))}
@@ -273,7 +315,7 @@ export class CcListAmounts extends LitElement {
 				return html`
 					<p class="note" data-warning="shared-limit">
 						${t("purchaseList.warn.shared", {
-							cards: warning.cardIds.join(", "),
+							cards: this.names(warning.cardIds),
 							group: line.room.group.name,
 							over: formatAmount(warning.over),
 							room: formatAmount(line.room.room),
@@ -284,7 +326,7 @@ export class CcListAmounts extends LitElement {
 				return html`
 					<p class="note" data-warning="overdue-bill">
 						<span>${t("purchaseList.warn.overdue", {
-							card: card.id,
+							card: cardName(card.id, card),
 							date: displayDate(warning.dueDate, locale),
 							remaining: formatAmount(warning.remaining),
 						})}</span>
@@ -296,7 +338,7 @@ export class CcListAmounts extends LitElement {
 				return html`
 					<p class="note" data-warning="close-date">
 						${t("purchaseList.warn.closeDate", {
-							card: card.id,
+							card: cardName(card.id, card),
 							date: displayDate(warning.closeDate, locale),
 						})}
 					</p>
@@ -311,7 +353,15 @@ export class CcListAmounts extends LitElement {
 		for (const [id, amount] of Object.entries(amounts)) {
 			money[id] = amount ?? 0;
 		}
-		const lines = draftLines(this.cards, money, this.rooms, this.ledgers);
+		const lines = draftLines(
+			this.cards,
+			money,
+			this.rooms,
+			this.ledgers,
+			this.planned,
+			date,
+			this.allCards.length > 0 ? this.allCards : this.cards,
+		);
 		const passed = datePassed(date, this.today);
 
 		let warned = 0;
@@ -326,7 +376,7 @@ export class CcListAmounts extends LitElement {
 			return html`
 				<section class="line" data-card=${card.id} ?data-warn=${warn}>
 					<div class="top" row>
-						<b>${cardLabelHtml(card.id, card)}</b>
+						<b>${cardPanel(card.id, card, this.groups)}</b>
 						<button data-variant="quiet" data-action="remove"
 							@click=${() => this.emit("remove", { cardId: card.id })}
 						>${t("purchaseList.remove")}</button>
@@ -334,7 +384,7 @@ export class CcListAmounts extends LitElement {
 					<label class="bigin">
 						<span>฿</span>
 						<input inputmode="decimal" data-field="amount" placeholder="0"
-							aria-label=${t("purchaseList.amountFor", { card: card.id })}
+							aria-label=${t("purchaseList.amountFor", { card: cardName(card.id, card) })}
 							.value=${live(this.typed[card.id] ?? "")}
 							@input=${(e: Event) =>
 								this.setAmount(
@@ -347,6 +397,13 @@ export class CcListAmounts extends LitElement {
 						<span>${t("purchaseList.roomAfter")}</span>
 						<b>${after}</b>
 					</div>
+					<label class="line-note">${t("purchaseList.noteLabel")}
+						<input data-field="note" placeholder=${t("purchaseList.notePlaceholder")}
+							aria-label=${t("purchaseList.noteFor", { card: cardName(card.id, card) })}
+							.value=${live(this.typedNotes[card.id] ?? "")}
+							@input=${(e: Event) =>
+								this.setNote(card.id, (e.target as HTMLInputElement).value)} />
+					</label>
 					${line ? warnings.map((w) => this.warningNote(card, w, line)) : nothing}
 				</section>
 			`;
@@ -387,7 +444,7 @@ export class CcListAmounts extends LitElement {
 						${this.candidates.map(
 							(card) => html`<button data-variant="quiet" data-card=${card.id}
 								@click=${() => this.emit("add", { cardId: card.id })}
-							>${cardLabelText(card.id, card)}</button>`,
+							>${cardLine(card.id, card)}</button>`,
 						)}
 					</div>`
 					: nothing
@@ -420,6 +477,7 @@ export class CcListAmounts extends LitElement {
 							lines: listLines(
 								this.cards.map((c) => c.id),
 								money,
+								this.typedNotes,
 							) satisfies ListLine[],
 						})}
 				>${t("purchaseList.review")} ›</button>

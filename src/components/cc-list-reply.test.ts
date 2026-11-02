@@ -107,7 +107,7 @@ test("not made offers the move, ticked", async () => {
 	expect(actual(root, "B")).toBeNull();
 	expect(move(root)?.checked).toBe(true);
 	expect(flat(move(root)?.closest("label"))).toBe(
-		"Move B to a draft for Sat, 31 Oct",
+		"Move Card B to a draft for Sat, 31 Oct",
 	);
 });
 
@@ -147,7 +147,7 @@ test("one made line says purchase", async () => {
 	await answer(element, "C", "not-made");
 	expect(flat(saveButton(root))).toBe("Save 1 purchase · ฿12,500.00");
 	expect(flat(move(root)?.closest("label"))).toBe(
-		"Move B, C to a draft for Sat, 31 Oct",
+		"Move Card B, c-[C] to a draft for Sat, 31 Oct",
 	);
 });
 
@@ -186,11 +186,10 @@ test("answers survive a language switch", async () => {
 	expect(flat(answerButton(root, "A", "made"))).toBe("ซื้อแล้ว");
 });
 
-test("a line is headed by the card's label", async () => {
+test("a line is headed by the card in the panel form", async () => {
 	const { root } = await mount();
-	expect(flat(line(root, "A").querySelector(".card-label"))).toBe(
-		"A) Card A (1111)",
-	);
+	expect(flat(line(root, "A").querySelector(".card-label"))).toBe("A) Card A");
+	expect(flat(line(root, "A").querySelector(".mini"))).toBe("1111");
 	// C is no longer stored: its id stays, with a dash for the name.
 	expect(flat(line(root, "C").querySelector(".card-label"))).toBe("C) —");
 });
@@ -216,4 +215,74 @@ test("the side panel takes the page's own actions after Save", async () => {
 	expect(slot?.previousElementSibling?.classList.contains("action-bar")).toBe(
 		true,
 	);
+});
+
+const noteOf = (root: ParentNode, id: string) =>
+	line(root, id).querySelector('[data-field="note"]') as HTMLInputElement;
+
+const typeNote = async (element: CcListReply, id: string, text: string) => {
+	const input = noteOf(element.shadowRoot as ShadowRoot, id);
+	input.value = text;
+	input.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+	await element.updateComplete;
+};
+
+test("each line shows its note to edit, made or not, and saving sends it trimmed", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-list-reply") as CcListReply;
+	Object.assign(element, {
+		list: {
+			...w1,
+			lines: [
+				{ cardId: "A", amount: 100, note: "fuel" },
+				{ cardId: "B", amount: 200, note: "stamps" },
+				{ cardId: "C", amount: 300 },
+			],
+		},
+		cards: [card("A"), card("B")],
+	});
+	document.body.append(element);
+	await element.updateComplete;
+	const root = element.shadowRoot as ShadowRoot;
+	const seen: { lines: ListLine[] }[] = [];
+	element.addEventListener("save-reply", (e) =>
+		seen.push((e as CustomEvent).detail),
+	);
+	// Shown before any answer, so the note can be read and changed first.
+	expect(noteOf(root, "A").value).toBe("fuel");
+	expect(flat(noteOf(root, "A").closest("label"))).toBe("Note (optional)");
+	expect(noteOf(root, "C").value).toBe("");
+	await answer(element, "A", "made");
+	await answer(element, "B", "not-made");
+	await answer(element, "C", "made");
+	await typeNote(element, "A", "  diesel ");
+	await typeNote(element, "B", "   ");
+	await typeNote(element, "C", "cash back");
+	// A language switch keeps the typed notes.
+	setLocale("th");
+	await element.updateComplete;
+	expect(noteOf(root, "A").value).toBe("  diesel ");
+	expect(noteOf(root, "C").value).toBe("cash back");
+	saveButton(root).click();
+	expect(seen[0]?.lines).toEqual([
+		{ cardId: "A", amount: 100, made: true, note: "diesel" },
+		{ cardId: "B", amount: 200, made: false },
+		{ cardId: "C", amount: 300, made: true, note: "cash back" },
+	]);
+});
+
+test("each note box is named for its card", async () => {
+	const { root } = await mount();
+	expect(
+		line(root, "A")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("Note for Card A");
+	// A card no longer stored keeps its id.
+	expect(
+		line(root, "C")
+			.querySelector('[data-field="note"]')
+			?.getAttribute("aria-label"),
+	).toBe("Note for c-[C]");
 });

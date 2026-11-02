@@ -124,6 +124,42 @@ export function displayDate(date: PlainDate, locale: Locale): string {
 	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`;
 }
 
+const LONG_MONTH_NAMES: Record<Locale, readonly string[]> = {
+	en: [
+		"January",
+		"February",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"August",
+		"September",
+		"October",
+		"November",
+		"December",
+	],
+	th: [
+		"มกราคม",
+		"กุมภาพันธ์",
+		"มีนาคม",
+		"เมษายน",
+		"พฤษภาคม",
+		"มิถุนายน",
+		"กรกฎาคม",
+		"สิงหาคม",
+		"กันยายน",
+		"ตุลาคม",
+		"พฤศจิกายน",
+		"ธันวาคม",
+	],
+};
+
+/** The date's month in full ("October", "ตุลาคม"), for a heading like "October so far". */
+export function monthName(date: PlainDate, locale: Locale): string {
+	return LONG_MONTH_NAMES[locale][parseDate(date).month - 1] ?? "";
+}
+
 const WEEKDAY_CATALOGS: Record<Locale, Catalog> = { en, th };
 /** Sunday first, as `Date#getUTCDay` counts. */
 const WEEKDAY_KEYS: readonly MessageKey[] = [
