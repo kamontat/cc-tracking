@@ -62,6 +62,10 @@
 	   and its muted line are shorter than the control, so they add nothing. */
 	--cc-sub-header-height: calc(var(--cc-icon-size) + 4 * var(--cc-space-2));
 
+	/* One row height for the Cards page's two column headings (the title, and the panels'
+	   *Limit groups*), so they line up from 900px: one line of the page title. */
+	--cc-page-head-height: calc(var(--cc-text-2xl) * var(--cc-leading));
+
 	/* The narrowest a More menu's list gets, so its buttons read as a list, not chips. */
 	--cc-menu-min: 12rem;
 

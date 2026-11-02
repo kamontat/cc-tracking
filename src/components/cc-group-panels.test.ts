@@ -50,6 +50,11 @@ test("heading with the count and Add group", async () => {
 	const { element, root } = await mount();
 	expect(text(root.querySelector("h2"))).toBe("Limit groups");
 	expect(text(root.querySelector(".sec-head small"))).toBe("2");
+	// One row the page can hide on a phone, with Add group at its end.
+	expect(root.querySelector(".sec-head")?.getAttribute("part")).toBe("head");
+	expect(
+		root.querySelector(".sec-head > :last-child")?.getAttribute("data-action"),
+	).toBe("add-group");
 	let added = false;
 	element.addEventListener("add-group", () => {
 		added = true;

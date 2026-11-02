@@ -1526,9 +1526,12 @@ a:any-link:hover {
 }
 
 /*
- * Cards (prototype `vCards`): the heading with *Add card*, the controls and the results in one
- * column. On a phone a switch under the heading (Transactions' `.tx-switch`) shows the cards or
- * *Limit groups*; from 900px the switch goes and *Limit groups* sits beside the cards.
+ * Cards (prototype `vCards`): the heading, the controls and the results in one column. On a
+ * phone the heading is two rows: the title with a switch (Transactions' `.tx-switch`) at its
+ * end, then the shown view's add button at the right -- *Add card*, or *Add group* while
+ * *Limit groups* shows, whose own heading row the switch stands in for. From 900px the switch
+ * goes, *Add card* sits at the title's end and *Limit groups* sits beside the cards, its
+ * heading the same height as the title's.
  */
 .cards-grid {
 	display: grid;
@@ -1553,6 +1556,14 @@ a:any-link:hover {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--cc-space-2) var(--cc-space-3);
+	min-block-size: var(--cc-page-head-height);
+}
+
+.cards-adds {
+	display: flex;
+	flex-direction: row;
+	flex: 1 0 100%;
+	justify-content: flex-end;
 }
 
 /* A link drawn as the primary button, as `.page button` draws it. */
@@ -1576,17 +1587,22 @@ a:any-link:hover {
 	background: var(--cc-accent-hover);
 }
 
-.cards-head a.cards-add .icon {
+.cards-head .cards-add-group {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cc-space-1);
+}
+
+.cards-head a.cards-add .icon,
+.cards-head button.cards-add-group .icon {
 	inline-size: var(--cc-icon-size-sm);
 	block-size: var(--cc-icon-size-sm);
 }
 
-.cards-switch {
-	align-self: flex-start;
-}
-
 .cards-grid[data-show="cards"] > .cards-groups,
-.cards-grid[data-show="groups"] .cards-body {
+.cards-grid[data-show="groups"] .cards-body,
+.cards-grid[data-show="groups"] .cards-head a.cards-add,
+.cards-groups cc-group-panels::part(head) {
 	display: none;
 }
 
@@ -1596,17 +1612,27 @@ a:any-link:hover {
 		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
 	}
 
-	.cards-switch {
+	.cards-switch,
+	.cards-head .cards-add-group {
 		display: none;
 	}
 
-	.cards-grid[data-show] .cards-body {
+	.cards-adds {
+		flex: 0 0 auto;
+	}
+
+	.cards-grid[data-show] .cards-body,
+	.cards-grid[data-show] > .cards-groups {
 		display: flex;
 	}
 
-	.cards-grid[data-show] > .cards-groups {
+	.cards-grid[data-show] .cards-head a.cards-add {
+		display: inline-flex;
+	}
+
+	.cards-groups cc-group-panels::part(head) {
 		display: flex;
-		padding-block-start: var(--cc-space-1);
+		min-block-size: var(--cc-page-head-height);
 	}
 }
 

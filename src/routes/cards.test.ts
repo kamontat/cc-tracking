@@ -126,6 +126,29 @@ test("the heading names the page and links Add card to the new card form", async
 	expect(flatText(add)).toBe("Add card");
 });
 
+test("the header: title and switch on one row, the add button for the view under them", async () => {
+	const { root, address } = await setup();
+	const head = root.querySelector(".cards-main > .cards-head");
+	expect(head?.querySelector(":scope > h1")).not.toBeNull();
+	expect(head?.querySelector(":scope > .cards-switch")).not.toBeNull();
+	const adds = head?.querySelector(":scope > .cards-adds");
+	expect(adds?.querySelector('a[data-action="add-card"]')).not.toBeNull();
+	expect(adds?.querySelector('[data-action="add-group"]')).toBeNull();
+	root
+		.querySelector<HTMLButtonElement>('.cards-switch [data-view="groups"]')
+		?.click();
+	await settle();
+	const group = root.querySelector<HTMLButtonElement>(
+		'.cards-head .cards-adds button[data-action="add-group"]',
+	);
+	expect(flatText(group)).toBe("Add group");
+	expect(group?.getAttribute("data-variant")).toBe("quiet");
+	group?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("push /cards?view=groups&newGroup=1");
+	expect(sheet()?.group).toBeNull();
+});
+
 test("by place, sections run A to Z by shown name; a place with no record comes last", async () => {
 	const { root } = await setup("/cards", {
 		before: async (repo) => {

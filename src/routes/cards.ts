@@ -73,7 +73,10 @@ const locationIds = (money: MoneyData): string[] =>
  * The Cards page (prototype `vCards`): the heading with *Add card*, the shared search, filter
  * and sort, the results, and *Limit groups* beside them from 900px. The view lives in the
  * address (`?view=&q=&loc=&owner=&ungrouped=&sort=`), replaced as it changes. Below 900px a
- * switch shows the cards or the limit groups (`?view=groups`), as Transactions does. A group
+ * switch beside the title shows the cards or the limit groups (`?view=groups`), as
+ * Transactions does, and the row under it holds the shown view's add button: *Add card*, or
+ * *Add group* (drawn here only while the groups show, since the panels' own heading is hidden
+ * on a phone). A group
  * opens in a sheet at `?group=<id>` (`?newGroup=1` for a blank one): tapping a panel pushes
  * that address so Back closes it; Close steps back over an entry the page pushed, else
  * rewrites the address without the group (DD-102). A save or delete closes the sheet only
@@ -331,15 +334,25 @@ export function renderCardsPage(
 					<div class="cards-main">
 						<div class="cards-head">
 							<h1>${t("cards.title")}</h1>
-							<a class="cards-add" data-action="add-card" href="/card/new"
-								>${icons.plus}${t("cards.page.add")}</a>
+							<div class="tx-switch cards-switch" role="group">${SHOWS.map(
+								(name) =>
+									html`<button type="button" data-view=${name} data-variant="quiet"
+										aria-pressed=${show === name}
+										@click=${() => choose(name)}>${t(`cards.view.${name}`)}</button>`,
+							)}</div>
+							<div class="cards-adds">
+								<a class="cards-add" data-action="add-card" href="/card/new"
+									>${icons.plus}${t("cards.page.add")}</a>
+								${
+									show === "groups"
+										? html`<button type="button" class="cards-add-group"
+											data-variant="quiet" data-action="add-group"
+											@click=${() => openSheet(NEW_GROUP)}
+											>${icons.plus}${t("cards.group.add")}</button>`
+										: nothing
+								}
+							</div>
 						</div>
-						<div class="tx-switch cards-switch" role="group">${SHOWS.map(
-							(name) =>
-								html`<button type="button" data-view=${name} data-variant="quiet"
-									aria-pressed=${show === name}
-									@click=${() => choose(name)}>${t(`cards.view.${name}`)}</button>`,
-						)}</div>
 						${
 							sheetFailed || busy
 								? nothing

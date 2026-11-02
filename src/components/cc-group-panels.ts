@@ -13,9 +13,9 @@ const level = (panel: GroupPanel) =>
 	panel.usedPct > 100 ? "over" : panel.full ? "high" : "within";
 
 /**
- * The Cards page's *Limit groups* (prototype `vCards` aside): the heading with the count and
- * *Add group* (`add-group`), then a panel per group -- `name (holder)`, `room of limit`, the
- * bar, its cards' ids, `N% used` and *getting full* from 80% -- each a button that emits
+ * The Cards page's *Limit groups* (prototype `vCards` aside): one heading row (`part="head"`,
+ * which the page hides on a phone) with the count and *Add group* (`add-group`) at its end,
+ * then a panel per group -- `name (holder)`, `room of limit`, the bar, its cards' ids, `N% used` and *getting full* from 80% -- each a button that emits
  * `open-group` with the group's id.
  */
 @customElement("cc-group-panels")
@@ -36,6 +36,14 @@ export class CcGroupPanels extends LitElement {
 				display: flex;
 				flex-direction: row;
 				flex-wrap: wrap;
+				align-items: center;
+				justify-content: space-between;
+				gap: var(--cc-space-2) var(--cc-space-3);
+			}
+
+			.sec-title {
+				display: flex;
+				flex-direction: row;
 				align-items: baseline;
 				gap: var(--cc-space-2);
 			}
@@ -53,7 +61,7 @@ export class CcGroupPanels extends LitElement {
 				display: inline-flex;
 				align-items: center;
 				gap: var(--cc-space-1);
-				align-self: flex-start;
+				align-self: center;
 			}
 
 			[data-action="add-group"] .icon {
@@ -155,12 +163,14 @@ export class CcGroupPanels extends LitElement {
 
 	override render() {
 		return html`
-			<div class="sec-head">
-				<h2>${t("limits.title")}</h2>
-				<small>${this.panels.length}</small>
+			<div class="sec-head" part="head">
+				<span class="sec-title">
+					<h2>${t("limits.title")}</h2>
+					<small>${this.panels.length}</small>
+				</span>
+				<button type="button" data-variant="quiet" data-action="add-group"
+					@click=${() => this.dispatchEvent(new CustomEvent("add-group"))}>${icons.plus}${t("cards.group.add")}</button>
 			</div>
-			<button type="button" data-variant="quiet" data-action="add-group"
-				@click=${() => this.dispatchEvent(new CustomEvent("add-group"))}>${icons.plus}${t("cards.group.add")}</button>
 			${
 				this.panels.length === 0
 					? html`<p class="empty">${t("cards.group.empty")}</p>`
