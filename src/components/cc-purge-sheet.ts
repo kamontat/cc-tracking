@@ -135,6 +135,10 @@ export class CcPurgeSheet extends LitElement {
 		try {
 			await applyPurge(this.repo, preview.plan);
 		} catch (failure) {
+			// Some purchases may have gone before the failure: count again, so a retry offers
+			// what is there now, and only then let the buttons go.
+			this.asking = false;
+			await this.recount();
 			this.failure = failure;
 			this.busy = false;
 			return;
@@ -172,9 +176,11 @@ export class CcPurgeSheet extends LitElement {
 			@click=${() => {
 				this.asking = true;
 			}}>${
-				count === 0
-					? t("purge.nothing")
-					: t(count === 1 ? "purge.ask.one" : "purge.ask.many", { count })
+				preview === null
+					? t("purge.counting")
+					: count === 0
+						? t("purge.nothing")
+						: t(count === 1 ? "purge.ask.one" : "purge.ask.many", { count })
 			}</button>`;
 	}
 

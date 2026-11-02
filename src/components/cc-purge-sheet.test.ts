@@ -183,3 +183,53 @@ test("choosing another age while asking goes back to the first button", async ()
 	await click('[data-age="6m"]');
 	expect(find('[data-action="ask"]')).not.toBeNull();
 });
+
+test("while the first count is under way the button waits, rather than saying nothing is there", async () => {
+	const repo = await populated();
+	let release = () => {};
+	const listCards = repo.listCards.bind(repo);
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	repo.listCards = async () => {
+		await gate;
+		return listCards();
+	};
+	const { find, text, element } = await mount(repo);
+	const button = find('[data-action="ask"]') as HTMLButtonElement;
+	expect(button.disabled).toBe(true);
+	expect(button.textContent).toContain("Counting…");
+	expect(text()).not.toContain("Nothing");
+
+	release();
+	await settle();
+	await element.updateComplete;
+	expect(find('[data-action="ask"]')?.textContent).toContain(
+		"Delete 2 purchases…",
+	);
+});
+
+test("a failed apply shows why, stops waiting and counts again before a retry", async () => {
+	setLocale("en");
+	const repo = await populated();
+	const { click, find, purged, element } = await mount(repo);
+	let counts = 0;
+	const listStatementDates = repo.listStatementDates.bind(repo);
+	repo.listStatementDates = (cardId: string) => {
+		counts += 1;
+		return listStatementDates(cardId);
+	};
+	repo.deletePurchase = () => Promise.reject(new Error("storage full"));
+	await click('[data-action="ask"]');
+	await click('[data-action="yes"]');
+	await settle();
+	await element.updateComplete;
+
+	expect(find('[role="alert"]')?.textContent).toContain("storage full");
+	expect(purged).toEqual([]);
+	// Counted again: the second ask is gone and the first button offers what is there now.
+	expect(counts).toBeGreaterThan(0);
+	const ask = find('[data-action="ask"]') as HTMLButtonElement;
+	expect(ask.disabled).toBe(false);
+	expect(ask.textContent).toContain("Delete 2 purchases…");
+});

@@ -416,6 +416,7 @@ export const en = {
 		"Only purchases on statements that are fully paid are deleted, with the payments that settled them and the saved lists from the same time, so what each card owes, its credit and its room stay the same. Cards stay. Download a copy first if you may need them.",
 	"purge.ask.one": "Delete 1 purchase…",
 	"purge.ask.many": "Delete {count} purchases…",
+	"purge.counting": "Counting…",
 	"purge.nothing": "Nothing to delete",
 	"purge.sure": "This can't be undone.",
 	"purge.keep": "Keep them",
