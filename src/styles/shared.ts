@@ -357,7 +357,8 @@ export const badge = css`
 
 /**
  * How much of a limit is spent, as a thin bar. The fill's width is the share itself, set
- * inline; `data-level` (from `usageLevel`) tints it, and the level is also said in text
+ * inline; `data-level` tints it as a card tile's rail (grey, amber from 80%, red past the
+ * limit, DD-153), and the level is also said in text
  * beside the bar wherever it is used, so colour is never the only signal.
  */
 export const usageBar = css`
@@ -373,7 +374,7 @@ export const usageBar = css`
 	.usage > span {
 		display: block;
 		block-size: 100%;
-		background: var(--cc-accent);
+		background: var(--cc-text-muted);
 		border-radius: var(--cc-radius-sm);
 	}
 

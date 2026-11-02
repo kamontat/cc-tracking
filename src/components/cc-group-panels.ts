@@ -8,14 +8,18 @@ import { t } from "#lib/i18n/index";
 import { icons } from "#lib/ui/icons";
 import { base, controls, usageBar } from "#styles/shared";
 
-/** The bar's tint: over the limit, getting full from 80%, else within. */
+/**
+ * The bar's tint, as a card tile's rail (`roomLevel`): over once the room is below zero,
+ * getting full from 80%, else within.
+ */
 const level = (panel: GroupPanel) =>
-	panel.usedPct > 100 ? "over" : panel.full ? "high" : "within";
+	panel.room < 0 ? "over" : panel.full ? "high" : "within";
 
 /**
  * The Cards page's *Limit groups* (prototype `vCards` aside): one heading row (`part="head"`,
  * which the page hides on a phone) with the count and *Add group* (`add-group`) at its end,
- * then a panel per group -- `name (holder)`, `room of limit`, the bar, its cards' ids, `N% used` and *getting full* from 80% -- each a button that emits
+ * then a panel per group -- `name (holder)`, `room of limit`, the bar in the tiles' rail colours,
+ * its cards' ids, `N% used` and *getting full* from 80%, or *over limit* -- each a button that emits
  * `open-group` with the group's id.
  */
 @customElement("cc-group-panels")
@@ -134,10 +138,13 @@ export class CcGroupPanels extends LitElement {
 
 	private panel(panel: GroupPanel) {
 		const { group } = panel;
+		const over = level(panel) === "over";
 		const note = [
 			panel.cardIds.join(", "),
-			t("cards.page.used", { pct: panel.usedPct }),
-			panel.full ? t("cards.group.full") : "",
+			over
+				? t("cards.page.over")
+				: t("cards.page.used", { pct: panel.usedPct }),
+			panel.full && !over ? t("cards.group.full") : "",
 		]
 			.filter(Boolean)
 			.join(" · ");

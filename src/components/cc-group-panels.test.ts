@@ -79,6 +79,41 @@ test("a panel: name (holder), room of limit, the bar, ids and use", async () => 
 	);
 });
 
+test("the bar takes the tiles' rail colours: grey within, amber from 80%, red past the limit", async () => {
+	const over: GroupPanel = {
+		group: g("g3", "KTC", "RI"),
+		room: -21_065_00,
+		limit: 200_000_00,
+		usedPct: 111,
+		cardIds: ["7"],
+		full: true,
+	};
+	const { root } = await mount({ panels: [...panels, over] });
+	const level = (id: string) =>
+		root
+			.querySelector(`button[data-group="${id}"] .usage`)
+			?.getAttribute("data-level");
+	expect(level("g1")).toBe("within");
+	expect(level("g/2")).toBe("high");
+	expect(level("g3")).toBe("over");
+	expect(text(root.querySelector('button[data-group="g3"] .gnote'))).toBe(
+		"7 · over limit",
+	);
+	const css = (
+		customElements.get("cc-group-panels") as unknown as {
+			elementStyles: { cssText: string }[];
+		}
+	).elementStyles
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(css).toMatch(
+		/\.usage > span\s*\{[^}]*background: var\(--cc-text-muted\)/,
+	);
+	expect(css).not.toMatch(
+		/\.usage > span\s*\{[^}]*background: var\(--cc-accent\)/,
+	);
+});
+
 test("tapping a panel emits open-group with its id", async () => {
 	const { element, root } = await mount();
 	let id = "";
