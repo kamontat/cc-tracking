@@ -330,18 +330,24 @@ export const en = {
 	"backup.question.pasted": "Restore pasted text?",
 	"backup.here": "Here",
 	"backup.incoming": "In the copy",
-	"backup.counts":
-		"{cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists",
+	"counts.cards.one": "1 card",
+	"counts.cards.many": "{count} cards",
+	"counts.purchases.one": "1 purchase",
+	"counts.purchases.many": "{count} purchases",
+	"counts.payments.one": "1 payment",
+	"counts.payments.many": "{count} payments",
+	"counts.limitGroups.one": "1 limit group",
+	"counts.limitGroups.many": "{count} limit groups",
+	"counts.lists.one": "1 list",
+	"counts.lists.many": "{count} lists",
 	"backup.merge": "Merge",
 	"backup.mergeHint":
 		"Keep what is here, add the copy's records, and update any it shares.",
 	"backup.replace": "Replace",
 	"backup.replaceHint":
 		"Delete what is here first, so only the copy's records remain.",
-	"backup.imported":
-		"Restored {file}: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists.",
-	"backup.importedText":
-		"Restored pasted text: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists.",
+	"backup.imported": "Restored {file}: {counts}.",
+	"backup.importedText": "Restored pasted text: {counts}.",
 	"backup.error.export": "Could not download a copy.",
 	"backup.error.import": "Could not restore that copy.",
 	"backup.error.copy": "Could not copy the text.",

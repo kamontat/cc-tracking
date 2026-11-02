@@ -22,6 +22,7 @@ import {
 } from "#lib/storage/transfer-v3";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
+import { countsText } from "#lib/ui/record-counts";
 
 /** The name a backup file saved at `now` gets: the UTC date it was exported on. */
 const backupFilename = (now: Date): string =>
@@ -195,8 +196,11 @@ export function renderSettingsPage(
 	const importedMessage = () => {
 		if (!imported) return nothing;
 		return imported.file === undefined
-			? t("backup.importedText", imported)
-			: t("backup.imported", { ...imported, file: imported.file });
+			? t("backup.importedText", { counts: countsText(imported) })
+			: t("backup.imported", {
+					counts: countsText(imported),
+					file: imported.file,
+				});
 	};
 
 	const purgedMessage = () =>
@@ -291,7 +295,7 @@ export function renderSettingsPage(
 						</button>`
 						: html`<div class="set-ask">
 							<p class="set-ask__note">${t("reset.ask", {
-								counts: t("backup.counts", resetCounts),
+								counts: countsText(resetCounts),
 							})}</p>
 							<div class="set-ask__actions">
 								<button type="button" data-action="keep-data" @click=${onCancelReset}>${t("reset.keep")}</button>

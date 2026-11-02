@@ -225,10 +225,10 @@ test("with data here, the clipboard asks first, counting here and in the copy", 
 			],
 		);
 		expect(rows).toEqual([
-			["Here", "1 cards, 2 purchases, 0 payments, 1 limit groups, 0 lists"],
+			["Here", "1 card, 2 purchases, 0 payments, 1 limit group, 0 lists"],
 			[
 				"In the copy",
-				"1 cards, 1 purchases, 0 payments, 0 limit groups, 0 lists",
+				"1 card, 1 purchase, 0 payments, 0 limit groups, 0 lists",
 			],
 		]);
 		expect(sheet.action("merge-import")?.hasAttribute("data-variant")).toBe(

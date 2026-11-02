@@ -360,7 +360,7 @@ test("a restored file is named and counted under the panel, in the reader's lang
 
 		expect(root.querySelector("cc-restore-sheet")).toBeNull();
 		expect(importStatus(root)).toBe(
-			"Restored cc-tracking-2026-09-21.json: 1 cards, 1 purchases, 0 payments, 0 limit groups, 0 lists.",
+			"Restored cc-tracking-2026-09-21.json: 1 card, 1 purchase, 0 payments, 0 limit groups, 0 lists.",
 		);
 		expect(root.querySelector(".import-status")?.getAttribute("role")).toBe(
 			"status",
@@ -392,7 +392,7 @@ test("restoring from the clipboard over data here takes Restore, Paste from clip
 		expect(root.querySelector("cc-restore-sheet")).toBeNull();
 		expect(bannerMessage(root)).toBe("");
 		expect(importStatus(root)).toBe(
-			"Restored pasted text: 1 cards, 1 purchases, 0 payments, 0 limit groups, 0 lists.",
+			"Restored pasted text: 1 card, 1 purchase, 0 payments, 0 limit groups, 0 lists.",
 		);
 		// Merged: the purchase this browser held and the copy's own both stay.
 		expect(await repo.listPurchases("kbank")).toHaveLength(2);
@@ -498,7 +498,7 @@ test("asks before resetting, counting each kind of record it would delete", asyn
 	await settle();
 
 	expect(resetText(root)).toContain(
-		"This deletes 2 cards, 3 purchases, 1 payments, 1 limit groups, 1 lists. Language and theme stay. It can't be undone.",
+		"This deletes 2 cards, 3 purchases, 1 payment, 1 limit group, 1 list. Language and theme stay. It can't be undone.",
 	);
 	expect(root.querySelector('[data-row="delete-all"]')).toBeNull();
 	expect(await repo.listCards()).toHaveLength(2);

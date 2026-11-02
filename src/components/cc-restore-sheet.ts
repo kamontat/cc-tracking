@@ -17,6 +17,7 @@ import {
 	replaceWithBackupV3,
 	type V3Counts,
 } from "#lib/storage/transfer-v3";
+import { countsText } from "#lib/ui/record-counts";
 import { base, controls } from "#styles/shared";
 
 /** Where the sheet is: picking a source, typing text in, or asking merge or replace. */
@@ -334,8 +335,8 @@ export class CcRestoreSheet extends LitElement {
 					: t("backup.question.file", { file: waiting.file })
 			}</p>
 			<dl class="compare">
-				<div><dt>${t("backup.here")}</dt><dd>${t("backup.counts", waiting.existing)}</dd></div>
-				<div><dt>${t("backup.incoming")}</dt><dd>${t("backup.counts", waiting.incoming)}</dd></div>
+				<div><dt>${t("backup.here")}</dt><dd>${countsText(waiting.existing)}</dd></div>
+				<div><dt>${t("backup.incoming")}</dt><dd>${countsText(waiting.incoming)}</dd></div>
 			</dl>
 			<button type="button" class="choice" data-action="merge-import" ?disabled=${this.busy}
 				@click=${() => this.answer(false)}>
