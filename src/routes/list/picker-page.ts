@@ -176,7 +176,7 @@ export function renderPickerPage(
 			return html`<div class="ready-empty" data-empty="none">
 				<p>${t("ready.empty")}</p>
 				<p>${t("quickAdd.noEligible")}</p>
-				<a data-action="settings" href="/settings">${t("ready.toSettings")}</a>
+				<a data-action="settings" href="/settings/locations">${t("ready.toSettings")}</a>
 			</div>`;
 		}
 		const shown = sortReady(filterReady(all, view.filter), view.sort);

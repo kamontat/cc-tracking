@@ -89,7 +89,7 @@ test("nothing ready names the next step and offers no list", async () => {
 	const { root } = await mount({ rows: [] });
 	expect(
 		root.querySelector('[data-action="settings"]')?.getAttribute("href"),
-	).toBe("/settings");
+	).toBe("/settings/locations");
 	expect(root.querySelectorAll("[data-card]")).toHaveLength(0);
 });
 

@@ -256,7 +256,7 @@ test("nothing ready names the next step; not-assigned cards are counted", async 
 	expect(root.querySelector(".tx-controls")).toBeNull();
 	expect(
 		root.querySelector('[data-action="settings"]')?.getAttribute("href"),
-	).toBe("/settings");
+	).toBe("/settings/locations");
 	expect(root.querySelector(".sub-header small")).toBeNull();
 });
 

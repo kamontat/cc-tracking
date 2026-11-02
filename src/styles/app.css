@@ -761,6 +761,90 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
+/*
+ * The Locations page (prototype `vLocations`, RD-17): one `.set` panel with a block per place
+ * -- its name and count beside *Rename* and *Delete* (or the name field, or the delete
+ * question), and *Takes purchases* under them -- then the notes and *Add a location*.
+ */
+.locations {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+}
+
+.location-row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	padding-block: var(--cc-space-3);
+}
+
+.location-row__line,
+.location-add__control {
+	display: flex;
+	gap: var(--cc-space-2);
+	align-items: center;
+}
+
+/* `.page button` sits buttons at the start of a column; in these rows all centre on the line. */
+.page .location-row__line > *,
+.page .location-add__control > * {
+	align-self: center;
+}
+
+.location-row__text,
+.location-row__field,
+.location-add__control > input {
+	flex: 1;
+	min-inline-size: 0;
+}
+
+.location-row__text {
+	display: flex;
+	flex-direction: column;
+	overflow-wrap: anywhere;
+}
+
+.page .location-row__text small {
+	font-size: var(--cc-text-xs);
+}
+
+.page .location-row__takes {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-2);
+	color: var(--cc-text);
+	cursor: pointer;
+}
+
+.page .location-row__takes small {
+	font-size: var(--cc-text-xs);
+}
+
+.page .location-row__takes input {
+	padding: 0;
+	accent-color: var(--cc-accent);
+}
+
+.location-add {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-1);
+}
+
+.location-error {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-danger);
+}
+
+.location-warning {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text);
+	background: var(--cc-warning-surface);
+	border-radius: var(--cc-radius-sm);
+}
+
 /* A file input ships its own button; without this it is the one browser-default
    button on the page, and in the dark theme it stays stubbornly light. */
 .page input::file-selector-button {

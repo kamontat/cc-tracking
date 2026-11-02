@@ -105,7 +105,7 @@ export class CcReadyPanel extends LitElement {
 				<div class="note">
 					<p>${t("ready.empty")}</p>
 					<p>${t("quickAdd.noEligible")}</p>
-					<a data-action="settings" href="/settings">${t("ready.toSettings")}</a>
+					<a data-action="settings" href="/settings/locations">${t("ready.toSettings")}</a>
 				</div>
 				${this.notice()}`;
 		}

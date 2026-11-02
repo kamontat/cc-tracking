@@ -35,6 +35,7 @@ test("current tab per path", () => {
 	expect(currentTab("/settings")).toBe("settings");
 	expect(currentTab("/cards/")).toBe("cards");
 	expect(currentTab("/settings/")).toBe("settings");
+	expect(currentTab("/settings/locations")).toBe("settings");
 	for (const page of ["new", "draft", "reply", "view"])
 		expect(currentTab(`/list/${page}`)).toBe("home");
 	expect(currentTab("/list")).toBeNull();
