@@ -81,7 +81,7 @@ export class CcTxLedger extends LitElement {
 			h3 {
 				font-size: var(--cc-text-xs);
 				font-weight: 650;
-				letter-spacing: 0.06em;
+				letter-spacing: var(--cc-tracking-caps);
 				text-transform: uppercase;
 				color: var(--cc-text-muted);
 			}

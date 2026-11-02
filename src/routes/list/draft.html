@@ -10,6 +10,20 @@
     } catch {
       // Storage blocked: leave the theme to the device, as getTheme() does.
     }
+    try {
+      // The build's tint before first paint; chrome.ts stamps the build's own value after.
+      const host = location.hostname;
+      document.documentElement.setAttribute(
+        "data-env",
+        host === "localhost" || host === "127.0.0.1"
+          ? "local"
+          : /^pr-\d+-.*workers\.dev$/.test(host)
+            ? "preview"
+            : "production",
+      );
+    } catch {
+      // No location: chrome.ts sets the tint once the bundle runs.
+    }
   </script>
   <title>Draft list — cc-tracking</title>
   <link rel="icon" href="../favicon.svg" type="image/svg+xml" />

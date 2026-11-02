@@ -27,17 +27,35 @@
 	--cc-radius-pill: 999px;
 	--cc-border-width: 1px;
 	--cc-rule-width: 2px;
+	/* The ring of a radio, and of a selected card: heavier than a hairline. */
+	--cc-ring-width: 2px;
+	/* Letter spacing for small uppercase labels. */
+	--cc-tracking-caps: 0.06em;
+	/* The same for a fieldset legend, a touch tighter. */
+	--cc-tracking-label: 0.04em;
+	/* The card hero's one big figure. */
+	--cc-hero-amount-weight: 780;
+	--cc-hero-amount-leading: 1.1;
+	--cc-hero-amount-tracking: -0.02em;
 
 	/* A panel's side and bottom inset: tight on a phone, where every pixel of width counts,
 	   roomier from 640px (see the media query after this block). */
 	--cc-panel-padding: var(--cc-space-4);
 
-	/* Exists so a sticky side panel can clear the sticky `.site-header` when it
-	   parks, which happens from 900px. The header is one row on every width. Measured at 51px
-	   (390, 900 and 1280px, English and Thai, brand, `(pr-30)` and date in one run):
-	   2 × var(--cc-space-3) padding + the 25px brand line + the 2px rule; the tabs reach down
-	   into the padding and add nothing. Keep this in step if the header's padding or contents change. */
-	--cc-header-height: 3.25rem;
+	/* Exists so a sticky side panel and the sticky `.sub-header` can clear the sticky
+	   `.site-header` when it parks. The header is one row on every width: 2 × var(--cc-space-3)
+	   padding + one line of body text (the brand; var(--cc-text-md) × var(--cc-leading), 24.75px,
+	   which the browser lays out unrounded) + the 2px rule, 50.75px in all. The tabs reach down
+	   into the padding and add nothing. Derived, not typed, so the two cannot drift by a pixel
+	   as a hand-measured 3.25rem (52px) did. Keep this in step if the header's padding or
+	   contents change. */
+	--cc-header-height: calc(
+		2 *
+		var(--cc-space-3) +
+		var(--cc-text-md) *
+		var(--cc-leading) +
+		var(--cc-rule-width)
+	);
 
 	/* The sticky `.sub-header` under it, so a list page's sticky side panel parks below both:
 	   the back control (an icon and its padding) and the bar's own block padding. The title

@@ -91,9 +91,9 @@ export class CcCardHero extends LitElement {
 			/* The room is the page's one big figure, in ink so it reads first on any pastel. */
 			.big {
 				font-size: var(--cc-text-2xl);
-				font-weight: 780;
-				line-height: 1.1;
-				letter-spacing: -0.02em;
+				font-weight: var(--cc-hero-amount-weight);
+				line-height: var(--cc-hero-amount-leading);
+				letter-spacing: var(--cc-hero-amount-tracking);
 				color: var(--cc-text);
 				font-variant-numeric: tabular-nums;
 			}
@@ -153,7 +153,7 @@ export class CcCardHero extends LitElement {
 				font-weight: 600;
 				color: var(--cc-text-muted);
 				text-transform: uppercase;
-				letter-spacing: 0.06em;
+				letter-spacing: var(--cc-tracking-caps);
 			}
 
 			.stat b {

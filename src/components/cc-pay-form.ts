@@ -64,7 +64,7 @@ export class CcPayForm extends LitElement {
 				padding: var(--cc-space-3);
 				line-height: 1.35;
 				background: var(--cc-surface);
-				border: calc(var(--cc-border-width) * 1.5) solid var(--cc-accent);
+				border: var(--cc-ring-width) solid var(--cc-accent);
 				border-radius: var(--cc-radius-md);
 			}
 
@@ -101,7 +101,7 @@ export class CcPayForm extends LitElement {
 				font-size: var(--cc-text-xs);
 				font-weight: 600;
 				text-transform: uppercase;
-				letter-spacing: 0.06em;
+				letter-spacing: var(--cc-tracking-caps);
 			}
 
 			/* A figure breaks only after the baht sign or a comma (figure()), never inside a group

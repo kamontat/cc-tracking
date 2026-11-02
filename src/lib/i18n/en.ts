@@ -236,7 +236,7 @@ export const en = {
 	"form.limitGroup": "Limit group",
 	"form.limitGroupNone": "Choose a limit group",
 	"form.cycle": "Billing cycle",
-	"form.cycleOffset": "Due days after close",
+	"form.cycleOffset": "Days after close",
 	"form.cycleFixed": "Due on a day",
 	"form.closeDay": "Closes on day",
 	"form.dueOffsetDays": "Due, days after close",

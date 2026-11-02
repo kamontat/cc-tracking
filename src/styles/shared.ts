@@ -180,7 +180,7 @@ export const controls = css`
 		font-weight: 600;
 		color: var(--cc-text-muted);
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: var(--cc-tracking-label);
 	}
 
 	p[role="alert"] {
@@ -260,7 +260,7 @@ export const dataTable = css`
 		color: var(--cc-text-muted);
 		text-align: left;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: var(--cc-tracking-label);
 		border-bottom: var(--cc-border-width) solid var(--cc-border);
 	}
 
@@ -331,7 +331,7 @@ export const dataTable = css`
 			font-size: var(--cc-text-xs);
 			color: var(--cc-text-muted);
 			text-transform: uppercase;
-			letter-spacing: 0.04em;
+			letter-spacing: var(--cc-tracking-label);
 		}
 	}
 `;

@@ -71,7 +71,7 @@ export class CcCardsFilter extends LitElement {
 				appearance: none;
 				cursor: pointer;
 				background: var(--cc-surface);
-				border: calc(var(--cc-border-width) * 2) solid var(--cc-border);
+				border: var(--cc-ring-width) solid var(--cc-border);
 				border-radius: var(--cc-radius-pill);
 			}
 

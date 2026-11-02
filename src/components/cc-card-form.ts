@@ -85,7 +85,7 @@ export class CcCardForm extends LitElement {
 				font-weight: 650;
 				color: var(--cc-text-muted);
 				text-transform: uppercase;
-				letter-spacing: 0.06em;
+				letter-spacing: var(--cc-tracking-caps);
 			}
 
 			.pair {
