@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import "#components/cc-ready-picker";
 import type { CcReadyPicker } from "#components/cc-ready-picker";
 import { setLocale } from "#lib/i18n/index";
-import { flat, testRow, testRows } from "./ready-test-rows";
+import { flat, testGroup, testRow, testRows } from "./ready-test-rows";
 
 afterEach(() => setLocale("en"));
 
@@ -11,6 +11,7 @@ const mount = async (props: Partial<CcReadyPicker> = {}) => {
 	const element = document.createElement("cc-ready-picker") as CcReadyPicker;
 	Object.assign(element, {
 		rows: testRows(),
+		groups: [testGroup],
 		selected: [],
 		today: "2026-10-31",
 		...props,
@@ -25,221 +26,136 @@ const order = (root: ParentNode) =>
 		el.getAttribute("data-card"),
 	);
 
-const tick = (root: ParentNode, id: string) =>
-	root.querySelector(`[data-card="${id}"] button.tick`) as HTMLButtonElement;
+const tile = (root: ParentNode, id: string) =>
+	root.querySelector(`[data-card="${id}"]`) as HTMLButtonElement;
 
-test("rows keep the order given, one panel, each a row whose tick is its own toggle", async () => {
+test("tiles keep the order given, each one native toggle button with nothing interactive inside", async () => {
 	const { root } = await mount();
 	expect(order(root)).toEqual(["A", "B", "C"]);
-	expect(root.querySelectorAll(".panel")).toHaveLength(1);
-	for (const row of root.querySelectorAll("[data-card]")) {
-		expect(row.localName).toBe("div");
-		expect(row.classList.contains("crow")).toBe(true);
-		const button = row.querySelector("button.tick") as HTMLButtonElement;
-		expect(button.type).toBe("button");
-		expect(button.hasAttribute("aria-pressed")).toBe(true);
+	expect(root.querySelectorAll(".tiles")).toHaveLength(1);
+	for (const el of root.querySelectorAll("[data-card]")) {
+		expect(el.localName).toBe("button");
+		expect((el as HTMLButtonElement).type).toBe("button");
+		expect(el.classList.contains("tile")).toBe(true);
+		expect(el.getAttribute("aria-pressed")).toBe("false");
+		expect(el.querySelector("a, button, input")).toBeNull();
 	}
 });
 
-test("no link sits inside a button: the card link is the tick's sibling", async () => {
-	const { root } = await mount();
-	expect(root.querySelectorAll("button a, button button")).toHaveLength(0);
-	for (const link of root.querySelectorAll("a.card-link"))
-		expect(link.closest("button")).toBeNull();
-	expect(root.querySelectorAll("button.tick")).toHaveLength(3);
-	expect(root.querySelectorAll("a.card-link")).toHaveLength(3);
-});
-
-test("tapping anywhere on a row, or its tick, asks to toggle it once; a picked card reads pressed", async () => {
+test("tapping anywhere on a tile asks to toggle it once; a picked card reads pressed with a filled tick", async () => {
 	const { element, root } = await mount();
 	const events: CustomEvent[] = [];
 	element.addEventListener("toggle", (e: Event) =>
 		events.push(e as CustomEvent),
 	);
-	(root.querySelector('[data-card="A"]') as HTMLElement).click();
-	(root.querySelector('[data-card="B"] .meta') as HTMLElement).click();
-	(root.querySelector('[data-card="C"] .r') as HTMLElement).click();
-	tick(root, "A").click();
+	tile(root, "A").click();
+	(tile(root, "B").querySelector(".facts") as HTMLElement).click();
+	(tile(root, "C").querySelector(".room") as HTMLElement).click();
 	expect(events.map((e) => e.detail)).toEqual([
 		{ cardId: "A" },
 		{ cardId: "B" },
 		{ cardId: "C" },
-		{ cardId: "A" },
 	]);
 	const again = await mount({ selected: ["A"] });
-	const pressed = (id: string) =>
-		tick(again.root, id).getAttribute("aria-pressed");
-	expect(pressed("A")).toBe("true");
-	expect(pressed("B")).toBe("false");
+	expect(tile(again.root, "A").getAttribute("aria-pressed")).toBe("true");
+	expect(tile(again.root, "B").getAttribute("aria-pressed")).toBe("false");
+	expect(tile(again.root, "A").querySelector(".tick .icon")).not.toBeNull();
+	expect(tile(again.root, "B").querySelector(".tick .icon")).toBeNull();
 	expect(
-		again.root.querySelector('[data-card="A"] .tick .icon'),
-	).not.toBeNull();
-	expect(
-		again.root.querySelector('[data-card="A"]')?.hasAttribute("data-on"),
-	).toBe(true);
+		tile(again.root, "A").querySelector(".tick")?.getAttribute("aria-hidden"),
+	).toBe("true");
 });
 
-test("the keyboard reaches the tick and the link separately; the tick is a native button, so Enter or Space toggles", async () => {
+test("a tile is one tab stop; a native button turns Enter and Space into the toggle", async () => {
 	const { element, root } = await mount();
 	const events: Event[] = [];
 	element.addEventListener("toggle", (e) => events.push(e));
-	const row = root.querySelector('[data-card="A"]') as HTMLElement;
-	// The row itself is no tab stop; its two controls are.
-	expect(row.hasAttribute("tabindex")).toBe(false);
-	const button = tick(root, "A");
-	const link = row.querySelector("a.card-link") as HTMLAnchorElement;
-	expect(button.tabIndex).toBe(0);
-	expect(link.getAttribute("href")).toBe("/card?id=A");
-	expect(button.contains(link) || link.contains(button)).toBe(false);
-	// A native button turns Enter and Space into a click; that click toggles.
-	button.focus();
-	expect(root.activeElement).toBe(button);
-	button.click();
+	const a = tile(root, "A");
+	expect(a.tabIndex).toBe(0);
+	a.focus();
+	expect(root.activeElement).toBe(a);
+	a.click();
 	expect(events).toHaveLength(1);
-	link.focus();
-	expect(root.activeElement).toBe(link);
 });
 
-test("a row says its room, dates, usage and an overdue bill in words", async () => {
-	const { root } = await mount();
-	const b = root.querySelector('[data-card="B"]') as HTMLElement;
-	expect(flat(b)).toContain("฿80,000.00");
-	expect(flat(b)).toContain("room · shared");
-	expect(flat(b)).toContain("Closes 25 Nov 2026 · in 25 days");
-	expect(flat(b)).toContain("Due 15 Dec 2026");
-	expect(b.querySelector(".usage")?.getAttribute("aria-label")).toBe(
-		"40% of the limit used",
+test("a tile: tick and id) name, the cardholder, the room and its word, then closes and due", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-25", "2026-12-15", { groupOwner: "NT" }),
+		],
+	});
+	const a = tile(root, "A");
+	expect(flat(a.querySelector(".name"))).toBe("A) Card A");
+	expect(a.querySelector(".name .tick")).not.toBeNull();
+	expect(flat(a.querySelector(".corner"))).toBe("NT");
+	expect(flat(a.querySelector(".room"))).toBe("฿60,000.00 room");
+	expect(a.querySelector(".aside")).toBeNull();
+	expect(flat(a.querySelector(".facts"))).toBe(
+		"closes 25 Nov 2026 · due 15 Dec 2026",
 	);
-	const a = root.querySelector('[data-card="A"]') as HTMLElement;
-	expect(flat(a)).not.toContain("shared");
-	expect(flat(a.querySelector('.tags .tag[data-urgency="overdue"]'))).toBe(
-		"Overdue bill",
-	);
-	expect(b.querySelector(".tag[data-urgency]")).toBeNull();
 });
 
-test("the amount note reads usage, then credit, then room, as Cards does, and keeps the shared hint", async () => {
+test("a Sub card names its cardholder and whose account it draws on", async () => {
+	const rows = [
+		testRow("B", 60_000_00, "2026-11-10", "2026-11-25", {
+			groupOwner: "KC",
+			holder: "NT",
+		}),
+	];
+	const { root } = await mount({ rows });
+	expect(flat(tile(root, "B").querySelector(".corner"))).toBe(
+		"NT · KC's account",
+	);
+	setLocale("th");
+	const thai = await mount({ rows });
+	expect(flat(tile(thai.root, "B").querySelector(".corner"))).toBe(
+		"NT · บัญชี KC",
+	);
+});
+
+test("a group with no stored owner reads as KC, as on Cards", async () => {
+	const { root } = await mount({
+		rows: [testRow("C", 20_000_00, "2026-11-18", "2026-12-03")],
+	});
+	expect(flat(tile(root, "C").querySelector(".corner"))).toBe("KC");
+});
+
+test("the word reads over limit, N% used, credit or room, as Cards does, with no shared hint", async () => {
 	const { root } = await mount({
 		rows: [
 			testRow("O", -12_000_00, "2026-11-10", "2026-11-25", {
 				used: 112_000_00,
 				sharedWith: 1,
-				credit: 500_00,
 			}),
+			testRow("H", 8_000_00, "2026-11-10", "2026-11-25", { used: 92_000_00 }),
 			testRow("P", 60_000_00, "2026-11-10", "2026-11-25", { credit: 500_00 }),
-			testRow("Q", 60_000_00, "2026-11-10", "2026-11-25", {
-				credit: 500_00,
-				sharedWith: 2,
-			}),
-			testRow("R", 60_000_00, "2026-11-10", "2026-11-25"),
 			testRow("S", 60_000_00, "2026-11-10", "2026-11-25", { sharedWith: 1 }),
 		],
 	});
-	const note = (id: string) =>
-		root.querySelector(`[data-card="${id}"] .r small`) as HTMLElement;
-	expect(flat(note("O"))).toBe("112% used · shared");
-	expect(note("O").dataset["tone"]).toBe("warn");
-	expect(flat(note("P"))).toBe("credit ฿500.00");
-	expect(note("P").dataset["tone"]).toBeUndefined();
-	expect(flat(note("Q"))).toBe("credit ฿500.00 · shared");
-	expect(flat(note("R"))).toBe("room");
-	expect(flat(note("S"))).toBe("room · shared");
+	const word = (id: string) =>
+		tile(root, id).querySelector(".room small") as HTMLElement;
+	expect(flat(word("O"))).toBe("over limit");
+	expect(word("O").dataset["tone"]).toBe("bad");
+	expect(flat(word("H"))).toBe("92% used");
+	expect(word("H").dataset["tone"]).toBe("warn");
+	expect(flat(word("P"))).toBe("credit ฿500.00");
+	expect(word("P").dataset["tone"]).toBeUndefined();
+	expect(flat(word("S"))).toBe("room");
 });
 
-test("a card reads in the panel form: the last-4 chip, then id) name", async () => {
+test("no tile says Overdue bill", async () => {
 	const { root } = await mount();
-	const a = root.querySelector('[data-card="A"]') as HTMLElement;
-	expect(flat(a.querySelector(".card-label"))).toBe("A) Card A");
-	expect(flat(a.querySelector(".mini"))).toBe("1111");
+	expect(flat(tile(root, "A"))).not.toContain("Overdue");
 });
 
-test("reads in Thai", async () => {
-	setLocale("th");
+test("each tile is named by its card and room alone", async () => {
 	const { root } = await mount();
-	expect(flat(root.querySelector('[data-card="B"]'))).toContain(
-		"วงเงินเหลือ · ใช้ร่วม",
-	);
-});
-
-test("each row's tick is named by its card and room alone", async () => {
-	const { root } = await mount();
-	expect(tick(root, "B").getAttribute("aria-label")).toBe(
+	expect(tile(root, "B").getAttribute("aria-label")).toBe(
 		"Card B, ฿80,000.00 room",
 	);
 	setLocale("th");
 	const thai = await mount();
-	expect(tick(thai.root, "B").getAttribute("aria-label")).toBe(
+	expect(tile(thai.root, "B").getAttribute("aria-label")).toBe(
 		"Card B วงเงินเหลือ ฿80,000.00",
 	);
-});
-
-test("a picker row carries the owner tags on line 2", async () => {
-	const { root } = await mount({
-		rows: [
-			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", { groupOwner: "NT" }),
-			testRow("B", 60_000_00, "2026-11-10", "2026-11-25", {
-				groupOwner: "NT",
-				holder: "KC",
-			}),
-		],
-	});
-	const tags = (id: string) =>
-		[...root.querySelectorAll(`[data-card="${id}"] .tags .tag`)].map((el) =>
-			flat(el),
-		);
-	expect(tags("A")).toEqual(["NT"]);
-	expect(tags("B")).toEqual(["KC", "Account NT", "Sub"]);
-	// The tick's name stays the card and its room.
-	expect(tick(root, "B").getAttribute("aria-label")).toBe(
-		"Card B, ฿60,000.00 room",
-	);
-});
-
-test("the card name links to the card page in a new tab", async () => {
-	const { root } = await mount();
-	const link = root.querySelector(
-		'[data-card="A"] a.card-link',
-	) as HTMLAnchorElement;
-	expect(link.getAttribute("href")).toBe("/card?id=A");
-	expect(link.getAttribute("target")).toBe("_blank");
-	expect(link.getAttribute("rel")).toBe("noopener");
-	expect(link.getAttribute("aria-label")).toBe("Card A (opens in a new tab)");
-	expect(flat(link)).toBe("A) Card A");
-	setLocale("th");
-	const thai = await mount();
-	expect(
-		thai.root
-			.querySelector('[data-card="A"] a.card-link')
-			?.getAttribute("aria-label"),
-	).toContain("แท็บใหม่");
-});
-
-test("the link encodes the id", async () => {
-	const rows = [testRow("a b&c", 1000, "2026-11-18", "2026-12-03")];
-	const { root } = await mount({ rows });
-	expect(root.querySelector("a.card-link")?.getAttribute("href")).toBe(
-		"/card?id=a%20b%26c",
-	);
-});
-
-test("clicking or keying the link does not toggle the row", async () => {
-	const { element, root } = await mount();
-	const events: Event[] = [];
-	element.addEventListener("toggle", (e) => events.push(e));
-	const link = root.querySelector('[data-card="A"] a.card-link') as HTMLElement;
-	link.addEventListener("click", (e) => e.preventDefault());
-	link.click();
-	link.dispatchEvent(
-		new KeyboardEvent("keydown", {
-			key: "Enter",
-			bubbles: true,
-			composed: true,
-		}),
-	);
-	link.dispatchEvent(
-		new KeyboardEvent("keyup", { key: " ", bubbles: true, composed: true }),
-	);
-	expect(events).toHaveLength(0);
-	(root.querySelector('[data-card="A"]') as HTMLElement).click();
-	expect(events).toHaveLength(1);
 });

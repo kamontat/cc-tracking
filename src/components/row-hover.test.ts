@@ -5,6 +5,8 @@ import "#components/cc-tx-ledger";
 import "#components/cc-owed-list";
 import "#components/cc-list-index";
 import "#components/cc-ready-picker";
+import "#components/cc-ready-panel";
+import "#components/cc-cards-list";
 import { rowPanel } from "#styles/shared";
 
 // DD-105: a row that is a link or a button shows a quiet ground on hover, never an underline,
@@ -67,7 +69,6 @@ test("every row list's hover reaches the panel's edges and keeps its badge", () 
 		"cc-tx-ledger",
 		"cc-owed-list",
 		"cc-list-index",
-		"cc-ready-picker",
 	]) {
 		const text = stylesOf(tag);
 		const grounds = hoverRules(text).filter(({ body }) =>
@@ -83,6 +84,25 @@ test("every row list's hover reaches the panel's edges and keeps its badge", () 
 					body.includes("background: var(--cc-surface)"),
 			),
 		).toBe(true);
+	}
+});
+
+// DD-151: a card tile hovers by deepening its edge in its own colour, never an underline, and
+// keeps its focus ring.
+test("card tiles hover without an underline and keep a focus ring", () => {
+	for (const tag of ["cc-ready-panel", "cc-ready-picker", "cc-cards-list"]) {
+		const text = stylesOf(tag);
+		const rules = hoverRules(text).filter(({ selector }) =>
+			selector?.includes(".tile"),
+		);
+		expect(rules.length).toBeGreaterThan(0);
+		for (const { body } of rules) {
+			expect(body).toContain("text-decoration: none");
+			expect(body).toContain("border-color");
+		}
+		expect(text).toMatch(
+			/\.tile:focus-visible\s*\{[^}]*box-shadow: var\(--cc-focus-ring\)/,
+		);
 	}
 });
 

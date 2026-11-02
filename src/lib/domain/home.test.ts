@@ -141,6 +141,23 @@ describe("readyRows", () => {
 		expect(row?.dueDate).toBe("2026-12-15");
 	});
 
+	test("a closed bill still to pay and not yet due gives its due date", () => {
+		const a = mk("A");
+		const p = [buy("p", "A", "2026-10-10", 4_000_00)];
+		expect(readyRows(data([a], p), TODAY)[0]?.billDue).toBe("2026-11-14");
+		expect(readyRows(data([a]), TODAY)[0]?.billDue).toBeNull();
+		const paid: CardPayment = {
+			id: "pay",
+			cardId: "A",
+			date: "2026-10-28",
+			amount: 4_000_00,
+			status: "paid",
+		};
+		expect(readyRows(data([a], p, [], [paid]), TODAY)[0]?.billDue).toBeNull();
+		const late = [buy("p", "A", "2026-09-10", 4_000_00)];
+		expect(readyRows(data([a], late), TODAY)[0]?.billDue).toBeNull();
+	});
+
 	test("an unpaid bill past its due date is overdue", () => {
 		const a = mk("A");
 		const p = [buy("p", "A", "2026-09-10", 4_000_00)];
@@ -192,6 +209,7 @@ describe("sortReady", () => {
 		closeDate: close,
 		dueDate: due,
 		overdue: false,
+		billDue: null,
 		credit: 0,
 	});
 	const rows = [

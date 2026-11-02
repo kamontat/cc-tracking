@@ -108,6 +108,9 @@
 	   parks its side panel beside the lines. */
 	--cc-page-narrow: 48rem;
 
+	/* The narrowest a card tile gets in the tiles grid from 900px (DD-151). */
+	--cc-tile-min: 16rem;
+
 	/* The purchase list's side panel from 900px: the date, the summary and the one action. */
 	--cc-side-panel: 20rem;
 

@@ -77,6 +77,11 @@ export type ReadyRow = {
 	closeDate: PlainDate;
 	dueDate: PlainDate;
 	overdue: boolean;
+	/**
+	 * The due date of a closed bill still to pay whose due date is today or later, else null:
+	 * between a statement's close and its due date, the date that matters next.
+	 */
+	billDue: PlainDate | null;
 	/** The credit the card holds (`CardLedger.credit`), in satang; 0 for none. */
 	credit: number;
 };
@@ -99,6 +104,10 @@ export function readyRows(data: ReadyData, today: PlainDate): ReadyRow[] {
 			closeDate: closeDateOf(card.cycle, period),
 			dueDate: dueDateOf(card.cycle, period),
 			overdue: bill !== null && ledgerUrgency(bill, today) === "overdue",
+			billDue:
+				bill !== null && compareDates(bill.dueDate, today) >= 0
+					? bill.dueDate
+					: null,
 			credit: ledger?.credit ?? 0,
 		});
 	}

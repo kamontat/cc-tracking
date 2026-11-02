@@ -1,18 +1,19 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { displayDate } from "#lib/domain/date";
 import { type ReadyRow, sortReady } from "#lib/domain/home";
 import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { base, cardBits, controls, rowPanel, usageBar } from "#styles/shared";
-import { readyRowParts, readyRowStyles } from "./ready-row";
+import { getLocale, t } from "#lib/i18n/index";
+import { base, controls } from "#styles/shared";
+import { cardTileStyles, lastFour, tileBody, tileTone } from "./card-tile";
 
 /** How many cards Home shows before *See more*. */
 export const READY_TOP = 3;
 
 /**
- * Home's short *Ready to use* (DD-103): the count, the three cards with the most room as panel
- * rows with no tick, then *See more (N)* (the control *Needs you* uses), which opens the rest in
+ * Home's short *Ready to use* (DD-103): the count, the three cards with the most room as card
+ * tiles that open the card's page (DD-151), then *See more (N)* (the control *Needs you* uses), which opens the rest in
  * place and reads *Show less* to fold them. Starting a list is the *+ New* menu's job and
  * `/list/new`'s. With no card ready it says so and leads to Settings.
  */
@@ -20,11 +21,8 @@ export const READY_TOP = 3;
 export class CcReadyPanel extends LitElement {
 	static override styles = [
 		base,
-		cardBits,
 		controls,
-		usageBar,
-		rowPanel,
-		readyRowStyles,
+		cardTileStyles,
 		css`
 			:host {
 				display: flex;
@@ -68,6 +66,7 @@ export class CcReadyPanel extends LitElement {
 	@property({ attribute: false }) places: string[] = [];
 	/** The stored limit groups, in order: a card's chip takes its group's colour. */
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** Kept for the page's clock; the tiles' dates come with the rows. */
 	@property() today: PlainDate = "";
 	/** How many unarchived cards that could take a purchase point at no limit group. */
 	@property({ type: Number }) unassigned = 0;
@@ -93,6 +92,28 @@ export class CcReadyPanel extends LitElement {
 		</p>`;
 	}
 
+	/**
+	 * Line 1's corner is the last 4; line 2's aside says when the card closes, or, between a
+	 * bill's close and its due date, when that bill is due. Over the limit, the amount turns red
+	 * and has no word.
+	 */
+	private tile(row: ReadyRow) {
+		const locale = getLocale();
+		const aside = row.billDue
+			? t("tile.due", { date: displayDate(row.billDue, locale) })
+			: t("tile.closes", { date: displayDate(row.closeDate, locale) });
+		return html`<a class="tile" data-g=${tileTone(row.card, this.groups)} data-card=${row.card.id}
+			href=${`/card?id=${encodeURIComponent(row.card.id)}`}>${tileBody({
+				card: row.card,
+				room: row.room,
+				credit: row.credit,
+				corner: lastFour(row.card),
+				mono: true,
+				aside,
+				quietOver: true,
+			})}</a>`;
+	}
+
 	override render() {
 		const count = this.rows.length;
 		const places = this.places.join(", ");
@@ -112,13 +133,7 @@ export class CcReadyPanel extends LitElement {
 		const sorted = sortReady(this.rows, "room");
 		const top = this.expanded ? sorted : sorted.slice(0, READY_TOP);
 		return html`${head}
-			<div class="panel" id="ready-list">${top.map(
-				(
-					row,
-				) => html`<div class="crow ready-row" data-plain data-card=${row.card.id}>
-					${readyRowParts(row, this.groups, this.today)}
-				</div>`,
-			)}</div>
+			<div class="tiles" id="ready-list">${top.map((row) => this.tile(row))}</div>
 			${
 				count > READY_TOP
 					? html`<button type="button" class="more" data-variant="quiet" data-action="more"
