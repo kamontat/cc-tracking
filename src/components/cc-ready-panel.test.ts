@@ -153,7 +153,7 @@ test("over the limit the amount turns red and drops its word; the rail is full a
 		],
 	});
 	const room = tile(root, "O").querySelector(".room") as HTMLElement;
-	expect(flat(room)).toBe("-฿21,065.00");
+	expect(flat(room)).toBe("−฿21,065.00");
 	expect(room.dataset["tone"]).toBe("bad");
 	const rail = tile(root, "O").querySelector(".rail") as HTMLElement;
 	expect(rail.dataset["level"]).toBe("over");

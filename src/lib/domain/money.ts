@@ -24,8 +24,9 @@ export function amountOf(input: string): number | null {
 	}
 }
 
+/** Satang as `฿1,234.56`; a negative amount takes the minus sign: `−฿21,065.00`. */
 export function formatAmount(satang: number): string {
-	const sign = satang < 0 ? "-" : "";
+	const sign = satang < 0 ? MINUS : "";
 	const absolute = Math.abs(satang);
 	const baht = Math.floor(absolute / 100).toLocaleString("en-US");
 	return `${sign}฿${baht}.${String(absolute % 100).padStart(2, "0")}`;

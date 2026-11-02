@@ -42,6 +42,11 @@ describe("formatAmount", () => {
 		expect(formatAmount(120_000)).toBe("฿1,200.00");
 		expect(formatAmount(50)).toBe("฿0.50");
 	});
+
+	test("a negative amount reads with the minus sign, not a hyphen", () => {
+		expect(formatAmount(-2_106_500)).toBe("−฿21,065.00");
+		expect(formatAmount(-50)).toBe("−฿0.50");
+	});
 });
 
 describe("formatAmountInput", () => {

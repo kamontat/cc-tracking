@@ -97,7 +97,7 @@ test("a made line takes the real amount", async () => {
 	await typeActual(element, "A", "13000");
 	expect(flat(line(root, "A"))).toContain("+฿500.00 vs plan");
 	await typeActual(element, "A", "12000");
-	expect(flat(line(root, "A"))).toContain("-฿500.00 vs plan");
+	expect(flat(line(root, "A"))).toContain("−฿500.00 vs plan");
 });
 
 test("not made offers the move, ticked", async () => {

@@ -198,7 +198,7 @@ test("line 2: room, N% used from 80% in the warn tone, over limit in red, or cre
 	expect(rail(root, "B/2")).toBe("high");
 	expect(text(line(root, "C"))).toBe("฿80,000.00 credit ฿250.00");
 	const red = await mount({}, { rooms: over });
-	expect(text(line(red.root, "B/2"))).toBe("-฿2,000.00 over limit");
+	expect(text(line(red.root, "B/2"))).toBe("−฿2,000.00 over limit");
 	expect(line(red.root, "B/2")?.querySelector("small")?.dataset["tone"]).toBe(
 		"bad",
 	);
