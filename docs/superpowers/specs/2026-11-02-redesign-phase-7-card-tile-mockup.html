@@ -1,0 +1,265 @@
+<meta charset="utf-8">
+<title>Picker row options</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one compact wallet tile, drawn inside faithful copies of Home, the new purchase list and Cards, at phone and desktop width. Tokens copied from src/styles/tokens.css. */
+:root {
+	--bg: #f6f7f3;
+	--surface: #ffffff;
+	--sunken: #eef1ea;
+	--border: #e1e6de;
+	--text: #22302a;
+	--muted: #5f6b65;
+	--accent: #367d5f;
+	--accent-text: #ffffff;
+	--danger: #a8403d;
+	--danger-surface: #f8e2e0;
+	--warning: #95591a;
+	--warning-surface: #fbecd9;
+	--g1: #e3e9fb; --g1t: #3552b8;
+	--g2: #dff1e7; --g2t: #2f7457;
+	--g3: #efe5f7; --g3t: #7a45a8;
+	--g4: #fbe6dd; --g4t: #a74e2c;
+	--shadow-sm: 0 1px 2px rgb(34 48 42 / 0.04);
+	--sans: system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai", "Noto Sans Thai", sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		color-scheme: dark;
+		--bg: #121815; --surface: #1b231f; --sunken: #24302a; --border: #2c3832;
+		--text: #e6ede8; --muted: #9aa9a1; --accent: #74c9a1; --accent-text: #0f1a14;
+		--danger: #ef8a86; --danger-surface: #3b1e1d; --warning: #e7a55e; --warning-surface: #3a2a18;
+		--g1: #1f2944; --g1t: #9fb3f5; --g2: #1b3328; --g2t: #8ed7b4; --g3: #2e2240; --g3t: #cfa6ef; --g4: #3a241b; --g4t: #f2a882;
+		--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+	}
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #121815; --surface: #1b231f; --sunken: #24302a; --border: #2c3832;
+	--text: #e6ede8; --muted: #9aa9a1; --accent: #74c9a1; --accent-text: #0f1a14;
+	--danger: #ef8a86; --danger-surface: #3b1e1d; --warning: #e7a55e; --warning-surface: #3a2a18;
+	--g1: #1f2944; --g1t: #9fb3f5; --g2: #1b3328; --g2t: #8ed7b4; --g3: #2e2240; --g3t: #cfa6ef; --g4: #3a241b; --g4t: #f2a882;
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+}
+* { box-sizing: border-box; }
+body {
+	background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5; margin: 0;
+	padding-block: 32px 64px;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 40px; }
+h1 { font-size: 1.75rem; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.25rem; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 72ch; }
+.lead { color: var(--muted); }
+.eyebrow { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.part { display: grid; gap: 16px; }
+.mode-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.scroll { overflow-x: auto; padding-bottom: 4px; }
+.device { inline-size: 390px; border: 1px solid var(--border); border-radius: 28px; overflow: hidden; background: var(--bg); }
+.device.desk { inline-size: 1280px; border-radius: 16px; }
+.screen { padding: 16px; display: grid; gap: 14px; }
+.desk .screen { padding: 24px 32px 32px; }
+
+/* app chrome, simplified */
+.appbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--surface); font-size: 0.8125rem; }
+.desk .appbar { padding: 12px 32px; }
+.brand { font-family: var(--mono); font-weight: 700; display: flex; gap: 6px; align-items: center; }
+.brand b { background: var(--text); color: var(--bg); border-radius: 5px; padding: 0 4px; }
+.tabs { display: flex; gap: 22px; color: var(--muted); font-weight: 600; }
+.tabs .on { color: var(--text); }
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.page-head h3 { font-size: 1.75rem; margin: 0; line-height: 1.2; }
+.page-head h4 { font-size: 1.125rem; margin: 0; }
+.page-head h4 small { color: var(--muted); font-weight: 500; font-size: 0.8125rem; margin-left: 6px; }
+.sub-head { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.desk .sub-head { padding: 10px 32px; }
+.back { inline-size: 36px; block-size: 36px; border-radius: 10px; background: var(--sunken); display: grid; place-items: center; }
+.sub-head b { display: block; font-size: 0.9375rem; }
+.sub-head small { color: var(--muted); font-size: 0.75rem; }
+.btn { font-weight: 650; font-size: 0.8125rem; border-radius: 10px; padding: 7px 12px; background: var(--accent); color: var(--accent-text); white-space: nowrap; }
+.btn.quiet { background: var(--sunken); color: var(--text); }
+.switch { display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 3px; background: var(--sunken); border-radius: 12px; font-size: 0.8125rem; font-weight: 600; }
+.switch span { padding: 4px 12px; border-radius: 9px; color: var(--muted); text-align: center; white-space: nowrap; }
+.switch .on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.controls { display: flex; gap: 8px; }
+.search { flex: 1; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 9px 12px; color: var(--muted); font-size: 0.875rem; }
+.filter { border: 1px solid var(--border); background: var(--sunken); border-radius: 12px; padding: 9px 12px; font-weight: 650; font-size: 0.8125rem; }
+.sortchip { justify-self: start; border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 0.75rem; background: var(--surface); }
+.section-title { font-weight: 700; font-size: 0.9375rem; display: flex; gap: 8px; align-items: baseline; }
+.section-title small { color: var(--muted); font-weight: 500; font-size: 0.75rem; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; }
+.home-title { font-size: 1.5rem; font-weight: 750; margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.home-title small { font-size: 0.8125rem; color: var(--muted); font-weight: 500; }
+.needs .item { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 12px 14px; }
+.needs .item + .item { border-top: 1px solid var(--border); }
+.needs .ico { inline-size: 34px; block-size: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 0.875rem; font-weight: 700; }
+.needs .ico.bad { background: var(--danger-surface); color: var(--danger); }
+.needs .ico.soon { background: var(--warning-surface); color: var(--warning); }
+.needs .ico.plain { background: var(--sunken); color: var(--muted); }
+.needs b { font-size: 0.875rem; display: block; }
+.needs .sm { font-size: 0.75rem; color: var(--muted); display: block; }
+.needs .amt { font-weight: 700; font-size: 0.875rem; font-variant-numeric: tabular-nums; }
+.needs .amt.bad { color: var(--danger); }
+.group-panel { padding: 12px 14px; display: grid; gap: 6px; }
+.group-panel .top { display: flex; justify-content: space-between; gap: 8px; font-size: 0.875rem; }
+.group-panel .top b { font-weight: 700; }
+.group-panel .sm { font-size: 0.75rem; color: var(--muted); }
+.track { display: block; block-size: 4px; border-radius: 2px; background: color-mix(in oklab, var(--text) 10%, transparent); overflow: hidden; }
+.track i { display: block; block-size: 100%; background: var(--muted); }
+.track i.warn, .tile .rail i.warn { background: var(--warning); }
+.track i.bad, .tile .rail i.bad { background: var(--danger); }
+.footer-bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 8px 20px rgb(34 48 42 / 0.12); flex-wrap: wrap; }
+.footer-bar b { font-size: 0.9375rem; }
+.bottom-nav { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--border); background: var(--surface); font-size: 0.75rem; color: var(--muted); text-align: center; padding: 8px 0 10px; font-weight: 600; }
+.bottom-nav .on { color: var(--text); }
+.cols { display: grid; gap: 24px; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; }
+.cols > div { display: grid; gap: 14px; }
+
+/* ---------- the wallet tile ---------- */
+.tiles { display: grid; gap: 8px; }
+.desk .tiles { grid-template-columns: repeat(auto-fill, minmax(255px, 1fr)); gap: 10px; }
+.tile {
+	position: relative; display: grid; row-gap: 2px; column-gap: 10px; padding: 10px 12px 13px; border-radius: 14px; overflow: hidden;
+	background: var(--gbg); border: 1px solid color-mix(in oklab, var(--gfg) 18%, transparent);
+	grid-template-columns: minmax(0, 1fr) auto; align-items: baseline;
+}
+.tile.g1 { --gbg: var(--g1); --gfg: var(--g1t); }
+.tile.g2 { --gbg: var(--g2); --gfg: var(--g2t); }
+.tile.g3 { --gbg: var(--g3); --gfg: var(--g3t); }
+.tile.g4 { --gbg: var(--g4); --gfg: var(--g4t); }
+.tile .name { font-weight: 700; font-size: 0.875rem; color: var(--text); min-width: 0; display: flex; gap: 8px; align-items: center; }
+.tile .name > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .name .id { color: var(--muted); font-weight: 650; }
+.tile .pan { font-family: var(--mono); font-size: 0.75rem; font-weight: 700; color: var(--gfg); letter-spacing: 0.08em; white-space: nowrap; }
+.tile .who { font-size: 0.75rem; font-weight: 650; color: var(--gfg); white-space: nowrap; }
+.tile .room { font-size: 1.0625rem; font-weight: 760; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+.tile .room.bad { color: var(--danger); }
+.tile .room small { font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-left: 6px; }
+.tile .room small.warn { color: var(--warning); }
+.tile .room small.bad { color: var(--danger); }
+.tile .when { font-size: 0.75rem; color: var(--muted); text-align: right; white-space: nowrap; }
+.tile .facts { grid-column: 1 / -1; font-size: 0.75rem; color: var(--muted); }
+.tile .rail { position: absolute; inset: auto 0 0 0; block-size: 4px; background: color-mix(in oklab, var(--text) 10%, transparent); }
+.tile .rail i { display: block; block-size: 100%; background: var(--muted); }
+.tick { inline-size: 20px; block-size: 20px; border-radius: 6px; border: 1.5px solid color-mix(in oklab, var(--gfg) 40%, var(--border)); background: var(--surface); display: inline-grid; place-items: center; flex: none; }
+.tick svg { inline-size: 13px; block-size: 13px; }
+.tile.on { border: 2px solid var(--accent); padding: 9px 11px 12px; }
+.tile.on .tick { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+
+.legend { display: grid; gap: 10px; }
+.legend-row { display: flex; gap: 10px; align-items: center; font-size: 0.875rem; flex-wrap: wrap; }
+.sw { inline-size: 28px; block-size: 16px; border-radius: 5px; }
+.legend .track { inline-size: 56px; }
+.facts-table { inline-size: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+.facts-table th, .facts-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.facts-table th { color: var(--muted); font-weight: 600; }
+.facts-table td:first-child { font-weight: 650; white-space: nowrap; }
+</style>
+
+<div class="wrap">
+	<header class="part">
+		<div class="eyebrow">Option B · wallet tile, compact</div>
+		<h1>Picker row options</h1>
+		<p class="lead">One card tile for Home's <b>Ready to use</b>, the <b>new purchase list</b> and <b>Cards</b>, each drawn inside a copy of the real page at 390 px and 1280 px. A tile is about 60 px tall on Home and 76 px on the list and Cards, so 7 to 9 cards fit on one phone screen. Desktop frames scroll sideways on a small screen.</p>
+		<div class="legend">
+			<div class="legend-row"><b>Tile colour</b> = which limit group the card draws on; cards in one group share it:
+				<span class="sw" style="background:var(--g1)"></span> Family pool
+				<span class="sw" style="background:var(--g2)"></span> Work
+				<span class="sw" style="background:var(--g4)"></span> UOB
+				<span class="sw" style="background:var(--g3)"></span> Empty</div>
+			<div class="legend-row"><b>Bottom rail</b> = how much of that group's limit is used, the same on every page:
+				<span class="track"><i style="inline-size:13%"></i></span> under 80%
+				<span class="track"><i class="warn" style="inline-size:92%"></i></span> 80% or more
+				<span class="track"><i class="bad" style="inline-size:100%"></i></span> over the limit</div>
+		</div>
+		<div class="scroll"><table class="facts-table">
+			<thead><tr><th>Page</th><th>Tile shows</th><th>Tap</th></tr></thead>
+			<tbody>
+				<tr><td>Ready to use</td><td>id) name, last 4, room, closes date (due date once it has closed). Over the limit: the amount stays red with no word under it.</td><td>Opens the card page</td></tr>
+				<tr><td>New purchase list</td><td>id) name, cardholder (and account holder for a Sub card), room and limit state, closes and due</td><td>Ticks the card</td></tr>
+				<tr><td>Cards</td><td>id) name, last 4, room and limit state, cardholder, Sub, closes and due</td><td>Opens the card page</td></tr>
+			</tbody>
+		</table></div>
+	</header>
+
+	<section class="part" id="home"></section>
+	<section class="part" id="list"></section>
+	<section class="part" id="cards"></section>
+</div>
+
+<script>
+const CHECK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3.5 8.5 6.5 11.5 12.5 4.5"/></svg>';
+/* Sample data follows the app's rules: room belongs to the group; the rail is the group's used share; 80% or more is high. Today is Mon, 2 Nov 2026. */
+const groups = {
+	fam: { name: "Family pool", owner: "RI", g: "g1", limit: "฿100,000.00", room: "฿87,499.00", used: 13, level: "", cards: "kbank, scb" },
+	work: { name: "Work", owner: "KC", g: "g2", limit: "฿50,000.00", room: "฿4,000.00", used: 92, level: "warn", cards: "ktc" },
+	uob: { name: "UOB", owner: "KC", g: "g4", limit: "฿100,000.00", room: "-฿21,065.00", used: 100, level: "bad", cards: "uob" },
+	empty: { name: "Empty", owner: "KC", g: "g3", limit: "฿105,000.00", room: "฿105,000.00", used: 0, level: "", cards: "0" },
+};
+const cards = [
+	{ id: "kbank", name: "KBank Visa", last4: "4821", grp: "fam", holder: "RI", sub: false, closes: "25 Nov 2026", due: "15 Dec 2026", closed: false, word: "room", on: true },
+	{ id: "scb", name: "SCB Platinum", last4: "1120", grp: "fam", holder: "RI", sub: false, closes: "25 Nov 2026", due: "15 Dec 2026", closed: false, word: "room", on: false },
+	{ id: "ktc", name: "KTC Titanium with a long name", last4: "9988", grp: "work", holder: "KC", sub: false, closes: "25 Nov 2026", due: "15 Dec 2026", closed: false, word: "92% used", on: true },
+	{ id: "uob", name: "UOB Krabi", last4: "7765", grp: "uob", holder: "NT", sub: true, closes: "18 Nov 2026", due: "3 Dec 2026", closed: false, word: "over limit", on: false },
+	{ id: "0", name: "Empty", last4: "1234", grp: "empty", holder: "KC", sub: false, closes: "1 Nov 2026", due: "21 Nov 2026", closed: true, word: "credit ฿500.00", on: false },
+];
+const G = (c) => groups[c.grp];
+const lvl = (c) => G(c).level;
+const rail = (c) => `<span class="rail"><i class="${lvl(c)}" style="inline-size:${G(c).used}%"></i></span>`;
+const name = (c, lead = "") => `<span class="name">${lead}<span><span class="id">${c.id})</span> ${c.name}</span></span>`;
+const roomLine = (c, showWord) => `<span class="room${lvl(c) === "bad" ? " bad" : ""}">${G(c).room}${showWord ? `<small class="${lvl(c)}">${c.word}</small>` : ""}</span>`;
+const people = (c) => (c.sub ? `${c.holder} · ${G(c).owner}'s account` : c.holder);
+
+const tile = {
+	home: (c) => `<div class="tile ${G(c).g}">${name(c)}<span class="pan">•••• ${c.last4}</span>${roomLine(c, lvl(c) !== "bad")}<span class="when">${c.closed ? `Due ${c.due}` : `Closes ${c.closes}`}</span>${rail(c)}</div>`,
+	list: (c) => `<div class="tile ${G(c).g}${c.on ? " on" : ""}">${name(c, `<span class="tick">${c.on ? CHECK : ""}</span>`)}<span class="who">${people(c)}</span>${roomLine(c, true)}<span class="when"></span><span class="facts">closes ${c.closes} · due ${c.due}</span>${rail(c)}</div>`,
+	cards: (c) => `<div class="tile ${G(c).g}">${name(c)}<span class="pan">•••• ${c.last4}</span>${roomLine(c, true)}<span class="when">${c.holder}${c.sub ? " · Sub" : ""}</span><span class="facts">closes ${c.closes} · due ${c.due}</span>${rail(c)}</div>`,
+};
+const tiles = (k) => `<div class="tiles">${cards.map(tile[k]).join("")}</div>`;
+
+const TABS = ["Home", "Transactions", "Cards", "Settings"];
+const appbar = (desk, tab) => desk
+	? `<div class="appbar"><span class="brand"><b>cc</b>tracking <span style="font-family:var(--sans);font-weight:500;color:var(--muted)">· Mon, 02 Nov 2026</span></span><span class="tabs">${TABS.map((t) => `<span class="${t === tab ? "on" : ""}">${t}</span>`).join("")}</span></div>`
+	: `<div class="appbar"><span class="brand"><b>cc</b>tracking</span><span style="color:var(--muted)">Mon, 02 Nov</span></div>`;
+const nav = (tab) => `<div class="bottom-nav">${TABS.map((t) => `<span class="${t === tab ? "on" : ""}">${t}</span>`).join("")}</div>`;
+
+const needs = `<div class="panel needs">
+	<div class="item"><span class="ico bad">!</span><span><b>Overdue: KBank Visa (RI)</b><span class="sm">for 18 days</span><span class="amt bad">฿12,500.00</span></span></div>
+	<div class="item"><span class="ico soon">◷</span><span><b>Waiting on list for 30 Oct 2026</b><span class="sm">KBank Visa (RI), KTC Titanium with a long name (KC)</span><span class="amt">฿2.00</span></span></div>
+	<div class="item"><span class="ico plain">⇄</span><span><b>Draft list for 02 Nov 2026</b><span class="sm">KBank Visa (RI), SCB Platinum (RI)</span><span class="amt">฿2.00</span></span></div>
+</div>`;
+const groupPanels = Object.values(groups).map((g) => `<div class="panel group-panel"><div class="top"><b>${g.name} (${g.owner})</b><span>${g.room} of ${g.limit}</span></div><span class="track"><i class="${g.level}" style="inline-size:${g.used}%"></i></span><span class="sm">${g.cards} · ${g.level === "bad" ? "over limit" : g.used + "% used"}</span></div>`).join("");
+const listControls = `<div class="controls"><span class="search">Search card</span><span class="filter">Filter</span></div><span class="sortchip">Sort: Most room ▾</span>`;
+const listFooter = `<div class="footer-bar"><b>2 cards selected</b><span class="controls"><span class="btn quiet">Clear</span><span class="btn">Enter amounts ›</span></span></div>`;
+const listHead = `<div class="sub-head"><span class="back">‹</span><span><b>New purchase list</b><small>5 cards in Krabi</small></span></div>`;
+const cardsControls = `<div class="controls"><span class="search">Name, ID, last 4 or comment</span><span class="filter">Filter</span></div><span class="sortchip">Sort: By place ▾</span><div class="section-title">Krabi <small>5 cards · takes purchases</small></div>`;
+
+const screens = {
+	home: {
+		title: "Home · Ready to use",
+		why: "Tap a tile to open the card page. On desktop, Needs you sits to the right; on a phone it stays above. UOB Krabi is over its limit: red amount, no word.",
+		phone: () => `${appbar(false)}<div class="screen"><h3 class="home-title">3 things need you</h3>${needs}<h3 class="home-title">Ready to use <small>5 cards in Krabi</small></h3>${tiles("home")}</div>${nav("Home")}`,
+		desk: () => `${appbar(true, "Home")}<div class="screen"><div class="cols"><div><h3 class="home-title">Ready to use <small>5 cards in Krabi</small></h3>${tiles("home")}</div><div><h3 class="home-title">3 things need you</h3>${needs}</div></div></div>`,
+	},
+	list: {
+		title: "New purchase list",
+		why: "Tap a tile to tick it; nothing on the tile is a link. Top right names the cardholder, plus whose account a Sub card draws on. Ticked tiles get a green outline.",
+		phone: () => `${appbar(false)}${listHead}<div class="screen">${listControls}${tiles("list")}${listFooter}</div>${nav("Home")}`,
+		desk: () => `${appbar(true, "Home")}${listHead}<div class="screen">${listControls}${tiles("list")}${listFooter}</div>`,
+	},
+	cards: {
+		title: "Cards",
+		why: "Tap a tile to open the card page. Tiles sit under their location heading as today; the limit group panels use the same rail colours.",
+		phone: () => `${appbar(false)}<div class="screen"><div class="page-head"><h3>Cards</h3><span class="switch"><span class="on">Cards</span><span>Limit groups</span></span></div><div style="display:flex;justify-content:flex-end"><span class="btn">+ Add card</span></div>${cardsControls}${tiles("cards")}</div>${nav("Cards")}`,
+		desk: () => `${appbar(true, "Cards")}<div class="screen"><div class="cols"><div><div class="page-head"><h3>Cards</h3><span class="btn">+ Add card</span></div>${cardsControls}${tiles("cards")}</div><div><div class="page-head"><h4>Limit groups<small>4</small></h4><span class="btn quiet">+ Add group</span></div>${groupPanels}</div></div></div>`,
+	},
+};
+for (const [key, s] of Object.entries(screens)) {
+	document.getElementById(key).innerHTML = `<h2>${s.title}</h2><p class="lead">${s.why}</p>
+		<div class="mode-label">Phone · 390 px</div><div class="scroll"><div class="device">${s.phone()}</div></div>
+		<div class="mode-label">Desktop · 1280 px</div><div class="scroll"><div class="device desk">${s.desk()}</div></div>`;
+}
+</script>
