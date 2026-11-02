@@ -133,7 +133,7 @@ test("reads in Thai", async () => {
 	const { root } = await mount();
 	expect(
 		[...root.querySelectorAll("legend")].map((l) => l.textContent),
-	).toEqual(["ที่อยู่บัตร", "เจ้าของบัตร", "เรียงตาม"]);
+	).toEqual(["สถานที่", "เจ้าของบัตร", "เรียงตาม"]);
 	expect(text(root, "[data-action=apply]")).toBe("แสดง 5 ใบ");
 });
 
