@@ -709,3 +709,48 @@ test("restoring a version 2 file into an empty browser converts it and counts th
 	).toEqual(["bangkok"]);
 	expect(importStatus(root)).toContain("0 lists");
 });
+
+test("the Delete old purchases row opens the purge sheet, and closing takes it away", async () => {
+	setLocale("en");
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+	expect(root.querySelector("cc-purge-sheet")).toBeNull();
+	expect(row(root, "purge").getAttribute("aria-expanded")).toBe("false");
+
+	row(root, "purge").click();
+	await settle();
+	const sheet = root.querySelector("cc-purge-sheet");
+	expect(sheet).not.toBeNull();
+	expect(row(root, "purge").getAttribute("aria-expanded")).toBe("true");
+
+	sheet?.shadowRoot
+		?.querySelector("cc-modal")
+		?.shadowRoot?.querySelector<HTMLElement>('[data-action="close"]')
+		?.click();
+	await settle();
+	expect(root.querySelector("cc-purge-sheet")).toBeNull();
+});
+
+test("a purge reports what it deleted in the Reset panel, in the reader's language", async () => {
+	setLocale("en");
+	const repo = new InMemoryRepository();
+	await repo.saveCard(sampleCard);
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+	row(root, "purge").click();
+	await settle();
+	const sheet = root.querySelector("cc-purge-sheet");
+	if (!sheet) throw new Error("no purge sheet");
+	sheet.dispatchEvent(
+		new CustomEvent("purged", { detail: { count: 3, age: "1y" } }),
+	);
+	await settle();
+	expect(root.querySelector("cc-purge-sheet")).toBeNull();
+	expect(resetStatus(root)).toBe("Deleted 3 purchases older than 1 year.");
+	setLocale("th");
+	await settle();
+	expect(resetStatus(root)).toContain("3");
+	expect(resetStatus(root)).not.toContain("Deleted");
+});

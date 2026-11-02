@@ -4,9 +4,12 @@ import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-about";
 import "#components/cc-display-settings";
+import "#components/cc-purge-sheet";
 import "#components/cc-restore-sheet";
 import { html, nothing, render } from "lit";
+import type { PurgedDetail } from "#components/cc-purge-sheet";
 import type { RestoredDetail } from "#components/cc-restore-sheet";
+import { today } from "#lib/domain/date";
 import type { LocationRecord } from "#lib/domain/types";
 import { purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
@@ -78,10 +81,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		paint: () => paint(),
 	});
 
-	/**
-	 * Which sheet is open. Restore draws `cc-restore-sheet`; Delete old purchases has no sheet
-	 * of its own yet, so choosing it only records the choice.
-	 */
+	/** Which sheet is open: Restore draws `cc-restore-sheet`, Delete old purchases `cc-purge-sheet`. */
 	let openSheet: "restore" | "purge" | null = null;
 
 	const onExport = () =>
@@ -120,13 +120,24 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	// the new language if the reader switches while it is on screen.
 	let resetCards: number | null = null;
 	let resetDone = false;
+	// What the purge sheet deleted, kept as counts so the sentence follows a language switch.
+	let purged: PurgedDetail | null = null;
 
 	/** The restore sheet wrote a copy: show its counts, and read the locations again. */
 	const onRestored = (event: CustomEvent<RestoredDetail>) => {
 		imported = event.detail;
 		resetDone = false;
+		purged = null;
 		openSheet = null;
 		void state.load();
+	};
+
+	/** The purge sheet deleted old purchases: say how many in the Reset panel. */
+	const onPurged = (event: CustomEvent<PurgedDetail>) => {
+		purged = event.detail;
+		resetDone = false;
+		openSheet = null;
+		paint();
 	};
 
 	/** Takes a sheet away; it forgets its steps, so the next one opens fresh. */
@@ -143,6 +154,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 
 	const onStartReset = () => {
 		resetDone = false;
+		purged = null;
 		return state.guard(async () => {
 			resetCards = (await countRecordsV3(repo)).cards;
 		}, "reset.error");
@@ -155,6 +167,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 
 	const onConfirmReset = () => {
 		imported = null;
+		purged = null;
 		return state.guard(async () => {
 			resetCards = null;
 			await repo.clearAll();
@@ -176,6 +189,14 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			? t("backup.importedText", imported)
 			: t("backup.imported", { ...imported, file: imported.file });
 	};
+
+	const purgedMessage = () =>
+		purged
+			? t(purged.count === 1 ? "purge.done.one" : "purge.done.many", {
+					count: purged.count,
+					age: t(`purge.span.${purged.age}`),
+				})
+			: nothing;
 
 	/** A section: its heading over one `.set` panel of rows, then anything `after` it. */
 	const section = (
@@ -229,7 +250,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 						</button>`
 						: nothing
 				}
-				<button class="set-row" type="button" data-row="restore" aria-haspopup="dialog" @click=${onToggleSheet("restore")}>
+				<button class="set-row" type="button" data-row="restore" aria-haspopup="dialog" aria-expanded=${openSheet === "restore"} @click=${onToggleSheet("restore")}>
 					${rowText(t("backup.restore.title"), t("settings.backup.restoreHint"))}
 					<span class="set-row__action" data-variant="quiet">${t("settings.backup.restoreAction")}</span>
 				</button>
@@ -249,7 +270,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			"reset",
 			t("reset.title"),
 			html`
-				<button class="set-row" type="button" data-row="purge" @click=${onToggleSheet("purge")}>
+				<button class="set-row" type="button" data-row="purge" aria-haspopup="dialog" aria-expanded=${openSheet === "purge"} @click=${onToggleSheet("purge")}>
 					${rowText(t("settings.reset.purge"), t("settings.reset.purgeHint"))}
 					<span class="set-row__action" data-variant="quiet">${t("settings.reset.purgeAction")}</span>
 				</button>
@@ -272,7 +293,15 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 						</div>`
 				}
 			`,
-			html`<p class="reset-status" role="status">${resetDone ? t("reset.done") : nothing}</p>`,
+			html`<p class="reset-status" role="status">${
+				resetDone ? t("reset.done") : purgedMessage()
+			}</p>
+				${
+					openSheet === "purge"
+						? html`<cc-purge-sheet .repo=${repo} .today=${today()}
+							@purged=${onPurged} @close=${onCloseSheet}></cc-purge-sheet>`
+						: nothing
+				}`,
 		);
 
 	const paint = () =>
