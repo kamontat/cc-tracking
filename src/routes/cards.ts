@@ -23,8 +23,10 @@ import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import {
+	type CardsShow,
 	groupSheetAddress,
 	NEW_GROUP,
+	readCardsShow,
 	readCardsView,
 	readGroupSheet,
 	writeCardsView,
@@ -62,13 +64,16 @@ type CardsData = {
 	credits: Map<string, number>;
 };
 
+const SHOWS: readonly CardsShow[] = ["cards", "groups"];
+
 const locationIds = (money: MoneyData): string[] =>
 	money.locations.map((record) => record.id);
 
 /**
  * The Cards page (prototype `vCards`): the heading with *Add card*, the shared search, filter
  * and sort, the results, and *Limit groups* beside them from 900px. The view lives in the
- * address (`?q=&loc=&owner=&ungrouped=&sort=`), replaced as it changes. A group opens in a sheet at
+ * address (`?view=&q=&loc=&owner=&ungrouped=&sort=`), replaced as it changes. Below 900px a
+ * switch shows the cards or the limit groups (`?view=groups`), as Transactions does. A group opens in a sheet at
  * `?group=<id>` (`?newGroup=1` for a blank one): tapping a panel pushes that address so Back closes
  * it; Close steps back over an entry the page pushed, else rewrites the address without the
  * group (DD-102). A save or delete closes the sheet only once written; a failed one keeps it,
@@ -86,6 +91,8 @@ export function renderCardsPage(
 	let data: CardsData | null = null;
 	// No location is known before the first load, so the address is read again once one lands.
 	let view: CardsView = readCardsView(address.search(), []);
+	// Below 900px the page shows the cards or the limit groups, never both.
+	let show: CardsShow = readCardsShow(address.search());
 	// The filter sheet is open; it takes a fresh copy of the view, so its draft starts there.
 	let filterOpen = false;
 	// Read once per page load: the notice is consumed here, not on every paint.
@@ -130,10 +137,16 @@ export function renderCardsPage(
 	});
 
 	const sheetAddress = (group: string | typeof NEW_GROUP | null) =>
-		`/cards${groupSheetAddress(writeCardsView(view), group)}`;
+		`/cards${groupSheetAddress(writeCardsView(view, show), group)}`;
 
 	const change = (next: Partial<CardsView>) => {
 		view = { ...view, ...next };
+		address.replace(sheetAddress(readGroupSheet(address.search())));
+		paint();
+	};
+
+	const choose = (next: CardsShow) => {
+		show = next;
 		address.replace(sheetAddress(readGroupSheet(address.search())));
 		paint();
 	};
@@ -314,13 +327,19 @@ export function renderCardsPage(
 		const d = data;
 		render(
 			html`
-				<div class="cards-grid">
+				<div class="cards-grid" data-show=${show}>
 					<div class="cards-main">
 						<div class="cards-head">
 							<h1>${t("cards.title")}</h1>
 							<a class="cards-add" data-action="add-card" href="/card/new"
 								>${icons.plus}${t("cards.page.add")}</a>
 						</div>
+						<div class="tx-switch cards-switch" role="group">${SHOWS.map(
+							(name) =>
+								html`<button type="button" data-view=${name} data-variant="quiet"
+									aria-pressed=${show === name}
+									@click=${() => choose(name)}>${t(`cards.view.${name}`)}</button>`,
+						)}</div>
 						${
 							sheetFailed || busy
 								? nothing
@@ -329,7 +348,7 @@ export function renderCardsPage(
 									@retry=${() => state.load()}></cc-error-banner>`
 						}
 						${notice()}
-						${d ? results(d) : nothing}
+						${d ? html`<div class="cards-body">${results(d)}</div>` : nothing}
 					</div>
 					${
 						d
@@ -356,6 +375,7 @@ export function renderCardsPage(
 		// is still open and never steps back past this page.
 		sheetFailed = false;
 		view = readCardsView(address.search(), data ? locationIds(data.money) : []);
+		show = readCardsShow(address.search());
 		// Back off a sheet, or Forward onto one only a tap could have made.
 		pushed = openedOnce && readGroupSheet(address.search()) !== null;
 		syncNewId();

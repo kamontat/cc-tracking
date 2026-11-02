@@ -34,9 +34,26 @@ export function readCardsView(
 	};
 }
 
-/** `""` for the defaults, else `?` and the fields that differ, `loc` and `owner` repeated. */
-export function writeCardsView(view: CardsView): string {
+/** What the Cards page shows below 900px: the cards, or the limit groups (`?view=groups`). */
+export type CardsShow = "cards" | "groups";
+
+/** The phone view from the address; anything but `?view=groups` reads as the cards. */
+export function readCardsShow(search: string): CardsShow {
+	return new URLSearchParams(search).get("view") === "groups"
+		? "groups"
+		: "cards";
+}
+
+/**
+ * `""` for the defaults, else `?` and the fields that differ, `loc` and `owner` repeated, and
+ * `view=groups` first when the phone view shows the groups.
+ */
+export function writeCardsView(
+	view: CardsView,
+	show: CardsShow = "cards",
+): string {
 	const p = new URLSearchParams();
+	if (show === "groups") p.set("view", "groups");
 	if (view.q) p.set("q", view.q);
 	for (const l of view.locations) p.append("loc", l);
 	for (const o of view.owners) p.append("owner", o);

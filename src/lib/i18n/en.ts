@@ -204,6 +204,8 @@ export const en = {
 	"cards.group.keep": "Keep",
 
 	"cards.title": "Cards",
+	"cards.view.cards": "Cards",
+	"cards.view.groups": "Limit groups",
 	"cards.archived": "Archived",
 	"cards.filter.ungrouped": "Not in a group",
 	"cards.archivedList": "Archived ({count})",

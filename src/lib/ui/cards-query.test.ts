@@ -4,6 +4,7 @@ import { setLocale } from "#lib/i18n/index";
 import {
 	groupSheetAddress,
 	NEW_GROUP,
+	readCardsShow,
 	readCardsView,
 	readGroupSheet,
 	writeCardsView,
@@ -79,4 +80,15 @@ test("?group=new is a group whose id is new; ?ungrouped=1 reads as the filter", 
 	expect(groupSheetAddress("", "new")).toBe("?group=new");
 	expect(readCardsView("?ungrouped=1", []).ungrouped).toBe(true);
 	expect(readCardsView("?ungrouped=0", []).ungrouped).toBe(false);
+});
+
+test("the phone view: ?view=groups shows the groups, anything else the cards", () => {
+	expect(readCardsShow("")).toBe("cards");
+	expect(readCardsShow("?view=groups")).toBe("groups");
+	expect(readCardsShow("?view=zzz")).toBe("cards");
+	expect(writeCardsView(DEFAULT_CARDS_VIEW, "cards")).toBe("");
+	expect(writeCardsView(DEFAULT_CARDS_VIEW, "groups")).toBe("?view=groups");
+	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, q: "a" }, "groups")).toBe(
+		"?view=groups&q=a",
+	);
 });

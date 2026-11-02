@@ -1527,7 +1527,8 @@ a:any-link:hover {
 
 /*
  * Cards (prototype `vCards`): the heading with *Add card*, the controls and the results in one
- * column, *Limit groups* under them on a phone and beside them from 900px.
+ * column. On a phone a switch under the heading (Transactions' `.tx-switch`) shows the cards or
+ * *Limit groups*; from 900px the switch goes and *Limit groups* sits beside the cards.
  */
 .cards-grid {
 	display: grid;
@@ -1537,6 +1538,7 @@ a:any-link:hover {
 }
 
 .cards-main,
+.cards-body,
 .cards-groups {
 	display: flex;
 	flex-direction: column;
@@ -1579,13 +1581,31 @@ a:any-link:hover {
 	block-size: var(--cc-icon-size-sm);
 }
 
+.cards-switch {
+	align-self: flex-start;
+}
+
+.cards-grid[data-show="cards"] > .cards-groups,
+.cards-grid[data-show="groups"] .cards-body {
+	display: none;
+}
+
 @media (min-width: 900px) {
 	.cards-grid {
 		grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
 		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
 	}
 
-	.cards-groups {
+	.cards-switch {
+		display: none;
+	}
+
+	.cards-grid[data-show] .cards-body {
+		display: flex;
+	}
+
+	.cards-grid[data-show] > .cards-groups {
+		display: flex;
 		padding-block-start: var(--cc-space-1);
 	}
 }

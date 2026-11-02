@@ -215,6 +215,8 @@ export const th: Catalog = {
 	"cards.group.keep": "เก็บไว้",
 
 	"cards.title": "บัตร",
+	"cards.view.cards": "บัตร",
+	"cards.view.groups": "กลุ่มวงเงิน",
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
 	// backup.problem.*Cycle fragments below).
 	"cards.archived": "เก็บเข้าคลังแล้ว",

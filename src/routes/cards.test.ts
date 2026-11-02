@@ -228,6 +228,45 @@ test("a card holding credit passes it to its row", async () => {
 	expect(list(root)?.credits.get("B")).toBe(500_00);
 });
 
+test("a phone switch picks Cards or Limit groups, kept in the address", async () => {
+	const { root, address } = await setup("/cards?sort=name");
+	const grid = root.querySelector(".cards-grid");
+	const button = (name: string) =>
+		root.querySelector<HTMLButtonElement>(
+			`.cards-switch [data-view="${name}"]`,
+		);
+	expect(flatText(button("cards"))).toBe("Cards");
+	expect(flatText(button("groups"))).toBe("Limit groups");
+	expect(button("cards")?.getAttribute("aria-pressed")).toBe("true");
+	expect(button("groups")?.getAttribute("aria-pressed")).toBe("false");
+	expect(grid?.getAttribute("data-show")).toBe("cards");
+	button("groups")?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("replace /cards?view=groups&sort=name");
+	expect(grid?.getAttribute("data-show")).toBe("groups");
+	expect(button("groups")?.getAttribute("aria-pressed")).toBe("true");
+	button("cards")?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("replace /cards?sort=name");
+});
+
+test("a reload on ?view=groups keeps the groups shown, and opening a group keeps it", async () => {
+	const { root, address } = await setup("/cards?view=groups");
+	expect(root.querySelector(".cards-grid")?.getAttribute("data-show")).toBe(
+		"groups",
+	);
+	expect(
+		root
+			.querySelector('.cards-switch [data-view="groups"]')
+			?.getAttribute("aria-pressed"),
+	).toBe("true");
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g1" } }),
+	);
+	await settle();
+	expect(address.calls.at(-1)).toBe("push /cards?view=groups&group=g1");
+});
+
 test("the address seeds the view; typing a search replaces it", async () => {
 	const { root, address } = await setup("/cards?sort=name&owner=NT");
 	const el = list(root);
