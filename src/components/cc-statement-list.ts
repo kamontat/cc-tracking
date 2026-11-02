@@ -53,7 +53,7 @@ export class CcStatementList extends LitElement {
 			}
 
 			article[data-current] .badge {
-				color: var(--cc-accent);
+				color: var(--cc-link);
 				border-color: var(--cc-accent);
 			}
 

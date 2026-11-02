@@ -2,6 +2,7 @@ import "@kcstyles/reset.css";
 import "../styles/tokens.css";
 import "../styles/app.css";
 import "#components/cc-error-banner";
+import "#components/cc-about";
 import "#components/cc-display-settings";
 import "#components/cc-settings";
 import { html, nothing, render } from "lit";
@@ -317,6 +318,9 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 					<p><small>${t("reset.warning")}</small></p>
 					${resetPanel()}
 					<p class="reset-status" role="status">${resetDone ? t("reset.done") : nothing}</p>
+				</article>
+				<article class="about">
+					<cc-about></cc-about>
 				</article>
 			`,
 			root,

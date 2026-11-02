@@ -1,99 +1,66 @@
 import { expect, test } from "bun:test";
 import { setLocale } from "#lib/i18n/index";
-import { applyChrome, markCurrentLink } from "#lib/ui/chrome";
+import { applyChrome } from "#lib/ui/chrome";
 
-const currentOf = (id: string) =>
-	document.querySelector(`#${id}`)?.getAttribute("aria-current");
-
-const mountNav = () => {
+const mount = () => {
 	document.body.innerHTML = `
-		<nav>
-			<strong id="nav-brand">cc-tracking</strong>
-			<a href="/" id="nav-dashboard">Dashboard</a>
-			<a href="/cards" id="nav-cards">Cards</a>
-			<a href="/settings" id="nav-settings">—</a>
-		</nav>`;
+		<header class="site-header" id="site-header"></header>
+		<main class="page" id="page"></main>
+		<div id="tabbar"></div>`;
 };
 
-test("fills the title and the nav in the current language", () => {
-	mountNav();
-	applyChrome("title.cards");
+const clock = () => new Date("2026-10-30T03:00:00Z");
 
-	expect(document.title).toBe("Card registry — cc-tracking");
-	expect(document.querySelector("#nav-dashboard")?.textContent).toBe(
-		"Dashboard",
-	);
-	expect(document.querySelector("#nav-cards")?.textContent).toBe("Cards");
-	expect(document.querySelector("#nav-settings")?.textContent).toBe("Settings");
+test("title carries the build mark", () => {
+	mount();
+	const cases = [
+		["preview", "42", "Card registry — cc-tracking (pr-42)"],
+		["local", "", "Card registry — cc-tracking (local)"],
+		["production", "", "Card registry — cc-tracking"],
+		["preview", "", "Card registry — cc-tracking (preview)"],
+	] as const;
+	for (const [environment, pr, title] of cases) {
+		applyChrome("title.cards", {
+			build: { environment, pr },
+			clock,
+			path: "/cards",
+		});
+		expect(document.title).toBe(title);
+	}
 });
 
-test("suffixes the title and the brand with the pull request on a preview build", () => {
-	mountNav();
-	applyChrome("title.cards", document, "42");
-
-	expect(document.title).toBe("Card registry — cc-tracking (pr-42)");
-	expect(document.querySelector("#nav-brand")?.textContent).toBe(
-		"cc-tracking (pr-42)",
-	);
+test("stamps the build on the root", () => {
+	mount();
+	for (const environment of [
+		"development",
+		"local",
+		"preview",
+		"production",
+	] as const) {
+		applyChrome("title.cards", {
+			build: { environment, pr: "" },
+			clock,
+			path: "/cards",
+		});
+		expect(document.documentElement.getAttribute("data-env")).toBe(environment);
+	}
 });
 
-test("leaves the title and the brand bare on a production build", () => {
-	mountNav();
-	applyChrome("title.cards", document, "");
-
-	expect(document.title).toBe("Card registry — cc-tracking");
-	expect(document.querySelector("#nav-brand")?.textContent).toBe("cc-tracking");
-});
-
-test("marks the settings link as the current page on the settings path", () => {
-	mountNav();
-	markCurrentLink(document, "/settings");
-
-	expect(currentOf("nav-settings")).toBe("page");
-	expect(currentOf("nav-cards")).toBeNull();
-});
-
-test("marks the dashboard link as the current page on the root path", () => {
-	mountNav();
-	markCurrentLink(document, "/");
-
-	expect(currentOf("nav-dashboard")).toBe("page");
-	expect(currentOf("nav-cards")).toBeNull();
-});
-
-test("marks the cards link as the current page on the registry path", () => {
-	mountNav();
-	markCurrentLink(document, "/cards");
-
-	expect(currentOf("nav-cards")).toBe("page");
-	expect(currentOf("nav-dashboard")).toBeNull();
-});
-
-test("marks no link at all on a card detail page", () => {
-	mountNav();
-	markCurrentLink(document, "/card");
-
-	expect(currentOf("nav-dashboard")).toBeNull();
-	expect(currentOf("nav-cards")).toBeNull();
-	expect(currentOf("nav-settings")).toBeNull();
-});
-
-test("clears a stale marker when the current path changes", () => {
-	mountNav();
-	markCurrentLink(document, "/cards");
-	markCurrentLink(document, "/");
-
-	expect(currentOf("nav-dashboard")).toBe("page");
-	expect(currentOf("nav-cards")).toBeNull();
-});
-
-test("refills them when the language changes", () => {
-	mountNav();
-	applyChrome("title.cards");
+test("a language switch re-renders the shell and keeps the current tab", () => {
+	mount();
+	applyChrome("title.settings", {
+		build: { environment: "production", pr: "" },
+		clock,
+		path: "/settings",
+	});
 	setLocale("th");
 
-	expect(document.title).toBe("ทะเบียนบัตร — cc-tracking");
-	expect(document.querySelector("#nav-dashboard")?.textContent).toBe("หน้าหลัก");
-	expect(document.querySelector("#nav-settings")?.textContent).toBe("ตั้งค่า");
+	const links = [...document.querySelectorAll('[data-tab="settings"]')];
+	expect(links).toHaveLength(2);
+	for (const link of links) {
+		expect(link.textContent?.trim()).toBe("ตั้งค่า");
+		expect(link.getAttribute("aria-current")).toBe("page");
+	}
+	expect(document.title).toBe("ตั้งค่า — cc-tracking");
 	expect(document.documentElement.lang).toBe("th");
 });

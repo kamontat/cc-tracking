@@ -1,5 +1,7 @@
 import type { DateParts, Period, PlainDate } from "#lib/domain/types";
-import type { Locale } from "#lib/i18n/catalog";
+import type { Catalog, Locale, MessageKey } from "#lib/i18n/catalog";
+import { en } from "#lib/i18n/en";
+import { th } from "#lib/i18n/th";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD_PATTERN = /^\d{4}-\d{2}$/;
@@ -120,6 +122,36 @@ export function today(now: Date = new Date()): PlainDate {
 export function displayDate(date: PlainDate, locale: Locale): string {
 	const { year, month, day } = parseDate(date);
 	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`;
+}
+
+const WEEKDAY_CATALOGS: Record<Locale, Catalog> = { en, th };
+/** Sunday first, as `Date#getUTCDay` counts. */
+const WEEKDAY_KEYS: readonly MessageKey[] = [
+	"date.weekday.0",
+	"date.weekday.1",
+	"date.weekday.2",
+	"date.weekday.3",
+	"date.weekday.4",
+	"date.weekday.5",
+	"date.weekday.6",
+];
+
+/**
+ * The header's date: `<day>, dd MMM` on a phone, with ` yyyy` added on a desktop. The weekday
+ * names live in the catalogs (`date.weekday.0` is Sunday); the day is padded and the year
+ * Gregorian, without `Intl`, for the same reasons as `displayDate`.
+ */
+export function headerDate(
+	date: PlainDate,
+	locale: Locale,
+	withYear: boolean,
+): string {
+	const { year, month, day } = parseDate(date);
+	const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+	const name =
+		WEEKDAY_CATALOGS[locale][WEEKDAY_KEYS[weekday] ?? "date.weekday.0"];
+	const short = `${name}, ${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]}`;
+	return withYear ? `${short} ${year}` : short;
 }
 
 export function periodOf(date: PlainDate): Period {

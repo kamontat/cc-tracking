@@ -37,84 +37,297 @@ a:any-link:hover {
 	}
 }
 
-/* The sticky shell spans the viewport so its background and border do; the bar inside it
-   carries the padding and is capped at the same width as `.page`, so the brand lines up with
-   the content beneath it instead of drifting left on a wide window. */
+/* The sticky shell spans the viewport so its background and its bold rule do; the bar inside
+   it carries the padding and is capped at the same width as `.page`, so the brand lines up
+   with the content beneath it instead of drifting left on a wide window. */
 .site-header {
 	position: sticky;
 	top: 0;
 	z-index: 10;
-	background: var(--cc-surface);
-	border-bottom: var(--cc-border-width) solid var(--cc-border);
+	padding-top: env(safe-area-inset-top, 0px);
+	background: var(--cc-bg);
+	border-bottom: var(--cc-rule-width) solid var(--cc-text);
 }
 
 .site-header__bar {
-	flex-wrap: wrap;
+	display: flex;
+	flex-direction: row;
 	align-items: center;
 	gap: var(--cc-space-3);
 	width: 100%;
 	max-width: 72rem;
 	margin-inline: auto;
-	padding: var(--cc-space-3)
-		max(var(--cc-space-4), env(safe-area-inset-left, 0px));
-	padding-top: calc(var(--cc-space-3) + env(safe-area-inset-top, 0px));
+	padding-block: var(--cc-space-3);
+	padding-inline: max(var(--cc-space-4), env(safe-area-inset-left, 0px))
+		max(var(--cc-space-4), env(safe-area-inset-right, 0px));
 }
 
-/* `:any-link` on both, to outweigh the generic `a:any-link` rules above: a pseudo-class carries
-   class-level specificity, so a bare `.site-header__brand` loses to them and the brand renders
-   in link blue with a hover underline. */
-.site-header__brand:any-link {
-	display: inline-flex;
-	align-items: center;
+/* One row. On a phone the brand and the build's mark sit left and the date at the right
+   edge, so the group fills the row and the separating dot is hidden. From 900px they are one
+   run of text on the left -- brand, mark, dot, date -- and the tabs sit at the right end. */
+.site-header__id {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
 	gap: var(--cc-space-2);
-	margin-inline-end: auto;
-	font-size: var(--cc-text-lg);
-	font-weight: 600;
+	flex: 1 1 auto;
+}
+
+/* `:any-link` to outweigh the generic `a:any-link` rules above: a pseudo-class carries
+   class-level specificity, so a bare `.site-header__brand` loses to them and the brand renders
+   in link colour with a hover underline. */
+.site-header__brand:any-link {
+	font-family: var(--cc-font-mono);
+	font-weight: 700;
 	color: var(--cc-text);
+	white-space: nowrap;
+	text-decoration: none;
 }
 
 .site-header__brand:any-link:hover {
 	text-decoration: none;
 }
 
-/* A small accent card shape before the name, so the brand has a mark without an image. */
-.site-header__brand::before {
-	content: "";
-	inline-size: var(--cc-space-5);
-	block-size: var(--cc-space-4);
-	background: linear-gradient(135deg, var(--cc-accent), var(--cc-accent-hover));
+.site-header__mark {
+	margin-inline-end: var(--cc-space-1);
+	padding-inline: var(--cc-space-1);
+	color: var(--cc-bg);
+	background: var(--cc-text);
+	border-radius: var(--cc-radius-xs);
+}
+
+/* Which build this is, in the tab title's words, as plain text: the header's tint marks the
+   build alongside it. Absent on production. */
+.site-header__env {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text);
+	white-space: nowrap;
+}
+
+.site-header__sep,
+.site-header__date {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+	white-space: nowrap;
+}
+
+.site-header__sep {
+	display: none;
+}
+
+.site-header__date {
+	margin-inline-start: auto;
+}
+
+/* Both forms are in the document; a phone shows the short one, a wide window adds the year. */
+.site-header__date-long {
+	display: none;
+}
+
+/* The header tabs belong to a wide window; a phone has the bottom bar instead. */
+.site-header__tabs {
+	display: none;
+}
+
+/* A non-production build tints the header and rules both bars in its own colour, so nobody
+   takes it for the real thing. The tint tokens live with the build in tokens.css. */
+:root[data-env]:not([data-env="production"]) .site-header {
+	background: color-mix(
+		in oklab,
+		var(--cc-env) var(--cc-env-tint),
+		var(--cc-bg)
+	);
+	border-bottom-color: var(--cc-env);
+}
+
+/* Muted text is 4.2:1 on the tint in the light theme, short of AA; use full text colour. */
+:root[data-env]:not([data-env="production"]) .site-header__sep,
+:root[data-env]:not([data-env="production"]) .site-header__date,
+:root[data-env]:not([data-env="production"])
+	.site-header__tabs
+	a:any-link:not([aria-current="page"]) {
+	color: var(--cc-text);
+}
+
+/* The phone's bottom bar: the four places. */
+.tabbar {
+	position: fixed;
+	inset-inline: 0;
+	bottom: 0;
+	z-index: 10;
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	align-items: end;
+	padding: var(--cc-space-2)
+		max(var(--cc-space-2), env(safe-area-inset-right, 0px))
+		calc(var(--cc-space-2) + env(safe-area-inset-bottom, 0px))
+		max(var(--cc-space-2), env(safe-area-inset-left, 0px));
+	background: var(--cc-surface);
+	border-top: var(--cc-border-width) solid var(--cc-border);
+}
+
+:root[data-env]:not([data-env="production"]) .tabbar {
+	border-top: var(--cc-env-rule-width) solid var(--cc-env);
+}
+
+.tabbar a:any-link {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--cc-space-1);
+	padding-block: var(--cc-space-1);
+	font-size: var(--cc-text-xs);
+	line-height: 1.3;
+	color: var(--cc-text-muted);
+	text-align: center;
+	text-decoration: none;
+	/* A label may wrap to a second line but never clips; a single word breaks only when it
+	   cannot fit its column at all. */
+	overflow-wrap: break-word;
 	border-radius: var(--cc-radius-sm);
 }
 
-.site-header__nav {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	gap: var(--cc-space-1);
-}
-
-/* Each link a soft tab, so the nav reads as a set of places rather than a line of text. */
-.site-header__nav a:any-link {
-	padding: var(--cc-space-1) var(--cc-space-3);
-	color: var(--cc-text-muted);
-	font-weight: 500;
-	border-radius: var(--cc-radius-pill);
-}
-
-.site-header__nav a:any-link:hover {
-	color: var(--cc-text);
-	text-decoration: none;
-	background: var(--cc-surface-sunken);
+.tabbar .icon {
+	inline-size: var(--cc-icon-size);
+	block-size: var(--cc-icon-size);
+	flex: none;
 }
 
 /* Weight and a filled tab alongside the colour, so the current page is not signalled by
-   colour alone -- the same rule the urgency badges follow. */
-.site-header__nav a[aria-current="page"]:any-link {
+   colour alone. `--cc-link`, not `--cc-accent`: it is the one that clears 4.5:1 on the tint. */
+.tabbar a[aria-current="page"]:any-link {
+	font-weight: 650;
 	color: var(--cc-link);
-	font-weight: 600;
 	background: var(--cc-accent-surface);
 }
 
+/* Payment floats at the bottom right of every page: a round + over the bar on a phone, a pill
+   with its label from 900px. The primary button's colours, as `.page button` draws them. */
+.fab:any-link {
+	position: fixed;
+	z-index: 11;
+	right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
+	bottom: calc(
+		var(--cc-tabbar-height) +
+		var(--cc-space-4) +
+		env(safe-area-inset-bottom, 0px)
+	);
+	display: inline-flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: var(--cc-space-2);
+	inline-size: var(--cc-fab-size);
+	block-size: var(--cc-fab-size);
+	padding: 0;
+	font-weight: 650;
+	line-height: 1.2;
+	color: var(--cc-accent-text);
+	white-space: nowrap;
+	text-decoration: none;
+	background: var(--cc-accent);
+	border-radius: var(--cc-radius-pill);
+	box-shadow: var(--cc-fab-shadow);
+}
+
+.fab:any-link:hover {
+	text-decoration: none;
+	background: var(--cc-accent-hover);
+}
+
+/* The ring on top of the shadow: this rule outranks the global `:focus-visible` one. */
+.fab:any-link:focus-visible {
+	box-shadow: var(--cc-focus-ring), var(--cc-fab-shadow);
+}
+
+.fab .icon {
+	inline-size: var(--cc-icon-size);
+	block-size: var(--cc-icon-size);
+	flex: none;
+}
+
+.fab__label {
+	display: none;
+}
+
+@media (min-width: 900px) {
+	.tabbar {
+		display: none;
+	}
+
+	.site-header__id {
+		flex: none;
+	}
+
+	.site-header__sep {
+		display: inline;
+	}
+
+	.site-header__date {
+		margin-inline-start: 0;
+	}
+
+	.site-header__date-short {
+		display: none;
+	}
+
+	.site-header__date-long {
+		display: inline;
+	}
+
+	.site-header__tabs {
+		display: flex;
+		flex-direction: row;
+		align-self: stretch;
+		gap: var(--cc-space-1);
+		margin-inline-start: auto;
+		/* Reach down through the bar's padding and the rule, so a tab's underline sits on it. */
+		margin-block-end: calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
+	}
+
+	.site-header__tabs a:any-link {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		gap: var(--cc-space-2);
+		padding-inline: var(--cc-space-3);
+		color: var(--cc-text-muted);
+		text-decoration: none;
+		white-space: nowrap;
+		border-bottom: var(--cc-env-rule-width) solid transparent;
+	}
+
+	.site-header__tabs a:any-link:hover {
+		color: var(--cc-text);
+	}
+
+	/* Bold and an accent underline as well as the darker text: never colour alone. */
+	.site-header__tabs a[aria-current="page"]:any-link {
+		font-weight: 700;
+		color: var(--cc-text);
+		border-bottom-color: var(--cc-accent);
+	}
+
+	.site-header__tabs .icon {
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
+		flex: none;
+	}
+
+	.fab:any-link {
+		right: calc(var(--cc-space-5) + env(safe-area-inset-right, 0px));
+		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+		inline-size: auto;
+		padding-inline: var(--cc-space-4) var(--cc-space-5);
+	}
+
+	.fab__label {
+		display: inline;
+	}
+}
+
+/* The bottom padding clears the bar and the floating button above it, so the last of a page
+   can always scroll out from under them. */
 .page {
 	display: flex;
 	flex-direction: column;
@@ -124,7 +337,25 @@ a:any-link:hover {
 	margin-inline: auto;
 	padding: var(--cc-space-5)
 		max(var(--cc-space-4), env(safe-area-inset-left, 0px))
-		calc(var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
+		calc(
+			var(--cc-tabbar-height) +
+			var(--cc-space-4) +
+			var(--cc-fab-size) +
+			var(--cc-space-5) +
+			env(safe-area-inset-bottom, 0px)
+		);
+}
+
+/* From 900px the bar is gone; the page clears only the floating button. */
+@media (min-width: 900px) {
+	.page {
+		padding-bottom: calc(
+			var(--cc-space-5) +
+			var(--cc-fab-size) +
+			var(--cc-space-7) +
+			env(safe-area-inset-bottom, 0px)
+		);
+	}
 }
 
 .page h1 {
@@ -572,4 +803,14 @@ a:any-link:hover {
 	align-self: flex-start;
 	font-size: var(--cc-text-sm);
 	font-weight: 550;
+}
+
+/* The placeholder page: a muted line of readable width, and a link that is only as wide as its text. */
+.page .placeholder {
+	max-width: 36rem;
+	color: var(--cc-text-muted);
+}
+
+.page > a[data-action="to-cards"] {
+	align-self: flex-start;
 }

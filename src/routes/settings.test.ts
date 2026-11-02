@@ -94,6 +94,17 @@ test("offers the language and theme pickers in a display panel", async () => {
 	expect(root.querySelector(".display cc-display-settings")).not.toBeNull();
 });
 
+test("About comes last", async () => {
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	const articles = root.querySelectorAll("article");
+	const last = articles[articles.length - 1];
+	expect(last?.classList.contains("about")).toBe(true);
+	expect(last?.querySelector("cc-about")).not.toBeNull();
+});
+
 test("shows Krabi alone before anything has been saved", async () => {
 	const repo = new InMemoryRepository();
 	const root = mount();

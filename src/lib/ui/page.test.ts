@@ -1,16 +1,19 @@
 import { expect, test } from "bun:test";
 import { setLocale } from "#lib/i18n/index";
+import { buildInfo, titleMark } from "#lib/ui/build-info";
 import { bootstrap } from "#lib/ui/page";
 
 const mountNav = () => {
 	document.body.innerHTML = `
-		<nav>
-			<strong id="nav-brand">cc-tracking</strong>
-			<a href="/" id="nav-dashboard">Dashboard</a>
-			<a href="/cards" id="nav-cards">Cards</a>
-		</nav>
-		<main></main>`;
+		<header class="site-header" id="site-header"></header>
+		<main class="page" id="page"></main>
+		<div id="tabbar"></div>`;
 };
+
+const tabTexts = (tab: string) =>
+	[...document.querySelectorAll(`[data-tab="${tab}"]`)].map((link) =>
+		link.textContent?.trim(),
+	);
 
 test("falls back to document.body when the page has no <main>", () => {
 	document.body.innerHTML = "";
@@ -52,11 +55,13 @@ test("applies chrome in the current language even when storage is unavailable an
 		// this page's static HTML is translated anyway, not left in whatever the markup
 		// happened to be hard-coded to.
 		expect(called).toBe(false);
-		expect(document.title).toBe("ทะเบียนบัตร — cc-tracking");
-		expect(document.querySelector("#nav-dashboard")?.textContent).toBe(
-			"หน้าหลัก",
+		// The test run has no inlined build, so the title carries whatever mark that reads as.
+		const { environment, pr } = buildInfo();
+		expect(document.title).toBe(
+			`ทะเบียนบัตร — cc-tracking${titleMark(environment, pr)}`,
 		);
-		expect(document.querySelector("#nav-cards")?.textContent).toBe("บัตร");
+		expect(tabTexts("home")).toEqual(["หน้าหลัก", "หน้าหลัก"]);
+		expect(tabTexts("cards")).toEqual(["บัตร", "บัตร"]);
 		expect(document.documentElement.lang).toBe("th");
 	} finally {
 		globalThis.localStorage = original;

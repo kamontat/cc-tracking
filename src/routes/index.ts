@@ -319,7 +319,7 @@ export function renderDashboardPage(
 	void state.load();
 }
 
-bootstrap("title.dashboard", (repo) => {
+bootstrap("title.home", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
 	if (root) renderDashboardPage(repo, root);
 });
