@@ -1,4 +1,4 @@
-import { css, html, type TemplateResult } from "lit";
+import { css, html, nothing, type TemplateResult } from "lit";
 import { displayDate } from "#lib/domain/date";
 import type { ReadyRow } from "#lib/domain/home";
 import { usageLevel, usageShare } from "#lib/domain/limit";
@@ -13,6 +13,7 @@ import {
 	cardPanel,
 	cardPanelLabel,
 } from "#lib/ui/card-label";
+import { roomNote } from "#lib/ui/room-note";
 
 /**
  * Line 2's tags: who the card is for, then its status. A card that is not supplementary names
@@ -50,7 +51,8 @@ const stop = (event: Event) => event.stopPropagation();
 
 /**
  * One *Ready to use* card as a panel row (DD-103), the parts after any leading tick, in three
- * lines: the card in the panel form with its room on the right; the owner and status tags
+ * lines: the card in the panel form with its room on the right, the note under the room read
+ * as Cards reads it (`roomNote`) plus *· shared* while the group pools cards; the owner and status tags
  * (every ready card has a group, so there is always an owner); the close and due dates, then
  * the usage bar. `cc-ready-picker` and `cc-ready-panel` draw their rows with it, inside a
  * `rowPanel` `.panel`. With `link` (the picker) the card's `id) name` is a link to its page in
@@ -64,11 +66,16 @@ export function readyRowParts(
 ): TemplateResult {
 	const locale = getLocale();
 	const share = usageShare(row.room.used, row.room.group.limit);
+	const note = roomNote(row.room, row.credit);
 	return html`
 		<span class="what"><b>${link ? linkedCard(row, groups) : cardPanel(row.card.id, row.card, groups)}</b></span>
 		<span class="r">
 			<b class="amount" data-numeric>${formatAmount(row.room.room)}</b>
-			<small>${row.room.sharedWith > 0 ? t("ready.roomShared") : t("ready.room")}</small>
+			<small data-tone=${note.warn ? "warn" : nothing}>${
+				row.room.sharedWith > 0
+					? t("ready.shared", { note: note.text })
+					: note.text
+			}</small>
 		</span>
 		<span class="sub tags">${readyTags(row)}</span>
 		<span class="sub meta">
@@ -127,6 +134,10 @@ export const readyRowStyles = css`
 
 	.ready-row .meta {
 		font-variant-numeric: tabular-nums;
+	}
+
+	.ready-row .r small[data-tone="warn"] {
+		color: var(--cc-warning);
 	}
 
 	.ready-row .usage {

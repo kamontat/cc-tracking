@@ -1,10 +1,6 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import {
-	type CardsResults,
-	type CardsRooms,
-	cardUsePct,
-} from "#lib/domain/cards-view";
+import type { CardsResults, CardsRooms } from "#lib/domain/cards-view";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { takesPurchases } from "#lib/domain/locations";
@@ -22,10 +18,8 @@ import { nameOfLocation } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardMini, cardRowTitle } from "#lib/ui/card-label";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
+import { roomNote } from "#lib/ui/room-note";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
-
-/** From this share of the limit in use, a row says it instead of the room (prototype `lvl`). */
-const WARN_PCT = 80;
 
 const ARCHIVE_PANEL = "cards-archive";
 
@@ -159,18 +153,12 @@ export class CcCardsList extends LitElement {
 
 	private right(card: Card) {
 		const room = card.limitGroupId ? this.rooms.get(card.limitGroupId) : null;
-		const pct = cardUsePct(room);
-		const credit = this.credits.get(card.id) ?? 0;
-		let note = html`<small>${t("cards.page.room")}</small>`;
-		if (pct !== null && pct >= WARN_PCT)
-			note = html`<small data-tone="warn">${t("cards.page.used", { pct })}</small>`;
-		else if (credit > 0)
-			note = html`<small>${t("cards.page.credit", { amount: formatAmount(credit) })}</small>`;
 		if (!room)
 			return html`<span class="r"><small data-tone="muted">${t("cards.page.noGroup")}</small></span>`;
+		const note = roomNote(room, this.credits.get(card.id) ?? 0);
 		return html`<span class="r">
 			<b class="amount" data-numeric>${formatAmount(room.room)}</b>
-			${note}
+			<small data-tone=${note.warn ? "warn" : nothing}>${note.text}</small>
 		</span>`;
 	}
 

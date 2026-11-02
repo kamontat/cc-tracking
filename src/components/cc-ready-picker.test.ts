@@ -74,6 +74,34 @@ test("a row says its room, dates, usage and an overdue bill in words", async () 
 	expect(b.querySelector(".tag[data-urgency]")).toBeNull();
 });
 
+test("the amount note reads usage, then credit, then room, as Cards does, and keeps the shared hint", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("O", -12_000_00, "2026-11-10", "2026-11-25", {
+				used: 112_000_00,
+				sharedWith: 1,
+				credit: 500_00,
+			}),
+			testRow("P", 60_000_00, "2026-11-10", "2026-11-25", { credit: 500_00 }),
+			testRow("Q", 60_000_00, "2026-11-10", "2026-11-25", {
+				credit: 500_00,
+				sharedWith: 2,
+			}),
+			testRow("R", 60_000_00, "2026-11-10", "2026-11-25"),
+			testRow("S", 60_000_00, "2026-11-10", "2026-11-25", { sharedWith: 1 }),
+		],
+	});
+	const note = (id: string) =>
+		root.querySelector(`[data-card="${id}"] .r small`) as HTMLElement;
+	expect(flat(note("O"))).toBe("112% used · shared");
+	expect(note("O").dataset["tone"]).toBe("warn");
+	expect(flat(note("P"))).toBe("credit ฿500.00");
+	expect(note("P").dataset["tone"]).toBeUndefined();
+	expect(flat(note("Q"))).toBe("credit ฿500.00 · shared");
+	expect(flat(note("R"))).toBe("room");
+	expect(flat(note("S"))).toBe("room · shared");
+});
+
 test("a card reads in the panel form: the last-4 chip, then id) name", async () => {
 	const { root } = await mount();
 	const a = root.querySelector('[data-card="A"]') as HTMLElement;

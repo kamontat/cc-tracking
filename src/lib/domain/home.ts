@@ -77,6 +77,8 @@ export type ReadyRow = {
 	closeDate: PlainDate;
 	dueDate: PlainDate;
 	overdue: boolean;
+	/** The credit the card holds (`CardLedger.credit`), in satang; 0 for none. */
+	credit: number;
 };
 
 export type ReadySort = "room" | "close" | "due";
@@ -97,6 +99,7 @@ export function readyRows(data: ReadyData, today: PlainDate): ReadyRow[] {
 			closeDate: closeDateOf(card.cycle, period),
 			dueDate: dueDateOf(card.cycle, period),
 			overdue: bill !== null && ledgerUrgency(bill, today) === "overdue",
+			credit: ledger?.credit ?? 0,
 		});
 	}
 	return rows;

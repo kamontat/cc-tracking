@@ -27,6 +27,10 @@ export const testRow = (
 		groupOwner?: Owner;
 		/** Makes the card supplementary, held by this person. */
 		holder?: Owner;
+		/** What the group has used, in satang; 40% of the limit by default. */
+		used?: number;
+		/** The credit the card holds, in satang; none by default. */
+		credit?: number;
 	} = {},
 ): ReadyRow => ({
 	card: extra.holder
@@ -34,7 +38,7 @@ export const testRow = (
 		: testCard(id),
 	room: {
 		group: extra.groupOwner ? { ...group, owner: extra.groupOwner } : group,
-		used: 40_000_00,
+		used: extra.used ?? 40_000_00,
 		available: room,
 		held: 0,
 		room,
@@ -44,6 +48,7 @@ export const testRow = (
 	closeDate,
 	dueDate,
 	overdue: extra.overdue ?? false,
+	credit: extra.credit ?? 0,
 });
 
 export const testRows = (): ReadyRow[] => [

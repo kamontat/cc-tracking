@@ -121,6 +121,20 @@ describe("readyRows", () => {
 		expect(roomFor(a, d, "s")?.held).toBe(0);
 	});
 
+	test("a row carries the credit its card holds", () => {
+		const paid: CardPayment = {
+			id: "pay",
+			cardId: "A",
+			date: "2026-10-01",
+			amount: 1_500_00,
+			status: "paid",
+		};
+		const p = [buy("p", "A", "2026-09-10", 1_000_00)];
+		const [row] = readyRows(data([mk("A")], p, [], [paid]), TODAY);
+		expect(row?.credit).toBe(500_00);
+		expect(readyRows(data([mk("A")]), TODAY)[0]?.credit).toBe(0);
+	});
+
 	test("close and due dates are for buying today", () => {
 		const [row] = readyRows(data([mk("A")]), TODAY);
 		expect(row?.closeDate).toBe("2026-11-25");
@@ -178,6 +192,7 @@ describe("sortReady", () => {
 		closeDate: close,
 		dueDate: due,
 		overdue: false,
+		credit: 0,
 	});
 	const rows = [
 		row("a", 1, "2026-11-03", "2026-12-01"),

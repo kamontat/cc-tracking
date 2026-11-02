@@ -109,6 +109,20 @@ test("reads in Thai", async () => {
 	expect(flat(root.querySelector("h2"))).toBe("พร้อมใช้");
 });
 
+test("an over-limit group's row reads its usage in the warn tone, in Thai too", async () => {
+	setLocale("th");
+	const { root } = await mount({
+		rows: [
+			testRow("O", -21_065_00, "2026-11-10", "2026-11-25", {
+				used: 121_065_00,
+			}),
+		],
+	});
+	const note = root.querySelector('[data-card="O"] .r small') as HTMLElement;
+	expect(flat(note)).toBe("ใช้ไป 121%");
+	expect(note.dataset["tone"]).toBe("warn");
+});
+
 const lines = (root: ParentNode, id: string) => {
 	const row = root.querySelector(`[data-card="${id}"]`);
 	return {
