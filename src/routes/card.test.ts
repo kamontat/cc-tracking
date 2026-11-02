@@ -824,6 +824,12 @@ test("renders in the chosen language and re-renders on a switch", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(card);
 	await repo.savePurchase(purchase);
+	const far = addPeriods(periodOfPurchase(card.cycle, today()), -12);
+	await repo.savePurchase({
+		...purchase,
+		id: "far",
+		date: closeDateOf(card.cycle, far),
+	});
 	const root = await open(repo);
 	expect(root.textContent).toContain("Show older statements");
 	expect(text(root.querySelector(".card-statements h2"))).toBe("Statements");
@@ -904,4 +910,26 @@ test("the over-room note clears when a purchase is deleted", async () => {
 		"a",
 	);
 	expect(root.querySelector("[data-over-room]")).toBeNull();
+});
+
+test('"Show older statements" is absent when nothing is older, and again once all is shown', async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	const root = await open(repo);
+	expect(root.querySelector("[data-action='show-older']")).toBeNull();
+
+	const far = addPeriods(periodOfPurchase(card.cycle, today()), -12);
+	await repo.savePurchase({
+		...purchase,
+		id: "far",
+		date: closeDateOf(card.cycle, far),
+	});
+	const again = await open(repo);
+	const button = () =>
+		again.querySelector<HTMLButtonElement>("[data-action='show-older']");
+	expect(button()).not.toBeNull();
+	button()?.click();
+	await settle();
+	expect(button()).toBeNull();
 });

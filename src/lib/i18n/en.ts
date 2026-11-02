@@ -66,6 +66,8 @@ export const en = {
 	"tx.error.delete": "Could not delete the payment.",
 	"tx.error.markPaid": "Could not mark the payment paid.",
 	"pay.noCards": "No cards yet. Add one on the Cards page.",
+	"pay.noneToPay":
+		"No card to pay. Archived cards with nothing owed are hidden.",
 	"tx.type.purchase": "Purchase",
 	"tx.type.payment": "Payment",
 	"tx.today": "Today · {date}",
@@ -203,6 +205,7 @@ export const en = {
 
 	"cards.title": "Cards",
 	"cards.archived": "Archived",
+	"cards.filter.ungrouped": "Not in a group",
 	"cards.archivedList": "Archived ({count})",
 	"cards.page.noGroup": "No limit group",
 	"cards.page.supplementary": "Supplementary",

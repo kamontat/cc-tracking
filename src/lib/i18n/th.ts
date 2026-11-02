@@ -26,7 +26,7 @@ export const th: Catalog = {
 	"date.weekday.6": "ส.",
 	"title.home": "หน้าหลัก — cc-tracking",
 	"title.cards": "บัตร — cc-tracking",
-	"title.card": "บัตร — cc-tracking",
+	"title.card": "รายละเอียดบัตร — cc-tracking",
 	"title.cardNew": "บัตรใหม่ — cc-tracking",
 	"title.cardEdit": "แก้ไขบัตร — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",
@@ -74,6 +74,7 @@ export const th: Catalog = {
 	"tx.error.delete": "ลบการชำระไม่ได้",
 	"tx.error.markPaid": "ทำเครื่องหมายว่าชำระแล้วไม่ได้",
 	"pay.noCards": "ยังไม่มีบัตร เพิ่มได้ที่หน้าบัตร",
+	"pay.noneToPay": "ไม่มีบัตรให้จ่าย บัตรที่เก็บเข้าคลังและไม่มียอดค้างจะถูกซ่อนไว้",
 	"tx.type.purchase": "การซื้อ",
 	"tx.type.payment": "การชำระ",
 	"tx.today": "วันนี้ · {date}",
@@ -216,6 +217,7 @@ export const th: Catalog = {
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
 	// backup.problem.*Cycle fragments below).
 	"cards.archived": "เก็บเข้าคลังแล้ว",
+	"cards.filter.ungrouped": "ยังไม่อยู่ในกลุ่ม",
 	"cards.archivedList": "เก็บเข้าคลังแล้ว ({count})",
 	"cards.page.noGroup": "ไม่มีกลุ่มวงเงิน",
 	"cards.page.supplementary": "บัตรเสริม",

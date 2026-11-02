@@ -434,11 +434,11 @@ test("a group no card uses can be deleted; the sheet closes once it is gone", as
 	expect(address.calls).toEqual(["replace /cards"]);
 });
 
-test("Add group pushes ?group=new and saves the new group, then closes", async () => {
+test("Add group pushes ?newGroup=1 and saves the new group, then closes", async () => {
 	const { root, repo, address } = await setup();
 	panels(root)?.dispatchEvent(new CustomEvent("add-group"));
 	await settle();
-	expect(address.calls).toEqual(["push /cards?group=new"]);
+	expect(address.calls).toEqual(["push /cards?newGroup=1"]);
 	expect(sheet()?.group).toBeNull();
 	sheet()?.dispatchEvent(
 		new CustomEvent("save-group", {
@@ -471,7 +471,7 @@ test("a failed save keeps the sheet open with the reason, and a retry keeps the 
 	await seed(repo);
 	repo.failures = 1;
 	repo.tried = [];
-	const { root, address } = await setup("/cards?group=new", {
+	const { root, address } = await setup("/cards?newGroup=1", {
 		repo,
 		skipSeed: true,
 	});
@@ -499,7 +499,7 @@ test("closing the sheet after a failed save leaves the banner empty", async () =
 	const repo = new FlakyGroupRepository();
 	await seed(repo);
 	repo.failures = 1;
-	const { root } = await setup("/cards?group=new", { repo, skipSeed: true });
+	const { root } = await setup("/cards?newGroup=1", { repo, skipSeed: true });
 	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
 	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
 	await settle(5);
@@ -529,7 +529,7 @@ test("the page banner stays empty while a retry is under way", async () => {
 	const repo = new FailThenHoldRepository();
 	await seed(repo);
 	repo.armed = true;
-	const { root } = await setup("/cards?group=new", { repo, skipSeed: true });
+	const { root } = await setup("/cards?newGroup=1", { repo, skipSeed: true });
 	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
 	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
 	await settle(5);
@@ -639,4 +639,36 @@ test("Back during a pending save: the save closes nothing further once it lands"
 	expect((await repo.listLimitGroups()).find((g) => g.id === "g2")?.name).toBe(
 		"SCB 2",
 	);
+});
+
+test("?group=new opens the group whose id is new; ?newGroup=1 opens the blank sheet", async () => {
+	await setup("/cards?group=new", {
+		before: async (r) => {
+			await r.saveLimitGroup({
+				id: "new",
+				name: "Odd",
+				limit: 1_00,
+				owner: "RI",
+			});
+		},
+	});
+	expect(sheet()?.group?.name).toBe("Odd");
+	await setup("/cards?newGroup=1");
+	expect(sheet()?.group).toBeNull();
+	expect(sheet()).not.toBeNull();
+});
+
+test("?ungrouped=1 lists only cards with no stored group, and shows a chip for it", async () => {
+	const { root } = await setup("/cards?ungrouped=1", {
+		before: async (r) => {
+			const { limitGroupId: _, ...loose } = card("N");
+			await r.saveCard(loose);
+			await r.saveCard(card("O", { limitGroupId: "gone" }));
+		},
+	});
+	const ids = [
+		...(list(root)?.shadowRoot?.querySelectorAll("a[data-card]") ?? []),
+	].map((a) => a.getAttribute("data-card"));
+	expect(ids.sort()).toEqual(["N", "O"]);
+	expect(root.textContent).toContain("Not in a group");
 });

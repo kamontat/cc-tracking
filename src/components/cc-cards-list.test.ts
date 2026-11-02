@@ -248,3 +248,14 @@ test("a language switch re-renders in place", async () => {
 		"room",
 	);
 });
+
+test("only archived cards match: the no-match line shows above the folded Archived", async () => {
+	const { root } = await mount({}, {}, [card("Z", { archived: true })]);
+	const children = [...root.children].filter((c) => c.tagName !== "STYLE");
+	expect(text(children[0])).toBe(
+		"No card matches. Clear the search or a filter.",
+	);
+	expect(children[0]?.classList.contains("empty")).toBe(true);
+	expect(children[1]?.matches("details.archive")).toBe(true);
+	expect(text(children[1]?.querySelector("summary"))).toBe("Archived (1)");
+});

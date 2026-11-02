@@ -270,7 +270,7 @@ test("cards with no limit group are counted, with the way to assign them", async
 	);
 	expect(
 		root.querySelector('[data-testid="unassigned"] a')?.getAttribute("href"),
-	).toBe("/cards");
+	).toBe("/cards?ungrouped=1");
 });
 
 test("reads in Thai", async () => {

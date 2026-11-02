@@ -197,3 +197,17 @@ test("a reload of the same group keeps the typing; another group resets it", asy
 	await element.updateComplete;
 	expect(name()).toBe("Other");
 });
+
+test("Delete NAME? stays after Delete, so a failed delete still shows it and the reason", async () => {
+	const { element, root } = await mount({ group: scb });
+	await click(element, "[data-action=delete-group]");
+	await click(element, "[data-action=confirm-delete]");
+	element.error = "Could not delete that limit group.";
+	await element.updateComplete;
+	expect(text(root.querySelector(".ask"))).toBe("Delete SCB?");
+	expect(root.querySelector("[data-action=confirm-delete]")).not.toBeNull();
+	expect(
+		root.querySelector<HTMLElement & { message: string }>("cc-error-banner")
+			?.message,
+	).toBe("Could not delete that limit group.");
+});

@@ -119,3 +119,7 @@ test("leaves an unsupplied placeholder alone rather than printing undefined", ()
 	setLocale("en");
 	expect(t("form.deleteAsk")).toBe("Delete {name}?");
 });
+
+test("the Thai card title differs from the Cards title", () => {
+	expect(th["title.card"]).not.toBe(th["title.cards"]);
+});

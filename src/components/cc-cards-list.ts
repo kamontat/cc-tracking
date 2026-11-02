@@ -220,12 +220,14 @@ export class CcCardsList extends LitElement {
 	}
 
 	override render() {
-		const { sections, flat, archived, count } = this.results;
-		if (count === 0 && archived.length === 0)
-			return html`<p class="empty">${
-				this.total === 0 ? t("cards.page.empty") : t("cards.page.noMatch")
-			}</p>`;
-		return html`
+		const { sections, flat, count } = this.results;
+		const none =
+			count === 0
+				? html`<p class="empty">${
+						this.total === 0 ? t("cards.page.empty") : t("cards.page.noMatch")
+					}</p>`
+				: nothing;
+		return html`${none}
 			${(sections ?? []).map(
 				({ location, cards }) => html`<section data-location=${location}>
 					<h2 class="place"><b>${nameOfLocation(this.locations, location)}</b> <small>${cardsCount(cards.length)}${

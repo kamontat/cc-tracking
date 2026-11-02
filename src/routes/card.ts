@@ -9,7 +9,7 @@ import "#components/cc-purchase-sheet";
 import { html, nothing, render } from "lit";
 import type { MoreItem } from "#components/cc-more-menu";
 import { canPurchase } from "#lib/domain/card";
-import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { compareDates, today } from "#lib/domain/date";
 import { overRoom as overRoomOf, roomFor } from "#lib/domain/home";
 import { nextBill } from "#lib/domain/ledger";
@@ -103,19 +103,29 @@ export function renderCardPage(
 		paint: () => paint(),
 	});
 
+	// Counted back from the latest purchase when one is dated past today, so a purchase
+	// entered ahead still has a statement on the page to edit or delete it from (DR-18).
+	const latestDate = () =>
+		purchases.reduce(
+			(date, purchase) =>
+				compareDates(purchase.date, date) > 0 ? purchase.date : date,
+			now,
+		);
+
+	/** Whether a purchase sits in a period older than the oldest one on show. */
+	const hasOlder = (current: Card): boolean => {
+		const oldest = recentPeriods(current, latestDate(), shown).at(-1) ?? "";
+		return purchases.some(
+			(purchase) => periodOfPurchase(current.cycle, purchase.date) < oldest,
+		);
+	};
+
 	const statements = (): LedgerStatement[] => {
 		if (!card || !data) return [];
 		const current = card;
 		const ledger = data.ledgers.get(current.id);
 		const open = openPeriod(current, now);
-		// Counted back from the latest purchase when one is dated past today, so a purchase
-		// entered ahead still has a statement on the page to edit or delete it from (DR-18).
-		const latest = purchases.reduce(
-			(date, purchase) =>
-				compareDates(purchase.date, date) > 0 ? purchase.date : date,
-			now,
-		);
-		return recentPeriods(current, latest, shown).map(
+		return recentPeriods(current, latestDate(), shown).map(
 			(period): LedgerStatement =>
 				ledger?.statements.find((entry) => entry.period === period) ?? {
 					cardId: current.id,
@@ -371,10 +381,14 @@ export function renderCardPage(
 					@edit-purchase=${onEdit}
 					@delete-purchase=${onDelete}
 				></cc-card-statements>
-				<button type="button" data-variant="quiet" data-action="show-older" @click=${() => {
-					shown += PAGE_SIZE;
-					paint();
-				}}>${t("card.showOlder")}</button>
+				${
+					hasOlder(current)
+						? html`<button type="button" data-variant="quiet" data-action="show-older" @click=${() => {
+								shown += PAGE_SIZE;
+								paint();
+							}}>${t("card.showOlder")}</button>`
+						: nothing
+				}
 			</section>
 			${sheet(current)}
 		`;

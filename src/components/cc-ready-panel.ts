@@ -89,7 +89,7 @@ export class CcReadyPanel extends LitElement {
 					: "spendable.unassigned.many",
 				{ count: this.unassigned },
 			)}
-			<a href="/cards">${t("spendable.unassignedAction")}</a>
+			<a href="/cards?ungrouped=1">${t("spendable.unassignedAction")}</a>
 		</p>`;
 	}
 

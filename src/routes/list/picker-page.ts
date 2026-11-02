@@ -167,7 +167,7 @@ export function renderPickerPage(
 					: "spendable.unassigned.many",
 				{ count: unassigned },
 			)}
-			<a href="/cards">${t("spendable.unassignedAction")}</a>
+			<a href="/cards?ungrouped=1">${t("spendable.unassignedAction")}</a>
 		</p>`;
 	};
 

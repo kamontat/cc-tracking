@@ -142,6 +142,12 @@ export class CcCardsFilter extends LitElement {
 					sheetChip("owner", owner, owner, draft.owners.includes(owner), () =>
 						this.set({ owners: toggle(draft.owners, owner) }),
 					),
+				)}${sheetChip(
+					"ungrouped",
+					"",
+					t("cards.filter.ungrouped"),
+					draft.ungrouped,
+					() => this.set({ ungrouped: !draft.ungrouped }),
 				)}</div>
 			</fieldset>
 			<fieldset>

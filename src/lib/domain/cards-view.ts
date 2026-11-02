@@ -1,6 +1,7 @@
 import { cardOwnerOf, type Owner } from "#lib/domain/owner";
 import type { GroupRoom } from "#lib/domain/room";
 import type { Card, LimitGroup } from "#lib/domain/types";
+import { getLocale } from "#lib/i18n/index";
 
 /** How the Cards page orders its results; `place` is the default, grouped by location. */
 export type CardsSort = "place" | "room" | "name" | "close";
@@ -17,6 +18,8 @@ export type CardsFilter = {
 	q: string;
 	locations: string[];
 	owners: Owner[];
+	/** Only cards in no stored limit group (none set, or one that no longer exists). */
+	ungrouped: boolean;
 };
 
 export type CardsView = CardsFilter & { sort: CardsSort };
@@ -25,6 +28,7 @@ export const DEFAULT_CARDS_VIEW: CardsView = {
 	q: "",
 	locations: [],
 	owners: [],
+	ungrouped: false,
 	sort: "place",
 };
 
@@ -62,6 +66,7 @@ export function matchesCard(
 ): boolean {
 	if (filter.locations.length > 0 && !filter.locations.includes(card.location))
 		return false;
+	if (filter.ungrouped && group !== null) return false;
 	if (filter.owners.length > 0) {
 		const owner = cardOwnerOf(card, group);
 		if (!owner || !filter.owners.includes(owner)) return false;
@@ -93,7 +98,7 @@ function comparer(
 		case "room":
 			return (a, b) => roomOf(b) - roomOf(a) || byId(a, b);
 		case "name":
-			return (a, b) => a.name.localeCompare(b.name) || byId(a, b);
+			return (a, b) => a.name.localeCompare(b.name, getLocale()) || byId(a, b);
 		case "close":
 			return (a, b) => a.cycle.closeDay - b.cycle.closeDay || byId(a, b);
 		default:

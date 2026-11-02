@@ -3,6 +3,7 @@ import { type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
 import { setLocale } from "#lib/i18n/index";
 import {
 	groupSheetAddress,
+	NEW_GROUP,
 	readCardsView,
 	readGroupSheet,
 	writeCardsView,
@@ -18,11 +19,12 @@ test("round trip with repeated loc and owner", () => {
 		q: "kb x",
 		locations: ["bangkok", "krabi"],
 		owners: ["KC", "RI"],
+		ungrouped: true,
 		sort: "close",
 	};
 	const text = writeCardsView(view);
 	expect(text).toBe(
-		"?q=kb+x&loc=bangkok&loc=krabi&owner=KC&owner=RI&sort=close",
+		"?q=kb+x&loc=bangkok&loc=krabi&owner=KC&owner=RI&ungrouped=1&sort=close",
 	);
 	expect(readCardsView(text, ["bangkok", "krabi"])).toEqual(view);
 });
@@ -56,14 +58,25 @@ test("a place is read when a stored record has its id, in the address's order", 
 test("readGroupSheet", () => {
 	expect(readGroupSheet("")).toBeNull();
 	expect(readGroupSheet("?group=")).toBeNull();
-	expect(readGroupSheet("?group=new")).toBe("new");
+	expect(readGroupSheet("?newGroup=1")).toBe(NEW_GROUP);
+	expect(readGroupSheet("?newGroup=1&group=pool")).toBe(NEW_GROUP);
 	expect(readGroupSheet("?q=a&group=pool")).toBe("pool");
 });
 
 test("groupSheetAddress opens and closes, keeping the rest", () => {
 	expect(groupSheetAddress("", "pool")).toBe("?group=pool");
 	expect(groupSheetAddress("", null)).toBe("");
-	expect(groupSheetAddress("?q=a&group=x", "new")).toBe("?q=a&group=new");
+	expect(groupSheetAddress("?q=a&group=x", NEW_GROUP)).toBe("?q=a&newGroup=1");
+	expect(groupSheetAddress("?q=a&newGroup=1", "pool")).toBe("?q=a&group=pool");
+	expect(groupSheetAddress("?q=a&newGroup=1", null)).toBe("?q=a");
 	expect(groupSheetAddress("?q=a&group=x", null)).toBe("?q=a");
 	expect(groupSheetAddress("", "a b")).toBe("?group=a+b");
+});
+
+test("?group=new is a group whose id is new; ?ungrouped=1 reads as the filter", () => {
+	expect(readGroupSheet("?group=new")).toBe("new");
+	expect(groupSheetAddress("", NEW_GROUP)).toBe("?newGroup=1");
+	expect(groupSheetAddress("", "new")).toBe("?group=new");
+	expect(readCardsView("?ungrouped=1", []).ungrouped).toBe(true);
+	expect(readCardsView("?ungrouped=0", []).ungrouped).toBe(false);
 });

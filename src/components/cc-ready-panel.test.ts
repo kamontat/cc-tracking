@@ -98,7 +98,7 @@ test("not-assigned cards are counted", async () => {
 	expect(flat(root.querySelector('[data-testid="unassigned"]'))).toContain(
 		"2 cards have no limit group yet.",
 	);
-	expect(root.querySelector('a[href="/cards"]')).not.toBeNull();
+	expect(root.querySelector('a[href="/cards?ungrouped=1"]')).not.toBeNull();
 	const one = await mount({ unassigned: 1 });
 	expect(flat(one.root)).toContain("1 card has no limit group yet.");
 });

@@ -238,6 +238,7 @@ export function renderPayPage(
 				<cc-pay-picker
 					.choices=${payChoices(data.cards, data.ledgers, now)}
 					.groups=${data.groups}
+					.total=${data.cards.length}
 					@pick=${(event: CustomEvent<PickDetail>) => {
 						forget();
 						kept = null;
