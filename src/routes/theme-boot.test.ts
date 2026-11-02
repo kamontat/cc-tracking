@@ -6,7 +6,7 @@ import { Glob } from "bun";
  * light flash while the bundle loads. The script is inline for that reason, and it must agree
  * with `getTheme()` and `applyTheme()` in `src/lib/ui/theme.ts` on every input.
  */
-const pages = [...new Glob("*.html").scanSync(import.meta.dir)].sort();
+const pages = [...new Glob("**/*.html").scanSync(import.meta.dir)].sort();
 
 const read = (page: string) => Bun.file(`${import.meta.dir}/${page}`).text();
 

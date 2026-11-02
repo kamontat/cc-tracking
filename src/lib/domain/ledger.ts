@@ -103,6 +103,19 @@ export function cardLedger(
 	};
 }
 
+/** A ledger for every card, archived included: they still weigh on a group's room. */
+export function ledgersFor(
+	cards: Card[],
+	purchases: Purchase[],
+	payments: CardPayment[],
+	dates: StatementDates[],
+	today: PlainDate,
+): Map<string, CardLedger> {
+	return new Map(
+		cards.map((c) => [c.id, cardLedger(c, purchases, payments, dates, today)]),
+	);
+}
+
 /**
  * Statements money has reached that have no kept dates yet. Saving these keeps a paid
  * statement's close and due dates steady if the card's cycle is edited later.

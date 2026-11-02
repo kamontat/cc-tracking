@@ -13,8 +13,6 @@ import { en } from "#lib/i18n/en";
  *   letters in the first word.
  * - A sentence broken by a `${...}` interpolation ("Edit ${name} now") does not match, since
  *   the pattern requires a single unbroken run of words between `>` and `<`.
- * - The glob is not recursive, so a component or route nested in a subdirectory of
- *   `src/components` or `src/routes` would not be scanned.
  * The pattern does tolerate one trailing `.`, `?`, or `!` before the closing tag, so ordinary
  * sentence and question punctuation — the shape of most confirmation and error copy — does
  * not defeat the match the way it would without that allowance.
@@ -26,7 +24,9 @@ test("no component or route renders a hard-coded English sentence", async () => 
 	const values = new Set<string>(Object.values(en));
 	const offenders: string[] = [];
 
-	for await (const path of new Glob("src/{components,routes}/*.ts").scan(".")) {
+	for await (const path of new Glob("src/{components,routes}/**/*.ts").scan(
+		".",
+	)) {
 		if (path.endsWith(".test.ts")) continue;
 		const source = await Bun.file(path).text();
 		for (const [, text] of source.matchAll(

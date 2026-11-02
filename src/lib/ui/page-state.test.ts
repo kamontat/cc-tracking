@@ -101,7 +101,7 @@ test("load prefixes the translated fallback onto a StorageError's own message, s
 		fetch: async () => {
 			throw new StorageError("Stored value at cc:card:scb is not readable");
 		},
-		fallbackKey: "dashboard.error.read",
+		fallbackKey: "home.error.read",
 		paint: () => {},
 	});
 
@@ -116,13 +116,13 @@ test("the error follows a locale switch instead of freezing in whatever language
 	setLocale("en");
 	const state = createPageState({
 		fetch: async () => {},
-		fallbackKey: "dashboard.error.read",
+		fallbackKey: "home.error.read",
 		paint: () => {},
 	});
 
 	await state.guard(async () => {
 		throw new Error("localStorage is full");
-	}, "dashboard.error.markPaid");
+	}, "card.error.markPaid");
 
 	expect(state.error).toBe(
 		"Could not record the payment. localStorage is full",

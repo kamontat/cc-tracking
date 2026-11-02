@@ -7,14 +7,15 @@ import { Glob } from "bun";
  * run before the bundle does, and because a route whose script fails to load should still
  * report the visit.
  *
- * This is the one guard against a new route being added without them -- the pages are five
- * near-identical copies, and the copy that gets forgotten is invisible until someone reads
- * the numbers and wonders why one page has none.
+ * This is the one guard against a new route being added without them -- the pages are
+ * near-identical copies (the nested `list/` ones included), and the copy that gets forgotten
+ * is invisible until someone reads the numbers and wonders why one page has none.
  *
  * The loader is kept byte-identical to what Google publishes, so a future version of it can
  * be diffed rather than re-ported. It is ES5 minified code, so it trips four style rules
- * meant for code we write; biome.json turns those off for `src/routes/*.html`, which holds
- * one other inline script, the theme loader (see theme-boot.test.ts). The one change made to
+ * meant for code we write; biome.json turns those off for every page under `src/routes`,
+ * which holds one other inline script, the theme loader (see theme-boot.test.ts). The one
+ * change made to
  * the published snippet is a `title` on the noscript iframe, which the a11y rule asks for and
  * GTM does not care about.
  */
@@ -22,7 +23,7 @@ const CONTAINER = "GTM-5TMJN4ZX";
 
 const pages = async (): Promise<[string, string][]> => {
 	const found: [string, string][] = [];
-	for await (const path of new Glob("src/routes/*.html").scan(".")) {
+	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
 		found.push([path, await Bun.file(path).text()]);
 	}
 	return found.sort(([a], [b]) => (a < b ? -1 : 1));

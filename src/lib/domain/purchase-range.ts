@@ -90,17 +90,3 @@ export function rangeSummary(purchases: Purchase[]): {
 		cards: new Set(purchases.map((purchase) => purchase.cardId)).size,
 	};
 }
-
-/**
- * Purchases entered at or after `since`, latest entered first. One with no entry time, or one that
- * does not parse, was not entered in this sitting.
- */
-export function sittingPurchases(
-	purchases: Purchase[],
-	since: string,
-): Purchase[] {
-	const start = Date.parse(since);
-	return purchases
-		.filter((purchase) => addedMillis(purchase) >= start)
-		.sort(byAddedDesc);
-}

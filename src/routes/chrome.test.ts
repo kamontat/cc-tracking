@@ -5,7 +5,7 @@ import { Glob } from "bun";
 test("no route page carries a footer", async () => {
 	const offenders: string[] = [];
 
-	for await (const path of new Glob("src/routes/*.html").scan(".")) {
+	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
 		const source = await Bun.file(path).text();
 		if (source.includes("<cc-site-footer")) offenders.push(path);
 	}
@@ -17,7 +17,7 @@ test("no route page carries a footer", async () => {
 test("every route page carries the shell slots", async () => {
 	const problems: string[] = [];
 
-	for await (const path of new Glob("src/routes/*.html").scan(".")) {
+	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
 		const source = await Bun.file(path).text();
 		for (const id of ["site-header", "page", "tabbar"]) {
 			if (!source.includes(`id="${id}"`)) problems.push(`${path}: no #${id}`);
@@ -34,7 +34,7 @@ test("every route page carries the shell slots", async () => {
 test("no route page carries a language picker in its header", async () => {
 	const offenders: string[] = [];
 
-	for await (const path of new Glob("src/routes/*.html").scan(".")) {
+	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
 		const source = await Bun.file(path).text();
 		if (source.includes("<cc-lang-switch>")) offenders.push(path);
 	}

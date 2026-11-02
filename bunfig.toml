@@ -3,3 +3,6 @@ exact = true
 
 [test]
 preload = ["./tests/setup-happydom.ts"]
+
+[serve.static]
+plugins = ["./scripts/routes-root.ts"]
