@@ -1,11 +1,52 @@
 import { describeCycle } from "#lib/domain/cycle";
 import { daysBetween } from "#lib/domain/date";
 import type { Location } from "#lib/domain/location";
-import type { CycleRule, PlainDate } from "#lib/domain/types";
+import type { CycleRule, LocationRecord, PlainDate } from "#lib/domain/types";
 import { getLocale, t } from "#lib/i18n/index";
 
 export const locationText = (location: Location): string =>
 	t(`location.${location}` as const);
+
+/** The English names the three seeded locations ship with. */
+const defaultNames = {
+	bangkok: "Bangkok",
+	phichit: "Phichit",
+	krabi: "Krabi",
+} as const;
+
+/**
+ * A location's name as the reader sees it. A seeded location still carrying its English
+ * default reads from the catalog, so it follows the language; once renamed, or when custom,
+ * the stored name is shown as typed.
+ */
+export function locationName(
+	record: Pick<LocationRecord, "id" | "name">,
+): string {
+	if (
+		record.id in defaultNames &&
+		record.name === defaultNames[record.id as keyof typeof defaultNames]
+	)
+		return t(`location.${record.id as keyof typeof defaultNames}` as const);
+	return record.name;
+}
+
+/** A new array of `records`, A to Z by shown name in the reader's language, then by id. */
+export function sortLocations<T extends Pick<LocationRecord, "id" | "name">>(
+	records: T[],
+): T[] {
+	const locale = getLocale();
+	return [...records].sort(
+		(a, b) =>
+			locationName(a).localeCompare(locationName(b), locale) ||
+			a.id.localeCompare(b.id),
+	);
+}
+
+/** The shown name of the location with `id`, or `id` itself when no record has it. */
+export function nameOfLocation(records: LocationRecord[], id: string): string {
+	const record = records.find((r) => r.id === id);
+	return record ? locationName(record) : id;
+}
 
 /** "1st", "2nd", "3rd", "18th". English only — Thai writes the bare number. */
 function ordinalEn(day: number): string {

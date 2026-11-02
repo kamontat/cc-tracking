@@ -1,5 +1,11 @@
 import { expect, test } from "bun:test";
-import { describeCycleText, relativeDayText } from "#lib/i18n/format";
+import {
+	describeCycleText,
+	locationName,
+	nameOfLocation,
+	relativeDayText,
+	sortLocations,
+} from "#lib/i18n/format";
 import { setLocale } from "#lib/i18n/index";
 
 test("writes an English ordinal for the closing day", () => {
@@ -56,4 +62,41 @@ test("counts backward to a date already past, without calling it overdue", () =>
 test("counts across a month boundary", () => {
 	setLocale("en");
 	expect(relativeDayText("2026-09-23", "2026-10-02")).toBe("in 9 days");
+});
+
+test("names an untouched default location in the reader's language", () => {
+	setLocale("en");
+	expect(locationName({ id: "krabi", name: "Krabi" })).toBe("Krabi");
+	setLocale("th");
+	expect(locationName({ id: "krabi", name: "Krabi" })).toBe("กระบี่");
+});
+
+test("keeps the stored name for a renamed default and for a custom location", () => {
+	setLocale("th");
+	expect(locationName({ id: "krabi", name: "Ao Nang" })).toBe("Ao Nang");
+	expect(locationName({ id: "loc-1", name: "Ayutthaya" })).toBe("Ayutthaya");
+});
+
+test("lists locations A to Z by shown name", () => {
+	setLocale("en");
+	const records = [
+		{ id: "phichit", name: "Phichit" },
+		{ id: "loc-1", name: "Ayutthaya" },
+		{ id: "krabi", name: "Krabi" },
+		{ id: "bangkok", name: "Bangkok" },
+	];
+	expect(sortLocations(records).map((r) => r.name)).toEqual([
+		"Ayutthaya",
+		"Bangkok",
+		"Krabi",
+		"Phichit",
+	]);
+	expect(records[0]?.id).toBe("phichit");
+});
+
+test("falls back to the id when no record matches", () => {
+	setLocale("en");
+	const records = [{ id: "krabi", name: "Krabi", takesPurchases: true }];
+	expect(nameOfLocation(records, "krabi")).toBe("Krabi");
+	expect(nameOfLocation(records, "gone")).toBe("gone");
 });
