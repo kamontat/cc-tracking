@@ -163,7 +163,7 @@ test("disables the group select when no group exists", async () => {
 	);
 });
 
-test("names each group as name (holder) · limit, by holder then name", async () => {
+test("names each group as name (holder) · limit, A to Z by name", async () => {
 	const element = await mount(null, [
 		{ id: "pool", name: "KBank account", limit: 500_000_00, owner: "NT" },
 		{ id: "solo", name: "SCB", limit: 100_000_00 },
@@ -174,8 +174,8 @@ test("names each group as name (holder) · limit, by holder then name", async ()
 		) ?? []),
 	].slice(1);
 	expect(options.map((option) => option.textContent?.trim())).toEqual([
-		"SCB (KC) · ฿100,000.00",
 		"KBank account (NT) · ฿500,000.00",
+		"SCB (KC) · ฿100,000.00",
 	]);
 });
 

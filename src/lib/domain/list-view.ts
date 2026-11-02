@@ -1,19 +1,13 @@
-import { OWNERS, ownerOf } from "#lib/domain/owner";
 import type { LimitGroup } from "#lib/domain/types";
-
-// Numeric, so "Card 2" sorts before "Card 10"; base sensitivity, so case does not split names.
-const collator = new Intl.Collator(undefined, {
-	numeric: true,
-	sensitivity: "base",
-});
+import { getLocale } from "#lib/i18n/index";
 
 /**
- * The one order every limit group dropdown lists its groups in: owner first, in `OWNERS`
- * order, then name. A reader scanning for their own account finds all of it in one run.
+ * The one order every place that lists limit groups uses: A to Z by name in the reader's
+ * language, then by id, so two groups of one name keep a stable order.
  */
-export function byOwnerThenName(a: LimitGroup, b: LimitGroup): number {
+export function byGroupName(a: LimitGroup, b: LimitGroup): number {
 	return (
-		OWNERS.indexOf(ownerOf(a)) - OWNERS.indexOf(ownerOf(b)) ||
-		collator.compare(a.name, b.name)
+		a.name.localeCompare(b.name, getLocale()) ||
+		(a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 	);
 }

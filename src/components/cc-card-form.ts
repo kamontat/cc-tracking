@@ -8,7 +8,7 @@ import {
 	type TemplateResult,
 } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { byOwnerThenName } from "#lib/domain/list-view";
+import { byGroupName } from "#lib/domain/list-view";
 import { DEFAULT_LOCATION } from "#lib/domain/location";
 import { formatAmount } from "#lib/domain/money";
 import {
@@ -399,7 +399,7 @@ export class CcCardForm extends LitElement {
 
 	override render() {
 		const card = this.card;
-		const groups = [...this.groups].sort(byOwnerThenName);
+		const groups = [...this.groups].sort(byGroupName);
 		const select = (setter: (value: string) => void) => (event: Event) =>
 			setter((event.target as HTMLSelectElement).value);
 		/** A panel named by its heading. */

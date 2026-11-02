@@ -1,3 +1,4 @@
+import { byGroupName } from "#lib/domain/list-view";
 import { cardOwnerOf, type Owner } from "#lib/domain/owner";
 import type { GroupRoom } from "#lib/domain/room";
 import type { Card, LimitGroup } from "#lib/domain/types";
@@ -155,13 +156,13 @@ export type GroupPanel = {
 	full: boolean;
 };
 
-/** One panel per group, in the order given, with its cards' ids (archived included) by id. */
+/** One panel per group, A to Z by name (`byGroupName`), with its cards' ids (archived included) by id. */
 export function groupPanels(
 	groups: LimitGroup[],
 	cards: Card[],
 	rooms: CardsRooms,
 ): GroupPanel[] {
-	return groups.map((group) => {
+	return [...groups].sort(byGroupName).map((group) => {
 		const r = rooms.get(group.id);
 		const pct = r ? usedPct(r) : 0;
 		return {

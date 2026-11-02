@@ -186,6 +186,19 @@ describe("groupPanels", () => {
 		});
 		expect(p3).toMatchObject({ usedPct: 0, full: false, cardIds: [] });
 	});
+	test("lists the groups A to Z by name, then by id", () => {
+		const panels = groupPanels(
+			[
+				group("z1", { name: "SCB" }),
+				group("b2", { name: "KBank" }),
+				group("a1", { name: "KBank" }),
+				group("c3", { name: "Amex" }),
+			],
+			[],
+			new Map(),
+		);
+		expect(panels.map((p) => p.group.id)).toEqual(["c3", "a1", "b2", "z1"]);
+	});
 	test("a group with no computed room reads as untouched", () => {
 		expect(groupPanels([g], [], new Map())[0]).toMatchObject({
 			room: 100_000,
