@@ -948,7 +948,7 @@ Not part of this redesign.
 | Supplementary card | บัตรเสริม | A card issued on someone else's account, with its own cardholder. |
 | Cardholder | หน้าบัตร | The person on the card (DR-13). |
 | Account holder | เจ้าของบัตร | The owner of a limit group's account: KC, NT or RI. |
-| Location | ที่อยู่ | Where a card is kept: Bangkok, Phichit or Krabi, editable from RD-17. |
+| Location | สถานที่ | Where a card is kept: Bangkok, Phichit or Krabi, editable from RD-17. |
 | Limit group | กลุ่มวงเงิน | A pool of credit one or more cards draw on. |
 | Available | คงเหลือ | A group's limit less everything unpaid (DR-09). |
 | Billing cycle | รอบบิล | A card's rule for its close and due dates (DR-04). |
@@ -963,7 +963,7 @@ Not part of this redesign.
 | Left to pay | ยอดคงเหลือ | A statement's total less what was paid, never below zero (DR-28). |
 | Unmark | ยกเลิกชำระ | Remove one payment from a statement (DR-30). |
 | Archived | เก็บเข้าคลัง | A retired card: hidden from daily views, history kept, still counts against its group. |
-| Purchase places | ที่ที่บันทึกรายการใหม่ได้ | The locations whose cards can take a new purchase (DR-12); since phase 6, the locations ticked *Takes purchases* (บันทึกรายการซื้อได้). |
+| Purchase places | สถานที่ที่บันทึกรายการใหม่ได้ | The locations whose cards can take a new purchase (DR-12); since phase 6, the locations ticked *Takes purchases* (บันทึกรายการซื้อได้). |
 | This sitting | รอบนี้ | *(Retired in phase 3.)* Purchases entered since *Start new batch* was last pressed (DR-16). |
 | Batch start | เวลาเริ่มรอบ | *(Retired in phase 3.)* When the current sitting began. |
 | Entry time | เวลาที่เพิ่ม | When a purchase was first entered (`addedAt`), as opposed to its purchase date. |
