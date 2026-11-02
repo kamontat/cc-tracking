@@ -12,12 +12,14 @@ import {
 } from "#lib/storage/contract";
 import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
 import { InMemoryRepository } from "#lib/storage/repository";
+import { seedLocations } from "#lib/storage/seed-locations";
 import {
 	BACKUP_V3,
 	type BackupV3,
 	countRecordsV3,
 	exportBackupV3,
 	importBackupV3,
+	onlySeededDefaults,
 	parseAnyBackup,
 	replaceWithBackupV3,
 } from "#lib/storage/transfer-v3";
@@ -250,6 +252,96 @@ describe("backup version 3", () => {
 			),
 		);
 		expect(await repo.listLocations()).toEqual([stored]);
+	});
+
+	test("only the untouched starting places count as seeded defaults", () => {
+		const bangkok = sampleLocation({ id: "bangkok", name: "Bangkok" });
+		expect(onlySeededDefaults([])).toBe(true);
+		expect(
+			onlySeededDefaults([
+				bangkok,
+				sampleLocation({
+					id: "phichit",
+					name: "Phichit",
+					takesPurchases: false,
+				}),
+				sampleLocation(),
+			]),
+		).toBe(true);
+		// A rename, or a place of the reader's own, is not a seed any more.
+		expect(
+			onlySeededDefaults([bangkok, sampleLocation({ name: "Ao Nang" })]),
+		).toBe(false);
+		expect(
+			onlySeededDefaults([bangkok, sampleLocation({ id: "chiang-mai" })]),
+		).toBe(false);
+	});
+
+	test("over only seeded defaults, the file's locations win and an unused default it lacks goes", async () => {
+		const repo = new InMemoryRepository();
+		await seedLocations(repo, { getItem: () => null, setItem: () => {} });
+		const fromFile = [
+			sampleLocation({ id: "krabi", name: "Ao Nang", takesPurchases: false }),
+			sampleLocation({ id: "phichit", name: "Phichit", takesPurchases: true }),
+			sampleLocation({ id: "chiang-mai", name: "Chiang Mai" }),
+		];
+		await importBackupV3(repo, parseAnyBackup(v3({ locations: fromFile })), {
+			overSeeded: true,
+		});
+		const stored = await repo.listLocations();
+		expect(stored.toSorted((a, b) => a.id.localeCompare(b.id))).toEqual(
+			fromFile.toSorted((a, b) => a.id.localeCompare(b.id)),
+		);
+	});
+
+	test("over only seeded defaults, a default a restored card uses stays", async () => {
+		const repo = new InMemoryRepository();
+		await seedLocations(repo, { getItem: () => null, setItem: () => {} });
+		// A version 2 file with settings brings all three; this one only two, and a card at Bangkok.
+		const backup = parseAnyBackup(
+			v3({
+				cards: [sampleCard({ location: "krabi" })],
+				locations: [sampleLocation({ name: "Ao Nang" })],
+			}),
+		);
+		backup.cards.push(sampleCard({ id: "scb", location: "bangkok" }));
+		await importBackupV3(repo, backup, { overSeeded: true });
+		expect((await repo.listLocations()).map((r) => [r.id, r.name])).toEqual(
+			expect.arrayContaining([
+				["krabi", "Ao Nang"],
+				["bangkok", "Bangkok"],
+			]),
+		);
+		expect((await repo.listLocations()).map((r) => r.id)).not.toContain(
+			"phichit",
+		);
+	});
+
+	test("over a renamed location, overSeeded keeps merge's keep-local rule", async () => {
+		const repo = new InMemoryRepository();
+		const stored = sampleLocation({ name: "Ao Nang" });
+		await repo.saveLocation(stored);
+		await importBackupV3(
+			repo,
+			parseAnyBackup(
+				v3({ locations: [sampleLocation({ takesPurchases: false })] }),
+			),
+			{ overSeeded: true },
+		);
+		expect(await repo.listLocations()).toEqual([stored]);
+	});
+
+	test("over only seeded defaults, a file with no locations leaves them alone", async () => {
+		const repo = new InMemoryRepository();
+		await seedLocations(repo, { getItem: () => null, setItem: () => {} });
+		await importBackupV3(
+			repo,
+			parseAnyBackup(v2({ cards: [], purchases: [], payments: [] })),
+			{
+				overSeeded: true,
+			},
+		);
+		expect(await repo.listLocations()).toHaveLength(3);
 	});
 
 	test("merge adds a location only the file has", async () => {

@@ -350,23 +350,53 @@ export function parseAnyBackup(text: string): BackupV3 {
 }
 
 /**
+ * True when every stored location is one of the three starting places, under its id and its
+ * English starting name (ticks aside): what a new or reset browser holds once seeded, before
+ * the reader renamed a place or added one. An empty list counts too.
+ */
+export function onlySeededDefaults(records: LocationRecord[]): boolean {
+	const defaults = defaultLocations({ purchaseLocations: [] });
+	return records.every((record) =>
+		defaults.some((seed) => seed.id === record.id && seed.name === record.name),
+	);
+}
+
+/** How `importBackupV3` treats the stored locations. */
+export type ImportOptions = {
+	/**
+	 * Restoring into a browser with nothing in it yet: when the stored locations are only
+	 * untouched starting places (`onlySeededDefaults`), the file's locations are written over
+	 * them, and a starting place the file lacks that no card uses goes. A file with no locations
+	 * (a version 2 file without settings) leaves them alone. Over any other stored location the
+	 * keep-local rule holds as without this option.
+	 */
+	overSeeded?: boolean;
+};
+
+/**
  * Additive: writes every record over whatever shares its key, except locations: a file's
  * location whose id is already stored is skipped, so an old backup cannot undo a rename or a
- * *Takes purchases* tick. Settings are never touched. The one deletion is a converted
- * version 2 file's stale parts (DD-95): before writing an `m:` payment with a period, the
- * card's stored `m:<card>:<period>:` payments go, so a record that now converts to fewer parts
- * leaves none behind. A version 3 file deletes nothing.
+ * *Takes purchases* tick (see `ImportOptions.overSeeded` for the one exception). Settings are
+ * never touched. Otherwise the one deletion is a converted version 2 file's stale parts
+ * (DD-95): before writing an `m:` payment with a period, the card's stored
+ * `m:<card>:<period>:` payments go, so a record that now converts to fewer parts leaves none
+ * behind. A version 3 file deletes nothing else.
  */
 export async function importBackupV3(
 	repo: Repository,
 	backup: BackupV3,
+	options: ImportOptions = {},
 ): Promise<void> {
 	for (const group of backup.limitGroups) await repo.saveLimitGroup(group);
-	const storedLocations = new Set(
-		(await repo.listLocations()).map((location) => location.id),
-	);
+	const stored = await repo.listLocations();
+	const overwrite =
+		options.overSeeded === true &&
+		backup.locations.length > 0 &&
+		onlySeededDefaults(stored);
+	const storedLocations = new Set(stored.map((location) => location.id));
 	for (const location of backup.locations) {
-		if (!storedLocations.has(location.id)) await repo.saveLocation(location);
+		if (overwrite || !storedLocations.has(location.id))
+			await repo.saveLocation(location);
 	}
 	for (const card of backup.cards) await repo.saveCard(card);
 	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
@@ -387,6 +417,16 @@ export async function importBackupV3(
 	for (const dates of backup.statementDates)
 		await repo.saveStatementDates(dates);
 	for (const list of backup.lists) await repo.savePurchaseList(list);
+	if (overwrite) {
+		// The starting places the file does without go too, unless a card still sits there.
+		const kept = new Set(backup.locations.map((location) => location.id));
+		const cards = await repo.listCards();
+		for (const seed of stored) {
+			if (kept.has(seed.id)) continue;
+			if (cards.some((card) => card.location === seed.id)) continue;
+			await repo.deleteLocation(seed.id);
+		}
+	}
 }
 
 /**

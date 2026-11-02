@@ -1,18 +1,18 @@
-import { afterEach, beforeEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "bun:test";
 import "#components/cc-restore-sheet";
 import type { CcRestoreSheet } from "#components/cc-restore-sheet";
 import { defaultLocations } from "#lib/domain/locations";
 import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { memoryStorage } from "#lib/storage/contract";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
-import { SEED_KEY } from "#lib/storage/seed-locations";
+import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
 import { exportBackupV3, type V3Counts } from "#lib/storage/transfer-v3";
 
 /** Flushes Lit's update chain and the sheet's awaited reads and writes. */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-beforeEach(() => globalThis.localStorage.clear());
 afterEach(() => setLocale("en"));
 
 const sampleCard: Card = {
@@ -79,11 +79,12 @@ const withClipboard = async (
 	}
 };
 
-const mount = async (repo: Repository) => {
+const mount = async (repo: Repository, storage: Storage = memoryStorage()) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-restore-sheet") as CcRestoreSheet;
 	element.repo = repo;
-	element.storage = globalThis.localStorage;
+	// A private store, so no marker the sheet writes leaks into another test.
+	element.storage = storage;
 	const restored: ({ file?: string } & V3Counts)[] = [];
 	let closed = 0;
 	element.addEventListener("restored", (event) =>
@@ -136,15 +137,76 @@ test("sits in a sheet headed Restore a copy, opening on the clipboard, a file an
 	});
 });
 
+/** A new browser as the app leaves it: the starting places seeded, and nothing else. */
+const freshBrowser = async () => {
+	const repo = new InMemoryRepository();
+	const storage = memoryStorage();
+	await seedLocations(repo, storage);
+	return { repo, storage };
+};
+
 test("paste from clipboard restores into an empty browser in one click", async () => {
 	const text = await oneCardBackup();
 	await withClipboard({ readText: async () => text }, async () => {
-		const repo = new InMemoryRepository();
-		const sheet = await mount(repo);
+		const { repo, storage } = await freshBrowser();
+		const sheet = await mount(repo, storage);
 		await sheet.click("paste-clipboard");
 
 		expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"]);
 		expect(sheet.restored).toEqual([oneCardCounts]);
+	});
+});
+
+test("into a new browser, the copy's renames and ticks replace the seeded starting places", async () => {
+	const source = new InMemoryRepository();
+	await source.saveLocation({
+		id: "krabi",
+		name: "Ao Nang",
+		takesPurchases: false,
+	});
+	await source.saveLocation({
+		id: "phichit",
+		name: "Phichit",
+		takesPurchases: true,
+	});
+	await source.saveCard({ ...sampleCard, location: "krabi" });
+	const text = JSON.stringify(await exportBackupV3(source, new Date()));
+	await withClipboard({ readText: async () => text }, async () => {
+		const { repo, storage } = await freshBrowser();
+		const sheet = await mount(repo, storage);
+		await sheet.click("paste-clipboard");
+
+		expect(sheet.step()).not.toBe("question");
+		expect(sheet.restored).toHaveLength(1);
+		const stored = (await repo.listLocations()).toSorted((a, b) =>
+			a.id.localeCompare(b.id),
+		);
+		// Bangkok was only a seed the copy does without, and no card sits there.
+		expect(stored).toEqual([
+			{ id: "krabi", name: "Ao Nang", takesPurchases: false },
+			{ id: "phichit", name: "Phichit", takesPurchases: true },
+		]);
+	});
+});
+
+test("with no cards but a renamed location here, the sheet asks merge or replace", async () => {
+	const text = await oneCardBackup();
+	await withClipboard({ readText: async () => text }, async () => {
+		const { repo, storage } = await freshBrowser();
+		await repo.saveLocation({
+			id: "krabi",
+			name: "Ao Nang",
+			takesPurchases: true,
+		});
+		const sheet = await mount(repo, storage);
+		await sheet.click("paste-clipboard");
+
+		expect(sheet.step()).toBe("question");
+		await sheet.click("merge-import");
+		// Merge keeps what is here.
+		expect(
+			(await repo.listLocations()).find((r) => r.id === "krabi")?.name,
+		).toBe("Ao Nang");
 	});
 });
 
@@ -208,9 +270,7 @@ test("replace leaves only what the copy carries", async () => {
 		expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"]);
 		expect(await repo.listLimitGroups()).toEqual([]);
 		expect(sheet.restored).toEqual([oneCardCounts]);
-		expect(globalThis.localStorage.getItem("cc:migration:payments")).toBe(
-			"done",
-		);
+		expect(sheet.element.storage.getItem("cc:migration:payments")).toBe("done");
 	});
 });
 
@@ -361,7 +421,8 @@ test("a language switch on the question keeps the question", async () => {
 test("after a restore, a card on a missing location gets its place back", async () => {
 	// The starting places were seeded once and since deleted, and an old copy brings a card
 	// at Krabi with no location records of its own.
-	globalThis.localStorage.setItem(SEED_KEY, "done");
+	const storage = memoryStorage();
+	storage.setItem(SEED_KEY, "done");
 	const old = JSON.stringify({
 		version: 2,
 		exportedAt: "2026-09-21T00:00:00.000Z",
@@ -372,7 +433,7 @@ test("after a restore, a card on a missing location gets its place back", async 
 	});
 	await withClipboard({ readText: async () => old }, async () => {
 		const repo = new InMemoryRepository();
-		const sheet = await mount(repo);
+		const sheet = await mount(repo, storage);
 		await sheet.click("paste-clipboard");
 
 		expect(sheet.restored).toHaveLength(1);
@@ -409,5 +470,46 @@ test("Close re-emits close", async () => {
 			?.click();
 		await settle();
 		expect(sheet.closed()).toBe(1);
+	});
+});
+
+test("after a restore, the sheet stays busy while it slides away, so nothing writes twice", async () => {
+	const text = await oneCardBackup();
+	await withClipboard({ readText: async () => text }, async () => {
+		const { repo, storage } = await freshBrowser();
+		let writes = 0;
+		const saveCard = repo.saveCard.bind(repo);
+		repo.saveCard = async (card: Card) => {
+			writes += 1;
+			await saveCard(card);
+		};
+		const sheet = await mount(repo, storage);
+		// Hold the exit animation open: the sheet is leaving but not yet gone.
+		const modal = sheet.root.querySelector("cc-modal");
+		if (!modal) throw new Error("no modal");
+		modal.leave = () => {};
+		await sheet.click("paste-clipboard");
+
+		expect(writes).toBe(1);
+		expect(sheet.action("paste-clipboard")?.hasAttribute("disabled")).toBe(
+			true,
+		);
+		expect(sheet.action("paste-by-hand")?.hasAttribute("disabled")).toBe(true);
+		await sheet.click("paste-clipboard");
+		expect(writes).toBe(1);
+	});
+});
+
+test("a failure with no message of its own says so once, not twice", async () => {
+	setLocale("en");
+	const text = await oneCardBackup();
+	await withClipboard({ readText: async () => text }, async () => {
+		const repo = new InMemoryRepository();
+		repo.listLimitGroups = () => Promise.reject("not an error");
+		const sheet = await mount(repo);
+		await sheet.click("paste-clipboard");
+
+		const alert = sheet.root.querySelector('[role="alert"]')?.textContent ?? "";
+		expect(alert.split("Could not restore that copy.").length - 1).toBe(1);
 	});
 });

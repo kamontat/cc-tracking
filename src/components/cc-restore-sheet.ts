@@ -12,6 +12,7 @@ import {
 	backupCounts,
 	countRecordsV3,
 	importBackupV3,
+	onlySeededDefaults,
 	parseAnyBackup,
 	replaceWithBackupV3,
 	type V3Counts,
@@ -40,8 +41,9 @@ const canReadClipboard = (): boolean =>
  * *Restore a copy*, clipboard first, in a sheet. The start offers *Paste from clipboard*
  * (primary), *Choose a file* and *Paste by hand*; a browser that cannot read the clipboard
  * opens on the text area instead. The clipboard and a file are parsed at once. Into an empty
- * browser the copy goes in straight away; over existing records the sheet shows both counts
- * and asks *Merge* or *Replace*. After any write the starting locations are seeded and every
+ * browser (no records, and locations only the untouched starting places) the copy goes in
+ * straight away, its locations over the seeded ones; over existing records, or a renamed or
+ * added location, the sheet shows both counts and asks *Merge* or *Replace*. After any write the starting locations are seeded and every
  * card is pointed at a stored location, then the sheet slides away and emits `restored`
  * (`RestoredDetail`). Close, Escape, the backdrop and *Cancel* emit `close`; the page takes the
  * sheet away, so a reopened one starts fresh.
@@ -189,6 +191,8 @@ export class CcRestoreSheet extends LitElement {
 	@state() private pending: Pending | null = null;
 	/** A read or write is under way: buttons wait and the sheet holds open. */
 	@state() private busy = false;
+	/** The copy is in and the sheet is sliding away: it stays busy until it is gone. */
+	private leaving = false;
 
 	constructor() {
 		super();
@@ -205,7 +209,7 @@ export class CcRestoreSheet extends LitElement {
 		} catch (failure) {
 			this.failure = failure;
 		} finally {
-			this.busy = false;
+			if (!this.leaving) this.busy = false;
 		}
 	}
 
@@ -213,13 +217,16 @@ export class CcRestoreSheet extends LitElement {
 	private async start(file: string | undefined, text: string) {
 		const backup = parseAnyBackup(text);
 		const existing = await countRecordsV3(this.repo);
-		if (Object.values(existing).some((count) => count > 0)) {
+		const empty =
+			Object.values(existing).every((count) => count === 0) &&
+			onlySeededDefaults(await this.repo.listLocations());
+		if (empty) {
+			await this.finish(file, backup, (repo, copy) =>
+				importBackupV3(repo, copy, { overSeeded: true }),
+			);
+		} else {
 			this.pending = { file, backup, existing, incoming: backupCounts(backup) };
 			this.step = "question";
-		} else {
-			await this.finish(file, backup, (repo, copy) =>
-				importBackupV3(repo, copy),
-			);
 		}
 	}
 
@@ -242,6 +249,7 @@ export class CcRestoreSheet extends LitElement {
 			this.dispatchEvent(
 				new CustomEvent<RestoredDetail>("restored", { detail }),
 			);
+		this.leaving = true;
 		const sheet = this.renderRoot.querySelector("cc-modal");
 		if (sheet) sheet.leave(emit);
 		else emit();
@@ -296,7 +304,7 @@ export class CcRestoreSheet extends LitElement {
 				accept="application/json" data-action="choose-file" ?disabled=${this.busy}
 				@change=${this.onFile} /></label>
 			<button type="button" class="by-hand" data-variant="quiet" data-action="paste-by-hand"
-				@click=${() => {
+				?disabled=${this.busy} @click=${() => {
 					this.failure = null;
 					this.step = "paste";
 				}}>${t("backup.paste")}</button>
@@ -344,6 +352,13 @@ export class CcRestoreSheet extends LitElement {
 		</div>`;
 	}
 
+	/** The lead sentence, then why, unless the reason is that same sentence again. */
+	private failureText(): string {
+		const lead = t("backup.error.import");
+		const reason = messageOf(this.failure, "backup.error.import");
+		return reason === lead ? lead : `${lead} ${reason}`;
+	}
+
 	override render() {
 		const waiting = this.pending;
 		return html`<cc-modal sheet .held=${this.busy} heading=${t("backup.restore.title")}
@@ -354,10 +369,7 @@ export class CcRestoreSheet extends LitElement {
 			${
 				this.failure === null
 					? nothing
-					: html`<p role="alert">${t("backup.error.import")} ${messageOf(
-							this.failure,
-							"backup.error.import",
-						)}</p>`
+					: html`<p role="alert">${this.failureText()}</p>`
 			}
 			${
 				this.step === "question" && waiting
