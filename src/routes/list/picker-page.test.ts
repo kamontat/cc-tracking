@@ -214,6 +214,28 @@ test("the address restores the search, filters and sort", async () => {
 	);
 });
 
+test("a custom place in the address filters, is offered by name and chipped by name", async () => {
+	const { root } = await setup("?loc=chiang-mai&loc=mars", async (repo) => {
+		await repo.saveLocation({
+			id: "chiang-mai",
+			name: "Chiang Mai",
+			takesPurchases: true,
+		});
+		await repo.saveCard(card("F", { location: "chiang-mai" }));
+	});
+	expect(await order(root)).toEqual(["F"]);
+	expect([...root.querySelectorAll("[data-chip]")].map((c) => flat(c))).toEqual(
+		["Chiang Mai ×"],
+	);
+	root.querySelector<HTMLElement>('[data-action="filter"]')?.click();
+	await settle();
+	const element = await sheet(root);
+	expect(element.locations).toEqual(["bangkok", "chiang-mai", "krabi"]);
+	expect(
+		flat(element.shadowRoot?.querySelector("[data-location=chiang-mai]")),
+	).toBe("Chiang Mai");
+});
+
 test("a filter that matches nothing says so and clears", async () => {
 	const { root, addresses } = await setup("?q=nothing&owner=NT");
 	expect(root.querySelector("cc-ready-picker")).toBeNull();

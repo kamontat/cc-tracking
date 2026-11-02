@@ -1,11 +1,7 @@
 import { describeCycle } from "#lib/domain/cycle";
 import { daysBetween } from "#lib/domain/date";
-import type { Location } from "#lib/domain/location";
 import type { CycleRule, LocationRecord, PlainDate } from "#lib/domain/types";
 import { getLocale, t } from "#lib/i18n/index";
-
-export const locationText = (location: Location): string =>
-	t(`location.${location}` as const);
 
 /** The English names the three seeded locations ship with. */
 const defaultNames = {
@@ -53,6 +49,20 @@ export function purchasePlaces(records: LocationRecord[]): string[] {
 export function nameOfLocation(records: LocationRecord[], id: string): string {
 	const record = records.find((r) => r.id === id);
 	return record ? locationName(record) : id;
+}
+
+/**
+ * Every place to list, as ids: the records A to Z (`sortLocations`), then each id in `used`
+ * that no record has, by id, once. A card at a place with no record still gets listed.
+ */
+export function placeOrder(
+	records: LocationRecord[],
+	used: Iterable<string>,
+): string[] {
+	const order = sortLocations(records).map((record) => record.id);
+	const known = new Set(order);
+	const orphans = [...new Set(used)].filter((id) => !known.has(id)).sort();
+	return [...order, ...orphans];
 }
 
 /** "1st", "2nd", "3rd", "18th". English only — Thai writes the bare number. */

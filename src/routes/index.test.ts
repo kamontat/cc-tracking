@@ -222,9 +222,7 @@ test("ready to use names the places that take purchases, A to Z in the reader's 
 		name: "Chiang Mai",
 		takesPurchases: true,
 	});
-	await repo.saveCard(
-		card("C", { location: "chiang-mai" as Card["location"] }),
-	);
+	await repo.saveCard(card("C", { location: "chiang-mai" }));
 	renderHomePage(repo, root);
 	await settle();
 	const panel = await readyList(root);

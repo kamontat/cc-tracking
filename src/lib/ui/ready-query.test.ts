@@ -7,7 +7,7 @@ import {
 } from "#lib/ui/ready-query";
 
 test("an empty address is the default view, and the default writes no query", () => {
-	expect(readReadyView("")).toEqual(DEFAULT_READY_VIEW);
+	expect(readReadyView("", [])).toEqual(DEFAULT_READY_VIEW);
 	expect(readyViewAddress(DEFAULT_READY_VIEW)).toBe("/list/new");
 });
 
@@ -25,16 +25,25 @@ test("the view round-trips through the address, places and holders repeated", ()
 		sort: view.sort,
 	});
 	expect(url).toBe("/list/new?q=scb+k&loc=bangkok&loc=krabi&owner=NT&sort=due");
-	expect(readReadyView(url.slice("/list/new".length))).toEqual({
+	expect(
+		readReadyView(url.slice("/list/new".length), ["bangkok", "krabi"]),
+	).toEqual({
 		filter: { q: "scb k", locations: ["bangkok", "krabi"], owners: ["NT"] },
 		sort: "due",
 	});
 });
 
 test("unknown places, holders and sorts read as nothing", () => {
-	expect(readReadyView("?loc=mars&owner=ZZ&sort=big")).toEqual(
+	expect(readReadyView("?loc=mars&owner=ZZ&sort=big", ["bangkok"])).toEqual(
 		DEFAULT_READY_VIEW,
 	);
+});
+
+test("any stored location id is read; one with no record is not", () => {
+	expect(
+		readReadyView("?loc=chiang-mai&loc=mars&loc=krabi", ["krabi", "chiang-mai"])
+			.filter.locations,
+	).toEqual(["chiang-mai", "krabi"]);
 });
 
 test("only an address with a card is the entering step", () => {

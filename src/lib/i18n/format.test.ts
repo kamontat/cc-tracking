@@ -3,6 +3,7 @@ import {
 	describeCycleText,
 	locationName,
 	nameOfLocation,
+	placeOrder,
 	purchasePlaces,
 	relativeDayText,
 	sortLocations,
@@ -93,6 +94,20 @@ test("lists locations A to Z by shown name", () => {
 		"Phichit",
 	]);
 	expect(records[0]?.id).toBe("phichit");
+});
+
+test("place order: records A to Z, then each used id with no record, by id, once", () => {
+	setLocale("en");
+	const records = [
+		{ id: "phichit", name: "Phichit", takesPurchases: false },
+		{ id: "loc-1", name: "Ayutthaya", takesPurchases: false },
+	];
+	expect(placeOrder(records, ["zz", "phichit", "aa", "zz"])).toEqual([
+		"loc-1",
+		"phichit",
+		"aa",
+		"zz",
+	]);
 });
 
 test("falls back to the id when no record matches", () => {

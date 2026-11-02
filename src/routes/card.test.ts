@@ -408,7 +408,7 @@ test("a card kept at a place of its own that takes no purchases names that place
 	});
 	await repo.saveCard({
 		...card,
-		location: "chiang-mai" as Card["location"],
+		location: "chiang-mai",
 		limitGroupId: "pool",
 	});
 	const root = await open(repo);
@@ -418,6 +418,17 @@ test("a card kept at a place of its own that takes no purchases names that place
 	expect(text(actions?.querySelector(".note"))).toStartWith(
 		"Chiang Mai takes no new purchases",
 	);
+	expect(text(root.querySelector("h1 small"))).toBe(
+		`${card.id} · Kept in Chiang Mai`,
+	);
+	const hero = root.querySelector<HTMLElement & { locations: unknown[] }>(
+		"cc-card-hero",
+	);
+	expect(hero?.locations).toContainEqual({
+		id: "chiang-mai",
+		name: "Chiang Mai",
+		takesPurchases: false,
+	});
 });
 
 test("a card kept where purchases are not ticked says so instead of Use on a list", async () => {

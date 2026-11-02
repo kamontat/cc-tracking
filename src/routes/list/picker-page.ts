@@ -14,7 +14,7 @@ import {
 	readyLocations,
 	readyOwners,
 } from "#lib/domain/ready-filter";
-import { locationText, purchasePlaces } from "#lib/i18n/format";
+import { nameOfLocation, purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { newListAddress } from "#lib/ui/list-address";
@@ -59,7 +59,9 @@ export function renderPickerPage(
 	const navigate = options.navigate ?? ((url: string) => location.assign(url));
 	markListPage(root);
 
-	let view: ReadyView = readReadyView(options.search ?? location.search);
+	const search = options.search ?? location.search;
+	// No location is known before the first load, so the address is read again once one lands.
+	let view: ReadyView = readReadyView(search, []);
 	let data: MoneyData | null = null;
 	// Tap order, which is the order the entering step opens its lines in.
 	let selected: string[] = [];
@@ -68,7 +70,14 @@ export function renderPickerPage(
 
 	const state = createPageState({
 		fetch: async () => {
-			data = await loadMoneyData(repo, now);
+			const loaded = await loadMoneyData(repo, now);
+			// Only the first load reads the address: after it, the view is the page's own.
+			if (!data)
+				view = readReadyView(
+					search,
+					loaded.locations.map((record) => record.id),
+				);
+			data = loaded;
 		},
 		fallbackKey: "home.error.read",
 		paint: () => paint(),
@@ -94,7 +103,7 @@ export function renderPickerPage(
 		return [
 			...filter.locations.map((location) => ({
 				key: `location:${location}`,
-				label: locationText(location),
+				label: nameOfLocation(data?.locations ?? [], location),
 				clear: () =>
 					setFilter({
 						locations: filter.locations.filter((l) => l !== location),
@@ -188,7 +197,8 @@ export function renderPickerPage(
 			${
 				sheet
 					? html`<cc-ready-filter
-						.locations=${readyLocations(all)}
+						.locations=${readyLocations(all, from.locations)}
+						.records=${from.locations}
 						.owners=${readyOwners(all)}
 						.filter=${sheet}
 						.sort=${view.sort}

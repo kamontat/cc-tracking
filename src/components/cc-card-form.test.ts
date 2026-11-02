@@ -1,11 +1,18 @@
 import { expect, test } from "bun:test";
 import "#components/cc-card-form";
 import type { CcCardForm } from "#components/cc-card-form";
-import type { Card, LimitGroup } from "#lib/domain/types";
+import type { Card, LimitGroup, LocationRecord } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
 const groups: LimitGroup[] = [
 	{ id: "pool", name: "KBank account", limit: 500_000 },
+];
+
+/** The three seeded places, stored out of name order. */
+const places: LocationRecord[] = [
+	{ id: "phichit", name: "Phichit", takesPurchases: false },
+	{ id: "krabi", name: "Krabi", takesPurchases: true },
+	{ id: "bangkok", name: "Bangkok", takesPurchases: false },
 ];
 
 const stored = (extra: Partial<Card> = {}): Card => ({
@@ -29,6 +36,7 @@ const mount = async (
 	const element = document.createElement("cc-card-form");
 	element.card = card;
 	element.groups = limitGroups;
+	element.locations = places;
 	Object.assign(element, extra);
 	document.body.append(element);
 	await element.updateComplete;
@@ -351,28 +359,93 @@ test("shows the id of a saved card disabled, and saves under it", async () => {
 	expect(saves[0]?.name).toBe("Renamed");
 });
 
-test("offers the locations as a segmented control, labelled, Bangkok first", async () => {
+const locationButtons = (element: CcCardForm) => [
+	...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
+		".seg [data-location]",
+	) ?? []),
+];
+
+test("offers the stored locations as a segmented control, A to Z by name", async () => {
 	const element = await mount();
-	const buttons = [
-		...(element.shadowRoot?.querySelectorAll<HTMLButtonElement>(
-			".seg [data-location]",
-		) ?? []),
-	];
+	const buttons = locationButtons(element);
 	expect(buttons.map((button) => button.dataset["location"])).toEqual([
 		"bangkok",
-		"phichit",
 		"krabi",
+		"phichit",
 	]);
 	expect(buttons.map((button) => button.textContent?.trim())).toEqual([
 		"Bangkok",
-		"Phichit",
 		"Krabi",
+		"Phichit",
 	]);
 	expect(buttons.map((button) => button.getAttribute("aria-pressed"))).toEqual([
 		"true",
 		"false",
 		"false",
 	]);
+});
+
+test("Kept in lists a custom location and saves its id", async () => {
+	const element = await mount(null, groups, {
+		locations: [
+			...places,
+			{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: false },
+		],
+	});
+	const saves = onSave(element);
+	expect(locationButtons(element).map((b) => b.textContent?.trim())).toEqual([
+		"Bangkok",
+		"Chiang Mai",
+		"Krabi",
+		"Phichit",
+	]);
+
+	await fillCard(element);
+	await pickLocation(element, "chiang-mai");
+	fill(element, "limitGroupId", "pool");
+	await submit(element);
+
+	expect(saves[0]?.location).toBe("chiang-mai");
+});
+
+test("Kept in follows the language: a seeded name in Thai sorts by its Thai name", async () => {
+	const element = await mount(null, groups, {
+		locations: [
+			...places,
+			{ id: "ayutthaya", name: "Ayutthaya", takesPurchases: false },
+		],
+	});
+	setLocale("th");
+	await element.updateComplete;
+	const names = locationButtons(element).map((b) => b.textContent?.trim());
+	expect(names).toEqual(
+		[...(names as string[])].sort((a, b) => a.localeCompare(b, "th")),
+	);
+	expect(names).toContain("กระบี่");
+	setLocale("en");
+});
+
+test("a new card defaults to the first location A to Z when Bangkok is gone", async () => {
+	const element = await mount(null, groups, {
+		locations: [
+			{ id: "krabi", name: "Krabi", takesPurchases: true },
+			{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: false },
+		],
+	});
+	const saves = onSave(element);
+	expect(
+		$(element, '[data-location="chiang-mai"]')?.getAttribute("aria-pressed"),
+	).toBe("true");
+
+	fill(element, "id", "kbank");
+	fill(element, "name", "KBank Visa");
+	fill(element, "last4", "4821");
+	fill(element, "closeDay", "18");
+	fill(element, "dueOffsetDays", "15");
+	fill(element, "limitGroupId", "pool");
+	await submit(element);
+
+	expect(saves[0]?.location).toBe("chiang-mai");
 });
 
 test("defaults a new card to Bangkok without the user touching the field", async () => {

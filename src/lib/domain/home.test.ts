@@ -85,7 +85,7 @@ describe("readyRows", () => {
 			name: "Chiang Mai",
 			takesPurchases: true,
 		};
-		const cards = [mk("A", { location: "chiang-mai" as Card["location"] })];
+		const cards = [mk("A", { location: "chiang-mai" })];
 		expect(
 			readyRows(
 				{ ...data(cards), locations: [...locations, custom] },

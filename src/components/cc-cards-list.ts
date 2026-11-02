@@ -7,7 +7,6 @@ import {
 } from "#lib/domain/cards-view";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
-import type { Location } from "#lib/domain/location";
 import { takesPurchases } from "#lib/domain/locations";
 import { formatAmount } from "#lib/domain/money";
 import { openPeriod } from "#lib/domain/statement";
@@ -19,7 +18,7 @@ import type {
 	PlainDate,
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { locationText } from "#lib/i18n/format";
+import { nameOfLocation } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardMini, cardRowTitle } from "#lib/ui/card-label";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
@@ -144,11 +143,8 @@ export class CcCardsList extends LitElement {
 	@property({ attribute: false }) rooms: CardsRooms = new Map();
 	/** The credit each card holds, in satang, keyed by card id; none when absent. */
 	@property({ attribute: false }) credits: Map<string, number> = new Map();
-	/** The stored locations: which take purchases, for each section's heading. */
+	/** The stored locations: each section's name, and whether it takes purchases. */
 	@property({ attribute: false }) locations: LocationRecord[] = [];
-	/** How the page names a place. */
-	@property({ attribute: false }) locationName: (id: string) => string = (id) =>
-		locationText(id as Location);
 	/** How many cards are stored at all, to tell "none yet" from "none match". */
 	@property({ type: Number }) total = 0;
 	/** Each card's ledger, keyed by card id: its open statement holds the dates to show. */
@@ -193,7 +189,7 @@ export class CcCardsList extends LitElement {
 	}
 
 	private row(card: Card, flat: boolean) {
-		const extra = flat ? this.locationName(card.location) : "";
+		const extra = flat ? nameOfLocation(this.locations, card.location) : "";
 		return html`<a class="crow" data-card=${card.id}
 			href=${`/card?id=${encodeURIComponent(card.id)}`}>
 			${cardMini(card, this.groups)}
@@ -232,7 +228,7 @@ export class CcCardsList extends LitElement {
 		return html`
 			${(sections ?? []).map(
 				({ location, cards }) => html`<section data-location=${location}>
-					<h2 class="place"><b>${this.locationName(location)}</b> <small>${cardsCount(cards.length)}${
+					<h2 class="place"><b>${nameOfLocation(this.locations, location)}</b> <small>${cardsCount(cards.length)}${
 						takesPurchases(this.locations, location)
 							? ` · ${t("cards.page.takesPurchases")}`
 							: ""

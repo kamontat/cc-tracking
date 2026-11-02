@@ -6,7 +6,6 @@ import type {
 	Purchase,
 	StatementDates,
 } from "#lib/domain/types";
-import { sortLocations } from "#lib/i18n/format";
 import type { Repository } from "#lib/storage/repository";
 
 export type MoneyData = ReadyData & {
@@ -46,8 +45,8 @@ export async function loadMoneyData(
 	return {
 		cards,
 		groups,
-		// A to Z by shown name in the language at load time.
-		locations: sortLocations(locations),
+		// As stored: each screen sorts them by shown name as it draws, in the language then.
+		locations,
 		lists,
 		purchases,
 		payments,

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import type { Card } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 import { sampleCard } from "#lib/storage/contract";
 import {
 	MIGRATION_KEY,
@@ -66,6 +67,57 @@ test("one unwritable card does not stop the others", async () => {
 
 	expect(await migrateLocations(repo, storage)).toEqual(["Card B"]);
 	expect((await repo.getCard("b"))?.location).toBe("bangkok");
+});
+
+test("a card kept at a deleted default location gets that location's record back", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLocation({ id: "krabi", name: "Krabi", takesPurchases: true });
+	await repo.saveCard(sampleCard({ id: "scb", location: "bangkok" }));
+	const storage = freshStorage();
+
+	expect(await migrateLocations(repo, storage)).toEqual([]);
+	expect((await repo.getCard("scb"))?.location).toBe("bangkok");
+	expect(await repo.listLocations()).toEqual([
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+	]);
+	expect(storage.getItem(MIGRATION_KEY)).toBeNull();
+});
+
+test("a card at a stored custom location is left alone", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLocation({
+		id: "chiang-mai",
+		name: "Chiang Mai",
+		takesPurchases: false,
+	});
+	await repo.saveCard(sampleCard({ id: "scb", location: "chiang-mai" }));
+	const storage = freshStorage();
+
+	expect(await migrateLocations(repo, storage)).toEqual([]);
+	expect((await repo.getCard("scb"))?.location).toBe("chiang-mai");
+	expect((await repo.listLocations()).map((r) => r.id)).toEqual(["chiang-mai"]);
+});
+
+test("any other unknown location moves the card to the first record A to Z, and names it", async () => {
+	setLocale("en");
+	const repo = new InMemoryRepository();
+	await repo.saveLocation({ id: "krabi", name: "Krabi", takesPurchases: true });
+	await repo.saveLocation({
+		id: "loc-1",
+		name: "Ayutthaya",
+		takesPurchases: false,
+	});
+	await repo.saveCard(
+		legacyCard("Somewhere", { id: "kbank", name: "KBank Visa" }),
+	);
+	const storage = freshStorage();
+
+	expect(await migrateLocations(repo, storage)).toEqual(["KBank Visa"]);
+	expect((await repo.getCard("kbank"))?.location).toBe("loc-1");
+	expect(JSON.parse(storage.getItem(MIGRATION_KEY) ?? "[]")).toEqual([
+		"KBank Visa",
+	]);
 });
 
 test("the notice is readable once and then gone", () => {

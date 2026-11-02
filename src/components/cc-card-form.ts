@@ -9,11 +9,7 @@ import {
 } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { byOwnerThenName } from "#lib/domain/list-view";
-import {
-	DEFAULT_LOCATION,
-	LOCATIONS,
-	type Location,
-} from "#lib/domain/location";
+import { DEFAULT_LOCATION } from "#lib/domain/location";
 import { formatAmount } from "#lib/domain/money";
 import {
 	DEFAULT_OWNER,
@@ -23,10 +19,15 @@ import {
 	ownerOf,
 	toOwner,
 } from "#lib/domain/owner";
-import type { Card, CycleRule, LimitGroup } from "#lib/domain/types";
+import type {
+	Card,
+	CycleRule,
+	LimitGroup,
+	LocationRecord,
+} from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
-import { locationText } from "#lib/i18n/format";
+import { locationName, sortLocations } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
 import { base, controls, panel } from "#styles/shared";
 
@@ -57,10 +58,10 @@ const numberOf = (text: string): number => {
 /**
  * The card form, the whole of `/card/new` and `/card/edit` under their sub-header, in panels:
  * *Card* (name; card id, disabled when editing, beside last 4), *Where and who* (*Kept in* as a
- * segmented control of the locations; the limit group, `name (holder) · limit`; the cardholder,
- * the group's account holder or a supplementary card with its own holder), *Billing cycle* (the
- * kind, then the close day beside *due days after close* or *due on day*) and *Comment*; then the
- * submit. Archive and Delete live on the card page's More menu, not here.
+ * segmented control of every stored location, A to Z by shown name; the limit group,
+ * `name (holder) · limit`; the cardholder, the group's account holder or a supplementary card
+ * with its own holder), *Billing cycle* (the kind, then the close day beside *due days after
+ * close* or *due on day*) and *Comment*; then the submit. Archive and Delete live on the card page's More menu, not here.
  *
  * Emits `save` with the card. `error` is the page's reason a write failed; what was typed stays,
  * since the fields fill from `card` only when it turns to another card (UI-11).
@@ -190,6 +191,8 @@ export class CcCardForm extends LitElement {
 	/** The card to edit; null for a new one. */
 	@property({ attribute: false }) card: Card | null = null;
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** The stored locations, every one offered under *Kept in*. */
+	@property({ attribute: false }) locations: LocationRecord[] = [];
 	/** Why the page's last write failed; typing is kept. */
 	@property() error = "";
 	/** A write is under way: the buttons wait. */
@@ -197,7 +200,8 @@ export class CcCardForm extends LitElement {
 
 	// The typed text fields, by input name.
 	@state() private text: Record<TextField, string> = blank();
-	@state() private location: Location = DEFAULT_LOCATION;
+	// The place picked, or the card's own; "" for a new card until one is picked (`keptIn`).
+	@state() private location = "";
 	@state() private groupId = "";
 	@state() private kind: Kind = "offset";
 	@state() private supplementary = false;
@@ -243,7 +247,7 @@ export class CcCardForm extends LitElement {
 			dueDay: rule?.kind === "fixed" ? String(rule.dueDay) : "",
 			comment: card?.comment ?? "",
 		};
-		this.location = card?.location ?? DEFAULT_LOCATION;
+		this.location = card?.location ?? "";
 		this.groupId = card?.limitGroupId ?? "";
 		// A group deleted since the card was saved: the same fallback as the groups change below.
 		// With no groups loaded yet the id stays, for when they arrive.
@@ -323,7 +327,7 @@ export class CcCardForm extends LitElement {
 			id,
 			name,
 			last4,
-			location: this.location,
+			location: this.keptIn(),
 			supplementary: this.supplementary,
 			// Left off for a primary card: whoever holds its group holds it.
 			...(owner ? { owner } : {}),
@@ -364,14 +368,28 @@ export class CcCardForm extends LitElement {
 	}
 
 	/** A segmented control: one `aria-pressed` button per value. */
-	private seg<T extends string>(
+	private seg<T>(
 		values: readonly T[],
-		current: T,
+		pressedOf: (value: T) => boolean,
 		button: (value: T, pressed: string) => unknown,
 	) {
 		return html`<div class="seg">${values.map((value) =>
-			button(value, current === value ? "true" : "false"),
+			button(value, pressedOf(value) ? "true" : "false"),
 		)}</div>`;
+	}
+
+	/**
+	 * Where the card is kept: the place picked or stored, else for a new card Bangkok while it is
+	 * stored (or nothing is loaded yet), else the first location A to Z.
+	 */
+	private keptIn(): string {
+		if (this.location) return this.location;
+		if (
+			this.locations.length === 0 ||
+			this.locations.some((record) => record.id === DEFAULT_LOCATION)
+		)
+			return DEFAULT_LOCATION;
+		return sortLocations(this.locations)[0]?.id ?? DEFAULT_LOCATION;
 	}
 
 	private holderOf(): Owner {
@@ -416,15 +434,15 @@ export class CcCardForm extends LitElement {
 				html`<fieldset>
 						<legend>${t("form.location")}</legend>
 						${this.seg(
-							LOCATIONS,
-							this.location,
+							sortLocations(this.locations),
+							(record) => record.id === this.keptIn(),
 							(
-								value,
+								record,
 								pressed,
-							) => html`<button type="button" data-location=${value}
+							) => html`<button type="button" data-location=${record.id}
 								aria-pressed=${pressed} @click=${() => {
-									this.location = value;
-								}}>${locationText(value)}</button>`,
+									this.location = record.id;
+								}}>${locationName(record)}</button>`,
 						)}
 					</fieldset>
 
@@ -482,7 +500,7 @@ export class CcCardForm extends LitElement {
 				html`<div role="group" aria-labelledby="section-cycle">
 						${this.seg(
 							["offset", "fixed"] as const,
-							this.kind,
+							(kind) => kind === this.kind,
 							(kind, pressed) => html`<button type="button" data-kind=${kind}
 								aria-pressed=${pressed} @click=${() => {
 									this.kind = kind;

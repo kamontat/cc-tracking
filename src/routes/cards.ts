@@ -16,10 +16,9 @@ import {
 	groupPanels,
 } from "#lib/domain/cards-view";
 import { today } from "#lib/domain/date";
-import { LOCATIONS, type Location } from "#lib/domain/location";
 import { groupRoom } from "#lib/domain/room";
-import type { LimitGroup, LocationRecord } from "#lib/domain/types";
-import { locationText } from "#lib/i18n/format";
+import type { LimitGroup } from "#lib/domain/types";
+import { nameOfLocation, placeOrder } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
@@ -60,13 +59,10 @@ type CardsData = {
 	money: MoneyData;
 	rooms: CardsRooms;
 	credits: Map<string, number>;
-	/** Every place the cards use: the stored order, then any other a card is kept at. */
-	order: string[];
-	records: LocationRecord[];
 };
 
-const isDefaultLocation = (id: string): id is Location =>
-	(LOCATIONS as readonly string[]).includes(id);
+const locationIds = (money: MoneyData): string[] =>
+	money.locations.map((record) => record.id);
 
 /**
  * The Cards page (prototype `vCards`): the heading with *Add card*, the shared search, filter
@@ -87,7 +83,8 @@ export function renderCardsPage(
 	const storage = options.storage ?? globalThis.localStorage;
 
 	let data: CardsData | null = null;
-	let view: CardsView = readCardsView(address.search());
+	// No location is known before the first load, so the address is read again once one lands.
+	let view: CardsView = readCardsView(address.search(), []);
 	// The filter sheet is open; it takes a fresh copy of the view, so its draft starts there.
 	let filterOpen = false;
 	// Read once per page load: the notice is consumed here, not on every paint.
@@ -114,10 +111,7 @@ export function renderCardsPage(
 
 	const state = createPageState({
 		fetch: async () => {
-			const [money, records] = await Promise.all([
-				loadMoneyData(repo, now),
-				repo.listLocations(),
-			]);
+			const money = await loadMoneyData(repo, now);
 			const rooms: CardsRooms = new Map(
 				money.groups.map((group) => [
 					group.id,
@@ -127,21 +121,12 @@ export function renderCardsPage(
 			const credits = new Map(
 				money.cards.map((c) => [c.id, money.ledgers.get(c.id)?.credit ?? 0]),
 			);
-			const order: string[] =
-				records.length > 0 ? records.map((r) => r.id) : [...LOCATIONS];
-			for (const c of money.cards)
-				if (!order.includes(c.location)) order.push(c.location);
-			data = { money, rooms, credits, order, records };
+			view = readCardsView(address.search(), locationIds(money));
+			data = { money, rooms, credits };
 		},
 		fallbackKey: "cards.error.read",
 		paint: () => paint(),
 	});
-
-	/** A default place by the catalog, so it follows the language; any other by its record. */
-	const locationName = (id: string): string => {
-		if (isDefaultLocation(id)) return locationText(id);
-		return data?.records.find((r) => r.id === id)?.name ?? id;
-	};
 
 	const sheetAddress = (group: string | null) =>
 		`/cards${groupSheetAddress(writeCardsView(view), group)}`;
@@ -221,7 +206,7 @@ export function renderCardsPage(
 	const chips = (): FilterPill[] => [
 		...view.locations.map((location) => ({
 			key: `loc:${location}`,
-			label: locationName(location),
+			label: nameOfLocation(data?.money.locations ?? [], location),
 			clear: () =>
 				change({ locations: view.locations.filter((l) => l !== location) }),
 		})),
@@ -264,6 +249,11 @@ export function renderCardsPage(
 	const results = (d: CardsData) => {
 		const { cards, groups } = d.money;
 		const active = chips();
+		// Sorted on every paint, so the sections follow a language switch.
+		const order = placeOrder(
+			d.money.locations,
+			cards.map((c) => c.location),
+		);
 		return html`
 			${filterControls({
 				q: view.q,
@@ -278,13 +268,12 @@ export function renderCardsPage(
 				chips: active,
 			})}
 			<cc-cards-list
-				.results=${cardsResults(cards, groups, d.rooms, view, d.order)}
+				.results=${cardsResults(cards, groups, d.rooms, view, order)}
 				.groups=${groups}
 				.rooms=${d.rooms}
 				.credits=${d.credits}
 				.ledgers=${d.money.ledgers}
-				.locations=${d.records}
-				.locationName=${locationName}
+				.locations=${d.money.locations}
 				.total=${cards.length}
 				.today=${now}
 			></cc-cards-list>
@@ -292,10 +281,9 @@ export function renderCardsPage(
 				filterOpen
 					? html`<cc-cards-filter
 						.view=${{ ...view }}
-						.locations=${LOCATIONS}
-						.locationName=${locationName}
+						.locations=${d.money.locations}
 						.count=${(v: CardsView) =>
-							cardsResults(cards, groups, d.rooms, v, d.order).count}
+							cardsResults(cards, groups, d.rooms, v, order).count}
 						@apply=${(e: CustomEvent<CardsView>) => {
 							filterOpen = false;
 							change({ ...e.detail });
@@ -355,7 +343,7 @@ export function renderCardsPage(
 		// Read the new entry even while a write is under way, so the write's close knows what
 		// is still open and never steps back past this page.
 		sheetFailed = false;
-		view = readCardsView(address.search());
+		view = readCardsView(address.search(), data ? locationIds(data.money) : []);
 		// Back off a sheet, or Forward onto one only a tap could have made.
 		pushed = openedOnce && readGroupSheet(address.search()) !== null;
 		syncNewId();

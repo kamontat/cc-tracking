@@ -1,4 +1,3 @@
-import type { Location } from "#lib/domain/location";
 import type { Owner } from "#lib/domain/owner";
 
 /** A calendar date in Asia/Bangkok, formatted `YYYY-MM-DD`. */
@@ -17,7 +16,8 @@ export type Card = {
 	id: string;
 	name: string;
 	last4: string;
-	location: Location;
+	/** The id of the location record the card is kept at. */
+	location: string;
 	/**
 	 * A บัตรเสริม — a supplementary card issued against someone else's account. Absent on
 	 * cards saved before the field existed, which reads the same as not being one.

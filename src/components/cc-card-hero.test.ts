@@ -59,6 +59,7 @@ const mount = async (props: Partial<CcCardHero> = {}) => {
 		credit: 0,
 		next: bill(),
 		today: "2026-10-30",
+		locations: [{ id: "bangkok", name: "Bangkok", takesPurchases: false }],
 		...props,
 	});
 	document.body.append(element);
@@ -115,6 +116,26 @@ test("three stats: owed, the next bill, and where the card is kept", async () =>
 		["Kept in", "Bangkok"],
 	]);
 	expect(root.querySelector("b[data-overdue]")).toBeNull();
+});
+
+test("Kept in names the place by its record, in the reader's language", async () => {
+	const kept = (root: ShadowRoot) =>
+		text(root.querySelectorAll(".stat")[2]?.querySelector("b"));
+	let root = await mount({
+		card: { ...card, location: "chiang-mai" },
+		locations: [
+			{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: false },
+		],
+	});
+	expect(kept(root)).toBe("Chiang Mai");
+	root = await mount({
+		locations: [{ id: "bangkok", name: "Head office", takesPurchases: false }],
+	});
+	expect(kept(root)).toBe("Head office");
+	root = await mount();
+	setLocale("th");
+	await (document.querySelector("cc-card-hero") as CcCardHero).updateComplete;
+	expect(kept(root)).toBe("กรุงเทพฯ");
 });
 
 test("an overdue next bill reads in the bad colour; no bill is a dash", async () => {

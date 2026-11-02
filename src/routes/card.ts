@@ -17,7 +17,7 @@ import { formatAmount } from "#lib/domain/money";
 import { openPeriod, recentPeriods } from "#lib/domain/statement";
 import type { Card, LedgerStatement, Purchase } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
-import { locationText, nameOfLocation } from "#lib/i18n/format";
+import { nameOfLocation } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { cardTitle } from "#lib/ui/card-label";
@@ -300,7 +300,7 @@ export function renderCardPage(
 					title: cardTitle(current, data?.groups ?? []),
 					detail: t("card.subtitle", {
 						id: current.id,
-						location: locationText(current.location),
+						location: nameOfLocation(data?.locations ?? [], current.location),
 					}),
 					back: "/cards",
 					actions: html`<a class="btn" data-variant="quiet" data-action="edit"
@@ -345,6 +345,7 @@ export function renderCardPage(
 				.credit=${ledger?.credit ?? 0}
 				.next=${next}
 				.today=${now}
+				.locations=${data?.locations ?? []}
 			></cc-card-hero>
 			${current.comment ? html`<p class="card-comment">${current.comment}</p>` : nothing}
 			${overNote(current)}

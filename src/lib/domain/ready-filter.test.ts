@@ -9,7 +9,8 @@ import {
 	readyOwnerOf,
 	readyOwners,
 } from "#lib/domain/ready-filter";
-import type { Card, LimitGroup } from "#lib/domain/types";
+import type { Card, LimitGroup, LocationRecord } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 
 const kc: LimitGroup = {
 	id: "g1",
@@ -70,13 +71,45 @@ describe("readyOwnerOf", () => {
 });
 
 describe("readyLocations and readyOwners", () => {
-	test("only the places and holders the ready cards have, in their fixed order", () => {
-		expect(readyLocations(rows())).toEqual(["bangkok", "phichit", "krabi"]);
-		expect(readyLocations(rows().slice(0, 1))).toEqual(["krabi"]);
+	const records: LocationRecord[] = [
+		{ id: "phichit", name: "Phichit", takesPurchases: false },
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+		{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: true },
+	];
+
+	test("only the places and holders the ready cards have; places A to Z, holders fixed", () => {
+		setLocale("en");
+		expect(readyLocations(rows(), records)).toEqual([
+			"bangkok",
+			"krabi",
+			"phichit",
+		]);
+		expect(readyLocations(rows().slice(0, 1), records)).toEqual(["krabi"]);
 		expect(readyOwners(rows())).toEqual(["KC", "NT", "RI"]);
 		expect(readyOwners(rows().slice(0, 2))).toEqual(["KC", "NT"]);
-		expect(readyLocations([])).toEqual([]);
+		expect(readyLocations([], records)).toEqual([]);
 		expect(readyOwners([])).toEqual([]);
+	});
+});
+
+describe("readyLocations with custom places", () => {
+	test("a custom place sorts by its name, in the reader's language; one with no record goes last", () => {
+		const records: LocationRecord[] = [
+			{ id: "krabi", name: "Krabi", takesPurchases: true },
+			{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: true },
+		];
+		const list = [
+			row("1", kc),
+			row("2", kc, { location: "chiang-mai" }),
+			row("3", kc, { location: "zz-gone" }),
+		];
+		setLocale("en");
+		expect(readyLocations(list, records)).toEqual([
+			"chiang-mai",
+			"krabi",
+			"zz-gone",
+		]);
 	});
 });
 

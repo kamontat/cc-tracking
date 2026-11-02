@@ -13,10 +13,11 @@ import type {
 	Card,
 	LedgerStatement,
 	LimitGroup,
+	LocationRecord,
 	PlainDate,
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { locationText } from "#lib/i18n/format";
+import { nameOfLocation } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
 import { groupTone } from "#lib/ui/card-label";
 import { base } from "#styles/shared";
@@ -201,6 +202,8 @@ export class CcCardHero extends LitElement {
 	/** The oldest closed statement still owing, from `nextBill`. */
 	@property({ attribute: false }) next: LedgerStatement | null = null;
 	@property() today: PlainDate = "";
+	/** The stored locations, which name the place the card is kept at. */
+	@property({ attribute: false }) locations: LocationRecord[] = [];
 
 	constructor() {
 		super();
@@ -273,7 +276,7 @@ export class CcCardHero extends LitElement {
 					</div>`
 					: html`<div class="stat">
 						<small>${t("card.stat.keptIn")}</small>
-						<b>${locationText(card.location)}</b>
+						<b>${nameOfLocation(this.locations, card.location)}</b>
 					</div>`
 			}
 		</div>`;

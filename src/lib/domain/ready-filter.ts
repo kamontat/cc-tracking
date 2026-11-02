@@ -1,6 +1,7 @@
 import type { ReadyRow } from "#lib/domain/home";
-import { LOCATIONS, type Location } from "#lib/domain/location";
 import { cardOwnerOf, OWNERS, type Owner } from "#lib/domain/owner";
+import type { LocationRecord } from "#lib/domain/types";
+import { placeOrder } from "#lib/i18n/format";
 
 /**
  * What the new-list picker narrows *Ready to use* by (DD-103): a search over each card's id,
@@ -9,7 +10,7 @@ import { cardOwnerOf, OWNERS, type Owner } from "#lib/domain/owner";
  */
 export type ReadyFilter = {
 	q: string;
-	locations: Location[];
+	locations: string[];
 	owners: Owner[];
 };
 
@@ -24,10 +25,18 @@ export function readyOwnerOf(row: ReadyRow): Owner | null {
 	return cardOwnerOf(row.card, row.room.group);
 }
 
-/** The places the ready cards are kept in, in the fixed order of `LOCATIONS`. */
-export function readyLocations(rows: ReadyRow[]): Location[] {
-	const kept = new Set(rows.map((row) => row.card.location));
-	return LOCATIONS.filter((location) => kept.has(location));
+/**
+ * The ids of the places the ready cards are kept in: A to Z by shown name in the reader's
+ * language (`sortLocations`), then any with no record, by id.
+ */
+export function readyLocations(
+	rows: ReadyRow[],
+	records: LocationRecord[],
+): string[] {
+	return placeOrder(
+		records,
+		rows.map((row) => row.card.location),
+	).filter((id) => rows.some((row) => row.card.location === id));
 }
 
 /** The account holders of the ready cards, in the fixed order of `OWNERS`. */

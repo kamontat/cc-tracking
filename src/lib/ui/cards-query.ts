@@ -4,19 +4,28 @@ import {
 	type CardsView,
 	DEFAULT_CARDS_VIEW,
 } from "#lib/domain/cards-view";
-import { LOCATIONS } from "#lib/domain/location";
 import { OWNERS } from "#lib/domain/owner";
 
 const manyOf = <T extends string>(known: readonly T[], values: string[]): T[] =>
 	known.filter((k) => values.includes(k));
 
-/** The Cards page's state from `/cards?q=&loc=&owner=&sort=`; unknown values read as defaults. */
-export function readCardsView(search: string): CardsView {
+/** The `values` that are in `ids`, once each, in the address's order. */
+const known = (ids: readonly string[], values: string[]): string[] =>
+	[...new Set(values)].filter((value) => ids.includes(value));
+
+/**
+ * The Cards page's state from `/cards?q=&loc=&owner=&sort=`; unknown values read as defaults.
+ * A `loc` is kept only when it is one of `locationIds`, the stored records' ids.
+ */
+export function readCardsView(
+	search: string,
+	locationIds: readonly string[],
+): CardsView {
 	const p = new URLSearchParams(search);
 	const sort = p.get("sort");
 	return {
 		q: p.get("q") ?? "",
-		locations: manyOf(LOCATIONS, p.getAll("loc")),
+		locations: known(locationIds, p.getAll("loc")),
 		owners: manyOf(OWNERS, p.getAll("owner")),
 		sort: CARDS_SORTS.includes(sort as CardsSort)
 			? (sort as CardsSort)

@@ -1,14 +1,14 @@
 import { html, LitElement, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { READY_SORTS, type ReadySort } from "#lib/domain/home";
-import type { Location } from "#lib/domain/location";
 import type { Owner } from "#lib/domain/owner";
 import {
 	DEFAULT_READY_FILTER,
 	type ReadyFilter,
 } from "#lib/domain/ready-filter";
+import type { LocationRecord } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { locationText } from "#lib/i18n/format";
+import { nameOfLocation } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
 import { base, controls, filterSheet } from "#styles/shared";
 import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet";
@@ -22,8 +22,10 @@ import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet";
 export class CcReadyFilter extends LitElement {
 	static override styles = [base, controls, filterSheet];
 
-	/** The places to offer: those the ready cards are kept in. */
-	@property({ attribute: false }) locations: Location[] = [];
+	/** The ids of the places to offer, in order: those the ready cards are kept in. */
+	@property({ attribute: false }) locations: string[] = [];
+	/** The stored locations, which name the places offered. */
+	@property({ attribute: false }) records: LocationRecord[] = [];
 	/** The account holders to offer: those of the ready cards. */
 	@property({ attribute: false }) owners: Owner[] = [];
 	@property({ attribute: false }) filter: ReadyFilter = DEFAULT_READY_FILTER;
@@ -69,7 +71,7 @@ export class CcReadyFilter extends LitElement {
 							sheetChip(
 								"location",
 								location,
-								locationText(location),
+								nameOfLocation(this.records, location),
 								draft.locations.includes(location),
 								() => {
 									this.draft = {

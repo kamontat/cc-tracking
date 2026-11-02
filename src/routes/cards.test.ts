@@ -143,62 +143,68 @@ test("the heading names the page and links Add card to the new card form", async
 	expect(flatText(add)).toBe("Add card");
 });
 
-test("by place, results follow the stored locations, then any place a card uses beyond them", async () => {
+test("by place, sections run A to Z by shown name; a place with no record comes last", async () => {
 	const { root } = await setup("/cards", {
 		before: async (repo) => {
-			// Stored order puts Krabi first, and leaves out Phichit, where card P is kept.
 			await repo.saveLocation({
-				id: "krabi",
-				name: "Krabi",
-				takesPurchases: true,
-			});
-			await repo.saveLocation({
-				id: "bangkok",
-				name: "Bangkok",
+				id: "chiang-mai",
+				name: "Chiang Mai",
 				takesPurchases: false,
 			});
 			await repo.saveCard(card("P", { location: "phichit" }));
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
+			await repo.saveCard(card("G", { location: "gone" }));
 		},
 	});
 	const el = list(root);
 	expect(el?.results.sections?.map((s) => s.location)).toEqual([
 		"bangkok",
+		"chiang-mai",
 		"krabi",
 		"phichit",
+		"gone",
 	]);
-	expect(el?.results.count).toBe(3);
+	expect(el?.results.count).toBe(5);
 	expect(el?.results.archived.map((c) => c.id)).toEqual(["Z"]);
-	expect(el?.total).toBe(4);
+	expect(el?.total).toBe(6);
+	const head = (id: string) =>
+		flatText(
+			el?.shadowRoot?.querySelector(`section[data-location="${id}"] .place b`),
+		);
+	expect(head("chiang-mai")).toBe("Chiang Mai");
+	expect(head("gone")).toBe("gone");
 });
 
-test("without stored locations the default three keep their order", async () => {
-	const { root } = await setup();
+test("the place order follows the language on every paint", async () => {
+	const { root } = await setup("/cards", {
+		before: async (repo) => {
+			// "Zebra" sorts last in English; renamed Krabi "Aardvark" sorts first.
+			await repo.saveLocation({
+				id: "krabi",
+				name: "Aardvark",
+				takesPurchases: true,
+			});
+			await repo.saveLocation({
+				id: "zebra",
+				name: "Zebra",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("Q", { location: "zebra" }));
+		},
+	});
+	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
+		"krabi",
+		"bangkok",
+		"zebra",
+	]);
+	setLocale("th");
+	await settle();
+	// In Thai, Bangkok reads กรุงเทพฯ, which Thai order puts before the Latin names.
 	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
 		"bangkok",
 		"krabi",
+		"zebra",
 	]);
-});
-
-test("places are named through the catalog for default ones, the stored name otherwise", async () => {
-	const { root } = await setup("/cards", {
-		before: async (repo) => {
-			await repo.saveLocation({
-				id: "chiangmai",
-				name: "Chiang Mai",
-				takesPurchases: false,
-			});
-			await repo.saveCard(
-				card("C", { location: "chiangmai" as Card["location"] }),
-			);
-		},
-	});
-	const el = list(root);
-	expect(el?.results.sections?.map((s) => s.location)).toContain("chiangmai");
-	expect(el?.locationName("chiangmai")).toBe("Chiang Mai");
-	expect(el?.locationName("krabi")).toBe("Krabi");
-	setLocale("th");
-	await settle();
-	expect(list(root)?.locationName("krabi")).toBe("กระบี่");
 	setLocale("en");
 });
 
@@ -283,39 +289,63 @@ test("the filter sheet applies a whole view, shown as chips that clear one at a 
 	expect(address.now()).toBe("/cards?sort=room");
 });
 
-test("the filter offers only the fixed places, and a choice survives a reload", async () => {
+test("the filter offers every stored place A to Z, and a custom choice survives a reload", async () => {
 	const { root, address } = await setup("/cards", {
 		before: async (repo) => {
 			await repo.saveLocation({
-				id: "chiangmai",
+				id: "chiang-mai",
 				name: "Chiang Mai",
 				takesPurchases: false,
 			});
-			await repo.saveCard(
-				card("C", { location: "chiangmai" as Card["location"] }),
-			);
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
 		},
 	});
 	root.querySelector<HTMLButtonElement>('[data-action="filter"]')?.click();
 	await settle();
-	expect(filter(root)?.locations).toEqual(["bangkok", "phichit", "krabi"]);
+	expect(filter(root)?.locations.map((r) => r.id)).toEqual([
+		"bangkok",
+		"chiang-mai",
+		"krabi",
+		"phichit",
+	]);
 	filter(root)?.dispatchEvent(
 		new CustomEvent("apply", {
-			detail: { ...DEFAULT_CARDS_VIEW, locations: ["phichit", "bangkok"] },
+			detail: { ...DEFAULT_CARDS_VIEW, locations: ["chiang-mai", "bangkok"] },
 		}),
 	);
 	await settle();
 	const url = address.now() ?? "";
-	expect(url).toBe("/cards?loc=phichit&loc=bangkok");
-	const again = await setup(url);
+	expect(url).toBe("/cards?loc=chiang-mai&loc=bangkok");
+	const again = await setup(url, {
+		before: async (repo) => {
+			await repo.saveLocation({
+				id: "chiang-mai",
+				name: "Chiang Mai",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
+		},
+	});
 	expect(list(again.root)?.results.sections?.map((s) => s.location)).toEqual([
 		"bangkok",
+		"chiang-mai",
 	]);
+	expect(
+		flatText(again.root.querySelector('[data-chip="loc:chiang-mai"]')),
+	).toBe("Chiang Mai ×");
 	again.root
 		.querySelector<HTMLButtonElement>('[data-action="filter"]')
 		?.click();
 	await settle();
-	expect(filter(again.root)?.view.locations).toEqual(["bangkok", "phichit"]);
+	expect(filter(again.root)?.view.locations).toEqual(["chiang-mai", "bangkok"]);
+});
+
+test("a place in the address with no record is dropped", async () => {
+	const { root } = await setup("/cards?loc=mars&loc=krabi");
+	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
+		"krabi",
+	]);
+	expect(root.querySelector('[data-chip="loc:mars"]')).toBeNull();
 });
 
 test("closing the filter sheet keeps the view", async () => {

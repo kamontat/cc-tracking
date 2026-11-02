@@ -115,8 +115,10 @@ test("lists, locations and archived cards come back", async () => {
 	const data = await loadMoneyData(repo, TODAY);
 
 	expect(data.lists).toEqual([draft]);
-	// A to Z by shown name, whatever order they were stored in.
-	expect(data.locations).toEqual([bangkok, krabi, phichit]);
+	expect(data.locations).toEqual(
+		expect.arrayContaining([bangkok, krabi, phichit]),
+	);
+	expect(data.locations).toHaveLength(3);
 	expect(data.groups.map((g) => g.id)).toEqual(["g1"]);
 	expect(data.cards.map((c) => c.id).sort()).toEqual(["A", "Z"]);
 	expect(data.ledgers.has("Z")).toBe(true);

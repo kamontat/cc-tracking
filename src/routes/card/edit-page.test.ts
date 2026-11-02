@@ -96,6 +96,22 @@ test("/card/new: a save stores the card and replaces the address with its page",
 	expect(visited).toEqual(["/card?id=N%201"]);
 });
 
+test("/card/new: Kept in offers a stored custom location, and the card is saved there", async () => {
+	const { repo, root } = await setup("new", "", async (r) => {
+		await r.saveLocation({
+			id: "chiang-mai",
+			name: "Chiang Mai",
+			takesPurchases: false,
+		});
+	});
+	expect(form(root)?.locations.map((l) => l.id)).toContain("chiang-mai");
+	await fillNew(root, "N1");
+	inner<HTMLButtonElement>(root, '[data-location="chiang-mai"]')?.click();
+	await form(root)?.updateComplete;
+	await submit(root);
+	expect((await repo.getCard("N1"))?.location).toBe("chiang-mai");
+});
+
 test("/card/new: an id already stored is refused, the typing kept", async () => {
 	const { root, repo, visited } = await setup("new", "");
 	await fillNew(root, "A");

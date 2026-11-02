@@ -1,18 +1,21 @@
-import { DEFAULT_LOCATION, toLocation } from "#lib/domain/location";
+import { DEFAULT_LOCATION } from "#lib/domain/location";
+import { defaultLocations } from "#lib/domain/locations";
+import type { LocationRecord } from "#lib/domain/types";
+import { sortLocations } from "#lib/i18n/format";
 import type { Repository } from "#lib/storage/repository";
 
 export const MIGRATION_KEY = "cc:migration:location";
 
 /**
- * Rewrites any stored location the closed set does not recognise, once.
+ * Points every card at a stored location record, once per load.
  *
- * `Card.location` is typed as `Location`, so the guard below looks like dead code. It is
- * not: cards written before the field became a closed set still hold free text, and this
- * is the one place that reads them honestly rather than trusting the type. Coercing on
- * every read instead would leave the type asserting something about stored data that is
- * not true, and would re-fix the same cards forever.
+ * Cards written before the field was a closed set still hold free text, a version 2 backup
+ * can bring cards without their records, and a default record can have gone. So each card is
+ * checked against the stored record ids: one kept at a default place whose record is missing
+ * (`bangkok`, `phichit`, `krabi`) gets that default record back, taking no purchases; any
+ * other unknown value moves the card to the first record A to Z (`sortLocations`).
  *
- * Returns the names of the cards it reset, and records them under `MIGRATION_KEY` so the
+ * Returns the names of the cards it moved, and records them under `MIGRATION_KEY` so the
  * cards page can say which ones need a human to pick the right location.
  */
 export async function migrateLocations(
@@ -20,11 +23,31 @@ export async function migrateLocations(
 	storage: Storage,
 ): Promise<string[]> {
 	const reset: string[] = [];
+	const records = await repo.listLocations();
+	const defaults = defaultLocations({ purchaseLocations: [] });
+
+	/** Saves a default record back, and counts it as stored from here on. */
+	const restore = async (record: LocationRecord) => {
+		await repo.saveLocation(record);
+		records.push(record);
+	};
 
 	for (const card of await repo.listCards()) {
-		if (toLocation(card.location) !== null) continue;
+		if (records.some((record) => record.id === card.location)) continue;
 		try {
-			await repo.saveCard({ ...card, location: DEFAULT_LOCATION });
+			const lost = defaults.find((record) => record.id === card.location);
+			if (lost) {
+				await restore(lost);
+				continue;
+			}
+			// With no record at all, the old default place comes back to hold the card.
+			const fallback = defaults.find(
+				(record) => record.id === DEFAULT_LOCATION,
+			);
+			if (records.length === 0 && fallback) await restore(fallback);
+			const first = sortLocations(records)[0];
+			if (!first) continue;
+			await repo.saveCard({ ...card, location: first.id });
 			reset.push(card.name);
 		} catch (failure) {
 			// One card that will not write must not hold back the rest, nor the page behind it.

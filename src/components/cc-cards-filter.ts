@@ -6,10 +6,10 @@ import {
 	type CardsView,
 	DEFAULT_CARDS_VIEW,
 } from "#lib/domain/cards-view";
-import { LOCATIONS, type Location } from "#lib/domain/location";
 import { OWNERS } from "#lib/domain/owner";
+import type { LocationRecord } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { locationText } from "#lib/i18n/format";
+import { locationName, sortLocations } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
 import { base, controls, filterSheet } from "#styles/shared";
 import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet";
@@ -88,11 +88,8 @@ export class CcCardsFilter extends LitElement {
 	];
 
 	@property({ attribute: false }) view: CardsView = DEFAULT_CARDS_VIEW;
-	/** The places to offer, in order. */
-	@property({ attribute: false }) locations: readonly Location[] = LOCATIONS;
-	/** How the page names a place. */
-	@property({ attribute: false }) locationName: (id: string) => string = (id) =>
-		locationText(id as Location);
+	/** The stored locations, every one offered, A to Z by shown name. */
+	@property({ attribute: false }) locations: LocationRecord[] = [];
 	@property({ attribute: false }) count: (view: CardsView) => number = () => 0;
 	@state() private draft: CardsView = DEFAULT_CARDS_VIEW;
 
@@ -129,13 +126,13 @@ export class CcCardsFilter extends LitElement {
 			html`
 			<fieldset>
 				<legend>${t("ready.filter.location")}</legend>
-				<div class="choices">${this.locations.map((location) =>
+				<div class="choices">${sortLocations(this.locations).map((record) =>
 					sheetChip(
 						"location",
-						location,
-						this.locationName(location),
-						draft.locations.includes(location),
-						() => this.set({ locations: toggle(draft.locations, location) }),
+						record.id,
+						locationName(record),
+						draft.locations.includes(record.id),
+						() => this.set({ locations: toggle(draft.locations, record.id) }),
 					),
 				)}</div>
 			</fieldset>
