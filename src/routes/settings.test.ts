@@ -455,9 +455,36 @@ test("the reset rows: delete old purchases, then delete all data", async () => {
 	expect(row(root, "delete-all").textContent).toContain("Delete all data");
 });
 
-test("asks before resetting, counting what it would delete", async () => {
+/** Two cards, a group, three purchases, a payment and a list: each kind counted apart. */
+const fullyPopulated = async <R extends Repository>(repo: R): Promise<R> => {
+	await populated(repo);
+	await repo.saveCard({ ...sampleCard, id: "scb", name: "SCB", last4: "1111" });
+	await repo.savePurchase({
+		id: "p3",
+		cardId: "scb",
+		date: "2026-09-07",
+		amount: 100,
+		note: "",
+	});
+	await repo.saveCardPayment({
+		id: "pay1",
+		cardId: "kbank",
+		date: "2026-09-20",
+		amount: 100,
+		status: "paid",
+	});
+	await repo.savePurchaseList({
+		id: "list1",
+		date: "2026-09-08",
+		status: "draft",
+		lines: [],
+	});
+	return repo;
+};
+
+test("asks before resetting, counting each kind of record it would delete", async () => {
 	setLocale("en");
-	const repo = await populated(new InMemoryRepository());
+	const repo = await fullyPopulated(new InMemoryRepository());
 	const root = mount();
 	renderSettingsPage(repo, root);
 	await settle();
@@ -471,10 +498,10 @@ test("asks before resetting, counting what it would delete", async () => {
 	await settle();
 
 	expect(resetText(root)).toContain(
-		"This deletes 1 card and every list, purchase and payment. Language and theme stay. It can't be undone.",
+		"This deletes 2 cards, 3 purchases, 1 payments, 1 limit groups, 1 lists. Language and theme stay. It can't be undone.",
 	);
 	expect(root.querySelector('[data-row="delete-all"]')).toBeNull();
-	expect(await repo.listCards()).toHaveLength(1);
+	expect(await repo.listCards()).toHaveLength(2);
 });
 
 test("backing out of a reset deletes nothing", async () => {
@@ -567,7 +594,7 @@ test("a failed reset says so and keeps the data", async () => {
 
 test("the reset question follows a language switch", async () => {
 	setLocale("en");
-	const repo = await populated(new InMemoryRepository());
+	const repo = await fullyPopulated(new InMemoryRepository());
 	const root = mount();
 	renderSettingsPage(repo, root);
 	await settle();
@@ -578,6 +605,9 @@ test("the reset question follows a language switch", async () => {
 	await settle();
 
 	expect(resetText(root)).not.toContain("This deletes");
+	expect(resetText(root)).toContain(
+		"จะลบบัตร 2 ใบ, รายการซื้อ 3 รายการ, การชำระ 1 รายการ, กลุ่มวงเงิน 1 กลุ่ม, ใบรายการซื้อ 1 ใบ ภาษาและธีมยังคงเดิม ย้อนกลับไม่ได้",
+	);
 	expect(
 		root.querySelector(
 			'[data-section="reset"] [data-action="delete-everything"]',

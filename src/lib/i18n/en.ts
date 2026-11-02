@@ -389,10 +389,8 @@ export const en = {
 	"settings.reset.all": "Delete all data",
 	"settings.reset.allHint": "Cards, lists, purchases and payments",
 	"settings.reset.allAction": "Delete…",
-	"reset.ask.one":
-		"This deletes 1 card and every list, purchase and payment. Language and theme stay. It can't be undone.",
-	"reset.ask.many":
-		"This deletes {count} cards and every list, purchase and payment. Language and theme stay. It can't be undone.",
+	"reset.ask":
+		"This deletes {counts}. Language and theme stay. It can't be undone.",
 	"reset.keep": "Keep my data",
 	"reset.deleteEverything": "Delete everything",
 	"reset.done": "All data deleted.",

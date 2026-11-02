@@ -15,7 +15,11 @@ import { purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
-import { countRecordsV3, exportBackupV3 } from "#lib/storage/transfer-v3";
+import {
+	countRecordsV3,
+	exportBackupV3,
+	type V3Counts,
+} from "#lib/storage/transfer-v3";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -121,9 +125,9 @@ export function renderSettingsPage(
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language. No filename means the text was pasted.
 	let imported: RestoredDetail | null = null;
-	// A count rather than a sentence, for the same reason: the reset warning must re-render in
+	// Counts rather than a sentence, for the same reason: the reset warning must re-render in
 	// the new language if the reader switches while it is on screen.
-	let resetCards: number | null = null;
+	let resetCounts: V3Counts | null = null;
 	let resetDone = false;
 	// What the purge sheet deleted, kept as counts so the sentence follows a language switch.
 	let purged: PurgedDetail | null = null;
@@ -161,12 +165,12 @@ export function renderSettingsPage(
 		resetDone = false;
 		purged = null;
 		return state.guard(async () => {
-			resetCards = (await countRecordsV3(repo)).cards;
+			resetCounts = await countRecordsV3(repo);
 		}, "reset.error");
 	};
 
 	const onCancelReset = () => {
-		resetCards = null;
+		resetCounts = null;
 		paint();
 	};
 
@@ -174,7 +178,7 @@ export function renderSettingsPage(
 		imported = null;
 		purged = null;
 		return state.guard(async () => {
-			resetCards = null;
+			resetCounts = null;
 			await repo.clearAll();
 			// Seed the starting places again, so Home and the Locations page are not empty. The
 			// marker goes first: an in-memory repository's clearAll leaves storage alone.
@@ -280,17 +284,15 @@ export function renderSettingsPage(
 					<span class="set-row__action" data-variant="quiet">${t("settings.reset.purgeAction")}</span>
 				</button>
 				${
-					resetCards === null
+					resetCounts === null
 						? html`<button class="set-row" type="button" data-row="delete-all" @click=${onStartReset}>
 							${rowText(t("settings.reset.all"), t("settings.reset.allHint"))}
 							<span class="set-row__action" data-variant="danger">${t("settings.reset.allAction")}</span>
 						</button>`
 						: html`<div class="set-ask">
-							<p class="set-ask__note">${
-								resetCards === 1
-									? t("reset.ask.one")
-									: t("reset.ask.many", { count: resetCards })
-							}</p>
+							<p class="set-ask__note">${t("reset.ask", {
+								counts: t("backup.counts", resetCounts),
+							})}</p>
 							<div class="set-ask__actions">
 								<button type="button" data-action="keep-data" @click=${onCancelReset}>${t("reset.keep")}</button>
 								<button data-variant="danger" type="button" data-action="delete-everything" @click=${onConfirmReset}>${t("reset.deleteEverything")}</button>
