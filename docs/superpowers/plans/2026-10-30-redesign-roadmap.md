@@ -14,7 +14,7 @@ on guesses.
 | 3. Home and purchase lists | Home (*Needs you*, *Ready to use*), entering amounts with warnings, review with copy text and save image, the spender's reply, saved list. Removes the dashboard's purchase form, *This sitting* and the batch start. | RD-09, RD-10, RD-15 | [phase 3](2026-10-31-redesign-phase-3-home-and-lists.md) |
 | 4. Transactions and payments | The Transactions ledger with search, filter and sort; *Upcoming*; the payment form with the card picker; planned payments. Runs the payment conversion at startup and switches download and restore to backup version 3. Rebuilds *Due next* and *Purchases by date* in Transactions: phase 3 already took them off Home, and their components and most of `purchase-range.ts` are gone or test-only. Removes the old payment dialog and the placeholder Transactions page. | RD-11 to RD-14 | [phase 4](2026-10-31-redesign-phase-4-transactions-and-payments.md) |
 | 5. Cards | Cards page with grouping, search, filter and sort; card page; full edit screen; limit groups. Removes the registry dialogs and the `/cards` query view. | RD-16 | [phase 5](2026-10-31-redesign-phase-5-cards.md) |
-| 6. Settings | Display, Locations (`/settings/locations`) with `Card.location` widened to any location id and backup version 3 checking each card's location, Backup (download, copy as text, restore a copy, all version 3 from phase 4), Reset (delete old purchases, delete all data); About already shipped in phase 2. Then the PRD's acceptance criteria are walked on the preview. | RD-17, RD-18, RD-19 | written after phase 5 |
+| 6. Settings | Display, Locations (`/settings/locations`) with `Card.location` widened to any location id and backup version 3 checking each card's location, Backup (download, copy as text, restore a copy, all version 3 from phase 4), Reset (delete old purchases, delete all data); About already shipped in phase 2. Then the PRD's acceptance criteria are walked on the preview. | RD-17, RD-18, RD-19 | [phase 6](2026-11-02-redesign-phase-6-settings.md) |
 
 Each phase updates `PRD.md` and `PRD_TH.md` for what it ships (the overridden rows are updated
 or retired) and adds a dated changelog entry when it lands.
@@ -39,6 +39,7 @@ so most of them moved to the phase that builds what needs them.
   records in the reader's language. Applies wherever a location name first shows (Home's
   *Ready to use*), and again in phase 6. (Taken for phase 3: Home names places through the
   catalog's location keys, not the records; still due in phase 6, when the records are read.)
+  (Taken in phase 6: `locationName` shows a default-named record in the reader's language, DD-132.)
 
 ### Phase 4
 
@@ -100,36 +101,55 @@ so most of them moved to the phase that builds what needs them.
 - Move purchase places from `settings.purchaseLocations` to the location records, and change
   export and import with it. Until then settings is the truth: export takes `takesPurchases`
   from settings and import writes settings from the file's locations (DD-94).
+  (Taken: the records are seeded once and are the truth; export writes them, import never
+  writes settings; DD-94 retired, DD-128, DD-139.)
 - A Merge of a version 3 file deletes extra local `m:` payment parts for a period the file
   holds (DD-95); tell the reader in the Merge help, or make Merge skip it.
+  (Taken: Merge skips it; only a file converted from version 2 clears stale parts, DD-133.)
 - Widen `Card.location` to any location id, and make backup version 3 check each card's
   location against the file's location ids (RD-17).
+  (Taken: a card naming a location not in the file is refused, `backup.problem.unknownLocation`.)
 - Once `Card.location` widens, let the Cards filter offer custom locations and
   `readCardsView` (`cards-query.ts`) keep them in `loc`; today both take only the three fixed
   places (DD-115). The edit screen's *Kept in* control also lists only `LOCATIONS`.
+  (Taken: every record, A to Z by shown name, in all three, DD-132.)
 - Apply the `data-env` tint before first paint (fold it into the head theme script); today
   `chrome.ts` sets it after.
+  (Taken: the head script sets it from the hostname; `chrome.ts` still stamps the build's own
+  value after, so development and an unnumbered preview end right, DD-138.)
 - The Cards page has no "not assigned" filter, yet *Ready to use*'s *Assign them* links there
   (US-06). Add a way to find cards with no limit group, or point the link elsewhere.
+  (Taken: a *Not in a group* filter, `/cards?ungrouped=1`, where *Assign them* links, DD-137.)
 - Small leftovers from phase 5, each still true at its last commit:
   - Only archived cards match: the folded *Archived (N)* shows with no *No card matches* line
     (`cc-cards-list`).
+    (Taken: the line shows above the fold.)
   - The group sheet drops its *Delete NAME?* swap before a delete's result, so a failed delete
     shows the plain *Delete group* again (`cc-group-sheet`).
+    (Taken: the question stays until the delete's result.)
   - *Show older statements* shows even when there is nothing older (`card.ts`).
+    (Taken: it shows only when something older exists.)
   - `cc-card-hero` has literal `font-weight`, `line-height` and `letter-spacing` values
     (UI-01: move them to tokens).
+    (Taken: tokens in `tokens.css`.)
   - The cards filter's radio ring uses `calc(var(--cc-border-width) * 2)`; a token would
     be cleaner.
+    (Taken: `--cc-ring-width`.)
   - Thai `title.cards` and `title.card` are both "บัตร — cc-tracking".
+    (Taken: `title.card` is "รายละเอียดบัตร — cc-tracking".)
   - The name sort uses `localeCompare` with no locale, so order can differ by browser.
+    (Taken: it passes the reader's language, DD-132.)
   - A group whose id is `new` would collide with the blank-sheet address `?group=new` (ids are
     UUIDs, so only a restored or hand-made id could).
+    (Taken: the blank sheet is `?newGroup=1`, DD-137.)
 - Small leftovers from the phase 5 feedback round (2026-11-01), each checked open at its last
   commit:
   - The sticky sub-header's `top` uses `--cc-header-height` (3.25rem, 52px) while the app header
     measures 51px, so the bar sits 1px under the header (the header paints over it, so no gap
     shows). Tie the two to one measure.
+    (Taken: `--cc-header-height` is derived from the header's own padding, line and rule.)
   - `cc-card-form`'s section heading has a literal `letter-spacing: 0.06em` (as `cc-pay-form`'s
     `.stat small`); move it to a token (UI-01).
+    (Taken: `--cc-tracking-caps`.)
   - At 390px *Due days after close* wraps to two lines in the edit page's segmented control.
+    (Taken: *Days after close*, and shorter Thai for both kinds, DD-143.)
