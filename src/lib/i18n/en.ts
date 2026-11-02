@@ -311,16 +311,20 @@ export const en = {
 		"Could not update your saved payments. Nothing was lost. Reload to try again.",
 
 	"backup.title": "Backup",
+	"backup.warning":
+		"Your data lives only in this browser. Download a copy to keep it safe.",
 	"backup.copy": "Copy text",
 	"backup.restore.title": "Restore a copy",
-	"backup.import": "Choose file…",
-	"backup.paste": "Paste text…",
+	"backup.import": "Choose a file",
+	"backup.paste": "Paste by hand",
 	"backup.pasteLabel": "Copied backup text",
 	"backup.fromClipboard": "Paste from clipboard",
 	"backup.importText": "Restore",
+	"backup.clipboardRefused":
+		"The browser would not read the clipboard. Paste the text here instead.",
 	"backup.question.file": "Restore {file}?",
 	"backup.question.pasted": "Restore pasted text?",
-	"backup.here": "In this browser",
+	"backup.here": "Here",
 	"backup.incoming": "In the copy",
 	"backup.counts":
 		"{cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists",
@@ -336,7 +340,6 @@ export const en = {
 		"Restored pasted text: {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups, {lists} lists.",
 	"backup.error.export": "Could not download a copy.",
 	"backup.error.import": "Could not restore that copy.",
-	"backup.error.clipboard": "Could not read the clipboard.",
 	"backup.error.copy": "Could not copy the text.",
 
 	"reset.title": "Reset",

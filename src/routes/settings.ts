@@ -4,22 +4,15 @@ import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-about";
 import "#components/cc-display-settings";
+import "#components/cc-restore-sheet";
 import { html, nothing, render } from "lit";
+import type { RestoredDetail } from "#components/cc-restore-sheet";
 import type { LocationRecord } from "#lib/domain/types";
 import { purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
-import {
-	type BackupV3,
-	backupCounts,
-	countRecordsV3,
-	exportBackupV3,
-	importBackupV3,
-	parseAnyBackup,
-	replaceWithBackupV3,
-	type V3Counts,
-} from "#lib/storage/transfer-v3";
+import { countRecordsV3, exportBackupV3 } from "#lib/storage/transfer-v3";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
@@ -86,8 +79,8 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	});
 
 	/**
-	 * Which step-by-step panel is open. Restore shows its steps under its row; Delete old
-	 * purchases has no panel of its own yet, so choosing it only records the choice.
+	 * Which sheet is open. Restore draws `cc-restore-sheet`; Delete old purchases has no sheet
+	 * of its own yet, so choosing it only records the choice.
 	 */
 	let openSheet: "restore" | "purge" | null = null;
 
@@ -122,96 +115,25 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language. No filename means the text was pasted.
-	let imported: ({ file?: string } & V3Counts) | null = null;
+	let imported: RestoredDetail | null = null;
 	// A count rather than a sentence, for the same reason: the reset warning must re-render in
 	// the new language if the reader switches while it is on screen.
 	let resetCards: number | null = null;
 	let resetDone = false;
 
-	// A parsed backup waiting on the reader's merge-or-replace answer, because this browser
-	// already holds records it would land on top of.
-	let pending: {
-		file: string | undefined;
-		backup: BackupV3;
-		existing: V3Counts;
-		incoming: V3Counts;
-	} | null = null;
-	let pasteOpen = false;
-	let pasteText = "";
-
-	type BackupWriter = (repo: Repository, backup: BackupV3) => Promise<void>;
-	const replaceWriter: BackupWriter = (target, backup) =>
-		replaceWithBackupV3(target, backup, globalThis.localStorage);
-
-	const finishImport = async (
-		file: string | undefined,
-		backup: BackupV3,
-		write: BackupWriter,
-	) => {
-		await write(repo, backup);
-		const counts = backupCounts(backup);
-		imported = file === undefined ? counts : { file, ...counts };
-		pending = null;
-		if (file === undefined) {
-			pasteOpen = false;
-			pasteText = "";
-		}
-	};
-
-	/** Parses `text`, then imports it at once into an empty browser or asks first otherwise. */
-	const startImport = (file: string | undefined, text: string) => {
-		imported = null;
-		pending = null;
+	/** The restore sheet wrote a copy: show its counts, and read the locations again. */
+	const onRestored = (event: CustomEvent<RestoredDetail>) => {
+		imported = event.detail;
 		resetDone = false;
-		return state.guard(async () => {
-			const backup = parseAnyBackup(text);
-			const existing = await countRecordsV3(repo);
-			if (Object.values(existing).some((count) => count > 0)) {
-				pending = { file, backup, existing, incoming: backupCounts(backup) };
-			} else {
-				await finishImport(file, backup, importBackupV3);
-			}
-		}, "backup.error.import");
+		openSheet = null;
+		void state.load();
 	};
 
-	const onImport = async (event: Event) => {
-		const input = event.target as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file) return;
-		input.value = "";
-		return startImport(file.name, await file.text());
-	};
-
-	const onImportText = () => startImport(undefined, pasteText);
-
-	const answerImport = (write: BackupWriter) => () => {
-		const waiting = pending;
-		if (!waiting) return;
-		return state.guard(
-			() => finishImport(waiting.file, waiting.backup, write),
-			"backup.error.import",
-		);
-	};
-
-	const onCancelImport = () => {
-		pending = null;
+	/** Takes a sheet away; it forgets its steps, so the next one opens fresh. */
+	const onCloseSheet = () => {
+		openSheet = null;
 		paint();
 	};
-
-	const onTogglePaste = (open: boolean) => () => {
-		pasteOpen = open;
-		if (!open) pasteText = "";
-		paint();
-	};
-
-	const onPasteInput = (event: Event) => {
-		pasteText = (event.target as HTMLTextAreaElement).value;
-	};
-
-	const onReadClipboard = () =>
-		state.guard(async () => {
-			pasteText = await navigator.clipboard.readText();
-		}, "backup.error.clipboard");
 
 	/** Opens `sheet`, or closes it when it is already open. */
 	const onToggleSheet = (sheet: "restore" | "purge") => () => {
@@ -244,64 +166,9 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		}, "reset.error");
 	};
 
-	// Only offered where the browser exposes them: older Firefox and plain-http pages do not.
-	const canReadClipboard = () =>
-		typeof navigator.clipboard?.readText === "function";
+	// Only offered where the browser exposes it: older Firefox and plain-http pages do not.
 	const canWriteClipboard = () =>
 		typeof navigator.clipboard?.writeText === "function";
-
-	// The restore steps, one at a time: pick a source, then (only when this browser already
-	// holds records) say how the copy should land. Each step replaces the last.
-	const restoreStart = () => html`
-		<div class="restore__actions">
-			<label class="restore__file">${t("backup.import")}<input type="file" accept="application/json" @change=${onImport} /></label>
-			<button data-variant="quiet" type="button" data-action="open-paste" @click=${onTogglePaste(true)}>${t("backup.paste")}</button>
-		</div>
-	`;
-
-	const restorePaste = () => html`
-		<label>${t("backup.pasteLabel")}
-			<textarea class="restore__text" rows="6" spellcheck="false" .value=${pasteText} @input=${onPasteInput}></textarea>
-		</label>
-		<div class="restore__actions">
-			<button type="button" data-action="import-text" @click=${onImportText}>${t("backup.importText")}</button>
-			${
-				canReadClipboard()
-					? html`<button data-variant="quiet" type="button" data-action="read-clipboard" @click=${onReadClipboard}>${t("backup.fromClipboard")}</button>`
-					: nothing
-			}
-			<button data-variant="quiet" type="button" data-action="close-paste" @click=${onTogglePaste(false)}>${t("common.cancel")}</button>
-		</div>
-	`;
-
-	const restoreQuestion = (waiting: NonNullable<typeof pending>) => html`
-		<p><strong>${
-			waiting.file === undefined
-				? t("backup.question.pasted")
-				: t("backup.question.file", { file: waiting.file })
-		}</strong></p>
-		<dl class="restore__compare">
-			<div><dt>${t("backup.here")}</dt><dd>${t("backup.counts", waiting.existing)}</dd></div>
-			<div><dt>${t("backup.incoming")}</dt><dd>${t("backup.counts", waiting.incoming)}</dd></div>
-		</dl>
-		<div class="restore__choices">
-			<button class="restore__choice" type="button" data-action="merge-import" @click=${answerImport(importBackupV3)}>
-				<strong>${t("backup.merge")}</strong>
-				<span>${t("backup.mergeHint")}</span>
-			</button>
-			<button class="restore__choice" data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWriter)}>
-				<strong>${t("backup.replace")}</strong>
-				<span>${t("backup.replaceHint")}</span>
-			</button>
-		</div>
-		<button data-variant="quiet" type="button" data-action="cancel-import" @click=${onCancelImport}>${t("common.cancel")}</button>
-	`;
-
-	const restoreSteps = () => html`
-		<div class="restore">
-			${pending ? restoreQuestion(pending) : pasteOpen ? restorePaste() : restoreStart()}
-		</div>
-	`;
 
 	const importedMessage = () => {
 		if (!imported) return nothing;
@@ -362,13 +229,19 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 						</button>`
 						: nothing
 				}
-				<button class="set-row" type="button" data-row="restore" aria-expanded=${openSheet === "restore" ? "true" : "false"} @click=${onToggleSheet("restore")}>
+				<button class="set-row" type="button" data-row="restore" aria-haspopup="dialog" @click=${onToggleSheet("restore")}>
 					${rowText(t("backup.restore.title"), t("settings.backup.restoreHint"))}
 					<span class="set-row__action" data-variant="quiet">${t("settings.backup.restoreAction")}</span>
 				</button>
-				${openSheet === "restore" ? restoreSteps() : nothing}
 			`,
-			html`<p class="import-status" role="status">${importedMessage()}</p>`,
+			html`<p class="set-note">${t("backup.warning")}</p>
+				<p class="import-status" role="status">${importedMessage()}</p>
+				${
+					openSheet === "restore"
+						? html`<cc-restore-sheet .repo=${repo} .storage=${globalThis.localStorage}
+							@restored=${onRestored} @close=${onCloseSheet}></cc-restore-sheet>`
+						: nothing
+				}`,
 		);
 
 	const resetSection = () =>
