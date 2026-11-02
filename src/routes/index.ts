@@ -26,7 +26,8 @@ export type HomeOptions = {
 
 /**
  * Renders Home into `root`, wiring it to `repo`: what needs the reader first, then a short
- * *Ready to use* that leads to the new-list picker (DD-103).
+ * *Ready to use* that leads to the new-list picker (DD-103). From 900px the two sit side by
+ * side, *Ready to use* on the left (DD-152).
  */
 export function renderHomePage(
 	repo: Repository,
@@ -57,15 +58,17 @@ export function renderHomePage(
 		render(
 			html`
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
-					.cards=${data?.cards ?? []} .groups=${data?.groups ?? []} .today=${now}></cc-needs-you>
-				<cc-ready-panel
-					.rows=${rows}
-					.places=${data ? purchasePlaces(data.locations) : []}
-					.groups=${data?.groups ?? []}
-					.today=${now}
-					.unassigned=${unassigned}
-				></cc-ready-panel>
+				<div class="home-grid">
+					<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
+						.cards=${data?.cards ?? []} .groups=${data?.groups ?? []} .today=${now}></cc-needs-you>
+					<cc-ready-panel
+						.rows=${rows}
+						.places=${data ? purchasePlaces(data.locations) : []}
+						.groups=${data?.groups ?? []}
+						.today=${now}
+						.unassigned=${unassigned}
+					></cc-ready-panel>
+				</div>
 			`,
 			root,
 		);

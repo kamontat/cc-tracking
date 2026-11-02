@@ -478,6 +478,29 @@ a:any-link:hover {
 	}
 }
 
+/* Home (DD-152): Needs you above Ready to use on a phone; from 900px Ready to use on the left
+   and Needs you on the right, as the prototype's `.homeg`. */
+.home-grid {
+	display: grid;
+	gap: var(--cc-space-5);
+	align-items: start;
+}
+
+@media (min-width: 900px) {
+	.home-grid {
+		grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+		grid-template-areas: "ready needs";
+	}
+
+	.home-grid > cc-needs-you {
+		grid-area: needs;
+	}
+
+	.home-grid > cc-ready-panel {
+		grid-area: ready;
+	}
+}
+
 /* From 900px the bar is gone; the page clears only the floating button. */
 @media (min-width: 900px) {
 	.page {

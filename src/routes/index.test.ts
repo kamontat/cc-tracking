@@ -256,3 +256,18 @@ test("a failed read shows the banner", async () => {
 	const banner = root.querySelector("cc-error-banner");
 	expect(banner?.message.startsWith("Could not read your cards.")).toBe(true);
 });
+
+test("Home is two columns from 900px: Ready to use left, Needs you right; a phone keeps Needs you first", async () => {
+	const { root } = await setup();
+	const grid = root.querySelector(".home-grid") as HTMLElement;
+	expect([...grid.children].map((c) => c.localName)).toEqual([
+		"cc-needs-you",
+		"cc-ready-panel",
+	]);
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(css).toMatch(
+		/@media \(min-width: 900px\)\s*\{\s*\.home-grid\s*\{[^}]*grid-template-columns: minmax\(0, 1\.5fr\) minmax\(0, 1fr\);[^}]*grid-template-areas: "ready needs";/,
+	);
+	expect(css).toMatch(/\.home-grid > cc-needs-you\s*\{\s*grid-area: needs;/);
+	expect(css).toMatch(/\.home-grid > cc-ready-panel\s*\{\s*grid-area: ready;/);
+});
