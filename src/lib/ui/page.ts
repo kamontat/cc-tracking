@@ -6,6 +6,7 @@ import { createRepository } from "#lib/storage/index";
 import { migrateLocations } from "#lib/storage/migrate-locations";
 import { migratePayments } from "#lib/storage/migrate-payments";
 import type { Repository } from "#lib/storage/repository";
+import { seedLocations } from "#lib/storage/seed-locations";
 import { applyChrome } from "#lib/ui/chrome";
 
 /**
@@ -61,6 +62,7 @@ export async function bootstrap(
 	// could not be rewritten is a cosmetic problem; refusing to render would turn it into
 	// an outage.
 	try {
+		await seedLocations(repo, storage);
 		await migrateLocations(repo, storage);
 	} catch (failure) {
 		console.error(failure);

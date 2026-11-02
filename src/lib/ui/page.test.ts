@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { setLocale } from "#lib/i18n/index";
 import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
 import { InMemoryRepository } from "#lib/storage/repository";
+import { SEED_KEY } from "#lib/storage/seed-locations";
 import { buildInfo, titleMark } from "#lib/ui/build-info";
 import { bootstrap } from "#lib/ui/page";
 
@@ -168,4 +169,18 @@ test("no page carries a payment sheet of its own: paying is the /pay page", asyn
 	await bootstrap("title.cards", () => {}, { storage, createRepo: () => repo });
 	expect(document.querySelector("#pay-sheet")).toBeNull();
 	expect(document.querySelector("cc-modal")).toBeNull();
+});
+
+test("a fresh repository has the three location records once the page renders", async () => {
+	mountNav();
+	const storage = globalThis.localStorage;
+	storage.removeItem(SEED_KEY);
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done");
+	const repo = new InMemoryRepository();
+	await bootstrap("title.cards", () => {}, { storage, createRepo: () => repo });
+	expect((await repo.listLocations()).map((r) => r.id).sort()).toEqual([
+		"bangkok",
+		"krabi",
+		"phichit",
+	]);
 });
