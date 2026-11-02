@@ -736,6 +736,8 @@ export const cardBits = css`
  * with a line between each. A row is a grid -- a leading chip or `.ic` tile, the `.what` (a
  * bold title, a muted `.word`, then a `.sub` line), and a right-aligned `.r` figure. `.out`
  * marks money going out (red), `.in` money coming in (green). `.tag[data-tone]` tints a status pill that carries no urgency.
+ * A row that is a plain container with its own controls inside (the picker's, DD-150) sets
+ * `data-toggle` to take the same hover.
  */
 export const rowPanel = css`
 	.panel {
@@ -783,7 +785,8 @@ export const rowPanel = css`
 	   at its rounded corners, and the lines between rows stay whole. A neutral badge, whose
 	   fill is that ground, turns to the surface so it still shows. Focus keeps its ring (UI-16). */
 	button.crow:hover,
-	.crow:any-link:hover {
+	.crow:any-link:hover,
+	.crow[data-toggle]:hover {
 		text-decoration: none;
 		background: var(--cc-surface-sunken);
 		box-shadow:
@@ -792,7 +795,8 @@ export const rowPanel = css`
 	}
 
 	button.crow:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]),
-	.crow:any-link:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]) {
+	.crow:any-link:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]),
+	.crow[data-toggle]:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]) {
 		background: var(--cc-surface);
 	}
 
