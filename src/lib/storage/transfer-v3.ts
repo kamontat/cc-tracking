@@ -56,6 +56,11 @@ export async function exportBackupV3(
 ): Promise<BackupV3> {
 	const limitGroups = await repo.listLimitGroups();
 	const cards = await repo.listCards();
+	// Never a file its own parser refuses: with no records stored yet (before the seed ran),
+	// the cards still name one of the starting places, so those travel instead.
+	const stored = await repo.listLocations();
+	const locations =
+		stored.length > 0 ? stored : defaultLocations(await repo.getSettings());
 	const purchases: Purchase[] = [];
 	const payments: CardPayment[] = [];
 	const statementDates: StatementDates[] = [];
@@ -73,7 +78,7 @@ export async function exportBackupV3(
 		payments,
 		statementDates,
 		lists: await repo.listPurchaseLists(),
-		locations: await repo.listLocations(),
+		locations,
 	};
 }
 

@@ -311,17 +311,8 @@ export const en = {
 		"Could not update your saved payments. Nothing was lost. Reload to try again.",
 
 	"backup.title": "Backup",
-	"backup.warning":
-		"Your data lives only in this browser. Clearing site data erases it, so keep a copy somewhere safe.",
-	"backup.save.title": "Save a copy",
-	"backup.save.hint":
-		"Download a file, or copy the text to keep it somewhere else.",
-	"backup.export": "Download file",
 	"backup.copy": "Copy text",
-	"backup.copied": "Copied to the clipboard.",
 	"backup.restore.title": "Restore a copy",
-	"backup.restore.hint":
-		"Bring back a copy you saved earlier, from a file or pasted text.",
 	"backup.import": "Choose file…",
 	"backup.paste": "Paste text…",
 	"backup.pasteLabel": "Copied backup text",
@@ -349,12 +340,36 @@ export const en = {
 	"backup.error.copy": "Could not copy the text.",
 
 	"reset.title": "Reset",
-	"reset.warning":
-		"Deletes every card, purchase, purchase list, payment, limit group and setting in this browser. Export a backup first if you may want them back.",
-	"reset.start": "Reset…",
-	"reset.confirm":
-		"This deletes {cards} cards, {purchases} purchases, {payments} payments, {limitGroups} limit groups and {lists} lists.",
-	"reset.delete": "Delete all data",
+	"settings.locations.title": "Locations",
+	"settings.locations.manage": "Manage locations",
+	"settings.locations.summary": "{count} · {takers}",
+	"settings.locations.count.one": "1 place",
+	"settings.locations.count.many": "{count} places",
+	"settings.locations.takes.one": "{places} takes purchases",
+	"settings.locations.takes.many": "{places} take purchases",
+	"settings.locations.takes.none": "none take purchases",
+	"settings.backup.download": "Download a copy",
+	"settings.backup.downloadAction": "Download",
+	"settings.backup.copy": "Copy as text",
+	"settings.backup.copyHint": "To paste into another browser",
+	"settings.backup.copyAction": "Copy",
+	"settings.backup.copied": "Copied",
+	"settings.backup.restoreHint":
+		"From pasted text or a file; asks Merge or Replace",
+	"settings.backup.restoreAction": "Restore…",
+	"settings.reset.purge": "Delete old purchases",
+	"settings.reset.purgeHint":
+		"Free space by removing purchases on paid statements",
+	"settings.reset.purgeAction": "Choose…",
+	"settings.reset.all": "Delete all data",
+	"settings.reset.allHint": "Cards, lists, purchases and payments",
+	"settings.reset.allAction": "Delete…",
+	"reset.ask.one":
+		"This deletes 1 card and every list, purchase and payment. Language and theme stay. It can't be undone.",
+	"reset.ask.many":
+		"This deletes {count} cards and every list, purchase and payment. Language and theme stay. It can't be undone.",
+	"reset.keep": "Keep my data",
+	"reset.deleteEverything": "Delete everything",
 	"reset.done": "All data deleted.",
 	"reset.error": "Could not reset your data.",
 
@@ -437,7 +452,7 @@ export const en = {
 	"settings.title": "Settings",
 	"settings.display.title": "Display",
 	"theme.label": "Theme",
-	"theme.system": "Match device",
+	"theme.system": "Device",
 	"theme.light": "Light",
 	"theme.dark": "Dark",
 	"settings.error.read": "Could not read your settings.",

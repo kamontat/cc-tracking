@@ -5,8 +5,11 @@ import "#components/cc-error-banner";
 import "#components/cc-about";
 import "#components/cc-display-settings";
 import { html, nothing, render } from "lit";
+import type { LocationRecord } from "#lib/domain/types";
+import { purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
 import {
 	type BackupV3,
 	backupCounts,
@@ -20,6 +23,10 @@ import {
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 
+/** The name a backup file saved at `now` gets: the UTC date it was exported on. */
+const backupFilename = (now: Date): string =>
+	`cc-tracking-${now.toISOString().slice(0, 10)}.json`;
+
 /**
  * Turns a repository's contents into a backup file's text and filename. Split out from the
  * click handler because `URL.createObjectURL` and a synthetic `<a>` click aren't meaningfully
@@ -32,19 +39,57 @@ export async function prepareBackupFile(
 	const backup = await exportBackupV3(repo, now);
 	return {
 		text: JSON.stringify(backup, null, 2),
-		filename: `cc-tracking-${backup.exportedAt.slice(0, 10)}.json`,
+		filename: backupFilename(new Date(backup.exportedAt)),
 	};
 }
 
-/** Renders the settings page into `root`, wiring it to `repo`. Exported for tests. */
+/** The Locations row's muted line: how many places, and which of them take purchases. */
+function locationsSummary(records: LocationRecord[]): string {
+	const places = purchasePlaces(records);
+	const count =
+		records.length === 1
+			? t("settings.locations.count.one")
+			: t("settings.locations.count.many", { count: records.length });
+	const takers =
+		places.length === 0
+			? t("settings.locations.takes.none")
+			: t(
+					places.length === 1
+						? "settings.locations.takes.one"
+						: "settings.locations.takes.many",
+					{ places: places.join(", ") },
+				);
+	return t("settings.locations.summary", { count, takers });
+}
+
+/** A settings row's label with its optional muted line under it. */
+const rowText = (label: string, sub?: string) =>
+	html`<span class="set-row__text">${label}${
+		sub ? html`<small class="set-row__sub">${sub}</small>` : nothing
+	}</span>`;
+
+/**
+ * Renders the settings page into `root`, wiring it to `repo`: sections of rows in `.set`
+ * panels (RD-19), Display, Locations and Backup in the main column, Reset and About beside
+ * them from 900px. Exported for tests.
+ */
 export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
-	// Nothing on the page reads stored records yet; the state machine still carries the
-	// banner and the guard every write goes through.
+	// The Locations row sums up the stored records; everything else on the page reads
+	// storage only when asked.
+	let locations: LocationRecord[] = [];
 	const state = createPageState({
-		fetch: async () => {},
+		fetch: async () => {
+			locations = await repo.listLocations();
+		},
 		fallbackKey: "settings.error.read",
 		paint: () => paint(),
 	});
+
+	/**
+	 * Which step-by-step panel is open. Restore shows its steps under its row; Delete old
+	 * purchases has no panel of its own yet, so choosing it only records the choice.
+	 */
+	let openSheet: "restore" | "purge" | null = null;
 
 	const onExport = () =>
 		state.guard(async () => {
@@ -78,9 +123,9 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language. No filename means the text was pasted.
 	let imported: ({ file?: string } & V3Counts) | null = null;
-	// Counts rather than a sentence, for the same reason: the reset question must re-render in
+	// A count rather than a sentence, for the same reason: the reset warning must re-render in
 	// the new language if the reader switches while it is on screen.
-	let resetCounts: V3Counts | null = null;
+	let resetCards: number | null = null;
 	let resetDone = false;
 
 	// A parsed backup waiting on the reader's merge-or-replace answer, because this browser
@@ -168,37 +213,36 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			pasteText = await navigator.clipboard.readText();
 		}, "backup.error.clipboard");
 
+	/** Opens `sheet`, or closes it when it is already open. */
+	const onToggleSheet = (sheet: "restore" | "purge") => () => {
+		openSheet = openSheet === sheet ? null : sheet;
+		paint();
+	};
+
 	const onStartReset = () => {
 		resetDone = false;
 		return state.guard(async () => {
-			resetCounts = await countRecordsV3(repo);
+			resetCards = (await countRecordsV3(repo)).cards;
 		}, "reset.error");
 	};
 
 	const onCancelReset = () => {
-		resetCounts = null;
+		resetCards = null;
 		paint();
 	};
 
 	const onConfirmReset = () => {
 		imported = null;
 		return state.guard(async () => {
-			resetCounts = null;
+			resetCards = null;
 			await repo.clearAll();
+			// Seed the starting places again, so Home and the Locations page are not empty. The
+			// marker goes first: an in-memory repository's clearAll leaves storage alone.
+			globalThis.localStorage.removeItem(SEED_KEY);
+			await seedLocations(repo, globalThis.localStorage);
 			resetDone = true;
 		}, "reset.error");
 	};
-
-	const resetPanel = () =>
-		resetCounts
-			? html`
-				<p><strong>${t("reset.confirm", resetCounts)}</strong></p>
-				<div class="reset__actions">
-					<button data-variant="danger" type="button" data-action="confirm-reset" @click=${onConfirmReset}>${t("reset.delete")}</button>
-					<button data-variant="quiet" type="button" data-action="cancel-reset" @click=${onCancelReset}>${t("common.cancel")}</button>
-				</div>
-			`
-			: html`<button data-variant="danger" type="button" data-action="reset" @click=${onStartReset}>${t("reset.start")}</button>`;
 
 	// Only offered where the browser exposes them: older Firefox and plain-http pages do not.
 	const canReadClipboard = () =>
@@ -206,37 +250,20 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 	const canWriteClipboard = () =>
 		typeof navigator.clipboard?.writeText === "function";
 
-	const saveWay = () => html`
-		<section class="backup__way backup__way--save">
-			<h3>${t("backup.save.title")}</h3>
-			<p><small>${t("backup.save.hint")}</small></p>
-			<div class="backup__actions">
-				<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
-				${
-					canWriteClipboard()
-						? html`<button data-variant="quiet" type="button" data-action="copy-export" @click=${onCopyExport}>${t("backup.copy")}</button>`
-						: nothing
-				}
-			</div>
-			<p class="export-status" role="status">${copied ? t("backup.copied") : nothing}</p>
-		</section>
-	`;
-
-	// The restore side is one step at a time: pick a source, then (only when this browser
-	// already holds records) say how the copy should land. Each step replaces the last.
+	// The restore steps, one at a time: pick a source, then (only when this browser already
+	// holds records) say how the copy should land. Each step replaces the last.
 	const restoreStart = () => html`
-		<p><small>${t("backup.restore.hint")}</small></p>
-		<div class="backup__actions">
-			<label class="backup__file">${t("backup.import")}<input type="file" accept="application/json" @change=${onImport} /></label>
+		<div class="restore__actions">
+			<label class="restore__file">${t("backup.import")}<input type="file" accept="application/json" @change=${onImport} /></label>
 			<button data-variant="quiet" type="button" data-action="open-paste" @click=${onTogglePaste(true)}>${t("backup.paste")}</button>
 		</div>
 	`;
 
 	const restorePaste = () => html`
 		<label>${t("backup.pasteLabel")}
-			<textarea class="backup__text" rows="6" spellcheck="false" .value=${pasteText} @input=${onPasteInput}></textarea>
+			<textarea class="restore__text" rows="6" spellcheck="false" .value=${pasteText} @input=${onPasteInput}></textarea>
 		</label>
-		<div class="backup__actions">
+		<div class="restore__actions">
 			<button type="button" data-action="import-text" @click=${onImportText}>${t("backup.importText")}</button>
 			${
 				canReadClipboard()
@@ -253,16 +280,16 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 				? t("backup.question.pasted")
 				: t("backup.question.file", { file: waiting.file })
 		}</strong></p>
-		<dl class="backup__compare">
+		<dl class="restore__compare">
 			<div><dt>${t("backup.here")}</dt><dd>${t("backup.counts", waiting.existing)}</dd></div>
 			<div><dt>${t("backup.incoming")}</dt><dd>${t("backup.counts", waiting.incoming)}</dd></div>
 		</dl>
-		<div class="backup__choices">
-			<button class="backup__choice" type="button" data-action="merge-import" @click=${answerImport(importBackupV3)}>
+		<div class="restore__choices">
+			<button class="restore__choice" type="button" data-action="merge-import" @click=${answerImport(importBackupV3)}>
 				<strong>${t("backup.merge")}</strong>
 				<span>${t("backup.mergeHint")}</span>
 			</button>
-			<button class="backup__choice" data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWriter)}>
+			<button class="restore__choice" data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWriter)}>
 				<strong>${t("backup.replace")}</strong>
 				<span>${t("backup.replaceHint")}</span>
 			</button>
@@ -270,12 +297,10 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 		<button data-variant="quiet" type="button" data-action="cancel-import" @click=${onCancelImport}>${t("common.cancel")}</button>
 	`;
 
-	const restoreWay = () => html`
-		<section class="backup__way backup__way--restore">
-			<h3>${t("backup.restore.title")}</h3>
+	const restoreSteps = () => html`
+		<div class="restore">
 			${pending ? restoreQuestion(pending) : pasteOpen ? restorePaste() : restoreStart()}
-			<p class="import-status" role="status">${importedMessage()}</p>
-		</section>
+		</div>
 	`;
 
 	const importedMessage = () => {
@@ -285,31 +310,114 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			: t("backup.imported", { ...imported, file: imported.file });
 	};
 
+	/** A section: its heading over one `.set` panel of rows, then anything `after` it. */
+	const section = (
+		name: string,
+		title: string,
+		rows: unknown,
+		after: unknown = nothing,
+	) => html`
+		<section class="set-section" data-section=${name}>
+			<h2>${title}</h2>
+			<div class="set">${rows}</div>
+			${after}
+		</section>
+	`;
+
+	const displaySection = () =>
+		section(
+			"display",
+			t("settings.display.title"),
+			html`<cc-display-settings></cc-display-settings>`,
+		);
+
+	const locationsSection = () =>
+		section(
+			"locations",
+			t("settings.locations.title"),
+			html`<a class="set-row" data-row="locations" href="/settings/locations">
+				${rowText(t("settings.locations.manage"), locationsSummary(locations))}
+				<span class="set-row__chev" aria-hidden="true">›</span>
+			</a>`,
+		);
+
+	const backupSection = () =>
+		section(
+			"backup",
+			t("backup.title"),
+			html`
+				<button class="set-row" type="button" data-row="download" @click=${onExport}>
+					${rowText(t("settings.backup.download"), backupFilename(new Date()))}
+					<span class="set-row__action">${t("settings.backup.downloadAction")}</span>
+				</button>
+				${
+					canWriteClipboard()
+						? html`<button class="set-row" type="button" data-row="copy" @click=${onCopyExport}>
+							${rowText(t("settings.backup.copy"), t("settings.backup.copyHint"))}
+							<span class="set-row__action" data-variant="quiet" aria-live="polite">${
+								copied
+									? t("settings.backup.copied")
+									: t("settings.backup.copyAction")
+							}</span>
+						</button>`
+						: nothing
+				}
+				<button class="set-row" type="button" data-row="restore" aria-expanded=${openSheet === "restore" ? "true" : "false"} @click=${onToggleSheet("restore")}>
+					${rowText(t("backup.restore.title"), t("settings.backup.restoreHint"))}
+					<span class="set-row__action" data-variant="quiet">${t("settings.backup.restoreAction")}</span>
+				</button>
+				${openSheet === "restore" ? restoreSteps() : nothing}
+			`,
+			html`<p class="import-status" role="status">${importedMessage()}</p>`,
+		);
+
+	const resetSection = () =>
+		section(
+			"reset",
+			t("reset.title"),
+			html`
+				<button class="set-row" type="button" data-row="purge" @click=${onToggleSheet("purge")}>
+					${rowText(t("settings.reset.purge"), t("settings.reset.purgeHint"))}
+					<span class="set-row__action" data-variant="quiet">${t("settings.reset.purgeAction")}</span>
+				</button>
+				${
+					resetCards === null
+						? html`<button class="set-row" type="button" data-row="delete-all" @click=${onStartReset}>
+							${rowText(t("settings.reset.all"), t("settings.reset.allHint"))}
+							<span class="set-row__action" data-variant="danger">${t("settings.reset.allAction")}</span>
+						</button>`
+						: html`<div class="set-ask">
+							<p class="set-ask__note">${
+								resetCards === 1
+									? t("reset.ask.one")
+									: t("reset.ask.many", { count: resetCards })
+							}</p>
+							<div class="set-ask__actions">
+								<button type="button" data-action="keep-data" @click=${onCancelReset}>${t("reset.keep")}</button>
+								<button data-variant="danger" type="button" data-action="delete-everything" @click=${onConfirmReset}>${t("reset.deleteEverything")}</button>
+							</div>
+						</div>`
+				}
+			`,
+			html`<p class="reset-status" role="status">${resetDone ? t("reset.done") : nothing}</p>`,
+		);
+
 	const paint = () =>
 		render(
 			html`
 				<h1>${t("settings.title")}</h1>
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<article class="display">
-					<cc-display-settings></cc-display-settings>
-				</article>
-				<article class="backup">
-					<h2>${t("backup.title")}</h2>
-					<p><small>${t("backup.warning")}</small></p>
-					<div class="backup__ways">
-						${saveWay()}
-						${restoreWay()}
+				<div class="settings-grid">
+					<div class="settings-grid__main">
+						${displaySection()}
+						${locationsSection()}
+						${backupSection()}
 					</div>
-				</article>
-				<article class="reset">
-					<h2>${t("reset.title")}</h2>
-					<p><small>${t("reset.warning")}</small></p>
-					${resetPanel()}
-					<p class="reset-status" role="status">${resetDone ? t("reset.done") : nothing}</p>
-				</article>
-				<article class="about">
-					<cc-about></cc-about>
-				</article>
+					<div class="settings-grid__side">
+						${resetSection()}
+						${section("about", t("about.title"), html`<cc-about></cc-about>`)}
+					</div>
+				</div>
 			`,
 			root,
 		);

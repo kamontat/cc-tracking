@@ -122,8 +122,18 @@ test("reads in Thai", async () => {
 	setLocale("th");
 	const element = await mount(production);
 
-	expect(element.shadowRoot?.querySelector("h2")?.textContent?.trim()).toBe(
-		"เกี่ยวกับ",
-	);
+	expect(
+		element.shadowRoot
+			?.querySelector('[data-row="environment"] dt')
+			?.textContent?.trim(),
+	).toBe("สภาพแวดล้อม");
 	expect(value(element, "environment")?.textContent?.trim()).toBe("ใช้งานจริง");
+});
+
+test("draws each row as a settings row and leaves the heading to the page", async () => {
+	const element = await mount(production);
+
+	const all = [...(element.shadowRoot?.querySelectorAll("[data-row]") ?? [])];
+	expect(all.every((found) => found.classList.contains("set-row"))).toBe(true);
+	expect(element.shadowRoot?.querySelector("h2")).toBeNull();
 });

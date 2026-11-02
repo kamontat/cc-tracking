@@ -210,10 +210,21 @@ describe("backup version 3", () => {
 		expect("converted" in out).toBe(false);
 	});
 
-	test("export writes no locations while none are stored", async () => {
+	test("export writes the starting locations, ticked from the settings, while none are stored", async () => {
 		const repo = new InMemoryRepository();
 		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
-		expect((await exportBackupV3(repo, NOW)).locations).toEqual([]);
+		expect((await exportBackupV3(repo, NOW)).locations).toEqual([
+			{ id: "bangkok", name: "Bangkok", takesPurchases: true },
+			{ id: "phichit", name: "Phichit", takesPurchases: false },
+			{ id: "krabi", name: "Krabi", takesPurchases: false },
+		]);
+	});
+
+	test("a copy of cards with no location records stored still reads back", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveCard(sampleCard({ location: "krabi" }));
+		const text = JSON.stringify(await exportBackupV3(repo, NOW));
+		expect(parseAnyBackup(text).cards).toEqual(await repo.listCards());
 	});
 
 	test("merge keeps a stored location over the file's record with the same id", async () => {

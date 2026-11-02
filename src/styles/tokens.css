@@ -44,9 +44,6 @@
 	   and its muted line are shorter than the control, so they add nothing. */
 	--cc-sub-header-height: calc(var(--cc-icon-size) + 4 * var(--cc-space-2));
 
-	/* The narrowest a settings tile gets before its row wraps to one per line. */
-	--cc-tile-min: 14rem;
-
 	/* The narrowest a More menu's list gets, so its buttons read as a list, not chips. */
 	--cc-menu-min: 12rem;
 

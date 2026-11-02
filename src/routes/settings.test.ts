@@ -24,8 +24,21 @@ const bannerMessage = (root: HTMLElement): string =>
 const importStatus = (root: HTMLElement): string =>
 	root.querySelector(".import-status")?.textContent?.trim() ?? "";
 
-/** Simulates picking `text` as the file for the page's Import JSON input. */
+const row = (root: HTMLElement, name: string): HTMLElement => {
+	const found = root.querySelector<HTMLElement>(`.set-row[data-row="${name}"]`);
+	if (!found) throw new Error(`no ${name} row`);
+	return found;
+};
+
+/** Opens the restore steps under the Restore row, unless they already show. */
+const openRestore = (root: HTMLElement) => {
+	if (root.querySelector(".restore")) return;
+	row(root, "restore").click();
+};
+
+/** Simulates picking `text` as the file under the Restore row. */
 const chooseFile = (root: HTMLElement, text: string, name = "backup.json") => {
+	openRestore(root);
 	const input = root.querySelector<HTMLInputElement>('input[type="file"]');
 	if (!input) throw new Error("no file input");
 	input.files = [
@@ -36,20 +49,23 @@ const chooseFile = (root: HTMLElement, text: string, name = "backup.json") => {
 
 const clickBackup = (root: HTMLElement, action: string) => {
 	const button = root.querySelector<HTMLButtonElement>(
-		`.backup [data-action="${action}"]`,
+		`[data-section="backup"] [data-action="${action}"]`,
 	);
 	if (!button) throw new Error(`no ${action} button`);
 	button.click();
 };
 
 const backupText = (root: HTMLElement): string =>
-	root.querySelector(".backup")?.textContent?.replace(/\s+/g, " ") ?? "";
+	root
+		.querySelector('[data-section="backup"]')
+		?.textContent?.replace(/\s+/g, " ") ?? "";
 
 const pasteArea = (root: HTMLElement): HTMLTextAreaElement | null =>
-	root.querySelector<HTMLTextAreaElement>(".backup textarea");
+	root.querySelector<HTMLTextAreaElement>('[data-section="backup"] textarea');
 
 /** Opens the paste panel, types `text` into it and presses its Import button. */
 const pasteBackup = async (root: HTMLElement, text: string) => {
+	openRestore(root);
 	clickBackup(root, "open-paste");
 	await settle();
 	const area = pasteArea(root);
@@ -76,23 +92,100 @@ const seeded = async <R extends Repository>(repo: R): Promise<R> => {
 	return repo;
 };
 
-test("offers the language and theme pickers in a display panel", async () => {
+const sectionsIn = (root: HTMLElement, column: string): string[] =>
+	[
+		...root.querySelectorAll(`.settings-grid__${column} > section.set-section`),
+	].map((section) => section.getAttribute("data-section") ?? "");
+
+test("lays the sections out in two columns: display, locations and backup, then reset and about", async () => {
 	const root = mount();
 	renderSettingsPage(new InMemoryRepository(), root);
 	await settle();
 
-	expect(root.querySelector(".display cc-display-settings")).not.toBeNull();
+	expect(sectionsIn(root, "main")).toEqual(["display", "locations", "backup"]);
+	expect(sectionsIn(root, "side")).toEqual(["reset", "about"]);
+	for (const section of root.querySelectorAll("section.set-section")) {
+		expect(section.querySelector(":scope > h2")).not.toBeNull();
+		expect(section.querySelector(":scope > .set")).not.toBeNull();
+	}
+	expect(
+		root.querySelector('[data-section="display"] .set cc-display-settings'),
+	).not.toBeNull();
+	expect(
+		root.querySelector('[data-section="about"] .set cc-about'),
+	).not.toBeNull();
 });
 
-test("About comes last", async () => {
+test("names each section in the chosen language", async () => {
+	setLocale("en");
 	const root = mount();
 	renderSettingsPage(new InMemoryRepository(), root);
 	await settle();
 
-	const articles = root.querySelectorAll("article");
-	const last = articles[articles.length - 1];
-	expect(last?.classList.contains("about")).toBe(true);
-	expect(last?.querySelector("cc-about")).not.toBeNull();
+	const headings = () =>
+		[...root.querySelectorAll("section.set-section > h2")].map((h) =>
+			h.textContent?.trim(),
+		);
+	expect(headings()).toEqual([
+		"Display",
+		"Locations",
+		"Backup",
+		"Reset",
+		"About",
+	]);
+	setLocale("th");
+	await settle();
+	expect(headings()).not.toContain("Backup");
+	setLocale("en");
+});
+
+test("the locations row links to the locations page and sums them up", async () => {
+	setLocale("en");
+	const root = mount();
+	renderSettingsPage(await seeded(new InMemoryRepository()), root);
+	await settle();
+
+	const locations = row(root, "locations");
+	expect(locations.tagName).toBe("A");
+	expect(locations.getAttribute("href")).toBe("/settings/locations");
+	expect(locations.textContent).toContain("Manage locations");
+	expect(locations.textContent?.replace(/\s+/g, " ")).toContain(
+		"3 places · Krabi takes purchases",
+	);
+});
+
+test("the locations row names every place that takes purchases, A to Z, or says none do", async () => {
+	setLocale("en");
+	const repo = await seeded(new InMemoryRepository());
+	await repo.saveLocation({
+		id: "bangkok",
+		name: "Bangkok",
+		takesPurchases: true,
+	});
+	const root = mount();
+	renderSettingsPage(repo, root);
+	await settle();
+	expect(row(root, "locations").textContent?.replace(/\s+/g, " ")).toContain(
+		"3 places · Bangkok, Krabi take purchases",
+	);
+
+	await repo.saveLocation({
+		id: "bangkok",
+		name: "Bangkok",
+		takesPurchases: false,
+	});
+	await repo.saveLocation({
+		id: "krabi",
+		name: "Krabi",
+		takesPurchases: false,
+	});
+	await repo.deleteLocation("phichit");
+	const again = mount();
+	renderSettingsPage(repo, again);
+	await settle();
+	expect(row(again, "locations").textContent?.replace(/\s+/g, " ")).toContain(
+		"2 places · none take purchases",
+	);
 });
 
 test("renders its heading in the chosen language", async () => {
@@ -209,46 +302,47 @@ test("clicking Export JSON does not raise an error", async () => {
 	renderSettingsPage(repo, root);
 	await settle();
 
-	const exportButton = root.querySelector(
-		'article.backup button[data-variant="quiet"]',
+	row(root, "download").dispatchEvent(
+		new MouseEvent("click", { bubbles: true }),
 	);
-	expect(exportButton).not.toBeNull();
-	exportButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 	await settle();
 
 	expect(bannerMessage(root)).toBe("");
 });
 
-test("renders the backup section's heading and warning in the chosen language", async () => {
-	setLocale("en");
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderSettingsPage(repo, root);
-	await settle();
-	expect(root.querySelector("article.backup h2")?.textContent).toBe("Backup");
-	expect(root.textContent).toContain("keep a copy somewhere safe");
-
-	setLocale("th");
-	await settle();
-	expect(root.querySelector("article.backup h2")?.textContent).toBe(
-		"สำรองข้อมูล",
-	);
-	setLocale("en");
-});
-
-test("splits the backup into saving a copy and restoring one, each with its own actions", async () => {
+test("the backup rows: download names the file it saves, copy and restore say what they do", async () => {
 	setLocale("en");
 	const root = mount();
 	renderSettingsPage(new InMemoryRepository(), root);
 	await settle();
 
-	const save = root.querySelector(".backup__way--save");
-	const restore = root.querySelector(".backup__way--restore");
-	expect(save?.querySelector("h3")?.textContent).toBe("Save a copy");
-	expect(restore?.querySelector("h3")?.textContent).toBe("Restore a copy");
-	expect(save?.textContent).toContain("Download file");
-	expect(restore?.querySelector('input[type="file"]')).not.toBeNull();
-	expect(restore?.querySelector('[data-action="open-paste"]')).not.toBeNull();
+	const rows = [
+		...root.querySelectorAll('[data-section="backup"] .set > .set-row'),
+	].map((found) => found.getAttribute("data-row"));
+	expect(rows).toEqual(["download", "copy", "restore"]);
+	const today = new Date().toISOString().slice(0, 10);
+	expect(row(root, "download").textContent).toContain("Download a copy");
+	expect(row(root, "download").textContent).toContain(
+		`cc-tracking-${today}.json`,
+	);
+	expect(row(root, "copy").textContent).toContain(
+		"To paste into another browser",
+	);
+	expect(row(root, "restore").textContent).toContain("Restore a copy");
+});
+
+test("the restore steps stay closed until the Restore row is pressed", async () => {
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	expect(root.querySelector('input[type="file"]')).toBeNull();
+	row(root, "restore").click();
+	await settle();
+	expect(root.querySelector('.restore input[type="file"]')).not.toBeNull();
+	expect(
+		root.querySelector('.restore [data-action="open-paste"]'),
+	).not.toBeNull();
 });
 
 const oneCardBackup = async (): Promise<string> => {
@@ -317,15 +411,18 @@ test("the success message follows a language switch", async () => {
 });
 
 const click = (root: HTMLElement, action: string) => {
+	if (action === "reset") return row(root, "delete-all").click();
 	const button = root.querySelector<HTMLButtonElement>(
-		`.reset [data-action="${action}"]`,
+		`[data-section="reset"] [data-action="${action}"]`,
 	);
 	if (!button) throw new Error(`no ${action} button`);
 	button.click();
 };
 
 const resetText = (root: HTMLElement): string =>
-	root.querySelector(".reset")?.textContent?.replace(/\s+/g, " ") ?? "";
+	root
+		.querySelector('[data-section="reset"]')
+		?.textContent?.replace(/\s+/g, " ") ?? "";
 
 const resetStatus = (root: HTMLElement): string =>
 	root.querySelector(".reset-status")?.textContent?.trim() ?? "";
@@ -353,6 +450,21 @@ const populated = async <R extends Repository>(repo: R): Promise<R> => {
 	return repo;
 };
 
+test("the reset rows: delete old purchases, then delete all data", async () => {
+	setLocale("en");
+	const root = mount();
+	renderSettingsPage(new InMemoryRepository(), root);
+	await settle();
+
+	expect(
+		[...root.querySelectorAll('[data-section="reset"] .set > .set-row')].map(
+			(found) => found.getAttribute("data-row"),
+		),
+	).toEqual(["purge", "delete-all"]);
+	expect(row(root, "purge").textContent).toContain("Delete old purchases");
+	expect(row(root, "delete-all").textContent).toContain("Delete all data");
+});
+
 test("asks before resetting, counting what it would delete", async () => {
 	setLocale("en");
 	const repo = await populated(new InMemoryRepository());
@@ -360,14 +472,18 @@ test("asks before resetting, counting what it would delete", async () => {
 	renderSettingsPage(repo, root);
 	await settle();
 
-	expect(root.querySelector('.reset [data-action="confirm-reset"]')).toBeNull();
+	expect(
+		root.querySelector(
+			'[data-section="reset"] [data-action="delete-everything"]',
+		),
+	).toBeNull();
 	click(root, "reset");
 	await settle();
 
 	expect(resetText(root)).toContain(
-		"This deletes 1 cards, 2 purchases, 0 payments, 1 limit groups and 0 lists.",
+		"This deletes 1 card and every list, purchase and payment. Language and theme stay. It can't be undone.",
 	);
-	expect(root.querySelector('.reset [data-action="reset"]')).toBeNull();
+	expect(root.querySelector('[data-row="delete-all"]')).toBeNull();
 	expect(await repo.listCards()).toHaveLength(1);
 });
 
@@ -380,10 +496,10 @@ test("backing out of a reset deletes nothing", async () => {
 
 	click(root, "reset");
 	await settle();
-	click(root, "cancel-reset");
+	click(root, "keep-data");
 	await settle();
 
-	expect(root.querySelector('.reset [data-action="reset"]')).not.toBeNull();
+	expect(root.querySelector('[data-row="delete-all"]')).not.toBeNull();
 	expect(await repo.listCards()).toHaveLength(1);
 	expect(await repo.listPurchases("kbank")).toHaveLength(2);
 });
@@ -397,7 +513,7 @@ test("confirming a reset deletes every record and setting, and says so", async (
 
 	click(root, "reset");
 	await settle();
-	click(root, "confirm-reset");
+	click(root, "delete-everything");
 	await settle();
 
 	expect(await repo.listCards()).toEqual([]);
@@ -405,7 +521,13 @@ test("confirming a reset deletes every record and setting, and says so", async (
 	expect(await repo.listLimitGroups()).toEqual([]);
 	expect(await repo.getSettings()).toEqual({ purchaseLocations: ["krabi"] });
 	expect(resetStatus(root)).toBe("All data deleted.");
-	expect(root.querySelector('.reset [data-action="reset"]')).not.toBeNull();
+	// The starting places come back, so Home and the Locations page are not empty.
+	expect(await repo.listLocations()).toEqual([
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+		{ id: "phichit", name: "Phichit", takesPurchases: false },
+	]);
+	expect(root.querySelector('[data-row="delete-all"]')).not.toBeNull();
 });
 
 test("a reset keeps the reader's language", async () => {
@@ -418,11 +540,16 @@ test("a reset keeps the reader's language", async () => {
 
 	click(root, "reset");
 	await settle();
-	click(root, "confirm-reset");
+	click(root, "delete-everything");
 	await settle();
 
 	expect(await repo.listCards()).toEqual([]);
 	expect(localStorage.getItem("cc:lang")).toBe("th");
+	expect((await repo.listLocations()).map((record) => record.id)).toEqual([
+		"bangkok",
+		"krabi",
+		"phichit",
+	]);
 	setLocale("en");
 });
 
@@ -440,7 +567,7 @@ test("a failed reset says so and keeps the data", async () => {
 
 	click(root, "reset");
 	await settle();
-	click(root, "confirm-reset");
+	click(root, "delete-everything");
 	await settle();
 
 	expect(bannerMessage(root)).toContain("disk is locked");
@@ -462,7 +589,9 @@ test("the reset question follows a language switch", async () => {
 
 	expect(resetText(root)).not.toContain("This deletes");
 	expect(
-		root.querySelector('.reset [data-action="confirm-reset"]'),
+		root.querySelector(
+			'[data-section="reset"] [data-action="delete-everything"]',
+		),
 	).not.toBeNull();
 	setLocale("en");
 });
@@ -478,7 +607,7 @@ test("importing into a browser that already holds data asks to merge or replace,
 	await settle();
 
 	expect(backupText(root)).toContain("Restore cc-tracking-2026-09-21.json?");
-	const rows = [...root.querySelectorAll(".backup__compare > div")].map(
+	const rows = [...root.querySelectorAll(".restore__compare > div")].map(
 		(row) => [
 			row.querySelector("dt")?.textContent,
 			row.querySelector("dd")?.textContent,
@@ -494,12 +623,16 @@ test("importing into a browser that already holds data asks to merge or replace,
 			"1 cards, 1 purchases, 0 payments, 0 limit groups, 0 lists",
 		],
 	]);
-	expect(root.querySelector('.backup [data-action="open-paste"]')).toBeNull();
 	expect(
-		root.querySelector('.backup [data-action="merge-import"]'),
+		root.querySelector('[data-section="backup"] [data-action="open-paste"]'),
+	).toBeNull();
+	expect(
+		root.querySelector('[data-section="backup"] [data-action="merge-import"]'),
 	).not.toBeNull();
 	expect(
-		root.querySelector('.backup [data-action="replace-import"]'),
+		root.querySelector(
+			'[data-section="backup"] [data-action="replace-import"]',
+		),
 	).not.toBeNull();
 	expect(importStatus(root)).toBe("");
 	expect(await repo.listPurchases("kbank")).toHaveLength(2);
@@ -515,11 +648,13 @@ test("the merge-or-replace question shows merge as the primary button and replac
 	await settle();
 
 	// No variant is the filled primary button, so merge reads as a button, not a panel.
-	const merge = root.querySelector('.backup [data-action="merge-import"]');
+	const merge = root.querySelector(
+		'[data-section="backup"] [data-action="merge-import"]',
+	);
 	expect(merge?.hasAttribute("data-variant")).toBe(false);
 	expect(
 		root
-			.querySelector('.backup [data-action="replace-import"]')
+			.querySelector('[data-section="backup"] [data-action="replace-import"]')
 			?.getAttribute("data-variant"),
 	).toBe("danger");
 });
@@ -532,7 +667,9 @@ test("importing into an empty browser asks nothing", async () => {
 	chooseFile(root, await oneCardBackup());
 	await settle();
 
-	expect(root.querySelector('.backup [data-action="merge-import"]')).toBeNull();
+	expect(
+		root.querySelector('[data-section="backup"] [data-action="merge-import"]'),
+	).toBeNull();
 	expect(importStatus(root)).not.toBe("");
 });
 
@@ -561,7 +698,9 @@ test("choosing replace leaves only what the backup carries", async () => {
 		"Restored b.json: 1 cards, 0 purchases, 0 payments, 0 limit groups, 0 lists.",
 	);
 	expect(
-		root.querySelector('.backup [data-action="replace-import"]'),
+		root.querySelector(
+			'[data-section="backup"] [data-action="replace-import"]',
+		),
 	).toBeNull();
 });
 
@@ -576,7 +715,9 @@ test("cancelling the merge-or-replace question imports nothing", async () => {
 	clickBackup(root, "cancel-import");
 	await settle();
 
-	expect(root.querySelector('.backup [data-action="merge-import"]')).toBeNull();
+	expect(
+		root.querySelector('[data-section="backup"] [data-action="merge-import"]'),
+	).toBeNull();
 	expect(importStatus(root)).toBe("");
 	expect(await repo.listPurchases("kbank")).toHaveLength(2);
 	expect(await repo.listLimitGroups()).toHaveLength(1);
@@ -588,6 +729,7 @@ test("the paste panel stays closed until asked for", async () => {
 	await settle();
 
 	expect(pasteArea(root)).toBeNull();
+	openRestore(root);
 	clickBackup(root, "open-paste");
 	await settle();
 	expect(pasteArea(root)).not.toBeNull();
@@ -644,7 +786,9 @@ test("malformed pasted text leaves a message, keeps the text, and changes nothin
 
 	expect(bannerMessage(root)).toContain("Could not restore that copy.");
 	expect(pasteArea(root)?.value).toBe("{ not json");
-	expect(root.querySelector('.backup [data-action="merge-import"]')).toBeNull();
+	expect(
+		root.querySelector('[data-section="backup"] [data-action="merge-import"]'),
+	).toBeNull();
 	expect(await repo.listPurchases("kbank")).toHaveLength(2);
 });
 
@@ -672,6 +816,7 @@ test("paste from clipboard fills the text area", async () => {
 		renderSettingsPage(new InMemoryRepository(), root);
 		await settle();
 
+		openRestore(root);
 		clickBackup(root, "open-paste");
 		await settle();
 		clickBackup(root, "read-clipboard");
@@ -690,6 +835,7 @@ test("a clipboard the browser will not read leaves a message", async () => {
 			renderSettingsPage(new InMemoryRepository(), root);
 			await settle();
 
+			openRestore(root);
 			clickBackup(root, "open-paste");
 			await settle();
 			clickBackup(root, "read-clipboard");
@@ -714,13 +860,14 @@ test("the merge-or-replace question follows a language switch", async () => {
 	await settle();
 	expect(backupText(root)).not.toContain("In this browser");
 	expect(
-		root.querySelector('.backup [data-action="merge-import"]'),
+		root.querySelector('[data-section="backup"] [data-action="merge-import"]'),
 	).not.toBeNull();
 	setLocale("en");
 });
 
-const exportStatus = (root: HTMLElement): string =>
-	root.querySelector(".export-status")?.textContent?.trim() ?? "";
+const copyLabel = (root: HTMLElement): string =>
+	row(root, "copy").querySelector(".set-row__action")?.textContent?.trim() ??
+	"";
 
 test("copy to clipboard writes the backup as compact JSON, and says so", async () => {
 	setLocale("en");
@@ -737,7 +884,7 @@ test("copy to clipboard writes the backup as compact JSON, and says so", async (
 			renderSettingsPage(repo, root);
 			await settle();
 
-			clickBackup(root, "copy-export");
+			row(root, "copy").click();
 			await settle();
 
 			expect(bannerMessage(root)).toBe("");
@@ -746,10 +893,7 @@ test("copy to clipboard writes the backup as compact JSON, and says so", async (
 			expect(copied.purchases).toHaveLength(2);
 			// Compact, not pretty-printed: pasted text is carried around, not read.
 			expect(written).toBe(JSON.stringify(JSON.parse(written)));
-			expect(exportStatus(root)).toBe("Copied to the clipboard.");
-			expect(root.querySelector(".export-status")?.getAttribute("role")).toBe(
-				"status",
-			);
+			expect(copyLabel(root)).toBe("Copied");
 		},
 	);
 });
@@ -763,11 +907,11 @@ test("a clipboard the browser will not write leaves a message", async () => {
 			renderSettingsPage(new InMemoryRepository(), root);
 			await settle();
 
-			clickBackup(root, "copy-export");
+			row(root, "copy").click();
 			await settle();
 
 			expect(bannerMessage(root)).toContain("Could not copy the text.");
-			expect(exportStatus(root)).toBe("");
+			expect(copyLabel(root)).toBe("Copy");
 		},
 	);
 });
@@ -778,9 +922,7 @@ test("copy to clipboard is not offered where the browser cannot write to it", as
 		renderSettingsPage(new InMemoryRepository(), root);
 		await settle();
 
-		expect(
-			root.querySelector('.backup [data-action="copy-export"]'),
-		).toBeNull();
+		expect(root.querySelector('[data-row="copy"]')).toBeNull();
 	});
 });
 
