@@ -1,7 +1,6 @@
 import { DEFAULT_LOCATION } from "#lib/domain/location";
 import { defaultLocations } from "#lib/domain/locations";
 import type { LocationRecord } from "#lib/domain/types";
-import { sortLocations } from "#lib/i18n/format";
 import type { Repository } from "#lib/storage/repository";
 
 export const MIGRATION_KEY = "cc:migration:location";
@@ -13,7 +12,8 @@ export const MIGRATION_KEY = "cc:migration:location";
  * can bring cards without their records, and a default record can have gone. So each card is
  * checked against the stored record ids: one kept at a default place whose record is missing
  * (`bangkok`, `phichit`, `krabi`) gets that default record back, taking no purchases; any
- * other unknown value moves the card to the first record A to Z (`sortLocations`).
+ * other unknown value moves the card to the `DEFAULT_LOCATION` record when stored, else to the
+ * first record by id, so the result never depends on the reader's language.
  *
  * Returns the names of the cards it moved, and records them under `MIGRATION_KEY` so the
  * cards page can say which ones need a human to pick the right location.
@@ -45,9 +45,11 @@ export async function migrateLocations(
 				(record) => record.id === DEFAULT_LOCATION,
 			);
 			if (records.length === 0 && fallback) await restore(fallback);
-			const first = sortLocations(records)[0];
-			if (!first) continue;
-			await repo.saveCard({ ...card, location: first.id });
+			const target =
+				records.find((record) => record.id === DEFAULT_LOCATION) ??
+				records.toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
+			if (!target) continue;
+			await repo.saveCard({ ...card, location: target.id });
 			reset.push(card.name);
 		} catch (failure) {
 			// One card that will not write must not hold back the rest, nor the page behind it.

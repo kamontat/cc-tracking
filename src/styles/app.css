@@ -779,9 +779,11 @@ a:any-link:hover {
 	padding-block: var(--cc-space-3);
 }
 
+/* A row, said outright: the reset makes every div a column (`@kcstyles/reset.css`). */
 .location-row__line,
 .location-add__control {
 	display: flex;
+	flex-direction: row;
 	gap: var(--cc-space-2);
 	align-items: center;
 }

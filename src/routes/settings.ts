@@ -67,9 +67,14 @@ const rowText = (label: string, sub?: string) =>
 /**
  * Renders the settings page into `root`, wiring it to `repo`: sections of rows in `.set`
  * panels (RD-19), Display, Locations and Backup in the main column, Reset and About beside
- * them from 900px. Exported for tests.
+ * them from 900px. `storage` holds the location and payments markers, for Delete all and the
+ * restore sheet alike. Exported for tests.
  */
-export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
+export function renderSettingsPage(
+	repo: Repository,
+	root: HTMLElement,
+	storage: Storage = globalThis.localStorage,
+): void {
 	// The Locations row sums up the stored records; everything else on the page reads
 	// storage only when asked.
 	let locations: LocationRecord[] = [];
@@ -173,8 +178,8 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 			await repo.clearAll();
 			// Seed the starting places again, so Home and the Locations page are not empty. The
 			// marker goes first: an in-memory repository's clearAll leaves storage alone.
-			globalThis.localStorage.removeItem(SEED_KEY);
-			await seedLocations(repo, globalThis.localStorage);
+			storage.removeItem(SEED_KEY);
+			await seedLocations(repo, storage);
 			resetDone = true;
 		}, "reset.error");
 	};
@@ -259,7 +264,7 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 				<p class="import-status" role="status">${importedMessage()}</p>
 				${
 					openSheet === "restore"
-						? html`<cc-restore-sheet .repo=${repo} .storage=${globalThis.localStorage}
+						? html`<cc-restore-sheet .repo=${repo} .storage=${storage}
 							@restored=${onRestored} @close=${onCloseSheet}></cc-restore-sheet>`
 						: nothing
 				}`,

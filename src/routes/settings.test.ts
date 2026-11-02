@@ -3,8 +3,10 @@ import { defaultLocations } from "#lib/domain/locations";
 import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { memoryStorage } from "#lib/storage/contract";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
+import { SEED_KEY } from "#lib/storage/seed-locations";
 import { exportBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3";
 import { prepareBackupFile, renderSettingsPage } from "./settings";
 
@@ -753,4 +755,28 @@ test("a purge reports what it deleted in the Reset panel, in the reader's langua
 	await settle();
 	expect(resetStatus(root)).toContain("3");
 	expect(resetStatus(root)).not.toContain("Deleted");
+});
+
+test("Delete all and the restore sheet use the storage the page is given", async () => {
+	setLocale("en");
+	const storage = memoryStorage();
+	storage.setItem(SEED_KEY, "done");
+	const repo = await populated(new InMemoryRepository());
+	const root = mount();
+	renderSettingsPage(repo, root, storage);
+	await settle();
+
+	click(root, "reset");
+	await settle();
+	click(root, "delete-everything");
+	await settle();
+
+	// The marker was cleared and set again in the page's storage, never in the shared one.
+	expect(storage.getItem(SEED_KEY)).toBe("done");
+	expect(globalThis.localStorage.getItem(SEED_KEY)).toBeNull();
+	expect(await repo.listLocations()).toHaveLength(3);
+
+	row(root, "restore").click();
+	await settle();
+	expect(root.querySelector("cc-restore-sheet")?.storage).toBe(storage);
 });

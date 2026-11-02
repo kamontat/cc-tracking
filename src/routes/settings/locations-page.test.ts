@@ -356,3 +356,15 @@ test("a failed add keeps the typed name; a failed rename keeps the field; a fail
 	await click(row(root, "bangkok"), "confirm-delete");
 	expect(action(row(root, "bangkok"), "confirm-delete")).not.toBeNull();
 });
+
+test("a place's line lays out as a row: the reset makes every div a column otherwise", async () => {
+	const css = (
+		await Bun.file(`${import.meta.dir}/../../styles/app.css`).text()
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	const rule =
+		/\.location-row__line,\s*\.location-add__control\s*\{([^}]*)\}/.exec(
+			css,
+		)?.[1];
+	expect(rule).toMatch(/display:\s*flex/);
+	expect(rule).toMatch(/flex-direction:\s*row/);
+});
