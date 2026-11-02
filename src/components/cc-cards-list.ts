@@ -8,13 +8,14 @@ import {
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import type { Location } from "#lib/domain/location";
+import { takesPurchases } from "#lib/domain/locations";
 import { formatAmount } from "#lib/domain/money";
-import { defaultSettings, type Settings } from "#lib/domain/settings";
 import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	CardLedger,
 	LimitGroup,
+	LocationRecord,
 	PlainDate,
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
@@ -143,8 +144,8 @@ export class CcCardsList extends LitElement {
 	@property({ attribute: false }) rooms: CardsRooms = new Map();
 	/** The credit each card holds, in satang, keyed by card id; none when absent. */
 	@property({ attribute: false }) credits: Map<string, number> = new Map();
-	/** Which places take purchases, for each section's heading. */
-	@property({ attribute: false }) settings: Settings = defaultSettings();
+	/** The stored locations: which take purchases, for each section's heading. */
+	@property({ attribute: false }) locations: LocationRecord[] = [];
 	/** How the page names a place. */
 	@property({ attribute: false }) locationName: (id: string) => string = (id) =>
 		locationText(id as Location);
@@ -228,12 +229,11 @@ export class CcCardsList extends LitElement {
 			return html`<p class="empty">${
 				this.total === 0 ? t("cards.page.empty") : t("cards.page.noMatch")
 			}</p>`;
-		const takes = this.settings.purchaseLocations as string[];
 		return html`
 			${(sections ?? []).map(
 				({ location, cards }) => html`<section data-location=${location}>
 					<h2 class="place"><b>${this.locationName(location)}</b> <small>${cardsCount(cards.length)}${
-						takes.includes(location)
+						takesPurchases(this.locations, location)
 							? ` · ${t("cards.page.takesPurchases")}`
 							: ""
 					}</small></h2>

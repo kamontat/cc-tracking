@@ -7,6 +7,7 @@ import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository } from "#lib/storage/repository";
+import { seedLocations } from "#lib/storage/seed-locations";
 import { payAddress } from "#lib/ui/pay-address";
 import { renderCardPage } from "./card";
 import { draft, saved, sent } from "./list/test-support";
@@ -86,6 +87,8 @@ class RejectingDeleteRepository extends InMemoryRepository {
 let visited: string[] = [];
 
 const open = async (repo: InMemoryRepository, id: string | null = "kbank") => {
+	// As `bootstrap` does on a real load: the default records, ticked from the stored setting.
+	await seedLocations(repo, { getItem: () => null, setItem: () => {} });
 	const root = mount();
 	visited = [];
 	renderCardPage(repo, id, root, { navigate: (url) => visited.push(url) });
@@ -393,6 +396,28 @@ test("Use on a list starts a list on this card, and Make a payment opens its nex
 	expect(pay?.getAttribute("data-variant")).toBe("quiet");
 	expect(text(pay)).toBe("Make a payment");
 	expect(actions?.querySelector(".note")).toBeNull();
+});
+
+test("a card kept at a place of its own that takes no purchases names that place", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit: 500_000 });
+	await repo.saveLocation({
+		id: "chiang-mai",
+		name: "Chiang Mai",
+		takesPurchases: false,
+	});
+	await repo.saveCard({
+		...card,
+		location: "chiang-mai" as Card["location"],
+		limitGroupId: "pool",
+	});
+	const root = await open(repo);
+
+	const actions = root.querySelector(".card-actions");
+	expect(actions?.querySelector('[data-action="use-on-list"]')).toBeNull();
+	expect(text(actions?.querySelector(".note"))).toStartWith(
+		"Chiang Mai takes no new purchases",
+	);
 });
 
 test("a card kept where purchases are not ticked says so instead of Use on a list", async () => {

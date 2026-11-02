@@ -5,13 +5,13 @@ import { ledgerUrgency, nextBill } from "#lib/domain/ledger";
 import { plannedHorizon } from "#lib/domain/pay";
 import { listTotal } from "#lib/domain/purchase-list";
 import { type GroupRoom, groupRoom } from "#lib/domain/room";
-import type { Settings } from "#lib/domain/settings";
 import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	CardLedger,
 	CardPayment,
 	LimitGroup,
+	LocationRecord,
 	PlainDate,
 	PurchaseList,
 } from "#lib/domain/types";
@@ -23,6 +23,9 @@ export type RoomData = {
 	lists: PurchaseList[];
 };
 
+/** What *Ready to use* reads: the room data and the location records that say where purchases happen. */
+export type ReadyData = RoomData & { locations: LocationRecord[] };
+
 const byId = (a: { id: string }, b: { id: string }): number =>
 	a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 
@@ -30,11 +33,11 @@ const byId = (a: { id: string }, b: { id: string }): number =>
 export function isReady(
 	card: Card,
 	groups: LimitGroup[],
-	settings: Settings,
+	locations: LocationRecord[],
 ): boolean {
 	return (
 		!card.archived &&
-		canPurchase(card, settings) &&
+		canPurchase(card, locations) &&
 		groups.some((g) => g.id === card.limitGroupId)
 	);
 }
@@ -79,14 +82,10 @@ export type ReadyRow = {
 export type ReadySort = "room" | "close" | "due";
 export const READY_SORTS: readonly ReadySort[] = ["room", "close", "due"];
 
-export function readyRows(
-	data: RoomData,
-	settings: Settings,
-	today: PlainDate,
-): ReadyRow[] {
+export function readyRows(data: ReadyData, today: PlainDate): ReadyRow[] {
 	const rows: ReadyRow[] = [];
 	for (const card of data.cards) {
-		if (!isReady(card, data.groups, settings)) continue;
+		if (!isReady(card, data.groups, data.locations)) continue;
 		const room = roomFor(card, data);
 		if (!room) continue;
 		const period = openPeriod(card, today);

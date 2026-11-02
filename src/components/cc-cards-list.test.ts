@@ -70,7 +70,10 @@ const mount = async (
 	element.groups = [g1, g2];
 	element.rooms = rooms;
 	element.credits = new Map([["C", 250_00]]);
-	element.settings = { purchaseLocations: ["krabi"] };
+	element.locations = [
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+	];
 	element.total = list.length;
 	Object.assign(element, props);
 	document.body.append(element);

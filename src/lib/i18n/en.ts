@@ -438,14 +438,7 @@ export const en = {
 	"theme.system": "Match device",
 	"theme.light": "Light",
 	"theme.dark": "Dark",
-	"settings.purchases.title": "Purchases",
-	"settings.purchases.explain":
-		"A new purchase can be entered against any card kept in a place ticked here.",
-	"settings.purchases.legend": "Places that take new purchases",
-	"settings.purchases.none":
-		"Nowhere takes new purchases, so no card can be spent on. Tick at least one place.",
 	"settings.error.read": "Could not read your settings.",
-	"settings.error.save": "Could not save that setting.",
 
 	"spendable.unassigned.one": "1 card has no limit group yet.",
 	"spendable.unassigned.many": "{count} cards have no limit group yet.",

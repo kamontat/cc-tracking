@@ -3,6 +3,7 @@ import {
 	describeCycleText,
 	locationName,
 	nameOfLocation,
+	purchasePlaces,
 	relativeDayText,
 	sortLocations,
 } from "#lib/i18n/format";
@@ -99,4 +100,18 @@ test("falls back to the id when no record matches", () => {
 	const records = [{ id: "krabi", name: "Krabi", takesPurchases: true }];
 	expect(nameOfLocation(records, "krabi")).toBe("Krabi");
 	expect(nameOfLocation(records, "gone")).toBe("gone");
+});
+
+test("names the places that take purchases, A to Z in the reader's language", () => {
+	const records = [
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+		{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: true },
+	];
+	setLocale("en");
+	expect(purchasePlaces(records)).toEqual(["Chiang Mai", "Krabi"]);
+	setLocale("th");
+	expect(purchasePlaces(records)).toEqual(["กระบี่", "Chiang Mai"]);
+	setLocale("en");
+	expect(purchasePlaces([])).toEqual([]);
 });

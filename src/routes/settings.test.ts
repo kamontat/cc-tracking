@@ -1,5 +1,4 @@
 import { expect, test } from "bun:test";
-import type { Settings } from "#lib/domain/settings";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { LocalStorageRepository } from "#lib/storage/local";
@@ -68,24 +67,6 @@ const sampleCard: Card = {
 	archived: false,
 };
 
-/** A repository whose saveSettings always rejects, to exercise the failure path in isolation. */
-class RejectingSettingsRepository extends InMemoryRepository {
-	override saveSettings(): Promise<void> {
-		return Promise.reject(new Error("disk is full"));
-	}
-}
-
-test("shows the stored settings", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveSettings({ purchaseLocations: ["bangkok"] });
-	const root = mount();
-	renderSettingsPage(repo, root);
-	await settle();
-
-	const panel = root.querySelector("cc-settings");
-	expect(panel?.settings.purchaseLocations).toEqual(["bangkok"]);
-});
-
 test("offers the language and theme pickers in a display panel", async () => {
 	const root = mount();
 	renderSettingsPage(new InMemoryRepository(), root);
@@ -103,56 +84,6 @@ test("About comes last", async () => {
 	const last = articles[articles.length - 1];
 	expect(last?.classList.contains("about")).toBe(true);
 	expect(last?.querySelector("cc-about")).not.toBeNull();
-});
-
-test("shows Krabi alone before anything has been saved", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderSettingsPage(repo, root);
-	await settle();
-
-	expect(root.querySelector("cc-settings")?.settings.purchaseLocations).toEqual(
-		["krabi"],
-	);
-});
-
-test("stores a change and shows it back", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderSettingsPage(repo, root);
-	await settle();
-
-	root.querySelector("cc-settings")?.dispatchEvent(
-		new CustomEvent<Settings>("save-settings", {
-			detail: { purchaseLocations: ["krabi", "phichit"] },
-		}),
-	);
-	await settle();
-
-	expect(bannerMessage(root)).toBe("");
-	expect(await repo.getSettings()).toEqual({
-		purchaseLocations: ["krabi", "phichit"],
-	});
-	expect(root.querySelector("cc-settings")?.settings.purchaseLocations).toEqual(
-		["krabi", "phichit"],
-	);
-});
-
-test("a failed save leaves a message in the banner and stores nothing", async () => {
-	const repo = new RejectingSettingsRepository();
-	const root = mount();
-	renderSettingsPage(repo, root);
-	await settle();
-
-	root.querySelector("cc-settings")?.dispatchEvent(
-		new CustomEvent<Settings>("save-settings", {
-			detail: { purchaseLocations: [] },
-		}),
-	);
-	await settle();
-
-	expect(bannerMessage(root)).toContain("disk is full");
-	expect(await repo.getSettings()).toEqual({ purchaseLocations: ["krabi"] });
 });
 
 test("renders its heading in the chosen language", async () => {
@@ -376,28 +307,6 @@ test("the success message follows a language switch", async () => {
 	setLocale("en");
 });
 
-test("importing a backup that carries settings shows them in the settings panel", async () => {
-	const source = new InMemoryRepository();
-	await source.saveSettings({ purchaseLocations: ["bangkok", "phichit"] });
-	const backupText = JSON.stringify(await exportBackupV3(source, new Date()));
-
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderSettingsPage(repo, root);
-	await settle();
-	expect(root.querySelector("cc-settings")?.settings.purchaseLocations).toEqual(
-		["krabi"],
-	);
-
-	chooseFile(root, backupText);
-	await settle();
-
-	expect(bannerMessage(root)).toBe("");
-	expect(root.querySelector("cc-settings")?.settings.purchaseLocations).toEqual(
-		["bangkok", "phichit"],
-	);
-});
-
 const click = (root: HTMLElement, action: string) => {
 	const button = root.querySelector<HTMLButtonElement>(
 		`.reset [data-action="${action}"]`,
@@ -485,10 +394,6 @@ test("confirming a reset deletes every record and setting, and says so", async (
 	expect(await repo.listPurchases("kbank")).toEqual([]);
 	expect(await repo.listLimitGroups()).toEqual([]);
 	expect(await repo.getSettings()).toEqual({ purchaseLocations: ["krabi"] });
-	// The page reloads what is left, so the panel shows the defaults, not the old choice.
-	expect(root.querySelector("cc-settings")?.settings.purchaseLocations).toEqual(
-		["krabi"],
-	);
 	expect(resetStatus(root)).toBe("All data deleted.");
 	expect(root.querySelector('.reset [data-action="reset"]')).not.toBeNull();
 });

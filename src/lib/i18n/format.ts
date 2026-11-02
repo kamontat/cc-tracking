@@ -42,6 +42,13 @@ export function sortLocations<T extends Pick<LocationRecord, "id" | "name">>(
 	);
 }
 
+/** The shown names of the locations that take purchases, A to Z in the reader's language. */
+export function purchasePlaces(records: LocationRecord[]): string[] {
+	return sortLocations(records.filter((record) => record.takesPurchases)).map(
+		locationName,
+	);
+}
+
 /** The shown name of the location with `id`, or `id` itself when no record has it. */
 export function nameOfLocation(records: LocationRecord[], id: string): string {
 	const record = records.find((r) => r.id === id);

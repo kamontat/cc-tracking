@@ -6,6 +6,7 @@ import { setLocale } from "#lib/i18n/index";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { renderHomePage } from "./index";
+import { saveLocations } from "./list/test-support";
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = (ms = 0) =>
@@ -44,7 +45,7 @@ const seed = async (repo: Repository) => {
 	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 });
 	await repo.saveCard(card("A"));
 	await repo.saveCard(card("B"));
-	await repo.saveSettings({ purchaseLocations: ["krabi"] });
+	await saveLocations(repo, ["krabi"]);
 };
 
 const setup = async (repo: Repository = new InMemoryRepository()) => {
@@ -213,6 +214,39 @@ class FailingReadRepository extends InMemoryRepository {
 		return Promise.reject(new Error("disk is gone"));
 	}
 }
+
+test("ready to use names the places that take purchases, A to Z in the reader's language", async () => {
+	const { root, repo } = await setup();
+	await repo.saveLocation({
+		id: "chiang-mai",
+		name: "Chiang Mai",
+		takesPurchases: true,
+	});
+	await repo.saveCard(
+		card("C", { location: "chiang-mai" as Card["location"] }),
+	);
+	renderHomePage(repo, root);
+	await settle();
+	const panel = await readyList(root);
+	expect(panel.places).toEqual(["Chiang Mai", "Krabi"]);
+	expect(panel.rows.map((row) => row.card.id).sort()).toEqual(["A", "B", "C"]);
+
+	// A language switch repaints with the names, and their order, in that language.
+	setLocale("th");
+	await settle();
+	expect((await readyList(root)).places).toEqual(["กระบี่", "Chiang Mai"]);
+	setLocale("en");
+});
+
+test("with nothing ready, the panel still names no place that takes none", async () => {
+	const { root, repo } = await setup();
+	await saveLocations(repo, []);
+	renderHomePage(repo, root);
+	await settle();
+	const panel = await readyList(root);
+	expect(panel.rows).toEqual([]);
+	expect(panel.places).toEqual([]);
+});
 
 test("a failed read shows the banner", async () => {
 	setLocale("en");

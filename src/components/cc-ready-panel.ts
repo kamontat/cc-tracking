@@ -1,10 +1,8 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { type ReadyRow, sortReady } from "#lib/domain/home";
-import type { Location } from "#lib/domain/location";
 import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { locationText } from "#lib/i18n/format";
 import { t } from "#lib/i18n/index";
 import { base, cardBits, controls, rowPanel, usageBar } from "#styles/shared";
 import { readyRowParts, readyRowStyles } from "./ready-row";
@@ -66,7 +64,8 @@ export class CcReadyPanel extends LitElement {
 	];
 
 	@property({ attribute: false }) rows: ReadyRow[] = [];
-	@property({ attribute: false }) locations: Location[] = [];
+	/** The shown names of the places that take purchases, already in order. */
+	@property({ attribute: false }) places: string[] = [];
 	/** The stored limit groups, in order: a card's chip takes its group's colour. */
 	@property({ attribute: false }) groups: LimitGroup[] = [];
 	@property() today: PlainDate = "";
@@ -96,7 +95,7 @@ export class CcReadyPanel extends LitElement {
 
 	override render() {
 		const count = this.rows.length;
-		const places = this.locations.map(locationText).join(", ");
+		const places = this.places.join(", ");
 		const head = html`<div class="head">
 			<h2>${t("ready.title")}</h2>
 			<small>${t(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places })}</small>

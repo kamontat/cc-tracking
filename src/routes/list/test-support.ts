@@ -1,4 +1,6 @@
 import type { CcErrorBanner } from "#components/cc-error-banner";
+import { defaultLocations } from "#lib/domain/locations";
+import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type { Card, PurchaseList } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
@@ -27,12 +29,21 @@ export const card = (id: string, extra: Partial<Card> = {}): Card => ({
 	...extra,
 });
 
+/** Stores the three default location records, with only the `ticked` ones taking purchases. */
+export const saveLocations = async (repo: Repository, ticked: string[]) => {
+	for (const record of defaultLocations(DEFAULT_SETTINGS))
+		await repo.saveLocation({
+			...record,
+			takesPurchases: ticked.includes(record.id),
+		});
+};
+
 export const seed = async (repo: Repository) => {
 	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 });
 	await repo.saveCard(card("A"));
 	await repo.saveCard(card("B"));
 	await repo.saveCard(card("Z", { archived: true }));
-	await repo.saveSettings({ purchaseLocations: ["krabi"] });
+	await saveLocations(repo, ["krabi"]);
 };
 
 export const CLOCK = () => new Date("2026-10-31T03:00:00Z");

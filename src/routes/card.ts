@@ -14,11 +14,10 @@ import { compareDates, today } from "#lib/domain/date";
 import { overRoom as overRoomOf, roomFor } from "#lib/domain/home";
 import { nextBill } from "#lib/domain/ledger";
 import { formatAmount } from "#lib/domain/money";
-import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import { openPeriod, recentPeriods } from "#lib/domain/statement";
 import type { Card, LedgerStatement, Purchase } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
-import { locationText } from "#lib/i18n/format";
+import { locationText, nameOfLocation } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { cardTitle } from "#lib/ui/card-label";
@@ -254,9 +253,9 @@ export function renderCardPage(
 		if (current.archived) return t("card.archivedNote");
 		// A list needs the card's group (DR-20), so without one *Use on a list* is a dead end.
 		if (data && !roomFor(current, data)) return t("card.noGroupNote");
-		if (!canPurchase(current, data?.settings ?? DEFAULT_SETTINGS))
+		if (data && !canPurchase(current, data.locations))
 			return t("card.noPurchases", {
-				location: locationText(current.location),
+				location: nameOfLocation(data.locations, current.location),
 			});
 		return null;
 	};

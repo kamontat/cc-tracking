@@ -10,6 +10,7 @@ import { today } from "#lib/domain/date";
 import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home";
 import { unassignedCards } from "#lib/domain/limit";
 import { plannedOf } from "#lib/domain/pay";
+import { purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
@@ -47,10 +48,10 @@ export function renderHomePage(
 		let rows: ReadyRow[] = [];
 		let unassigned = 0;
 		if (data) {
-			rows = readyRows(data, data.settings, now);
-			const settings = data.settings;
+			rows = readyRows(data, now);
+			const locations = data.locations;
 			unassigned = unassignedCards(data.cards, data.groups).filter((card) =>
-				canPurchase(card, settings),
+				canPurchase(card, locations),
 			).length;
 		}
 		render(
@@ -60,7 +61,7 @@ export function renderHomePage(
 					.cards=${data?.cards ?? []} .groups=${data?.groups ?? []} .today=${now}></cc-needs-you>
 				<cc-ready-panel
 					.rows=${rows}
-					.locations=${data?.settings.purchaseLocations ?? []}
+					.places=${data ? purchasePlaces(data.locations) : []}
 					.groups=${data?.groups ?? []}
 					.today=${now}
 					.unassigned=${unassigned}

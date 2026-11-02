@@ -14,7 +14,7 @@ import {
 	readyLocations,
 	readyOwners,
 } from "#lib/domain/ready-filter";
-import { locationText } from "#lib/i18n/format";
+import { locationText, purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { newListAddress } from "#lib/ui/list-address";
@@ -147,9 +147,8 @@ export function renderPickerPage(
 	};
 
 	const notice = (from: MoneyData) => {
-		const settings = from.settings;
 		const unassigned = unassignedCards(from.cards, from.groups).filter((card) =>
-			canPurchase(card, settings),
+			canPurchase(card, from.locations),
 		).length;
 		if (unassigned === 0) return nothing;
 		return html`<p class="note" data-testid="unassigned">
@@ -210,15 +209,13 @@ export function renderPickerPage(
 	};
 
 	const paint = () => {
-		const all = data ? readyRows(data, data.settings, now) : [];
+		const all = data ? readyRows(data, now) : [];
 		// A card that is no longer ready (archived, moved, its group gone) drops out of the pick.
 		if (data) {
 			const ready = new Set(all.map((row) => row.card.id));
 			selected = selected.filter((id) => ready.has(id));
 		}
-		const places = (data?.settings.purchaseLocations ?? [])
-			.map(locationText)
-			.join(", ");
+		const places = (data ? purchasePlaces(data.locations) : []).join(", ");
 		render(
 			html`${subHeader({
 				title: t("purchaseList.new"),

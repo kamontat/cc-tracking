@@ -442,13 +442,7 @@ export const th: Catalog = {
 	"theme.system": "ตามอุปกรณ์",
 	"theme.light": "สว่าง",
 	"theme.dark": "มืด",
-	"settings.purchases.title": "การใช้จ่าย",
-	"settings.purchases.explain": "บันทึกรายการใหม่ได้กับบัตรทุกใบที่เก็บไว้ในที่ที่ติ๊กไว้ตรงนี้",
-	"settings.purchases.legend": "ที่ที่บันทึกรายการใหม่ได้",
-	"settings.purchases.none":
-		"ยังไม่มีที่ใดบันทึกรายการใหม่ได้ จึงรูดบัตรไม่ได้เลย ติ๊กอย่างน้อยหนึ่งที่",
 	"settings.error.read": "อ่านการตั้งค่าไม่สำเร็จ",
-	"settings.error.save": "บันทึกการตั้งค่าไม่สำเร็จ",
 
 	"spendable.unassigned.one": "มีบัตร 1 ใบยังไม่ผูกกลุ่มวงเงิน",
 	"spendable.unassigned.many": "มีบัตร {count} ใบยังไม่ผูกกลุ่มวงเงิน",

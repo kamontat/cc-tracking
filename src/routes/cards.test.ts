@@ -9,7 +9,13 @@ import { setLocale } from "#lib/i18n/index";
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { type CardsAddressBar, renderCardsPage } from "./cards";
-import { CLOCK, flatText, mount, settle } from "./list/test-support";
+import {
+	CLOCK,
+	flatText,
+	mount,
+	saveLocations,
+	settle,
+} from "./list/test-support";
 
 /** An address bar that records what the page did to it, and can play Back and Forward. */
 const fakeBar = (start: string) => {
@@ -74,7 +80,7 @@ const seed = async (repo: Repository) => {
 	await repo.saveCard(card("A"));
 	await repo.saveCard(card("B", { location: "bangkok", limitGroupId: "g2" }));
 	await repo.saveCard(card("Z", { archived: true }));
-	await repo.saveSettings({ purchaseLocations: ["krabi"] });
+	await saveLocations(repo, ["krabi"]);
 };
 
 const setup = async (

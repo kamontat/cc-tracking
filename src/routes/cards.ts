@@ -262,7 +262,7 @@ export function renderCardsPage(
 	};
 
 	const results = (d: CardsData) => {
-		const { cards, groups, settings } = d.money;
+		const { cards, groups } = d.money;
 		const active = chips();
 		return html`
 			${filterControls({
@@ -283,7 +283,7 @@ export function renderCardsPage(
 				.rooms=${d.rooms}
 				.credits=${d.credits}
 				.ledgers=${d.money.ledgers}
-				.settings=${settings}
+				.locations=${d.records}
 				.locationName=${locationName}
 				.total=${cards.length}
 				.today=${now}

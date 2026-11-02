@@ -5,7 +5,7 @@ import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { renderPickerPage } from "./picker-page";
-import { CLOCK, card, mount, settle } from "./test-support";
+import { CLOCK, card, mount, saveLocations, settle } from "./test-support";
 
 /** Four ready cards over two groups and two places, one archived and one in no place. */
 const seed = async (repo: Repository) => {
@@ -27,7 +27,7 @@ const seed = async (repo: Repository) => {
 	await repo.saveCard(card("D", { location: "bangkok", limitGroupId: "g2" }));
 	await repo.saveCard(card("E", { location: "phichit" }));
 	await repo.saveCard(card("Z", { archived: true }));
-	await repo.saveSettings({ purchaseLocations: ["krabi", "bangkok"] });
+	await saveLocations(repo, ["krabi", "bangkok"]);
 	// Room: g1 has two cards spending 30k, g2 two cards spending 10k.
 	await repo.savePurchase({
 		id: "p1",
@@ -101,7 +101,7 @@ test("a list page under a sub-header to Home, with the ready cards by most room"
 	const { root } = await setup();
 	expect(document.documentElement.hasAttribute("data-list-page")).toBe(true);
 	expect(flat(root.querySelector(".sub-header h1"))).toBe(
-		"New purchase list4 cards in Krabi, Bangkok",
+		"New purchase list4 cards in Bangkok, Krabi",
 	);
 	expect(
 		root
@@ -228,7 +228,7 @@ test("a filter that matches nothing says so and clears", async () => {
 
 test("nothing ready names the next step; not-assigned cards are counted", async () => {
 	const { root } = await setup("", async (repo) => {
-		await repo.saveSettings({ purchaseLocations: [] });
+		await saveLocations(repo, []);
 	});
 	expect(root.querySelector("cc-ready-picker")).toBeNull();
 	expect(root.querySelector(".tx-controls")).toBeNull();

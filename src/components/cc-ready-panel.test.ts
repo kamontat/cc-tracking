@@ -11,7 +11,7 @@ const mount = async (props: Partial<CcReadyPanel> = {}) => {
 	const element = document.createElement("cc-ready-panel") as CcReadyPanel;
 	Object.assign(element, {
 		rows: testRows(),
-		locations: ["krabi", "bangkok"],
+		places: ["Bangkok", "Krabi"],
 		today: "2026-10-31",
 		unassigned: 0,
 		...props,
@@ -30,11 +30,11 @@ test("the heading counts the ready cards and their places", async () => {
 	const { root } = await mount();
 	expect(flat(root.querySelector("h2"))).toBe("Ready to use");
 	expect(flat(root.querySelector(".head small"))).toBe(
-		"3 cards in Krabi, Bangkok",
+		"3 cards in Bangkok, Krabi",
 	);
 	const one = await mount({ rows: testRows().slice(0, 1) });
 	expect(flat(one.root.querySelector(".head small"))).toBe(
-		"1 card in Krabi, Bangkok",
+		"1 card in Bangkok, Krabi",
 	);
 });
 

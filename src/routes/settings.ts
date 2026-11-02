@@ -4,9 +4,7 @@ import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-about";
 import "#components/cc-display-settings";
-import "#components/cc-settings";
 import { html, nothing, render } from "lit";
-import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import {
@@ -40,20 +38,13 @@ export async function prepareBackupFile(
 
 /** Renders the settings page into `root`, wiring it to `repo`. Exported for tests. */
 export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
-	let settings: Settings = DEFAULT_SETTINGS;
-
-	// A backup can carry settings, so the reload `guard` runs after an import is what brings
-	// the purchases panel in step with what was just imported.
+	// Nothing on the page reads stored records yet; the state machine still carries the
+	// banner and the guard every write goes through.
 	const state = createPageState({
-		fetch: async () => {
-			settings = await repo.getSettings();
-		},
+		fetch: async () => {},
 		fallbackKey: "settings.error.read",
 		paint: () => paint(),
 	});
-
-	const onSave = (event: CustomEvent<Settings>) =>
-		state.guard(() => repo.saveSettings(event.detail), "settings.error.save");
 
 	const onExport = () =>
 		state.guard(async () => {
@@ -301,9 +292,6 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
 				<article class="display">
 					<cc-display-settings></cc-display-settings>
-				</article>
-				<article>
-					<cc-settings .settings=${settings} @save-settings=${onSave}></cc-settings>
 				</article>
 				<article class="backup">
 					<h2>${t("backup.title")}</h2>
