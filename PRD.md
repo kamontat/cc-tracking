@@ -279,7 +279,7 @@ below (full scans at startup, loading every purchase on a page) rely on that.
 | FR-29 | A backup can be saved as a downloaded JSON file or copied as compact text. *Since phase 6 they are the rows *Download a copy* (its subline the filename it will save) and *Copy as text* (which reads *Copied* after), under Settings › Backup.* | BR-08 |
 | FR-30 | A backup can be restored from a file or pasted text. If the browser already holds records, the user sees both sets of counts and chooses *Merge* (keep what is here, add the copy's records, and overwrite any it shares) or *Replace* (delete everything first). An empty browser restores at once. *Since phase 6 *Restore…* opens a sheet that reads the clipboard first, with a file or pasting by hand beside it, and asks Merge or Replace in the same sheet (DD-134). Merge keeps the local location records (DD-131).* | BR-08 |
 | FR-31 | A backup's shape is checked before anything is written (DC-06). A malformed file is rejected with a message naming the record and the problem. | BR-08 |
-| FR-32 | *Delete all data*, under Settings › Reset, deletes every card, limit group, purchase, payment, purchase list, location and setting. *Delete…* swaps the row for a warning in place: "This deletes N cards and every list, purchase and payment. Language and theme stay. It can't be undone.", with *Keep my data* and *Delete everything* (danger). Afterwards the default locations are seeded again (DC-04, DD-128). *(Until phase 6 the confirmation counted each kind of record; phase 6 follows the prototype the user approved, which counts cards only.)* *Delete old purchases* beside it deletes only old purchases on paid statements (RD-18). | BR-08 |
+| FR-32 | *Delete all data*, under Settings › Reset, deletes every card, limit group, purchase, payment, purchase list, location and setting. *Delete…* swaps the row for a warning in place: "This deletes N cards, N purchases, N payments, N limit groups, N lists. Language and theme stay. It can't be undone.", naming how many of each record will go (the same counts as a restored copy, `backup.counts`), with *Keep my data* and *Delete everything* (danger). Afterwards the default locations are seeded again (DC-04, DD-128). *(Phase 6 first followed the prototype, which counted cards only; the user asked for the count of each kind back on 2026-11-02.)* *Delete old purchases* beside it deletes only old purchases on paid statements (RD-18). | BR-08 |
 | FR-33 | Every write is awaited and followed by a fresh read from storage. A failed write or read shows a banner naming what failed, with a *Reload* button that reads the data again. | BR-08 |
 
 ### Language and presentation
@@ -471,9 +471,9 @@ pasted text, choosing to merge or replace, so that I can move between browsers s
 
 **US-21 -- Start over.** As a bookkeeper, I want to delete all data after a clear confirmation,
 so that I can start clean.
-- *Delete…* asks in place: it says how many cards go and that every list, purchase and payment
-  goes with them, and that it can't be undone; *Keep my data* backs out, *Delete everything*
-  (danger) deletes. *(Until phase 6 it showed how many of each record would go.)*
+- *Delete…* asks in place: it says how many of each record go (cards, purchases, payments,
+  limit groups, lists) and that it can't be undone; *Keep my data* backs out, *Delete everything*
+  (danger) deletes.
 - My language and theme are kept, and the warning says so.
 - Afterwards the default locations are back, so Home and the Locations page aren't empty.
 - *Covers FR-32.*
@@ -801,7 +801,7 @@ Removed on purpose; listed so a redesign doesn't think they were lost.
 - The `/cards` query view (DC-15) and the `/cards?edit=<id>` deep link (DC-16), replaced by DD-115 with no redirect (question 15).
 - The card page's Add purchase dialog (`cc-quick-add`, `purchase-dialog.ts`), replaced by purchase lists; a purchase is edited from its statement row (DD-67, DD-111).
 - Settings' *Purchases* section with its place checkboxes, replaced by *Takes purchases* on each location at `/settings/locations` (RD-17); `settings.purchaseLocations` is read only to seed the records once (DD-128).
-- Settings' side-by-side *Save a copy* and *Restore a copy* boxes, replaced by rows and the restore sheet (DD-134); the reset confirmation's count of each kind of record, replaced by the card count (FR-32).
+- Settings' side-by-side *Save a copy* and *Restore a copy* boxes, replaced by rows and the restore sheet (DD-134).
 - Import writing `settings.purchaseLocations`, and export reading it (DD-94).
 - The blank group sheet's `?group=new`, replaced by `?newGroup=1` (DD-137).
 
