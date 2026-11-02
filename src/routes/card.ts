@@ -246,17 +246,25 @@ export function renderCardPage(
 			: []),
 	];
 
-	/** Why this card is not offered on lists, or nothing when it is (FR-22). */
-	const cannotPurchase = (current: Card): string | null => {
+	/**
+	 * Why this card is not offered on lists, or nothing when it is (FR-22). `toLocations` marks
+	 * the one reason the Locations page fixes.
+	 */
+	const cannotPurchase = (
+		current: Card,
+	): { text: string; toLocations?: true } | null => {
 		// An archived card takes no purchases wherever it is kept, so naming the place as the
 		// reason would send the reader to the wrong setting.
-		if (current.archived) return t("card.archivedNote");
+		if (current.archived) return { text: t("card.archivedNote") };
 		// A list needs the card's group (DR-20), so without one *Use on a list* is a dead end.
-		if (data && !roomFor(current, data)) return t("card.noGroupNote");
+		if (data && !roomFor(current, data)) return { text: t("card.noGroupNote") };
 		if (data && !canPurchase(current, data.locations))
-			return t("card.noPurchases", {
-				location: nameOfLocation(data.locations, current.location),
-			});
+			return {
+				text: t("card.noPurchases", {
+					location: nameOfLocation(data.locations, current.location),
+				}),
+				toLocations: true,
+			};
 		return null;
 	};
 
@@ -265,7 +273,12 @@ export function renderCardPage(
 		return html`<div class="card-actions">
 			${
 				reason
-					? html`<p class="note">${reason}</p>`
+					? html`<p class="note">${reason.text}</p>${
+							reason.toLocations
+								? html`<a class="btn" data-variant="quiet" data-action="settings"
+									href="/settings/locations">${t("ready.toSettings")}</a>`
+								: nothing
+						}`
 					: html`<a class="btn" data-action="use-on-list"
 							href=${newListAddress([current.id])}>${t("card.useOnList")}</a>
 						<button type="button" data-variant="quiet" data-action="add-purchase"

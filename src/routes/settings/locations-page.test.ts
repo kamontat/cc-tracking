@@ -2,7 +2,13 @@ import { afterEach, expect, test } from "bun:test";
 import type { LocationRecord } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
-import { flatText, mount, seed, settle } from "../list/test-support";
+import {
+	bannerText,
+	flatText,
+	mount,
+	seed,
+	settle,
+} from "../list/test-support";
 import { renderLocationsPage } from "./locations-page";
 
 /** Seeds Bangkok, Phichit and Krabi (Krabi ticked, with cards A, B and archived Z), runs
@@ -295,4 +301,58 @@ test("a default shows in the reader's language; a renamed one shows its stored n
 	expect(flatText(row(th.root, "bangkok"))).toContain("BKK");
 	expect(flatText(row(th.root, "krabi"))).toContain("กระบี่");
 	setLocale("en");
+});
+
+test("English: a default's Thai name counts as taken too", async () => {
+	const { repo, root } = await setup();
+	await add(root, "กระบี่");
+	expect((await repo.listLocations()).length).toBe(3);
+	expect(flatText(action(root, "add-location"))).toContain(
+		"There is already a location called กระบี่.",
+	);
+});
+
+/** A repository whose location writes fail while `fail` is set. */
+class FailingRepo extends InMemoryRepository {
+	fail = false;
+	override async saveLocation(value: LocationRecord) {
+		if (this.fail) throw new Error("disk full");
+		return super.saveLocation(value);
+	}
+	override async deleteLocation(id: string) {
+		if (this.fail) throw new Error("disk full");
+		return super.deleteLocation(id);
+	}
+}
+
+const setupFailing = async () => {
+	setLocale("en");
+	const repo = new FailingRepo();
+	await seed(repo);
+	repo.fail = true;
+	const root = mount();
+	renderLocationsPage(repo, root);
+	await settle(5);
+	return { repo, root };
+};
+
+test("a failed add keeps the typed name; a failed rename keeps the field; a failed delete keeps the question", async () => {
+	const { root } = await setupFailing();
+	await add(root, "Chiang Mai");
+	expect(
+		action<HTMLFormElement>(root, "add-location")?.querySelector("input")
+			?.value,
+	).toBe("Chiang Mai");
+	expect(bannerText(root)).toContain("Could not save the location.");
+
+	await rename(root, "krabi", "Ao Nang");
+	expect(
+		row(root, "krabi").querySelector<HTMLInputElement>(".location-row__field")
+			?.value,
+	).toBe("Ao Nang");
+
+	await click(row(root, "krabi"), "cancel-name");
+	await click(row(root, "bangkok"), "delete");
+	await click(row(root, "bangkok"), "confirm-delete");
+	expect(action(row(root, "bangkok"), "confirm-delete")).not.toBeNull();
 });

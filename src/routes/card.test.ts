@@ -442,6 +442,9 @@ test("a card kept where purchases are not ticked says so instead of Use on a lis
 	expect(text(actions?.querySelector(".note"))).toBe(
 		"Bangkok takes no new purchases, so this card isn't offered on lists. Tick it under Settings › Locations.",
 	);
+	expect(
+		actions?.querySelector('[data-action="settings"]')?.getAttribute("href"),
+	).toBe("/settings/locations");
 });
 
 const NO_GROUP_NOTE =

@@ -7,8 +7,10 @@ import {
 	renameLocation,
 } from "#lib/domain/locations";
 import type { Card, LocationRecord } from "#lib/domain/types";
+import { en } from "#lib/i18n/en";
 import { locationName, sortLocations } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
+import { th } from "#lib/i18n/th";
 import type { Repository } from "#lib/storage/repository";
 import { createPageState } from "#lib/ui/page-state";
 import { subHeader } from "#lib/ui/sub-header";
@@ -20,8 +22,23 @@ type NameProblem = { kind: "empty" } | { kind: "duplicate"; name: string };
 const key = (name: string) => name.trim().toLocaleLowerCase();
 
 /**
+ * Every name `record` goes by: its stored name, its shown name, and -- for a seeded place
+ * still under its English default -- its catalog name in both languages, so the check does
+ * not depend on which language the reader has on.
+ */
+function namesOf(record: LocationRecord): string[] {
+	const names = [record.name, locationName(record)];
+	const catalogKey = `location.${record.id}`;
+	if (catalogKey in en) {
+		const key = catalogKey as keyof typeof en;
+		if (record.name === en[key]) names.push(th[key]);
+	}
+	return names;
+}
+
+/**
  * Checks `typed` against every record but `self`: refused when empty, or when it matches any
- * record's shown name (`locationName`, so a default's Thai name counts) or its stored name.
+ * name the record goes by (`namesOf`), trimmed and case-insensitive.
  */
 export function nameProblem(
 	typed: string,
@@ -33,7 +50,7 @@ export function nameProblem(
 	const taken = records.some(
 		(record) =>
 			record.id !== self &&
-			(key(locationName(record)) === wanted || key(record.name) === wanted),
+			namesOf(record).some((name) => key(name) === wanted),
 	);
 	return taken ? { kind: "duplicate", name: typed.trim() } : null;
 }
@@ -75,6 +92,19 @@ export function renderLocationsPage(repo: Repository, root: HTMLElement): void {
 		paint: () => paint(),
 	});
 
+	/** Runs a write through `state.guard`; true when it went through. */
+	const write = async (
+		action: () => Promise<void>,
+		messageKey: "locations.error.save" | "locations.error.delete",
+	): Promise<boolean> => {
+		let done = false;
+		await state.guard(async () => {
+			await action();
+			done = true;
+		}, messageKey);
+		return done;
+	};
+
 	const countAt = (id: string) =>
 		cards.filter((card) => card.location === id).length;
 
@@ -89,7 +119,7 @@ export function renderLocationsPage(repo: Repository, root: HTMLElement): void {
 		paint();
 	};
 
-	const onSaveName = () => {
+	const onSaveName = async () => {
 		if (!renaming) return;
 		const { id, text } = renaming;
 		const problem = nameProblem(text, locations, id);
@@ -99,14 +129,19 @@ export function renderLocationsPage(repo: Repository, root: HTMLElement): void {
 			return;
 		}
 		const current = locations.find((record) => record.id === id);
-		renaming = null;
-		// Unchanged: a default saved under its Thai name would stop following the language.
-		if (!current || text.trim() === locationName(current)) return paint();
 		const next = renameLocation(locations, id, text.trim()).find(
 			(record) => record.id === id,
 		);
-		if (!next) return paint();
-		return state.guard(() => repo.saveLocation(next), "locations.error.save");
+		// Unchanged: a default saved under its Thai name would stop following the language.
+		const unchanged =
+			!current || !next || text.trim() === locationName(current);
+		// The field stays open with what was typed until the write goes through.
+		if (
+			unchanged ||
+			(await write(() => repo.saveLocation(next), "locations.error.save"))
+		)
+			renaming = null;
+		paint();
 	};
 
 	const onNameKey = (event: KeyboardEvent) => {
@@ -127,20 +162,22 @@ export function renderLocationsPage(repo: Repository, root: HTMLElement): void {
 		paint();
 	};
 
-	const onConfirmDelete = (id: string) => () => {
-		deleting = null;
-		return state.guard(() => repo.deleteLocation(id), "locations.error.delete");
+	/** The question stays open until the delete goes through. */
+	const onConfirmDelete = (id: string) => async () => {
+		if (await write(() => repo.deleteLocation(id), "locations.error.delete"))
+			deleting = null;
+		paint();
 	};
 
 	const onTakes = (record: LocationRecord) => (event: Event) => {
 		const takesPurchases = (event.target as HTMLInputElement).checked;
-		return state.guard(
+		return write(
 			() => repo.saveLocation({ ...record, takesPurchases }),
 			"locations.error.save",
 		);
 	};
 
-	const onAdd = (event: Event) => {
+	const onAdd = async (event: Event) => {
 		event.preventDefault();
 		addProblem = nameProblem(addText, locations);
 		if (addProblem) return paint();
@@ -150,8 +187,10 @@ export function renderLocationsPage(repo: Repository, root: HTMLElement): void {
 			name,
 			takesPurchases: false,
 		};
-		addText = "";
-		return state.guard(() => repo.saveLocation(record), "locations.error.save");
+		// The typed name stays in the field until the write goes through.
+		if (await write(() => repo.saveLocation(record), "locations.error.save"))
+			addText = "";
+		paint();
 	};
 
 	/** Line 1 of a block: its name and count with *Rename* and *Delete*, or one of their steps. */
