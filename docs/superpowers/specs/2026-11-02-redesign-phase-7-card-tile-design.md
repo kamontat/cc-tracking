@@ -1,8 +1,8 @@
 # Redesign phase 7: one card tile, and minor fixes — design
 
-Branch `redesign-phase-7` from `redesign-phase-6` (PR #34); its PR targets `redesign-phase-6`.
-The whole stack (#29 to #34 and this phase) still lands on main at once, after the user accepts
-this phase.
+Work happens on `redesign/refinement` (PR #35, base `redesign/implement`). `redesign/implement`
+holds phases 1 to 6, squash-merged from #29 to #34. When the user is satisfied, #35 merges into
+`redesign/implement`, then a changelog entry is added and `redesign/implement` merges into `main`.
 
 Mockup the user approved on 2026-11-02 (option B, compact wallet tile):
 [`2026-11-02-redesign-phase-7-card-tile-mockup.html`](2026-11-02-redesign-phase-7-card-tile-mockup.html)
@@ -73,7 +73,13 @@ Home stacks them at every width.)
 
 ## Workflow
 
-`shipping-a-change` on this branch (no new worktree: the stack lives in
-`.claude/worktrees/redesign-plan`), PR with `--base redesign-phase-6`, preview URL
-`https://pr-<n>-cc-tracking.kcinth.workers.dev`. Commits and pushes are signed through 1Password,
-which locks often; ask the user to unlock when a commit or push hangs.
+- Worktree `.claude/worktrees/redesign-plan`, already on `redesign/refinement`. No new worktree or
+  branch: every fix is a commit on `redesign/refinement`, pushed to update PR #35.
+- Follow `shipping-a-change` for each change (test first; `bun run format`, `check`, `typecheck`,
+  `test`, `build` before each commit), except: no new worktree, and no new PR.
+- Preview: `https://pr-35-cc-tracking.kcinth.workers.dev`, after the `deploy` check passes.
+- Do not merge #35 or touch `main` until the user approves; then `landing-a-change`, adapted:
+  merge #35 into `redesign/implement`, add the dated changelog entry, PR `redesign/implement`
+  into `main`.
+- GitHub calls need `GH_TOKEN=$(gh auth token --user kamontat)`. Commits and pushes are signed
+  through 1Password, which locks often; when a commit or push hangs, ask the user to unlock.
