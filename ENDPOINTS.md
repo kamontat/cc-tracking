@@ -59,6 +59,7 @@ Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/
 
 | Key         | Values                              | Default | Notes |
 | ----------- | ----------------------------------- | ------- | ----- |
+| `view`      | `cards`, `groups`                   | `cards` | Which view shows below 900px: the card list or the limit groups. Written only as `groups`; anything else reads as `cards`. From 900px both sit side by side and the key changes nothing. |
 | `q`         | any text                            | empty   | Search. |
 | `loc`       | location id (repeated)              | any     | Kept only when the id is a stored location. |
 | `owner`     | `KC`, `NT`, `RI` (repeated)         | any     | Card owner. |
@@ -67,7 +68,7 @@ Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/
 | `group`     | limit group id                      | none    | Opens the limit group sheet on that group. |
 | `newGroup`  | `1`                                 | none    | Opens a blank limit group sheet; wins over `group`. |
 
-Filter and sort changes rewrite the address (`replaceState`); opening a group sheet pushes
+Switching the view, filter and sort changes rewrite the address (`replaceState`); opening a group sheet pushes
 one (`pushState`), keeping the other keys. Example: `/cards?owner=KC&sort=room&group=<id>`.
 
 ### `/card`
