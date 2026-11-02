@@ -375,6 +375,8 @@ export const en = {
 	"backup.problem.missingLast4": "is missing last4",
 	"backup.problem.badLocation":
 		"has a location that is not bangkok, phichit, or krabi",
+	"backup.problem.unknownLocation":
+		"has a location that is not among the backup's locations",
 	"backup.problem.badOwner": "has an owner that is not KC, NT, or RI",
 	"backup.problem.noCycle": "has no cycle",
 	"backup.problem.badOffsetCycle":

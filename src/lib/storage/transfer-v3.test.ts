@@ -191,34 +191,90 @@ describe("backup version 3", () => {
 		expect(parsed.payments.map((p) => p.amount)).toEqual([4_000, 6_000]);
 	});
 
-	test("export reads default locations from settings while none are stored", async () => {
+	test("export writes the location records as stored, renames and ticks included", async () => {
 		const repo = new InMemoryRepository();
 		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		await repo.saveLocation(
+			sampleLocation({ id: "krabi", name: "Ao Nang", takesPurchases: true }),
+		);
+		await repo.saveLocation(
+			sampleLocation({ id: "bangkok", name: "Bangkok", takesPurchases: false }),
+		);
 		const out = await exportBackupV3(repo, NOW);
-		expect(out.locations.map((l) => [l.id, l.takesPurchases])).toEqual([
-			["bangkok", true],
-			["phichit", false],
-			["krabi", false],
-		]);
+		expect(out.locations).toEqual(await repo.listLocations());
+		expect(out.locations.find((l) => l.id === "krabi")).toEqual({
+			id: "krabi",
+			name: "Ao Nang",
+			takesPurchases: true,
+		});
+		expect("converted" in out).toBe(false);
 	});
 
-	test("export takes takesPurchases from settings, not stale stored records", async () => {
+	test("export writes no locations while none are stored", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
+		expect((await exportBackupV3(repo, NOW)).locations).toEqual([]);
+	});
+
+	test("merge keeps a stored location over the file's record with the same id", async () => {
+		const repo = new InMemoryRepository();
+		const stored = sampleLocation({
+			id: "krabi",
+			name: "Ao Nang",
+			takesPurchases: true,
+		});
+		await repo.saveLocation(stored);
+		await importBackupV3(
+			repo,
+			parseAnyBackup(
+				v3({
+					locations: [
+						sampleLocation({
+							id: "krabi",
+							name: "Krabi",
+							takesPurchases: false,
+						}),
+					],
+				}),
+			),
+		);
+		expect(await repo.listLocations()).toEqual([stored]);
+	});
+
+	test("merge adds a location only the file has", async () => {
+		const repo = new InMemoryRepository();
+		await repo.saveLocation(sampleLocation());
+		const phuket = sampleLocation({
+			id: "phuket",
+			name: "Phuket",
+			takesPurchases: false,
+		});
+		await importBackupV3(
+			repo,
+			parseAnyBackup(v3({ locations: [sampleLocation(), phuket] })),
+		);
+		expect(await repo.listLocations()).toEqual([sampleLocation(), phuket]);
+	});
+
+	test("replace takes the file's location records", async () => {
 		const repo = new InMemoryRepository();
 		await repo.saveLocation(
-			sampleLocation({ id: "krabi", takesPurchases: true }),
+			sampleLocation({ id: "krabi", name: "Ao Nang", takesPurchases: true }),
 		);
-		await repo.saveLocation(
-			sampleLocation({ id: "bangkok", takesPurchases: false }),
+		const fromFile = sampleLocation({
+			id: "krabi",
+			name: "Krabi",
+			takesPurchases: false,
+		});
+		await replaceWithBackupV3(
+			repo,
+			parseAnyBackup(v3({ locations: [fromFile] })),
+			{ setItem: () => {} },
 		);
-		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
-		const out = await exportBackupV3(repo, NOW);
-		expect(out.locations.map((l) => [l.id, l.takesPurchases]).sort()).toEqual([
-			["bangkok", true],
-			["krabi", false],
-		]);
+		expect(await repo.listLocations()).toEqual([fromFile]);
 	});
 
-	test("a file whose places take no purchases restores an empty list", async () => {
+	test("importing a file leaves settings alone", async () => {
 		const repo = new InMemoryRepository();
 		await repo.saveSettings({ purchaseLocations: ["bangkok"] });
 		await importBackupV3(
@@ -226,44 +282,87 @@ describe("backup version 3", () => {
 			parseAnyBackup(
 				v3({
 					locations: [
-						sampleLocation({ id: "krabi", takesPurchases: false }),
-						sampleLocation({ id: "chiang-mai", takesPurchases: true }),
+						sampleLocation({ id: "krabi", takesPurchases: true }),
+						sampleLocation({ id: "phichit", takesPurchases: true }),
 					],
 				}),
 			),
 		);
-		expect((await repo.getSettings()).purchaseLocations).toEqual([]);
-		const out = await exportBackupV3(repo, NOW);
-		expect(out.locations.every((l) => !l.takesPurchases)).toBe(true);
-		const again = new InMemoryRepository();
-		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)));
-		expect((await again.getSettings()).purchaseLocations).toEqual([]);
+		await importBackupV3(
+			repo,
+			parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })),
+		);
+		expect(await repo.getSettings()).toEqual({
+			purchaseLocations: ["bangkok"],
+		});
 	});
 
-	test("a version 2 file with settings sets the purchase places on restore", async () => {
+	test("a version 2 file with settings brings its locations as records", async () => {
 		const repo = new InMemoryRepository();
 		await importBackupV3(
 			repo,
 			parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })),
 		);
-		expect((await repo.getSettings()).purchaseLocations).toEqual(["phichit"]);
+		expect(
+			(await repo.listLocations()).map((l) => [l.id, l.takesPurchases]),
+		).toEqual([
+			["bangkok", false],
+			["krabi", false],
+			["phichit", true],
+		]);
 	});
 
-	test("purchase places skip locations that are unknown or take no purchases", async () => {
+	test("a version 2 file is marked converted; a version 3 file is not", () => {
+		expect(parseAnyBackup(v2()).converted).toBe(true);
+		expect(parseAnyBackup(v3()).converted).toBeUndefined();
+	});
+
+	test("merging a version 3 file keeps a card's local converted parts (DD-95)", async () => {
 		const repo = new InMemoryRepository();
+		await repo.saveCard(sampleCard());
+		await repo.saveCardPayment(
+			sampleCardPayment({ id: "m:kbank:2026-09:1", period: "2026-09" }),
+		);
 		await importBackupV3(
 			repo,
 			parseAnyBackup(
 				v3({
-					locations: [
-						sampleLocation({ id: "krabi", takesPurchases: false }),
-						sampleLocation({ id: "bangkok", takesPurchases: true }),
-						sampleLocation({ id: "chiang-mai", takesPurchases: true }),
+					payments: [
+						sampleCardPayment({ id: "m:kbank:2026-09:0", period: "2026-09" }),
 					],
 				}),
 			),
 		);
-		expect((await repo.getSettings()).purchaseLocations).toEqual(["bangkok"]);
+		const ids = (await repo.listCardPayments("kbank")).map((p) => p.id).sort();
+		expect(ids).toEqual(["m:kbank:2026-09:0", "m:kbank:2026-09:1"]);
+	});
+
+	test("a version 3 card at a location the file does not carry is refused", async () => {
+		const text = v3({ cards: [sampleCard({ location: "nowhere" })] });
+		rejects(text, "backup.card", 1);
+		const error = captureThrow(() => parseAnyBackup(text)) as MessageError;
+		expect(Reflect.get(error.params ?? {}, "problem")).toBe(
+			"backup.problem.unknownLocation",
+		);
+	});
+
+	test("a version 3 card may sit at any location the file carries", () => {
+		const parsed = parseAnyBackup(
+			v3({
+				cards: [sampleCard({ location: "chiang-mai" })],
+				locations: [sampleLocation({ id: "chiang-mai", name: "Chiang Mai" })],
+			}),
+		);
+		expect(parsed.cards[0]?.location).toBe("chiang-mai");
+	});
+
+	test("a version 2 card keeps the closed set of locations (DC-06)", () => {
+		const text = v2({ cards: [sampleCard({ location: "chiang-mai" })] });
+		rejects(text, "backup.card", 1);
+		const error = captureThrow(() => parseAnyBackup(text)) as MessageError;
+		expect(Reflect.get(error.params ?? {}, "problem")).toBe(
+			"backup.problem.badLocation",
+		);
 	});
 
 	test("restoring a version 2 file over converted data leaves no stale m: parts", async () => {

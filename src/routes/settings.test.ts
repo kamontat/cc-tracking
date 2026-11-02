@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+import { defaultLocations } from "#lib/domain/locations";
+import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { LocalStorageRepository } from "#lib/storage/local";
@@ -67,6 +69,13 @@ const sampleCard: Card = {
 	archived: false,
 };
 
+/** A repository holding the three starting location records, as bootstrap seeds them. */
+const seeded = async <R extends Repository>(repo: R): Promise<R> => {
+	for (const record of defaultLocations(DEFAULT_SETTINGS))
+		await repo.saveLocation(record);
+	return repo;
+};
+
 test("offers the language and theme pickers in a display panel", async () => {
 	const root = mount();
 	renderSettingsPage(new InMemoryRepository(), root);
@@ -100,7 +109,7 @@ test("renders its heading in the chosen language", async () => {
 });
 
 test("importing a backup merges it into a populated repository without wiping what was there", async () => {
-	const backupSource = new InMemoryRepository();
+	const backupSource = await seeded(new InMemoryRepository());
 	await backupSource.saveCard({
 		...sampleCard,
 		id: "scb",
@@ -158,7 +167,7 @@ test("importing a malformed file leaves a message in the banner and changes noth
 });
 
 test("prepareBackupFile produces text that parseAnyBackup accepts and that round-trips every card, purchase, and payment", async () => {
-	const repo = new InMemoryRepository();
+	const repo = await seeded(new InMemoryRepository());
 	await repo.saveCard(sampleCard);
 	await repo.saveCard({
 		...sampleCard,
@@ -243,7 +252,7 @@ test("splits the backup into saving a copy and restoring one, each with its own 
 });
 
 const oneCardBackup = async (): Promise<string> => {
-	const source = new InMemoryRepository();
+	const source = await seeded(new InMemoryRepository());
 	await source.saveCard(sampleCard);
 	await source.savePurchase({
 		id: "p1",
@@ -323,6 +332,7 @@ const resetStatus = (root: HTMLElement): string =>
 
 /** A card, its group, two purchases and a setting: something for a reset to count and delete. */
 const populated = async <R extends Repository>(repo: R): Promise<R> => {
+	await seeded(repo);
 	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 });
 	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" });
 	await repo.savePurchase({
@@ -528,7 +538,7 @@ test("importing into an empty browser asks nothing", async () => {
 
 test("choosing replace leaves only what the backup carries", async () => {
 	setLocale("en");
-	const source = new InMemoryRepository();
+	const source = await seeded(new InMemoryRepository());
 	await source.saveCard({ ...sampleCard, id: "scb", name: "SCB" });
 	const repo = await populated(new InMemoryRepository());
 	const root = mount();
@@ -775,7 +785,7 @@ test("copy to clipboard is not offered where the browser cannot write to it", as
 });
 
 test("the downloaded file is version 3 and carries lists", async () => {
-	const repo = new InMemoryRepository();
+	const repo = await seeded(new InMemoryRepository());
 	await repo.saveCard(sampleCard);
 	await repo.savePurchaseList({
 		id: "l1",
@@ -831,13 +841,17 @@ test("restoring a version 2 file into an empty browser converts it and counts th
 	await settle();
 	expect(bannerMessage(root)).toBe("");
 	expect((await repo.listCardPayments("kbank")).length).toBe(1);
-	expect((await repo.getSettings()).purchaseLocations).toEqual(["bangkok"]);
+	expect(
+		(await repo.listLocations())
+			.filter((location) => location.takesPurchases)
+			.map((location) => location.id),
+	).toEqual(["bangkok"]);
 	expect(importStatus(root)).toContain("0 lists");
 });
 
 test("replace sets the payments marker so startup does not convert again", async () => {
 	setLocale("en");
-	const source = new InMemoryRepository();
+	const source = await seeded(new InMemoryRepository());
 	await source.saveCard({ ...sampleCard, id: "scb", name: "SCB" });
 	const repo = await populated(new InMemoryRepository());
 	const root = mount();

@@ -384,6 +384,7 @@ export const th: Catalog = {
 	"backup.problem.missingName": "ไม่มีชื่อ",
 	"backup.problem.missingLast4": "ไม่มีเลข 4 ตัวท้าย",
 	"backup.problem.badLocation": "มีที่เก็บที่ไม่ใช่ bangkok, phichit หรือ krabi",
+	"backup.problem.unknownLocation": "มีที่เก็บที่ไม่อยู่ในรายการสถานที่ของไฟล์สำรอง",
 	"backup.problem.badOwner": "มีเจ้าของที่ไม่ใช่ KC, NT หรือ RI",
 	// FLAG FOR OWNER REVIEW: noCycle and missingPeriod below both render as "ไม่มีรอบบิล"
 	// ("has no cycle" vs. "is missing a period" in English -- two different problems).
