@@ -3,6 +3,7 @@ import { cardLedger } from "#lib/domain/ledger";
 import { buildStatement } from "#lib/domain/statement";
 import type { CardPayment, Period } from "#lib/domain/types";
 import {
+	memoryStorage,
 	sampleCard,
 	samplePayment,
 	samplePurchase,
@@ -18,10 +19,8 @@ import { InMemoryRepository } from "#lib/storage/repository";
 const card = sampleCard();
 const TODAY = "2026-10-30";
 
-const freshStorage = (): Storage => {
-	globalThis.localStorage.clear();
-	return globalThis.localStorage;
-};
+// A private store per test: nothing a run records can leak into another file's test.
+const freshStorage = memoryStorage;
 
 test("one payment per part", () => {
 	const purchases = [samplePurchase({ id: "p1", amount: 10_000 })];

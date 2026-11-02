@@ -6,6 +6,7 @@ import type { CcGroupSheet } from "#components/cc-group-sheet";
 import { DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { memoryStorage } from "#lib/storage/contract";
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { type CardsAddressBar, renderCardsPage } from "./cards";
@@ -105,24 +106,6 @@ const setup = async (
 	});
 	await settle(5);
 	return { repo, root, address };
-};
-
-const memoryStorage = (): Storage => {
-	const map = new Map<string, string>();
-	return {
-		get length() {
-			return map.size;
-		},
-		clear: () => map.clear(),
-		getItem: (key) => map.get(key) ?? null,
-		key: (i) => [...map.keys()][i] ?? null,
-		removeItem: (key) => {
-			map.delete(key);
-		},
-		setItem: (key, value) => {
-			map.set(key, value);
-		},
-	};
 };
 
 const list = (root: HTMLElement) =>
