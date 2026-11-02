@@ -14,7 +14,7 @@ import {
 	readyLocations,
 	readyOwners,
 } from "#lib/domain/ready-filter";
-import { locationText } from "#lib/i18n/format";
+import { nameOfLocation, purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { newListAddress } from "#lib/ui/list-address";
@@ -59,7 +59,9 @@ export function renderPickerPage(
 	const navigate = options.navigate ?? ((url: string) => location.assign(url));
 	markListPage(root);
 
-	let view: ReadyView = readReadyView(options.search ?? location.search);
+	const search = options.search ?? location.search;
+	// No location is known before the first load, so the address is read again once one lands.
+	let view: ReadyView = readReadyView(search, []);
 	let data: MoneyData | null = null;
 	// Tap order, which is the order the entering step opens its lines in.
 	let selected: string[] = [];
@@ -68,7 +70,14 @@ export function renderPickerPage(
 
 	const state = createPageState({
 		fetch: async () => {
-			data = await loadMoneyData(repo, now);
+			const loaded = await loadMoneyData(repo, now);
+			// Only the first load reads the address: after it, the view is the page's own.
+			if (!data)
+				view = readReadyView(
+					search,
+					loaded.locations.map((record) => record.id),
+				);
+			data = loaded;
 		},
 		fallbackKey: "home.error.read",
 		paint: () => paint(),
@@ -94,7 +103,7 @@ export function renderPickerPage(
 		return [
 			...filter.locations.map((location) => ({
 				key: `location:${location}`,
-				label: locationText(location),
+				label: nameOfLocation(data?.locations ?? [], location),
 				clear: () =>
 					setFilter({
 						locations: filter.locations.filter((l) => l !== location),
@@ -147,9 +156,8 @@ export function renderPickerPage(
 	};
 
 	const notice = (from: MoneyData) => {
-		const settings = from.settings;
 		const unassigned = unassignedCards(from.cards, from.groups).filter((card) =>
-			canPurchase(card, settings),
+			canPurchase(card, from.locations),
 		).length;
 		if (unassigned === 0) return nothing;
 		return html`<p class="note" data-testid="unassigned">
@@ -159,7 +167,7 @@ export function renderPickerPage(
 					: "spendable.unassigned.many",
 				{ count: unassigned },
 			)}
-			<a href="/cards">${t("spendable.unassignedAction")}</a>
+			<a href="/cards?ungrouped=1">${t("spendable.unassignedAction")}</a>
 		</p>`;
 	};
 
@@ -168,7 +176,7 @@ export function renderPickerPage(
 			return html`<div class="ready-empty" data-empty="none">
 				<p>${t("ready.empty")}</p>
 				<p>${t("quickAdd.noEligible")}</p>
-				<a data-action="settings" href="/settings">${t("ready.toSettings")}</a>
+				<a data-action="settings" href="/settings/locations">${t("ready.toSettings")}</a>
 			</div>`;
 		}
 		const shown = sortReady(filterReady(all, view.filter), view.sort);
@@ -189,7 +197,8 @@ export function renderPickerPage(
 			${
 				sheet
 					? html`<cc-ready-filter
-						.locations=${readyLocations(all)}
+						.locations=${readyLocations(all, from.locations)}
+						.records=${from.locations}
 						.owners=${readyOwners(all)}
 						.filter=${sheet}
 						.sort=${view.sort}
@@ -210,15 +219,13 @@ export function renderPickerPage(
 	};
 
 	const paint = () => {
-		const all = data ? readyRows(data, data.settings, now) : [];
+		const all = data ? readyRows(data, now) : [];
 		// A card that is no longer ready (archived, moved, its group gone) drops out of the pick.
 		if (data) {
 			const ready = new Set(all.map((row) => row.card.id));
 			selected = selected.filter((id) => ready.has(id));
 		}
-		const places = (data?.settings.purchaseLocations ?? [])
-			.map(locationText)
-			.join(", ");
+		const places = (data ? purchasePlaces(data.locations) : []).join(", ");
 		render(
 			html`${subHeader({
 				title: t("purchaseList.new"),

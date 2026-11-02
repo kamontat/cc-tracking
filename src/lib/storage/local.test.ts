@@ -6,6 +6,7 @@ import {
 } from "#lib/storage/contract";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { StorageError } from "#lib/storage/repository";
+import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
 
 const freshStorage = (): Storage => {
 	localStorage.clear();
@@ -39,6 +40,22 @@ describe("LocalStorageRepository key layout", () => {
 		await repo.clearAll();
 
 		expect(localStorage.getItem("cc:batch-start")).toBeNull();
+	});
+
+	test("reset removes the location seed marker, so the defaults can be seeded again", async () => {
+		const repo = new LocalStorageRepository(freshStorage());
+		await seedLocations(repo, localStorage);
+		expect(localStorage.getItem(SEED_KEY)).toBe("done");
+
+		await repo.clearAll();
+
+		expect(localStorage.getItem(SEED_KEY)).toBeNull();
+		await seedLocations(repo, localStorage);
+		expect((await repo.listLocations()).map((record) => record.id)).toEqual([
+			"bangkok",
+			"krabi",
+			"phichit",
+		]);
 	});
 
 	test("ignores unrelated keys in the same origin", async () => {

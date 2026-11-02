@@ -512,20 +512,9 @@ a:any-link:hover {
 	font-weight: 600;
 }
 
-.page > article {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-3);
-	padding: var(--cc-space-4) var(--cc-panel-padding) var(--cc-panel-padding);
-	background: var(--cc-surface);
-	border: var(--cc-border-width) solid var(--cc-border);
-	border-radius: var(--cc-radius-md);
-	box-shadow: var(--cc-shadow-sm);
-}
-
-/* The settings page's confirmations after a backup copy, import or reset. Each element stays in
-   the DOM so its live region is in place before the message arrives; it is only hidden while empty, so it takes no gap in the article's flex column. */
-.export-status,
+/* The settings page's confirmations after an import or a reset. Each element stays in the DOM
+   so its live region is in place before the message arrives; it is only hidden while empty, so
+   it takes no gap in its section's column. */
 .import-status,
 .reset-status {
 	padding: var(--cc-space-2) var(--cc-space-3);
@@ -535,7 +524,6 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
-.export-status:empty,
 .import-status:empty,
 .reset-status:empty {
 	display: none;
@@ -585,15 +573,6 @@ a:any-link:hover {
 	background: var(--cc-danger-surface);
 }
 
-/* The reset question's answer: the destructive choice first, the way out beside it. The
-   backup's paste and merge-or-replace buttons sit in the same kind of row. */
-.reset__actions,
-.backup__actions {
-	flex-direction: row;
-	flex-wrap: wrap;
-	gap: var(--cc-space-2);
-}
-
 .page label {
 	display: flex;
 	flex-direction: column;
@@ -613,120 +592,259 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
-/* Pasted backup JSON: monospace so its structure reads, resizable only downwards. Scoped
-   under `.page` so it outranks `.page textarea` above. */
-.page .backup__text {
-	font-family: var(--cc-font-mono);
-	font-size: var(--cc-text-xs);
-	resize: vertical;
+/*
+ * Settings (prototype `vSettings`, RD-19): sections, each a heading over one `.set` panel of
+ * rows, in one column on a phone and two from 900px -- Display, Locations and Backup in the
+ * main column, Reset and About beside them.
+ */
+.settings-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--cc-space-5);
+	align-items: start;
 }
 
-/* The backup's two directions, saving a copy and restoring one, side by side once there is
-   room and stacked on a phone. Each is outlined rather than filled, so the quiet buttons
-   inside keep their contrast. */
-.backup__ways {
+.settings-grid__main,
+.settings-grid__side,
+.set-section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--cc-space-3);
+	min-inline-size: 0;
 }
 
-@media (min-width: 640px) {
-	.backup__ways {
-		display: grid;
+.settings-grid__main,
+.settings-grid__side {
+	gap: var(--cc-space-5);
+}
+
+.set-section {
+	gap: var(--cc-space-2);
+}
+
+@media (min-width: 900px) {
+	.settings-grid {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		align-items: start;
 	}
 }
 
-.backup__way {
+/* The rounded panel: rows inside it, a rule between each. A component's rows (cc-display-
+   settings, cc-about) draw their own rules in their shadow root (`setRows` in shared.ts). */
+.set {
 	display: flex;
 	flex-direction: column;
-	gap: var(--cc-space-3);
-	padding: var(--cc-space-3) var(--cc-space-4) var(--cc-space-4);
+	padding: var(--cc-space-1) var(--cc-space-4);
+	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
 }
 
-.page .backup__way h3 {
-	font-size: var(--cc-text-md);
-	font-weight: 600;
-}
-
-/* The file picker, dressed as a quiet button. The input itself is clipped out of sight but
-   kept in the layout and the tab order, so the label's focus ring follows the keyboard. */
-.page .backup__file {
-	position: relative;
-	display: inline-flex;
+/* A row: its label and muted line on the left, its control on the right. A row that is wholly
+   one action is a button or a link, so the whole row answers the click; its control on the
+   right is drawn, not a button of its own. Scoped under `.page` to outrank `.page button`. */
+.page .set-row {
+	display: flex;
 	flex-direction: row;
 	align-items: center;
-	padding: var(--cc-space-2) var(--cc-space-3);
+	align-self: stretch;
+	justify-content: space-between;
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-3) 0;
+	font: inherit;
+	font-size: var(--cc-text-md);
+	font-weight: 400;
+	line-height: var(--cc-leading);
+	color: var(--cc-text);
+	text-align: start;
+	text-decoration: none;
+	cursor: pointer;
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+}
+
+.page .set-row:hover {
+	text-decoration: none;
+	background: transparent;
+}
+
+/* After `.page .set-row`, which clears a button's own border, so the rule between rows holds. */
+.page .set > * + * {
+	border-top: var(--cc-border-width) solid var(--cc-border);
+}
+
+.set-row__text {
+	display: flex;
+	flex-direction: column;
+	min-inline-size: 0;
+}
+
+.page .set-row__sub {
+	font-size: var(--cc-text-xs);
+	color: var(--cc-text-muted);
+	overflow-wrap: anywhere;
+}
+
+/* The row's control, drawn as the small button it stands for: primary, quiet or danger. */
+.set-row__action {
+	flex: none;
+	padding: var(--cc-space-1) var(--cc-space-3);
 	font-size: var(--cc-text-sm);
 	font-weight: 550;
 	line-height: 1.2;
-	color: var(--cc-text);
-	cursor: pointer;
-	background: var(--cc-surface-sunken);
-	border: var(--cc-border-width) solid var(--cc-border);
+	color: var(--cc-accent-text);
+	white-space: nowrap;
+	background: var(--cc-accent);
+	border: var(--cc-border-width) solid transparent;
 	border-radius: var(--cc-radius-sm);
 }
 
-.page .backup__file:hover {
+.set-row:hover .set-row__action {
+	background: var(--cc-accent-hover);
+}
+
+.set-row__action[data-variant="quiet"] {
+	color: var(--cc-text);
+	background: var(--cc-surface-sunken);
+	border-color: var(--cc-border);
+}
+
+.set-row:hover .set-row__action[data-variant="quiet"] {
 	background: var(--cc-border);
 }
 
-.page .backup__file:focus-within {
-	box-shadow: var(--cc-focus-ring);
+.set-row__action[data-variant="danger"] {
+	color: var(--cc-danger);
+	background: transparent;
+	border-color: var(--cc-danger);
 }
 
-.page .backup__file input {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	padding: 0;
-	cursor: pointer;
-	opacity: 0;
+.set-row:hover .set-row__action[data-variant="danger"] {
+	background: var(--cc-danger-surface);
 }
 
-/* What is here against what is coming in, so the merge-or-replace choice is an informed one. */
-.backup__compare {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-2);
-	margin: 0;
-	padding: var(--cc-space-2) var(--cc-space-3);
-	background: var(--cc-surface-sunken);
-	border-radius: var(--cc-radius-sm);
-}
-
-.backup__compare dt {
-	font-size: var(--cc-text-xs);
+.set-row__chev {
+	flex: none;
+	font-size: var(--cc-text-lg);
 	color: var(--cc-text-muted);
 }
 
-.backup__compare dd {
-	margin: 0;
-	font-size: var(--cc-text-sm);
-}
-
-/* Each answer is a whole button carrying its consequence, so nobody picks Replace without
-   reading what it does. Merge is the filled primary, the safe default; Replace is danger. */
-.backup__choices {
+/* *Delete all data*, asked: the warning over *Keep my data* and *Delete everything*, side by
+   side, in the row's place. */
+.set-ask {
 	display: flex;
 	flex-direction: column;
+	gap: var(--cc-space-3);
+	padding-block: var(--cc-space-3);
+}
+
+.set-ask__note {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	color: var(--cc-danger);
+	background: var(--cc-danger-surface);
+	border-radius: var(--cc-radius-sm);
+}
+
+.set-ask__actions {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: var(--cc-space-2);
 }
 
-.page .backup__choice {
+.page .set-ask__actions > * {
+	align-self: stretch;
+}
+
+/* A muted line under a section's panel, as the Backup section's reminder to keep a copy. */
+.page .set-note {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}
+
+/*
+ * The Locations page (prototype `vLocations`, RD-17): one `.set` panel with a block per place
+ * -- its name and count beside *Rename* and *Delete* (or the name field, or the delete
+ * question), and *Takes purchases* under them -- then the notes and *Add a location*.
+ */
+.locations {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+}
+
+.location-row {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-2);
+	padding-block: var(--cc-space-3);
+}
+
+/* A row, said outright: the reset makes every div a column (`@kcstyles/reset.css`). */
+.location-row__line,
+.location-add__control {
+	display: flex;
+	flex-direction: row;
+	gap: var(--cc-space-2);
+	align-items: center;
+}
+
+/* `.page button` sits buttons at the start of a column; in these rows all centre on the line. */
+.page .location-row__line > *,
+.page .location-add__control > * {
+	align-self: center;
+}
+
+.location-row__text,
+.location-row__field,
+.location-add__control > input {
+	flex: 1;
+	min-inline-size: 0;
+}
+
+.location-row__text {
+	display: flex;
+	flex-direction: column;
+	overflow-wrap: anywhere;
+}
+
+.page .location-row__text small {
+	font-size: var(--cc-text-xs);
+}
+
+.page .location-row__takes {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-2);
+	color: var(--cc-text);
+	cursor: pointer;
+}
+
+.page .location-row__takes small {
+	font-size: var(--cc-text-xs);
+}
+
+.page .location-row__takes input {
+	padding: 0;
+	accent-color: var(--cc-accent);
+}
+
+.location-add {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-1);
-	align-self: stretch;
-	text-align: start;
 }
 
-.page .backup__choice span {
-	font-weight: 400;
+.location-error {
+	font-size: var(--cc-text-sm);
+	color: var(--cc-danger);
+}
+
+.location-warning {
+	padding: var(--cc-space-2) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text);
+	background: var(--cc-warning-surface);
+	border-radius: var(--cc-radius-sm);
 }
 
 /* A file input ships its own button; without this it is the one browser-default
@@ -1408,8 +1526,12 @@ a:any-link:hover {
 }
 
 /*
- * Cards (prototype `vCards`): the heading with *Add card*, the controls and the results in one
- * column, *Limit groups* under them on a phone and beside them from 900px.
+ * Cards (prototype `vCards`): the heading, the controls and the results in one column. On a
+ * phone the heading is two rows: the title with a switch (Transactions' `.tx-switch`) at its
+ * end, then the shown view's add button at the right -- *Add card*, or *Add group* while
+ * *Limit groups* shows, whose own heading row the switch stands in for. From 900px the switch
+ * goes, *Add card* sits at the title's end and *Limit groups* sits beside the cards, its
+ * heading the same height as the title's.
  */
 .cards-grid {
 	display: grid;
@@ -1419,6 +1541,7 @@ a:any-link:hover {
 }
 
 .cards-main,
+.cards-body,
 .cards-groups {
 	display: flex;
 	flex-direction: column;
@@ -1433,6 +1556,14 @@ a:any-link:hover {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--cc-space-2) var(--cc-space-3);
+	min-block-size: var(--cc-page-head-height);
+}
+
+.cards-adds {
+	display: flex;
+	flex-direction: row;
+	flex: 1 0 100%;
+	justify-content: flex-end;
 }
 
 /* A link drawn as the primary button, as `.page button` draws it. */
@@ -1456,9 +1587,23 @@ a:any-link:hover {
 	background: var(--cc-accent-hover);
 }
 
-.cards-head a.cards-add .icon {
+.cards-head .cards-add-group {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cc-space-1);
+}
+
+.cards-head a.cards-add .icon,
+.cards-head button.cards-add-group .icon {
 	inline-size: var(--cc-icon-size-sm);
 	block-size: var(--cc-icon-size-sm);
+}
+
+.cards-grid[data-show="cards"] > .cards-groups,
+.cards-grid[data-show="groups"] .cards-body,
+.cards-grid[data-show="groups"] .cards-head a.cards-add,
+.cards-groups cc-group-panels::part(head) {
+	display: none;
 }
 
 @media (min-width: 900px) {
@@ -1467,8 +1612,27 @@ a:any-link:hover {
 		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
 	}
 
-	.cards-groups {
-		padding-block-start: var(--cc-space-1);
+	.cards-switch,
+	.cards-head .cards-add-group {
+		display: none;
+	}
+
+	.cards-adds {
+		flex: 0 0 auto;
+	}
+
+	.cards-grid[data-show] .cards-body,
+	.cards-grid[data-show] > .cards-groups {
+		display: flex;
+	}
+
+	.cards-grid[data-show] .cards-head a.cards-add {
+		display: inline-flex;
+	}
+
+	.cards-groups cc-group-panels::part(head) {
+		display: flex;
+		min-block-size: var(--cc-page-head-height);
 	}
 }
 

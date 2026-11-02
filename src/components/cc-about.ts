@@ -16,7 +16,7 @@ import {
 	sourceLabel,
 	viewerTimeZone,
 } from "#lib/ui/build-info";
-import { base } from "#styles/shared";
+import { base, setRows } from "#styles/shared";
 
 const ENV_KEYS: Record<Environment, MessageKey> = {
 	development: "about.env.development",
@@ -28,33 +28,17 @@ const ENV_KEYS: Record<Environment, MessageKey> = {
 /**
  * Names the build the page is served from: where it runs, when it was built, and links to
  * the source, the commit and the changelog. Each row shows only when it has something true
- * to say for this environment.
+ * to say for this environment. Drawn as settings rows; the page supplies the section's heading
+ * and its `.set` panel.
  */
 @customElement("cc-about")
 export class CcAbout extends LitElement {
 	static override styles = [
 		base,
+		setRows,
 		css`
-			h2 {
-				font-size: var(--cc-text-lg);
-				font-weight: 600;
-			}
-
 			dl {
-				margin: var(--cc-space-3) 0 0;
-			}
-
-			.row {
-				display: flex;
-				flex-wrap: wrap;
-				justify-content: space-between;
-				gap: var(--cc-space-1) var(--cc-space-3);
-				padding-block: var(--cc-space-3);
-				border-bottom: var(--cc-border-width) solid var(--cc-border);
-			}
-
-			.row:last-child {
-				border-bottom: 0;
+				margin: 0;
 			}
 
 			dt {
@@ -90,7 +74,7 @@ export class CcAbout extends LitElement {
 	}
 
 	private row(name: string, label: MessageKey, value: unknown) {
-		return html`<div class="row" data-row=${name}><dt>${t(label)}</dt><dd>${value}</dd></div>`;
+		return html`<div class="set-row" data-row=${name}><dt>${t(label)}</dt><dd>${value}</dd></div>`;
 	}
 
 	private link(href: string, text: string, className?: string) {
@@ -104,7 +88,6 @@ export class CcAbout extends LitElement {
 			(environment === "preview" || environment === "production") && commit;
 
 		return html`
-			<h2>${t("about.title")}</h2>
 			<dl>
 				${this.row("environment", "about.environment", t(ENV_KEYS[environment]))}
 				${

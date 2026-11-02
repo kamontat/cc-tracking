@@ -8,6 +8,7 @@ import {
 } from "#lib/domain/cards-view";
 import type { GroupRoom } from "#lib/domain/room";
 import type { Card, LimitGroup } from "#lib/domain/types";
+import { setLocale } from "#lib/i18n/index";
 
 const card = (id: string, o: Partial<Card> = {}): Card => ({
 	id,
@@ -61,6 +62,22 @@ describe("matchesCard", () => {
 		expect(matchesCard(c, g, view({ owners: ["NT"] }))).toBe(false);
 		const sup = card("b", { supplementary: true, owner: "NT" });
 		expect(matchesCard(sup, g, view({ owners: ["NT"] }))).toBe(true);
+	});
+	test("ungrouped keeps cards with no group, or one that is not stored", () => {
+		const f = view({ ungrouped: true });
+		expect(matchesCard(card("a"), g, f)).toBe(false);
+		expect(matchesCard(card("a"), null, f)).toBe(true);
+		const { limitGroupId: _, ...bare } = card("b");
+		expect(matchesCard(bare, null, f)).toBe(true);
+		expect(
+			cardsResults(
+				[card("a"), bare, card("c", { limitGroupId: "gone" })],
+				[g],
+				rooms,
+				f,
+				order,
+			).count,
+		).toBe(2);
 	});
 	test("unknown group has no holder, so an owner filter drops it", () => {
 		expect(matchesCard(card("a"), null, view({ owners: ["KC"] }))).toBe(false);
@@ -169,6 +186,19 @@ describe("groupPanels", () => {
 		});
 		expect(p3).toMatchObject({ usedPct: 0, full: false, cardIds: [] });
 	});
+	test("lists the groups A to Z by name, then by id", () => {
+		const panels = groupPanels(
+			[
+				group("z1", { name: "SCB" }),
+				group("b2", { name: "KBank" }),
+				group("a1", { name: "KBank" }),
+				group("c3", { name: "Amex" }),
+			],
+			[],
+			new Map(),
+		);
+		expect(panels.map((p) => p.group.id)).toEqual(["c3", "a1", "b2", "z1"]);
+	});
 	test("a group with no computed room reads as untouched", () => {
 		expect(groupPanels([g], [], new Map())[0]).toMatchObject({
 			room: 100_000,
@@ -183,4 +213,30 @@ describe("cardUsePct", () => {
 		expect(cardUsePct(undefined)).toBeNull();
 		expect(cardUsePct(null)).toBeNull();
 	});
+});
+
+test("name sort compares with the UI locale", () => {
+	const names = [card("1", { name: "ขนม" }), card("2", { name: "เกม" })];
+	const seen: unknown[] = [];
+	const original = String.prototype.localeCompare;
+	String.prototype.localeCompare = function (
+		this: string,
+		that: string,
+		locales?: Intl.LocalesArgument,
+	) {
+		seen.push(locales);
+		return original.call(this, that, locales);
+	};
+	try {
+		for (const locale of ["th", "en"] as const) {
+			setLocale(locale);
+			seen.length = 0;
+			cardsResults(names, [g], rooms, view({ sort: "name" }), order);
+			expect(seen.length).toBeGreaterThan(0);
+			expect(seen.every((l) => l === locale)).toBe(true);
+		}
+	} finally {
+		String.prototype.localeCompare = original;
+		setLocale("en");
+	}
 });

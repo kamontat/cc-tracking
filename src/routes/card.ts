@@ -9,16 +9,15 @@ import "#components/cc-purchase-sheet";
 import { html, nothing, render } from "lit";
 import type { MoreItem } from "#components/cc-more-menu";
 import { canPurchase } from "#lib/domain/card";
-import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
 import { compareDates, today } from "#lib/domain/date";
 import { overRoom as overRoomOf, roomFor } from "#lib/domain/home";
 import { nextBill } from "#lib/domain/ledger";
 import { formatAmount } from "#lib/domain/money";
-import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import { openPeriod, recentPeriods } from "#lib/domain/statement";
 import type { Card, LedgerStatement, Purchase } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
-import { locationText } from "#lib/i18n/format";
+import { nameOfLocation } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { cardTitle } from "#lib/ui/card-label";
@@ -104,19 +103,29 @@ export function renderCardPage(
 		paint: () => paint(),
 	});
 
+	// Counted back from the latest purchase when one is dated past today, so a purchase
+	// entered ahead still has a statement on the page to edit or delete it from (DR-18).
+	const latestDate = () =>
+		purchases.reduce(
+			(date, purchase) =>
+				compareDates(purchase.date, date) > 0 ? purchase.date : date,
+			now,
+		);
+
+	/** Whether a purchase sits in a period older than the oldest one on show. */
+	const hasOlder = (current: Card): boolean => {
+		const oldest = recentPeriods(current, latestDate(), shown).at(-1) ?? "";
+		return purchases.some(
+			(purchase) => periodOfPurchase(current.cycle, purchase.date) < oldest,
+		);
+	};
+
 	const statements = (): LedgerStatement[] => {
 		if (!card || !data) return [];
 		const current = card;
 		const ledger = data.ledgers.get(current.id);
 		const open = openPeriod(current, now);
-		// Counted back from the latest purchase when one is dated past today, so a purchase
-		// entered ahead still has a statement on the page to edit or delete it from (DR-18).
-		const latest = purchases.reduce(
-			(date, purchase) =>
-				compareDates(purchase.date, date) > 0 ? purchase.date : date,
-			now,
-		);
-		return recentPeriods(current, latest, shown).map(
+		return recentPeriods(current, latestDate(), shown).map(
 			(period): LedgerStatement =>
 				ledger?.statements.find((entry) => entry.period === period) ?? {
 					cardId: current.id,
@@ -247,17 +256,25 @@ export function renderCardPage(
 			: []),
 	];
 
-	/** Why this card is not offered on lists, or nothing when it is (FR-22). */
-	const cannotPurchase = (current: Card): string | null => {
+	/**
+	 * Why this card is not offered on lists, or nothing when it is (FR-22). `toLocations` marks
+	 * the one reason the Locations page fixes.
+	 */
+	const cannotPurchase = (
+		current: Card,
+	): { text: string; toLocations?: true } | null => {
 		// An archived card takes no purchases wherever it is kept, so naming the place as the
 		// reason would send the reader to the wrong setting.
-		if (current.archived) return t("card.archivedNote");
+		if (current.archived) return { text: t("card.archivedNote") };
 		// A list needs the card's group (DR-20), so without one *Use on a list* is a dead end.
-		if (data && !roomFor(current, data)) return t("card.noGroupNote");
-		if (!canPurchase(current, data?.settings ?? DEFAULT_SETTINGS))
-			return t("card.noPurchases", {
-				location: locationText(current.location),
-			});
+		if (data && !roomFor(current, data)) return { text: t("card.noGroupNote") };
+		if (data && !canPurchase(current, data.locations))
+			return {
+				text: t("card.noPurchases", {
+					location: nameOfLocation(data.locations, current.location),
+				}),
+				toLocations: true,
+			};
 		return null;
 	};
 
@@ -266,7 +283,12 @@ export function renderCardPage(
 		return html`<div class="card-actions">
 			${
 				reason
-					? html`<p class="note">${reason}</p>`
+					? html`<p class="note">${reason.text}</p>${
+							reason.toLocations
+								? html`<a class="btn" data-variant="quiet" data-action="settings"
+									href="/settings/locations">${t("ready.toSettings")}</a>`
+								: nothing
+						}`
 					: html`<a class="btn" data-action="use-on-list"
 							href=${newListAddress([current.id])}>${t("card.useOnList")}</a>
 						<button type="button" data-variant="quiet" data-action="add-purchase"
@@ -301,7 +323,7 @@ export function renderCardPage(
 					title: cardTitle(current, data?.groups ?? []),
 					detail: t("card.subtitle", {
 						id: current.id,
-						location: locationText(current.location),
+						location: nameOfLocation(data?.locations ?? [], current.location),
 					}),
 					back: "/cards",
 					actions: html`<a class="btn" data-variant="quiet" data-action="edit"
@@ -346,6 +368,7 @@ export function renderCardPage(
 				.credit=${ledger?.credit ?? 0}
 				.next=${next}
 				.today=${now}
+				.locations=${data?.locations ?? []}
 			></cc-card-hero>
 			${current.comment ? html`<p class="card-comment">${current.comment}</p>` : nothing}
 			${overNote(current)}
@@ -358,10 +381,14 @@ export function renderCardPage(
 					@edit-purchase=${onEdit}
 					@delete-purchase=${onDelete}
 				></cc-card-statements>
-				<button type="button" data-variant="quiet" data-action="show-older" @click=${() => {
-					shown += PAGE_SIZE;
-					paint();
-				}}>${t("card.showOlder")}</button>
+				${
+					hasOlder(current)
+						? html`<button type="button" data-variant="quiet" data-action="show-older" @click=${() => {
+								shown += PAGE_SIZE;
+								paint();
+							}}>${t("card.showOlder")}</button>`
+						: nothing
+				}
 			</section>
 			${sheet(current)}
 		`;

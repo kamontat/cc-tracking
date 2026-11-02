@@ -198,7 +198,7 @@ export class CcGroupSheet extends LitElement {
 			<button type="button" data-variant="danger" data-action="confirm-delete"
 				?disabled=${this.busy}
 				@click=${() => {
-					this.asking = false;
+					// The question stays until the write lands: a failed delete still shows it.
 					this.dispatchEvent(
 						new CustomEvent("delete-group", { detail: { group } }),
 					);

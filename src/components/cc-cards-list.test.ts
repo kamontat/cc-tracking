@@ -8,7 +8,6 @@ import {
 	DEFAULT_CARDS_VIEW,
 } from "#lib/domain/cards-view";
 import { cardLedger } from "#lib/domain/ledger";
-import { LOCATIONS } from "#lib/domain/location";
 import type { GroupRoom } from "#lib/domain/room";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
@@ -65,12 +64,15 @@ const mount = async (
 		[g1, g2],
 		rooms,
 		{ ...DEFAULT_CARDS_VIEW, ...view },
-		LOCATIONS,
+		["bangkok", "phichit", "krabi"],
 	);
 	element.groups = [g1, g2];
 	element.rooms = rooms;
 	element.credits = new Map([["C", 250_00]]);
-	element.settings = { purchaseLocations: ["krabi"] };
+	element.locations = [
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+	];
 	element.total = list.length;
 	Object.assign(element, props);
 	document.body.append(element);
@@ -94,11 +96,30 @@ test("by place: a section per location in order, headed by its name and count", 
 	);
 });
 
-test("the route names the places", async () => {
-	const { root } = await mount({}, { locationName: (id) => `Place ${id}` });
+test("places are named by their records; one with no record by its id", async () => {
+	const props = {
+		locations: [
+			{ id: "bangkok", name: "Head office", takesPurchases: false },
+			{ id: "krabi", name: "Krabi", takesPurchases: true },
+		],
+	};
+	const { element, root } = await mount({}, props);
+	expect(
+		text(root.querySelector("section[data-location=bangkok] .place b")),
+	).toBe("Head office");
+	setLocale("th");
+	await element.updateComplete;
 	expect(
 		text(root.querySelector("section[data-location=krabi] .place b")),
-	).toBe("Place krabi");
+	).toBe("กระบี่");
+	setLocale("en");
+	const flat = await mount({ sort: "name" }, props, [
+		...cards,
+		card("G", { location: "gone" }),
+	]);
+	expect(text(flat.root.querySelector('a[data-card="G"] .word'))).toBe(
+		"· gone",
+	);
 });
 
 test("rows link to the card page, encoded, with the chip and id) name", async () => {
@@ -226,4 +247,15 @@ test("a language switch re-renders in place", async () => {
 	expect(text(root.querySelector('a[data-card="A"] .r small'))).not.toBe(
 		"room",
 	);
+});
+
+test("only archived cards match: the no-match line shows above the folded Archived", async () => {
+	const { root } = await mount({}, {}, [card("Z", { archived: true })]);
+	const children = [...root.children].filter((c) => c.tagName !== "STYLE");
+	expect(text(children[0])).toBe(
+		"No card matches. Clear the search or a filter.",
+	);
+	expect(children[0]?.classList.contains("empty")).toBe(true);
+	expect(children[1]?.matches("details.archive")).toBe(true);
+	expect(text(children[1]?.querySelector("summary"))).toBe("Archived (1)");
 });

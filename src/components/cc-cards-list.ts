@@ -1,31 +1,25 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import {
-	type CardsResults,
-	type CardsRooms,
-	cardUsePct,
-} from "#lib/domain/cards-view";
+import type { CardsResults, CardsRooms } from "#lib/domain/cards-view";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
-import type { Location } from "#lib/domain/location";
+import { takesPurchases } from "#lib/domain/locations";
 import { formatAmount } from "#lib/domain/money";
-import { defaultSettings, type Settings } from "#lib/domain/settings";
 import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	CardLedger,
 	LimitGroup,
+	LocationRecord,
 	PlainDate,
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { locationText } from "#lib/i18n/format";
+import { nameOfLocation } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardMini, cardRowTitle } from "#lib/ui/card-label";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
+import { roomNote } from "#lib/ui/room-note";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
-
-/** From this share of the limit in use, a row says it instead of the room (prototype `lvl`). */
-const WARN_PCT = 80;
 
 const ARCHIVE_PANEL = "cards-archive";
 
@@ -143,11 +137,8 @@ export class CcCardsList extends LitElement {
 	@property({ attribute: false }) rooms: CardsRooms = new Map();
 	/** The credit each card holds, in satang, keyed by card id; none when absent. */
 	@property({ attribute: false }) credits: Map<string, number> = new Map();
-	/** Which places take purchases, for each section's heading. */
-	@property({ attribute: false }) settings: Settings = defaultSettings();
-	/** How the page names a place. */
-	@property({ attribute: false }) locationName: (id: string) => string = (id) =>
-		locationText(id as Location);
+	/** The stored locations: each section's name, and whether it takes purchases. */
+	@property({ attribute: false }) locations: LocationRecord[] = [];
 	/** How many cards are stored at all, to tell "none yet" from "none match". */
 	@property({ type: Number }) total = 0;
 	/** Each card's ledger, keyed by card id: its open statement holds the dates to show. */
@@ -162,18 +153,12 @@ export class CcCardsList extends LitElement {
 
 	private right(card: Card) {
 		const room = card.limitGroupId ? this.rooms.get(card.limitGroupId) : null;
-		const pct = cardUsePct(room);
-		const credit = this.credits.get(card.id) ?? 0;
-		let note = html`<small>${t("cards.page.room")}</small>`;
-		if (pct !== null && pct >= WARN_PCT)
-			note = html`<small data-tone="warn">${t("cards.page.used", { pct })}</small>`;
-		else if (credit > 0)
-			note = html`<small>${t("cards.page.credit", { amount: formatAmount(credit) })}</small>`;
 		if (!room)
 			return html`<span class="r"><small data-tone="muted">${t("cards.page.noGroup")}</small></span>`;
+		const note = roomNote(room, this.credits.get(card.id) ?? 0);
 		return html`<span class="r">
 			<b class="amount" data-numeric>${formatAmount(room.room)}</b>
-			${note}
+			<small data-tone=${note.warn ? "warn" : nothing}>${note.text}</small>
 		</span>`;
 	}
 
@@ -192,7 +177,7 @@ export class CcCardsList extends LitElement {
 	}
 
 	private row(card: Card, flat: boolean) {
-		const extra = flat ? this.locationName(card.location) : "";
+		const extra = flat ? nameOfLocation(this.locations, card.location) : "";
 		return html`<a class="crow" data-card=${card.id}
 			href=${`/card?id=${encodeURIComponent(card.id)}`}>
 			${cardMini(card, this.groups)}
@@ -223,17 +208,18 @@ export class CcCardsList extends LitElement {
 	}
 
 	override render() {
-		const { sections, flat, archived, count } = this.results;
-		if (count === 0 && archived.length === 0)
-			return html`<p class="empty">${
-				this.total === 0 ? t("cards.page.empty") : t("cards.page.noMatch")
-			}</p>`;
-		const takes = this.settings.purchaseLocations as string[];
-		return html`
+		const { sections, flat, count } = this.results;
+		const none =
+			count === 0
+				? html`<p class="empty">${
+						this.total === 0 ? t("cards.page.empty") : t("cards.page.noMatch")
+					}</p>`
+				: nothing;
+		return html`${none}
 			${(sections ?? []).map(
 				({ location, cards }) => html`<section data-location=${location}>
-					<h2 class="place"><b>${this.locationName(location)}</b> <small>${cardsCount(cards.length)}${
-						takes.includes(location)
+					<h2 class="place"><b>${nameOfLocation(this.locations, location)}</b> <small>${cardsCount(cards.length)}${
+						takesPurchases(this.locations, location)
 							? ` · ${t("cards.page.takesPurchases")}`
 							: ""
 					}</small></h2>

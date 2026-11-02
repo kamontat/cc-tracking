@@ -4,23 +4,29 @@ import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-about";
 import "#components/cc-display-settings";
-import "#components/cc-settings";
+import "#components/cc-purge-sheet";
+import "#components/cc-restore-sheet";
 import { html, nothing, render } from "lit";
-import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
+import type { PurgedDetail } from "#components/cc-purge-sheet";
+import type { RestoredDetail } from "#components/cc-restore-sheet";
+import { today } from "#lib/domain/date";
+import type { LocationRecord } from "#lib/domain/types";
+import { purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
 import {
-	type BackupV3,
-	backupCounts,
 	countRecordsV3,
 	exportBackupV3,
-	importBackupV3,
-	parseAnyBackup,
-	replaceWithBackupV3,
 	type V3Counts,
 } from "#lib/storage/transfer-v3";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
+import { countsText } from "#lib/ui/record-counts";
+
+/** The name a backup file saved at `now` gets: the UTC date it was exported on. */
+const backupFilename = (now: Date): string =>
+	`cc-tracking-${now.toISOString().slice(0, 10)}.json`;
 
 /**
  * Turns a repository's contents into a backup file's text and filename. Split out from the
@@ -34,26 +40,59 @@ export async function prepareBackupFile(
 	const backup = await exportBackupV3(repo, now);
 	return {
 		text: JSON.stringify(backup, null, 2),
-		filename: `cc-tracking-${backup.exportedAt.slice(0, 10)}.json`,
+		filename: backupFilename(new Date(backup.exportedAt)),
 	};
 }
 
-/** Renders the settings page into `root`, wiring it to `repo`. Exported for tests. */
-export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
-	let settings: Settings = DEFAULT_SETTINGS;
+/** The Locations row's muted line: how many places, and which of them take purchases. */
+function locationsSummary(records: LocationRecord[]): string {
+	const places = purchasePlaces(records);
+	const count =
+		records.length === 1
+			? t("settings.locations.count.one")
+			: t("settings.locations.count.many", { count: records.length });
+	const takers =
+		places.length === 0
+			? t("settings.locations.takes.none")
+			: t(
+					places.length === 1
+						? "settings.locations.takes.one"
+						: "settings.locations.takes.many",
+					{ places: places.join(", ") },
+				);
+	return t("settings.locations.summary", { count, takers });
+}
 
-	// A backup can carry settings, so the reload `guard` runs after an import is what brings
-	// the purchases panel in step with what was just imported.
+/** A settings row's label with its optional muted line under it. */
+const rowText = (label: string, sub?: string) =>
+	html`<span class="set-row__text">${label}${
+		sub ? html`<small class="set-row__sub">${sub}</small>` : nothing
+	}</span>`;
+
+/**
+ * Renders the settings page into `root`, wiring it to `repo`: sections of rows in `.set`
+ * panels (RD-19), Display, Locations and Backup in the main column, Reset and About beside
+ * them from 900px. `storage` holds the location and payments markers, for Delete all and the
+ * restore sheet alike. Exported for tests.
+ */
+export function renderSettingsPage(
+	repo: Repository,
+	root: HTMLElement,
+	storage: Storage = globalThis.localStorage,
+): void {
+	// The Locations row sums up the stored records; everything else on the page reads
+	// storage only when asked.
+	let locations: LocationRecord[] = [];
 	const state = createPageState({
 		fetch: async () => {
-			settings = await repo.getSettings();
+			locations = await repo.listLocations();
 		},
 		fallbackKey: "settings.error.read",
 		paint: () => paint(),
 	});
 
-	const onSave = (event: CustomEvent<Settings>) =>
-		state.guard(() => repo.saveSettings(event.detail), "settings.error.save");
+	/** Which sheet is open: Restore draws `cc-restore-sheet`, Delete old purchases `cc-purge-sheet`. */
+	let openSheet: "restore" | "purge" | null = null;
 
 	const onExport = () =>
 		state.guard(async () => {
@@ -86,99 +125,46 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 
 	// Holds the counts and filename rather than a resolved sentence, so a language switch
 	// re-renders the confirmation in the new language. No filename means the text was pasted.
-	let imported: ({ file?: string } & V3Counts) | null = null;
-	// Counts rather than a sentence, for the same reason: the reset question must re-render in
+	let imported: RestoredDetail | null = null;
+	// Counts rather than a sentence, for the same reason: the reset warning must re-render in
 	// the new language if the reader switches while it is on screen.
 	let resetCounts: V3Counts | null = null;
 	let resetDone = false;
+	// What the purge sheet deleted, kept as counts so the sentence follows a language switch.
+	let purged: PurgedDetail | null = null;
 
-	// A parsed backup waiting on the reader's merge-or-replace answer, because this browser
-	// already holds records it would land on top of.
-	let pending: {
-		file: string | undefined;
-		backup: BackupV3;
-		existing: V3Counts;
-		incoming: V3Counts;
-	} | null = null;
-	let pasteOpen = false;
-	let pasteText = "";
-
-	type BackupWriter = (repo: Repository, backup: BackupV3) => Promise<void>;
-	const replaceWriter: BackupWriter = (target, backup) =>
-		replaceWithBackupV3(target, backup, globalThis.localStorage);
-
-	const finishImport = async (
-		file: string | undefined,
-		backup: BackupV3,
-		write: BackupWriter,
-	) => {
-		await write(repo, backup);
-		const counts = backupCounts(backup);
-		imported = file === undefined ? counts : { file, ...counts };
-		pending = null;
-		if (file === undefined) {
-			pasteOpen = false;
-			pasteText = "";
-		}
-	};
-
-	/** Parses `text`, then imports it at once into an empty browser or asks first otherwise. */
-	const startImport = (file: string | undefined, text: string) => {
-		imported = null;
-		pending = null;
+	/** The restore sheet wrote a copy: show its counts, and read the locations again. */
+	const onRestored = (event: CustomEvent<RestoredDetail>) => {
+		imported = event.detail;
 		resetDone = false;
-		return state.guard(async () => {
-			const backup = parseAnyBackup(text);
-			const existing = await countRecordsV3(repo);
-			if (Object.values(existing).some((count) => count > 0)) {
-				pending = { file, backup, existing, incoming: backupCounts(backup) };
-			} else {
-				await finishImport(file, backup, importBackupV3);
-			}
-		}, "backup.error.import");
+		purged = null;
+		openSheet = null;
+		void state.load();
 	};
 
-	const onImport = async (event: Event) => {
-		const input = event.target as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file) return;
-		input.value = "";
-		return startImport(file.name, await file.text());
-	};
-
-	const onImportText = () => startImport(undefined, pasteText);
-
-	const answerImport = (write: BackupWriter) => () => {
-		const waiting = pending;
-		if (!waiting) return;
-		return state.guard(
-			() => finishImport(waiting.file, waiting.backup, write),
-			"backup.error.import",
-		);
-	};
-
-	const onCancelImport = () => {
-		pending = null;
+	/** The purge sheet deleted old purchases: say how many in the Reset panel. */
+	const onPurged = (event: CustomEvent<PurgedDetail>) => {
+		purged = event.detail;
+		resetDone = false;
+		openSheet = null;
 		paint();
 	};
 
-	const onTogglePaste = (open: boolean) => () => {
-		pasteOpen = open;
-		if (!open) pasteText = "";
+	/** Takes a sheet away; it forgets its steps, so the next one opens fresh. */
+	const onCloseSheet = () => {
+		openSheet = null;
 		paint();
 	};
 
-	const onPasteInput = (event: Event) => {
-		pasteText = (event.target as HTMLTextAreaElement).value;
+	/** Opens `sheet`, or closes it when it is already open. */
+	const onToggleSheet = (sheet: "restore" | "purge") => () => {
+		openSheet = openSheet === sheet ? null : sheet;
+		paint();
 	};
-
-	const onReadClipboard = () =>
-		state.guard(async () => {
-			pasteText = await navigator.clipboard.readText();
-		}, "backup.error.clipboard");
 
 	const onStartReset = () => {
 		resetDone = false;
+		purged = null;
 		return state.guard(async () => {
 			resetCounts = await countRecordsV3(repo);
 		}, "reset.error");
@@ -191,137 +177,160 @@ export function renderSettingsPage(repo: Repository, root: HTMLElement): void {
 
 	const onConfirmReset = () => {
 		imported = null;
+		purged = null;
 		return state.guard(async () => {
 			resetCounts = null;
 			await repo.clearAll();
+			// Seed the starting places again, so Home and the Locations page are not empty. The
+			// marker goes first: an in-memory repository's clearAll leaves storage alone.
+			storage.removeItem(SEED_KEY);
+			await seedLocations(repo, storage);
 			resetDone = true;
 		}, "reset.error");
 	};
 
-	const resetPanel = () =>
-		resetCounts
-			? html`
-				<p><strong>${t("reset.confirm", resetCounts)}</strong></p>
-				<div class="reset__actions">
-					<button data-variant="danger" type="button" data-action="confirm-reset" @click=${onConfirmReset}>${t("reset.delete")}</button>
-					<button data-variant="quiet" type="button" data-action="cancel-reset" @click=${onCancelReset}>${t("common.cancel")}</button>
-				</div>
-			`
-			: html`<button data-variant="danger" type="button" data-action="reset" @click=${onStartReset}>${t("reset.start")}</button>`;
-
-	// Only offered where the browser exposes them: older Firefox and plain-http pages do not.
-	const canReadClipboard = () =>
-		typeof navigator.clipboard?.readText === "function";
+	// Only offered where the browser exposes it: older Firefox and plain-http pages do not.
 	const canWriteClipboard = () =>
 		typeof navigator.clipboard?.writeText === "function";
-
-	const saveWay = () => html`
-		<section class="backup__way backup__way--save">
-			<h3>${t("backup.save.title")}</h3>
-			<p><small>${t("backup.save.hint")}</small></p>
-			<div class="backup__actions">
-				<button data-variant="quiet" type="button" @click=${onExport}>${t("backup.export")}</button>
-				${
-					canWriteClipboard()
-						? html`<button data-variant="quiet" type="button" data-action="copy-export" @click=${onCopyExport}>${t("backup.copy")}</button>`
-						: nothing
-				}
-			</div>
-			<p class="export-status" role="status">${copied ? t("backup.copied") : nothing}</p>
-		</section>
-	`;
-
-	// The restore side is one step at a time: pick a source, then (only when this browser
-	// already holds records) say how the copy should land. Each step replaces the last.
-	const restoreStart = () => html`
-		<p><small>${t("backup.restore.hint")}</small></p>
-		<div class="backup__actions">
-			<label class="backup__file">${t("backup.import")}<input type="file" accept="application/json" @change=${onImport} /></label>
-			<button data-variant="quiet" type="button" data-action="open-paste" @click=${onTogglePaste(true)}>${t("backup.paste")}</button>
-		</div>
-	`;
-
-	const restorePaste = () => html`
-		<label>${t("backup.pasteLabel")}
-			<textarea class="backup__text" rows="6" spellcheck="false" .value=${pasteText} @input=${onPasteInput}></textarea>
-		</label>
-		<div class="backup__actions">
-			<button type="button" data-action="import-text" @click=${onImportText}>${t("backup.importText")}</button>
-			${
-				canReadClipboard()
-					? html`<button data-variant="quiet" type="button" data-action="read-clipboard" @click=${onReadClipboard}>${t("backup.fromClipboard")}</button>`
-					: nothing
-			}
-			<button data-variant="quiet" type="button" data-action="close-paste" @click=${onTogglePaste(false)}>${t("common.cancel")}</button>
-		</div>
-	`;
-
-	const restoreQuestion = (waiting: NonNullable<typeof pending>) => html`
-		<p><strong>${
-			waiting.file === undefined
-				? t("backup.question.pasted")
-				: t("backup.question.file", { file: waiting.file })
-		}</strong></p>
-		<dl class="backup__compare">
-			<div><dt>${t("backup.here")}</dt><dd>${t("backup.counts", waiting.existing)}</dd></div>
-			<div><dt>${t("backup.incoming")}</dt><dd>${t("backup.counts", waiting.incoming)}</dd></div>
-		</dl>
-		<div class="backup__choices">
-			<button class="backup__choice" type="button" data-action="merge-import" @click=${answerImport(importBackupV3)}>
-				<strong>${t("backup.merge")}</strong>
-				<span>${t("backup.mergeHint")}</span>
-			</button>
-			<button class="backup__choice" data-variant="danger" type="button" data-action="replace-import" @click=${answerImport(replaceWriter)}>
-				<strong>${t("backup.replace")}</strong>
-				<span>${t("backup.replaceHint")}</span>
-			</button>
-		</div>
-		<button data-variant="quiet" type="button" data-action="cancel-import" @click=${onCancelImport}>${t("common.cancel")}</button>
-	`;
-
-	const restoreWay = () => html`
-		<section class="backup__way backup__way--restore">
-			<h3>${t("backup.restore.title")}</h3>
-			${pending ? restoreQuestion(pending) : pasteOpen ? restorePaste() : restoreStart()}
-			<p class="import-status" role="status">${importedMessage()}</p>
-		</section>
-	`;
 
 	const importedMessage = () => {
 		if (!imported) return nothing;
 		return imported.file === undefined
-			? t("backup.importedText", imported)
-			: t("backup.imported", { ...imported, file: imported.file });
+			? t("backup.importedText", { counts: countsText(imported) })
+			: t("backup.imported", {
+					counts: countsText(imported),
+					file: imported.file,
+				});
 	};
+
+	const purgedMessage = () =>
+		purged
+			? t(purged.count === 1 ? "purge.done.one" : "purge.done.many", {
+					count: purged.count,
+					age: t(`purge.span.${purged.age}`),
+				})
+			: nothing;
+
+	/** A section: its heading over one `.set` panel of rows, then anything `after` it. */
+	const section = (
+		name: string,
+		title: string,
+		rows: unknown,
+		after: unknown = nothing,
+	) => html`
+		<section class="set-section" data-section=${name}>
+			<h2>${title}</h2>
+			<div class="set">${rows}</div>
+			${after}
+		</section>
+	`;
+
+	const displaySection = () =>
+		section(
+			"display",
+			t("settings.display.title"),
+			html`<cc-display-settings></cc-display-settings>`,
+		);
+
+	const locationsSection = () =>
+		section(
+			"locations",
+			t("settings.locations.title"),
+			html`<a class="set-row" data-row="locations" href="/settings/locations">
+				${rowText(t("settings.locations.manage"), locationsSummary(locations))}
+				<span class="set-row__chev" aria-hidden="true">›</span>
+			</a>`,
+		);
+
+	const backupSection = () =>
+		section(
+			"backup",
+			t("backup.title"),
+			html`
+				<button class="set-row" type="button" data-row="download" @click=${onExport}>
+					${rowText(t("settings.backup.download"), backupFilename(new Date()))}
+					<span class="set-row__action">${t("settings.backup.downloadAction")}</span>
+				</button>
+				${
+					canWriteClipboard()
+						? html`<button class="set-row" type="button" data-row="copy" @click=${onCopyExport}>
+							${rowText(t("settings.backup.copy"), t("settings.backup.copyHint"))}
+							<span class="set-row__action" data-variant="quiet" aria-live="polite">${
+								copied
+									? t("settings.backup.copied")
+									: t("settings.backup.copyAction")
+							}</span>
+						</button>`
+						: nothing
+				}
+				<button class="set-row" type="button" data-row="restore" aria-haspopup="dialog" aria-expanded=${openSheet === "restore"} @click=${onToggleSheet("restore")}>
+					${rowText(t("backup.restore.title"), t("settings.backup.restoreHint"))}
+					<span class="set-row__action" data-variant="quiet">${t("settings.backup.restoreAction")}</span>
+				</button>
+			`,
+			html`<p class="set-note">${t("backup.warning")}</p>
+				<p class="import-status" role="status">${importedMessage()}</p>
+				${
+					openSheet === "restore"
+						? html`<cc-restore-sheet .repo=${repo} .storage=${storage}
+							@restored=${onRestored} @close=${onCloseSheet}></cc-restore-sheet>`
+						: nothing
+				}`,
+		);
+
+	const resetSection = () =>
+		section(
+			"reset",
+			t("reset.title"),
+			html`
+				<button class="set-row" type="button" data-row="purge" aria-haspopup="dialog" aria-expanded=${openSheet === "purge"} @click=${onToggleSheet("purge")}>
+					${rowText(t("settings.reset.purge"), t("settings.reset.purgeHint"))}
+					<span class="set-row__action" data-variant="quiet">${t("settings.reset.purgeAction")}</span>
+				</button>
+				${
+					resetCounts === null
+						? html`<button class="set-row" type="button" data-row="delete-all" @click=${onStartReset}>
+							${rowText(t("settings.reset.all"), t("settings.reset.allHint"))}
+							<span class="set-row__action" data-variant="danger">${t("settings.reset.allAction")}</span>
+						</button>`
+						: html`<div class="set-ask">
+							<p class="set-ask__note">${t("reset.ask", {
+								counts: countsText(resetCounts),
+							})}</p>
+							<div class="set-ask__actions">
+								<button type="button" data-action="keep-data" @click=${onCancelReset}>${t("reset.keep")}</button>
+								<button data-variant="danger" type="button" data-action="delete-everything" @click=${onConfirmReset}>${t("reset.deleteEverything")}</button>
+							</div>
+						</div>`
+				}
+			`,
+			html`<p class="reset-status" role="status">${
+				resetDone ? t("reset.done") : purgedMessage()
+			}</p>
+				${
+					openSheet === "purge"
+						? html`<cc-purge-sheet .repo=${repo} .today=${today()}
+							@purged=${onPurged} @close=${onCloseSheet}></cc-purge-sheet>`
+						: nothing
+				}`,
+		);
 
 	const paint = () =>
 		render(
 			html`
 				<h1>${t("settings.title")}</h1>
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<article class="display">
-					<cc-display-settings></cc-display-settings>
-				</article>
-				<article>
-					<cc-settings .settings=${settings} @save-settings=${onSave}></cc-settings>
-				</article>
-				<article class="backup">
-					<h2>${t("backup.title")}</h2>
-					<p><small>${t("backup.warning")}</small></p>
-					<div class="backup__ways">
-						${saveWay()}
-						${restoreWay()}
+				<div class="settings-grid">
+					<div class="settings-grid__main">
+						${displaySection()}
+						${locationsSection()}
+						${backupSection()}
 					</div>
-				</article>
-				<article class="reset">
-					<h2>${t("reset.title")}</h2>
-					<p><small>${t("reset.warning")}</small></p>
-					${resetPanel()}
-					<p class="reset-status" role="status">${resetDone ? t("reset.done") : nothing}</p>
-				</article>
-				<article class="about">
-					<cc-about></cc-about>
-				</article>
+					<div class="settings-grid__side">
+						${resetSection()}
+						${section("about", t("about.title"), html`<cc-about></cc-about>`)}
+					</div>
+				</div>
 			`,
 			root,
 		);

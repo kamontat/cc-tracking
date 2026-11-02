@@ -43,16 +43,26 @@ function cycleProblem(value: unknown): MessageKey | null {
 	return "backup.problem.badCycleKind";
 }
 
-/** `null` when the card is well-formed, otherwise which catalog key names what's wrong. */
-export function cardProblem(value: unknown): MessageKey | null {
+/**
+ * `null` when the card is well-formed, otherwise which catalog key names what's wrong. A card's
+ * location is checked against `locationIds` when given (a version 3 file's own locations),
+ * otherwise against the closed set a version 2 file was written with (DC-06).
+ */
+export function cardProblem(
+	value: unknown,
+	locationIds?: ReadonlySet<string>,
+): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
 	if (!isNonEmptyString(prop(value, "name")))
 		return "backup.problem.missingName";
 	if (!isNonEmptyString(prop(value, "last4")))
 		return "backup.problem.missingLast4";
-	if (toLocation(prop(value, "location")) === null)
-		return "backup.problem.badLocation";
+	const location = prop(value, "location");
+	if (locationIds) {
+		if (typeof location !== "string" || !locationIds.has(location))
+			return "backup.problem.unknownLocation";
+	} else if (toLocation(location) === null) return "backup.problem.badLocation";
 	// The same rule a limit group's owner follows: absent is a card from before the field, and
 	// present-but-unknown is a claim about whose card it is that the closed set cannot keep.
 	const owner = prop(value, "owner");

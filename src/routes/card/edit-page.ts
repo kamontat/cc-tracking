@@ -1,7 +1,7 @@
 import "#components/cc-card-form";
 import "#components/cc-error-banner";
 import { html, render } from "lit";
-import type { Card, LimitGroup } from "#lib/domain/types";
+import type { Card, LimitGroup, LocationRecord } from "#lib/domain/types";
 import { MessageError } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
@@ -42,6 +42,7 @@ export function renderCardEditPage(
 
 	let card: Card | null = null;
 	let groups: LimitGroup[] = [];
+	let locations: LocationRecord[] = [];
 	let loaded = false;
 	let busy = false;
 	// The last write failed: its reason shows in the form rather than the page's banner.
@@ -49,7 +50,10 @@ export function renderCardEditPage(
 
 	const state = createPageState({
 		fetch: async () => {
-			groups = await repo.listLimitGroups();
+			[groups, locations] = await Promise.all([
+				repo.listLimitGroups(),
+				repo.listLocations(),
+			]);
 			if (mode === "new") {
 				loaded = true;
 				return;
@@ -123,6 +127,7 @@ export function renderCardEditPage(
 						? html`<cc-card-form
 								.card=${card}
 								.groups=${groups}
+								.locations=${locations}
 								.busy=${busy}
 								.error=${writeFailed ? state.error : ""}
 								@save=${onSave}

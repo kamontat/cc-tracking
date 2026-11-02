@@ -13,7 +13,7 @@ const card = (location: string, archived = false): Card => ({
 	id: `c-${location}-${archived}`,
 	name: "x",
 	last4: "0000",
-	location: location as Card["location"],
+	location,
 	cycle: { kind: "offset", closeDay: 10, dueOffsetDays: 25 },
 	archived,
 });

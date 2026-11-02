@@ -16,15 +16,17 @@ import {
 	groupPanels,
 } from "#lib/domain/cards-view";
 import { today } from "#lib/domain/date";
-import { LOCATIONS, type Location } from "#lib/domain/location";
 import { groupRoom } from "#lib/domain/room";
-import type { LimitGroup, LocationRecord } from "#lib/domain/types";
-import { locationText } from "#lib/i18n/format";
+import type { LimitGroup } from "#lib/domain/types";
+import { nameOfLocation, placeOrder } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import { takeResetNotice } from "#lib/storage/migrate-locations";
 import type { Repository } from "#lib/storage/repository";
 import {
+	type CardsShow,
 	groupSheetAddress,
+	NEW_GROUP,
+	readCardsShow,
 	readCardsView,
 	readGroupSheet,
 	writeCardsView,
@@ -60,22 +62,25 @@ type CardsData = {
 	money: MoneyData;
 	rooms: CardsRooms;
 	credits: Map<string, number>;
-	/** Every place the cards use: the stored order, then any other a card is kept at. */
-	order: string[];
-	records: LocationRecord[];
 };
 
-const isDefaultLocation = (id: string): id is Location =>
-	(LOCATIONS as readonly string[]).includes(id);
+const SHOWS: readonly CardsShow[] = ["cards", "groups"];
+
+const locationIds = (money: MoneyData): string[] =>
+	money.locations.map((record) => record.id);
 
 /**
  * The Cards page (prototype `vCards`): the heading with *Add card*, the shared search, filter
  * and sort, the results, and *Limit groups* beside them from 900px. The view lives in the
- * address (`?q=&loc=&owner=&sort=`), replaced as it changes. A group opens in a sheet at
- * `?group=<id>` (`new` for a blank one): tapping a panel pushes that address so Back closes
- * it; Close steps back over an entry the page pushed, else rewrites the address without the
- * group (DD-102). A save or delete closes the sheet only once written; a failed one keeps it,
- * and what was typed, with the reason.
+ * address (`?view=&q=&loc=&owner=&ungrouped=&sort=`), replaced as it changes. Below 900px a
+ * switch beside the title shows the cards or the limit groups (`?view=groups`), as
+ * Transactions does, and the row under it holds the shown view's add button: *Add card*, or
+ * *Add group* (drawn here only while the groups show, since the panels' own heading is hidden
+ * on a phone). A group
+ * opens in a sheet at `?group=<id>` (`?newGroup=1` for a blank one): tapping a panel pushes
+ * that address so Back closes it; Close steps back over an entry the page pushed, else
+ * rewrites the address without the group (DD-102). A save or delete closes the sheet only
+ * once written; a failed one keeps it, and what was typed, with the reason.
  */
 export function renderCardsPage(
 	repo: Repository,
@@ -87,7 +92,10 @@ export function renderCardsPage(
 	const storage = options.storage ?? globalThis.localStorage;
 
 	let data: CardsData | null = null;
-	let view: CardsView = readCardsView(address.search());
+	// No location is known before the first load, so the address is read again once one lands.
+	let view: CardsView = readCardsView(address.search(), []);
+	// Below 900px the page shows the cards or the limit groups, never both.
+	let show: CardsShow = readCardsShow(address.search());
 	// The filter sheet is open; it takes a fresh copy of the view, so its draft starts there.
 	let filterOpen = false;
 	// Read once per page load: the notice is consumed here, not on every paint.
@@ -104,7 +112,7 @@ export function renderCardsPage(
 	/** Makes a new group's id when the address opens the blank sheet, and drops it otherwise. */
 	const syncNewId = () => {
 		newId =
-			readGroupSheet(address.search()) === "new"
+			readGroupSheet(address.search()) === NEW_GROUP
 				? (newId ?? crypto.randomUUID())
 				: null;
 	};
@@ -114,10 +122,7 @@ export function renderCardsPage(
 
 	const state = createPageState({
 		fetch: async () => {
-			const [money, records] = await Promise.all([
-				loadMoneyData(repo, now),
-				repo.listLocations(),
-			]);
+			const money = await loadMoneyData(repo, now);
 			const rooms: CardsRooms = new Map(
 				money.groups.map((group) => [
 					group.id,
@@ -127,24 +132,15 @@ export function renderCardsPage(
 			const credits = new Map(
 				money.cards.map((c) => [c.id, money.ledgers.get(c.id)?.credit ?? 0]),
 			);
-			const order: string[] =
-				records.length > 0 ? records.map((r) => r.id) : [...LOCATIONS];
-			for (const c of money.cards)
-				if (!order.includes(c.location)) order.push(c.location);
-			data = { money, rooms, credits, order, records };
+			view = readCardsView(address.search(), locationIds(money));
+			data = { money, rooms, credits };
 		},
 		fallbackKey: "cards.error.read",
 		paint: () => paint(),
 	});
 
-	/** A default place by the catalog, so it follows the language; any other by its record. */
-	const locationName = (id: string): string => {
-		if (isDefaultLocation(id)) return locationText(id);
-		return data?.records.find((r) => r.id === id)?.name ?? id;
-	};
-
-	const sheetAddress = (group: string | null) =>
-		`/cards${groupSheetAddress(writeCardsView(view), group)}`;
+	const sheetAddress = (group: string | typeof NEW_GROUP | null) =>
+		`/cards${groupSheetAddress(writeCardsView(view, show), group)}`;
 
 	const change = (next: Partial<CardsView>) => {
 		view = { ...view, ...next };
@@ -152,7 +148,13 @@ export function renderCardsPage(
 		paint();
 	};
 
-	const openSheet = (id: string) => {
+	const choose = (next: CardsShow) => {
+		show = next;
+		address.replace(sheetAddress(readGroupSheet(address.search())));
+		paint();
+	};
+
+	const openSheet = (id: string | typeof NEW_GROUP) => {
 		// A write under way closes the sheet it began in; opening another now would let that
 		// landing save close the wrong one.
 		if (busy) return;
@@ -221,7 +223,7 @@ export function renderCardsPage(
 	const chips = (): FilterPill[] => [
 		...view.locations.map((location) => ({
 			key: `loc:${location}`,
-			label: locationName(location),
+			label: nameOfLocation(data?.money.locations ?? [], location),
 			clear: () =>
 				change({ locations: view.locations.filter((l) => l !== location) }),
 		})),
@@ -230,6 +232,15 @@ export function renderCardsPage(
 			label: owner,
 			clear: () => change({ owners: view.owners.filter((o) => o !== owner) }),
 		})),
+		...(view.ungrouped
+			? [
+					{
+						key: "ungrouped",
+						label: t("cards.filter.ungrouped"),
+						clear: () => change({ ungrouped: false }),
+					},
+				]
+			: []),
 	];
 
 	const notice = () =>
@@ -248,8 +259,10 @@ export function renderCardsPage(
 		if (sheetId === null) return nothing;
 		const { groups, cards } = d.money;
 		const group =
-			sheetId === "new" ? null : (groups.find((g) => g.id === sheetId) ?? null);
-		if (sheetId !== "new" && !group) return nothing;
+			sheetId === NEW_GROUP
+				? null
+				: (groups.find((g) => g.id === sheetId) ?? null);
+		if (sheetId !== NEW_GROUP && !group) return nothing;
 		return html`<cc-group-sheet
 			.group=${group}
 			.inUse=${group ? cards.some((c) => c.limitGroupId === group.id) : false}
@@ -262,8 +275,13 @@ export function renderCardsPage(
 	};
 
 	const results = (d: CardsData) => {
-		const { cards, groups, settings } = d.money;
+		const { cards, groups } = d.money;
 		const active = chips();
+		// Sorted on every paint, so the sections follow a language switch.
+		const order = placeOrder(
+			d.money.locations,
+			cards.map((c) => c.location),
+		);
 		return html`
 			${filterControls({
 				q: view.q,
@@ -278,13 +296,12 @@ export function renderCardsPage(
 				chips: active,
 			})}
 			<cc-cards-list
-				.results=${cardsResults(cards, groups, d.rooms, view, d.order)}
+				.results=${cardsResults(cards, groups, d.rooms, view, order)}
 				.groups=${groups}
 				.rooms=${d.rooms}
 				.credits=${d.credits}
 				.ledgers=${d.money.ledgers}
-				.settings=${settings}
-				.locationName=${locationName}
+				.locations=${d.money.locations}
 				.total=${cards.length}
 				.today=${now}
 			></cc-cards-list>
@@ -292,10 +309,9 @@ export function renderCardsPage(
 				filterOpen
 					? html`<cc-cards-filter
 						.view=${{ ...view }}
-						.locations=${LOCATIONS}
-						.locationName=${locationName}
+						.locations=${d.money.locations}
 						.count=${(v: CardsView) =>
-							cardsResults(cards, groups, d.rooms, v, d.order).count}
+							cardsResults(cards, groups, d.rooms, v, order).count}
 						@apply=${(e: CustomEvent<CardsView>) => {
 							filterOpen = false;
 							change({ ...e.detail });
@@ -314,12 +330,28 @@ export function renderCardsPage(
 		const d = data;
 		render(
 			html`
-				<div class="cards-grid">
+				<div class="cards-grid" data-show=${show}>
 					<div class="cards-main">
 						<div class="cards-head">
 							<h1>${t("cards.title")}</h1>
-							<a class="cards-add" data-action="add-card" href="/card/new"
-								>${icons.plus}${t("cards.page.add")}</a>
+							<div class="tx-switch cards-switch" role="group">${SHOWS.map(
+								(name) =>
+									html`<button type="button" data-view=${name} data-variant="quiet"
+										aria-pressed=${show === name}
+										@click=${() => choose(name)}>${t(`cards.view.${name}`)}</button>`,
+							)}</div>
+							<div class="cards-adds">
+								<a class="cards-add" data-action="add-card" href="/card/new"
+									>${icons.plus}${t("cards.page.add")}</a>
+								${
+									show === "groups"
+										? html`<button type="button" class="cards-add-group"
+											data-variant="quiet" data-action="add-group"
+											@click=${() => openSheet(NEW_GROUP)}
+											>${icons.plus}${t("cards.group.add")}</button>`
+										: nothing
+								}
+							</div>
 						</div>
 						${
 							sheetFailed || busy
@@ -329,7 +361,7 @@ export function renderCardsPage(
 									@retry=${() => state.load()}></cc-error-banner>`
 						}
 						${notice()}
-						${d ? results(d) : nothing}
+						${d ? html`<div class="cards-body">${results(d)}</div>` : nothing}
 					</div>
 					${
 						d
@@ -337,7 +369,7 @@ export function renderCardsPage(
 								<cc-group-panels
 									.panels=${groupPanels(d.money.groups, d.money.cards, d.rooms)}
 									@open-group=${(e: CustomEvent<{ id: string }>) => openSheet(e.detail.id)}
-									@add-group=${() => openSheet("new")}
+									@add-group=${() => openSheet(NEW_GROUP)}
 								></cc-group-panels>
 							</aside>`
 							: nothing
@@ -355,7 +387,8 @@ export function renderCardsPage(
 		// Read the new entry even while a write is under way, so the write's close knows what
 		// is still open and never steps back past this page.
 		sheetFailed = false;
-		view = readCardsView(address.search());
+		view = readCardsView(address.search(), data ? locationIds(data.money) : []);
+		show = readCardsShow(address.search());
 		// Back off a sheet, or Forward onto one only a tap could have made.
 		pushed = openedOnce && readGroupSheet(address.search()) !== null;
 		syncNewId();

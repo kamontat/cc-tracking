@@ -17,70 +17,104 @@ const mount = async () => {
 	return element;
 };
 
-const select = (element: HTMLElement, name: string) => {
-	const found = element.shadowRoot?.querySelector<HTMLSelectElement>(
-		`select[name="${name}"]`,
+const row = (element: HTMLElement, name: string) => {
+	const found = element.shadowRoot?.querySelector<HTMLElement>(
+		`.set-row[data-row="${name}"]`,
 	);
-	if (!found) throw new Error(`no ${name} select`);
+	if (!found) throw new Error(`no ${name} row`);
 	return found;
 };
 
-const pick = (target: HTMLSelectElement, value: string) => {
-	target.value = value;
-	target.dispatchEvent(new Event("change", { bubbles: true }));
+/** The segmented choices in row `name`, by their locale-invariant `data-value`. */
+const choices = (element: HTMLElement, name: string) => [
+	...row(element, name).querySelectorAll<HTMLButtonElement>(
+		".seg button[data-value]",
+	),
+];
+
+const pressed = (element: HTMLElement, name: string) =>
+	choices(element, name)
+		.filter((button) => button.getAttribute("aria-pressed") === "true")
+		.map((button) => button.getAttribute("data-value"));
+
+const press = (element: HTMLElement, name: string, value: string) => {
+	const button = choices(element, name).find(
+		(choice) => choice.getAttribute("data-value") === value,
+	);
+	if (!button) throw new Error(`no ${value} in ${name}`);
+	button.click();
 };
 
-test("offers both languages and shows the current one", async () => {
+test("lays the language and theme out as two rows, each named", async () => {
 	const element = await mount();
-	const language = select(element, "language");
 
-	expect([...language.options].map((option) => option.value)).toEqual([
-		"en",
-		"th",
-	]);
-	expect(language.value).toBe("en");
+	expect(
+		[...(element.shadowRoot?.querySelectorAll(".set-row") ?? [])].map((found) =>
+			found.getAttribute("data-row"),
+		),
+	).toEqual(["language", "theme"]);
+	expect(row(element, "language").textContent).toContain("Language");
+	expect(row(element, "theme").textContent).toContain("Theme");
+	expect(element.shadowRoot?.querySelector("h2")).toBeNull();
 });
 
-test("switching the language picker changes the locale and persists it", async () => {
+test("offers both languages, each in its own script, and marks the current one", async () => {
 	const element = await mount();
-	pick(select(element, "language"), "th");
+
+	expect(
+		choices(element, "language").map((b) => b.getAttribute("data-value")),
+	).toEqual(["en", "th"]);
+	expect(
+		choices(element, "language").map((b) => b.textContent?.trim()),
+	).toEqual(["English", "ไทย"]);
+	expect(pressed(element, "language")).toEqual(["en"]);
+});
+
+test("pressing a language changes the locale and persists it", async () => {
+	const element = await mount();
+	press(element, "language", "th");
+	await element.updateComplete;
 
 	expect(getLocale()).toBe("th");
 	expect(globalThis.localStorage.getItem("cc:lang")).toBe("th");
+	expect(pressed(element, "language")).toEqual(["th"]);
 });
 
-test("the language picker follows a locale change made elsewhere", async () => {
+test("the language follows a locale change made elsewhere", async () => {
 	const element = await mount();
 	setLocale("th");
 	await element.updateComplete;
 
-	expect(select(element, "language").value).toBe("th");
+	expect(pressed(element, "language")).toEqual(["th"]);
 });
 
-test("offers the device, light and dark themes, starting on the device", async () => {
+test("offers light, dark and the device's theme, starting on the device", async () => {
 	const element = await mount();
-	const theme = select(element, "theme");
 
-	expect([...theme.options].map((option) => option.value)).toEqual([
-		"system",
-		"light",
-		"dark",
+	expect(
+		choices(element, "theme").map((b) => b.getAttribute("data-value")),
+	).toEqual(["light", "dark", "system"]);
+	expect(choices(element, "theme").map((b) => b.textContent?.trim())).toEqual([
+		"Light",
+		"Dark",
+		"Device",
 	]);
-	expect(theme.value).toBe("system");
-	expect(theme.options[0]?.textContent?.trim()).toBe("Match device");
+	expect(pressed(element, "theme")).toEqual(["system"]);
 });
 
-test("switching the theme picker stamps the root and persists it", async () => {
+test("pressing a theme stamps the root and persists it", async () => {
 	const element = await mount();
-	pick(select(element, "theme"), "dark");
+	press(element, "theme", "dark");
+	await element.updateComplete;
 
 	expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
 	expect(globalThis.localStorage.getItem("cc:theme")).toBe("dark");
+	expect(pressed(element, "theme")).toEqual(["dark"]);
 });
 
 test("shows a saved theme on a fresh mount", async () => {
 	globalThis.localStorage.setItem("cc:theme", "light");
 	const element = await mount();
 
-	expect(select(element, "theme").value).toBe("light");
+	expect(pressed(element, "theme")).toEqual(["light"]);
 });

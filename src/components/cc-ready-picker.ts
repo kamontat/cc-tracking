@@ -12,8 +12,10 @@ import { readyRowParts, readyRowStyles } from "./ready-row";
 
 /**
  * The new-list picker's rows (DD-103): the ready cards as given (already filtered and sorted),
- * each a toggle with a tick, in one panel. A tap emits `toggle` with the card. A row's name is
- * only the card and its room, so a screen reader is not read the whole row on every tab.
+ * in one panel. A row is a plain container (DD-150): its tick is the toggle, a `<button
+ * aria-pressed>` named only by the card and its room, so a screen reader is not read the whole
+ * row on every tab, and the card's link is the tick's sibling, never inside it. A tap anywhere
+ * on the row but the link emits `toggle` with the card, once; the link stops its own click.
  */
 @customElement("cc-ready-picker")
 export class CcReadyPicker extends LitElement {
@@ -28,8 +30,21 @@ export class CcReadyPicker extends LitElement {
 				display: block;
 			}
 
+			/* The focused tick rings the whole row, as the row button did. */
+			.ready-row:has(> .tick:focus-visible) {
+				box-shadow: var(--cc-focus-ring);
+			}
+
+			.tick:focus-visible {
+				box-shadow: none;
+			}
+
 			.tick {
 				display: grid;
+				padding: 0;
+				font: inherit;
+				cursor: pointer;
+				background: transparent;
 				place-items: center;
 				align-self: center;
 				inline-size: var(--cc-space-5);
@@ -39,7 +54,7 @@ export class CcReadyPicker extends LitElement {
 				color: var(--cc-accent-text);
 			}
 
-			.crow[aria-pressed="true"] .tick {
+			.tick[aria-pressed="true"] {
 				background: var(--cc-accent);
 				border-color: var(--cc-accent);
 			}
@@ -76,13 +91,14 @@ export class CcReadyPicker extends LitElement {
 		return html`<div class="panel">${this.rows.map((row) => {
 			const id = row.card.id;
 			const on = this.selected.includes(id);
-			return html`<button type="button" class="crow ready-row" data-card=${id}
-				aria-pressed=${on ? "true" : "false"}
-				aria-label=${t("ready.pickName", { card: cardName(id, row.card), room: formatAmount(row.room.room) })}
+			return html`<div class="crow ready-row" data-toggle data-card=${id} ?data-on=${on}
 				@click=${() => this.toggle(id)}>
-				<span class="tick" aria-hidden="true">${on ? icons.check : nothing}</span>
-				${readyRowParts(row, this.groups, this.today)}
-			</button>`;
+				<button type="button" class="tick" aria-pressed=${on ? "true" : "false"}
+					aria-label=${t("ready.pickName", { card: cardName(id, row.card), room: formatAmount(row.room.room) })}>${
+						on ? icons.check : nothing
+					}</button>
+				${readyRowParts(row, this.groups, this.today, true)}
+			</div>`;
 		})}</div>`;
 	}
 }

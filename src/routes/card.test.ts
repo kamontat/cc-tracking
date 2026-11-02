@@ -7,6 +7,7 @@ import { addDays, addPeriods, today } from "#lib/domain/date";
 import type { Card, Purchase } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository } from "#lib/storage/repository";
+import { seedLocations } from "#lib/storage/seed-locations";
 import { payAddress } from "#lib/ui/pay-address";
 import { renderCardPage } from "./card";
 import { draft, saved, sent } from "./list/test-support";
@@ -86,6 +87,8 @@ class RejectingDeleteRepository extends InMemoryRepository {
 let visited: string[] = [];
 
 const open = async (repo: InMemoryRepository, id: string | null = "kbank") => {
+	// As `bootstrap` does on a real load: the default records, ticked from the stored setting.
+	await seedLocations(repo, { getItem: () => null, setItem: () => {} });
 	const root = mount();
 	visited = [];
 	renderCardPage(repo, id, root, { navigate: (url) => visited.push(url) });
@@ -395,6 +398,39 @@ test("Use on a list starts a list on this card, and Make a payment opens its nex
 	expect(actions?.querySelector(".note")).toBeNull();
 });
 
+test("a card kept at a place of its own that takes no purchases names that place", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit: 500_000 });
+	await repo.saveLocation({
+		id: "chiang-mai",
+		name: "Chiang Mai",
+		takesPurchases: false,
+	});
+	await repo.saveCard({
+		...card,
+		location: "chiang-mai",
+		limitGroupId: "pool",
+	});
+	const root = await open(repo);
+
+	const actions = root.querySelector(".card-actions");
+	expect(actions?.querySelector('[data-action="use-on-list"]')).toBeNull();
+	expect(text(actions?.querySelector(".note"))).toStartWith(
+		"Chiang Mai takes no new purchases",
+	);
+	expect(text(root.querySelector("h1 small"))).toBe(
+		`${card.id} · Kept in Chiang Mai`,
+	);
+	const hero = root.querySelector<HTMLElement & { locations: unknown[] }>(
+		"cc-card-hero",
+	);
+	expect(hero?.locations).toContainEqual({
+		id: "chiang-mai",
+		name: "Chiang Mai",
+		takesPurchases: false,
+	});
+});
+
 test("a card kept where purchases are not ticked says so instead of Use on a list", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit: 500_000 });
@@ -404,8 +440,11 @@ test("a card kept where purchases are not ticked says so instead of Use on a lis
 	const actions = root.querySelector(".card-actions");
 	expect(actions?.querySelector('[data-action="use-on-list"]')).toBeNull();
 	expect(text(actions?.querySelector(".note"))).toBe(
-		"Bangkok takes no new purchases, so this card isn't offered on lists. Tick it under Purchases on the Settings page.",
+		"Bangkok takes no new purchases, so this card isn't offered on lists. Tick it under Settings › Locations.",
 	);
+	expect(
+		actions?.querySelector('[data-action="settings"]')?.getAttribute("href"),
+	).toBe("/settings/locations");
 });
 
 const NO_GROUP_NOTE =
@@ -785,6 +824,12 @@ test("renders in the chosen language and re-renders on a switch", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(card);
 	await repo.savePurchase(purchase);
+	const far = addPeriods(periodOfPurchase(card.cycle, today()), -12);
+	await repo.savePurchase({
+		...purchase,
+		id: "far",
+		date: closeDateOf(card.cycle, far),
+	});
 	const root = await open(repo);
 	expect(root.textContent).toContain("Show older statements");
 	expect(text(root.querySelector(".card-statements h2"))).toBe("Statements");
@@ -865,4 +910,26 @@ test("the over-room note clears when a purchase is deleted", async () => {
 		"a",
 	);
 	expect(root.querySelector("[data-over-room]")).toBeNull();
+});
+
+test('"Show older statements" is absent when nothing is older, and again once all is shown', async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCard(card);
+	await repo.savePurchase(purchase);
+	const root = await open(repo);
+	expect(root.querySelector("[data-action='show-older']")).toBeNull();
+
+	const far = addPeriods(periodOfPurchase(card.cycle, today()), -12);
+	await repo.savePurchase({
+		...purchase,
+		id: "far",
+		date: closeDateOf(card.cycle, far),
+	});
+	const again = await open(repo);
+	const button = () =>
+		again.querySelector<HTMLButtonElement>("[data-action='show-older']");
+	expect(button()).not.toBeNull();
+	button()?.click();
+	await settle();
+	expect(button()).toBeNull();
 });

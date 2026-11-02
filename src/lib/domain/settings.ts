@@ -23,24 +23,6 @@ export const defaultSettings = (): Settings => ({
 	purchaseLocations: [...DEFAULT_SETTINGS.purchaseLocations],
 });
 
-export function canPurchaseAt(settings: Settings, location: Location): boolean {
-	return settings.purchaseLocations.includes(location);
-}
-
-/** `settings` with `location` turned on or off. Returns a new object; the argument is untouched. */
-export function withPurchaseAt(
-	settings: Settings,
-	location: Location,
-	allowed: boolean,
-): Settings {
-	const without = settings.purchaseLocations.filter(
-		(value) => value !== location,
-	);
-	return {
-		purchaseLocations: allowed ? [...without, location] : without,
-	};
-}
-
 /**
  * Narrows untrusted data to `Settings`, falling back to the default.
  *

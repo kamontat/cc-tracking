@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import "#components/cc-pay-picker";
-import type { PickDetail } from "#components/cc-pay-picker";
+import type { CcPayPicker, PickDetail } from "#components/cc-pay-picker";
 import type { PayChoice } from "#lib/domain/pay";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
@@ -169,4 +169,22 @@ test("with no cards at all it says to add one, linking to Cards", async () => {
 		"No cards yet. Add one on the Cards page.",
 	);
 	expect(empty?.querySelector("a")?.getAttribute("href")).toBe("/cards");
+});
+
+test("with cards stored but none to pay, says archived paid-off cards are hidden", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-pay-picker") as CcPayPicker;
+	element.choices = [];
+	element.total = 2;
+	document.body.append(element);
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent?.trim()).toBe(
+		"No card to pay. Archived cards with nothing owed are hidden.",
+	);
+	element.total = 0;
+	await element.updateComplete;
+	expect(element.shadowRoot?.textContent?.trim()).toBe(
+		"No cards yet. Add one on the Cards page.",
+	);
 });

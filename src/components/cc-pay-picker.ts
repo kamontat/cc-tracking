@@ -136,6 +136,8 @@ export class CcPayPicker extends LitElement {
 	@property({ attribute: false }) choices: PayChoice[] = [];
 	/** The stored limit groups, in order: a row's chip takes its group's colour. */
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** How many cards are stored, to tell "none yet" from "only archived, paid off". */
+	@property({ type: Number }) total = 0;
 	@state() private query = "";
 
 	constructor() {
@@ -151,6 +153,8 @@ export class CcPayPicker extends LitElement {
 
 	override render() {
 		if (this.choices.length === 0) {
+			if (this.total > 0)
+				return html`<p class="empty" data-empty="archived">${t("pay.noneToPay")}</p>`;
 			return html`<p class="empty" data-empty="no-cards"><a href="/cards">${t("pay.noCards")}</a></p>`;
 		}
 		const shown = this.choices.filter((c) => matchesCard(c.card, this.query));

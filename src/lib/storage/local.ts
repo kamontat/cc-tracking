@@ -230,7 +230,7 @@ export class LocalStorageRepository implements Repository {
 	}
 
 	async deleteLocation(id: string): Promise<void> {
-		if ((await this.listCards()).some((card) => String(card.location) === id)) {
+		if ((await this.listCards()).some((card) => card.location === id)) {
 			throw new MessageError("guard.locationInUse");
 		}
 		this.storage.removeItem(locationKey(id));

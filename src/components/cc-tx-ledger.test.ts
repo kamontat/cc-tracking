@@ -473,3 +473,38 @@ test("Confirm moves focus to Save, and Cancel moves it back to Confirm", async (
 		root.querySelector("[data-action=confirm-list]"),
 	);
 });
+
+test("a limit cuts the rows, keeps the day headings whole, and asks for more", async () => {
+	const day = (date: string, n: number): TxEntry[] =>
+		Array.from({ length: n }, (_, i) => {
+			const e = purchase(`${date}-${i}`, 100_00) as TxEntry & {
+				kind: "purchase";
+			};
+			return { ...e, purchase: { ...e.purchase, date } };
+		});
+	const entries = [...day("2026-10-31", 3), ...day("2026-10-30", 4)];
+	const { element, root } = await mount({ groups: byDay(entries), limit: 5 });
+	expect(root.querySelectorAll(".crow[data-kind]").length).toBe(5);
+	const days = [...root.querySelectorAll("section.day")];
+	expect(days.length).toBe(2);
+	expect(days[1]?.querySelectorAll(".crow").length).toBe(2);
+	const more = root.querySelector('[data-action="show-more"]') as HTMLElement;
+	expect(more.textContent?.trim()).toBe("Show 2 more");
+	let asked = 0;
+	element.addEventListener("show-more", () => asked++);
+	more.click();
+	expect(asked).toBe(1);
+	element.limit = 50;
+	await element.updateComplete;
+	expect(root.querySelectorAll(".crow[data-kind]").length).toBe(7);
+	expect(root.querySelector('[data-action="show-more"]')).toBeNull();
+	setLocale("th");
+	element.limit = 1;
+	element.entries = entries;
+	element.groups = null;
+	await element.updateComplete;
+	expect(root.querySelectorAll(".crow[data-kind]").length).toBe(1);
+	expect(
+		root.querySelector('[data-action="show-more"]')?.textContent?.trim(),
+	).toBe("แสดงเพิ่มอีก 6 รายการ");
+});

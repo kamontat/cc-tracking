@@ -245,7 +245,7 @@ export class InMemoryRepository implements Repository {
 
 	async deleteLocation(id: string): Promise<void> {
 		for (const card of this.cards.values()) {
-			if (String(card.location) === id) {
+			if (card.location === id) {
 				throw new MessageError("guard.locationInUse");
 			}
 		}

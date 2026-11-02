@@ -48,11 +48,15 @@ const data = async (repo: Repository) => {
 	await repo.savePurchaseList(sent("w1", ["B"]));
 };
 
-const open = async (search = "") => {
+const open = async (
+	search = "",
+	extra: (repo: Repository) => Promise<void> = async () => {},
+) => {
 	setLocale("en");
 	const repo = new InMemoryRepository();
 	await seed(repo);
 	await data(repo);
+	await extra(repo);
 	const root = mount();
 	const written: string[] = [];
 	renderTransactionsPage(repo, root, {
@@ -352,4 +356,85 @@ test("the Owed view keeps the title and switch above the owed panel", async () =
 		"owed",
 	);
 	expect(root.querySelector(".tx-owed cc-owed-list")).not.toBeNull();
+});
+
+/** 117 purchases on top of the three in `data`: 120 ledger entries, two a day back from October. */
+const bulk = async (repo: Repository) => {
+	for (let i = 0; i < 117; i++) {
+		const day = new Date(
+			Date.UTC(2026, 9, 29) - Math.floor(i / 2) * 86_400_000,
+		);
+		await repo.savePurchase({
+			id: `bulk${i}`,
+			cardId: "A",
+			date: day.toISOString().slice(0, 10),
+			amount: 100_00 + i,
+			note: "bulk",
+		});
+	}
+};
+
+const ledgerRows = (root: HTMLElement) =>
+	ledger(root).shadowRoot?.querySelectorAll(".crow[data-kind]").length;
+
+test("the ledger shows 50 rows, then 50 more a click, until all 120 show", async () => {
+	const { root } = await open("", bulk);
+	const more = () => inLedger(root, '[data-action="show-more"]');
+	expect(ledgerRows(root)).toBe(50);
+	expect(flatText(more())).toBe("Show 50 more · 70 left");
+	expect(more()?.getAttribute("data-variant")).toBe("quiet");
+	await press(more());
+	expect(ledgerRows(root)).toBe(100);
+	expect(flatText(more())).toBe("Show 20 more");
+	await press(more());
+	expect(ledgerRows(root)).toBe(120);
+	expect(more()).toBeNull();
+});
+
+test("each day heading shows once, also where the cut falls inside a day", async () => {
+	const { root } = await open("", bulk);
+	const headings = () =>
+		[
+			...(ledger(root).shadowRoot?.querySelectorAll("section.day h3") ?? []),
+		].map((h) => flatText(h));
+	const unique = (list: (string | undefined)[]) =>
+		new Set(list).size === list.length;
+	expect(unique(headings())).toBe(true);
+	const before = headings().length;
+	await press(inLedger(root, '[data-action="show-more"]'));
+	expect(unique(headings())).toBe(true);
+	expect(headings().length).toBeGreaterThan(before);
+});
+
+test("a search, filter or sort change starts the ledger at 50 again; the address keeps no count", async () => {
+	const { root, written } = await open("", bulk);
+	await press(inLedger(root, '[data-action="show-more"]'));
+	expect(ledgerRows(root)).toBe(100);
+	await type(root, "bulk");
+	expect(ledgerRows(root)).toBe(50);
+	expect(flatText(inLedger(root, '[data-action="show-more"]'))).toBe(
+		"Show 50 more · 67 left",
+	);
+	expect(written.at(-1)).toBe("?q=bulk");
+	await press(inLedger(root, '[data-action="show-more"]'));
+	expect(ledgerRows(root)).toBe(100);
+	const sheet = root.querySelector<CcTxFilter>("cc-tx-filter");
+	expect(sheet).toBeNull();
+	root.querySelector<HTMLElement>(".tx-fbtn")?.click();
+	await settle();
+	const opened = root.querySelector("cc-tx-filter") as CcTxFilter;
+	opened.dispatchEvent(
+		new CustomEvent("apply", {
+			detail: { filter: opened.filter, sort: "big" },
+		}),
+	);
+	await settle();
+	expect(ledgerRows(root)).toBe(50);
+	expect(written.every((w) => !w.includes("50"))).toBe(true);
+});
+
+test("the results line counts every match, not only the rows shown", async () => {
+	const { root } = await open("?q=bulk", bulk);
+	expect(ledgerRows(root)).toBe(50);
+	expect(flatText(inLedger(root, ".result-head"))).toContain("117");
 });

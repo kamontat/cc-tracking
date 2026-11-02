@@ -102,7 +102,7 @@ export function renderEntryPage(
 	let status: ShareStatus | null = null;
 
 	const readyCards = (from: MoneyData): Card[] =>
-		from.cards.filter((card) => isReady(card, from.groups, from.settings));
+		from.cards.filter((card) => isReady(card, from.groups, from.locations));
 
 	// Reads the address once, against the first data that loads.
 	const start = (from: MoneyData) => {

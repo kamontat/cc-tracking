@@ -1,5 +1,13 @@
 import { expect, test } from "bun:test";
-import { describeCycleText, relativeDayText } from "#lib/i18n/format";
+import {
+	describeCycleText,
+	locationName,
+	nameOfLocation,
+	placeOrder,
+	purchasePlaces,
+	relativeDayText,
+	sortLocations,
+} from "#lib/i18n/format";
 import { setLocale } from "#lib/i18n/index";
 
 test("writes an English ordinal for the closing day", () => {
@@ -56,4 +64,69 @@ test("counts backward to a date already past, without calling it overdue", () =>
 test("counts across a month boundary", () => {
 	setLocale("en");
 	expect(relativeDayText("2026-09-23", "2026-10-02")).toBe("in 9 days");
+});
+
+test("names an untouched default location in the reader's language", () => {
+	setLocale("en");
+	expect(locationName({ id: "krabi", name: "Krabi" })).toBe("Krabi");
+	setLocale("th");
+	expect(locationName({ id: "krabi", name: "Krabi" })).toBe("กระบี่");
+});
+
+test("keeps the stored name for a renamed default and for a custom location", () => {
+	setLocale("th");
+	expect(locationName({ id: "krabi", name: "Ao Nang" })).toBe("Ao Nang");
+	expect(locationName({ id: "loc-1", name: "Ayutthaya" })).toBe("Ayutthaya");
+});
+
+test("lists locations A to Z by shown name", () => {
+	setLocale("en");
+	const records = [
+		{ id: "phichit", name: "Phichit" },
+		{ id: "loc-1", name: "Ayutthaya" },
+		{ id: "krabi", name: "Krabi" },
+		{ id: "bangkok", name: "Bangkok" },
+	];
+	expect(sortLocations(records).map((r) => r.name)).toEqual([
+		"Ayutthaya",
+		"Bangkok",
+		"Krabi",
+		"Phichit",
+	]);
+	expect(records[0]?.id).toBe("phichit");
+});
+
+test("place order: records A to Z, then each used id with no record, by id, once", () => {
+	setLocale("en");
+	const records = [
+		{ id: "phichit", name: "Phichit", takesPurchases: false },
+		{ id: "loc-1", name: "Ayutthaya", takesPurchases: false },
+	];
+	expect(placeOrder(records, ["zz", "phichit", "aa", "zz"])).toEqual([
+		"loc-1",
+		"phichit",
+		"aa",
+		"zz",
+	]);
+});
+
+test("falls back to the id when no record matches", () => {
+	setLocale("en");
+	const records = [{ id: "krabi", name: "Krabi", takesPurchases: true }];
+	expect(nameOfLocation(records, "krabi")).toBe("Krabi");
+	expect(nameOfLocation(records, "gone")).toBe("gone");
+});
+
+test("names the places that take purchases, A to Z in the reader's language", () => {
+	const records = [
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+		{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: true },
+	];
+	setLocale("en");
+	expect(purchasePlaces(records)).toEqual(["Chiang Mai", "Krabi"]);
+	setLocale("th");
+	expect(purchasePlaces(records)).toEqual(["กระบี่", "Chiang Mai"]);
+	setLocale("en");
+	expect(purchasePlaces([])).toEqual([]);
 });

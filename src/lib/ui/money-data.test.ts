@@ -1,6 +1,5 @@
 import { expect, test } from "bun:test";
 import { ledgersFor } from "#lib/domain/ledger";
-import type { Settings } from "#lib/domain/settings";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
 import {
 	convertPayments,
@@ -95,7 +94,7 @@ test("ignores old records once converted", async () => {
 	globalThis.localStorage.clear();
 });
 
-test("lists, settings and archived cards come back", async () => {
+test("lists, locations and archived cards come back", async () => {
 	const repo = new InMemoryRepository();
 	await repo.saveCard(card("A"));
 	await repo.saveCard(card("Z", { archived: true }));
@@ -107,13 +106,19 @@ test("lists, settings and archived cards come back", async () => {
 		lines: [{ cardId: "A", amount: 1_000_00 }],
 	};
 	await repo.savePurchaseList(draft);
-	const settings: Settings = { purchaseLocations: ["krabi"] };
-	await repo.saveSettings(settings);
+	const phichit = { id: "phichit", name: "Phichit", takesPurchases: false };
+	const krabi = { id: "krabi", name: "Krabi", takesPurchases: true };
+	const bangkok = { id: "bangkok", name: "Bangkok", takesPurchases: false };
+	for (const record of [phichit, krabi, bangkok])
+		await repo.saveLocation(record);
 
 	const data = await loadMoneyData(repo, TODAY);
 
 	expect(data.lists).toEqual([draft]);
-	expect(data.settings).toEqual(settings);
+	expect(data.locations).toEqual(
+		expect.arrayContaining([bangkok, krabi, phichit]),
+	);
+	expect(data.locations).toHaveLength(3);
 	expect(data.groups.map((g) => g.id)).toEqual(["g1"]);
 	expect(data.cards.map((c) => c.id).sort()).toEqual(["A", "Z"]);
 	expect(data.ledgers.has("Z")).toBe(true);

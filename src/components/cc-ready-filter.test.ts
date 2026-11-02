@@ -13,6 +13,10 @@ const mount = async (props: Partial<CcReadyFilter> = {}) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-ready-filter") as CcReadyFilter;
 	element.locations = ["bangkok", "krabi"];
+	element.records = [
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+		{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+	];
 	element.owners = ["KC", "NT"];
 	element.filter = DEFAULT_READY_FILTER;
 	element.sort = "room";
@@ -52,6 +56,22 @@ test("a sheet of Kept in, Account holder and Sort, counting cards", async () => 
 		root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed"),
 	).toBe("true");
 	expect(text(root, "[data-action=apply]")).toBe("Show 5 cards");
+});
+
+test("places are named by their records, in the reader's language", async () => {
+	const { element, root } = await mount({
+		locations: ["chiang-mai", "krabi"],
+		records: [
+			{ id: "krabi", name: "Krabi", takesPurchases: true },
+			{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: true },
+		],
+	});
+	const names = () =>
+		[...root.querySelectorAll("[data-location]")].map((b) => b.textContent);
+	expect(names()).toEqual(["Chiang Mai", "Krabi"]);
+	setLocale("th");
+	await element.updateComplete;
+	expect(names()).toEqual(["Chiang Mai", "กระบี่"]);
 });
 
 test("picks count live and only apply hands them back", async () => {
@@ -113,7 +133,7 @@ test("reads in Thai", async () => {
 	const { root } = await mount();
 	expect(
 		[...root.querySelectorAll("legend")].map((l) => l.textContent),
-	).toEqual(["ที่อยู่บัตร", "เจ้าของบัตร", "เรียงตาม"]);
+	).toEqual(["สถานที่", "เจ้าของบัตร", "เรียงตาม"]);
 	expect(text(root, "[data-action=apply]")).toBe("แสดง 5 ใบ");
 });
 

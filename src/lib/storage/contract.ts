@@ -106,6 +106,28 @@ const guardKey = async (action: Promise<unknown>): Promise<string | null> => {
 	}
 };
 
+/**
+ * A `Storage` held in a map, private to one test. Tests hand it to code that takes a storage
+ * so nothing they write lands in the shared happy-dom `localStorage`.
+ */
+export const memoryStorage = (): Storage => {
+	const map = new Map<string, string>();
+	return {
+		get length() {
+			return map.size;
+		},
+		clear: () => map.clear(),
+		getItem: (key) => map.get(key) ?? null,
+		key: (i) => [...map.keys()][i] ?? null,
+		removeItem: (key) => {
+			map.delete(key);
+		},
+		setItem: (key, value) => {
+			map.set(key, value);
+		},
+	};
+};
+
 /** Runs the behaviour every Repository implementation must have. */
 export function repositoryContract(
 	name: string,

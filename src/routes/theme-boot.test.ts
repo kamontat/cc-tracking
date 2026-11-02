@@ -76,3 +76,41 @@ test("blocked storage fails safe", async () => {
 		}),
 	).toBeNull();
 });
+
+const runEnv = (text: string, hostname: string) => {
+	const root = document.createElement("html");
+	new Function("localStorage", "document", "location", text)(
+		{ getItem: () => null },
+		{ documentElement: root },
+		{ hostname },
+	);
+	return root.getAttribute("data-env");
+};
+
+test("every page tints the build before paint", async () => {
+	for (const page of pages) {
+		expect(bootsOf(await read(page))[0], page).toContain("data-env");
+	}
+});
+
+test("the hostname picks the tint", async () => {
+	const text = await bootText();
+	expect(runEnv(text, "localhost")).toBe("local");
+	expect(runEnv(text, "127.0.0.1")).toBe("local");
+	expect(runEnv(text, "pr-12-cc-tracking.kcinth.workers.dev")).toBe("preview");
+	expect(runEnv(text, "cc-tracking.kcinth.workers.dev")).toBe("production");
+	expect(runEnv(text, "example.com")).toBe("production");
+});
+
+test("a failing location never breaks the page", async () => {
+	const root = document.createElement("html");
+	const text = await bootText();
+	expect(() =>
+		new Function("localStorage", "document", "location", text)(
+			{ getItem: () => "dark" },
+			{ documentElement: root },
+			undefined,
+		),
+	).not.toThrow();
+	expect(root.getAttribute("data-theme")).toBe("dark");
+});

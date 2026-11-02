@@ -1,12 +1,21 @@
-import { css, html, LitElement } from "lit";
+import { html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { LocaleController } from "#lib/i18n/controller";
 import type { Locale, MessageKey } from "#lib/i18n/index";
 import { getLocale, setLocale, t } from "#lib/i18n/index";
-import { getTheme, setTheme, THEMES, type Theme } from "#lib/ui/theme";
-import { base, controls } from "#styles/shared";
+import { getTheme, setTheme, type Theme } from "#lib/ui/theme";
+import { base, controls, setRows } from "#styles/shared";
 
 const LOCALES: readonly Locale[] = ["en", "th"];
+
+/** Each language named in its own script, so a reader lost in the other one still finds theirs. */
+const LOCALE_KEYS: Record<Locale, MessageKey> = {
+	en: "lang.en",
+	th: "lang.th",
+};
+
+/** Light and Dark first, then the device's own choice, as the prototype orders them. */
+const THEME_ORDER: readonly Theme[] = ["light", "dark", "system"];
 
 const THEME_KEYS: Record<Theme, MessageKey> = {
 	system: "theme.system",
@@ -15,29 +24,14 @@ const THEME_KEYS: Record<Theme, MessageKey> = {
 };
 
 /**
- * The reader's own display choices: language and colour theme. Both live in this browser's
- * local storage rather than the repository, so they apply before any data loads and are
- * not carried along in a backup.
+ * The reader's own display choices: language and colour theme, as two settings rows each with
+ * a segmented choice. Both live in this browser's local storage rather than the repository, so
+ * they apply before any data loads and are not carried along in a backup. The page supplies
+ * the section's heading and its `.set` panel.
  */
 @customElement("cc-display-settings")
 export class CcDisplaySettings extends LitElement {
-	static override styles = [
-		base,
-		controls,
-		css`
-			h2 {
-				font-size: var(--cc-text-lg);
-				font-weight: 600;
-			}
-
-			.fields {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(var(--cc-tile-min), 1fr));
-				gap: var(--cc-space-3);
-				margin-block-start: var(--cc-space-3);
-			}
-		`,
-	];
+	static override styles = [base, controls, setRows];
 
 	@state() private theme: Theme = getTheme();
 
@@ -46,14 +40,7 @@ export class CcDisplaySettings extends LitElement {
 		new LocaleController(this);
 	}
 
-	private onLocale(event: Event) {
-		const value = (event.target as HTMLSelectElement).value;
-		if (value === "en" || value === "th") setLocale(value);
-	}
-
-	private onTheme(event: Event) {
-		const value = (event.target as HTMLSelectElement).value as Theme;
-		if (!THEMES.includes(value)) return;
+	private pickTheme(value: Theme) {
 		setTheme(value);
 		this.theme = value;
 	}
@@ -61,43 +48,34 @@ export class CcDisplaySettings extends LitElement {
 	override render() {
 		const locale = getLocale();
 		return html`
-			<h2>${t("settings.display.title")}</h2>
-			<div class="fields">
-				<label>${t("lang.label")}
-					<select name="language" @change=${this.onLocale}>
-						${LOCALES.map(
-							(option) =>
-								html`<option value=${option} ?selected=${option === locale}>
-									${t(option === "en" ? "lang.en" : "lang.th")}
-								</option>`,
-						)}
-					</select>
-				</label>
-				<label>${t("theme.label")}
-					<select name="theme" @change=${this.onTheme}>
-						${THEMES.map(
-							(option) =>
-								html`<option value=${option} ?selected=${option === this.theme}>
-									${t(THEME_KEYS[option])}
-								</option>`,
-						)}
-					</select>
-				</label>
+			<div class="set-row" data-row="language">
+				<span id="language">${t("lang.label")}</span>
+				<div class="seg" role="group" aria-labelledby="language">
+					${LOCALES.map(
+						(option) => html`<button
+							type="button"
+							data-value=${option}
+							lang=${option}
+							aria-pressed=${option === locale ? "true" : "false"}
+							@click=${() => setLocale(option)}
+						>${t(LOCALE_KEYS[option])}</button>`,
+					)}
+				</div>
+			</div>
+			<div class="set-row" data-row="theme">
+				<span id="theme">${t("theme.label")}</span>
+				<div class="seg" role="group" aria-labelledby="theme">
+					${THEME_ORDER.map(
+						(option) => html`<button
+							type="button"
+							data-value=${option}
+							aria-pressed=${option === this.theme ? "true" : "false"}
+							@click=${() => this.pickTheme(option)}
+						>${t(THEME_KEYS[option])}</button>`,
+					)}
+				</div>
 			</div>
 		`;
-	}
-
-	override updated() {
-		// Keep the DOM selection in step when the locale changes from somewhere else: an
-		// option's `selected` binding sets defaultSelected, which a re-render will not reapply.
-		const language = this.renderRoot.querySelector<HTMLSelectElement>(
-			'select[name="language"]',
-		);
-		if (language) language.value = getLocale();
-		const theme = this.renderRoot.querySelector<HTMLSelectElement>(
-			'select[name="theme"]',
-		);
-		if (theme) theme.value = this.theme;
 	}
 }
 

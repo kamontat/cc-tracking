@@ -5,14 +5,22 @@ import {
 	cardsSortLabel,
 } from "#components/cc-cards-filter";
 import { type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
+import type { LocationRecord } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 
 afterEach(() => setLocale("en"));
+
+const places: LocationRecord[] = [
+	{ id: "phichit", name: "Phichit", takesPurchases: false },
+	{ id: "krabi", name: "Krabi", takesPurchases: true },
+	{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+];
 
 const mount = async (props: Partial<CcCardsFilter> = {}) => {
 	document.body.innerHTML = "";
 	const element = document.createElement("cc-cards-filter") as CcCardsFilter;
 	element.view = DEFAULT_CARDS_VIEW;
+	element.locations = places;
 	element.count = (v: CardsView) => 5 - v.locations.length - v.owners.length;
 	Object.assign(element, props);
 	document.body.append(element);
@@ -37,7 +45,7 @@ test("offers Kept in, Account holder and Sort by, counting cards live", async ()
 	]);
 	expect(
 		[...root.querySelectorAll("[data-location]")].map((b) => text(b)),
-	).toEqual(["Bangkok", "Phichit", "Krabi"]);
+	).toEqual(["Bangkok", "Krabi", "Phichit"]);
 	expect(
 		[...root.querySelectorAll("[data-owner]")].map((b) => text(b)),
 	).toEqual(["KC", "NT", "RI"]);
@@ -69,9 +77,31 @@ test("the sheet is titled Filter cards", async () => {
 	);
 });
 
-test("the route names the places", async () => {
-	const { root } = await mount({ locationName: (id) => `P-${id}` });
-	expect(text(root.querySelector("[data-location=krabi]"))).toBe("P-krabi");
+test("every stored place is offered A to Z by its shown name, in the reader's language", async () => {
+	const { element, root } = await mount({
+		locations: [
+			...places,
+			{ id: "chiang-mai", name: "Chiang Mai", takesPurchases: false },
+			{ id: "krabi-2", name: "Ao Nang", takesPurchases: false },
+		],
+	});
+	const offered = (r: ShadowRoot) =>
+		[...r.querySelectorAll<HTMLElement>("[data-location]")].map((b) => [
+			b.dataset["location"],
+			text(b),
+		]);
+	expect(offered(root)).toEqual([
+		["krabi-2", "Ao Nang"],
+		["bangkok", "Bangkok"],
+		["chiang-mai", "Chiang Mai"],
+		["krabi", "Krabi"],
+		["phichit", "Phichit"],
+	]);
+	setLocale("th");
+	await element.updateComplete;
+	const names = offered(root).map(([, name]) => name as string);
+	expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "th")));
+	expect(names).toContain("กระบี่");
 });
 
 test("one card reads singular; none disables the button", async () => {
@@ -108,13 +138,20 @@ test("apply emits the draft view", async () => {
 		q: "kb",
 		locations: ["krabi"],
 		owners: ["RI"],
+		ungrouped: false,
 		sort: "room",
 	});
 });
 
 test("Clear all resets the draft but keeps the search", async () => {
 	const { element } = await mount({
-		view: { q: "kb", locations: ["krabi"], owners: ["KC"], sort: "name" },
+		view: {
+			q: "kb",
+			locations: ["krabi"],
+			owners: ["KC"],
+			ungrouped: false,
+			sort: "name",
+		},
 	});
 	let detail: CardsView | undefined;
 	element.addEventListener("apply", (e) => {
@@ -140,4 +177,21 @@ test("each sort has its words", () => {
 	expect(cardsSortLabel("close")).toBe("Close day");
 	setLocale("th");
 	expect(cardsSortLabel("room")).not.toBe("Most room");
+});
+
+test("a Not in a group chip toggles the draft and is handed back on apply", async () => {
+	const { element, root } = await mount();
+	const chip = () =>
+		root.querySelector<HTMLElement>("[data-ungrouped]") as HTMLElement;
+	expect(text(chip())).toBe("Not in a group");
+	expect(chip().getAttribute("aria-pressed")).toBe("false");
+	let detail: CardsView | undefined;
+	element.addEventListener("apply", (e) => {
+		detail = (e as CustomEvent<CardsView>).detail;
+	});
+	await click(element, "[data-ungrouped]");
+	expect(chip().getAttribute("aria-pressed")).toBe("true");
+	await click(element, "[data-action=apply]");
+	await new Promise((resolve) => setTimeout(resolve, 400));
+	expect(detail?.ungrouped).toBe(true);
 });

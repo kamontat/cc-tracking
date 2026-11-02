@@ -4,24 +4,27 @@ import {
 	needsYou,
 	overRoom,
 	READY_SORTS,
+	type ReadyData,
 	type ReadyRow,
-	type RoomData,
 	readyRows,
 	roomFor,
 	sortReady,
 } from "#lib/domain/home";
 import { ledgersFor } from "#lib/domain/ledger";
-import type { Settings } from "#lib/domain/settings";
 import type {
 	Card,
 	CardPayment,
 	LimitGroup,
+	LocationRecord,
 	Purchase,
 	PurchaseList,
 } from "#lib/domain/types";
 
 const TODAY = "2026-10-31";
-const settings: Settings = { purchaseLocations: ["krabi"] };
+const locations: LocationRecord[] = [
+	{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+	{ id: "krabi", name: "Krabi", takesPurchases: true },
+];
 const g1: LimitGroup = { id: "g1", name: "G1", limit: 100_000_00 };
 
 const mk = (id: string, extra: Partial<Card> = {}): Card => ({
@@ -54,11 +57,12 @@ const data = (
 	purchases: Purchase[] = [],
 	lists: PurchaseList[] = [],
 	payments: CardPayment[] = [],
-): RoomData => ({
+): ReadyData => ({
 	cards,
 	groups: [g1],
 	ledgers: ledgersFor(cards, purchases, payments, [], TODAY),
 	lists,
+	locations,
 });
 
 describe("readyRows", () => {
@@ -71,9 +75,22 @@ describe("readyRows", () => {
 			ungrouped,
 			mk("E", { limitGroupId: "gone" }),
 		];
-		expect(isReady(mk("A"), [g1], settings)).toBe(true);
+		expect(isReady(mk("A"), [g1], locations)).toBe(true);
+		expect(readyRows(data(cards), TODAY).map((r) => r.card.id)).toEqual(["A"]);
+	});
+
+	test("a card kept at a custom place that takes purchases is ready", () => {
+		const custom: LocationRecord = {
+			id: "chiang-mai",
+			name: "Chiang Mai",
+			takesPurchases: true,
+		};
+		const cards = [mk("A", { location: "chiang-mai" })];
 		expect(
-			readyRows(data(cards), settings, TODAY).map((r) => r.card.id),
+			readyRows(
+				{ ...data(cards), locations: [...locations, custom] },
+				TODAY,
+			).map((r) => r.card.id),
 		).toEqual(["A"]);
 	});
 
@@ -104,8 +121,22 @@ describe("readyRows", () => {
 		expect(roomFor(a, d, "s")?.held).toBe(0);
 	});
 
+	test("a row carries the credit its card holds", () => {
+		const paid: CardPayment = {
+			id: "pay",
+			cardId: "A",
+			date: "2026-10-01",
+			amount: 1_500_00,
+			status: "paid",
+		};
+		const p = [buy("p", "A", "2026-09-10", 1_000_00)];
+		const [row] = readyRows(data([mk("A")], p, [], [paid]), TODAY);
+		expect(row?.credit).toBe(500_00);
+		expect(readyRows(data([mk("A")]), TODAY)[0]?.credit).toBe(0);
+	});
+
 	test("close and due dates are for buying today", () => {
-		const [row] = readyRows(data([mk("A")]), settings, TODAY);
+		const [row] = readyRows(data([mk("A")]), TODAY);
 		expect(row?.closeDate).toBe("2026-11-25");
 		expect(row?.dueDate).toBe("2026-12-15");
 	});
@@ -113,7 +144,7 @@ describe("readyRows", () => {
 	test("an unpaid bill past its due date is overdue", () => {
 		const a = mk("A");
 		const p = [buy("p", "A", "2026-09-10", 4_000_00)];
-		expect(readyRows(data([a], p), settings, TODAY)[0]?.overdue).toBe(true);
+		expect(readyRows(data([a], p), TODAY)[0]?.overdue).toBe(true);
 		const paid: CardPayment = {
 			id: "pay",
 			cardId: "A",
@@ -121,9 +152,7 @@ describe("readyRows", () => {
 			amount: 4_000_00,
 			status: "paid",
 		};
-		expect(
-			readyRows(data([a], p, [], [paid]), settings, TODAY)[0]?.overdue,
-		).toBe(false);
+		expect(readyRows(data([a], p, [], [paid]), TODAY)[0]?.overdue).toBe(false);
 	});
 });
 
@@ -163,6 +192,7 @@ describe("sortReady", () => {
 		closeDate: close,
 		dueDate: due,
 		overdue: false,
+		credit: 0,
 	});
 	const rows = [
 		row("a", 1, "2026-11-03", "2026-12-01"),

@@ -21,7 +21,9 @@ export type ChipKind =
 	| "range"
 	| "sort"
 	| "location"
-	| "owner";
+	| "owner"
+	| "ungrouped"
+	| "age";
 
 /** One choice in a sheet: a quiet pill that reads pressed while chosen. */
 export function sheetChip(
@@ -35,6 +37,8 @@ export function sheetChip(
 	return html`<button type="button" data-variant="quiet"
 		data-type=${on("type")} data-card=${on("card")} data-range=${on("range")}
 		data-sort=${on("sort")} data-location=${on("location")} data-owner=${on("owner")}
+		data-ungrouped=${kind === "ungrouped" ? "" : nothing}
+		data-age=${on("age")}
 		aria-pressed=${pressed} @click=${onClick}>${label}</button>`;
 }
 

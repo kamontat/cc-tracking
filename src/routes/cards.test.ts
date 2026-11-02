@@ -6,10 +6,17 @@ import type { CcGroupSheet } from "#components/cc-group-sheet";
 import { DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { memoryStorage } from "#lib/storage/contract";
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { type CardsAddressBar, renderCardsPage } from "./cards";
-import { CLOCK, flatText, mount, settle } from "./list/test-support";
+import {
+	CLOCK,
+	flatText,
+	mount,
+	saveLocations,
+	settle,
+} from "./list/test-support";
 
 /** An address bar that records what the page did to it, and can play Back and Forward. */
 const fakeBar = (start: string) => {
@@ -74,7 +81,7 @@ const seed = async (repo: Repository) => {
 	await repo.saveCard(card("A"));
 	await repo.saveCard(card("B", { location: "bangkok", limitGroupId: "g2" }));
 	await repo.saveCard(card("Z", { archived: true }));
-	await repo.saveSettings({ purchaseLocations: ["krabi"] });
+	await saveLocations(repo, ["krabi"]);
 };
 
 const setup = async (
@@ -101,24 +108,6 @@ const setup = async (
 	return { repo, root, address };
 };
 
-const memoryStorage = (): Storage => {
-	const map = new Map<string, string>();
-	return {
-		get length() {
-			return map.size;
-		},
-		clear: () => map.clear(),
-		getItem: (key) => map.get(key) ?? null,
-		key: (i) => [...map.keys()][i] ?? null,
-		removeItem: (key) => {
-			map.delete(key);
-		},
-		setItem: (key, value) => {
-			map.set(key, value);
-		},
-	};
-};
-
 const list = (root: HTMLElement) =>
 	root.querySelector<CcCardsList>("cc-cards-list");
 const panels = (root: HTMLElement) =>
@@ -137,62 +126,91 @@ test("the heading names the page and links Add card to the new card form", async
 	expect(flatText(add)).toBe("Add card");
 });
 
-test("by place, results follow the stored locations, then any place a card uses beyond them", async () => {
+test("the header: title and switch on one row, the add button for the view under them", async () => {
+	const { root, address } = await setup();
+	const head = root.querySelector(".cards-main > .cards-head");
+	expect(head?.querySelector(":scope > h1")).not.toBeNull();
+	expect(head?.querySelector(":scope > .cards-switch")).not.toBeNull();
+	const adds = head?.querySelector(":scope > .cards-adds");
+	expect(adds?.querySelector('a[data-action="add-card"]')).not.toBeNull();
+	expect(adds?.querySelector('[data-action="add-group"]')).toBeNull();
+	root
+		.querySelector<HTMLButtonElement>('.cards-switch [data-view="groups"]')
+		?.click();
+	await settle();
+	const group = root.querySelector<HTMLButtonElement>(
+		'.cards-head .cards-adds button[data-action="add-group"]',
+	);
+	expect(flatText(group)).toBe("Add group");
+	expect(group?.getAttribute("data-variant")).toBe("quiet");
+	group?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("push /cards?view=groups&newGroup=1");
+	expect(sheet()?.group).toBeNull();
+});
+
+test("by place, sections run A to Z by shown name; a place with no record comes last", async () => {
 	const { root } = await setup("/cards", {
 		before: async (repo) => {
-			// Stored order puts Krabi first, and leaves out Phichit, where card P is kept.
 			await repo.saveLocation({
-				id: "krabi",
-				name: "Krabi",
-				takesPurchases: true,
-			});
-			await repo.saveLocation({
-				id: "bangkok",
-				name: "Bangkok",
+				id: "chiang-mai",
+				name: "Chiang Mai",
 				takesPurchases: false,
 			});
 			await repo.saveCard(card("P", { location: "phichit" }));
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
+			await repo.saveCard(card("G", { location: "gone" }));
 		},
 	});
 	const el = list(root);
 	expect(el?.results.sections?.map((s) => s.location)).toEqual([
 		"bangkok",
+		"chiang-mai",
 		"krabi",
 		"phichit",
+		"gone",
 	]);
-	expect(el?.results.count).toBe(3);
+	expect(el?.results.count).toBe(5);
 	expect(el?.results.archived.map((c) => c.id)).toEqual(["Z"]);
-	expect(el?.total).toBe(4);
+	expect(el?.total).toBe(6);
+	const head = (id: string) =>
+		flatText(
+			el?.shadowRoot?.querySelector(`section[data-location="${id}"] .place b`),
+		);
+	expect(head("chiang-mai")).toBe("Chiang Mai");
+	expect(head("gone")).toBe("gone");
 });
 
-test("without stored locations the default three keep their order", async () => {
-	const { root } = await setup();
+test("the place order follows the language on every paint", async () => {
+	const { root } = await setup("/cards", {
+		before: async (repo) => {
+			// "Zebra" sorts last in English; renamed Krabi "Aardvark" sorts first.
+			await repo.saveLocation({
+				id: "krabi",
+				name: "Aardvark",
+				takesPurchases: true,
+			});
+			await repo.saveLocation({
+				id: "zebra",
+				name: "Zebra",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("Q", { location: "zebra" }));
+		},
+	});
+	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
+		"krabi",
+		"bangkok",
+		"zebra",
+	]);
+	setLocale("th");
+	await settle();
+	// In Thai, Bangkok reads กรุงเทพฯ, which Thai order puts before the Latin names.
 	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
 		"bangkok",
 		"krabi",
+		"zebra",
 	]);
-});
-
-test("places are named through the catalog for default ones, the stored name otherwise", async () => {
-	const { root } = await setup("/cards", {
-		before: async (repo) => {
-			await repo.saveLocation({
-				id: "chiangmai",
-				name: "Chiang Mai",
-				takesPurchases: false,
-			});
-			await repo.saveCard(
-				card("C", { location: "chiangmai" as Card["location"] }),
-			);
-		},
-	});
-	const el = list(root);
-	expect(el?.results.sections?.map((s) => s.location)).toContain("chiangmai");
-	expect(el?.locationName("chiangmai")).toBe("Chiang Mai");
-	expect(el?.locationName("krabi")).toBe("Krabi");
-	setLocale("th");
-	await settle();
-	expect(list(root)?.locationName("krabi")).toBe("กระบี่");
 	setLocale("en");
 });
 
@@ -231,6 +249,45 @@ test("a card holding credit passes it to its row", async () => {
 		},
 	});
 	expect(list(root)?.credits.get("B")).toBe(500_00);
+});
+
+test("a phone switch picks Cards or Limit groups, kept in the address", async () => {
+	const { root, address } = await setup("/cards?sort=name");
+	const grid = root.querySelector(".cards-grid");
+	const button = (name: string) =>
+		root.querySelector<HTMLButtonElement>(
+			`.cards-switch [data-view="${name}"]`,
+		);
+	expect(flatText(button("cards"))).toBe("Cards");
+	expect(flatText(button("groups"))).toBe("Limit groups");
+	expect(button("cards")?.getAttribute("aria-pressed")).toBe("true");
+	expect(button("groups")?.getAttribute("aria-pressed")).toBe("false");
+	expect(grid?.getAttribute("data-show")).toBe("cards");
+	button("groups")?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("replace /cards?view=groups&sort=name");
+	expect(grid?.getAttribute("data-show")).toBe("groups");
+	expect(button("groups")?.getAttribute("aria-pressed")).toBe("true");
+	button("cards")?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("replace /cards?sort=name");
+});
+
+test("a reload on ?view=groups keeps the groups shown, and opening a group keeps it", async () => {
+	const { root, address } = await setup("/cards?view=groups");
+	expect(root.querySelector(".cards-grid")?.getAttribute("data-show")).toBe(
+		"groups",
+	);
+	expect(
+		root
+			.querySelector('.cards-switch [data-view="groups"]')
+			?.getAttribute("aria-pressed"),
+	).toBe("true");
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g1" } }),
+	);
+	await settle();
+	expect(address.calls.at(-1)).toBe("push /cards?view=groups&group=g1");
 });
 
 test("the address seeds the view; typing a search replaces it", async () => {
@@ -277,39 +334,63 @@ test("the filter sheet applies a whole view, shown as chips that clear one at a 
 	expect(address.now()).toBe("/cards?sort=room");
 });
 
-test("the filter offers only the fixed places, and a choice survives a reload", async () => {
+test("the filter offers every stored place A to Z, and a custom choice survives a reload", async () => {
 	const { root, address } = await setup("/cards", {
 		before: async (repo) => {
 			await repo.saveLocation({
-				id: "chiangmai",
+				id: "chiang-mai",
 				name: "Chiang Mai",
 				takesPurchases: false,
 			});
-			await repo.saveCard(
-				card("C", { location: "chiangmai" as Card["location"] }),
-			);
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
 		},
 	});
 	root.querySelector<HTMLButtonElement>('[data-action="filter"]')?.click();
 	await settle();
-	expect(filter(root)?.locations).toEqual(["bangkok", "phichit", "krabi"]);
+	expect(filter(root)?.locations.map((r) => r.id)).toEqual([
+		"bangkok",
+		"chiang-mai",
+		"krabi",
+		"phichit",
+	]);
 	filter(root)?.dispatchEvent(
 		new CustomEvent("apply", {
-			detail: { ...DEFAULT_CARDS_VIEW, locations: ["phichit", "bangkok"] },
+			detail: { ...DEFAULT_CARDS_VIEW, locations: ["chiang-mai", "bangkok"] },
 		}),
 	);
 	await settle();
 	const url = address.now() ?? "";
-	expect(url).toBe("/cards?loc=phichit&loc=bangkok");
-	const again = await setup(url);
+	expect(url).toBe("/cards?loc=chiang-mai&loc=bangkok");
+	const again = await setup(url, {
+		before: async (repo) => {
+			await repo.saveLocation({
+				id: "chiang-mai",
+				name: "Chiang Mai",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
+		},
+	});
 	expect(list(again.root)?.results.sections?.map((s) => s.location)).toEqual([
 		"bangkok",
+		"chiang-mai",
 	]);
+	expect(
+		flatText(again.root.querySelector('[data-chip="loc:chiang-mai"]')),
+	).toBe("Chiang Mai ×");
 	again.root
 		.querySelector<HTMLButtonElement>('[data-action="filter"]')
 		?.click();
 	await settle();
-	expect(filter(again.root)?.view.locations).toEqual(["bangkok", "phichit"]);
+	expect(filter(again.root)?.view.locations).toEqual(["chiang-mai", "bangkok"]);
+});
+
+test("a place in the address with no record is dropped", async () => {
+	const { root } = await setup("/cards?loc=mars&loc=krabi");
+	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
+		"krabi",
+	]);
+	expect(root.querySelector('[data-chip="loc:mars"]')).toBeNull();
 });
 
 test("closing the filter sheet keeps the view", async () => {
@@ -398,11 +479,11 @@ test("a group no card uses can be deleted; the sheet closes once it is gone", as
 	expect(address.calls).toEqual(["replace /cards"]);
 });
 
-test("Add group pushes ?group=new and saves the new group, then closes", async () => {
+test("Add group pushes ?newGroup=1 and saves the new group, then closes", async () => {
 	const { root, repo, address } = await setup();
 	panels(root)?.dispatchEvent(new CustomEvent("add-group"));
 	await settle();
-	expect(address.calls).toEqual(["push /cards?group=new"]);
+	expect(address.calls).toEqual(["push /cards?newGroup=1"]);
 	expect(sheet()?.group).toBeNull();
 	sheet()?.dispatchEvent(
 		new CustomEvent("save-group", {
@@ -435,7 +516,7 @@ test("a failed save keeps the sheet open with the reason, and a retry keeps the 
 	await seed(repo);
 	repo.failures = 1;
 	repo.tried = [];
-	const { root, address } = await setup("/cards?group=new", {
+	const { root, address } = await setup("/cards?newGroup=1", {
 		repo,
 		skipSeed: true,
 	});
@@ -463,7 +544,7 @@ test("closing the sheet after a failed save leaves the banner empty", async () =
 	const repo = new FlakyGroupRepository();
 	await seed(repo);
 	repo.failures = 1;
-	const { root } = await setup("/cards?group=new", { repo, skipSeed: true });
+	const { root } = await setup("/cards?newGroup=1", { repo, skipSeed: true });
 	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
 	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
 	await settle(5);
@@ -493,7 +574,7 @@ test("the page banner stays empty while a retry is under way", async () => {
 	const repo = new FailThenHoldRepository();
 	await seed(repo);
 	repo.armed = true;
-	const { root } = await setup("/cards?group=new", { repo, skipSeed: true });
+	const { root } = await setup("/cards?newGroup=1", { repo, skipSeed: true });
 	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
 	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
 	await settle(5);
@@ -603,4 +684,36 @@ test("Back during a pending save: the save closes nothing further once it lands"
 	expect((await repo.listLimitGroups()).find((g) => g.id === "g2")?.name).toBe(
 		"SCB 2",
 	);
+});
+
+test("?group=new opens the group whose id is new; ?newGroup=1 opens the blank sheet", async () => {
+	await setup("/cards?group=new", {
+		before: async (r) => {
+			await r.saveLimitGroup({
+				id: "new",
+				name: "Odd",
+				limit: 1_00,
+				owner: "RI",
+			});
+		},
+	});
+	expect(sheet()?.group?.name).toBe("Odd");
+	await setup("/cards?newGroup=1");
+	expect(sheet()?.group).toBeNull();
+	expect(sheet()).not.toBeNull();
+});
+
+test("?ungrouped=1 lists only cards with no stored group, and shows a chip for it", async () => {
+	const { root } = await setup("/cards?ungrouped=1", {
+		before: async (r) => {
+			const { limitGroupId: _, ...loose } = card("N");
+			await r.saveCard(loose);
+			await r.saveCard(card("O", { limitGroupId: "gone" }));
+		},
+	});
+	const ids = [
+		...(list(root)?.shadowRoot?.querySelectorAll("a[data-card]") ?? []),
+	].map((a) => a.getAttribute("data-card"));
+	expect(ids.sort()).toEqual(["N", "O"]);
+	expect(root.textContent).toContain("Not in a group");
 });

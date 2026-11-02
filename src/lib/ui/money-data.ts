@@ -1,6 +1,5 @@
-import type { RoomData } from "#lib/domain/home";
+import type { ReadyData } from "#lib/domain/home";
 import { ledgersFor } from "#lib/domain/ledger";
-import type { Settings } from "#lib/domain/settings";
 import type {
 	CardPayment,
 	PlainDate,
@@ -9,8 +8,7 @@ import type {
 } from "#lib/domain/types";
 import type { Repository } from "#lib/storage/repository";
 
-export type MoneyData = RoomData & {
-	settings: Settings;
+export type MoneyData = ReadyData & {
 	purchases: Purchase[];
 	payments: CardPayment[];
 	dates: StatementDates[];
@@ -27,10 +25,10 @@ export async function loadMoneyData(
 	repo: Repository,
 	today: PlainDate,
 ): Promise<MoneyData> {
-	const [cards, groups, settings, lists] = await Promise.all([
+	const [cards, groups, locations, lists] = await Promise.all([
 		repo.listCards(),
 		repo.listLimitGroups(),
-		repo.getSettings(),
+		repo.listLocations(),
 		repo.listPurchaseLists(),
 	]);
 	const perCard = await Promise.all(
@@ -47,7 +45,8 @@ export async function loadMoneyData(
 	return {
 		cards,
 		groups,
-		settings,
+		// As stored: each screen sorts them by shown name as it draws, in the language then.
+		locations,
 		lists,
 		purchases,
 		payments,

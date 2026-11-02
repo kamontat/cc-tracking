@@ -11,7 +11,7 @@ const mount = async (props: Partial<CcReadyPanel> = {}) => {
 	const element = document.createElement("cc-ready-panel") as CcReadyPanel;
 	Object.assign(element, {
 		rows: testRows(),
-		locations: ["krabi", "bangkok"],
+		places: ["Bangkok", "Krabi"],
 		today: "2026-10-31",
 		unassigned: 0,
 		...props,
@@ -30,11 +30,11 @@ test("the heading counts the ready cards and their places", async () => {
 	const { root } = await mount();
 	expect(flat(root.querySelector("h2"))).toBe("Ready to use");
 	expect(flat(root.querySelector(".head small"))).toBe(
-		"3 cards in Krabi, Bangkok",
+		"3 cards in Bangkok, Krabi",
 	);
 	const one = await mount({ rows: testRows().slice(0, 1) });
 	expect(flat(one.root.querySelector(".head small"))).toBe(
-		"1 card in Krabi, Bangkok",
+		"1 card in Bangkok, Krabi",
 	);
 });
 
@@ -89,7 +89,7 @@ test("nothing ready names the next step and offers no list", async () => {
 	const { root } = await mount({ rows: [] });
 	expect(
 		root.querySelector('[data-action="settings"]')?.getAttribute("href"),
-	).toBe("/settings");
+	).toBe("/settings/locations");
 	expect(root.querySelectorAll("[data-card]")).toHaveLength(0);
 });
 
@@ -98,7 +98,7 @@ test("not-assigned cards are counted", async () => {
 	expect(flat(root.querySelector('[data-testid="unassigned"]'))).toContain(
 		"2 cards have no limit group yet.",
 	);
-	expect(root.querySelector('a[href="/cards"]')).not.toBeNull();
+	expect(root.querySelector('a[href="/cards?ungrouped=1"]')).not.toBeNull();
 	const one = await mount({ unassigned: 1 });
 	expect(flat(one.root)).toContain("1 card has no limit group yet.");
 });
@@ -107,4 +107,112 @@ test("reads in Thai", async () => {
 	setLocale("th");
 	const { root } = await mount();
 	expect(flat(root.querySelector("h2"))).toBe("พร้อมใช้");
+});
+
+test("an over-limit group's row reads its usage in the warn tone, in Thai too", async () => {
+	setLocale("th");
+	const { root } = await mount({
+		rows: [
+			testRow("O", -21_065_00, "2026-11-10", "2026-11-25", {
+				used: 121_065_00,
+			}),
+		],
+	});
+	const note = root.querySelector('[data-card="O"] .r small') as HTMLElement;
+	expect(flat(note)).toBe("ใช้ไป 121%");
+	expect(note.dataset["tone"]).toBe("warn");
+});
+
+const lines = (root: ParentNode, id: string) => {
+	const row = root.querySelector(`[data-card="${id}"]`);
+	return {
+		tags: row?.querySelector(".tags"),
+		tagText: [...(row?.querySelectorAll(".tags .tag") ?? [])].map((el) =>
+			flat(el),
+		),
+		meta: row?.querySelector(".meta"),
+	};
+};
+
+test("line 2 names the account holder of a card that is not supplementary", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", { groupOwner: "NT" }),
+		],
+	});
+	expect(lines(root, "A").tagText).toEqual(["NT"]);
+});
+
+test("line 2 of a supplementary card: the holder, Account and the owner, then Sub", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", {
+				groupOwner: "KC",
+				holder: "RI",
+			}),
+		],
+	});
+	expect(lines(root, "A").tagText).toEqual(["RI", "Account KC", "Sub"]);
+	setLocale("th");
+	const thai = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", {
+				groupOwner: "KC",
+				holder: "RI",
+			}),
+		],
+	});
+	expect(lines(thai.root, "A").tagText).toEqual(["RI", "บัญชี KC", "เสริม"]);
+});
+
+test("the Overdue tag sits on line 2 after the owners, not with the dates", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", {
+				groupOwner: "NT",
+				overdue: true,
+			}),
+		],
+	});
+	const { tagText, meta } = lines(root, "A");
+	expect(tagText).toEqual(["NT", "Overdue bill"]);
+	expect(meta?.querySelector(".tag")).toBeNull();
+	expect(flat(meta)).toBe("Closes 10 Nov 2026 · in 10 days Due 25 Nov 2026");
+});
+
+test("a group with no stored owner reads as KC, as on Cards", async () => {
+	const { root } = await mount({
+		rows: [testRow("C", 20_000_00, "2026-11-18", "2026-12-03")],
+	});
+	expect(lines(root, "C").tagText).toEqual(["KC"]);
+	const sub = await mount({
+		rows: [
+			testRow("C", 20_000_00, "2026-11-18", "2026-12-03", { holder: "RI" }),
+		],
+	});
+	expect(lines(sub.root, "C").tagText).toEqual(["RI", "Account KC", "Sub"]);
+});
+
+test("a supplementary card saved without a holder names the account holder, as Cards does", async () => {
+	const row = testRow("C", 20_000_00, "2026-11-18", "2026-12-03", {
+		groupOwner: "NT",
+	});
+	const { root } = await mount({
+		rows: [{ ...row, card: { ...row.card, supplementary: true } }],
+	});
+	expect(lines(root, "C").tagText).toEqual(["NT", "Account NT", "Sub"]);
+});
+
+test("Home rows carry no card link", async () => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-ready-panel") as HTMLElement & {
+		rows: unknown;
+		updateComplete: Promise<boolean>;
+	};
+	Object.assign(element, { rows: testRows(), today: "2026-10-31" });
+	document.body.append(element);
+	await element.updateComplete;
+	const root = element.shadowRoot as ShadowRoot;
+	expect(root.querySelectorAll(".card-label").length).toBeGreaterThan(0);
+	expect(root.querySelector("a.card-link")).toBeNull();
 });
