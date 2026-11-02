@@ -29,6 +29,9 @@ import { cardMini, cardName, cardPanelLabel } from "#lib/ui/card-label";
 import { listPageAddress } from "#lib/ui/list-address";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
+/** How many ledger rows show at first, and how many more each *Show more* adds. */
+export const LEDGER_PAGE = 50;
+
 export type Upcoming = {
 	lists: PurchaseList[];
 	planned: { payment: CardPayment; card: Card | undefined }[];
@@ -45,6 +48,8 @@ export type Upcoming = {
  * *Delete* (DD-110). Each second step swaps the buttons in place (UI-09) -- *Confirm* for *Save*
  * and *Cancel* (`confirm-list`), *Delete* for an asking *Delete* and *Cancel*
  * (`delete-payment`) -- and focus follows the swap, so the keyboard never drops to the page.
+ * Only the first `limit` rows show; a quiet *Show more* under them asks for more
+ * (`show-more`). The results line still counts every entry.
  */
 @customElement("cc-tx-ledger")
 export class CcTxLedger extends LitElement {
@@ -128,6 +133,10 @@ export class CcTxLedger extends LitElement {
 				}
 			}
 
+			.more {
+				align-self: center;
+			}
+
 			.empty {
 				text-align: center;
 				background: var(--cc-surface);
@@ -147,6 +156,8 @@ export class CcTxLedger extends LitElement {
 	@property({ attribute: false }) upcoming: Upcoming | null = null;
 	@property() today: PlainDate = "";
 	@property({ type: Boolean }) filtered = false;
+	/** How many rows show; the page raises it by `LEDGER_PAGE` on `show-more`. */
+	@property({ attribute: false }) limit = LEDGER_PAGE;
 	/** The waiting list whose *Confirm* asks its second step. */
 	@state() private confirmingList: string | null = null;
 	/** The planned payment whose *Delete* asks its second step. */
@@ -364,6 +375,30 @@ export class CcTxLedger extends LitElement {
 		)}</p>`;
 	}
 
+	/** The day groups cut to the first `limit` rows; a day cut part-way keeps its heading. */
+	private shownGroups(groups: { date: PlainDate; entries: TxEntry[] }[]) {
+		const shown: { date: PlainDate; entries: TxEntry[] }[] = [];
+		let left = this.limit;
+		for (const group of groups) {
+			if (left <= 0) break;
+			shown.push({ ...group, entries: group.entries.slice(0, left) });
+			left -= group.entries.length;
+		}
+		return shown;
+	}
+
+	/** *Show 50 more · N left*, or *Show N more* when fewer than a page are left. */
+	private renderMore(total: number) {
+		const left = total - this.limit;
+		if (left <= 0) return nothing;
+		return html`<button type="button" class="more" data-variant="quiet" data-action="show-more"
+			@click=${() => this.emit("show-more", {})}>${
+				left > LEDGER_PAGE
+					? t("tx.showMore.page", { page: LEDGER_PAGE, count: left })
+					: t("tx.showMore.rest", { count: left })
+			}</button>`;
+	}
+
 	override render() {
 		const all = this.all();
 		return html`
@@ -373,7 +408,7 @@ export class CcTxLedger extends LitElement {
 				all.length === 0
 					? html`<p class="empty">${t(this.filtered ? "tx.noResults" : "tx.empty")}</p>`
 					: this.groups
-						? this.groups.map(
+						? this.shownGroups(this.groups).map(
 								(group) => html`<section class="day">
 									<h3>${
 										group.date === this.today
@@ -385,8 +420,9 @@ export class CcTxLedger extends LitElement {
 									<div class="panel">${group.entries.map((e) => this.row(e, false))}</div>
 								</section>`,
 							)
-						: html`<div class="panel">${this.entries.map((e) => this.row(e, true))}</div>`
+						: html`<div class="panel">${this.entries.slice(0, this.limit).map((e) => this.row(e, true))}</div>`
 			}
+			${this.renderMore(all.length)}
 		`;
 	}
 }

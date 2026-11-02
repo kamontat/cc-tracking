@@ -107,6 +107,8 @@ export const en = {
 	"tx.view.ledger": "Ledger",
 	"tx.view.lists": "Lists",
 	"tx.view.owed": "Owed",
+	"tx.showMore.page": "Show {page} more · {count} left",
+	"tx.showMore.rest": "Show {count} more",
 	"tx.search.placeholder": "Search card, note or amount",
 	"tx.summary.purchases": "Purchases",
 	"tx.summary.payments": "Payments",

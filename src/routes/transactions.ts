@@ -5,8 +5,8 @@ import "#components/cc-error-banner";
 import "#components/cc-list-index";
 import "#components/cc-owed-list";
 import "#components/cc-tx-filter";
-import "#components/cc-tx-ledger";
 import { html, nothing, render } from "lit";
+import { LEDGER_PAGE } from "#components/cc-tx-ledger";
 import { type FilterPill, filterControls } from "#components/list-controls";
 import { displayDate, monthName, today } from "#lib/domain/date";
 import { formatAmount, MINUS } from "#lib/domain/money";
@@ -63,6 +63,8 @@ export function renderTransactionsPage(
 	let data: MoneyData | null = null;
 	// A fresh object each time the sheet opens, so the sheet's draft starts from the view.
 	let sheet: TxFilter | null = null;
+	// How many ledger rows show; any search, filter or sort change starts again at one page.
+	let limit = LEDGER_PAGE;
 
 	const state = createPageState({
 		fetch: async () => {
@@ -73,6 +75,7 @@ export function renderTransactionsPage(
 	});
 
 	const change = (next: Partial<TxView>) => {
+		if (next.filter || next.sort) limit = LEDGER_PAGE;
 		view = { ...view, ...next };
 		replace(writeTxView(view));
 		paint();
@@ -200,6 +203,11 @@ export function renderTransactionsPage(
 				.limitGroups=${d.groups}
 				.today=${now}
 				.filtered=${narrowed}
+				.limit=${limit}
+				@show-more=${() => {
+					limit += LEDGER_PAGE;
+					paint();
+				}}
 				.upcoming=${narrowed ? null : upcoming}
 				@mark-paid=${(e: CustomEvent<{ payment: CardPayment }>) => mark(e.detail.payment)}
 				@confirm-list=${(e: CustomEvent<{ list: PurchaseList }>) => confirmList(e.detail.list)}

@@ -114,6 +114,8 @@ export const th: Catalog = {
 	"tx.view.ledger": "บัญชีรายการ",
 	"tx.view.lists": "ใบรายการซื้อ",
 	"tx.view.owed": "ค้างชำระ",
+	"tx.showMore.page": "แสดงเพิ่มอีก {page} รายการ · เหลือ {count}",
+	"tx.showMore.rest": "แสดงเพิ่มอีก {count} รายการ",
 	"tx.search.placeholder": "ค้นหาบัตร บันทึก หรือจำนวนเงิน",
 	"tx.summary.purchases": "การซื้อ",
 	"tx.summary.payments": "การชำระ",
