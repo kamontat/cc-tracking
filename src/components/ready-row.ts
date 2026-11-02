@@ -1,9 +1,9 @@
-import { css, html, nothing, type TemplateResult } from "lit";
+import { css, html, type TemplateResult } from "lit";
 import { displayDate } from "#lib/domain/date";
 import type { ReadyRow } from "#lib/domain/home";
 import { usageLevel, usageShare } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
-import { toOwner } from "#lib/domain/owner";
+import { ownerOf, toOwner } from "#lib/domain/owner";
 import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
@@ -11,19 +11,19 @@ import { cardPanel } from "#lib/ui/card-label";
 
 /**
  * Line 2's tags: who the card is for, then its status. A card that is not supplementary names
- * its account holder (the group's owner); a supplementary one names its cardholder, `Account`
- * and the group's owner, and `Sub`. An overdue bill adds *Overdue bill*. Empty when none apply.
+ * its account holder (`ownerOf` its group, as Cards does); a supplementary one names its
+ * cardholder, `Account` and the account holder, and `Sub`. An overdue bill adds *Overdue bill*.
  */
 function readyTags(row: ReadyRow): TemplateResult[] {
 	const tag = (text: string) => html`<span class="tag">${text}</span>`;
-	const account = toOwner(row.room.group.owner);
+	const account = ownerOf(row.room.group);
 	const tags: TemplateResult[] = [];
 	if (row.card.supplementary) {
 		const holder = toOwner(row.card.owner);
 		if (holder) tags.push(tag(holder));
-		if (account) tags.push(tag(t("ready.account", { owner: account })));
+		tags.push(tag(t("ready.account", { owner: account })));
 		tags.push(tag(t("ready.sub")));
-	} else if (account) tags.push(tag(account));
+	} else tags.push(tag(account));
 	if (row.overdue)
 		tags.push(
 			html`<span class="tag" data-urgency="overdue">${t("ready.overdue")}</span>`,
@@ -34,7 +34,7 @@ function readyTags(row: ReadyRow): TemplateResult[] {
 /**
  * One *Ready to use* card as a panel row (DD-103), the parts after any leading tick, in three
  * lines: the card in the panel form with its room on the right; the owner and status tags
- * (omitted when there are none); the close and due dates, then the usage bar. `cc-ready-picker`
+ * (every ready card has a group, so always one owner); the close and due dates, then the usage bar. `cc-ready-picker`
  * and `cc-ready-panel` draw their rows with it, inside a `rowPanel` `.panel`.
  */
 export function readyRowParts(
@@ -44,14 +44,13 @@ export function readyRowParts(
 ): TemplateResult {
 	const locale = getLocale();
 	const share = usageShare(row.room.used, row.room.group.limit);
-	const tags = readyTags(row);
 	return html`
 		<span class="what"><b>${cardPanel(row.card.id, row.card, groups)}</b></span>
 		<span class="r">
 			<b class="amount" data-numeric>${formatAmount(row.room.room)}</b>
 			<small>${row.room.sharedWith > 0 ? t("ready.roomShared") : t("ready.room")}</small>
 		</span>
-		${tags.length > 0 ? html`<span class="sub tags">${tags}</span>` : nothing}
+		<span class="sub tags">${readyTags(row)}</span>
 		<span class="sub meta">
 			<span>${t("ready.closes", {
 				date: displayDate(row.closeDate, locale),

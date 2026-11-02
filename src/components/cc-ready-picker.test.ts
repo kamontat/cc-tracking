@@ -71,7 +71,7 @@ test("a row says its room, dates, usage and an overdue bill in words", async () 
 	expect(flat(a.querySelector('.tags .tag[data-urgency="overdue"]'))).toBe(
 		"Overdue bill",
 	);
-	expect(b.querySelector(".tag")).toBeNull();
+	expect(b.querySelector(".tag[data-urgency]")).toBeNull();
 });
 
 test("a card reads in the panel form: the last-4 chip, then id) name", async () => {

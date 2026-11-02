@@ -166,9 +166,15 @@ test("the Overdue tag sits on line 2 after the owners, not with the dates", asyn
 	expect(flat(meta)).toBe("Closes 10 Nov 2026 · in 10 days Due 25 Nov 2026");
 });
 
-test("no line 2 for a card with no group owner that is neither supplementary nor overdue", async () => {
+test("a group with no stored owner reads as KC, as on Cards", async () => {
 	const { root } = await mount({
 		rows: [testRow("C", 20_000_00, "2026-11-18", "2026-12-03")],
 	});
-	expect(lines(root, "C").tags).toBeNull();
+	expect(lines(root, "C").tagText).toEqual(["KC"]);
+	const sub = await mount({
+		rows: [
+			testRow("C", 20_000_00, "2026-11-18", "2026-12-03", { holder: "RI" }),
+		],
+	});
+	expect(lines(sub.root, "C").tagText).toEqual(["RI", "Account KC", "Sub"]);
 });
