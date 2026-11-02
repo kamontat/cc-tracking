@@ -564,6 +564,7 @@ export const en = {
 	"ready.room": "room",
 	"ready.roomShared": "room · shared",
 	"ready.pickName": "{card}, {room} room",
+	"ready.openCard": "{card} (opens in a new tab)",
 	"ready.closes": "Closes {date} · {relative}",
 	"ready.due": "Due {date}",
 	"ready.overdue": "Overdue bill",

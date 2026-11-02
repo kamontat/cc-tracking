@@ -188,3 +188,17 @@ test("a supplementary card saved without a holder names the account holder, as C
 	});
 	expect(lines(root, "C").tagText).toEqual(["NT", "Account NT", "Sub"]);
 });
+
+test("Home rows carry no card link", async () => {
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-ready-panel") as HTMLElement & {
+		rows: unknown;
+		updateComplete: Promise<boolean>;
+	};
+	Object.assign(element, { rows: testRows(), today: "2026-10-31" });
+	document.body.append(element);
+	await element.updateComplete;
+	const root = element.shadowRoot as ShadowRoot;
+	expect(root.querySelectorAll(".card-label").length).toBeGreaterThan(0);
+	expect(root.querySelector("a.card-link")).toBeNull();
+});

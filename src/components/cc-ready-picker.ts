@@ -81,7 +81,7 @@ export class CcReadyPicker extends LitElement {
 				aria-label=${t("ready.pickName", { card: cardName(id, row.card), room: formatAmount(row.room.room) })}
 				@click=${() => this.toggle(id)}>
 				<span class="tick" aria-hidden="true">${on ? icons.check : nothing}</span>
-				${readyRowParts(row, this.groups, this.today)}
+				${readyRowParts(row, this.groups, this.today, true)}
 			</button>`;
 		})}</div>`;
 	}

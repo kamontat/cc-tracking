@@ -7,7 +7,12 @@ import { cardOwnerOf, ownerOf } from "#lib/domain/owner";
 import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardPanel } from "#lib/ui/card-label";
+import {
+	cardMini,
+	cardName,
+	cardPanel,
+	cardPanelLabel,
+} from "#lib/ui/card-label";
 
 /**
  * Line 2's tags: who the card is for, then its status. A card that is not supplementary names
@@ -32,22 +37,35 @@ function readyTags(row: ReadyRow): TemplateResult[] {
 	return tags;
 }
 
+/** The panel form with `id) name` as a link to the card's page in a new tab. */
+function linkedCard(row: ReadyRow, groups: LimitGroup[]): TemplateResult {
+	const { id } = row.card;
+	return html`<span class="card-panel">${cardMini(row.card, groups)} <a class="card-link"
+		href=${`/card?id=${encodeURIComponent(id)}`} target="_blank" rel="noopener"
+		aria-label=${t("ready.openCard", { card: cardName(id, row.card) })}
+		@click=${stop} @keydown=${stop} @keyup=${stop}>${cardPanelLabel(id, row.card)}</a></span>`;
+}
+
+const stop = (event: Event) => event.stopPropagation();
+
 /**
  * One *Ready to use* card as a panel row (DD-103), the parts after any leading tick, in three
  * lines: the card in the panel form with its room on the right; the owner and status tags
  * (every ready card has a group, so there is always an owner); the close and due dates, then
  * the usage bar. `cc-ready-picker` and `cc-ready-panel` draw their rows with it, inside a
- * `rowPanel` `.panel`.
+ * `rowPanel` `.panel`. With `link` (the picker) the card's `id) name` is a link to its page in
+ * a new tab; the caller stops the link's events from reaching the row's toggle.
  */
 export function readyRowParts(
 	row: ReadyRow,
 	groups: LimitGroup[],
 	today: PlainDate,
+	link = false,
 ): TemplateResult {
 	const locale = getLocale();
 	const share = usageShare(row.room.used, row.room.group.limit);
 	return html`
-		<span class="what"><b>${cardPanel(row.card.id, row.card, groups)}</b></span>
+		<span class="what"><b>${link ? linkedCard(row, groups) : cardPanel(row.card.id, row.card, groups)}</b></span>
 		<span class="r">
 			<b class="amount" data-numeric>${formatAmount(row.room.room)}</b>
 			<small>${row.room.sharedWith > 0 ? t("ready.roomShared") : t("ready.room")}</small>
@@ -96,6 +114,15 @@ export const readyRowStyles = css`
 	.ready-row[data-plain] .meta,
 	.ready-row[data-plain] .usage {
 		grid-column: 1 / -1;
+	}
+
+	.ready-row .card-link {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.ready-row .card-link:hover {
+		text-decoration: underline;
 	}
 
 	.ready-row .meta {

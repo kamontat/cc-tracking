@@ -122,3 +122,52 @@ test("a picker row carries the owner tags on line 2", async () => {
 		root.querySelector('[data-card="B"]')?.getAttribute("aria-label"),
 	).toBe("Card B, ฿60,000.00 room");
 });
+
+test("the card name links to the card page in a new tab", async () => {
+	const { root } = await mount();
+	const link = root.querySelector(
+		'[data-card="A"] a.card-link',
+	) as HTMLAnchorElement;
+	expect(link.getAttribute("href")).toBe("/card?id=A");
+	expect(link.getAttribute("target")).toBe("_blank");
+	expect(link.getAttribute("rel")).toBe("noopener");
+	expect(link.getAttribute("aria-label")).toBe("Card A (opens in a new tab)");
+	expect(flat(link)).toBe("A) Card A");
+	setLocale("th");
+	const thai = await mount();
+	expect(
+		thai.root
+			.querySelector('[data-card="A"] a.card-link')
+			?.getAttribute("aria-label"),
+	).toContain("แท็บใหม่");
+});
+
+test("the link encodes the id", async () => {
+	const rows = [testRow("a b&c", 1000, "2026-11-18", "2026-12-03")];
+	const { root } = await mount({ rows });
+	expect(root.querySelector("a.card-link")?.getAttribute("href")).toBe(
+		"/card?id=a%20b%26c",
+	);
+});
+
+test("clicking or keying the link does not toggle the row", async () => {
+	const { element, root } = await mount();
+	const events: Event[] = [];
+	element.addEventListener("toggle", (e) => events.push(e));
+	const link = root.querySelector('[data-card="A"] a.card-link') as HTMLElement;
+	link.addEventListener("click", (e) => e.preventDefault());
+	link.click();
+	link.dispatchEvent(
+		new KeyboardEvent("keydown", {
+			key: "Enter",
+			bubbles: true,
+			composed: true,
+		}),
+	);
+	link.dispatchEvent(
+		new KeyboardEvent("keyup", { key: " ", bubbles: true, composed: true }),
+	);
+	expect(events).toHaveLength(0);
+	(root.querySelector('[data-card="A"]') as HTMLElement).click();
+	expect(events).toHaveLength(1);
+});

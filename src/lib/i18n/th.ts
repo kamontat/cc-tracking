@@ -557,6 +557,7 @@ export const th: Catalog = {
 	"ready.room": "วงเงินเหลือ",
 	"ready.roomShared": "วงเงินเหลือ · ใช้ร่วม",
 	"ready.pickName": "{card} วงเงินเหลือ {room}",
+	"ready.openCard": "{card} (เปิดในแท็บใหม่)",
 	"ready.closes": "สรุปยอด {date} · {relative}",
 	"ready.due": "ครบกำหนด {date}",
 	"ready.overdue": "มีบิลเลยกำหนด",
