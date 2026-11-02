@@ -178,3 +178,13 @@ test("a group with no stored owner reads as KC, as on Cards", async () => {
 	});
 	expect(lines(sub.root, "C").tagText).toEqual(["RI", "Account KC", "Sub"]);
 });
+
+test("a supplementary card saved without a holder names the account holder, as Cards does", async () => {
+	const row = testRow("C", 20_000_00, "2026-11-18", "2026-12-03", {
+		groupOwner: "NT",
+	});
+	const { root } = await mount({
+		rows: [{ ...row, card: { ...row.card, supplementary: true } }],
+	});
+	expect(lines(root, "C").tagText).toEqual(["NT", "Account NT", "Sub"]);
+});

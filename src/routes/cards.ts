@@ -73,11 +73,11 @@ const locationIds = (money: MoneyData): string[] =>
  * The Cards page (prototype `vCards`): the heading with *Add card*, the shared search, filter
  * and sort, the results, and *Limit groups* beside them from 900px. The view lives in the
  * address (`?view=&q=&loc=&owner=&ungrouped=&sort=`), replaced as it changes. Below 900px a
- * switch shows the cards or the limit groups (`?view=groups`), as Transactions does. A group opens in a sheet at
- * `?group=<id>` (`?newGroup=1` for a blank one): tapping a panel pushes that address so Back closes
- * it; Close steps back over an entry the page pushed, else rewrites the address without the
- * group (DD-102). A save or delete closes the sheet only once written; a failed one keeps it,
- * and what was typed, with the reason.
+ * switch shows the cards or the limit groups (`?view=groups`), as Transactions does. A group
+ * opens in a sheet at `?group=<id>` (`?newGroup=1` for a blank one): tapping a panel pushes
+ * that address so Back closes it; Close steps back over an entry the page pushed, else
+ * rewrites the address without the group (DD-102). A save or delete closes the sheet only
+ * once written; a failed one keeps it, and what was typed, with the reason.
  */
 export function renderCardsPage(
 	repo: Repository,

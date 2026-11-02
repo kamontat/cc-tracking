@@ -3,7 +3,7 @@ import { displayDate } from "#lib/domain/date";
 import type { ReadyRow } from "#lib/domain/home";
 import { usageLevel, usageShare } from "#lib/domain/limit";
 import { formatAmount } from "#lib/domain/money";
-import { ownerOf, toOwner } from "#lib/domain/owner";
+import { cardOwnerOf, ownerOf } from "#lib/domain/owner";
 import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { relativeDayText } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
@@ -12,14 +12,15 @@ import { cardPanel } from "#lib/ui/card-label";
 /**
  * Line 2's tags: who the card is for, then its status. A card that is not supplementary names
  * its account holder (`ownerOf` its group, as Cards does); a supplementary one names its
- * cardholder, `Account` and the account holder, and `Sub`. An overdue bill adds *Overdue bill*.
+ * cardholder (`cardOwnerOf`, so one saved without a holder names the account holder),
+ * `Account` and the account holder, and `Sub`. An overdue bill adds *Overdue bill*.
  */
 function readyTags(row: ReadyRow): TemplateResult[] {
 	const tag = (text: string) => html`<span class="tag">${text}</span>`;
 	const account = ownerOf(row.room.group);
 	const tags: TemplateResult[] = [];
 	if (row.card.supplementary) {
-		const holder = toOwner(row.card.owner);
+		const holder = cardOwnerOf(row.card, row.room.group);
 		if (holder) tags.push(tag(holder));
 		tags.push(tag(t("ready.account", { owner: account })));
 		tags.push(tag(t("ready.sub")));
@@ -34,8 +35,9 @@ function readyTags(row: ReadyRow): TemplateResult[] {
 /**
  * One *Ready to use* card as a panel row (DD-103), the parts after any leading tick, in three
  * lines: the card in the panel form with its room on the right; the owner and status tags
- * (every ready card has a group, so always one owner); the close and due dates, then the usage bar. `cc-ready-picker`
- * and `cc-ready-panel` draw their rows with it, inside a `rowPanel` `.panel`.
+ * (every ready card has a group, so there is always an owner); the close and due dates, then
+ * the usage bar. `cc-ready-picker` and `cc-ready-panel` draw their rows with it, inside a
+ * `rowPanel` `.panel`.
  */
 export function readyRowParts(
 	row: ReadyRow,
