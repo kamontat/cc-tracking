@@ -1,4 +1,5 @@
 import type { ReadyRow } from "#lib/domain/home";
+import type { Owner } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
 
 /** Shared by the Ready to use components' tests: three rows with different room and dates. */
@@ -19,11 +20,20 @@ export const testRow = (
 	room: number,
 	closeDate: string,
 	dueDate: string,
-	extra: { sharedWith?: number; overdue?: boolean } = {},
+	extra: {
+		sharedWith?: number;
+		overdue?: boolean;
+		/** The group's owner, the account holder; the shared test group has none. */
+		groupOwner?: Owner;
+		/** Makes the card supplementary, held by this person. */
+		holder?: Owner;
+	} = {},
 ): ReadyRow => ({
-	card: testCard(id),
+	card: extra.holder
+		? { ...testCard(id), supplementary: true, owner: extra.holder }
+		: testCard(id),
 	room: {
-		group,
+		group: extra.groupOwner ? { ...group, owner: extra.groupOwner } : group,
 		used: 40_000_00,
 		available: room,
 		held: 0,

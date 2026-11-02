@@ -108,3 +108,67 @@ test("reads in Thai", async () => {
 	const { root } = await mount();
 	expect(flat(root.querySelector("h2"))).toBe("พร้อมใช้");
 });
+
+const lines = (root: ParentNode, id: string) => {
+	const row = root.querySelector(`[data-card="${id}"]`);
+	return {
+		tags: row?.querySelector(".tags"),
+		tagText: [...(row?.querySelectorAll(".tags .tag") ?? [])].map((el) =>
+			flat(el),
+		),
+		meta: row?.querySelector(".meta"),
+	};
+};
+
+test("line 2 names the account holder of a card that is not supplementary", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", { groupOwner: "NT" }),
+		],
+	});
+	expect(lines(root, "A").tagText).toEqual(["NT"]);
+});
+
+test("line 2 of a supplementary card: the holder, Account and the owner, then Sub", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", {
+				groupOwner: "KC",
+				holder: "RI",
+			}),
+		],
+	});
+	expect(lines(root, "A").tagText).toEqual(["RI", "Account KC", "Sub"]);
+	setLocale("th");
+	const thai = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", {
+				groupOwner: "KC",
+				holder: "RI",
+			}),
+		],
+	});
+	expect(lines(thai.root, "A").tagText).toEqual(["RI", "บัญชี KC", "เสริม"]);
+});
+
+test("the Overdue tag sits on line 2 after the owners, not with the dates", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", {
+				groupOwner: "NT",
+				overdue: true,
+			}),
+		],
+	});
+	const { tagText, meta } = lines(root, "A");
+	expect(tagText).toEqual(["NT", "Overdue bill"]);
+	expect(meta?.querySelector(".tag")).toBeNull();
+	expect(flat(meta)).toBe("Closes 10 Nov 2026 · in 10 days Due 25 Nov 2026");
+});
+
+test("no line 2 for a card with no group owner that is neither supplementary nor overdue", async () => {
+	const { root } = await mount({
+		rows: [testRow("C", 20_000_00, "2026-11-18", "2026-12-03")],
+	});
+	expect(lines(root, "C").tags).toBeNull();
+});

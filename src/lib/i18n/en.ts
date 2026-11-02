@@ -565,6 +565,8 @@ export const en = {
 	"ready.closes": "Closes {date} · {relative}",
 	"ready.due": "Due {date}",
 	"ready.overdue": "Overdue bill",
+	"ready.account": "Account {owner}",
+	"ready.sub": "Sub",
 	"ready.empty": "No card can be used right now",
 	"ready.toSettings": "Choose places in Locations",
 	"ready.selected.one": "1 card selected",

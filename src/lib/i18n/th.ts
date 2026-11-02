@@ -558,6 +558,8 @@ export const th: Catalog = {
 	"ready.closes": "สรุปยอด {date} · {relative}",
 	"ready.due": "ครบกำหนด {date}",
 	"ready.overdue": "มีบิลเลยกำหนด",
+	"ready.account": "บัญชี {owner}",
+	"ready.sub": "เสริม",
 	"ready.empty": "ตอนนี้ยังไม่มีบัตรที่ใช้ได้",
 	"ready.toSettings": "เลือกสถานที่ในหน้าสถานที่",
 	"ready.selected.one": "เลือกแล้ว 1 ใบ",

@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import "#components/cc-ready-picker";
 import type { CcReadyPicker } from "#components/cc-ready-picker";
 import { setLocale } from "#lib/i18n/index";
-import { flat, testRows } from "./ready-test-rows";
+import { flat, testRow, testRows } from "./ready-test-rows";
 
 afterEach(() => setLocale("en"));
 
@@ -68,7 +68,7 @@ test("a row says its room, dates, usage and an overdue bill in words", async () 
 	);
 	const a = root.querySelector('[data-card="A"]') as HTMLElement;
 	expect(flat(a)).not.toContain("shared");
-	expect(flat(a.querySelector('.tag[data-urgency="overdue"]'))).toBe(
+	expect(flat(a.querySelector('.tags .tag[data-urgency="overdue"]'))).toBe(
 		"Overdue bill",
 	);
 	expect(b.querySelector(".tag")).toBeNull();
@@ -99,4 +99,26 @@ test("each row button is named by its card and room alone", async () => {
 	expect(
 		thai.root.querySelector('[data-card="B"]')?.getAttribute("aria-label"),
 	).toBe("Card B วงเงินเหลือ ฿80,000.00");
+});
+
+test("a picker row carries the owner tags on line 2", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("A", 60_000_00, "2026-11-10", "2026-11-25", { groupOwner: "NT" }),
+			testRow("B", 60_000_00, "2026-11-10", "2026-11-25", {
+				groupOwner: "NT",
+				holder: "KC",
+			}),
+		],
+	});
+	const tags = (id: string) =>
+		[...root.querySelectorAll(`[data-card="${id}"] .tags .tag`)].map((el) =>
+			flat(el),
+		);
+	expect(tags("A")).toEqual(["NT"]);
+	expect(tags("B")).toEqual(["KC", "Account NT", "Sub"]);
+	// The button's name stays the card and its room.
+	expect(
+		root.querySelector('[data-card="B"]')?.getAttribute("aria-label"),
+	).toBe("Card B, ฿60,000.00 room");
 });
