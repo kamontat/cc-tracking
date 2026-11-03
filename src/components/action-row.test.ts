@@ -170,3 +170,38 @@ test("the opened row's styles: hidden wins, buttons stack below 900px, the chevr
 	);
 	expect(css).toMatch(/\[aria-expanded="true"\] \.a-chev\s*\{[^}]*rotate/);
 });
+
+test("details ids stay one id when a row id holds whitespace", () => {
+	const rows = useOpenRow(host().element);
+	const id = rows.detailsId("a  b\tc");
+	expect(id).not.toMatch(/\s/);
+	expect(id).toBe("cc-rows-a_b_c");
+	const root = document.createElement("div");
+	render(
+		actionRow(text, {
+			open: {
+				expanded: false,
+				onToggle: () => {},
+				detailsId: id,
+				details: html``,
+			},
+		}),
+		root,
+	);
+	const head = root.querySelector(".a-hit");
+	const details = root.querySelector(".a-details");
+	expect(head?.getAttribute("aria-controls")).toBe(details?.id as string);
+});
+
+test("the details inset follows a lead's width, and a head with no figure keeps no empty column", () => {
+	const css = actionRowStyles.cssText;
+	expect(css).toMatch(
+		/\.a-wrap\s*\{[^}]*--a-lead-inline: calc\(var\(--cc-space-5\) \+ var\(--cc-space-3\) \+ var\(--cc-space-3\)\)/,
+	);
+	expect(css).toMatch(
+		/\.a-details\s*\{[^}]*padding-inline-start: var\(--a-lead-inline\)/,
+	);
+	expect(css).toMatch(
+		/button\.a-hit\[aria-expanded\]:not\(:has\(\.amount\)\)\s*\{\s*grid-template-columns: auto minmax\(0, 1fr\) auto;/,
+	);
+});

@@ -237,6 +237,15 @@ export function actionRow(
  * opening a row closes the one before, a second tap on it closes it, and `prune` forgets a row
  * that is gone (a plan marked paid), so a repaint keeps the open row only while it exists.
  * Nothing of it goes in the address.
+ *
+ * A row id must be unique within the component across every kind of row it draws: a
+ * payment's id repeats across cards (`PaymentRef` is `{ cardId, id }`), so callers namespace
+ * them by kind and, where needed, card:
+ *
+ *     rows.toggle(`plan:${payment.id}`);
+ *     rows.isOpen(`pay:${cardId}:${payment.id}`);
+ *     rows.detailsId(`buy:${cardId}:${purchase.id}`);
+ *     rows.prune(lists.map((list) => `list:${list.id}`));
  */
 export class OpenRowController implements ReactiveController {
 	private open: string | undefined;
@@ -267,9 +276,10 @@ export class OpenRowController implements ReactiveController {
 		}
 	}
 
-	/** The id of a row's details region: `${host tag}-${id}`. */
+	/** The id of a row's details region: `${host tag}-${id}`, each run of whitespace made
+	 * `_` so it stays one id that `aria-controls` can name. */
 	detailsId(id: string): string {
-		return `${this.prefix}-${id}`;
+		return `${this.prefix}-${id.replace(/\s+/g, "_")}`;
 	}
 }
 
@@ -279,7 +289,10 @@ export function useOpenRow(host: ReactiveControllerHost): OpenRowController {
 
 /** The row's styles; the host also takes `rowPanel`. */
 export const actionRowStyles = css`
+	/* --a-lead-inline is how far the text sits from the row's start: the kind icon and its
+	   gap. A host whose lead is another width (the ledger's card chip) sets it to match. */
 	.a-wrap {
+		--a-lead-inline: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
 		display: flex;
 		flex-direction: column;
 	}
@@ -345,6 +358,10 @@ export const actionRowStyles = css`
 		inline-size: 100%;
 	}
 
+	button.a-hit[aria-expanded]:not(:has(.amount)) {
+		grid-template-columns: auto minmax(0, 1fr) auto;
+	}
+
 	button.a-hit[aria-expanded] .amount {
 		white-space: nowrap;
 		text-align: end;
@@ -379,7 +396,7 @@ export const actionRowStyles = css`
 		flex-direction: column;
 		gap: var(--cc-space-3);
 		padding-block: 0 var(--cc-space-3);
-		padding-inline-start: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
+		padding-inline-start: var(--a-lead-inline);
 		min-inline-size: 0;
 	}
 
@@ -491,7 +508,7 @@ export const actionRowStyles = css`
 			align-items: center;
 			justify-content: space-between;
 			padding-block: 0 var(--cc-space-3);
-			padding-inline-start: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
+			padding-inline-start: var(--a-lead-inline);
 			text-align: start;
 		}
 
