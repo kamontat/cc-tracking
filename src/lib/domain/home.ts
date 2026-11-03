@@ -130,6 +130,8 @@ export type NeedsItem =
 			kind: "overdue";
 			card: Card;
 			remaining: number;
+			/** The bill's statement close date, shown when its row opens. */
+			closeDate: PlainDate;
 			dueDate: PlainDate;
 			days: number;
 	  }
@@ -157,6 +159,7 @@ export function needsYou(
 			kind: "overdue",
 			card,
 			remaining: bill.remaining,
+			closeDate: bill.closeDate,
 			dueDate: bill.dueDate,
 			days: daysBetween(bill.dueDate, today),
 		});

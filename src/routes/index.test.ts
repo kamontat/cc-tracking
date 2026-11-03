@@ -271,3 +271,96 @@ test("Home is two columns from 900px: Ready to use left, Needs you right; a phon
 	expect(css).toMatch(/\.home-grid > cc-needs-you\s*\{\s*grid-area: needs;/);
 	expect(css).toMatch(/\.home-grid > cc-ready-panel\s*\{\s*grid-area: ready;/);
 });
+
+const needs = async (root: HTMLElement) => {
+	const element = root.querySelector<CcNeedsYou>("cc-needs-you");
+	if (!element) throw new Error("no needs you");
+	await element.updateComplete;
+	return { element, shadow: element.shadowRoot as ShadowRoot };
+};
+
+/** Opens the Needs you row `row` and taps `action` in it, then lets the page write and reload. */
+const tapIn = async (root: HTMLElement, row: string, action: string) => {
+	const { element, shadow } = await needs(root);
+	const head = shadow.querySelector<HTMLElement>(`[data-row="${row}"] .a-hit`);
+	if (head?.getAttribute("aria-expanded") !== "true") head?.click();
+	await element.updateComplete;
+	shadow
+		.querySelector<HTMLElement>(`[data-row="${row}"] [data-action="${action}"]`)
+		?.click();
+	await settle(5);
+	await element.updateComplete;
+};
+
+const soonPlan = {
+	id: "c1",
+	cardId: "A",
+	date: "2026-11-02",
+	amount: 1_000_00,
+	status: "planned" as const,
+};
+
+test("Paid on a Needs you plan stores it paid and the row goes", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCardPayment(soonPlan);
+	const { root } = await setup(repo);
+	await tapIn(root, "plan:A:c1", "mark-paid");
+	const [stored] = await repo.listCardPayments("A");
+	expect(stored?.status).toBe("paid");
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="plan:A:c1"]')).toBeNull();
+	expect(root.querySelector("cc-error-banner")?.message).toBe("");
+});
+
+class FailingWriteRepository extends InMemoryRepository {
+	override saveCardPayment(): Promise<void> {
+		return Promise.reject(new Error("disk is full"));
+	}
+}
+
+test("a failed write shows the banner and keeps the row open", async () => {
+	const repo = new FailingWriteRepository();
+	await InMemoryRepository.prototype.saveCardPayment.call(repo, soonPlan);
+	const { root } = await setup(repo);
+	await tapIn(root, "plan:A:c1", "mark-paid");
+	expect(root.querySelector("cc-error-banner")?.message).toBe(
+		"Could not mark the payment paid. disk is full",
+	);
+	const { shadow } = await needs(root);
+	expect(
+		shadow
+			.querySelector('[data-row="plan:A:c1"] .a-hit')
+			?.getAttribute("aria-expanded"),
+	).toBe("true");
+});
+
+const draft = {
+	id: "d1",
+	date: "2026-10-31",
+	status: "draft" as const,
+	lines: [{ cardId: "A", amount: 1_000_00 }],
+};
+
+test("Delete on a Needs you draft removes it at once", async () => {
+	const repo = new InMemoryRepository();
+	await repo.savePurchaseList(draft);
+	const { root } = await setup(repo);
+	await tapIn(root, "list:d1", "delete-draft");
+	expect(await repo.listPurchaseLists()).toEqual([]);
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="list:d1"]')).toBeNull();
+});
+
+test("Delete refuses a draft sent since, and says why", async () => {
+	const repo = new InMemoryRepository();
+	await repo.savePurchaseList(draft);
+	const { root } = await setup(repo);
+	await repo.savePurchaseList({ ...draft, status: "sent" });
+	await tapIn(root, "list:d1", "delete-draft");
+	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual([
+		"sent",
+	]);
+	expect(root.querySelector("cc-error-banner")?.message).toBe(
+		"Could not delete the draft. This list was sent or saved elsewhere, so it was not changed.",
+	);
+});

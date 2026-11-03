@@ -566,6 +566,13 @@ export const en = {
 	"row.confirmAsk.many": "Save all {count} as made?",
 	"row.save": "Save",
 	"row.paid": "Paid",
+	"row.pay": "Pay",
+	"row.openCard": "Open card",
+	"row.recordReply": "Record reply",
+	"row.continue": "Continue",
+	"row.lines.total": "Total {amount}",
+	"row.overdue.dates": "Closed {close} · due {due}",
+	"row.left": "{amount} left",
 	"reply.error.notWaitingSave":
 		"This list is no longer waiting for a reply, so nothing was saved.",
 	"tx.error.confirmList": "Could not save the list.",

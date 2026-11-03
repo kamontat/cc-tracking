@@ -7,6 +7,8 @@ import {
 	type TemplateResult,
 } from "lit";
 import { daysBetween, displayDate } from "#lib/domain/date";
+import { formatAmount } from "#lib/domain/money";
+import { listTotal } from "#lib/domain/purchase-list";
 import type {
 	Card,
 	CardPayment,
@@ -14,7 +16,7 @@ import type {
 	PurchaseList,
 } from "#lib/domain/types";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardOwnerName } from "#lib/ui/card-label";
+import { cardLine, cardOwnerName } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 
 /*
@@ -161,6 +163,20 @@ export function overdueText(
 	};
 }
 
+/**
+ * An opened list row's details: each line's card in the line form and its amount, then the
+ * total. Missing cards keep their id (`cardLine`).
+ */
+export function listLines(list: PurchaseList, cards: Card[]): TemplateResult {
+	const byId = new Map(cards.map((card) => [card.id, card]));
+	return html`${list.lines.map(
+		(line) =>
+			html`<span class="a-line"><span>${cardLine(line.cardId, byId.get(line.cardId))}</span><span data-numeric>${formatAmount(line.amount)}</span></span>`,
+	)}<span class="a-total" data-numeric>${t("row.lines.total", {
+		amount: formatAmount(listTotal(list)),
+	})}</span>`;
+}
+
 export type ActionRowOptions = {
 	/** The row opens a page... */
 	href?: string;
@@ -170,7 +186,8 @@ export type ActionRowOptions = {
 		expanded: boolean;
 		onToggle: () => void;
 		detailsId: string;
-		details: TemplateResult;
+		/** The muted detail lines; `nothing` for none. */
+		details: TemplateResult | typeof nothing;
 	};
 	/** Drawn in place of the kind's icon (a ledger row's card chip). */
 	lead?: TemplateResult;
@@ -215,7 +232,7 @@ export function actionRow(
 			</div>
 			<div class="a-details" id=${open.detailsId} role="region"
 				aria-labelledby=${headId} ?hidden=${!open.expanded}>
-				<div class="a-info">${open.details}</div>
+				${open.details === nothing ? nothing : html`<div class="a-info">${open.details}</div>`}
 				${action ? html`<div class="a-btns">${action}</div>` : nothing}
 			</div>
 		</div>`;
@@ -531,7 +548,8 @@ export const actionRowStyles = css`
 			align-items: stretch;
 		}
 
-		.a-details .a-btns > * {
+		.a-details .a-btns > *,
+		.a-details .a-swap > * {
 			inline-size: 100%;
 		}
 	}
@@ -542,6 +560,57 @@ export const actionRowStyles = css`
 		flex-wrap: wrap;
 		justify-content: flex-end;
 		gap: var(--cc-space-2);
+	}
+
+	/* A swap's pair of buttons (two-step.ts) adds no box: they stay the row's buttons. */
+	.a-swap {
+		display: contents;
+	}
+
+	/* An opened row's page actions are links drawn as the primary or quiet button. */
+	a.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: var(--cc-space-2) var(--cc-space-3);
+		font-size: var(--cc-text-sm);
+		font-weight: 550;
+		line-height: 1.2;
+		white-space: nowrap;
+		color: var(--cc-accent-text);
+		text-decoration: none;
+		background: var(--cc-accent);
+		border: var(--cc-border-width) solid transparent;
+		border-radius: var(--cc-radius-sm);
+	}
+
+	a.btn:hover {
+		text-decoration: none;
+		background: var(--cc-accent-hover);
+	}
+
+	a.btn[data-variant="quiet"] {
+		color: var(--cc-text);
+		background: var(--cc-surface-sunken);
+		border-color: var(--cc-border);
+	}
+
+	a.btn[data-variant="quiet"]:hover {
+		background: var(--cc-border);
+	}
+
+	/* A list's line in the opened details: the card on the left, its amount on the right. */
+	.a-line {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		gap: var(--cc-space-3);
+	}
+
+	.a-total {
+		align-self: flex-end;
+		font-weight: 650;
+		color: var(--cc-text);
 	}
 
 	.a-right button,

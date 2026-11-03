@@ -272,6 +272,17 @@ describe("needsYou", () => {
 		expect(ids).toEqual(["late", "soon"]);
 	});
 
+	test("an overdue bill carries its statement's close and due dates", () => {
+		const d = data([mk("A")], [buy("p", "A", "2026-09-10", 4_000_00)]);
+		const [item] = needsYou(d, TODAY);
+		expect(item).toMatchObject({
+			kind: "overdue",
+			closeDate: "2026-09-25",
+			dueDate: "2026-10-15",
+			remaining: 4_000_00,
+		});
+	});
+
 	test("overdue bills: most days overdue first, ties by card id", () => {
 		const b = mk("B");
 		const a = mk("A");

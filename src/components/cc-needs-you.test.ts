@@ -42,6 +42,7 @@ const items = (): NeedsItem[] => [
 		kind: "overdue",
 		card,
 		remaining: 41_230_00,
+		closeDate: "2026-09-30",
 		dueDate: "2026-10-15",
 		days: 16,
 	},
@@ -69,6 +70,17 @@ const mount = async (
 	return element.shadowRoot as ShadowRoot;
 };
 
+const mountEl = async (value: NeedsItem[], cards: Card[] = []) => {
+	const root = await mount(value, cards);
+	return { element: root.host as CcNeedsYou, root };
+};
+
+/** Taps a row's head and waits for the repaint. */
+const open = async (element: CcNeedsYou, head: string) => {
+	element.shadowRoot?.querySelector<HTMLElement>(head)?.click();
+	await element.updateComplete;
+};
+
 const text = (root: ParentNode, selector: string) =>
 	root.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim();
 
@@ -87,28 +99,32 @@ const planned = (date: string): NeedsItem => ({
 const slots = (row: Element) => ({
 	title: text(row, ".a-title"),
 	subtitle: text(row, ".a-sub"),
-	amount: text(row, ".a-right .amount"),
+	amount: text(row, ".a-hit .amount"),
 });
 
-test("each item opens its task", async () => {
+test("every row head is one button that opens it in place, no link", async () => {
 	const root = await mount(
 		[...items(), planned("2026-11-02")],
 		[],
 		"2026-10-31",
 	);
-	const found = [...root.querySelectorAll("[data-item]")];
-	expect(found.map((e) => e.getAttribute("data-item"))).toEqual([
+	const heads = [...root.querySelectorAll("[data-item]")];
+	expect(heads.map((e) => e.getAttribute("data-item"))).toEqual([
 		"waiting",
 		"overdue",
 		"draft",
 		"planned",
 	]);
-	expect(found.map((e) => e.getAttribute("href"))).toEqual([
-		"/list/reply?id=w1",
-		"/pay?card=SCB%2FK&amount=4123000",
-		"/list/draft?id=d1",
-		"/transactions",
-	]);
+	for (const head of heads) {
+		expect(head.localName).toBe("button");
+		expect(head.getAttribute("aria-expanded")).toBe("false");
+		expect(head.querySelector("a, button")).toBeNull();
+		const details = root.getElementById(
+			head.getAttribute("aria-controls") ?? "",
+		);
+		expect(details?.hidden).toBe(true);
+	}
+	expect(root.querySelector("a.a-hit")).toBeNull();
 });
 
 test("each kind fills the row's title and subtitle, with the amount on the right and no badge or button", async () => {
@@ -143,7 +159,7 @@ test("each kind fills the row's title and subtitle, with the amount on the right
 		subtitle: "02 Nov 2026 · in 2 days",
 		amount: "+฿5,000.00",
 	});
-	expect(root.querySelector(".a-row button")).toBeNull();
+	expect(root.querySelector(".a-hit button, .a-hit a")).toBeNull();
 	// The icon says the kind; no card chip besides (DD-106).
 	for (const row of root.querySelectorAll("[data-item]")) {
 		expect(row.querySelector(".a-ic .icon")).not.toBeNull();
@@ -195,7 +211,14 @@ test("reads in Thai", async () => {
 
 test("the overdue amount carries the danger tone, with its words", async () => {
 	const root = await mount([
-		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-30", days: 1 },
+		{
+			kind: "overdue",
+			card,
+			remaining: 100,
+			closeDate: "2026-10-15",
+			dueDate: "2026-10-30",
+			days: 1,
+		},
 	]);
 	const amount = root
 		.querySelector('[data-item="overdue"]')
@@ -207,7 +230,14 @@ test("the overdue amount carries the danger tone, with its words", async () => {
 
 test("one day overdue reads in the singular", async () => {
 	const root = await mount([
-		{ kind: "overdue", card, remaining: 100, dueDate: "2026-10-30", days: 1 },
+		{
+			kind: "overdue",
+			card,
+			remaining: 100,
+			closeDate: "2026-10-15",
+			dueDate: "2026-10-30",
+			days: 1,
+		},
 	]);
 	expect(text(root, '[data-item="overdue"] .a-title')).toBe(
 		"Overdue: SCB K (RI)",
@@ -215,16 +245,24 @@ test("one day overdue reads in the singular", async () => {
 	expect(text(root, '[data-item="overdue"] .a-sub')).toBe("for 1 day");
 });
 
-test("a list id is encoded in its link", async () => {
-	const root = await mount([
+test("a list id is encoded in its opened row's link", async () => {
+	const { element, root } = await mountEl([
 		{ kind: "waiting", list: list("w 1/2", "sent", ["A"]), total: 100 },
 		{ kind: "draft", list: list("d&1", "draft", ["A"]), total: 100 },
 	]);
+	await open(element, '[data-item="waiting"]');
+	await open(element, '[data-item="draft"]');
 	expect(
-		[...root.querySelectorAll("[data-item]")].map((e) =>
-			e.getAttribute("href"),
+		[...root.querySelectorAll(".a-details:not([hidden]) a[data-action]")].map(
+			(e) => e.getAttribute("href"),
 		),
-	).toEqual(["/list/reply?id=w%201%2F2", "/list/draft?id=d%261"]);
+	).toEqual(["/list/draft?id=d%261"]);
+	await open(element, '[data-item="waiting"]');
+	expect(
+		root
+			.querySelector(".a-details:not([hidden]) a[data-action=record-reply]")
+			?.getAttribute("href"),
+	).toBe("/list/reply?id=w%201%2F2");
 });
 
 test("a planned payment says how far off it is after its date, and a past plan how long ago", async () => {
@@ -253,7 +291,9 @@ const many = (count: number): NeedsItem[] =>
 	}));
 
 const shown = (root: ShadowRoot) =>
-	[...root.querySelectorAll("[data-item]")].map((e) => e.getAttribute("href"));
+	[...root.querySelectorAll("[data-row]")].map((e) =>
+		e.getAttribute("data-row"),
+	);
 
 test("five or fewer things show in full, with no See more", async () => {
 	const root = await mount(many(5));
@@ -269,9 +309,7 @@ test("more than five show the first five and See more expands the rest in place,
 	await element.updateComplete;
 	const root = element.shadowRoot as ShadowRoot;
 	expect(text(root, "h1")).toBe("8 things need you");
-	expect(shown(root)).toEqual(
-		[0, 1, 2, 3, 4].map((i) => `/list/reply?id=w${i}`),
-	);
+	expect(shown(root)).toEqual([0, 1, 2, 3, 4].map((i) => `list:w${i}`));
 	const more = root.querySelector<HTMLButtonElement>('[data-action="more"]');
 	expect(more?.getAttribute("type")).toBe("button");
 	expect(more?.getAttribute("data-variant")).toBe("quiet");
@@ -280,7 +318,7 @@ test("more than five show the first five and See more expands the rest in place,
 	more?.click();
 	await element.updateComplete;
 	expect(shown(root)).toEqual(
-		[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `/list/reply?id=w${i}`),
+		[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `list:w${i}`),
 	);
 	const less = root.querySelector<HTMLButtonElement>('[data-action="more"]');
 	expect(less?.getAttribute("aria-expanded")).toBe("true");
@@ -294,4 +332,225 @@ test("See more reads in Thai", async () => {
 	setLocale("th");
 	const root = await mount(many(7));
 	expect(text(root, '[data-action="more"]')).toBe("ดูเพิ่ม (2)");
+});
+
+const events = (element: CcNeedsYou, name: string) => {
+	const seen: unknown[] = [];
+	element.addEventListener(name, (e) => seen.push((e as CustomEvent).detail));
+	return seen;
+};
+
+/** Each matching element's text, in order. */
+const parts = (root: ParentNode, selector: string) =>
+	[...root.querySelectorAll(selector)].map((e) => e.textContent?.trim());
+
+const shownDetails = (root: ShadowRoot) =>
+	root.querySelector<HTMLElement>(".a-details:not([hidden])");
+
+test("opening one row closes the other; a second tap closes it", async () => {
+	const { element, root } = await mountEl(items());
+	await open(element, '[data-item="waiting"]');
+	expect(
+		root.querySelector('[data-item="waiting"]')?.getAttribute("aria-expanded"),
+	).toBe("true");
+	await open(element, '[data-item="overdue"]');
+	expect(
+		[...root.querySelectorAll("[data-item]")].map((e) =>
+			e.getAttribute("aria-expanded"),
+		),
+	).toEqual(["false", "true", "false"]);
+	expect(root.querySelectorAll(".a-details:not([hidden])")).toHaveLength(1);
+	await open(element, '[data-item="overdue"]');
+	expect(root.querySelector(".a-details:not([hidden])")).toBeNull();
+});
+
+test("an opened overdue bill shows its dates and what is left, with Pay and Open card", async () => {
+	const item: NeedsItem = {
+		kind: "overdue",
+		card,
+		remaining: 41_230_00,
+		closeDate: "2026-09-18",
+		dueDate: "2026-10-03",
+		days: 28,
+	};
+	const { element, root } = await mountEl([item]);
+	await open(element, '[data-item="overdue"]');
+	const details = shownDetails(root) as HTMLElement;
+	expect(parts(details, ".a-info > *")).toEqual([
+		"Closed 18 Sep 2026 · due 03 Oct 2026",
+		"฿41,230.00 left",
+	]);
+	const links = [...details.querySelectorAll(".a-btns > *")];
+	expect(
+		links.map((e) => [
+			e.localName,
+			e.className,
+			e.getAttribute("data-variant"),
+		]),
+	).toEqual([
+		["a", "btn", null],
+		["a", "btn", "quiet"],
+	]);
+	expect(links.map((e) => e.textContent?.trim())).toEqual(["Pay", "Open card"]);
+	expect(links[0]?.getAttribute("href")).toBe(
+		"/pay?card=SCB%2FK&amount=4123000",
+	);
+	expect(links[1]?.getAttribute("href")).toBe("/card?id=SCB%2FK");
+	// One wrapper of buttons, not one inside another.
+	expect(details.querySelector(".a-btns .a-btns")).toBeNull();
+});
+
+test("an opened planned payment shows its note; Paid emits mark-paid", async () => {
+	const item = planned("2026-11-02") as NeedsItem & { kind: "planned" };
+	item.payment.note = "rent";
+	const { element, root } = await mountEl([item]);
+	const marked = events(element, "mark-paid");
+	await open(element, '[data-item="planned"]');
+	const details = shownDetails(root) as HTMLElement;
+	expect(text(details, ".a-info")).toBe("rent");
+	const buttons = [...details.querySelectorAll(".a-btns button")];
+	expect(
+		buttons.map((b) => [
+			b.getAttribute("data-action"),
+			b.getAttribute("data-variant"),
+		]),
+	).toEqual([
+		["mark-paid", "quiet"],
+		["delete", "danger"],
+	]);
+	(buttons[0] as HTMLElement).click();
+	expect(marked).toEqual([{ payment: item.payment }]);
+});
+
+test("a planned payment's Delete asks first: Delete and Cancel, and only the second Delete emits", async () => {
+	const item = planned("2026-11-02") as NeedsItem & { kind: "planned" };
+	const { element, root } = await mountEl([item]);
+	const deleted = events(element, "delete-payment");
+	await open(element, '[data-item="planned"]');
+	(root.querySelector("[data-action=delete]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(deleted).toEqual([]);
+	const asked = [
+		...(shownDetails(root) as HTMLElement).querySelectorAll(".a-btns button"),
+	];
+	expect(asked.map((b) => b.getAttribute("data-action"))).toEqual([
+		"confirm-delete",
+		"cancel-delete",
+	]);
+	expect(root.activeElement?.getAttribute("data-action")).toBe(
+		"confirm-delete",
+	);
+	expect(asked[0]?.getAttribute("aria-label")).toBe(
+		"Delete ฿5,000.00 to SCB K?",
+	);
+	(asked[1] as HTMLElement).click();
+	await element.updateComplete;
+	expect(deleted).toEqual([]);
+	expect(root.activeElement?.getAttribute("data-action")).toBe("delete");
+	(root.querySelector("[data-action=delete]") as HTMLElement).click();
+	await element.updateComplete;
+	(root.querySelector("[data-action=confirm-delete]") as HTMLElement).click();
+	expect(deleted).toEqual([{ payment: item.payment }]);
+});
+
+test("an opened waiting list shows each line and the total; Confirm asks Save before it emits", async () => {
+	const sent: PurchaseList = {
+		id: "w1",
+		date: "2026-10-30",
+		status: "sent",
+		lines: [
+			{ cardId: "SCB/K", amount: 1_000_00 },
+			{ cardId: "X", amount: 250_00 },
+		],
+	};
+	const { element, root } = await mountEl(
+		[{ kind: "waiting", list: sent, total: 1_250_00 }],
+		[card],
+	);
+	const saved = events(element, "confirm-list");
+	await open(element, '[data-item="waiting"]');
+	const details = shownDetails(root) as HTMLElement;
+	expect(parts(details, ".a-line > *")).toEqual([
+		"SCB/K) SCB K (1111)",
+		"฿1,000.00",
+		"X) —",
+		"฿250.00",
+	]);
+	expect(text(details, ".a-total")).toBe("Total ฿1,250.00");
+	const first = [...details.querySelectorAll(".a-btns > *")];
+	expect(first.map((e) => e.getAttribute("data-action"))).toEqual([
+		"record-reply",
+		"confirm-list",
+	]);
+	expect(first[0]?.localName).toBe("a");
+	expect(first[0]?.textContent?.trim()).toBe("Record reply");
+	(first[1] as HTMLElement).click();
+	await element.updateComplete;
+	expect(saved).toEqual([]);
+	expect(
+		root.querySelector("[data-confirming] [data-action=save-list]"),
+	).not.toBeNull();
+	(root.querySelector("[data-action=save-list]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(saved).toEqual([{ list: sent }]);
+});
+
+test("an opened draft offers Continue and a one-step Delete", async () => {
+	const draft = list("d1", "draft", ["A"]);
+	const { element, root } = await mountEl([
+		{ kind: "draft", list: draft, total: 100 },
+	]);
+	const deleted = events(element, "delete-draft");
+	await open(element, '[data-item="draft"]');
+	const details = shownDetails(root) as HTMLElement;
+	expect(text(details, ".a-total")).toBe("Total ฿1.00");
+	const [go, del] = [...details.querySelectorAll(".a-btns > *")];
+	expect(go?.getAttribute("href")).toBe("/list/draft?id=d1");
+	expect(go?.textContent?.trim()).toBe("Continue");
+	expect(del?.getAttribute("data-variant")).toBe("danger");
+	(del as HTMLElement).click();
+	expect(deleted).toEqual([{ list: draft }]);
+});
+
+test("the open row and a half-done swap survive a repaint; a row that goes is forgotten", async () => {
+	const item = planned("2026-11-02") as NeedsItem & { kind: "planned" };
+	const { element, root } = await mountEl([...items(), item]);
+	await open(element, '[data-item="planned"]');
+	(root.querySelector("[data-action=delete]") as HTMLElement).click();
+	await element.updateComplete;
+	element.items = [...items(), item];
+	await element.updateComplete;
+	expect(
+		root.querySelector('[data-item="planned"]')?.getAttribute("aria-expanded"),
+	).toBe("true");
+	expect(root.querySelector("[data-action=confirm-delete]")).not.toBeNull();
+	element.items = items();
+	await element.updateComplete;
+	element.items = [...items(), item];
+	await element.updateComplete;
+	expect(
+		root.querySelector('[data-item="planned"]')?.getAttribute("aria-expanded"),
+	).toBe("false");
+});
+
+test("opened rows read in Thai", async () => {
+	setLocale("th");
+	const { element, root } = await mountEl([
+		{
+			kind: "overdue",
+			card,
+			remaining: 100,
+			closeDate: "2026-09-18",
+			dueDate: "2026-10-03",
+			days: 28,
+		},
+		{ kind: "draft", list: list("d1", "draft", ["A"]), total: 100 },
+	]);
+	await open(element, '[data-item="overdue"]');
+	expect(parts(shownDetails(root) as HTMLElement, ".a-btns > *")).toEqual([
+		"ชำระเงิน",
+		"เปิดบัตร",
+	]);
+	await open(element, '[data-item="draft"]');
+	expect(text(shownDetails(root) as HTMLElement, ".a-total")).toBe("รวม ฿1.00");
 });

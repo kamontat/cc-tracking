@@ -1,11 +1,12 @@
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { customElement, property } from "lit/decorators.js";
 import {
 	actionRow,
 	actionRowStyles,
 	plannedText,
 	waitingText,
 } from "#components/action-row";
+import { useTwoStep } from "#components/two-step";
 import { displayDate, headerDate } from "#lib/domain/date";
 import { formatAmount, MINUS } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
@@ -25,7 +26,7 @@ import type {
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardMini, cardName, cardPanelLabel } from "#lib/ui/card-label";
+import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
 import { listPageAddress } from "#lib/ui/list-address";
 import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
@@ -158,30 +159,8 @@ export class CcTxLedger extends LitElement {
 	@property({ type: Boolean }) filtered = false;
 	/** How many rows show; the page raises it by `LEDGER_PAGE` on `show-more`. */
 	@property({ attribute: false }) limit = LEDGER_PAGE;
-	/** The waiting list whose *Confirm* asks its second step. */
-	@state() private confirmingList: string | null = null;
-	/** The planned payment whose *Delete* asks its second step. */
-	@state() private confirmingPlan: string | null = null;
-	/** The button to focus once the swap has rendered, so the keyboard stays where it was. */
-	private refocus: { action: string; id: string } | null = null;
-
-	/** Swap a row's buttons, then focus the button `action` of row `id` in the new set. */
-	private swap(change: () => void, action: string, id: string) {
-		this.refocus = { action, id };
-		change();
-	}
-
-	protected override updated() {
-		const want = this.refocus;
-		if (!want) return;
-		this.refocus = null;
-		const button = [
-			...this.renderRoot.querySelectorAll<HTMLElement>(
-				`[data-action="${want.action}"]`,
-			),
-		].find((b) => b.getAttribute("data-for") === want.id);
-		button?.focus();
-	}
+	/** The two-step *Delete* and *Confirm* swaps, shared with Needs you. */
+	private readonly steps = useTwoStep(this);
 
 	constructor() {
 		super();
@@ -221,49 +200,21 @@ export class CcTxLedger extends LitElement {
 		return html`<span class="t"><b>${cardPanelLabel(id, card)}</b> <span class="word">${word}</span></span>`;
 	}
 
-	/** A planned payment's buttons: *Paid* and *Delete*, which swap in place for *Delete* and *Cancel* (DD-110). */
+	/** A planned payment's *Paid* and *Delete* (DD-110). */
 	private planButtons(payment: CardPayment, card: Card | undefined) {
-		if (this.confirmingPlan !== payment.id)
-			return html`<span class="a-btns"><button type="button" data-variant="quiet" data-action="mark-paid"
-				@click=${() => this.emit("mark-paid", { payment })}>${t("row.paid")}</button><button type="button" data-variant="danger" data-action="delete" data-for=${payment.id}
-				@click=${() => this.askDelete(payment)}>${t("common.delete")}</button></span>`;
-		return this.deleteSwap(payment, card);
+		return html`<span class="a-btns">${this.steps.planButtons(payment, card, {
+			paid: () => this.emit("mark-paid", { payment }),
+			remove: () => this.emit("delete-payment", { payment }),
+		})}</span>`;
 	}
 
-	private askDelete(payment: CardPayment) {
-		this.swap(
-			() => {
-				this.confirmingPlan = payment.id;
-			},
-			"confirm-delete",
-			payment.id,
-		);
-	}
-
-	/** *Delete* (asks "Delete ฿X to NAME?" as its label) and *Cancel*, in place of the buttons. */
-	private deleteSwap(payment: CardPayment, card: Card | undefined) {
-		return html`<span class="a-btns" data-confirming=${payment.id}><button type="button" data-variant="danger" data-action="confirm-delete" data-for=${payment.id}
-			aria-label=${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}
-			@click=${() => {
-				this.confirmingPlan = null;
-				this.emit("delete-payment", { payment });
-			}}>${t("common.delete")}</button><button type="button" data-action="cancel-delete"
-			@click=${() =>
-				this.swap(
-					() => {
-						this.confirmingPlan = null;
-					},
-					"delete",
-					payment.id,
-				)}>${t("common.cancel")}</button></span>`;
-	}
-
-	/** A paid payment's *Delete*, always visible; it swaps in place for *Delete* and *Cancel* (DD-77). */
+	/** A paid payment's *Delete*, always visible (DD-77). */
 	private paidButtons(payment: CardPayment, card: Card | undefined) {
-		if (this.confirmingPlan !== payment.id)
-			return html`<button type="button" data-variant="danger" data-action="delete" data-for=${payment.id}
-				@click=${() => this.askDelete(payment)}>${t("common.delete")}</button>`;
-		return this.deleteSwap(payment, card);
+		return html`<span class="a-btns">${this.steps.paidButtons(
+			payment,
+			card,
+			() => this.emit("delete-payment", { payment }),
+		)}</span>`;
 	}
 
 	private row(entry: TxEntry, showDate: boolean) {
@@ -304,33 +255,11 @@ export class CcTxLedger extends LitElement {
 		</div>`;
 	}
 
-	/** A waiting list's button: *Confirm*, which swaps in place for *Save* and *Cancel*; nothing is written until *Save*. */
+	/** A waiting list's *Confirm*; nothing is written until *Save*. */
 	private listButtons(list: PurchaseList) {
-		if (this.confirmingList !== list.id)
-			return html`<button type="button" data-variant="quiet" data-action="confirm-list" data-for=${list.id}
-				@click=${() =>
-					this.swap(
-						() => {
-							this.confirmingList = list.id;
-						},
-						"save-list",
-						list.id,
-					)}>${t("row.confirm")}</button>`;
-		const count = list.lines.length;
-		return html`<span class="a-btns" data-confirming=${list.id}><button type="button" data-action="save-list" data-for=${list.id}
-			aria-label=${count === 1 ? t("row.confirmAsk.one") : t("row.confirmAsk.many", { count })}
-			@click=${() => {
-				this.confirmingList = null;
-				this.emit("confirm-list", { list });
-			}}>${t("row.save")}</button><button type="button" data-variant="quiet" data-action="cancel-confirm"
-			@click=${() =>
-				this.swap(
-					() => {
-						this.confirmingList = null;
-					},
-					"confirm-list",
-					list.id,
-				)}>${t("common.cancel")}</button></span>`;
+		return html`<span class="a-btns">${this.steps.listButtons(list, () =>
+			this.emit("confirm-list", { list }),
+		)}</span>`;
 	}
 
 	private renderUpcoming() {
