@@ -205,3 +205,28 @@ test("the details inset follows a lead's width, and a head with no figure keeps 
 		/button\.a-hit\[aria-expanded\]:not\(:has\(\.amount\)\)\s*\{\s*grid-template-columns: auto minmax\(0, 1fr\) auto;/,
 	);
 });
+
+test("the open row tells its owner each time it changes, so a half-done swap can end", () => {
+	const h = host();
+	let changes = 0;
+	const rows = useOpenRow(h.element, () => {
+		changes += 1;
+	});
+	rows.toggle("a");
+	rows.toggle("a");
+	expect(changes).toBe(2);
+	rows.toggle("b");
+	rows.prune(["a", "b"]);
+	expect(changes).toBe(3);
+	rows.prune(["a"]);
+	expect(changes).toBe(4);
+});
+
+test("a hovered opening head keeps a neutral tag on the surface; no payment-only right side is left", () => {
+	const css = actionRowStyles.cssText;
+	expect(css).toMatch(
+		/\.a-row:has\(> button\.a-hit:hover\) \.tag:not\([^)]*\)\s*\{\s*background: var\(--cc-surface\)/,
+	);
+	expect(css).not.toContain(".pay-right");
+	expect(css).not.toMatch(/\.a-right > button/);
+});

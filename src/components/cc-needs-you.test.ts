@@ -554,3 +554,33 @@ test("opened rows read in Thai", async () => {
 	await open(element, '[data-item="draft"]');
 	expect(text(shownDetails(root) as HTMLElement, ".a-total")).toBe("รวม ฿1.00");
 });
+
+test("a half-done swap ends when its row closes, when another opens, or when its row goes", async () => {
+	const item = planned("2026-11-02") as NeedsItem & { kind: "planned" };
+	const { element, root } = await mountEl([...items(), item]);
+	const ask = async () => {
+		(
+			root.querySelector(
+				".a-details:not([hidden]) [data-action=delete]",
+			) as HTMLElement
+		).click();
+		await element.updateComplete;
+		expect(root.querySelector("[data-action=confirm-delete]")).not.toBeNull();
+	};
+	await open(element, '[data-item="planned"]');
+	await ask();
+	await open(element, '[data-item="planned"]');
+	await open(element, '[data-item="planned"]');
+	expect(root.querySelector("[data-action=confirm-delete]")).toBeNull();
+	await ask();
+	await open(element, '[data-item="overdue"]');
+	await open(element, '[data-item="planned"]');
+	expect(root.querySelector("[data-action=confirm-delete]")).toBeNull();
+	await ask();
+	element.items = items();
+	await element.updateComplete;
+	element.items = [...items(), item];
+	await element.updateComplete;
+	await open(element, '[data-item="planned"]');
+	expect(root.querySelector("[data-action=confirm-delete]")).toBeNull();
+});

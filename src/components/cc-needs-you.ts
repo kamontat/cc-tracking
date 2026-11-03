@@ -93,10 +93,10 @@ export class CcNeedsYou extends LitElement {
 	/** Whether the things past the first `SHOWN` are open (DD-106). */
 	@state() private expanded = false;
 
-	/** The one open row, by `rowId`. */
-	private readonly rows = useOpenRow(this);
 	/** The two-step *Delete* and *Confirm* swaps, shared with the ledger. */
 	private readonly steps = useTwoStep(this);
+	/** The one open row, by `rowId`; a swap ends when its row closes. */
+	private readonly rows = useOpenRow(this, () => this.steps.reset());
 
 	constructor() {
 		super();

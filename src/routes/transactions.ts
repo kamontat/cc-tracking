@@ -203,6 +203,7 @@ export function renderTransactionsPage(
 				.groups=${dated ? byDay(rows) : null}
 				.entries=${rows}
 				.lists=${d.lists}
+				.ledgers=${d.ledgers}
 				.limitGroups=${d.groups}
 				.today=${now}
 				.filtered=${narrowed}

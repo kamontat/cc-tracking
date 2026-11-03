@@ -131,13 +131,19 @@ test("card tiles hover without an underline and keep a focus ring", () => {
 	}
 });
 
-test("the action row stacks its figure and button under the text below 900px", () => {
+test("the ledger's rows are the opening row: they stack below 900px, with no row of their own", () => {
 	const text = stylesOf("cc-tx-ledger");
 	expect(text).toMatch(
 		/@media \(max-width: 899\.98px\)\s*\{[^@]*\.a-row\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/,
 	);
 	expect(text).toMatch(
-		/@media \(max-width: 899\.98px\)\s*\{[^@]*\.crow\[data-kind\]\s*\{/,
+		/@media \(max-width: 899\.98px\)\s*\{[^@]*\.a-details \.a-btns\s*\{[^}]*flex-direction: column/,
+	);
+	expect(text).not.toMatch(/\.crow\[data-kind\]/);
+	expect(text).not.toContain(".pay-right");
+	// The details line up with the text past the card chip: the chip's width and the gap.
+	expect(text).toMatch(
+		/\.a-wrap\s*\{[^}]*--a-lead-inline: calc\(var\(--cc-space-5\) \+ var\(--cc-space-3\) \+ var\(--cc-space-3\)\)/,
 	);
 });
 

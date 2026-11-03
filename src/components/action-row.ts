@@ -41,8 +41,9 @@ export type ActionKind =
 
 export type ActionRowText = {
 	kind: ActionKind;
-	title: string;
-	subtitle: string;
+	/** Words, or markup where a part of it reads differently (a ledger row's muted kind). */
+	title: string | TemplateResult;
+	subtitle: string | TemplateResult;
 };
 
 const ICONS: Record<ActionKind, TemplateResult> = {
@@ -190,7 +191,7 @@ export type ActionRowOptions = {
 		details: TemplateResult | typeof nothing;
 	};
 	/** Drawn in place of the kind's icon (a ledger row's card chip). */
-	lead?: TemplateResult;
+	lead?: TemplateResult | undefined;
 	/** The right-hand figure, already signed, and its tone. */
 	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" };
 	/** The buttons: under the figure, or in the opened details with `open`. With neither
@@ -253,7 +254,8 @@ export function actionRow(
  * Keeps at most one row open in a component (Needs you, the ledger, the Lists view):
  * opening a row closes the one before, a second tap on it closes it, and `prune` forgets a row
  * that is gone (a plan marked paid), so a repaint keeps the open row only while it exists.
- * Nothing of it goes in the address.
+ * Nothing of it goes in the address. `onChange` hears every change of the open row, so the
+ * host can end a half-done two-step swap (`TwoStepController.reset`) when its row closes.
  *
  * A row id must be unique within the component across every kind of row it draws: a
  * payment's id repeats across cards (`PaymentRef` is `{ cardId, id }`), so callers namespace
@@ -268,7 +270,10 @@ export class OpenRowController implements ReactiveController {
 	private open: string | undefined;
 	private readonly prefix: string;
 
-	constructor(private readonly host: ReactiveControllerHost) {
+	constructor(
+		private readonly host: ReactiveControllerHost,
+		private readonly onChange: () => void = () => {},
+	) {
 		host.addController(this);
 		this.prefix = host instanceof Element ? host.localName : "row";
 	}
@@ -281,6 +286,7 @@ export class OpenRowController implements ReactiveController {
 
 	toggle(id: string): void {
 		this.open = this.open === id ? undefined : id;
+		this.onChange();
 		this.host.requestUpdate();
 	}
 
@@ -289,6 +295,7 @@ export class OpenRowController implements ReactiveController {
 	prune(ids: string[]): void {
 		if (this.open !== undefined && !ids.includes(this.open)) {
 			this.open = undefined;
+			this.onChange();
 			this.host.requestUpdate();
 		}
 	}
@@ -300,8 +307,11 @@ export class OpenRowController implements ReactiveController {
 	}
 }
 
-export function useOpenRow(host: ReactiveControllerHost): OpenRowController {
-	return new OpenRowController(host);
+export function useOpenRow(
+	host: ReactiveControllerHost,
+	onChange?: () => void,
+): OpenRowController {
+	return new OpenRowController(host, onChange);
 }
 
 /** The row's styles; the host also takes `rowPanel`. */
@@ -331,6 +341,11 @@ export const actionRowStyles = css`
 	}
 
 	.a-row:has(> :is(a, button).a-hit:hover) .a-ic:not([data-kind="waiting"], [data-kind="overdue"]) {
+		background: var(--cc-surface);
+	}
+
+	/* So does a neutral tag in the subtitle (a ledger row's *Archived*). */
+	.a-row:has(> button.a-hit:hover) .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]) {
 		background: var(--cc-surface);
 	}
 
@@ -480,6 +495,11 @@ export const actionRowStyles = css`
 		color: var(--cc-text-muted);
 	}
 
+	/* A row with nothing under its title (a ledger purchase with no note) keeps no gap for it. */
+	.a-sub:empty {
+		display: none;
+	}
+
 	.a-right {
 		display: flex;
 		flex-direction: column;
@@ -489,21 +509,6 @@ export const actionRowStyles = css`
 		padding-block: var(--cc-space-3);
 		line-height: 1.25;
 		text-align: end;
-	}
-
-	/* A ledger payment row's right side (DD-77): the amount, and its Delete under it. */
-	.pay-right {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		gap: var(--cc-space-1);
-		line-height: 1.25;
-	}
-
-	/* A lone button sits at the right edge, under the amount (shared.ts sets flex-start). */
-	.a-right > button,
-	.pay-right > button {
-		align-self: flex-end;
 	}
 
 	/* Below 900px the row stacks (DD-109): the title takes the full width beside the icon and
@@ -527,19 +532,6 @@ export const actionRowStyles = css`
 			padding-block: 0 var(--cc-space-3);
 			padding-inline-start: var(--a-lead-inline);
 			text-align: start;
-		}
-
-		.a-right > button,
-		.pay-right > button {
-			align-self: center;
-		}
-
-		/* A payment's amount and Delete share the last line: amount left, buttons right. */
-		.pay-right {
-			flex-direction: row;
-			flex-wrap: wrap;
-			align-items: center;
-			justify-content: space-between;
 		}
 
 		/* An opened row's buttons stack, each the full width, from the text's edge. */
@@ -613,8 +605,7 @@ export const actionRowStyles = css`
 		color: var(--cc-text);
 	}
 
-	.a-right button,
-	.pay-right button {
+	.a-right button {
 		padding: var(--cc-space-1) var(--cc-space-3);
 		font-size: var(--cc-text-xs);
 		font-weight: 650;

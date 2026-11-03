@@ -83,6 +83,8 @@ const press = async (el: Element | null | undefined) => {
 	(el as HTMLElement).click();
 	await settle();
 };
+/** The opened row's details, in the ledger. */
+const shown = ".a-details:not([hidden])";
 
 test("the default view shows the summary, upcoming and the ledger by day", async () => {
 	const { root, written } = await open();
@@ -97,6 +99,12 @@ test("the default view shows the summary, upcoming and the ledger by day", async
 	expect(el.upcoming?.lists.map((l) => l.id)).toEqual(["w1"]);
 	expect(el.upcoming?.planned.map((p) => p.payment.id)).toEqual(["c2"]);
 	expect(el.groups?.map((g) => g.date)).toEqual(["2026-10-31", "2026-10-30"]);
+	// The card ledgers, so an opened row can name its statement and a payment's parts.
+	expect(
+		el.ledgers
+			.get("A")
+			?.statements.some((s) => s.purchases.some((p) => p.id === "p1")),
+	).toBe(true);
 	expect(written).toEqual([]);
 });
 
@@ -211,6 +219,7 @@ test("Confirm saves a waiting list as is: every line made, under the list's own 
 		...sent("w1", ["B"]),
 		lines: [{ cardId: "B", amount: 120_00, note: "gift" }],
 	});
+	await press(inLedger(root, '[data-item="waiting"]'));
 	await press(inLedger(root, '[data-action="confirm-list"]'));
 	// The first tap only asks; nothing is written yet.
 	expect(await repo.listPurchases("B")).toHaveLength(1);
@@ -240,6 +249,7 @@ test("Confirm refuses a list no longer waiting and writes nothing", async () => 
 		...(stored as NonNullable<typeof stored>),
 		status: "draft",
 	});
+	await press(inLedger(root, '[data-item="waiting"]'));
 	await press(inLedger(root, '[data-action="confirm-list"]'));
 	await press(inLedger(root, '[data-action="save-list"]'));
 	await settle(5);
@@ -249,15 +259,16 @@ test("Confirm refuses a list no longer waiting and writes nothing", async () => 
 	expect(root.querySelector("cc-error-banner")?.message).toContain(
 		"no longer waiting",
 	);
+	// The list is no longer waiting, so its row goes from Upcoming.
+	expect(inLedger(root, '[data-item="waiting"]')).toBeNull();
 });
 
 test("deleting a payment needs the second step", async () => {
 	const { root, repo } = await open();
-	await press(inLedger(root, '[data-kind="payment"] [data-action="delete"]'));
+	await press(inLedger(root, '[data-item="payment"]'));
+	await press(inLedger(root, `${shown} [data-action="delete"]`));
 	expect(await repo.listCardPayments("A")).toHaveLength(2);
-	await press(
-		inLedger(root, '[data-kind="payment"] [data-action="confirm-delete"]'),
-	);
+	await press(inLedger(root, `${shown} [data-action="confirm-delete"]`));
 	await settle(5);
 	expect((await repo.listCardPayments("A")).map((p) => p.id)).toEqual(["c2"]);
 });
@@ -290,13 +301,15 @@ test("a custom range chip shows display dates", async () => {
 test("a failed delete names the delete, not a save", async () => {
 	const { root, repo } = await open();
 	repo.deleteCardPayment = () => Promise.reject(new Error("disk full"));
-	await press(inLedger(root, '[data-kind="payment"] [data-action="delete"]'));
-	await press(
-		inLedger(root, '[data-kind="payment"] [data-action="confirm-delete"]'),
-	);
+	await press(inLedger(root, '[data-item="payment"]'));
+	await press(inLedger(root, `${shown} [data-action="delete"]`));
+	await press(inLedger(root, `${shown} [data-action="confirm-delete"]`));
 	await settle(5);
 	const banner = root.querySelector("cc-error-banner");
 	expect(banner?.message).toContain("Could not delete the payment.");
+	expect(
+		inLedger(root, '[data-item="payment"]')?.getAttribute("aria-expanded"),
+	).toBe("true");
 });
 
 test("a failed mark paid names the marking, not a save", async () => {
@@ -307,6 +320,11 @@ test("a failed mark paid names the marking, not a save", async () => {
 	await settle(5);
 	const banner = root.querySelector("cc-error-banner");
 	expect(banner?.message).toContain("Could not mark the payment paid.");
+	// The plan is still there, and its row stays open.
+	expect(
+		inLedger(root, '[data-item="planned"]')?.getAttribute("aria-expanded"),
+	).toBe("true");
+	expect(inLedger(root, `${shown} [data-action="mark-paid"]`)).not.toBeNull();
 });
 
 test("the Filter button counts the filters in use and the sort chip opens the sheet", async () => {
@@ -375,7 +393,9 @@ const bulk = async (repo: Repository) => {
 };
 
 const ledgerRows = (root: HTMLElement) =>
-	ledger(root).shadowRoot?.querySelectorAll(".crow[data-kind]").length;
+	ledger(root).shadowRoot?.querySelectorAll(
+		':is([data-item="purchase"], [data-item="payment"])',
+	).length;
 
 test("the ledger shows 50 rows, then 50 more a click, until all 120 show", async () => {
 	const { root } = await open("", bulk);

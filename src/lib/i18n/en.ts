@@ -573,6 +573,9 @@ export const en = {
 	"row.lines.total": "Total {amount}",
 	"row.overdue.dates": "Closed {close} · due {due}",
 	"row.left": "{amount} left",
+	"row.openList": "Open list",
+	"row.statement": "Statement {close} · due {due}",
+	"row.paidTo": "{amount} to {period}",
 	"reply.error.notWaitingSave":
 		"This list is no longer waiting for a reply, so nothing was saved.",
 	"tx.error.confirmList": "Could not save the list.",

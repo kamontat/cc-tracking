@@ -1,6 +1,7 @@
 import { afterEach, expect, test } from "bun:test";
 import "#components/cc-tx-ledger";
 import type { CcTxLedger } from "#components/cc-tx-ledger";
+import { cardLedger } from "#lib/domain/ledger";
 import { byDay, type TxEntry } from "#lib/domain/transactions";
 import type { Card, CardPayment, PurchaseList } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
@@ -63,35 +64,196 @@ const mount = async (props: Partial<CcTxLedger> = {}) => {
 const text = (root: ParentNode, selector: string) =>
 	root.querySelector(selector)?.textContent?.replace(/\s+/g, " ").trim();
 
-test("rows read direction by sign and word, and purchases link to list or card", async () => {
+/** The head of the row `id` (`buy:`, `pay:`, `plan:`, `list:` and the ids). */
+const head = (root: ParentNode, id: string) =>
+	root.querySelector<HTMLElement>(`[data-row="${id}"] button.a-hit`);
+
+/** Taps a row's head and waits for the repaint. */
+const tap = async (element: CcTxLedger, id: string) => {
+	head(element.shadowRoot as ShadowRoot, id)?.click();
+	await element.updateComplete;
+};
+
+/** The one opened details region. */
+const shown = (root: ParentNode) =>
+	root.querySelector<HTMLElement>(".a-details:not([hidden])");
+
+const lines = (root: ParentNode) =>
+	[...(shown(root)?.querySelectorAll(".a-info > *") ?? [])].map((e) =>
+		e.textContent?.replace(/\s+/g, " ").trim(),
+	);
+
+/** Card A's ledger: `old` on the October statement, `x` on November's; `p1` pays both. */
+const ledgers = () => {
+	const c = card("A");
+	const old = purchase("old", 500_00);
+	if (old.kind === "purchase") old.purchase.date = "2026-09-20";
+	const x = purchase("x", 1_000_00, "lunch");
+	const pay = payment("p1", 700_00);
+	return {
+		entries: [x, payEntry("p1", 700_00), old],
+		ledgers: new Map([
+			[
+				"A",
+				cardLedger(
+					c,
+					[old, x].map((e) => (e as TxEntry & { kind: "purchase" }).purchase),
+					[pay],
+					[],
+					"2026-10-31",
+				),
+			],
+		]),
+	};
+};
+
+test("ledger rows are buttons that open in place, never links", async () => {
 	const entries = [
 		purchase("L1-1", 1_000_00),
 		purchase("zz", 50_00, "coffee"),
 		payEntry("p1", 700_00),
 	];
 	const { root } = await mount({ entries, lists: [list("L1")] });
-	const rows = root.querySelectorAll("[data-kind]");
-	expect(rows.length).toBe(3);
-	const [a, b, c] = Array.from(rows);
-	expect(a?.tagName).toBe("A");
-	expect(a?.getAttribute("href")).toBe("/list/view?id=L1");
+	expect(root.querySelector("a.crow, .crow")).toBeNull();
+	const heads = [...root.querySelectorAll(".a-hit")];
+	expect(heads.map((h) => h.getAttribute("data-item"))).toEqual([
+		"purchase",
+		"purchase",
+		"payment",
+	]);
+	for (const h of heads) {
+		expect(h.localName).toBe("button");
+		expect(h.getAttribute("aria-expanded")).toBe("false");
+		expect(h.querySelector("a, button")).toBeNull();
+	}
+	const [a, b, c] = heads;
 	expect(text(a as Element, "[data-numeric]")).toBe("−฿1,000.00");
 	expect(a?.querySelector(".amount.out")).not.toBeNull();
 	expect(a?.textContent).toContain("Purchase");
-	expect(b?.getAttribute("href")).toBe("/card?id=A");
+	expect(a?.querySelector(".mini")).not.toBeNull();
 	expect(b?.textContent).toContain("coffee");
-	expect(c?.tagName).toBe("DIV");
 	expect(text(c as Element, "[data-numeric]")).toBe("+฿700.00");
 	expect(c?.querySelector(".amount.in")).not.toBeNull();
 	expect(c?.textContent).toContain("Payment");
+	expect(root.querySelector(".a-details:not([hidden])")).toBeNull();
 });
 
-test("a purchase named like a list link goes to the card when no such list exists", async () => {
-	const { root } = await mount({
-		entries: [purchase("L9-1", 100_00)],
+test("an opened purchase shows its note, statement and list, with Open card and Open list", async () => {
+	const { entries, ledgers: books } = ledgers();
+	const fromList = { ...list("L1"), date: "2026-10-29" as const };
+	const listed = purchase("L1-0", 300_00, "gift");
+	if (listed.kind === "purchase") listed.purchase.date = "2026-10-29";
+	const { element, root } = await mount({
+		entries: [...entries, listed],
+		lists: [fromList],
+		ledgers: books,
+	});
+	await tap(element, "buy:A:x");
+	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("true");
+	expect(lines(root)).toEqual([
+		"lunch",
+		"Statement 18 Nov 2026 · due 03 Dec 2026",
+	]);
+	const plain = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
+	expect(plain.map((b) => b.getAttribute("data-action"))).toEqual([
+		"open-card",
+	]);
+	expect(plain[0]?.localName).toBe("a");
+	expect(plain[0]?.getAttribute("data-variant")).toBe("quiet");
+	expect(plain[0]?.getAttribute("href")).toBe("/card?id=A");
+	expect(plain[0]?.textContent?.trim()).toBe("Open card");
+
+	await tap(element, "buy:A:L1-0");
+	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("false");
+	expect(lines(root)).toEqual(["gift", "From list Thu, 29 Oct"]);
+	const both = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
+	expect(both.map((b) => b.getAttribute("data-action"))).toEqual([
+		"open-card",
+		"open-list",
+	]);
+	expect(both[1]?.getAttribute("href")).toBe("/list/view?id=L1");
+	expect(both[1]?.getAttribute("data-variant")).toBe("quiet");
+	expect(both[1]?.textContent?.trim()).toBe("Open list");
+});
+
+test("a purchase named like a list id opens to its card alone when no such list exists", async () => {
+	const { element, root } = await mount({
+		entries: [purchase("L9-1", 100_00, "", card("A/1"))],
 		lists: [],
 	});
-	expect(root.querySelector("a")?.getAttribute("href")).toBe("/card?id=A");
+	await tap(element, "buy:A/1:L9-1");
+	expect(root.querySelector("[data-action=open-list]")).toBeNull();
+	expect(
+		shown(root)?.querySelector("[data-action=open-card]")?.getAttribute("href"),
+	).toBe("/card?id=A%2F1");
+	expect(root.querySelector("[data-action=delete]")).toBeNull();
+});
+
+test("an opened payment says how much went to each statement, oldest first", async () => {
+	const { entries, ledgers: books } = ledgers();
+	const { element, root } = await mount({ entries, ledgers: books });
+	await tap(element, "pay:A:p1");
+	expect(lines(root)).toEqual(["฿500.00 to Oct 2026", "฿200.00 to Nov 2026"]);
+	setLocale("th");
+	await element.updateComplete;
+	expect(lines(root)).toEqual([
+		"฿500.00 เข้ารอบบิล ต.ค. 2026",
+		"฿200.00 เข้ารอบบิล พ.ย. 2026",
+	]);
+});
+
+test("at most one row is open across Upcoming and every day panel", async () => {
+	const c = card("A");
+	const other = purchase("y", 10_00);
+	if (other.kind === "purchase") other.purchase.date = "2026-10-30";
+	const { element, root } = await mount({
+		groups: byDay([purchase("x", 100_00), other]),
+		upcoming: {
+			lists: [],
+			planned: [{ payment: payment("pl1", 900_00, "planned", c), card: c }],
+			cards: [c],
+		},
+	});
+	const expanded = () =>
+		[...root.querySelectorAll('.a-hit[aria-expanded="true"]')].map((h) =>
+			h.closest("[data-row]")?.getAttribute("data-row"),
+		);
+	await tap(element, "plan:A:pl1");
+	expect(expanded()).toEqual(["plan:A:pl1"]);
+	await tap(element, "buy:A:x");
+	expect(expanded()).toEqual(["buy:A:x"]);
+	await tap(element, "buy:A:y");
+	expect(expanded()).toEqual(["buy:A:y"]);
+	await tap(element, "buy:A:y");
+	expect(expanded()).toEqual([]);
+	expect(root.querySelectorAll("section.day .panel")).toHaveLength(2);
+});
+
+test("a half-done swap survives a repaint, ends when its row closes, and a row that goes is forgotten", async () => {
+	const entries = [payEntry("p1", 700_00), purchase("x", 10_00)];
+	const { element, root } = await mount({ entries });
+	await tap(element, "pay:A:p1");
+	(
+		root.querySelector(
+			".a-details:not([hidden]) [data-action=delete]",
+		) as HTMLElement
+	).click();
+	await element.updateComplete;
+	element.requestUpdate();
+	await element.updateComplete;
+	element.entries = [...entries];
+	await element.updateComplete;
+	expect(head(root, "pay:A:p1")?.getAttribute("aria-expanded")).toBe("true");
+	expect(root.querySelector("[data-action=confirm-delete]")).not.toBeNull();
+	await tap(element, "pay:A:p1");
+	await tap(element, "pay:A:p1");
+	expect(root.querySelector("[data-action=confirm-delete]")).toBeNull();
+	expect(shown(root)?.querySelector("[data-action=delete]")).not.toBeNull();
+	element.entries = [entries[1] as TxEntry];
+	await element.updateComplete;
+	element.entries = entries;
+	await element.updateComplete;
+	expect(head(root, "pay:A:p1")?.getAttribute("aria-expanded")).toBe("false");
 });
 
 test("archived cards are tagged", async () => {
@@ -115,7 +277,7 @@ test("day groups head with Today and a date", async () => {
 test("a flat list shows the date on each row", async () => {
 	const { root } = await mount({ entries: [purchase("x", 100_00)] });
 	expect(root.querySelector("h3")).toBeNull();
-	expect(root.querySelector("[data-kind]")?.textContent).toContain(
+	expect(root.querySelector("[data-item]")?.textContent).toContain(
 		"31 Oct 2026",
 	);
 });
@@ -140,7 +302,7 @@ test("an empty ledger names the way on", async () => {
 	expect(text(filtered.root, ".empty")).toContain("Clear the search");
 });
 
-test("a payment row shows Delete under its amount; Delete swaps in place for Delete and Cancel", async () => {
+test("a payment's Delete waits in its opened row and swaps in place for Delete and Cancel", async () => {
 	const { element, root } = await mount({
 		entries: [payEntry("p1", 700_00)],
 	});
@@ -148,9 +310,12 @@ test("a payment row shows Delete under its amount; Delete swaps in place for Del
 	element.addEventListener("delete-payment", (e) =>
 		deleted.push((e as CustomEvent).detail),
 	);
-	const right = () => root.querySelector(".pay-right") as HTMLElement;
-	expect(root.querySelector("button[data-kind=payment]")).toBeNull();
-	expect(right().querySelector(".amount")?.textContent).toBe("+฿700.00");
+	const right = () => shown(root) as HTMLElement;
+	expect(head(root, "pay:A:p1")?.querySelector(".amount")?.textContent).toBe(
+		"+฿700.00",
+	);
+	expect(right()).toBeNull();
+	await tap(element, "pay:A:p1");
 	const del = right().querySelector("[data-action=delete]") as HTMLElement;
 	expect(del.getAttribute("data-variant")).toBe("danger");
 	expect(del.textContent?.trim()).toBe("Delete");
@@ -181,12 +346,12 @@ test("a payment row shows Delete under its amount; Delete swaps in place for Del
 });
 
 test("a purchase row has no Delete", async () => {
-	const { root } = await mount({ entries: [purchase("x1", 100_00)] });
+	const { element, root } = await mount({ entries: [purchase("x1", 100_00)] });
+	await tap(element, "buy:A:x1");
 	expect(root.querySelector("[data-action=delete]")).toBeNull();
-	expect(root.querySelector(".pay-right")).toBeNull();
 });
 
-test("Upcoming uses the shared row: a waiting list with Confirm, a planned payment with Paid", async () => {
+test("Upcoming rows open in place: a waiting list with Record reply and Confirm, a plan with Paid and Delete", async () => {
 	const sent: PurchaseList = {
 		id: "w1",
 		date: "2026-10-30",
@@ -213,26 +378,34 @@ test("Upcoming uses the shared row: a waiting list with Confirm, a planned payme
 	expect(text(root, ".upcoming h2")).toBe("Upcoming");
 	// The "not counted yet" note is gone.
 	expect(root.querySelector(".upcoming .sec-head small")).toBeNull();
-	const waiting = root.querySelector('[data-row="w1"]') as HTMLElement;
-	const link = waiting.querySelector("a[data-item=waiting]");
-	expect(link?.getAttribute("href")).toBe("/list/reply?id=w1");
+	const waiting = root.querySelector('[data-row="list:w1"]') as HTMLElement;
+	expect(waiting.querySelector("a.a-hit")).toBeNull();
+	expect(head(root, "list:w1")?.getAttribute("data-item")).toBe("waiting");
 	expect(text(waiting, ".a-title")).toBe("Waiting on list for 30 Oct 2026");
 	expect(text(waiting, ".a-sub")).toBe("Card A (KC), c-[B]");
 	expect(waiting.querySelector(".tag")).toBeNull();
-	expect(text(waiting, ".a-right [data-numeric]")).toBe("−฿150.00");
-	expect(text(waiting, "[data-action=confirm-list]")).toBe("Confirm");
+	expect(text(waiting, ".a-hit [data-numeric]")).toBe("−฿150.00");
+	expect(shown(root)).toBeNull();
+	await tap(element, "list:w1");
+	expect(text(shown(root) as HTMLElement, ".a-total")).toBe("Total ฿150.00");
+	const reply = shown(root)?.querySelector("[data-action=record-reply]");
+	expect(reply?.getAttribute("href")).toBe("/list/reply?id=w1");
+	expect(reply?.textContent?.trim()).toBe("Record reply");
+	expect(text(shown(root) as HTMLElement, "[data-action=confirm-list]")).toBe(
+		"Confirm",
+	);
 
-	const row = root.querySelector('[data-row="pl1"]') as HTMLElement;
+	const row = root.querySelector('[data-row="plan:A:pl1"]') as HTMLElement;
 	expect(text(row, ".a-title")).toBe("Planned: pay Card A (KC) in 2 days");
 	expect(text(row, ".a-sub")).toBe("02 Nov 2026");
 	expect(row.querySelector(".tag")).toBeNull();
-	expect(row.querySelector(".a-right .amount.in")?.textContent).toBe(
-		"+฿900.00",
-	);
+	expect(row.querySelector(".a-hit .amount.in")?.textContent).toBe("+฿900.00");
+	expect(row.querySelector(".a-details")?.hasAttribute("hidden")).toBe(true);
+	await tap(element, "plan:A:pl1");
 	expect(text(row, "[data-action=mark-paid]")).toBe("Paid");
-	// The row is plain text: tapping it opens nothing. Delete is a danger button after Paid.
-	expect(row.querySelector("a, button.a-hit")).toBeNull();
-	const buttons = [...row.querySelectorAll(".a-btns button")];
+	// The buttons sit in the opened area, none in the head. Delete is a danger button after Paid.
+	expect(head(root, "plan:A:pl1")?.querySelector("a, button")).toBeNull();
+	const buttons = [...row.querySelectorAll(".a-details .a-btns button")];
 	expect(buttons.map((b) => b.getAttribute("data-action"))).toEqual([
 		"mark-paid",
 		"delete",
@@ -261,12 +434,15 @@ test("a planned payment's Delete swaps in place for Delete and Cancel; Cancel wr
 	element.addEventListener("delete-payment", (e) =>
 		deleted.push((e as CustomEvent).detail),
 	);
+	await tap(element, "plan:A:pl1");
 	(root.querySelector("[data-action=delete]") as HTMLElement).click();
 	await element.updateComplete;
-	// Nothing opens under the row: the same buttons swap in place.
+	// The same buttons swap in place.
 	expect(root.querySelector(".confirm")).toBeNull();
-	expect(root.querySelector("[data-row=pl1] .actions")).toBeNull();
-	const buttons = [...root.querySelectorAll("[data-row=pl1] .a-btns button")];
+	expect(root.querySelector('[data-row="plan:A:pl1"] .actions')).toBeNull();
+	const buttons = [
+		...root.querySelectorAll('[data-row="plan:A:pl1"] .a-btns button'),
+	];
 	expect(buttons.map((b) => b.getAttribute("data-action"))).toEqual([
 		"confirm-delete",
 		"cancel-delete",
@@ -298,11 +474,12 @@ test("Confirm swaps in place for Save and Cancel, and Cancel writes nothing", as
 		entries: [],
 		upcoming: { lists: [sent], planned: [], cards: [] },
 	});
-	expect(text(root, '[data-row="w1"] .a-sub')).toBe("4 cards");
+	expect(text(root, '[data-row="list:w1"] .a-sub')).toBe("4 cards");
 	const saved: unknown[] = [];
 	element.addEventListener("confirm-list", (e) =>
 		saved.push((e as CustomEvent).detail),
 	);
+	await tap(element, "list:w1");
 	(root.querySelector("[data-action=confirm-list]") as HTMLElement).click();
 	await element.updateComplete;
 	expect(saved).toEqual([]);
@@ -354,7 +531,7 @@ test("Thai words after a language switch", async () => {
 	const { element, root } = await mount({ entries: [purchase("x", 100_00)] });
 	setLocale("th");
 	await element.updateComplete;
-	expect(root.querySelector("[data-kind]")?.textContent).toContain("การซื้อ");
+	expect(root.querySelector("[data-item]")?.textContent).toContain("การซื้อ");
 });
 
 test("rows name the card in the panel form and say which list a purchase came from", async () => {
@@ -370,19 +547,21 @@ test("rows name the card in the panel form and say which list a purchase came fr
 			{ id: "g2", name: "Two", limit: 1, color: "rose" },
 		],
 	});
-	const [fromList, plain] = Array.from(root.querySelectorAll("[data-kind]"));
-	expect(fromList?.querySelector("b")?.textContent).toBe("A) Card A");
+	const [fromList, plain] = Array.from(root.querySelectorAll("[data-item]"));
+	expect(fromList?.querySelector(".card-label")?.textContent).toBe("A) Card A");
 	expect(fromList?.querySelector(".mini")?.textContent).toBe("1111");
 	expect(fromList?.querySelector(".mini")?.getAttribute("data-g")).toBe("rose");
 	expect(fromList?.textContent).toContain("From list Thu, 29 Oct");
-	expect(plain?.querySelector(".sub")).toBeNull();
+	expect(text(plain as Element, ".a-sub")).toBe("");
 	expect(root.querySelectorAll(".panel")).toHaveLength(1);
 });
 
 test("a card no longer stored keeps its id", async () => {
 	const entry = purchase("x", 10_00);
 	const { root } = await mount({ entries: [{ ...entry, card: undefined }] });
-	expect(root.querySelector("[data-kind] b")?.textContent).toBe("A) —");
+	expect(root.querySelector("[data-item] .card-label")?.textContent).toBe(
+		"A) —",
+	);
 });
 
 test("a payment's note shows on its sub line, in the ledger and under Upcoming", async () => {
@@ -404,10 +583,10 @@ test("a payment's note shows on its sub line, in the ledger and under Upcoming",
 			cards: [],
 		},
 	});
-	const rows = [...root.querySelectorAll(".crow[data-kind=payment]")];
-	expect(text(rows[0] as Element, ".sub")).toBe("From savings · 31 Oct 2026");
-	expect(text(rows[1] as Element, ".sub")).toBe("31 Oct 2026");
-	expect(text(root, '[data-row="pl1"] .a-sub')).toBe(
+	const rows = [...root.querySelectorAll("[data-item=payment]")];
+	expect(text(rows[0] as Element, ".a-sub")).toBe("From savings · 31 Oct 2026");
+	expect(text(rows[1] as Element, ".a-sub")).toBe("31 Oct 2026");
+	expect(text(root, '[data-row="plan:A:pl1"] .a-sub')).toBe(
 		"31 Oct 2026 · Salary day",
 	);
 });
@@ -416,6 +595,7 @@ test("a paid payment's Delete moves focus to the asking Delete, and Cancel moves
 	const { element, root } = await mount({
 		entries: [payEntry("p1", 700_00)],
 	});
+	await tap(element, "pay:A:p1");
 	(root.querySelector("[data-action=delete]") as HTMLElement).click();
 	await element.updateComplete;
 	expect(root.activeElement).toBe(
@@ -436,7 +616,9 @@ test("a planned payment's Delete moves focus to the asking Delete, and Cancel mo
 			cards: [c],
 		},
 	});
-	const planned = () => root.querySelector("[data-row=pl1]") as HTMLElement;
+	const planned = () =>
+		root.querySelector('[data-row="plan:A:pl1"]') as HTMLElement;
+	await tap(element, "plan:A:pl1");
 	(planned().querySelector("[data-action=delete]") as HTMLElement).click();
 	await element.updateComplete;
 	expect(root.activeElement).toBe(
@@ -462,6 +644,7 @@ test("Confirm moves focus to Save, and Cancel moves it back to Confirm", async (
 		entries: [],
 		upcoming: { lists: [sent], planned: [], cards: [] },
 	});
+	await tap(element, "list:w1");
 	(root.querySelector("[data-action=confirm-list]") as HTMLElement).click();
 	await element.updateComplete;
 	expect(root.activeElement).toBe(
@@ -484,10 +667,10 @@ test("a limit cuts the rows, keeps the day headings whole, and asks for more", a
 		});
 	const entries = [...day("2026-10-31", 3), ...day("2026-10-30", 4)];
 	const { element, root } = await mount({ groups: byDay(entries), limit: 5 });
-	expect(root.querySelectorAll(".crow[data-kind]").length).toBe(5);
+	expect(root.querySelectorAll("[data-row] > .a-row").length).toBe(5);
 	const days = [...root.querySelectorAll("section.day")];
 	expect(days.length).toBe(2);
-	expect(days[1]?.querySelectorAll(".crow").length).toBe(2);
+	expect(days[1]?.querySelectorAll(".a-wrap").length).toBe(2);
 	const more = root.querySelector('[data-action="show-more"]') as HTMLElement;
 	expect(more.textContent?.trim()).toBe("Show 2 more");
 	let asked = 0;
@@ -496,14 +679,14 @@ test("a limit cuts the rows, keeps the day headings whole, and asks for more", a
 	expect(asked).toBe(1);
 	element.limit = 50;
 	await element.updateComplete;
-	expect(root.querySelectorAll(".crow[data-kind]").length).toBe(7);
+	expect(root.querySelectorAll("[data-row] > .a-row").length).toBe(7);
 	expect(root.querySelector('[data-action="show-more"]')).toBeNull();
 	setLocale("th");
 	element.limit = 1;
 	element.entries = entries;
 	element.groups = null;
 	await element.updateComplete;
-	expect(root.querySelectorAll(".crow[data-kind]").length).toBe(1);
+	expect(root.querySelectorAll("[data-row] > .a-row").length).toBe(1);
 	expect(
 		root.querySelector('[data-action="show-more"]')?.textContent?.trim(),
 	).toBe("แสดงเพิ่มอีก 6 รายการ");

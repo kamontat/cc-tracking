@@ -52,6 +52,13 @@ export class TwoStepController implements ReactiveController {
 		button?.focus();
 	}
 
+	/** Ends any half-done swap: its row closed or went (`useOpenRow`'s `onChange`). */
+	reset(): void {
+		this.plan = null;
+		this.list = null;
+		this.refocus = null;
+	}
+
 	/** Swaps a row's buttons, then focuses the button `action` of row `id` in the new set. */
 	private swap(change: () => void, action: string, id: string) {
 		this.refocus = { action, id };
