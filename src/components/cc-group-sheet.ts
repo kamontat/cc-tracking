@@ -14,6 +14,7 @@ import type { LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
+import { icons } from "#lib/ui/icons";
 import { base, controls, groupInk } from "#styles/shared";
 
 /**
@@ -80,22 +81,33 @@ export class CcGroupSheet extends LitElement {
 
 			.swatches {
 				display: flex;
+				flex-direction: row;
 				flex-wrap: wrap;
 				gap: var(--cc-space-2);
 				align-items: center;
 			}
 
+			.swatches button {
+				align-self: center;
+			}
+
 			.swatches button[data-color] {
+				display: inline-grid;
+				place-items: center;
 				inline-size: calc(2 * var(--cc-space-4));
 				block-size: calc(2 * var(--cc-space-4));
 				padding: 0;
+				color: var(--g-fg);
 				background: var(--g-bg);
-				border: var(--cc-space-1) solid transparent;
+				border: var(--cc-border-width) solid
+					color-mix(in oklab, var(--g-fg) 35%, transparent);
 				border-radius: 50%;
 			}
 
 			.swatches button[data-color][aria-pressed="true"] {
-				border-color: var(--g-fg);
+				box-shadow:
+					0 0 0 var(--cc-rule-width) var(--cc-surface),
+					0 0 0 calc(2 * var(--cc-rule-width)) var(--g-fg);
 			}
 
 			input {
@@ -295,7 +307,7 @@ export class CcGroupSheet extends LitElement {
 								aria-pressed=${this.color === color ? "true" : "false"}
 								@click=${() => {
 									this.color = color;
-								}}></button>`,
+								}}>${this.color === color ? icons.check : nothing}</button>`,
 						)}
 						<button type="button" data-variant="quiet" data-action="random-color"
 							@click=${() => {

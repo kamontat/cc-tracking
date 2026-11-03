@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import "#components/cc-group-sheet";
-import type { CcGroupSheet } from "#components/cc-group-sheet";
+import { CcGroupSheet } from "#components/cc-group-sheet";
 import { GROUP_COLORS, type GroupColor } from "#lib/domain/group-color";
 import type { LimitGroup } from "#lib/domain/types";
 import { setLocale, t } from "#lib/i18n/index";
@@ -282,4 +282,35 @@ test("each swatch is named by its colour, in the language of the page", async ()
 			?.getAttribute("aria-label"),
 	).toBe(t("color.teal"));
 	expect(t("color.teal")).not.toBe("Teal");
+});
+
+test("a chosen colour survives a fresh copy of the same group", async () => {
+	const { element, root } = await mount({
+		group: { ...scb, color: "rose" },
+		groups: [{ ...scb, color: "rose" }],
+	});
+	await click(element, '.swatches [data-color="teal"]');
+	element.group = { ...scb, color: "rose" };
+	element.groups = [{ ...scb, color: "rose" }, withColor("g2", "blue")];
+	await element.updateComplete;
+	expect(pressed(root)).toEqual(["teal"]);
+});
+
+test("the swatches lay out as a wrapping row with a visible edge", () => {
+	const css = (CcGroupSheet.styles as unknown[])
+		.flat(Infinity)
+		.map((s) => (s as { cssText: string }).cssText)
+		.join("\n");
+	const rule = css.match(/\.swatches\s*\{[^}]*\}/)?.[0] ?? "";
+	expect(rule).toMatch(/flex-direction:\s*row/);
+	expect(rule).toMatch(/flex-wrap:\s*wrap/);
+	expect(css).toMatch(
+		/button\[data-color\]\s*\{[^}]*var\(--cc-border-width\)[^}]*color-mix/,
+	);
+});
+
+test("the pressed swatch carries a check mark", async () => {
+	const { root } = await mount({ group: { ...scb, color: "rose" } });
+	expect(root.querySelectorAll(".swatches svg")).toHaveLength(1);
+	expect(root.querySelector('[data-color="rose"] svg')).not.toBeNull();
 });
