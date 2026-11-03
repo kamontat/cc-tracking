@@ -11,6 +11,7 @@ import { type FilterPill, filterControls } from "#components/list-controls";
 import { displayDate, monthName, today } from "#lib/domain/date";
 import { formatAmount, MINUS } from "#lib/domain/money";
 import { plannedOf } from "#lib/domain/pay";
+import { groupRoom } from "#lib/domain/room";
 import {
 	byDay,
 	filterEntries,
@@ -288,6 +289,14 @@ export function renderTransactionsPage(
 								<cc-owed-list
 									.rows=${owedRows(d.cards, d.ledgers, now, view.owedSort)}
 									.groups=${d.groups}
+									.rooms=${new Map(
+										d.groups.map((group) => [
+											group.id,
+											groupRoom(group, d.cards, d.ledgers, d.lists, ""),
+										]),
+									)}
+									.ledgers=${d.ledgers}
+									.today=${now}
 									.sort=${view.owedSort}
 									@sort=${(e: CustomEvent<{ sort: TxView["owedSort"] }>) => change({ owedSort: e.detail.sort })}
 								></cc-owed-list>

@@ -221,6 +221,20 @@ test("Owed rows lead to the payment sheet on the card", async () => {
 	).toBe("/pay?card=A");
 });
 
+test("Owed tiles get each group's room, the ledgers and today", async () => {
+	const { root } = await open("?view=owed");
+	const owed = root.querySelector("cc-owed-list") as CcOwedList;
+	await owed.updateComplete;
+	expect(owed.today).toBe("2026-10-31");
+	expect(owed.ledgers.has("A")).toBe(true);
+	expect(owed.rooms.get("g1")?.group.id).toBe("g1");
+	expect(
+		owed.shadowRoot
+			?.querySelector('a.tile[data-card="A"] .rail')
+			?.getAttribute("aria-label"),
+	).toMatch(/of the limit used$/);
+});
+
 test("Mark paid moves a plan into the ledger and lowers owed", async () => {
 	const { root, repo } = await open();
 	const owedBefore = (

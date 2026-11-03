@@ -1,44 +1,18 @@
 import { css, html, LitElement, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
-import { displayDate, today } from "#lib/domain/date";
-import { formatAmount } from "#lib/domain/money";
+import { today } from "#lib/domain/date";
 import { matchesCard, type PayChoice } from "#lib/domain/pay";
 import type { GroupRoom } from "#lib/domain/room";
-import { openPeriod } from "#lib/domain/statement";
 import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
-import { cardName } from "#lib/ui/card-label";
+import { t } from "#lib/i18n/index";
 import { icons } from "#lib/ui/icons";
-import { payTag } from "#lib/ui/pay-tag";
 import { base, controls } from "#styles/shared";
-import {
-	cardTileStyles,
-	lastFour,
-	type TileContent,
-	tileBody,
-	tileTone,
-} from "./card-tile";
+import { cardTileStyles, tileTone } from "./card-tile";
+import { payTileBody, payTileName } from "./pay-tile";
 
 /** The card a row asks to pay. */
 export type PickDetail = { cardId: string };
-
-/** Line 2: what is owed, else the credit, else nothing owed (the pay tag's words). */
-function owedFigure(choice: PayChoice): NonNullable<TileContent["figure"]> {
-	if (choice.owed > 0)
-		return { amount: formatAmount(choice.owed), word: t("pay.owedUnder") };
-	return { word: payTag(choice)?.text ?? t("pay.tag.nothing") };
-}
-
-/** Line 2's aside: how late or how soon the bill is due; nothing for credit or nothing owed. */
-function urgency(choice: PayChoice): Pick<TileContent, "aside" | "asideTone"> {
-	const tag = payTag(choice);
-	if (!tag || tag.urgency === "credit" || tag.urgency === "none") return {};
-	if (tag.urgency === "overdue") return { aside: tag.text, asideTone: "bad" };
-	if (tag.urgency === "soon") return { aside: tag.text, asideTone: "warn" };
-	return { aside: tag.text };
-}
 
 /**
  * The payment sheet's first step: every card a payment can go to, most pressing first, with a
@@ -116,46 +90,11 @@ export class CcPayPicker extends LitElement {
 		);
 	}
 
-	/**
-	 * Line 3: the bill the payment goes to -- the oldest closed one with money left -- or, with
-	 * none, when the open statement closes and is due, as Cards says it. The ledger's open
-	 * statement honours kept dates; the cycle only fills in without one.
-	 */
-	private facts(choice: PayChoice): string {
-		const locale = getLocale();
-		if (choice.bill)
-			return t("pay.tile.bill", {
-				date: displayDate(choice.bill.closeDate, locale),
-				amount: formatAmount(choice.bill.remaining),
-			});
-		const { card } = choice;
-		const period = openPeriod(card, this.today);
-		const kept = this.ledgers.get(card.id)?.statements.find((s) => s.open);
-		return t("cards.page.dates", {
-			close: displayDate(
-				kept?.closeDate ?? closeDateOf(card.cycle, period),
-				locale,
-			),
-			due: displayDate(kept?.dueDate ?? dueDateOf(card.cycle, period), locale),
-		});
-	}
-
 	private tile(choice: PayChoice): TemplateResult {
 		const { card } = choice;
-		const group = card.limitGroupId;
 		return html`<button type="button" class="tile" data-g=${tileTone(card, this.groups)}
-			data-card=${card.id}
-			aria-label=${t("pay.pickName", { card: cardName(card.id, card), amount: formatAmount(choice.owed) })}
-			@click=${() => this.pick(card.id)}>${tileBody({
-				card,
-				room: (group && this.rooms.get(group)) || null,
-				credit: choice.credit,
-				corner: lastFour(card),
-				mono: true,
-				figure: owedFigure(choice),
-				...urgency(choice),
-				facts: this.facts(choice),
-			})}</button>`;
+			data-card=${card.id} aria-label=${payTileName(choice)}
+			@click=${() => this.pick(card.id)}>${payTileBody(choice, this)}</button>`;
 	}
 
 	override render() {

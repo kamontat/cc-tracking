@@ -88,12 +88,7 @@ const BLEED =
 	/calc\(var\(--cc-space-4\) \* -1\) 0 0 var\(--cc-surface-sunken\),\s*var\(--cc-space-4\) 0 0 var\(--cc-surface-sunken\)/;
 
 test("every row list's hover reaches the panel's edges and keeps its badge", () => {
-	for (const tag of [
-		"cc-needs-you",
-		"cc-tx-ledger",
-		"cc-owed-list",
-		"cc-list-index",
-	]) {
+	for (const tag of ["cc-needs-you", "cc-tx-ledger", "cc-list-index"]) {
 		const text = stylesOf(tag);
 		const grounds = hoverRules(text).filter(({ body }) =>
 			body.includes("background: var(--cc-surface-sunken)"),
@@ -111,7 +106,7 @@ test("every row list's hover reaches the panel's edges and keeps its badge", () 
 	}
 });
 
-// DD-151, DD-166: a card tile (the payment picker's too) hovers by deepening its edge in its own colour, never an underline, and
+// DD-151, DD-166: a card tile (the payment picker's and Owed's too) hovers by deepening its edge in its own colour, never an underline, and
 // keeps its focus ring.
 test("card tiles hover without an underline and keep a focus ring", () => {
 	for (const tag of [
@@ -119,6 +114,7 @@ test("card tiles hover without an underline and keep a focus ring", () => {
 		"cc-ready-picker",
 		"cc-cards-list",
 		"cc-pay-picker",
+		"cc-owed-list",
 	]) {
 		const text = stylesOf(tag);
 		const rules = hoverRules(text).filter(({ selector }) =>
