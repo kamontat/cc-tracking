@@ -138,7 +138,7 @@ test("ledger rows are buttons that open in place, never links", async () => {
 	expect(root.querySelector(".a-details:not([hidden])")).toBeNull();
 });
 
-test("an opened purchase shows its note, statement and list, with Open card and Open list", async () => {
+test("an opened purchase shows its statement and list, with Open card and Open list", async () => {
 	const { entries, ledgers: books } = ledgers();
 	const fromList = { ...list("L1"), date: "2026-10-29" as const };
 	const listed = purchase("L1-0", 300_00, "gift");
@@ -150,10 +150,7 @@ test("an opened purchase shows its note, statement and list, with Open card and 
 	});
 	await tap(element, "buy:A:x");
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("true");
-	expect(lines(root)).toEqual([
-		"lunch",
-		"Statement 18 Nov 2026 · due 03 Dec 2026",
-	]);
+	expect(lines(root)).toEqual(["Statement 18 Nov 2026 · due 03 Dec 2026"]);
 	const plain = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
 	expect(plain.map((b) => b.getAttribute("data-action"))).toEqual([
 		"open-card",
@@ -165,7 +162,7 @@ test("an opened purchase shows its note, statement and list, with Open card and 
 
 	await tap(element, "buy:A:L1-0");
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("false");
-	expect(lines(root)).toEqual(["gift", "From list Thu, 29 Oct"]);
+	expect(lines(root)).toEqual(["From list Thu, 29 Oct"]);
 	const both = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
 	expect(both.map((b) => b.getAttribute("data-action"))).toEqual([
 		"open-card",
@@ -690,4 +687,42 @@ test("a limit cuts the rows, keeps the day headings whole, and asks for more", a
 	expect(
 		root.querySelector('[data-action="show-more"]')?.textContent?.trim(),
 	).toBe("แสดงเพิ่มอีก 6 รายการ");
+});
+
+/** How many times `word` appears in the row `id`, head and details together. */
+const times = (root: ParentNode, id: string, word: string) =>
+	(root.querySelector(`[data-row="${id}"]`)?.textContent ?? "").split(word)
+		.length - 1;
+
+test("an opened row says its note once, on its sub line", async () => {
+	const c = card("A");
+	const paid: TxEntry = {
+		kind: "payment",
+		payment: { ...payment("p1", 700_00, "paid", c), note: "From savings" },
+		card: c,
+	};
+	const { element, root } = await mount({
+		entries: [purchase("x", 100_00, "p3"), paid],
+		upcoming: {
+			lists: [],
+			planned: [
+				{
+					payment: {
+						...payment("pl1", 900_00, "planned", c),
+						note: "Salary day",
+					},
+					card: c,
+				},
+			],
+			cards: [c],
+		},
+	});
+	await tap(element, "buy:A:x");
+	expect(times(root, "buy:A:x", "p3")).toBe(1);
+	await tap(element, "pay:A:p1");
+	expect(times(root, "pay:A:p1", "From savings")).toBe(1);
+	await tap(element, "plan:A:pl1");
+	expect(times(root, "plan:A:pl1", "Salary day")).toBe(1);
+	// Nothing else to say: no empty details block.
+	expect(shown(root)?.querySelector(".a-info")).toBeNull();
 });

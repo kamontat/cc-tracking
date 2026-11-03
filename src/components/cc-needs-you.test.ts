@@ -584,3 +584,15 @@ test("a half-done swap ends when its row closes, when another opens, or when its
 	await open(element, '[data-item="planned"]');
 	expect(root.querySelector("[data-action=confirm-delete]")).toBeNull();
 });
+
+test("a Needs you plan says its note once, in its details", async () => {
+	const item = planned("2026-11-02") as NeedsItem & { kind: "planned" };
+	const noted = { ...item, payment: { ...item.payment, note: "Salary day" } };
+	const { element, root } = await mountEl([noted]);
+	await open(element, '[data-item="planned"]');
+	const row = root.querySelector("[data-row]")?.textContent ?? "";
+	expect(row.split("Salary day").length - 1).toBe(1);
+	expect(
+		root.querySelector(".a-details:not([hidden]) .a-info")?.textContent,
+	).toContain("Salary day");
+});

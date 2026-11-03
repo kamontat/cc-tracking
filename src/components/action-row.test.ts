@@ -230,3 +230,9 @@ test("a hovered opening head keeps a neutral tag on the surface; no payment-only
 	expect(css).not.toContain(".pay-right");
 	expect(css).not.toMatch(/\.a-right > button/);
 });
+
+test("details with no lines leave no gap", () => {
+	expect(actionRowStyles.cssText).toMatch(
+		/\.a-info:empty\s*\{\s*display: none/,
+	);
+});

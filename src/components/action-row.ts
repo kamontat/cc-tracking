@@ -446,6 +446,11 @@ export const actionRowStyles = css`
 		overflow-wrap: anywhere;
 	}
 
+	/* Details with no lines (a payment that reached no statement) leave no gap. */
+	.a-info:empty {
+		display: none;
+	}
+
 	.a-ic {
 		display: grid;
 		place-items: center;

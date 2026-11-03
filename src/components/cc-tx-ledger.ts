@@ -222,7 +222,8 @@ export class CcTxLedger extends LitElement {
 		});
 	}
 
-	/** A purchase's details: its note, its statement's dates, and the list it came from. */
+	/** A purchase's details: its statement's dates and the list it came from. The note is on the
+	 * row's sub line already, so it is not said twice. */
 	private purchaseDetails(
 		entry: TxEntry & { kind: "purchase" },
 		list: PurchaseList | undefined,
@@ -232,7 +233,7 @@ export class CcTxLedger extends LitElement {
 		const statement = this.ledgers
 			.get(purchase.cardId)
 			?.statements.find((s) => s.purchases.some((p) => p.id === purchase.id));
-		return html`${purchase.note ? html`<span>${purchase.note}</span>` : nothing}${
+		return html`${
 			statement
 				? html`<span>${t("row.statement", {
 						close: date(statement.closeDate),
@@ -248,7 +249,8 @@ export class CcTxLedger extends LitElement {
 		}`;
 	}
 
-	/** A paid payment's details: its note, then how much reached each statement, oldest first. */
+	/** A paid payment's details: how much reached each statement, oldest first (its note is on
+	 * the sub line). */
 	private paymentDetails(payment: CardPayment) {
 		const parts = new Map<Period, number>();
 		const statements = this.ledgers.get(payment.cardId)?.statements ?? [];
@@ -262,9 +264,7 @@ export class CcTxLedger extends LitElement {
 						statement.period,
 						(parts.get(statement.period) ?? 0) + part.amount,
 					);
-		return html`${payment.note ? html`<span>${payment.note}</span>` : nothing}${[
-			...parts,
-		].map(
+		return html`${[...parts].map(
 			([period, amount]) =>
 				html`<span>${t("row.paidTo", {
 					amount: formatAmount(amount),
@@ -355,7 +355,8 @@ export class CcTxLedger extends LitElement {
 						planId(payment),
 						plannedText(payment, card, this.limitGroups, this.today, true),
 						{ text: `+${formatAmount(payment.amount)}`, tone: "in" },
-						payment.note ? html`<span>${payment.note}</span>` : nothing,
+						// The note is on the sub line already (`plannedText`).
+						nothing,
 						this.steps.planButtons(payment, card, {
 							paid: () => this.emit("mark-paid", { payment }),
 							remove: () => this.emit("delete-payment", { payment }),
