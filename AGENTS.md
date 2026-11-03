@@ -121,6 +121,18 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
   variant. Don't invent a fourth.
 - Never key a CSS selector off translated text -- the interface ships in English and Thai. Use
   classes or locale-invariant attributes instead.
+- Every list is one of two kinds, and a list that is neither is a bug. A **row list** is one
+  panel with a line between the rows: `rowPanel` (`src/styles/shared.ts`) in a shadow component,
+  the light-DOM `.row-panel` (`app.css`) elsewhere. A **card list** is one standalone panel per
+  item: `card-tile.ts`, the limit group panels (`.gpanel`), the purchase list's per-card sections
+  (`lineCards`). Don't write a local copy of either look.
+- A row that opens in place is `actionRow` with `open` (`src/components/action-row.ts`); never
+  build another. Its head is one `<button type="button">` with `aria-expanded` and `aria-controls`
+  and nothing interactive inside; the buttons go in `action` as bare buttons (a page is an
+  `a.btn`) and show in the details region, `hidden` when closed. One row is open per component:
+  use `useOpenRow` (which also resets a `useTwoStep` swap when its row closes). The two-step
+  *Delete* and *Confirm* are `useTwoStep` (`two-step.ts`). Namespace a row's id by kind and card
+  (`plan:<card>:<id>`, `list:<id>`), since a payment's id repeats across cards.
 - `#styles/*` maps to `.ts` only, so the route modules import `tokens.css` and `app.css` by
   relative path, not through the alias.
 
