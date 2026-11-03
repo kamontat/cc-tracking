@@ -249,6 +249,8 @@ export function renderPayPage(
 					.choices=${payChoices(data.cards, data.ledgers, now)}
 					.groups=${data.groups}
 					.rooms=${rooms}
+					.ledgers=${data.ledgers}
+					.today=${now}
 					.total=${data.cards.length}
 					@pick=${(event: CustomEvent<PickDetail>) => {
 						forget();

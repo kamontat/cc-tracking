@@ -60,8 +60,6 @@ export const th: Catalog = {
 	"pay.owedUnder": "ค้าง",
 	"pay.pickName": "{card} ค้าง {amount}",
 	"pay.tile.bill": "บิลปิด {date} · เหลือ {amount}",
-	"pay.tile.noBill": "ไม่มีบิลให้ชำระ",
-	"pay.tile.soFar": "รอบบิลนี้ถึงตอนนี้ {amount}",
 	"pay.dateHint": "วันไหนของเดือนก็ได้ ถ้าเป็นวันหลังจากวันนี้จะบันทึกเป็นแผน",
 	"pay.date": "วันที่",
 	"pay.noteLabel": "หมายเหตุ (ไม่บังคับ)",

@@ -147,10 +147,19 @@ test("the picker's tiles get each group's room, so a tile's rail shows its used 
 	const rooms = picker()?.rooms;
 	expect(rooms?.get("g1")?.used).toBe(10_000_00);
 	expect(rooms?.get("g1")?.room).toBe(90_000_00);
-	const [first] = await pickerRows();
+	const [first, second] = await pickerRows();
 	expect(first?.classList.contains("tile")).toBe(true);
 	expect(first?.querySelector(".rail")?.getAttribute("aria-label")).toBe(
 		"10% of the limit used",
+	);
+	expect(flatText(first?.querySelector(".facts") ?? null)).toMatch(
+		/^Bill closed 25 Sep 2026 · ฿10,000.00 left$/,
+	);
+	// B has no bill: its last line says when the open statement closes and is due.
+	expect(picker()?.today).toBe("2026-10-31");
+	expect(picker()?.ledgers.get("A")?.owed).toBe(10_000_00);
+	expect(flatText(second?.querySelector(".facts") ?? null)).toBe(
+		"closes 25 Nov 2026 · due 15 Dec 2026",
 	);
 });
 

@@ -52,8 +52,6 @@ export const en = {
 	"pay.owedUnder": "owed",
 	"pay.pickName": "{card}, {amount} owed",
 	"pay.tile.bill": "Bill closed {date} · {amount} left",
-	"pay.tile.noBill": "No bill to pay",
-	"pay.tile.soFar": "Statement so far {amount}",
 	"pay.dateHint": "Any day of the month. A later date saves it as a plan.",
 	"pay.date": "Date",
 	"pay.noteLabel": "Note (optional)",

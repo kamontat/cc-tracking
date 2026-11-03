@@ -176,8 +176,28 @@ test("line 2 says what is owed, or the credit, or nothing owed; the aside the ur
 	expect(el.shadowRoot?.textContent).not.toContain("No limit group");
 });
 
-test("line 3 is the bill the payment goes to", async () => {
+test("line 3 is the bill the payment goes to, else when the open statement closes and is due", async () => {
 	const el = await tiles();
+	el.today = "2026-11-04";
+	// F's open statement keeps its own dates; the others fall back to the card's cycle.
+	el.ledgers = new Map([
+		[
+			"F",
+			{
+				statements: [
+					{
+						...bill("2026-12-08"),
+						period: "2026-11",
+						cardId: "F",
+						closeDate: "2026-11-18",
+						open: true,
+					},
+				],
+				owed: 300_00,
+				credit: 0,
+			},
+		],
+	]) as unknown as CcPayPicker["ledgers"];
 	el.choices = [
 		...choices(),
 		{
@@ -192,9 +212,10 @@ test("line 3 is the bill the payment goes to", async () => {
 	await el.updateComplete;
 	const facts = (i: number) => flat(rows(el)[i]?.querySelector(".facts"));
 	expect(facts(0)).toBe("Bill closed 25 Sep 2026 · ฿120.00 left");
-	expect(facts(3)).toBe("No bill to pay");
-	expect(facts(4)).toBe("No bill to pay");
-	expect(facts(5)).toBe("Statement so far ฿300.00");
+	expect(facts(3)).toBe("closes 25 Nov 2026 · due 15 Dec 2026");
+	expect(facts(4)).toBe("closes 25 Nov 2026 · due 15 Dec 2026");
+	expect(facts(5)).toBe("closes 18 Nov 2026 · due 08 Dec 2026");
+	expect(el.shadowRoot?.textContent).not.toContain("so far");
 });
 
 test("the rail shows the group's used share; a card with no group has none", async () => {

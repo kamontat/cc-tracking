@@ -1,10 +1,12 @@
 import { css, html, LitElement, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import { displayDate } from "#lib/domain/date";
+import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
+import { displayDate, today } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { matchesCard, type PayChoice } from "#lib/domain/pay";
 import type { GroupRoom } from "#lib/domain/room";
-import type { LimitGroup } from "#lib/domain/types";
+import { openPeriod } from "#lib/domain/statement";
+import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
 import { cardName } from "#lib/ui/card-label";
@@ -36,21 +38,6 @@ function urgency(choice: PayChoice): Pick<TileContent, "aside" | "asideTone"> {
 	if (tag.urgency === "overdue") return { aside: tag.text, asideTone: "bad" };
 	if (tag.urgency === "soon") return { aside: tag.text, asideTone: "warn" };
 	return { aside: tag.text };
-}
-
-/**
- * Line 3: the bill the payment goes to -- the oldest closed one with money left -- or, with
- * none, what the statements not yet closed hold, or that there is no bill.
- */
-function billFacts(choice: PayChoice): string {
-	if (choice.bill)
-		return t("pay.tile.bill", {
-			date: displayDate(choice.bill.closeDate, getLocale()),
-			amount: formatAmount(choice.bill.remaining),
-		});
-	if (choice.owed > 0)
-		return t("pay.tile.soFar", { amount: formatAmount(choice.owed) });
-	return t("pay.tile.noBill");
 }
 
 /**
@@ -110,6 +97,10 @@ export class CcPayPicker extends LitElement {
 	@property({ attribute: false }) groups: LimitGroup[] = [];
 	/** Each group's room, by group id: a tile's rail shows its group's used share. */
 	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
+	/** Each card's ledger, by card id: its open statement holds the dates line 3 shows. */
+	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
+	/** Today, which picks a card's open period when its ledger has no open statement. */
+	@property() today: PlainDate = today(new Date());
 	/** How many cards are stored, to tell "none yet" from "only archived, paid off". */
 	@property({ type: Number }) total = 0;
 	@state() private query = "";
@@ -123,6 +114,30 @@ export class CcPayPicker extends LitElement {
 		this.dispatchEvent(
 			new CustomEvent<PickDetail>("pick", { detail: { cardId } }),
 		);
+	}
+
+	/**
+	 * Line 3: the bill the payment goes to -- the oldest closed one with money left -- or, with
+	 * none, when the open statement closes and is due, as Cards says it. The ledger's open
+	 * statement honours kept dates; the cycle only fills in without one.
+	 */
+	private facts(choice: PayChoice): string {
+		const locale = getLocale();
+		if (choice.bill)
+			return t("pay.tile.bill", {
+				date: displayDate(choice.bill.closeDate, locale),
+				amount: formatAmount(choice.bill.remaining),
+			});
+		const { card } = choice;
+		const period = openPeriod(card, this.today);
+		const kept = this.ledgers.get(card.id)?.statements.find((s) => s.open);
+		return t("cards.page.dates", {
+			close: displayDate(
+				kept?.closeDate ?? closeDateOf(card.cycle, period),
+				locale,
+			),
+			due: displayDate(kept?.dueDate ?? dueDateOf(card.cycle, period), locale),
+		});
 	}
 
 	private tile(choice: PayChoice): TemplateResult {
@@ -139,7 +154,7 @@ export class CcPayPicker extends LitElement {
 				mono: true,
 				figure: owedFigure(choice),
 				...urgency(choice),
-				facts: billFacts(choice),
+				facts: this.facts(choice),
 			})}</button>`;
 	}
 
