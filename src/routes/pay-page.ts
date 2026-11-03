@@ -8,6 +8,7 @@ import type { PickDetail } from "#components/cc-pay-picker";
 import { today } from "#lib/domain/date";
 import { formatAmountInput } from "#lib/domain/money";
 import { payChoices, payFigures } from "#lib/domain/pay";
+import { type GroupRoom, groupRoom } from "#lib/domain/room";
 import type { CardPayment } from "#lib/domain/types";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
@@ -82,6 +83,8 @@ export function renderPayPage(
 	markPayPage(root);
 
 	let data: MoneyData | null = null;
+	// Each group's room, by group id, for the picker's rails: as Cards counts it.
+	let rooms = new Map<string, GroupRoom>();
 	let busy = false;
 	// A failed save's reason shows in the sheet it failed in, and goes when that sheet closes.
 	let saveFailed = false;
@@ -100,7 +103,14 @@ export function renderPayPage(
 
 	const state = createPageState({
 		fetch: async () => {
-			data = await loadMoneyData(repo, now);
+			const money = await loadMoneyData(repo, now);
+			rooms = new Map(
+				money.groups.map((group) => [
+					group.id,
+					groupRoom(group, money.cards, money.ledgers, money.lists, ""),
+				]),
+			);
+			data = money;
 		},
 		fallbackKey: "pay.error.read",
 		paint: () => paint(),
@@ -238,6 +248,7 @@ export function renderPayPage(
 				<cc-pay-picker
 					.choices=${payChoices(data.cards, data.ledgers, now)}
 					.groups=${data.groups}
+					.rooms=${rooms}
 					.total=${data.cards.length}
 					@pick=${(event: CustomEvent<PickDetail>) => {
 						forget();

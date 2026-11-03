@@ -37,8 +37,8 @@ test("the row panel's rows hover with a ground and keep a focus ring", () => {
 	);
 });
 
-test("Needs you, the payment picker and the ledger never underline a row on hover", () => {
-	for (const tag of ["cc-needs-you", "cc-pay-picker", "cc-tx-ledger"]) {
+test("Needs you and the ledger never underline a row on hover", () => {
+	for (const tag of ["cc-needs-you", "cc-tx-ledger"]) {
 		const rows = hoverRules(stylesOf(tag)).filter(
 			({ selector }) =>
 				selector?.includes(".item") ||
@@ -90,7 +90,6 @@ const BLEED =
 test("every row list's hover reaches the panel's edges and keeps its badge", () => {
 	for (const tag of [
 		"cc-needs-you",
-		"cc-pay-picker",
 		"cc-tx-ledger",
 		"cc-owed-list",
 		"cc-list-index",
@@ -112,10 +111,15 @@ test("every row list's hover reaches the panel's edges and keeps its badge", () 
 	}
 });
 
-// DD-151: a card tile hovers by deepening its edge in its own colour, never an underline, and
+// DD-151, DD-166: a card tile (the payment picker's too) hovers by deepening its edge in its own colour, never an underline, and
 // keeps its focus ring.
 test("card tiles hover without an underline and keep a focus ring", () => {
-	for (const tag of ["cc-ready-panel", "cc-ready-picker", "cc-cards-list"]) {
+	for (const tag of [
+		"cc-ready-panel",
+		"cc-ready-picker",
+		"cc-cards-list",
+		"cc-pay-picker",
+	]) {
 		const text = stylesOf(tag);
 		const rules = hoverRules(text).filter(({ selector }) =>
 			selector?.includes(".tile"),
@@ -161,6 +165,4 @@ test("a row panel's divider follows the row resets and out-ranks them", () => {
 	expect(after).toMatch(
 		/^[^}]*border-top: var\(--cc-border-width\) solid var\(--cc-border\)/,
 	);
-	const picker = stylesOf("cc-pay-picker");
-	expect(picker).not.toMatch(/button\[data-card\] \+/);
 });

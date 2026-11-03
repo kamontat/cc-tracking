@@ -142,6 +142,18 @@ test("/pay is the card picker under a sub-header, with no sheet, and hides the P
 	expect(css).toMatch(/:root\[data-pay-page\] \.fab-menu,/);
 });
 
+test("the picker's tiles get each group's room, so a tile's rail shows its used share", async () => {
+	await setup("/pay", withStatement);
+	const rooms = picker()?.rooms;
+	expect(rooms?.get("g1")?.used).toBe(10_000_00);
+	expect(rooms?.get("g1")?.room).toBe(90_000_00);
+	const [first] = await pickerRows();
+	expect(first?.classList.contains("tile")).toBe(true);
+	expect(first?.querySelector(".rail")?.getAttribute("aria-label")).toBe(
+		"10% of the limit used",
+	);
+});
+
 test("/pay?card= opens the sheet over the picker, the amount prefilled from the address", async () => {
 	await setup("/pay?card=A&amount=12050", withStatement);
 	expect(picker()).not.toBeNull();

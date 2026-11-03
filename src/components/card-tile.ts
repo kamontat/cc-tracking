@@ -24,6 +24,13 @@ export type TileContent = {
 	mono?: boolean;
 	/** Line 2, at the right. Left out, the room has the line to itself. */
 	aside?: string;
+	/** The aside's colour: `bad` red, `warn` amber; left out, muted. */
+	asideTone?: "bad" | "warn";
+	/**
+	 * The payment picker: line 2's own figure and word (what is owed) in place of the room, with
+	 * or without a group; the rail still comes from `room`.
+	 */
+	figure?: { amount?: string; word?: string };
 	/** Line 3, muted: `closes … · due …`. Left out on Home. */
 	facts?: string;
 	/** Home and the picker: plain room needs no word; credit, `N% used` and *over limit* still show. */
@@ -51,8 +58,8 @@ export function tileBody(content: TileContent): TemplateResult {
 	const { card, room } = content;
 	return html`<span class="name">${content.lead ?? nothing}<span class="label"><span class="id">${card.id})</span> ${card.name}</span></span>
 		<span class="corner" ?data-mono=${content.mono}>${content.corner}</span>
-		${room ? roomLine(content, room) : html`<span class="room"><small>${t("cards.page.noGroup")}</small></span>`}
-		${content.aside === undefined ? nothing : html`<span class="aside">${content.aside}</span>`}
+		${content.figure ? figureLine(content.figure) : room ? roomLine(content, room) : html`<span class="room"><small>${t("cards.page.noGroup")}</small></span>`}
+		${content.aside === undefined ? nothing : html`<span class="aside" data-tone=${content.asideTone ?? nothing}>${content.aside}</span>`}
 		${content.facts === undefined ? nothing : html`<span class="facts">${content.facts}</span>`}
 		${room ? rail(room) : nothing}`;
 }
@@ -64,6 +71,15 @@ function roomLine(content: TileContent, room: GroupRoom): TemplateResult {
 	return html`<span class="room" data-tone=${over ? "bad" : nothing}>
 		<b data-numeric>${formatAmount(room.room)}</b>
 		${word ? html`<small data-tone=${word.tone ?? nothing}>${word.text}</small>` : nothing}
+	</span>`;
+}
+
+function figureLine(
+	figure: NonNullable<TileContent["figure"]>,
+): TemplateResult {
+	return html`<span class="room">
+		${figure.amount === undefined ? nothing : html`<b data-numeric>${figure.amount}</b>`}
+		${figure.word === undefined ? nothing : html`<small>${figure.word}</small>`}
 	</span>`;
 }
 
@@ -96,6 +112,7 @@ export const cardTileStyles = css`
 		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: baseline;
 		gap: calc(var(--cc-space-1) / 2) var(--cc-space-3);
+		align-self: stretch;
 		inline-size: 100%;
 		margin: 0;
 		padding: var(--cc-space-2) var(--cc-space-3) calc(var(--cc-space-2) + var(--cc-space-1));
@@ -103,6 +120,7 @@ export const cardTileStyles = css`
 		font: inherit;
 		font-size: var(--cc-text-sm);
 		line-height: 1.35;
+		white-space: normal;
 		text-align: start;
 		text-decoration: none;
 		color: var(--cc-text);
@@ -117,9 +135,11 @@ export const cardTileStyles = css`
 		--tile-fg: var(--g-fg);
 	}
 
-	/* Hover deepens the edge in the tile's own colour, never an underline (DD-105). */
+	/* Hover deepens the edge in the tile's own colour, never an underline (DD-105); the ground
+	   stays, out-ranking a page's own button hover. */
 	.tile:hover {
 		text-decoration: none;
+		background: var(--tile-bg);
 		border-color: color-mix(in oklab, var(--tile-fg) 55%, transparent);
 	}
 
@@ -174,6 +194,14 @@ export const cardTileStyles = css`
 
 	.aside {
 		color: var(--cc-text-muted);
+	}
+
+	.aside[data-tone="warn"] {
+		color: var(--cc-warning);
+	}
+
+	.aside[data-tone="bad"] {
+		color: var(--cc-danger);
 	}
 
 	/* A long word (a credit) ends in an ellipsis rather than run under the aside. */

@@ -1,29 +1,69 @@
-import { css, html, LitElement, nothing } from "lit";
+import { css, html, LitElement, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { displayDate } from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
 import { matchesCard, type PayChoice } from "#lib/domain/pay";
+import type { GroupRoom } from "#lib/domain/room";
 import type { LimitGroup } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
+import { getLocale, t } from "#lib/i18n/index";
+import { cardName } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { payTag } from "#lib/ui/pay-tag";
-import { base, cardBits, controls, rowPanel } from "#styles/shared";
+import { base, controls } from "#styles/shared";
+import {
+	cardTileStyles,
+	lastFour,
+	type TileContent,
+	tileBody,
+	tileTone,
+} from "./card-tile";
 
 /** The card a row asks to pay. */
 export type PickDetail = { cardId: string };
 
+/** Line 2: what is owed, else the credit, else nothing owed (the pay tag's words). */
+function owedFigure(choice: PayChoice): NonNullable<TileContent["figure"]> {
+	if (choice.owed > 0)
+		return { amount: formatAmount(choice.owed), word: t("pay.owedUnder") };
+	return { word: payTag(choice)?.text ?? t("pay.tag.nothing") };
+}
+
+/** Line 2's aside: how late or how soon the bill is due; nothing for credit or nothing owed. */
+function urgency(choice: PayChoice): Pick<TileContent, "aside" | "asideTone"> {
+	const tag = payTag(choice);
+	if (!tag || tag.urgency === "credit" || tag.urgency === "none") return {};
+	if (tag.urgency === "overdue") return { aside: tag.text, asideTone: "bad" };
+	if (tag.urgency === "soon") return { aside: tag.text, asideTone: "warn" };
+	return { aside: tag.text };
+}
+
+/**
+ * Line 3: the bill the payment goes to -- the oldest closed one with money left -- or, with
+ * none, what the statements not yet closed hold, or that there is no bill.
+ */
+function billFacts(choice: PayChoice): string {
+	if (choice.bill)
+		return t("pay.tile.bill", {
+			date: displayDate(choice.bill.closeDate, getLocale()),
+			amount: formatAmount(choice.bill.remaining),
+		});
+	if (choice.owed > 0)
+		return t("pay.tile.soFar", { amount: formatAmount(choice.owed) });
+	return t("pay.tile.noBill");
+}
+
 /**
  * The payment sheet's first step: every card a payment can go to, most pressing first, with a
- * search box. A row emits `pick` with its card; the sheet then shows the form.
+ * search box, as card tiles (DD-151, DD-166). A whole tile is one `<button>` named only by the
+ * card and what it owes; a tap emits `pick` with its card, and the sheet then shows the form.
  */
 @customElement("cc-pay-picker")
 export class CcPayPicker extends LitElement {
 	static override styles = [
 		base,
 		controls,
-		cardBits,
-		rowPanel,
+		cardTileStyles,
 		css`
 			:host {
 				display: flex;
@@ -58,61 +98,6 @@ export class CcPayPicker extends LitElement {
 				border-radius: var(--cc-radius-sm);
 			}
 
-			button[data-card] {
-				display: grid;
-				grid-template-columns: auto minmax(0, 1fr) auto;
-				align-items: center;
-				align-self: stretch;
-				gap: var(--cc-space-1) var(--cc-space-3);
-				padding: var(--cc-space-3) 0;
-				font-size: var(--cc-text-md);
-				font-weight: 400;
-				line-height: var(--cc-leading);
-				white-space: normal;
-				text-align: start;
-				color: var(--cc-text);
-				background: transparent;
-				border: 0;
-				border-radius: 0;
-			}
-
-			/* A quiet ground on hover, never an underline (DD-105), reaching the list's inner
-			   edges (DD-109); a neutral badge turns to the surface so it still shows. */
-			button[data-card]:hover {
-				background: var(--cc-surface-sunken);
-				box-shadow:
-					calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
-					var(--cc-space-4) 0 0 var(--cc-surface-sunken);
-			}
-
-			button[data-card]:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]) {
-				background: var(--cc-surface);
-			}
-
-			button[data-card]:focus-visible {
-				box-shadow: var(--cc-focus-ring);
-			}
-
-			.what {
-				display: flex;
-				flex-direction: column;
-				align-items: flex-start;
-				gap: var(--cc-space-1);
-				min-inline-size: 0;
-				line-height: 1.35;
-			}
-
-			.figures {
-				display: flex;
-				flex-direction: column;
-				align-items: flex-end;
-				line-height: 1.25;
-			}
-
-			.figures small {
-				font-size: var(--cc-text-xs);
-			}
-
 			.empty {
 				padding: var(--cc-space-4);
 				color: var(--cc-text-muted);
@@ -121,8 +106,10 @@ export class CcPayPicker extends LitElement {
 	];
 
 	@property({ attribute: false }) choices: PayChoice[] = [];
-	/** The stored limit groups, in order: a row's chip takes its group's colour. */
+	/** The stored limit groups, in order: a tile takes its group's colour. */
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** Each group's room, by group id: a tile's rail shows its group's used share. */
+	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
 	/** How many cards are stored, to tell "none yet" from "only archived, paid off". */
 	@property({ type: Number }) total = 0;
 	@state() private query = "";
@@ -136,6 +123,24 @@ export class CcPayPicker extends LitElement {
 		this.dispatchEvent(
 			new CustomEvent<PickDetail>("pick", { detail: { cardId } }),
 		);
+	}
+
+	private tile(choice: PayChoice): TemplateResult {
+		const { card } = choice;
+		const group = card.limitGroupId;
+		return html`<button type="button" class="tile" data-g=${tileTone(card, this.groups)}
+			data-card=${card.id}
+			aria-label=${t("pay.pickName", { card: cardName(card.id, card), amount: formatAmount(choice.owed) })}
+			@click=${() => this.pick(card.id)}>${tileBody({
+				card,
+				room: (group && this.rooms.get(group)) || null,
+				credit: choice.credit,
+				corner: lastFour(card),
+				mono: true,
+				figure: owedFigure(choice),
+				...urgency(choice),
+				facts: billFacts(choice),
+			})}</button>`;
 	}
 
 	override render() {
@@ -155,22 +160,7 @@ export class CcPayPicker extends LitElement {
 			${
 				shown.length === 0
 					? html`<p class="empty">${t("pay.noMatch")}</p>`
-					: html`<div class="panel">${shown.map((choice) => {
-							const tag = payTag(choice);
-							return html`<button type="button" data-card=${choice.card.id}
-								@click=${() => this.pick(choice.card.id)}>
-								${cardMini(choice.card, this.groups)}
-								<span class="what"><b>${cardPanelLabel(choice.card.id, choice.card)}</b>${
-									tag
-										? html`<span class="tag" data-urgency=${tag.urgency}>${tag.text}</span>`
-										: nothing
-								}</span>
-								<span class="figures">
-									<b data-numeric>${formatAmount(choice.owed)}</b>
-									<small>${t("pay.owedUnder")}</small>
-								</span>
-							</button>`;
-						})}</div>`
+					: html`<div class="tiles">${shown.map((choice) => this.tile(choice))}</div>`
 			}
 		`;
 	}

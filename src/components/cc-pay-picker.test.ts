@@ -2,9 +2,11 @@ import { expect, test } from "bun:test";
 import "#components/cc-pay-picker";
 import { CcPayPicker, type PickDetail } from "#components/cc-pay-picker";
 import type { PayChoice } from "#lib/domain/pay";
+import type { GroupRoom } from "#lib/domain/room";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { rowPanel } from "#styles/shared";
+import { cardTileStyles } from "./card-tile";
 
 const card = (id: string, name: string, last4 = "1234"): Card => ({
 	id,
@@ -20,9 +22,9 @@ const bill = (dueDate: string) => ({
 	cardId: "x",
 	closeDate: "2026-09-25",
 	dueDate,
-	total: 0,
+	total: 120_00,
 	paidAmount: 0,
-	remaining: 0,
+	remaining: 120_00,
 	parts: [],
 	open: false,
 });
@@ -108,35 +110,111 @@ test("rows keep the given order, under the hint, and a tap picks the card", asyn
 	expect(picked).toEqual(["B"]);
 });
 
-test("a row is the panel form: the last 4 in its group's colour, id) name, and owed", async () => {
+const room = (used: number, limit = 1_000_00): GroupRoom => ({
+	group: { id: "g1", name: "One", limit, color: "rose" },
+	used,
+	available: limit - used,
+	held: 0,
+	room: limit - used,
+	level: "within",
+	sharedWith: 0,
+});
+
+const tiles = async () => {
 	const el = await mount();
 	el.groups = [
 		{ id: "g0", name: "Zero", limit: 1, color: "blue" },
-		{ id: "g1", name: "One", limit: 1, color: "rose" },
+		{ id: "g1", name: "One", limit: 1_000_00, color: "rose" },
 	];
-	el.choices = [
-		{ ...choices()[0], card: { ...card("A", "Alpha"), limitGroupId: "g1" } },
-	] as PayChoice[];
+	el.rooms = new Map([["g1", room(500_00)]]);
+	el.choices = choices().map((c, i) =>
+		i === 0 ? { ...c, card: { ...c.card, limitGroupId: "g1" } } : c,
+	);
 	await el.updateComplete;
-	const [row] = rows(el);
-	expect(flat(row?.querySelector(".what b"))).toBe("A) Alpha");
-	expect(flat(row?.querySelector(".mini"))).toBe("1234");
-	expect(row?.querySelector(".mini")?.getAttribute("data-g")).toBe("rose");
-	expect(flat(row?.querySelector(".figures"))).toBe("฿500.00 owed");
+	return el;
+};
+
+test("each card is one tile button with data-card, in one tiles grid", async () => {
+	const el = await tiles();
+	const root = el.shadowRoot as ShadowRoot;
+	expect(root.querySelectorAll(".tiles")).toHaveLength(1);
+	expect(
+		root.querySelectorAll('.tiles > button.tile[type="button"][data-card]'),
+	).toHaveLength(choices().length);
+	expect(root.querySelector(".panel")).toBeNull();
 });
 
-test("tags say it in words", async () => {
-	const el = await mount();
-	const tag = (i: number) => flat(rows(el)[i]?.querySelector(".tag"));
-	expect(tag(0)).toBe("Overdue 3 days");
-	expect(tag(1)).toBe("Due in 2 days");
-	expect(tag(2)).toBe("Due 20 Nov 2026");
-	expect(tag(3)).toBe("Credit ฿50.00");
-	expect(tag(4)).toBe("Nothing owed");
-	expect(rows(el)[0]?.querySelector(".tag")?.getAttribute("data-urgency")).toBe(
-		"overdue",
+test("line 1 is id) name and the last 4 in the group's colour", async () => {
+	const el = await tiles();
+	const [a, b] = rows(el);
+	expect(flat(a?.querySelector(".name"))).toBe("A) Alpha");
+	expect(flat(a?.querySelector(".corner"))).toBe("•••• 1234");
+	expect(a?.querySelector(".corner")?.hasAttribute("data-mono")).toBe(true);
+	expect(a?.getAttribute("data-g")).toBe("rose");
+	expect(b?.hasAttribute("data-g")).toBe(false);
+});
+
+test("line 2 says what is owed, or the credit, or nothing owed; the aside the urgency", async () => {
+	const el = await tiles();
+	const line = (i: number) => flat(rows(el)[i]?.querySelector(".room"));
+	const aside = (i: number) => rows(el)[i]?.querySelector(".aside");
+	expect(line(0)).toBe("฿500.00 owed");
+	expect(flat(rows(el)[0]?.querySelector(".room b"))).toBe("฿500.00");
+	expect(line(1)).toBe("฿200.00 owed");
+	expect(line(2)).toBe("฿100.00 owed");
+	expect(line(3)).toBe("Credit ฿50.00");
+	expect(line(4)).toBe("Nothing owed");
+	expect(flat(aside(0))).toBe("Overdue 3 days");
+	expect(aside(0)?.getAttribute("data-tone")).toBe("bad");
+	expect(flat(aside(1))).toBe("Due in 2 days");
+	expect(aside(1)?.getAttribute("data-tone")).toBe("warn");
+	expect(flat(aside(2))).toBe("Due 20 Nov 2026");
+	expect(aside(2)?.hasAttribute("data-tone")).toBe(false);
+	expect(aside(3)).toBeNull();
+	expect(aside(4)).toBeNull();
+	// A card with no group still says what it owes, never "No limit group".
+	expect(el.shadowRoot?.textContent).not.toContain("No limit group");
+});
+
+test("line 3 is the bill the payment goes to", async () => {
+	const el = await tiles();
+	el.choices = [
+		...choices(),
+		{
+			card: card("F", "Foxtrot"),
+			owed: 300_00,
+			credit: 0,
+			bill: null,
+			urgency: "none",
+			days: 0,
+		},
+	];
+	await el.updateComplete;
+	const facts = (i: number) => flat(rows(el)[i]?.querySelector(".facts"));
+	expect(facts(0)).toBe("Bill closed 25 Sep 2026 · ฿120.00 left");
+	expect(facts(3)).toBe("No bill to pay");
+	expect(facts(4)).toBe("No bill to pay");
+	expect(facts(5)).toBe("Statement so far ฿300.00");
+});
+
+test("the rail shows the group's used share; a card with no group has none", async () => {
+	const el = await tiles();
+	const [a, b] = rows(el);
+	expect(a?.querySelector(".rail")?.getAttribute("aria-label")).toBe(
+		"50% of the limit used",
 	);
-	expect(flat(rows(el)[0]?.querySelector("[data-numeric]"))).toBe("฿500.00");
+	expect(b?.querySelector(".rail")).toBeNull();
+});
+
+test("a tile is named by the card and what it owes, and a tap picks it", async () => {
+	const el = await tiles();
+	expect(rows(el)[0]?.getAttribute("aria-label")).toBe("Alpha, ฿500.00 owed");
+	const picked: string[] = [];
+	el.addEventListener("pick", (e) =>
+		picked.push((e as CustomEvent<PickDetail>).detail.cardId),
+	);
+	rows(el)[2]?.click();
+	expect(picked).toEqual(["C"]);
 });
 
 test("search narrows the rows, and an empty result says what to do", async () => {
@@ -190,20 +268,11 @@ test("with cards stored but none to pay, says archived paid-off cards are hidden
 	);
 });
 
-test("the rows sit in a row panel, with no local list rule", async () => {
-	setLocale("en");
-	document.body.innerHTML = "";
-	const element = document.createElement("cc-pay-picker") as CcPayPicker;
-	element.choices = choices();
-	document.body.append(element);
-	await element.updateComplete;
-	const root = element.shadowRoot as ShadowRoot;
-	expect(root.querySelectorAll(".panel > button[data-card]").length).toBe(
-		choices().length,
-	);
+test("the picker draws tiles, not a row panel", () => {
 	const text = (CcPayPicker.styles as { cssText: string }[])
 		.map((s) => s.cssText)
 		.join("\n");
-	expect(text).toContain(rowPanel.cssText);
-	expect(text).not.toContain(".list {");
+	expect(text).toContain(cardTileStyles.cssText);
+	expect(text).not.toContain(rowPanel.cssText);
+	expect(text).not.toContain("button[data-card]");
 });
