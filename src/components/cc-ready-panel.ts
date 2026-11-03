@@ -93,13 +93,14 @@ export class CcReadyPanel extends LitElement {
 	}
 
 	/**
-	 * Line 1's corner is the last 4; line 2's aside says when the card closes, or, between a
-	 * bill's close and its due date, when that bill is due. Over the limit, the amount turns red
-	 * and has no word.
+	 * Three lines like every tile: `id) name` and the last 4; the room, with no word under it
+	 * when it is plain room (credit and `N% used` still show; over the limit the amount turns red
+	 * and has no word); then when the card closes, or, between a bill's close and its due date,
+	 * when that bill is due.
 	 */
 	private tile(row: ReadyRow) {
 		const locale = getLocale();
-		const aside = row.billDue
+		const facts = row.billDue
 			? t("tile.due", { date: displayDate(row.billDue, locale) })
 			: t("tile.closes", { date: displayDate(row.closeDate, locale) });
 		return html`<a class="tile" data-g=${tileTone(row.card, this.groups)} data-card=${row.card.id}
@@ -109,8 +110,8 @@ export class CcReadyPanel extends LitElement {
 				credit: row.credit,
 				corner: lastFour(row.card),
 				mono: true,
-				aside,
-				quietOver: true,
+				facts,
+				quiet: true,
 			})}</a>`;
 	}
 

@@ -120,16 +120,17 @@ test("reads in Thai", async () => {
 const tile = (root: ParentNode, id: string) =>
 	root.querySelector(`[data-card="${id}"]`) as HTMLElement;
 
-test("a tile: id) name and the last 4 on line 1, the room and its word, then when it closes", async () => {
+test("a tile has three lines: id) name and the last 4, the room with no room word, then when it closes", async () => {
 	const { root } = await mount({
 		rows: [testRow("A", 60_000_00, "2026-11-25", "2026-12-15")],
 	});
 	const a = tile(root, "A");
 	expect(flat(a.querySelector(".name"))).toBe("A) Card A");
 	expect(flat(a.querySelector(".corner"))).toBe("•••• 1111");
-	expect(flat(a.querySelector(".room"))).toBe("฿60,000.00 room");
-	expect(flat(a.querySelector(".aside"))).toBe("Closes 25 Nov 2026");
-	expect(a.querySelector(".facts")).toBeNull();
+	expect(flat(a.querySelector(".room"))).toBe("฿60,000.00");
+	expect(a.querySelector(".room small")).toBeNull();
+	expect(a.querySelector(".aside")).toBeNull();
+	expect(flat(a.querySelector(".facts"))).toBe("Closes 25 Nov 2026");
 	expect(a.dataset["g"]).toBe("1");
 });
 
@@ -141,7 +142,7 @@ test("between a bill's close and its due date the tile says when it is due", asy
 			}),
 		],
 	});
-	expect(flat(tile(root, "A").querySelector(".aside"))).toBe("Due 21 Nov 2026");
+	expect(flat(tile(root, "A").querySelector(".facts"))).toBe("Due 21 Nov 2026");
 });
 
 test("over the limit the amount turns red and drops its word; the rail is full and red", async () => {
@@ -175,7 +176,7 @@ test("from 80% the word reads N% used in the warn tone, and the rail turns amber
 	expect(
 		(tile(root, "H").querySelector(".rail") as HTMLElement).dataset["level"],
 	).toBe("high");
-	expect(flat(tile(root, "H").querySelector(".aside"))).toBe(
+	expect(flat(tile(root, "H").querySelector(".facts"))).toBe(
 		"สรุปยอด 10 พ.ย. 2026",
 	);
 });
@@ -196,6 +197,17 @@ test("no tile says Overdue bill, the owners or shared: Needs you and the colour 
 	expect(text).not.toContain("shared");
 	expect(text).not.toContain("NT");
 	expect(tile(root, "A").querySelector(".tag")).toBeNull();
+});
+
+test("a credit still reads under the room on Home; only the plain room word goes", async () => {
+	const { root } = await mount({
+		rows: [
+			testRow("C", 60_000_00, "2026-11-10", "2026-11-25", { credit: 500_00 }),
+		],
+	});
+	expect(flat(tile(root, "C").querySelector(".room"))).toBe(
+		"฿60,000.00 credit ฿500.00",
+	);
 });
 
 test("the rail is named by the group's use", async () => {

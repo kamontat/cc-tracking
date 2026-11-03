@@ -13,8 +13,8 @@ export type RoomLevel = "within" | "high" | "over";
 /** The tone of the word under a room amount: warning from `WARN_PCT`, danger past the limit. */
 export type RoomTone = "warn" | "bad";
 
-/** The word under a card's room amount, and its tone, if any. */
-export type RoomNote = { text: string; tone: RoomTone | null };
+/** The word under a card's room amount, its tone, if any, and whether it is just *room*. */
+export type RoomNote = { text: string; tone: RoomTone | null; plain?: true };
 
 /** Over once `used + held` passes the limit (the room is below zero), high from `WARN_PCT`. */
 export function roomLevel(room: GroupRoom): RoomLevel {
@@ -41,5 +41,5 @@ export function roomNote(room: GroupRoom, credit: number): RoomNote {
 			text: t("cards.page.credit", { amount: formatAmount(credit) }),
 			tone: null,
 		};
-	return { text: t("cards.page.room"), tone: null };
+	return { text: t("cards.page.room"), tone: null, plain: true };
 }

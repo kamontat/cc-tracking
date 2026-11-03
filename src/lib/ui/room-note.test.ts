@@ -43,7 +43,11 @@ test("the word: over limit in the danger tone, N% used in the warn tone, credit,
 		text: "credit ฿500.00",
 		tone: null,
 	});
-	expect(roomNote(room(10_000_00), 0)).toEqual({ text: "room", tone: null });
+	expect(roomNote(room(10_000_00), 0)).toEqual({
+		text: "room",
+		tone: null,
+		plain: true,
+	});
 	setLocale("th");
 	expect(roomNote(room(121_065_00), 0).text).toBe("เกินวงเงิน");
 });

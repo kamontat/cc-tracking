@@ -25,8 +25,11 @@ export type TileContent = {
 	aside?: string;
 	/** Line 3, muted: `closes … · due …`. Left out on Home. */
 	facts?: string;
-	/** Home: past the limit the amount turns red and has no word under it. */
-	quietOver?: boolean;
+	/**
+	 * Home: plain room needs no word, and past the limit the amount turns red with no word under
+	 * it; credit and `N% used` still show.
+	 */
+	quiet?: boolean;
 };
 
 /** The tile's colour: its limit group's pastel, 1 to 4, or nothing for a card with no group. */
@@ -56,10 +59,11 @@ export function tileBody(content: TileContent): TemplateResult {
 
 function roomLine(content: TileContent, room: GroupRoom): TemplateResult {
 	const note = roomNote(room, content.credit);
-	const quiet = content.quietOver && note.tone === "bad";
-	return html`<span class="room" data-tone=${quiet ? "bad" : nothing}>
+	const over = content.quiet === true && note.tone === "bad";
+	const word = content.quiet === true && (over || note.plain) ? null : note;
+	return html`<span class="room" data-tone=${over ? "bad" : nothing}>
 		<b data-numeric>${formatAmount(room.room)}</b>
-		${quiet ? nothing : html`<small data-tone=${note.tone ?? nothing}>${note.text}</small>`}
+		${word ? html`<small data-tone=${word.tone ?? nothing}>${word.text}</small>` : nothing}
 	</span>`;
 }
 
@@ -185,7 +189,11 @@ export const cardTileStyles = css`
 		color: var(--cc-text-muted);
 	}
 
+	/* A long word (a credit) ends in an ellipsis rather than run under the aside. */
 	.room {
+		min-inline-size: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
