@@ -39,14 +39,14 @@ test("the heading counts the ready cards and their places", async () => {
 	);
 });
 
-test("only the three cards with the most room show, each a tile linking to its card page", async () => {
+test("only the four cards with the most room show, each a tile linking to its card page", async () => {
 	const rows = [
 		...testRows(),
 		testRow("D", 90_000_00, "2026-11-10", "2026-11-25"),
 		testRow("E/1", 10_000_00, "2026-11-10", "2026-11-25"),
 	];
 	const { root } = await mount({ rows });
-	expect(order(root)).toEqual(["D", "B", "A"]);
+	expect(order(root)).toEqual(["D", "B", "A", "C"]);
 	expect(root.querySelectorAll(".tiles")).toHaveLength(1);
 	for (const tile of root.querySelectorAll("[data-card]")) {
 		expect(tile.localName).toBe("a");
@@ -75,7 +75,7 @@ test("See more (N) opens the rest in place and Show less folds them; there is no
 	expect(root.querySelector('[data-action="see-all"]')).toBeNull();
 	const more = () =>
 		root.querySelector('[data-action="more"]') as HTMLButtonElement;
-	expect(flat(more())).toBe("See more (2)");
+	expect(flat(more())).toBe("See more (1)");
 	expect(more().getAttribute("data-variant")).toBe("quiet");
 	expect(more().getAttribute("aria-expanded")).toBe("false");
 	more().click();
@@ -85,11 +85,14 @@ test("See more (N) opens the rest in place and Show less folds them; there is no
 	expect(more().getAttribute("aria-expanded")).toBe("true");
 	more().click();
 	await element.updateComplete;
-	expect(order(root)).toEqual(["D", "B", "A"]);
+	expect(order(root)).toEqual(["D", "B", "A", "C"]);
 });
 
-test("three cards or fewer have no See more", async () => {
-	const { root } = await mount();
+test("four cards or fewer have no See more", async () => {
+	const { root } = await mount({
+		rows: [...testRows(), testRow("D", 90_000_00, "2026-11-10", "2026-11-25")],
+	});
+	expect(order(root)).toHaveLength(4);
 	expect(root.querySelector('[data-action="more"]')).toBeNull();
 });
 
