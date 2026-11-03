@@ -266,6 +266,29 @@ test("Random picks a colour no other group uses", async () => {
 	expect(pressed(root)).toEqual(["green"]);
 });
 
+test("Random never draws the colour already chosen while another is free", async () => {
+	const { element, root } = await mount({
+		group: { ...scb, color: "green" },
+		groups: [{ ...scb, color: "green" }, withColor("g2", "blue")],
+		random: () => 0,
+	});
+	await click(element, '[data-action="random-color"]');
+	expect(pressed(root)).toEqual(["purple"]);
+});
+
+test("Random keeps the colour when it is the only free one", async () => {
+	const others = GROUP_COLORS.filter((c) => c !== "green").map((c) =>
+		withColor(`g-${c}`, c),
+	);
+	const { element, root } = await mount({
+		group: { ...scb, color: "green" },
+		groups: [{ ...scb, color: "green" }, ...others],
+		random: () => 0,
+	});
+	await click(element, '[data-action="random-color"]');
+	expect(pressed(root)).toEqual(["green"]);
+});
+
 test("each swatch is named by its colour, in the language of the page", async () => {
 	const { root } = await mount();
 	const label = (c: string) =>

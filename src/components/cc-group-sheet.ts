@@ -187,13 +187,22 @@ export class CcGroupSheet extends LitElement {
 		this.errorKey = "";
 	}
 
-	/** A random colour none of the other groups wear. */
-	private freeColor(): GroupColor {
+	/**
+	 * A random colour none of the other groups wear. `avoid` is a colour to leave out too, so
+	 * Random never lands on the one already chosen; `pickColor` falls back to it only when
+	 * nothing else is free.
+	 */
+	private freeColor(avoid?: GroupColor): GroupColor {
 		const id = this.group?.id;
-		return pickColor(
-			this.groups.filter((g) => g.id !== id),
-			this.random,
-		);
+		const others = this.groups.filter((g) => g.id !== id);
+		const picked = pickColor(others, this.random);
+		if (!avoid || picked !== avoid) return picked;
+		// Drew the chosen colour: draw again with it counted as taken. When it was the only
+		// free colour that draw falls back to the whole palette, so keep the first draw then.
+		const used = new Set(others.map((g) => g.color));
+		const free = GROUP_COLORS.filter((c) => !used.has(c));
+		if (free.length < 2) return picked;
+		return pickColor([...others, { color: avoid } as LimitGroup], this.random);
 	}
 
 	protected override updated() {
@@ -311,7 +320,7 @@ export class CcGroupSheet extends LitElement {
 						)}
 						<button type="button" data-variant="quiet" data-action="random-color"
 							@click=${() => {
-								this.color = this.freeColor();
+								this.color = this.freeColor(this.color);
 							}}>${t("limits.color.random")}</button>
 					</div>
 				</fieldset>

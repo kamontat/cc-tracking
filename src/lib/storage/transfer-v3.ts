@@ -437,7 +437,12 @@ export async function importBackupV3(
 			await repo.deleteLocation(seed.id);
 		}
 	}
-	await assignGroupColors(repo);
+	// The data has landed; a colour that cannot be stored must not report the restore as failed.
+	try {
+		await assignGroupColors(repo);
+	} catch (failure) {
+		console.error(failure);
+	}
 }
 
 /**

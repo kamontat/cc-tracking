@@ -87,6 +87,30 @@ describe("restoring colours", () => {
 		expect(after["g3"]).toBeDefined();
 	});
 
+	test("a failure while colouring is logged and does not fail the restore", async () => {
+		let calls = 0;
+		class Flaky extends InMemoryRepository {
+			override async saveLimitGroup(
+				g: Parameters<InMemoryRepository["saveLimitGroup"]>[0],
+			) {
+				calls += 1;
+				if (calls > 1) throw new Error("colour pass failed");
+				return super.saveLimitGroup(g);
+			}
+		}
+		const original = console.error;
+		const logged: unknown[][] = [];
+		console.error = (...args: unknown[]) => {
+			logged.push(args);
+		};
+		try {
+			await importBackupV3(new Flaky(), backupOf([group("g1")]));
+		} finally {
+			console.error = original;
+		}
+		expect(logged.length).toBe(1);
+	});
+
 	test("a colour in the file wins on Merge and on Replace", async () => {
 		const merged = new InMemoryRepository();
 		await merged.saveLimitGroup(sampleLimitGroup({ id: "g1", color: "teal" }));
