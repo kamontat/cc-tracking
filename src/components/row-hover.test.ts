@@ -115,3 +115,21 @@ test("the action row stacks its figure and button under the text below 900px", (
 		/@media \(max-width: 899\.98px\)\s*\{[^@]*\.crow\[data-kind\]\s*\{/,
 	);
 });
+
+// Every row kind keeps its dividing line: the divider rule comes after `.crow`'s `border: 0`
+// reset and out-ranks it and a picker's `button[data-card]` reset (computed styles are out of
+// happy-dom's reach, so this reads the CSS text).
+test("a row panel's divider follows the row resets and out-ranks them", () => {
+	const text = rowPanel.cssText;
+	const divider = ".panel > * + :is(.crow, button, a, div, section, article) {";
+	expect(text).toContain(divider);
+	expect(text.indexOf(divider)).toBeGreaterThan(text.indexOf(".crow {"));
+	// (0,2,0): the panel class plus the `:is()` of a class, above `.crow` (0,1,0) and
+	// `button[data-card]` (0,1,1).
+	const after = text.slice(text.indexOf(divider));
+	expect(after).toMatch(
+		/^[^}]*border-top: var\(--cc-border-width\) solid var\(--cc-border\)/,
+	);
+	const picker = stylesOf("cc-pay-picker");
+	expect(picker).not.toMatch(/button\[data-card\] \+/);
+});

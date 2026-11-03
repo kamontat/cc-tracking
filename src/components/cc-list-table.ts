@@ -50,6 +50,7 @@ export class CcListTable extends LitElement {
 			}
 
 			tbody tr + tr,
+			tbody tr:first-child,
 			tfoot tr {
 				border-top: var(--cc-border-width) solid var(--cc-border);
 			}

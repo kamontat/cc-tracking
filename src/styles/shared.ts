@@ -784,6 +784,12 @@ export const rowPanel = css`
 		color: var(--cc-text);
 	}
 
+	/* After and above the rows' own border: 0 resets (.crow, a picker's button[data-card]),
+	   so a line is always drawn between rows of any kind. */
+	.panel > * + :is(.crow, button, a, div, section, article) {
+		border-top: var(--cc-border-width) solid var(--cc-border);
+	}
+
 	/* Hover is a quiet ground, never an underline (DD-105). The two side shadows carry the
 	   ground across the panel's side padding to its inner edges (DD-109); the panel clips them
 	   at its rounded corners, and the lines between rows stay whole. A neutral badge, whose

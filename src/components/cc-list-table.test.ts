@@ -76,3 +76,14 @@ test("the table sits in a row panel, body rows divided by the hairline", async (
 		/tbody tr \+ tr[^{]*\{[^}]*border-top: var\(--cc-border-width\) solid var\(--cc-border\)/,
 	);
 });
+
+test("a hairline also sits between the header and the first body row", () => {
+	const text = (
+		customElements.get("cc-list-table") as unknown as {
+			styles: { cssText: string }[];
+		}
+	).styles
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toMatch(/tbody tr:first-child[^{]*\{[^}]*border-top/);
+});
