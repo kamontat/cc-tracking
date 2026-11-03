@@ -100,6 +100,9 @@
 	--cc-sheet-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 	--cc-sheet-scale-from: 0.96;
 
+	/* How an opening row's chevron turns (on the sheet's ease); not under prefers-reduced-motion. */
+	--cc-row-motion: 160ms;
+
 	/* The widest a page's content grows. */
 	--cc-page-width: 72rem;
 

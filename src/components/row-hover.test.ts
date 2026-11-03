@@ -56,6 +56,31 @@ test("Needs you, the payment picker and the ledger never underline a row on hove
 	}
 });
 
+// An opening row's head is a `button.a-hit` (Needs you, the ledger): it hovers with the ground
+// out to the panel's edges, never an underline, and keeps its focus ring.
+test("an opening row's button head hovers with a ground and keeps a focus ring", () => {
+	for (const tag of ["cc-needs-you", "cc-tx-ledger"]) {
+		const text = stylesOf(tag);
+		const heads = hoverRules(text).filter(
+			({ selector }) =>
+				selector?.includes("button") && selector.includes(".a-hit"),
+		);
+		expect(heads.length).toBeGreaterThan(0);
+		for (const { body } of heads) expect(body).not.toContain("underline");
+		expect(
+			heads.some(
+				({ selector, body }) =>
+					selector?.includes(".a-row:has(") &&
+					body.includes("background: var(--cc-surface-sunken)") &&
+					BLEED.test(body),
+			),
+		).toBe(true);
+		expect(text).toMatch(
+			/button\.a-hit:focus-visible[^{]*\{\s*box-shadow: var\(--cc-focus-ring\)/,
+		);
+	}
+});
+
 // DD-109: the hovered ground reaches the panel's inner edges (the panel's side padding,
 // `--cc-space-4`), the panel clips it at its rounded corners, and a neutral badge or icon
 // tile, whose fill is the hover ground, turns to the surface so it stays visible.

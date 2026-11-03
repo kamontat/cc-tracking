@@ -1,4 +1,11 @@
-import { css, html, nothing, type TemplateResult } from "lit";
+import {
+	css,
+	html,
+	nothing,
+	type ReactiveController,
+	type ReactiveControllerHost,
+	type TemplateResult,
+} from "lit";
 import { daysBetween, displayDate } from "#lib/domain/date";
 import type {
 	Card,
@@ -15,9 +22,20 @@ import { icons } from "#lib/ui/icons";
  * says the kind, a bold title, a muted subtitle, and on
  * the right an optional amount with an optional action button under it. The text builders
  * below are pure (given the locale), so both lists word a thing the same way.
+ *
+ * It is also the one row that opens in place (Needs you, the ledger, the Lists view): with
+ * `open` the head is one button that shows or hides the row's details and buttons under it,
+ * and `useOpenRow` keeps one row open per component.
  */
 
-export type ActionKind = "waiting" | "overdue" | "planned" | "draft";
+export type ActionKind =
+	| "waiting"
+	| "overdue"
+	| "planned"
+	| "draft"
+	| "purchase"
+	| "payment"
+	| "saved";
 
 export type ActionRowText = {
 	kind: ActionKind;
@@ -30,6 +48,9 @@ const ICONS: Record<ActionKind, TemplateResult> = {
 	overdue: icons.alert,
 	planned: icons.clock,
 	draft: icons.transactions,
+	purchase: icons.cards,
+	payment: icons.wallet,
+	saved: icons.bookmark,
 };
 
 /** A list's cards as `name (owner)` when three or fewer, else "N cards" (DD-110). */
@@ -143,59 +164,117 @@ export function overdueText(
 export type ActionRowOptions = {
 	/** The row opens a page... */
 	href?: string;
-	/** ...or toggles something in place... */
-	onToggle?: () => void;
-	expanded?: boolean;
+	/** ...or opens in place: the head toggles `details` and the buttons (`action`) under it.
+	 * `detailsId` names that region (`useOpenRow`'s `detailsId`). */
+	open?: {
+		expanded: boolean;
+		onToggle: () => void;
+		detailsId: string;
+		details: TemplateResult;
+	};
+	/** Drawn in place of the kind's icon (a ledger row's card chip). */
+	lead?: TemplateResult;
 	/** The right-hand figure, already signed, and its tone. */
 	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" };
-	/** The buttons under the figure. With neither `href` nor `onToggle` the row is plain text
-	 * and these are its only controls (a planned payment, DD-110). */
+	/** The buttons: under the figure, or in the opened details with `open`. With neither
+	 * `href` nor `open` the row is plain text and these are its only controls (DD-110). */
 	action?: TemplateResult | undefined;
-	/** What opens under the row (a two-step confirm). */
-	below?: TemplateResult | typeof nothing;
 	/** Names the row for tests and the page: `data-row`. */
 	id?: string;
 };
 
 /**
- * Draws a row. The left part (icon and text) is one link or button that opens the item; the
- * right part, when there is one, holds the figure and its own button beside it, never inside it.
+ * Draws a row. The left part (icon and text) is one link that opens the item; the right part,
+ * when there is one, holds the figure and its own button beside it, never inside it. With
+ * `open` the whole head (icon, text, figure and a chevron) is one button, and nothing
+ * interactive sits inside it: the buttons live in the details region it controls.
  */
 export function actionRow(
 	text: ActionRowText,
-	{
-		href,
-		onToggle,
-		expanded,
-		amount,
-		action,
-		below = nothing,
-		id,
-	}: ActionRowOptions,
+	{ href, open, lead, amount, action, id }: ActionRowOptions,
 ): TemplateResult {
-	const inside = html`<span class="a-ic" data-kind=${text.kind}>${ICONS[text.kind]}</span>
+	const figure = amount
+		? html`<b class="amount ${amount.tone}" data-numeric>${amount.text}</b>`
+		: nothing;
+	const inside = html`${
+		lead ??
+		html`<span class="a-ic" data-kind=${text.kind}>${ICONS[text.kind]}</span>`
+	}
 		<span class="a-text">
 			<b class="a-title">${text.title}</b>
 			<span class="a-sub">${text.subtitle}</span>
 		</span>`;
+	if (open) {
+		const headId = `${open.detailsId}-head`;
+		return html`<div class="a-wrap" data-row=${id ?? nothing}>
+			<div class="a-row">
+				<button type="button" class="a-hit" id=${headId} data-item=${text.kind}
+					aria-expanded=${open.expanded ? "true" : "false"}
+					aria-controls=${open.detailsId}
+					@click=${() => open.onToggle()}>${inside}${figure}<span class="a-chev">${icons.chevron}</span></button>
+			</div>
+			<div class="a-details" id=${open.detailsId} role="region"
+				aria-labelledby=${headId} ?hidden=${!open.expanded}>
+				<div class="a-info">${open.details}</div>
+				${action ? html`<div class="a-btns">${action}</div>` : nothing}
+			</div>
+		</div>`;
+	}
 	const hit = href
 		? html`<a class="a-hit" data-item=${text.kind} href=${href}>${inside}</a>`
-		: !onToggle
-			? html`<div class="a-hit" data-item=${text.kind}>${inside}</div>`
-			: html`<button type="button" class="a-hit" data-item=${text.kind}
-				aria-expanded=${expanded ? "true" : "false"} @click=${() => onToggle?.()}>${inside}</button>`;
+		: html`<div class="a-hit" data-item=${text.kind}>${inside}</div>`;
 	const right =
 		amount || action
-			? html`<span class="a-right">${
-					amount
-						? html`<b class="amount ${amount.tone}" data-numeric>${amount.text}</b>`
-						: nothing
-				}${action ?? nothing}</span>`
+			? html`<span class="a-right">${figure}${action ?? nothing}</span>`
 			: nothing;
 	return html`<div class="a-wrap" data-row=${id ?? nothing}>
 		<div class="a-row">${hit}${right}</div>
-		${below}
 	</div>`;
+}
+
+/**
+ * Keeps at most one row open in a component (Needs you, the ledger, the Lists view):
+ * opening a row closes the one before, a second tap on it closes it, and `prune` forgets a row
+ * that is gone (a plan marked paid), so a repaint keeps the open row only while it exists.
+ * Nothing of it goes in the address.
+ */
+export class OpenRowController implements ReactiveController {
+	private open: string | undefined;
+	private readonly prefix: string;
+
+	constructor(private readonly host: ReactiveControllerHost) {
+		host.addController(this);
+		this.prefix = host instanceof Element ? host.localName : "row";
+	}
+
+	hostConnected(): void {}
+
+	isOpen(id: string): boolean {
+		return this.open === id;
+	}
+
+	toggle(id: string): void {
+		this.open = this.open === id ? undefined : id;
+		this.host.requestUpdate();
+	}
+
+	/** Forgets the open row when `ids` (the rows still drawn) no longer holds it; call it
+	 * from the host's `willUpdate`, so the repaint it causes is the one under way. */
+	prune(ids: string[]): void {
+		if (this.open !== undefined && !ids.includes(this.open)) {
+			this.open = undefined;
+			this.host.requestUpdate();
+		}
+	}
+
+	/** The id of a row's details region: `${host tag}-${id}`. */
+	detailsId(id: string): string {
+		return `${this.prefix}-${id}`;
+	}
+}
+
+export function useOpenRow(host: ReactiveControllerHost): OpenRowController {
+	return new OpenRowController(host);
 }
 
 /** The row's styles; the host also takes `rowPanel`. */
@@ -254,8 +333,68 @@ export const actionRowStyles = css`
 		background: transparent;
 	}
 
-	.a-hit:focus-visible {
+	a.a-hit:focus-visible,
+	button.a-hit:focus-visible {
 		box-shadow: var(--cc-focus-ring);
+	}
+
+	/* An opening row's head: the lead, the text, the figure and the chevron on one line; the
+	   text wraps rather than widen the row. */
+	button.a-hit[aria-expanded] {
+		grid-template-columns: auto minmax(0, 1fr) auto auto;
+		inline-size: 100%;
+	}
+
+	button.a-hit[aria-expanded] .amount {
+		white-space: nowrap;
+		text-align: end;
+	}
+
+	.a-chev {
+		display: grid;
+		place-items: center;
+		color: var(--cc-text-muted);
+		transition: rotate var(--cc-row-motion) var(--cc-sheet-ease);
+	}
+
+	.a-chev .icon {
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
+	}
+
+	[aria-expanded="true"] .a-chev {
+		rotate: 0.5turn;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.a-chev {
+			transition: none;
+		}
+	}
+
+	/* What opens under the head: muted detail lines, then the buttons. It lines up with the
+	   text, past the icon. */
+	.a-details {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-3);
+		padding-block: 0 var(--cc-space-3);
+		padding-inline-start: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
+		min-inline-size: 0;
+	}
+
+	.a-details[hidden] {
+		display: none;
+	}
+
+	.a-info {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-1);
+		min-inline-size: 0;
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
+		overflow-wrap: anywhere;
 	}
 
 	.a-ic {
@@ -367,6 +506,16 @@ export const actionRowStyles = css`
 			flex-wrap: wrap;
 			align-items: center;
 			justify-content: space-between;
+		}
+
+		/* An opened row's buttons stack, each the full width, from the text's edge. */
+		.a-details .a-btns {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.a-details .a-btns > * {
+			inline-size: 100%;
 		}
 	}
 
