@@ -10,7 +10,7 @@ import { LEDGER_PAGE } from "#components/cc-tx-ledger";
 import { type FilterPill, filterControls } from "#components/list-controls";
 import { displayDate, monthName, today } from "#lib/domain/date";
 import { formatAmount, MINUS } from "#lib/domain/money";
-import { markPaid, plannedOf } from "#lib/domain/pay";
+import { plannedOf } from "#lib/domain/pay";
 import {
 	byDay,
 	filterEntries,
@@ -28,8 +28,11 @@ import { cardLine, cardLineHtml } from "#lib/ui/card-label";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
-import { deletePayment, savePayment } from "#lib/ui/record-payment";
-import { writeListReply } from "#lib/ui/save-list-reply";
+import {
+	confirmWaitingList,
+	deletePlannedPayment,
+	markPlanPaid,
+} from "#lib/ui/row-actions";
 import { readTxView, type TxView, writeTxView } from "#lib/ui/tx-query";
 
 export type TransactionsOptions = {
@@ -85,16 +88,16 @@ export function renderTransactionsPage(
 
 	const mark = (payment: CardPayment) =>
 		state.guard(async () => {
-			if (data) await savePayment(repo, data, markPaid(payment, now), now);
+			if (data) await markPlanPaid(repo, data, payment, now);
 		}, "tx.error.markPaid");
 	/** Upcoming's *Confirm*: the waiting list saved as is, every line made (DD-108). */
 	const confirmList = (list: PurchaseList) =>
 		state.guard(async () => {
-			await writeListReply(repo, list.id, { now: clock() });
+			await confirmWaitingList(repo, list.id, clock());
 		}, "tx.error.confirmList");
 	const remove = (payment: CardPayment) =>
 		state.guard(async () => {
-			await deletePayment(repo, payment);
+			await deletePlannedPayment(repo, payment);
 		}, "tx.error.delete");
 
 	// A card's chip shows its line form with its short form beside it.
