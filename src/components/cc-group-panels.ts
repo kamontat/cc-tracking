@@ -1,12 +1,13 @@
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
 import type { GroupPanel } from "#lib/domain/cards-view";
+import { toGroupColor } from "#lib/domain/group-color";
 import { formatAmount } from "#lib/domain/money";
 import { ownerOf } from "#lib/domain/owner";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
 import { icons } from "#lib/ui/icons";
-import { base, controls, usageBar } from "#styles/shared";
+import { base, controls, groupInk, usageBar } from "#styles/shared";
 
 /**
  * The bar's tint, as a card tile's rail (`roomLevel`): over once the room is below zero,
@@ -28,6 +29,7 @@ export class CcGroupPanels extends LitElement {
 		base,
 		controls,
 		usageBar,
+		groupInk,
 		css`
 			:host {
 				display: flex;
@@ -95,6 +97,20 @@ export class CcGroupPanels extends LitElement {
 				background: var(--cc-surface-sunken);
 			}
 
+			/* A group with a colour wears its soft tint; hover deepens the edge, never an underline. */
+			.gpanel[data-g] {
+				background: var(--g-soft);
+				border-color: color-mix(in oklab, var(--g-fg) 18%, transparent);
+			}
+
+			.gpanel[data-g]:hover {
+				border-color: color-mix(in oklab, var(--g-fg) 55%, transparent);
+			}
+
+			.gpanel[data-g] .gname {
+				color: var(--g-fg);
+			}
+
 			.ghead {
 				display: flex;
 				flex-direction: row;
@@ -150,6 +166,7 @@ export class CcGroupPanels extends LitElement {
 			.join(" · ");
 		const width = Math.min(100, Math.max(0, panel.usedPct));
 		return html`<button type="button" class="gpanel" data-group=${group.id}
+			data-g=${toGroupColor(group.color) ?? nothing}
 			@click=${() =>
 				this.dispatchEvent(
 					new CustomEvent("open-group", { detail: { id: group.id } }),

@@ -1,6 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import "#components/cc-group-panels";
-import type { CcGroupPanels } from "#components/cc-group-panels";
+import { CcGroupPanels } from "#components/cc-group-panels";
 import type { GroupPanel } from "#lib/domain/cards-view";
 import type { Owner } from "#lib/domain/owner";
 import type { LimitGroup } from "#lib/domain/types";
@@ -130,4 +129,24 @@ test("no groups names the next step", async () => {
 		"No limit groups yet. Add one.",
 	);
 	expect(text(root.querySelector(".sec-head small"))).toBe("0");
+});
+
+test("a panel wears its group's colour; none or a bad one wears none", async () => {
+	const withColor = (p: GroupPanel, color: unknown): GroupPanel => ({
+		...p,
+		group: { ...p.group, color } as LimitGroup,
+	});
+	const [a, b] = panels as [GroupPanel, GroupPanel];
+	const { root } = await mount({
+		panels: [withColor(a, "teal"), withColor(b, "nope"), { ...a }],
+	});
+	const rows = [...root.querySelectorAll(".gpanel")];
+	expect(rows[0]?.getAttribute("data-g")).toBe("teal");
+	expect(rows[1]?.hasAttribute("data-g")).toBe(false);
+	expect(rows[2]?.hasAttribute("data-g")).toBe(false);
+	const css = (CcGroupPanels.styles as unknown[])
+		.flat(Infinity)
+		.map((s) => (s as { cssText: string }).cssText)
+		.join("\n");
+	expect(css).toMatch(/\.gpanel\[data-g\][^}]*var\(--g-soft\)/);
 });
