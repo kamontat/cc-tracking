@@ -131,13 +131,18 @@ export class CcListIndex extends LitElement {
 
 	private row(list: PurchaseList) {
 		const id = `list:${list.id}`;
-		const total = formatAmount(listTotal(list));
+		const sum = listTotal(list);
+		const total = formatAmount(sum);
+		// A saved list is money out like a ledger purchase; a total of nothing has no sign.
+		const amount: { text: string; tone: "out" | "muted" } =
+			list.status !== "saved"
+				? { text: `${MINUS}${total}`, tone: "muted" }
+				: sum === 0
+					? { text: total, tone: "muted" }
+					: { text: `${MINUS}${total}`, tone: "out" };
 		return actionRow(this.text(list), {
 			id,
-			amount: {
-				text: list.status === "saved" ? total : `${MINUS}${total}`,
-				tone: list.status === "saved" ? "out" : "muted",
-			},
+			amount,
 			action: this.buttons(list),
 			open: {
 				expanded: this.rows.isOpen(id),

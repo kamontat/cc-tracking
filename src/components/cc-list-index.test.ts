@@ -82,6 +82,30 @@ test("rows are buttons, not links, with date, cards and total", async () => {
 	expect(shown(root)).toBeNull();
 });
 
+test("a saved list's total is money out, signed and red; a draft's stays muted", async () => {
+	const { root } = await mount();
+	const s1 = head(root, "s1")?.querySelector(".amount");
+	expect(text(s1)).toBe("−฿90.00");
+	expect(s1?.classList.contains("out")).toBe(true);
+	const d1 = head(root, "d1")?.querySelector(".amount");
+	expect(text(d1)).toBe("−฿100.00");
+	expect(d1?.classList.contains("muted")).toBe(true);
+});
+
+test("a saved list that made nothing shows ฿0.00, unsigned and muted", async () => {
+	const none: PurchaseList = {
+		id: "z1",
+		date: "2026-10-28",
+		status: "saved",
+		lines: [{ cardId: "A", amount: 100_00, made: false }],
+	};
+	const { root } = await mount({ lists: [none] });
+	const z = head(root, "z1")?.querySelector(".amount");
+	expect(text(z)).toBe("฿0.00");
+	expect(z?.classList.contains("muted")).toBe(true);
+	expect(z?.classList.contains("out")).toBe(false);
+});
+
 test("one row is open at a time", async () => {
 	const { element, root } = await mount();
 	head(root, "d1")?.click();

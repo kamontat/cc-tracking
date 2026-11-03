@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { html, type ReactiveController, render } from "lit";
+import { html, nothing, type ReactiveController, render } from "lit";
 import {
 	type ActionRowText,
 	actionRow,
@@ -98,21 +98,21 @@ test("a lead replaces the kind icon in the head", () => {
 
 test("a saved row draws a neutral icon when given no lead", () => {
 	const root = document.createElement("div");
-	render(actionRow({ kind: "saved", title: "Saved", subtitle: "" }, {}), root);
-	expect(root.querySelector(".a-ic[data-kind=saved] svg")).not.toBeNull();
-});
-
-test("without open, a row with href is still a link and a plain row a div", () => {
-	const root = document.createElement("div");
 	render(
-		html`${actionRow(text, { href: "/transactions" })}${actionRow(text, {})}`,
+		actionRow(
+			{ kind: "saved", title: "Saved", subtitle: "" },
+			{
+				open: {
+					expanded: false,
+					onToggle: () => {},
+					detailsId: "rows-s",
+					details: nothing,
+				},
+			},
+		),
 		root,
 	);
-	const [link, plain] = [...root.querySelectorAll(".a-hit")];
-	expect(link?.localName).toBe("a");
-	expect(link?.getAttribute("href")).toBe("/transactions");
-	expect(plain?.localName).toBe("div");
-	expect(root.querySelector("[aria-expanded], .a-details, .a-chev")).toBeNull();
+	expect(root.querySelector(".a-ic[data-kind=saved] svg")).not.toBeNull();
 });
 
 const host = () => {
@@ -228,7 +228,7 @@ test("a hovered opening head keeps a neutral tag on the surface; no payment-only
 		/\.a-row:has\(> button\.a-hit:hover\) \.tag:not\([^)]*\)\s*\{\s*background: var\(--cc-surface\)/,
 	);
 	expect(css).not.toContain(".pay-right");
-	expect(css).not.toMatch(/\.a-right > button/);
+	expect(css).not.toContain(".a-right");
 });
 
 test("details with no lines leave no gap", () => {

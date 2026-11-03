@@ -162,7 +162,9 @@ test("an opened purchase shows its statement and list, with Open card and Open l
 
 	await tap(element, "buy:A:L1-0");
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("false");
-	expect(lines(root)).toEqual(["From list Thu, 29 Oct"]);
+	expect(lines(root)).toEqual([]);
+	const row = root.querySelector('[data-row="buy:A:L1-0"]');
+	expect(row?.textContent?.split("From list").length).toBe(2);
 	const both = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
 	expect(both.map((b) => b.getAttribute("data-action"))).toEqual([
 		"open-card",
@@ -651,6 +653,44 @@ test("Confirm moves focus to Save, and Cancel moves it back to Confirm", async (
 	await element.updateComplete;
 	expect(root.activeElement).toBe(
 		root.querySelector("[data-action=confirm-list]"),
+	);
+});
+
+test("after a second step the host keeps the row: focus lands on the first-step button", async () => {
+	const sent: PurchaseList = {
+		id: "w1",
+		date: "2026-10-30",
+		status: "sent",
+		lines: [{ cardId: "A", amount: 10_00 }],
+	};
+	const c = card("A");
+	const { element, root } = await mount({
+		entries: [payEntry("p0", 100_00)],
+		upcoming: {
+			lists: [sent],
+			planned: [{ payment: payment("pl1", 900_00, "planned", c), card: c }],
+			cards: [c],
+		},
+	});
+	await tap(element, "list:w1");
+	(root.querySelector("[data-action=confirm-list]") as HTMLElement).click();
+	await element.updateComplete;
+	(root.querySelector("[data-action=save-list]") as HTMLElement).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(
+		root.querySelector("[data-action=confirm-list]"),
+	);
+	await tap(element, "plan:A:pl1");
+	const planned = () =>
+		root.querySelector('[data-row="plan:A:pl1"]') as HTMLElement;
+	(planned().querySelector("[data-action=delete]") as HTMLElement).click();
+	await element.updateComplete;
+	(
+		planned().querySelector("[data-action=confirm-delete]") as HTMLElement
+	).click();
+	await element.updateComplete;
+	expect(root.activeElement).toBe(
+		planned().querySelector("[data-action=delete]"),
 	);
 });
 

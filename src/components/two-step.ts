@@ -113,6 +113,8 @@ export class TwoStepController implements ReactiveController {
 			aria-label=${t("tx.confirmDelete", { amount: formatAmount(payment.amount), card: cardName(payment.cardId, card) })}
 			@click=${() => {
 				this.plan = null;
+				// If the write fails the row stays: focus then lands on its *Delete*.
+				this.refocus = { action: "delete", id: key };
 				this.host.requestUpdate();
 				remove();
 			}}>${t("common.delete")}</button><button type="button" data-action="cancel-delete"
@@ -143,6 +145,7 @@ export class TwoStepController implements ReactiveController {
 			aria-label=${count === 1 ? t("row.confirmAsk.one") : t("row.confirmAsk.many", { count })}
 			@click=${() => {
 				this.list = null;
+				this.refocus = { action: "confirm-list", id: list.id };
 				this.host.requestUpdate();
 				confirm();
 			}}>${t("row.save")}</button><button type="button" data-variant="quiet" data-action="cancel-confirm"

@@ -116,12 +116,6 @@ export class CcTxLedger extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			/* A ledger row leads with the card chip, not a kind icon: the details line up past
-			   the chip's width and the gap. */
-			.a-wrap {
-				--a-lead-inline: calc(var(--cc-space-5) + var(--cc-space-3) + var(--cc-space-3));
-			}
-
 			.more {
 				align-self: center;
 			}
@@ -222,12 +216,9 @@ export class CcTxLedger extends LitElement {
 		});
 	}
 
-	/** A purchase's details: its statement's dates and the list it came from. The note is on the
-	 * row's sub line already, so it is not said twice. */
-	private purchaseDetails(
-		entry: TxEntry & { kind: "purchase" },
-		list: PurchaseList | undefined,
-	) {
+	/** A purchase's details: its statement's dates. The note and the list it came from are on
+	 * the row's sub line already (and *Open list* links the list), so they are not said twice. */
+	private purchaseDetails(entry: TxEntry & { kind: "purchase" }) {
 		const { purchase } = entry;
 		const date = (d: PlainDate) => displayDate(d, getLocale());
 		const statement = this.ledgers
@@ -238,12 +229,6 @@ export class CcTxLedger extends LitElement {
 				? html`<span>${t("row.statement", {
 						close: date(statement.closeDate),
 						due: date(statement.dueDate),
-					})}</span>`
-				: nothing
-		}${
-			list
-				? html`<span>${t("tx.fromList", {
-						date: headerDate(list.date, getLocale(), false),
 					})}</span>`
 				: nothing
 		}`;
@@ -305,7 +290,7 @@ export class CcTxLedger extends LitElement {
 				entryId(entry),
 				text,
 				amount,
-				this.purchaseDetails(entry, list),
+				this.purchaseDetails(entry),
 				html`<a class="btn" data-variant="quiet" data-action="open-card"
 					href=${`/card?id=${encodeURIComponent(entry.purchase.cardId)}`}>${t("row.openCard")}</a>${
 						list

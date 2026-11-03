@@ -364,3 +364,60 @@ test("Delete refuses a draft sent since, and says why", async () => {
 		"Could not delete the draft. This list was sent or saved elsewhere, so it was not changed.",
 	);
 });
+
+/** Taps the first step, then the second, of a two-step button in a Needs you row. */
+const tapTwice = async (
+	root: HTMLElement,
+	row: string,
+	first: string,
+	second: string,
+) => {
+	const { element, shadow } = await needs(root);
+	const head = shadow.querySelector<HTMLElement>(`[data-row="${row}"] .a-hit`);
+	head?.click();
+	await element.updateComplete;
+	shadow
+		.querySelector<HTMLElement>(`[data-row="${row}"] [data-action="${first}"]`)
+		?.click();
+	await element.updateComplete;
+	// Nothing is written by the first step.
+	await settle(5);
+	return async () => {
+		shadow
+			.querySelector<HTMLElement>(
+				`[data-row="${row}"] [data-action="${second}"]`,
+			)
+			?.click();
+		await settle(5);
+		await element.updateComplete;
+	};
+};
+
+test("Delete on a planned payment is two steps, then the stored payment is gone", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCardPayment(soonPlan);
+	const { root } = await setup(repo);
+	const second = await tapTwice(root, "plan:A:c1", "delete", "confirm-delete");
+	expect(await repo.listCardPayments("A")).toHaveLength(1);
+	await second();
+	expect(await repo.listCardPayments("A")).toEqual([]);
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="plan:A:c1"]')).toBeNull();
+	expect(root.querySelector("cc-error-banner")?.message).toBe("");
+});
+
+test("Confirm on a waiting list is two steps, then Save stores the list saved", async () => {
+	const repo = new InMemoryRepository();
+	await repo.savePurchaseList({ ...draft, id: "w1", status: "sent" });
+	const { root } = await setup(repo);
+	const second = await tapTwice(root, "list:w1", "confirm-list", "save-list");
+	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual([
+		"sent",
+	]);
+	await second();
+	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual([
+		"saved",
+	]);
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="list:w1"]')).toBeNull();
+});

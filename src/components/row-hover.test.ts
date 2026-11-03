@@ -133,9 +133,11 @@ test("card tiles hover without an underline and keep a focus ring", () => {
 
 test("the ledger's rows are the opening row: they stack below 900px, with no row of their own", () => {
 	const text = stylesOf("cc-tx-ledger");
+	// The row is one column at every width: the head button is its only child.
 	expect(text).toMatch(
-		/@media \(max-width: 899\.98px\)\s*\{[^@]*\.a-row\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\)/,
+		/\.a-row\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
 	);
+	expect(text).not.toContain(".a-right");
 	expect(text).toMatch(
 		/@media \(max-width: 899\.98px\)\s*\{[^@]*\.a-details \.a-btns\s*\{[^}]*flex-direction: column/,
 	);

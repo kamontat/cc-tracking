@@ -204,11 +204,9 @@ export function listLines(list: PurchaseList, cards: Card[]): TemplateResult {
 }
 
 export type ActionRowOptions = {
-	/** The row opens a page... */
-	href?: string;
-	/** ...or opens in place: the head toggles `details` and the buttons (`action`) under it.
+	/** The row opens in place: the head toggles `details` and the buttons (`action`) under it.
 	 * `detailsId` names that region (`useOpenRow`'s `detailsId`). */
-	open?: {
+	open: {
 		expanded: boolean;
 		onToggle: () => void;
 		detailsId: string;
@@ -219,22 +217,19 @@ export type ActionRowOptions = {
 	lead?: TemplateResult | undefined;
 	/** The right-hand figure, already signed, and its tone. */
 	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" };
-	/** The buttons: under the figure, or in the opened details with `open`. With neither
-	 * `href` nor `open` the row is plain text and these are its only controls (DD-110). */
+	/** The buttons, in the opened details (DD-110). */
 	action?: TemplateResult | undefined;
 	/** Names the row for tests and the page: `data-row`. */
 	id?: string;
 };
 
 /**
- * Draws a row. The left part (icon and text) is one link that opens the item; the right part,
- * when there is one, holds the figure and its own button beside it, never inside it. With
- * `open` the whole head (icon, text, figure and a chevron) is one button, and nothing
+ * Draws a row. The whole head (icon, text, figure and a chevron) is one button, and nothing
  * interactive sits inside it: the buttons live in the details region it controls.
  */
 export function actionRow(
 	text: ActionRowText,
-	{ href, open, lead, amount, action, id }: ActionRowOptions,
+	{ open, lead, amount, action, id }: ActionRowOptions,
 ): TemplateResult {
 	const figure = amount
 		? html`<b class="amount ${amount.tone}" data-numeric>${amount.text}</b>`
@@ -247,31 +242,19 @@ export function actionRow(
 			<b class="a-title">${text.title}</b>
 			<span class="a-sub">${text.subtitle}</span>
 		</span>`;
-	if (open) {
-		const headId = `${open.detailsId}-head`;
-		return html`<div class="a-wrap" data-row=${id ?? nothing}>
-			<div class="a-row">
-				<button type="button" class="a-hit" id=${headId} data-item=${text.kind}
-					aria-expanded=${open.expanded ? "true" : "false"}
-					aria-controls=${open.detailsId}
-					@click=${() => open.onToggle()}>${inside}${figure}<span class="a-chev">${icons.chevron}</span></button>
-			</div>
-			<div class="a-details" id=${open.detailsId} role="region"
-				aria-labelledby=${headId} ?hidden=${!open.expanded}>
-				${open.details === nothing ? nothing : html`<div class="a-info">${open.details}</div>`}
-				${action ? html`<div class="a-btns">${action}</div>` : nothing}
-			</div>
-		</div>`;
-	}
-	const hit = href
-		? html`<a class="a-hit" data-item=${text.kind} href=${href}>${inside}</a>`
-		: html`<div class="a-hit" data-item=${text.kind}>${inside}</div>`;
-	const right =
-		amount || action
-			? html`<span class="a-right">${figure}${action ?? nothing}</span>`
-			: nothing;
+	const headId = `${open.detailsId}-head`;
 	return html`<div class="a-wrap" data-row=${id ?? nothing}>
-		<div class="a-row">${hit}${right}</div>
+		<div class="a-row">
+			<button type="button" class="a-hit" id=${headId} data-item=${text.kind}
+				aria-expanded=${open.expanded ? "true" : "false"}
+				aria-controls=${open.detailsId}
+				@click=${() => open.onToggle()}>${inside}${figure}<span class="a-chev">${icons.chevron}</span></button>
+		</div>
+		<div class="a-details" id=${open.detailsId} role="region"
+			aria-labelledby=${headId} ?hidden=${!open.expanded}>
+			${open.details === nothing ? nothing : html`<div class="a-info">${open.details}</div>`}
+			${action ? html`<div class="a-btns">${action}</div>` : nothing}
+		</div>
 	</div>`;
 }
 
@@ -351,21 +334,20 @@ export const actionRowStyles = css`
 
 	.a-row {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
+		grid-template-columns: minmax(0, 1fr);
 		align-items: center;
-		gap: var(--cc-space-3);
 	}
 
 	/* The quiet ground reaches the panel's inner edges (DD-105, DD-109); a
 	   neutral icon tile, whose fill is that ground, turn to the surface so they still show. */
-	.a-row:has(> :is(a, button).a-hit:hover) {
+	.a-row:has(> button.a-hit:hover) {
 		background: var(--cc-surface-sunken);
 		box-shadow:
 			calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
 			var(--cc-space-4) 0 0 var(--cc-surface-sunken);
 	}
 
-	.a-row:has(> :is(a, button).a-hit:hover) .a-ic:not([data-kind="waiting"], [data-kind="overdue"]) {
+	.a-row:has(> button.a-hit:hover) .a-ic:not([data-kind="waiting"], [data-kind="overdue"]) {
 		background: var(--cc-surface);
 	}
 
@@ -394,16 +376,11 @@ export const actionRowStyles = css`
 		border-radius: 0;
 	}
 
-	.a-row:not(:has(> .a-right)) {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
 	.a-hit:hover {
 		text-decoration: none;
 		background: transparent;
 	}
 
-	a.a-hit:focus-visible,
 	button.a-hit:focus-visible {
 		box-shadow: var(--cc-focus-ring);
 	}
@@ -530,40 +507,7 @@ export const actionRowStyles = css`
 		display: none;
 	}
 
-	.a-right {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-end;
-		justify-content: center;
-		gap: var(--cc-space-1);
-		padding-block: var(--cc-space-3);
-		line-height: 1.25;
-		text-align: end;
-	}
-
-	/* Below 900px the row stacks (DD-109): the title takes the full width beside the icon and
-	   may wrap, the subtitle sits under it, then a last line holds the figure on the
-	   left and the button on the right, both in line with the text. */
 	@media (max-width: 899.98px) {
-		.a-row {
-			grid-template-columns: minmax(0, 1fr);
-			gap: 0;
-		}
-
-		.a-row:has(> .a-right) > .a-hit {
-			padding-block-end: var(--cc-space-2);
-		}
-
-		.a-right {
-			flex-direction: row;
-			flex-wrap: wrap;
-			align-items: center;
-			justify-content: space-between;
-			padding-block: 0 var(--cc-space-3);
-			padding-inline-start: var(--a-lead-inline);
-			text-align: start;
-		}
-
 		/* An opened row's buttons stack, each the full width, from the text's edge. */
 		.a-details .a-btns {
 			flex-direction: column;
@@ -633,11 +577,5 @@ export const actionRowStyles = css`
 		align-self: flex-end;
 		font-weight: 650;
 		color: var(--cc-text);
-	}
-
-	.a-right button {
-		padding: var(--cc-space-1) var(--cc-space-3);
-		font-size: var(--cc-text-xs);
-		font-weight: 650;
 	}
 `;
