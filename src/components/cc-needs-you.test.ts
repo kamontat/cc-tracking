@@ -387,7 +387,7 @@ test("an opened overdue bill draws its billing cycle in red to today, says what 
 	const line = details.querySelector<HTMLElement>(".a-cycle");
 	expect(line?.getAttribute("role")).toBe("img");
 	expect(line?.getAttribute("aria-label")).toBe(
-		"Closed 18 Sep, due 3 Oct, today 31 Oct",
+		"Closed 18 Sep, due 3 Oct (28 days late), today 31 Oct",
 	);
 	expect(
 		[...(line?.querySelectorAll<HTMLElement>(".a-mk") ?? [])].map((m) => [
@@ -613,7 +613,7 @@ test("opened rows read in Thai", async () => {
 	expect(parts(due, ".a-btns > *")).toEqual(["ชำระ ฿1.00", "เปิดบัตร"]);
 	expect(text(due, ".a-say")).toBe("เหลือ ฿1.00 จากยอด ฿1.00 เลยกำหนดมา 28 วัน");
 	expect(parts(due, ".a-mk")).toEqual([
-		"สรุปยอด 18 ก.ย.",
+		"สรุปยอดแล้ว 18 ก.ย.",
 		"ครบกำหนด 3 ต.ค.",
 		"วันนี้",
 	]);

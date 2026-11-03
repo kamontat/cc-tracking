@@ -259,15 +259,32 @@ const MARK_WORDS: Record<CycleMark["kind"], MessageKey> = {
 };
 
 /** Within this share of an end, a marker's label aligns to that end, so it never clips. */
-const EDGE = 6;
+const EDGE = 10;
+
+/** Labels under the track closer than this share of it would overlap, even on a phone. */
+const CROWD = 18;
+
+/** Which of two crowded labels under the track keeps its words: due, then the close, then bought. */
+const RANK: Record<CycleMark["kind"], number> = {
+	due: 3,
+	closes: 2,
+	closed: 2,
+	buy: 1,
+	now: 0,
+};
+
+/** How many days past today a late bill's cycle line runs, so today sits inside it. */
+export const PAST_TODAY = 3;
 
 /**
  * A statement's billing cycle drawn to scale (DD-165): a track from `start` to `end`, filled
  * up to `fillTo` (red when `late`), and a marker for each of `marks` in date order. Every
  * position comes from one scale, `daysBetween(start, d) / daysBetween(start, end)`, clamped to
  * the line. *Today* is a tick with its label above the track; the rest are circles with the
- * label under. When `late`, the due marker is red too. The line is one image to a screen
- * reader: its `aria-label` says the dates in words, today last.
+ * label under, and where two of those would overlap (closer than `CROWD`) the less important
+ * one keeps only its dot (`RANK`). When `late`, the due marker is red too. The line is one
+ * image to a screen reader: its `aria-label` says every date in words, how late a late due date
+ * is, and today last.
  */
 export function cycleLine({
 	start,
@@ -291,16 +308,35 @@ export function cycleLine({
 		.map((mark, i) => ({ mark, i }))
 		.sort((a, b) => at(a.mark.date) - at(b.mark.date) || a.i - b.i)
 		.map(({ mark }) => mark);
+	const today = ordered.find((m) => m.kind === "now")?.date ?? fillTo;
+	const words = (mark: CycleMark) => {
+		const date = dayMonth(mark.date, locale);
+		if (!late || mark.kind !== "due") return t(MARK_WORDS[mark.kind], { date });
+		const days = daysBetween(mark.date, today);
+		return t("row.cycle.dueLate", {
+			date,
+			late:
+				days === 1 ? t("row.say.late.one") : t("row.say.late.many", { days }),
+		});
+	};
+	// The labels under the track that keep their words, most important first.
+	const labelled: number[] = [];
+	const quiet = new Set<CycleMark>();
+	for (const mark of [...ordered]
+		.filter((m) => m.kind !== "now")
+		.sort((a, b) => RANK[b.kind] - RANK[a.kind])) {
+		const p = at(mark.date);
+		if (labelled.some((q) => Math.abs(q - p) < CROWD)) quiet.add(mark);
+		else labelled.push(p);
+	}
 	const spoken = [
 		...ordered.filter((m) => m.kind !== "now"),
 		...ordered.filter((m) => m.kind === "now"),
 	].map((mark, i) => {
-		const words = t(MARK_WORDS[mark.kind], {
-			date: dayMonth(mark.date, locale),
-		});
+		const said = words(mark);
 		return i === 0
-			? words
-			: words.charAt(0).toLocaleLowerCase(locale) + words.slice(1);
+			? said
+			: said.charAt(0).toLocaleLowerCase(locale) + said.slice(1);
 	});
 	return html`<div class="a-cycle" role="img" aria-label=${spoken.join(t("row.cycle.join"))}>
 		<span class="a-track"></span>
@@ -311,7 +347,9 @@ export function cycleLine({
 			const label =
 				mark.kind === "now"
 					? t("row.cycle.today")
-					: t(MARK_WORDS[mark.kind], { date: dayMonth(mark.date, locale) });
+					: quiet.has(mark)
+						? nothing
+						: t(MARK_WORDS[mark.kind], { date: dayMonth(mark.date, locale) });
 			return html`<span class="a-mk" aria-hidden="true" data-mark=${mark.kind}
 				data-edge=${edge ?? nothing} ?data-late=${late && mark.kind === "due"}
 				style=${`inset-inline-start: ${percent(p)}`}><i></i>${label}</span>`;
@@ -556,30 +594,26 @@ export const actionRowStyles = css`
 		display: none;
 	}
 
-	/* The foot: one sentence, then the buttons. Below 900px they stack, the buttons wrapping at
-	   their own width from the start; from 900px they share a line, buttons at the end. */
+	/* The foot: one sentence, then the buttons. They share a line while the foot has room for
+	   both, whatever the viewport; in a narrow column or on a phone the buttons wrap under the
+	   sentence, at their own width, to the end. */
 	.a-foot {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
 		gap: var(--cc-space-3);
 		min-inline-size: 0;
 	}
 
-	@media (min-width: 900px) {
-		.a-foot {
-			flex-direction: row;
-			align-items: center;
-			justify-content: space-between;
-		}
-
-		.a-foot .a-btns {
-			flex: none;
-			margin-inline-start: auto;
-		}
+	.a-foot .a-btns {
+		flex: none;
+		margin-inline-start: auto;
 	}
 
 	.a-say {
+		flex: 1 1 var(--cc-foot-say);
+		min-inline-size: 0;
 		font-size: var(--cc-text-sm);
 		color: var(--cc-text-muted);
 		overflow-wrap: anywhere;

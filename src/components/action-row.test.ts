@@ -170,16 +170,19 @@ test("details ids carry the host's prefix", () => {
 	expect(rows.detailsId("p1")).toBe("cc-rows-p1");
 });
 
-test("the opened row's styles: hidden wins, the foot is one line from 900px and stacks below, the chevron keeps still under reduced motion", () => {
+test("the opened row's styles: hidden wins, the foot wraps by its own width, the chevron keeps still under reduced motion", () => {
 	const css = actionRowStyles.cssText;
 	expect(css).toMatch(/\.a-details\[hidden\]\s*\{\s*display: none/);
+	// The sentence and the buttons share a line while the foot has room, whatever the viewport;
+	// in a narrow column the buttons drop under the sentence, at the end.
 	expect(css).toMatch(
-		/@media \(min-width: 900px\)\s*\{\s*\.a-foot\s*\{[^}]*flex-direction: row;[^}]*align-items: center;[^}]*justify-content: space-between/,
+		/\.a-foot\s*\{[^}]*display: flex;[^}]*flex-direction: row;[^}]*flex-wrap: wrap;[^}]*align-items: center;/,
 	);
-	// Below 900px the buttons wrap at their natural width from the start; none is stretched.
-	expect(css).toMatch(
-		/\.a-btns\s*\{[^}]*flex-wrap: wrap;[^}]*justify-content: flex-start/,
-	);
+	expect(css).toMatch(/\.a-say\s*\{[^}]*flex: 1 1 var\(--cc-foot-say\)/);
+	expect(css).toMatch(/\.a-foot \.a-btns\s*\{[^}]*margin-inline-start: auto/);
+	expect(css).not.toMatch(/@media \([^)]*900[^)]*\)\s*\{\s*\.a-foot/);
+	// The buttons wrap at their natural width; none is stretched.
+	expect(css).toMatch(/\.a-btns\s*\{[^}]*flex-wrap: wrap;/);
 	expect(css).not.toMatch(/\.a-btns > \*[^{]*\{[^}]*inline-size: 100%/);
 	expect(css).not.toContain(".a-info");
 	expect(css).toMatch(
@@ -251,7 +254,7 @@ test("a hovered opening head keeps a neutral tag on the surface; no payment-only
 test("a sentence keeps its money strong and the rest muted", () => {
 	const root = document.createElement("div");
 	render(html`<p>${say("row.say.paid", { total: money("฿1.00") })}</p>`, root);
-	expect(root.textContent).toBe("Statement ฿1.00 paid");
+	expect(root.textContent).toBe("Statement ฿1.00 paid.");
 	expect(root.querySelector(".a-money")?.textContent).toBe("฿1.00");
 	const css = actionRowStyles.cssText;
 	expect(css).toMatch(/\.a-say\s*\{[^}]*color: var\(--cc-text-muted\)/);
@@ -343,7 +346,7 @@ test("a purchase's cycle line puts each marker on one scale from the statement's
 			mark: "buy",
 			text: "Bought 29 Oct",
 			at: "6%",
-			edge: null,
+			edge: "start",
 			late: false,
 			hidden: "true",
 		},
@@ -390,7 +393,7 @@ test("an overdue bill's cycle line is red to today, its due marker late, and mar
 		late: true,
 	});
 	expect(line.getAttribute("aria-label")).toBe(
-		"Closed 25 Sep, due 15 Oct, today 3 Nov",
+		"Closed 25 Sep, due 15 Oct (19 days late), today 3 Nov",
 	);
 	expect(marks.map((m) => [m.mark, m.at, m.edge, m.late])).toEqual([
 		["closed", "41.67%", null, false],
@@ -438,4 +441,85 @@ test("the cycle line reads in Thai", () => {
 	});
 	expect(marks.map((m) => m.text)).toEqual(["ซื้อ 29 ต.ค.", "วันนี้"]);
 	expect(line.getAttribute("aria-label")).toBe("ซื้อ 29 ต.ค. วันนี้ 3 พ.ย.");
+	const late = cycle({
+		start: "2026-08-26",
+		end: "2026-11-06",
+		marks: [
+			{ kind: "closed", date: "2026-09-25" },
+			{ kind: "due", date: "2026-10-15" },
+			{ kind: "now", date: "2026-11-03" },
+		],
+		fillTo: "2026-11-03",
+		late: true,
+	});
+	expect(late.marks.map((m) => m.text)).toEqual([
+		"สรุปยอดแล้ว 25 ก.ย.",
+		"ครบกำหนด 15 ต.ค.",
+		"วันนี้",
+	]);
+	expect(late.line.getAttribute("aria-label")).toBe(
+		"สรุปยอดแล้ว 25 ก.ย. ครบกำหนด 15 ต.ค. (เลยกำหนดมา 19 วัน) วันนี้ 3 พ.ย.",
+	);
+});
+
+test("a marker within 10% of an end aligns its label to that end, so a bill a day late keeps Due inside", () => {
+	// 19 Sep = 0 .. 3 Nov = 45: due 30 Oct = 41 (91.11%), today 31 Oct = 42; a start at 4 (8.89%).
+	const { marks } = cycle({
+		start: "2026-09-19",
+		end: "2026-11-03",
+		marks: [
+			{ kind: "closed", date: "2026-09-23" },
+			{ kind: "due", date: "2026-10-30" },
+			{ kind: "now", date: "2026-10-31" },
+		],
+		fillTo: "2026-10-31",
+		late: true,
+	});
+	expect(marks.map((m) => [m.mark, m.at, m.edge])).toEqual([
+		["closed", "8.89%", "start"],
+		["due", "91.11%", "end"],
+		["now", "93.33%", "end"],
+	]);
+});
+
+test("labels under the track never collide: the less important one keeps only its dot", () => {
+	// 26 Oct = 0 .. 15 Dec = 50: bought 24 Nov = 29 (58%), closes 25 Nov = 30 (60%), due 100%.
+	const near = cycle({
+		start: "2026-10-26",
+		end: "2026-12-15",
+		marks: [
+			{ kind: "buy", date: "2026-11-24" },
+			{ kind: "closes", date: "2026-11-25" },
+			{ kind: "due", date: "2026-12-15" },
+			{ kind: "now", date: "2026-11-24" },
+		],
+		fillTo: "2026-11-24",
+	});
+	expect(near.marks.map((m) => [m.mark, m.text])).toEqual([
+		["buy", ""],
+		["now", "Today"],
+		["closes", "Closes 25 Nov"],
+		["due", "Due 15 Dec"],
+	]);
+	expect(near.line.querySelector('.a-mk[data-mark="buy"] i')).not.toBeNull();
+	// Every mark is still said.
+	expect(near.line.getAttribute("aria-label")).toBe(
+		"Bought 24 Nov, closes 25 Nov, due 15 Dec, today 24 Nov",
+	);
+	// Due outranks a close: 9 Dec is 88%, 6 days (12%) from due at 100%.
+	const late = cycle({
+		start: "2026-10-26",
+		end: "2026-12-15",
+		marks: [
+			{ kind: "buy", date: "2026-10-27" },
+			{ kind: "closes", date: "2026-12-09" },
+			{ kind: "due", date: "2026-12-15" },
+		],
+		fillTo: "2026-10-27",
+	});
+	expect(late.marks.map((m) => m.text)).toEqual([
+		"Bought 27 Oct",
+		"",
+		"Due 15 Dec",
+	]);
 });

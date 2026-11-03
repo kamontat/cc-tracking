@@ -189,7 +189,7 @@ test("an opened purchase on an open statement draws its billing cycle and says t
 	);
 	expect(line?.querySelector(".a-fill[data-late]")).toBeNull();
 	expect(sentence(root)).toBe(
-		"On the November statement: ฿1,000.00 so far, closes in 18 days",
+		"On the November statement: ฿1,000.00 so far, closes in 18 days.",
 	);
 	expect(
 		[...(shown(root)?.querySelectorAll(".a-say .a-money") ?? [])].map(
@@ -242,8 +242,39 @@ test("a purchase on a statement that closes today says so", async () => {
 	});
 	await tap(element, "buy:A:x");
 	expect(sentence(root)).toBe(
-		"On the November statement: ฿100.00 so far, closes today",
+		"On the November statement: ฿100.00 so far, closes today.",
 	);
+});
+
+test("a purchase made the day before its statement closes shows Closes, and Bought keeps only its dot", async () => {
+	const c = card("A");
+	const x = purchase("x", 100_00);
+	if (x.kind === "purchase") x.purchase.date = "2026-11-17";
+	const books = new Map([
+		[
+			"A",
+			cardLedger(
+				c,
+				[(x as TxEntry & { kind: "purchase" }).purchase],
+				[],
+				[],
+				"2026-11-17",
+			),
+		],
+	]);
+	const { element, root } = await mount({
+		entries: [x],
+		ledgers: books,
+		today: "2026-11-17",
+	});
+	await tap(element, "buy:A:x");
+	expect(marks(root).map((m) => [m[0], m[1]])).toEqual([
+		["buy", ""],
+		["now", "Today"],
+		["closes", "Closes 18 Nov"],
+		["due", "Due 3 Dec"],
+	]);
+	expect(shown(root)?.querySelector('.a-mk[data-mark="buy"] i')).not.toBeNull();
 });
 
 test("an opened purchase on a paid statement draws Bought, Closed and Due and says it was paid", async () => {
@@ -256,7 +287,7 @@ test("an opened purchase on a paid statement draws Bought, Closed and Due and sa
 		["closed", "Closed 18 Oct", "65.91%", false],
 		["due", "Due 2 Nov", "100%", false],
 	]);
-	expect(sentence(root)).toBe("Statement ฿500.00 paid");
+	expect(sentence(root)).toBe("Statement ฿500.00 paid.");
 	setLocale("th");
 	await element.updateComplete;
 	expect(sentence(root)).toBe("ยอดรอบบิล ฿500.00 ชำระแล้ว");
@@ -305,10 +336,22 @@ test("an opened purchase on a closed statement with money left says what is left
 	expect(shown(root)?.querySelector(".a-say .a-late")).toBeNull();
 });
 
-test("a closed statement past its due date says how late in red, with no Today marker", async () => {
+test("a closed statement past its due date draws the overdue bill's line and says how late in red", async () => {
 	const { element, root } = await mount(owing("2026-11-05"));
 	await tap(element, "buy:A:old");
-	expect(marks(root).map((m) => m[0])).toEqual(["buy", "closed", "due"]);
+	// 19 Sep = 0 .. 8 Nov (today + 3) = 50: bought 20 Sep = 1, closed 18 Oct = 29,
+	// due 2 Nov = 44, today 5 Nov = 47.
+	expect(marks(root)).toEqual([
+		["buy", "Bought 20 Sep", "2%", false],
+		["closed", "Closed 18 Oct", "58%", false],
+		["due", "Due 2 Nov", "88%", true],
+		["now", "Today", "94%", false],
+	]);
+	const line = shown(root)?.querySelector<HTMLElement>(".a-cycle");
+	expect(line?.querySelector(".a-fill")?.hasAttribute("data-late")).toBe(true);
+	expect(line?.getAttribute("aria-label")).toBe(
+		"Bought 20 Sep, closed 18 Oct, due 2 Nov (3 days late), today 5 Nov",
+	);
 	expect(sentence(root)).toBe("฿400.00 left of ฿500.00 billed, 3 days late");
 	expect(text(shown(root) as HTMLElement, ".a-say .a-late")).toBe(
 		"3 days late",

@@ -115,6 +115,9 @@
 	--cc-cycle-tick: 1.125rem;
 	--cc-cycle-fill-opacity: 0.55;
 
+	/* How wide an opened row's sentence wants to be before its buttons drop under it. */
+	--cc-foot-say: 18rem;
+
 	/* The widest a page's content grows. */
 	--cc-page-width: 72rem;
 

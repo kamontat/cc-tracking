@@ -16,6 +16,7 @@ import {
 	listParts,
 	money,
 	overdueText,
+	PAST_TODAY,
 	plannedText,
 	say,
 	sentWords,
@@ -36,9 +37,6 @@ import { base, controls, rowPanel } from "#styles/shared";
 
 /** How many things show before *See more*. */
 const SHOWN = 5;
-
-/** How many days past today an overdue bill's cycle line runs, so today sits inside it. */
-const PAST_TODAY = 3;
 
 /**
  * What needs doing on Home, money at risk first (DD-62): bills past due, late plans, replies

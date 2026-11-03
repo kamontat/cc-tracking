@@ -15,6 +15,7 @@ import {
 	cycleLine,
 	listParts,
 	money,
+	PAST_TODAY,
 	partLines,
 	plannedText,
 	say,
@@ -24,6 +25,7 @@ import {
 } from "#components/action-row";
 import { useTwoStep } from "#components/two-step";
 import {
+	addDays,
 	compareDates,
 	dayMonth,
 	daysBetween,
@@ -260,13 +262,13 @@ export class CcTxLedger extends LitElement {
 			{ kind: closed ? "closed" : "closes", date: statement.closeDate },
 			{ kind: "due", date: statement.dueDate },
 		];
-		// Today shows while the statement is still to pay and not yet past due.
-		if (!closed || (!settled && !late))
-			marks.push({ kind: "now", date: today });
+		// Today shows while the statement is still to pay; once it is late the line runs past
+		// today, as an overdue bill's does in Needs you.
+		if (!closed || !settled) marks.push({ kind: "now", date: today });
 		return {
 			above: cycleLine({
 				start,
-				end: statement.dueDate,
+				end: late ? addDays(today, PAST_TODAY) : statement.dueDate,
 				marks,
 				fillTo: today,
 				late,
