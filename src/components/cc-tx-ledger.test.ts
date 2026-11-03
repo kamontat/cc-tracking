@@ -366,14 +366,14 @@ test("rows name the card in the panel form and say which list a purchase came fr
 		]),
 		lists: [{ ...list("L1"), date: "2026-10-29" }],
 		limitGroups: [
-			{ id: "g1", name: "One", limit: 1 },
-			{ id: "g2", name: "Two", limit: 1 },
+			{ id: "g1", name: "One", limit: 1, color: "blue" },
+			{ id: "g2", name: "Two", limit: 1, color: "rose" },
 		],
 	});
 	const [fromList, plain] = Array.from(root.querySelectorAll("[data-kind]"));
 	expect(fromList?.querySelector("b")?.textContent).toBe("A) Card A");
 	expect(fromList?.querySelector(".mini")?.textContent).toBe("1111");
-	expect(fromList?.querySelector(".mini")?.getAttribute("data-g")).toBe("2");
+	expect(fromList?.querySelector(".mini")?.getAttribute("data-g")).toBe("rose");
 	expect(fromList?.textContent).toContain("From list Thu, 29 Oct");
 	expect(plain?.querySelector(".sub")).toBeNull();
 	expect(root.querySelectorAll(".panel")).toHaveLength(1);

@@ -152,14 +152,6 @@
 	--cc-warning-surface: #fbecd9;
 
 	/* Pastel pairs for grouping: a soft ground and the ink that reads on it. */
-	--cc-group-1: #e3e9fb;
-	--cc-group-1-text: #3552b8;
-	--cc-group-2: #dff1e7;
-	--cc-group-2-text: #2f7457;
-	--cc-group-3: #efe5f7;
-	--cc-group-3-text: #7a45a8;
-	--cc-group-4: #fbe6dd;
-	--cc-group-4-text: #a74e2c;
 
 	/* The twelve colours a limit group can carry (GROUP_COLORS): the ground, the ink that reads
 	   on it, and a lighter tint for quiet surfaces. Ink holds at least 4.5:1 on both, light and
@@ -257,14 +249,6 @@
 		--cc-warning: #e7a55e;
 		--cc-warning-surface: #3a2a18;
 
-		--cc-group-1: #1f2944;
-		--cc-group-1-text: #9fb3f5;
-		--cc-group-2: #1b3328;
-		--cc-group-2-text: #8ed7b4;
-		--cc-group-3: #2e2240;
-		--cc-group-3-text: #cfa6ef;
-		--cc-group-4: #3a241b;
-		--cc-group-4-text: #f2a882;
 		--cc-group-blue: #1f2944;
 		--cc-group-blue-text: #9fb3f5;
 		--cc-group-blue-soft: #1d2632;
@@ -337,14 +321,6 @@
 	--cc-warning: #e7a55e;
 	--cc-warning-surface: #3a2a18;
 
-	--cc-group-1: #1f2944;
-	--cc-group-1-text: #9fb3f5;
-	--cc-group-2: #1b3328;
-	--cc-group-2-text: #8ed7b4;
-	--cc-group-3: #2e2240;
-	--cc-group-3-text: #cfa6ef;
-	--cc-group-4: #3a241b;
-	--cc-group-4-text: #f2a882;
 	--cc-group-blue: #1f2944;
 	--cc-group-blue-text: #9fb3f5;
 	--cc-group-blue-soft: #1d2632;

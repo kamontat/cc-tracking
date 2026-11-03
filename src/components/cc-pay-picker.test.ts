@@ -110,8 +110,8 @@ test("rows keep the given order, under the hint, and a tap picks the card", asyn
 test("a row is the panel form: the last 4 in its group's colour, id) name, and owed", async () => {
 	const el = await mount();
 	el.groups = [
-		{ id: "g0", name: "Zero", limit: 1 },
-		{ id: "g1", name: "One", limit: 1 },
+		{ id: "g0", name: "Zero", limit: 1, color: "blue" },
+		{ id: "g1", name: "One", limit: 1, color: "rose" },
 	];
 	el.choices = [
 		{ ...choices()[0], card: { ...card("A", "Alpha"), limitGroupId: "g1" } },
@@ -120,7 +120,7 @@ test("a row is the panel form: the last 4 in its group's colour, id) name, and o
 	const [row] = rows(el);
 	expect(flat(row?.querySelector(".what b"))).toBe("A) Alpha");
 	expect(flat(row?.querySelector(".mini"))).toBe("1234");
-	expect(row?.querySelector(".mini")?.getAttribute("data-g")).toBe("2");
+	expect(row?.querySelector(".mini")?.getAttribute("data-g")).toBe("rose");
 	expect(flat(row?.querySelector(".figures"))).toBe("฿500.00 owed");
 });
 

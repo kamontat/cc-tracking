@@ -30,8 +30,15 @@ const g1: LimitGroup = {
 	name: "SCB",
 	limit: 100_000_00,
 	owner: "KC",
+	color: "blue",
 };
-const g2: LimitGroup = { id: "g2", name: "UOB", limit: 10_000_00, owner: "NT" };
+const g2: LimitGroup = {
+	id: "g2",
+	name: "UOB",
+	limit: 10_000_00,
+	owner: "NT",
+	color: "rose",
+};
 const room = (group: LimitGroup, used: number): GroupRoom => ({
 	group,
 	used,
@@ -132,7 +139,7 @@ test("tiles link to the card page, encoded, in the group's colour", async () => 
 		"/card?id=B%2F2",
 		"/card?id=C",
 	]);
-	expect(links.map((a) => a.dataset["g"])).toEqual(["1", "2", "1"]);
+	expect(links.map((a) => a.dataset["g"])).toEqual(["blue", "rose", "blue"]);
 	expect(root.querySelectorAll("section .tiles")).toHaveLength(2);
 });
 
@@ -283,4 +290,12 @@ test("only archived cards match: the no-match line shows above the folded Archiv
 	expect(children[0]?.classList.contains("empty")).toBe(true);
 	expect(children[1]?.matches("details.archive")).toBe(true);
 	expect(text(children[1]?.querySelector("summary"))).toBe("Archived (1)");
+});
+
+test("a group with a colour that is not in the palette gives a tile with no colour", async () => {
+	const { element: el, root } = await mount({}, {}, [card("A")]);
+	el.groups = [{ ...g1, color: "nope" as never }, g2];
+	await el.updateComplete;
+	const tile = root.querySelector<HTMLElement>('a[data-card="A"]');
+	expect(tile?.dataset["g"]).toBeUndefined();
 });

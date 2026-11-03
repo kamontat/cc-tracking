@@ -14,7 +14,12 @@ export const testCard = (id: string): Card => ({
 	limitGroupId: "g",
 });
 
-export const testGroup: LimitGroup = { id: "g", name: "G", limit: 100_000_00 };
+export const testGroup: LimitGroup = {
+	id: "g",
+	name: "G",
+	limit: 100_000_00,
+	color: "teal",
+};
 
 export const testRow = (
 	id: string,

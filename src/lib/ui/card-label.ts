@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from "lit";
+import { type GroupColor, toGroupColor } from "#lib/domain/group-color";
 import { cardOwnerOf } from "#lib/domain/owner";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { t } from "#lib/i18n/index";
@@ -51,12 +52,15 @@ export const cardLineHtml = (id: string, card: Card | undefined) =>
 	swap(cardLine(id, card), cardLine(id, card, { short: true }));
 
 /**
- * Which of the four group pastels a card wears: its group's place in the stored group order,
- * four colours round (1 to 4). Null when it draws on no stored group.
+ * The colour a card wears: its limit group's stored colour name. Null when it draws on no
+ * stored group, or the group's colour is not one in the palette.
  */
-export function groupTone(card: Card, groups: LimitGroup[]): number | null {
-	const index = groups.findIndex(({ id }) => id === card.limitGroupId);
-	return index < 0 ? null : (index % 4) + 1;
+export function groupColor(
+	card: Card | undefined,
+	groups: LimitGroup[],
+): GroupColor | null {
+	const group = groups.find(({ id }) => id === card?.limitGroupId);
+	return group ? toGroupColor(group.color) : null;
 }
 
 /**
@@ -71,8 +75,8 @@ export function cardMini(
 ): TemplateResult {
 	if (!card)
 		return html`<span class="mini" ?data-big=${big} aria-hidden="true"></span>`;
-	const tone = groupTone(card, groups);
-	return html`<span class="mini" data-g=${tone ?? nothing} ?data-big=${big}>${card.last4}</span>`;
+	const color = groupColor(card, groups);
+	return html`<span class="mini" data-g=${color ?? nothing} ?data-big=${big}>${card.last4}</span>`;
 }
 
 /** The panel form's text, after the chip: `10) Card A10`. */

@@ -82,7 +82,7 @@ test("empty says nothing is owed", async () => {
 
 test("heads the panel and names each card in the panel form", async () => {
 	const { root } = await mount({
-		groups: [{ id: "g1", name: "One", limit: 1 }],
+		groups: [{ id: "g1", name: "One", limit: 1, color: "blue" }],
 		rows: rows().map((r) => ({
 			...r,
 			card: { ...r.card, limitGroupId: "g1" },
@@ -92,6 +92,6 @@ test("heads the panel and names each card in the panel form", async () => {
 	const first = root.querySelector("a[data-card]");
 	expect(first?.querySelector(".what b")?.textContent).toBe("A) Card A");
 	expect(first?.querySelector(".mini")?.textContent).toBe("1111");
-	expect(first?.querySelector(".mini")?.getAttribute("data-g")).toBe("1");
+	expect(first?.querySelector(".mini")?.getAttribute("data-g")).toBe("blue");
 	expect(root.querySelectorAll(".panel")).toHaveLength(1);
 });

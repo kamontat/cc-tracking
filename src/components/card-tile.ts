@@ -3,8 +3,9 @@ import { formatAmount } from "#lib/domain/money";
 import type { GroupRoom } from "#lib/domain/room";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { t } from "#lib/i18n/index";
-import { groupTone } from "#lib/ui/card-label";
+import { groupColor } from "#lib/ui/card-label";
 import { roomLevel, roomNote, roomShare } from "#lib/ui/room-note";
+import { groupInk } from "#styles/shared";
 
 /**
  * What one card tile shows (DD-151): every list of cards -- Home's *Ready to use*, the new-list
@@ -31,9 +32,9 @@ export type TileContent = {
 	quietOver?: boolean;
 };
 
-/** The tile's colour: its limit group's pastel, 1 to 4, or nothing for a card with no group. */
+/** The tile's colour: its limit group's colour name, or nothing for a card with no group. */
 export const tileTone = (card: Card, groups: LimitGroup[]) =>
-	groupTone(card, groups) ?? nothing;
+	groupColor(card, groups) ?? nothing;
 
 /** Line 1's corner on Home and Cards: `•••• 4821`, or nothing when no last 4 is stored. */
 export const lastFour = (card: Card): string =>
@@ -74,6 +75,8 @@ function rail(room: GroupRoom): TemplateResult {
 
 /** The tiles' grid and the tile: one column on a phone, as many as fit from 900px. */
 export const cardTileStyles = css`
+	${groupInk}
+
 	.tiles {
 		display: grid;
 		gap: var(--cc-space-2);
@@ -109,24 +112,9 @@ export const cardTileStyles = css`
 		border-radius: var(--cc-radius-sm);
 	}
 
-	.tile[data-g="1"] {
-		--tile-bg: var(--cc-group-1);
-		--tile-fg: var(--cc-group-1-text);
-	}
-
-	.tile[data-g="2"] {
-		--tile-bg: var(--cc-group-2);
-		--tile-fg: var(--cc-group-2-text);
-	}
-
-	.tile[data-g="3"] {
-		--tile-bg: var(--cc-group-3);
-		--tile-fg: var(--cc-group-3-text);
-	}
-
-	.tile[data-g="4"] {
-		--tile-bg: var(--cc-group-4);
-		--tile-fg: var(--cc-group-4-text);
+	.tile[data-g] {
+		--tile-bg: var(--g-bg);
+		--tile-fg: var(--g-fg);
 	}
 
 	/* Hover deepens the edge in the tile's own colour, never an underline (DD-105). */

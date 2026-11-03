@@ -1095,24 +1095,81 @@ a:any-link:hover {
 	font-size: calc(var(--cc-text-xs) * 0.88);
 }
 
-.mini[data-g="1"] {
-	color: var(--cc-group-1-text);
-	background: var(--cc-group-1);
+[data-g="blue"] {
+	--g-bg: var(--cc-group-blue);
+	--g-fg: var(--cc-group-blue-text);
+	--g-soft: var(--cc-group-blue-soft);
 }
 
-.mini[data-g="2"] {
-	color: var(--cc-group-2-text);
-	background: var(--cc-group-2);
+[data-g="green"] {
+	--g-bg: var(--cc-group-green);
+	--g-fg: var(--cc-group-green-text);
+	--g-soft: var(--cc-group-green-soft);
 }
 
-.mini[data-g="3"] {
-	color: var(--cc-group-3-text);
-	background: var(--cc-group-3);
+[data-g="purple"] {
+	--g-bg: var(--cc-group-purple);
+	--g-fg: var(--cc-group-purple-text);
+	--g-soft: var(--cc-group-purple-soft);
 }
 
-.mini[data-g="4"] {
-	color: var(--cc-group-4-text);
-	background: var(--cc-group-4);
+[data-g="orange"] {
+	--g-bg: var(--cc-group-orange);
+	--g-fg: var(--cc-group-orange-text);
+	--g-soft: var(--cc-group-orange-soft);
+}
+
+[data-g="teal"] {
+	--g-bg: var(--cc-group-teal);
+	--g-fg: var(--cc-group-teal-text);
+	--g-soft: var(--cc-group-teal-soft);
+}
+
+[data-g="rose"] {
+	--g-bg: var(--cc-group-rose);
+	--g-fg: var(--cc-group-rose-text);
+	--g-soft: var(--cc-group-rose-soft);
+}
+
+[data-g="amber"] {
+	--g-bg: var(--cc-group-amber);
+	--g-fg: var(--cc-group-amber-text);
+	--g-soft: var(--cc-group-amber-soft);
+}
+
+[data-g="indigo"] {
+	--g-bg: var(--cc-group-indigo);
+	--g-fg: var(--cc-group-indigo-text);
+	--g-soft: var(--cc-group-indigo-soft);
+}
+
+[data-g="olive"] {
+	--g-bg: var(--cc-group-olive);
+	--g-fg: var(--cc-group-olive-text);
+	--g-soft: var(--cc-group-olive-soft);
+}
+
+[data-g="cyan"] {
+	--g-bg: var(--cc-group-cyan);
+	--g-fg: var(--cc-group-cyan-text);
+	--g-soft: var(--cc-group-cyan-soft);
+}
+
+[data-g="plum"] {
+	--g-bg: var(--cc-group-plum);
+	--g-fg: var(--cc-group-plum-text);
+	--g-soft: var(--cc-group-plum-soft);
+}
+
+[data-g="slate"] {
+	--g-bg: var(--cc-group-slate);
+	--g-fg: var(--cc-group-slate-text);
+	--g-soft: var(--cc-group-slate-soft);
+}
+
+.mini[data-g] {
+	color: var(--g-fg);
+	background: var(--g-bg);
 }
 
 /* A card chip names the card in the line form, and its short form on a phone (UI-14). */

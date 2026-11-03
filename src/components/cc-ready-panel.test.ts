@@ -131,7 +131,7 @@ test("a tile has three lines: id) name and the last 4, the room with no room wor
 	expect(a.querySelector(".room small")).toBeNull();
 	expect(a.querySelector(".aside")).toBeNull();
 	expect(flat(a.querySelector(".facts"))).toBe("Closes 25 Nov 2026");
-	expect(a.dataset["g"]).toBe("1");
+	expect(a.dataset["g"]).toBe("teal");
 });
 
 test("between a bill's close and its due date the tile says when it is due", async () => {

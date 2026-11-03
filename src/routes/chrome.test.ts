@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { Glob } from "bun";
+import { GROUP_COLORS } from "#lib/domain/group-color";
 
 /** Build details live in Settings > About, so no page carries a footer of its own. */
 test("no route page carries a footer", async () => {
@@ -89,9 +90,10 @@ test("every build but production has a tint", () => {
 });
 
 test("group pastels exist in both themes", () => {
-	const wanted = [1, 2, 3, 4].flatMap((n) => [
+	const wanted = GROUP_COLORS.flatMap((n) => [
 		`--cc-group-${n}`,
 		`--cc-group-${n}-text`,
+		`--cc-group-${n}-soft`,
 	]);
 	for (const block of [
 		blockAfter(":root {"),
