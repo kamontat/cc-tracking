@@ -530,6 +530,11 @@ export function actionRow(
 export class OpenRowController implements ReactiveController {
 	private open: string | undefined;
 	private readonly prefix: string;
+	/**
+	 * Where focus goes once a pruned row, which held it, has left the screen: the heads beside
+	 * it in its panel, nearest first (after it, then before it), and its section's heading.
+	 */
+	private landing: { heads: string[]; heading: string | null } | null = null;
 
 	constructor(
 		private readonly host: ReactiveControllerHost,
@@ -540,6 +545,35 @@ export class OpenRowController implements ReactiveController {
 	}
 
 	hostConnected(): void {}
+
+	/**
+	 * After an action took the open row away (Paid, a two-step Delete, Confirm, a draft's
+	 * Delete), focus would fall to the page: it goes to the head of the row that took its place,
+	 * else the row before it, else the section's heading (`data-refocus`, `tabindex="-1"`).
+	 * Row heads are found by id, since a list without keys reuses a gone row's elements.
+	 */
+	hostUpdated(): void {
+		const landing = this.landing;
+		if (!landing) return;
+		this.landing = null;
+		const root = this.root();
+		if (!root) return;
+		const byId = (id: string) =>
+			root.querySelector<HTMLElement>(`[id="${CSS.escape(id)}"]`);
+		const head = landing.heads.map(byId).find((el) => el !== null);
+		const headings = [...root.querySelectorAll<HTMLElement>("[data-refocus]")];
+		const target =
+			head ??
+			headings.find(
+				(el) => el.getAttribute("data-refocus") === landing.heading,
+			) ??
+			headings[0];
+		target?.focus();
+	}
+
+	private root(): ParentNode | null {
+		return (this.host as { renderRoot?: ParentNode }).renderRoot ?? null;
+	}
 
 	isOpen(id: string): boolean {
 		return this.open === id;
@@ -552,13 +586,45 @@ export class OpenRowController implements ReactiveController {
 	}
 
 	/** Forgets the open row when `ids` (the rows still drawn) no longer holds it; call it
-	 * from the host's `willUpdate`, so the repaint it causes is the one under way. */
+	 * from the host's `willUpdate`, so the repaint it causes is the one under way. A row that
+	 * goes while it holds focus hands it on once the repaint is done (`hostUpdated`). */
 	prune(ids: string[]): void {
 		if (this.open !== undefined && !ids.includes(this.open)) {
+			this.landing = this.landingFor(this.open);
 			this.open = undefined;
 			this.onChange();
 			this.host.requestUpdate();
 		}
+	}
+
+	/** Reads, before the repaint, where focus should land if row `id` holds it; else null. */
+	private landingFor(id: string): OpenRowController["landing"] {
+		const root = this.root() as
+			| (ParentNode & { activeElement?: Element | null })
+			| null;
+		const head = root?.querySelector(
+			`[id="${CSS.escape(`${this.detailsId(id)}-head`)}"]`,
+		);
+		const wrap = head?.closest(".a-wrap");
+		const active = root?.activeElement;
+		if (!root || !wrap || !active || !wrap.contains(active)) return null;
+		const panel = [
+			...(wrap.parentElement?.querySelectorAll<HTMLElement>(
+				":scope > .a-wrap button.a-hit",
+			) ?? []),
+		].map((b) => b.id);
+		const at = panel.indexOf(head?.id ?? "");
+		const heads = [...panel.slice(at + 1), ...panel.slice(0, at).reverse()];
+		const before = [
+			...root.querySelectorAll<HTMLElement>("[data-refocus]"),
+		].filter(
+			(el) =>
+				el.compareDocumentPosition(wrap) & Node.DOCUMENT_POSITION_FOLLOWING,
+		);
+		return {
+			heads,
+			heading: before.at(-1)?.getAttribute("data-refocus") ?? null,
+		};
 	}
 
 	/** The id of a row's details region: `${host tag}-${id}`, each run of whitespace made

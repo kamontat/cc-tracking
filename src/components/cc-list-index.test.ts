@@ -223,3 +223,43 @@ test("opened lists read in Thai", async () => {
 		"ส่งเมื่อ 1 พ.ย. กดยืนยันเพื่อบันทึกทุกรายการว่าซื้อแล้ว",
 	);
 });
+
+/** The focused element, through every shadow root. */
+const deepActive = (): Element | null => {
+	let active: Element | null = document.activeElement;
+	while (active?.shadowRoot?.activeElement)
+		active = active.shadowRoot.activeElement;
+	return active;
+};
+
+/** Opens `id`, focuses its draft's Delete, then repaints without the list, as a delete does. */
+const deleteDraft = async (all: PurchaseList[], id: string) => {
+	const { element, root } = await mount({ lists: all });
+	root
+		.querySelector<HTMLElement>(`[data-row="list:${id}"] button.a-hit`)
+		?.click();
+	await element.updateComplete;
+	root
+		.querySelector<HTMLElement>(
+			`[data-row="list:${id}"] [data-action="delete-draft"]`,
+		)
+		?.focus();
+	element.lists = all.filter((l) => l.id !== id);
+	await element.updateComplete;
+	return root;
+};
+
+test("when a deleted draft's row goes, focus moves to the next row's head", async () => {
+	const root = await deleteDraft(lists(), "d1");
+	expect(root.querySelector('[data-row="list:d1"]')).toBeNull();
+	expect(deepActive()).toBe(
+		root.querySelector('[data-row="list:w1"] button.a-hit'),
+	);
+});
+
+test("when the only list goes, focus moves to the empty note", async () => {
+	const root = await deleteDraft(lists().slice(0, 1), "d1");
+	const empty = root.querySelector<HTMLElement>(".empty");
+	expect(empty?.getAttribute("tabindex")).toBe("-1");
+	expect(deepActive()).toBe(empty);
+});

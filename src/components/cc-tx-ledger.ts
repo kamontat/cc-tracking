@@ -427,7 +427,7 @@ export class CcTxLedger extends LitElement {
 		if (!up || (up.lists.length === 0 && up.planned.length === 0))
 			return nothing;
 		return html`<section class="upcoming">
-			<div class="sec-head"><h2>${t("tx.upcoming")}</h2></div>
+			<div class="sec-head"><h2 tabindex="-1" data-refocus="upcoming">${t("tx.upcoming")}</h2></div>
 			<div class="panel">
 				${up.lists.map((list) =>
 					this.opening(
@@ -505,11 +505,11 @@ export class CcTxLedger extends LitElement {
 			${this.renderHead(all)}
 			${
 				all.length === 0
-					? html`<p class="empty">${t(this.filtered ? "tx.noResults" : "tx.empty")}</p>`
+					? html`<p class="empty" tabindex="-1" data-refocus="ledger">${t(this.filtered ? "tx.noResults" : "tx.empty")}</p>`
 					: this.groups
 						? this.shownGroups(this.groups).map(
 								(group) => html`<section class="day">
-									<h3>${
+									<h3 tabindex="-1" data-refocus=${`day:${group.date}`}>${
 										group.date === this.today
 											? t("tx.today", {
 													date: headerDate(group.date, getLocale(), false),

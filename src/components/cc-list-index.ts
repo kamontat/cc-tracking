@@ -169,7 +169,7 @@ export class CcListIndex extends LitElement {
 
 	override render() {
 		if (this.lists.length === 0)
-			return html`<p class="empty">${t("tx.lists.empty")}</p>`;
+			return html`<p class="empty" tabindex="-1" data-refocus="lists">${t("tx.lists.empty")}</p>`;
 		const rows = listRows([...this.lists], this.status);
 		return html`
 			<div class="chips">${STATUSES.map(
@@ -180,7 +180,7 @@ export class CcListIndex extends LitElement {
 			)}</div>
 			${
 				rows.length === 0
-					? html`<p class="empty">${t("tx.lists.noMatch")}</p>`
+					? html`<p class="empty" tabindex="-1" data-refocus="lists">${t("tx.lists.noMatch")}</p>`
 					: html`<div class="panel">${rows.map((list) => this.row(list))}</div>`
 			}
 		`;

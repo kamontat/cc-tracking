@@ -1015,3 +1015,65 @@ test("an opened row says its note once", async () => {
 	);
 	expect(shown(root)?.querySelector(".a-parts, .a-cycle")).toBeNull();
 });
+
+/** The focused element, through every shadow root. */
+const deepActive = (): Element | null => {
+	let active: Element | null = document.activeElement;
+	while (active?.shadowRoot?.activeElement)
+		active = active.shadowRoot.activeElement;
+	return active;
+};
+
+test("when Paid takes an Upcoming plan away, focus moves to the next plan, then the one before, then the heading", async () => {
+	const c = card("A");
+	const plan = (id: string, date: string) => ({
+		payment: { ...payment(id, 100_00, "planned", c), date },
+		card: c,
+	});
+	const all = [
+		plan("p1", "2026-11-01"),
+		plan("p2", "2026-11-02"),
+		plan("p3", "2026-11-03"),
+	];
+	const { element, root } = await mount({
+		entries: [],
+		upcoming: { lists: [], planned: all, cards: [c] },
+	});
+	const paid = async (id: string, left: typeof all) => {
+		await tap(element, `plan:A:${id}`);
+		root
+			.querySelector<HTMLElement>(
+				`[data-row="plan:A:${id}"] [data-action="mark-paid"]`,
+			)
+			?.focus();
+		element.upcoming = { lists: [], planned: left, cards: [c] };
+		await element.updateComplete;
+	};
+	await paid("p2", [all[0], all[2]] as typeof all);
+	expect(deepActive()).toBe(head(root, "plan:A:p3"));
+	await paid("p3", [all[0]] as typeof all);
+	expect(deepActive()).toBe(head(root, "plan:A:p1"));
+	await paid("p1", []);
+	// Upcoming is gone with its last plan: the ledger's empty note takes focus.
+	const empty = root.querySelector<HTMLElement>(".empty");
+	expect(empty?.getAttribute("tabindex")).toBe("-1");
+	expect(deepActive()).toBe(empty);
+});
+
+test("focus stays put when the open row goes but did not hold it", async () => {
+	const c = card("A");
+	const planned = payment("p1", 100_00, "planned", c);
+	const { element, root } = await mount({
+		entries: [],
+		upcoming: {
+			lists: [],
+			planned: [{ payment: planned, card: c }],
+			cards: [c],
+		},
+	});
+	await tap(element, "plan:A:p1");
+	(document.activeElement as HTMLElement | null)?.blur();
+	element.upcoming = { lists: [], planned: [], cards: [c] };
+	await element.updateComplete;
+	expect(root.activeElement ?? null).toBeNull();
+});

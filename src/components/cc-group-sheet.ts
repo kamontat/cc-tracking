@@ -17,6 +17,31 @@ import { t } from "#lib/i18n/index";
 import { icons } from "#lib/ui/icons";
 import { base, controls, groupInk } from "#styles/shared";
 
+/** A radio's tab stop: the checked one, else the first when none is checked (roving tabindex). */
+function tabStop<T>(values: readonly T[], current: T | null, value: T) {
+	const stop =
+		current !== null && values.includes(current) ? current : values[0];
+	return value === stop ? "0" : "-1";
+}
+
+/** Where a key moves a radio group's choice: the index it lands on, or null for other keys. */
+function radioStep(key: string, at: number, length: number): number | null {
+	switch (key) {
+		case "ArrowRight":
+		case "ArrowDown":
+			return (at + 1) % length;
+		case "ArrowLeft":
+		case "ArrowUp":
+			return at < 0 ? length - 1 : (at - 1 + length) % length;
+		case "Home":
+			return 0;
+		case "End":
+			return length - 1;
+		default:
+			return null;
+	}
+}
+
 /**
  * A limit group in a sheet over Cards: name, limit and account holder (a segmented control),
  * then *Save*. An existing group no card uses also has *Delete group*, which swaps in place for
@@ -72,13 +97,14 @@ export class CcGroupSheet extends LitElement {
 				border-color: transparent;
 			}
 
-			.seg button[aria-pressed="true"] {
+			.seg button[aria-checked="true"] {
 				font-weight: 650;
 				color: var(--cc-success);
 				background: var(--cc-surface);
 				border-color: var(--cc-border);
 			}
 
+			.swatch-row,
 			.swatches {
 				display: flex;
 				flex-direction: row;
@@ -87,7 +113,7 @@ export class CcGroupSheet extends LitElement {
 				align-items: center;
 			}
 
-			.swatches button {
+			.swatch-row button {
 				align-self: center;
 			}
 
@@ -104,7 +130,7 @@ export class CcGroupSheet extends LitElement {
 				border-radius: 50%;
 			}
 
-			.swatches button[data-color][aria-pressed="true"] {
+			.swatches button[data-color][aria-checked="true"] {
 				box-shadow:
 					0 0 0 var(--cc-rule-width) var(--cc-surface),
 					0 0 0 calc(2 * var(--cc-rule-width)) var(--g-fg);
@@ -272,6 +298,31 @@ export class CcGroupSheet extends LitElement {
 		</div>`;
 	}
 
+	/**
+	 * A radio group's keys (the holders, the colours): an arrow moves to the next or previous
+	 * choice, wrapping, Home and End to the first and last; moving chooses it and takes focus
+	 * with it. Space and Enter press the focused radio as a button does.
+	 */
+	private async arrow<T extends string>(
+		event: KeyboardEvent,
+		values: readonly T[],
+		current: T | null,
+		attr: string,
+		choose: (value: T) => void,
+	) {
+		const next = radioStep(
+			event.key,
+			current === null ? -1 : values.indexOf(current),
+			values.length,
+		);
+		const value = next === null ? undefined : values[next];
+		if (value === undefined) return;
+		event.preventDefault();
+		choose(value);
+		await this.updateComplete;
+		this.renderRoot.querySelector<HTMLElement>(`[${attr}="${value}"]`)?.focus();
+	}
+
 	override render() {
 		const group = this.group;
 		return html`<cc-modal sheet .held=${this.busy}
@@ -296,28 +347,46 @@ export class CcGroupSheet extends LitElement {
 							this.limit = (e.target as HTMLInputElement).value;
 						}} /></label>
 				<fieldset>
-					<legend>${t("limits.owner")}</legend>
-					<div class="seg">${OWNERS.map(
-						(owner) => html`<button type="button" data-owner=${owner}
-							aria-pressed=${this.owner === owner ? "true" : "false"}
-							@click=${() => {
+					<legend id="owner-legend">${t("limits.owner")}</legend>
+					<div class="seg" role="radiogroup" aria-labelledby="owner-legend"
+						@keydown=${(e: KeyboardEvent) =>
+							this.arrow(e, OWNERS, this.owner, "data-owner", (owner) => {
 								this.owner = owner;
-							}}>${owner}</button>`,
-					)}</div>
+							})}>${OWNERS.map(
+							(
+								owner,
+							) => html`<button type="button" role="radio" data-owner=${owner}
+									aria-checked=${this.owner === owner ? "true" : "false"}
+									tabindex=${tabStop(OWNERS, this.owner, owner)}
+									@click=${() => {
+										this.owner = owner;
+									}}>${owner}</button>`,
+						)}</div>
 				</fieldset>
 				<fieldset>
-					<legend>${t("limits.color")}</legend>
-					<div class="swatches">
-						${GROUP_COLORS.map(
-							(
-								color,
-							) => html`<button type="button" data-color=${color} data-g=${color}
-								aria-label=${t(`color.${color}`)}
-								aria-pressed=${this.color === color ? "true" : "false"}
-								@click=${() => {
-									this.color = color;
-								}}>${this.color === color ? icons.check : nothing}</button>`,
-						)}
+					<legend id="color-legend">${t("limits.color")}</legend>
+					<div class="swatch-row">
+						<div class="swatches" role="radiogroup" aria-labelledby="color-legend"
+							@keydown=${(e: KeyboardEvent) =>
+								this.arrow(
+									e,
+									GROUP_COLORS,
+									this.color,
+									"data-color",
+									(color) => {
+										this.color = color;
+									},
+								)}>${GROUP_COLORS.map(
+								(
+									color,
+								) => html`<button type="button" role="radio" data-color=${color} data-g=${color}
+										aria-label=${t(`color.${color}`)}
+										aria-checked=${this.color === color ? "true" : "false"}
+										tabindex=${tabStop(GROUP_COLORS, this.color, color)}
+										@click=${() => {
+											this.color = color;
+										}}>${this.color === color ? icons.check : nothing}</button>`,
+							)}</div>
 						<button type="button" data-variant="quiet" data-action="random-color"
 							@click=${() => {
 								this.color = this.freeColor(this.color);

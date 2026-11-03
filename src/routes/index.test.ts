@@ -312,6 +312,96 @@ test("Paid on a Needs you plan stores it paid and the row goes", async () => {
 	expect(root.querySelector("cc-error-banner")?.message).toBe("");
 });
 
+/** The focused element, through every shadow root. */
+const deepActive = (): Element | null => {
+	let active: Element | null = document.activeElement;
+	while (active?.shadowRoot?.activeElement)
+		active = active.shadowRoot.activeElement;
+	return active;
+};
+
+/** Opens row `row`, focuses its `action` as a keyboard would, and presses it. */
+const pressIn = async (root: HTMLElement, row: string, action: string) => {
+	const { element, shadow } = await needs(root);
+	shadow.querySelector<HTMLElement>(`[data-row="${row}"] .a-hit`)?.click();
+	await element.updateComplete;
+	const button = shadow.querySelector<HTMLElement>(
+		`[data-row="${row}"] [data-action="${action}"]`,
+	);
+	button?.focus();
+	expect(deepActive()).toBe(button);
+	button?.click();
+	await settle(5);
+	await element.updateComplete;
+};
+
+const plans = (...dates: string[]) =>
+	dates.map((date, i) => ({ ...soonPlan, id: `c${i + 1}`, date }));
+
+test("after Paid takes a row away, focus moves to the next row's head", async () => {
+	const repo = new InMemoryRepository();
+	for (const plan of plans("2026-11-01", "2026-11-02", "2026-11-03"))
+		await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	await pressIn(root, "plan:A:c2", "mark-paid");
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="plan:A:c2"]')).toBeNull();
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c3"] .a-hit'),
+	);
+});
+
+test("after Paid takes the last row away, focus moves to the row before it", async () => {
+	const repo = new InMemoryRepository();
+	for (const plan of plans("2026-11-01", "2026-11-02"))
+		await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	await pressIn(root, "plan:A:c2", "mark-paid");
+	const { shadow } = await needs(root);
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c1"] .a-hit'),
+	);
+});
+
+test("after Paid takes the only row away, focus moves to the heading", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCardPayment(soonPlan);
+	const { root } = await setup(repo);
+	await pressIn(root, "plan:A:c1", "mark-paid");
+	const { shadow } = await needs(root);
+	const heading = shadow.querySelector("h1");
+	expect(heading?.getAttribute("tabindex")).toBe("-1");
+	expect(deepActive()).toBe(heading);
+});
+
+test("after a two-step Delete takes a row away, focus moves to the next row's head", async () => {
+	const repo = new InMemoryRepository();
+	for (const plan of plans("2026-11-01", "2026-11-02"))
+		await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	const { element, shadow } = await needs(root);
+	shadow.querySelector<HTMLElement>('[data-row="plan:A:c1"] .a-hit')?.click();
+	await element.updateComplete;
+	const first = shadow.querySelector<HTMLElement>(
+		'[data-row="plan:A:c1"] [data-action="delete"]',
+	);
+	first?.focus();
+	first?.click();
+	await element.updateComplete;
+	// The swap moved focus to the asking Delete.
+	const second = shadow.querySelector<HTMLElement>(
+		'[data-row="plan:A:c1"] [data-action="confirm-delete"]',
+	);
+	expect(deepActive()).toBe(second);
+	second?.click();
+	await settle(5);
+	await element.updateComplete;
+	expect(shadow.querySelector('[data-row="plan:A:c1"]')).toBeNull();
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c2"] .a-hit'),
+	);
+});
+
 class FailingWriteRepository extends InMemoryRepository {
 	override saveCardPayment(): Promise<void> {
 		return Promise.reject(new Error("disk is full"));

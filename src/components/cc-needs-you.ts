@@ -228,13 +228,13 @@ export class CcNeedsYou extends LitElement {
 	override render() {
 		if (this.items.length === 0) {
 			return html`
-				<h1>${t("home.caughtUp")}</h1>
+				<h1 tabindex="-1" data-refocus="needs">${t("home.caughtUp")}</h1>
 				<p class="note" data-tone="ok">${t("home.caughtUpDetail")}</p>
 			`;
 		}
 		const count = this.items.length;
 		return html`
-			<h1>${count === 1 ? t("home.needs.one") : t("home.needs.many", { count })}</h1>
+			<h1 tabindex="-1" data-refocus="needs">${count === 1 ? t("home.needs.one") : t("home.needs.many", { count })}</h1>
 			<div class="panel" id="needs-list">
 				${(this.expanded ? this.items : this.items.slice(0, SHOWN)).map(
 					(item) => this.row(item),

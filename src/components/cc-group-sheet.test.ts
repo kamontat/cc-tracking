@@ -66,7 +66,7 @@ test("a blank group sits in a sheet with its fields and no holder chosen", async
 	expect(
 		[...root.querySelectorAll("[data-owner]")].map((b) => [
 			text(b),
-			b.getAttribute("aria-pressed"),
+			b.getAttribute("aria-checked"),
 		]),
 	).toEqual([
 		["KC", "false"],
@@ -94,7 +94,7 @@ test("checks the name, a limit above zero and the holder", async () => {
 	expect(alert()).toBe("Choose the account holder for this limit group.");
 	await click(element, "[data-owner=NT]");
 	expect(
-		root.querySelector("[data-owner=NT]")?.getAttribute("aria-pressed"),
+		root.querySelector("[data-owner=NT]")?.getAttribute("aria-checked"),
 	).toBe("true");
 	await submit(element);
 	expect(root.querySelector("p[role=alert]")).toBeNull();
@@ -116,7 +116,7 @@ test("an existing group fills the fields and keeps its id", async () => {
 		(root.querySelector("input[name=limit]") as HTMLInputElement).value,
 	).toBe("200000");
 	expect(
-		root.querySelector("[data-owner=KC]")?.getAttribute("aria-pressed"),
+		root.querySelector("[data-owner=KC]")?.getAttribute("aria-checked"),
 	).toBe("true");
 	const got = saved(element);
 	await type(element, "name", "SCB Biz");
@@ -222,7 +222,7 @@ const withColor = (id: string, color: GroupColor): LimitGroup => ({
 });
 
 const pressed = (root: ShadowRoot) =>
-	[...root.querySelectorAll('.swatches [aria-pressed="true"]')].map((b) =>
+	[...root.querySelectorAll('.swatches [aria-checked="true"]')].map((b) =>
 		b.getAttribute("data-color"),
 	);
 
@@ -336,4 +336,145 @@ test("the pressed swatch carries a check mark", async () => {
 	const { root } = await mount({ group: { ...scb, color: "rose" } });
 	expect(root.querySelectorAll(".swatches svg")).toHaveLength(1);
 	expect(root.querySelector('[data-color="rose"] svg')).not.toBeNull();
+});
+
+/** Presses `key` on the focused radio of the group `selector`, as a keyboard would. */
+const key = async (element: CcGroupSheet, selector: string, name: string) => {
+	const root = element.shadowRoot as ShadowRoot;
+	const from = root.activeElement ?? root.querySelector(selector);
+	const event = new KeyboardEvent("keydown", {
+		key: name,
+		bubbles: true,
+		cancelable: true,
+		composed: true,
+	});
+	from?.dispatchEvent(event);
+	await element.updateComplete;
+	return event;
+};
+
+const radios = (root: ShadowRoot, attr: string) =>
+	[...root.querySelectorAll<HTMLElement>(`[${attr}]`)].map((b) => ({
+		value: b.getAttribute(attr),
+		role: b.getAttribute("role"),
+		checked: b.getAttribute("aria-checked"),
+		tabindex: b.getAttribute("tabindex"),
+	}));
+
+test("the holders and the colours are radio groups named by their legends", async () => {
+	const { root } = await mount({ group: { ...scb, color: "rose" } });
+	for (const selector of [".seg", ".swatches"]) {
+		const group = root.querySelector(selector);
+		expect(group?.getAttribute("role")).toBe("radiogroup");
+		const id = group?.getAttribute("aria-labelledby") ?? "";
+		expect(id).not.toBe("");
+		const named = root.querySelector(`[id="${id}"]`);
+		expect(named?.localName).toBe("legend");
+		expect(text(named)).toBe(
+			text(group?.closest("fieldset")?.querySelector("legend")),
+		);
+		expect(text(named).length).toBeGreaterThan(0);
+	}
+	expect(radios(root, "data-owner")).toEqual([
+		{ value: "KC", role: "radio", checked: "true", tabindex: "0" },
+		{ value: "NT", role: "radio", checked: "false", tabindex: "-1" },
+		{ value: "RI", role: "radio", checked: "false", tabindex: "-1" },
+	]);
+	const colours = radios(root, "data-color");
+	expect(colours.every((c) => c.role === "radio")).toBe(true);
+	expect(colours.filter((c) => c.tabindex === "0").map((c) => c.value)).toEqual(
+		["rose"],
+	);
+	expect(
+		colours.filter((c) => c.checked === "true").map((c) => c.value),
+	).toEqual(["rose"]);
+	// Random is a button of its own after the group, not one of its choices.
+	const random = root.querySelector('[data-action="random-color"]');
+	expect(random?.closest('[role="radiogroup"]')).toBeNull();
+	expect(random?.hasAttribute("role")).toBe(false);
+	const swatches = root.querySelector(".swatches") as Element;
+	expect(
+		swatches.compareDocumentPosition(random as Node) &
+			Node.DOCUMENT_POSITION_FOLLOWING,
+	).toBeTruthy();
+});
+
+test("with no holder chosen, the first holder takes the tab stop", async () => {
+	const { root } = await mount();
+	expect(radios(root, "data-owner").map((r) => r.tabindex)).toEqual([
+		"0",
+		"-1",
+		"-1",
+	]);
+});
+
+test("arrows, Home and End move the holder choice and focus with it, wrapping", async () => {
+	const { element, root } = await mount({ group: scb });
+	const owner = () =>
+		radios(root, "data-owner").find((r) => r.checked === "true")?.value;
+	const focused = () => root.activeElement?.getAttribute("data-owner");
+	root.querySelector<HTMLElement>("[data-owner=KC]")?.focus();
+	const steps: [string, string][] = [
+		["ArrowRight", "NT"],
+		["ArrowDown", "RI"],
+		["ArrowRight", "KC"],
+		["ArrowLeft", "RI"],
+		["ArrowUp", "NT"],
+		["End", "RI"],
+		["Home", "KC"],
+	];
+	for (const [name, want] of steps) {
+		const event = await key(element, ".seg", name);
+		expect(event.defaultPrevented).toBe(true);
+		expect(owner()).toBe(want);
+		expect(focused()).toBe(want);
+		expect(
+			radios(root, "data-owner")
+				.filter((r) => r.tabindex === "0")
+				.map((r) => r.value),
+		).toEqual([want]);
+	}
+	// Other keys pass through untouched.
+	expect((await key(element, ".seg", "a")).defaultPrevented).toBe(false);
+	expect(owner()).toBe("KC");
+});
+
+test("arrows, Home and End move the colour choice and focus with it, wrapping", async () => {
+	const first = GROUP_COLORS[0] as GroupColor;
+	const last = GROUP_COLORS.at(-1) as GroupColor;
+	const { element, root } = await mount({ group: { ...scb, color: last } });
+	const colour = () =>
+		radios(root, "data-color").find((r) => r.checked === "true")?.value;
+	const focused = () => root.activeElement?.getAttribute("data-color");
+	root.querySelector<HTMLElement>(`[data-color="${last}"]`)?.focus();
+	await key(element, ".swatches", "ArrowRight");
+	expect([colour(), focused()]).toEqual([first, first]);
+	await key(element, ".swatches", "ArrowLeft");
+	expect([colour(), focused()]).toEqual([last, last]);
+	await key(element, ".swatches", "Home");
+	expect([colour(), focused()]).toEqual([first, first]);
+	await key(element, ".swatches", "ArrowDown");
+	expect([colour(), focused()]).toEqual([GROUP_COLORS[1], GROUP_COLORS[1]]);
+	await key(element, ".swatches", "ArrowUp");
+	expect([colour(), focused()]).toEqual([first, first]);
+	await key(element, ".swatches", "End");
+	expect([colour(), focused()]).toEqual([last, last]);
+	const got = saved(element);
+	await submit(element);
+	expect(got[0]?.color).toBe(last);
+});
+
+test("Space and Enter choose the focused radio, as its button's own press", async () => {
+	const { element, root } = await mount();
+	const nt = root.querySelector<HTMLElement>("[data-owner=NT]");
+	expect(nt?.localName).toBe("button");
+	expect(nt?.getAttribute("type")).toBe("button");
+	nt?.focus();
+	// The group leaves these keys to the button, which presses itself.
+	expect((await key(element, ".seg", " ")).defaultPrevented).toBe(false);
+	expect((await key(element, ".seg", "Enter")).defaultPrevented).toBe(false);
+	nt?.click();
+	await element.updateComplete;
+	expect(nt?.getAttribute("aria-checked")).toBe("true");
+	expect(nt?.getAttribute("tabindex")).toBe("0");
 });
