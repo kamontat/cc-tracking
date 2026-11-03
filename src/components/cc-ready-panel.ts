@@ -111,7 +111,8 @@ export class CcReadyPanel extends LitElement {
 				corner: lastFour(row.card),
 				mono: true,
 				facts,
-				quiet: true,
+				plainRoom: true,
+				quietOver: true,
 			})}</a>`;
 	}
 

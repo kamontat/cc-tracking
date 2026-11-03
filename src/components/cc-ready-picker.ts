@@ -78,6 +78,7 @@ export class CcReadyPicker extends LitElement {
 					credit: row.credit,
 					lead: html`<span class="tick" aria-hidden="true">${on ? icons.check : nothing}</span>`,
 					corner: holders(row),
+					plainRoom: true,
 					facts: t("cards.page.dates", {
 						close: displayDate(row.closeDate, locale),
 						due: displayDate(row.dueDate, locale),

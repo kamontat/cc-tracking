@@ -88,7 +88,7 @@ test("a tile: tick and id) name, the cardholder, the room and its word, then clo
 	expect(flat(a.querySelector(".name"))).toBe("A) Card A");
 	expect(a.querySelector(".name .tick")).not.toBeNull();
 	expect(flat(a.querySelector(".corner"))).toBe("NT");
-	expect(flat(a.querySelector(".room"))).toBe("฿60,000.00 room");
+	expect(flat(a.querySelector(".room"))).toBe("฿60,000.00");
 	expect(a.querySelector(".aside")).toBeNull();
 	expect(flat(a.querySelector(".facts"))).toBe(
 		"closes 25 Nov 2026 · due 15 Dec 2026",
@@ -120,7 +120,7 @@ test("a group with no stored owner reads as KC, as on Cards", async () => {
 	expect(flat(tile(root, "C").querySelector(".corner"))).toBe("KC");
 });
 
-test("the word reads over limit, N% used, credit or room, as Cards does, with no shared hint", async () => {
+test("the word reads over limit, N% used or credit, as Cards does; plain room has no word and no shared hint", async () => {
 	const { root } = await mount({
 		rows: [
 			testRow("O", -12_000_00, "2026-11-10", "2026-11-25", {
@@ -140,7 +140,8 @@ test("the word reads over limit, N% used, credit or room, as Cards does, with no
 	expect(word("H").dataset["tone"]).toBe("warn");
 	expect(flat(word("P"))).toBe("credit ฿500.00");
 	expect(word("P").dataset["tone"]).toBeUndefined();
-	expect(flat(word("S"))).toBe("room");
+	expect(word("S")).toBeNull();
+	expect(flat(tile(root, "S").querySelector(".room"))).toBe("฿60,000.00");
 });
 
 test("no tile says Overdue bill", async () => {

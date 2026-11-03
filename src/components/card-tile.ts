@@ -25,11 +25,10 @@ export type TileContent = {
 	aside?: string;
 	/** Line 3, muted: `closes … · due …`. Left out on Home. */
 	facts?: string;
-	/**
-	 * Home: plain room needs no word, and past the limit the amount turns red with no word under
-	 * it; credit and `N% used` still show.
-	 */
-	quiet?: boolean;
+	/** Home and the picker: plain room needs no word; credit, `N% used` and *over limit* still show. */
+	plainRoom?: boolean;
+	/** Home: past the limit the amount turns red and has no word under it. */
+	quietOver?: boolean;
 };
 
 /** The tile's colour: its limit group's pastel, 1 to 4, or nothing for a card with no group. */
@@ -59,8 +58,8 @@ export function tileBody(content: TileContent): TemplateResult {
 
 function roomLine(content: TileContent, room: GroupRoom): TemplateResult {
 	const note = roomNote(room, content.credit);
-	const over = content.quiet === true && note.tone === "bad";
-	const word = content.quiet === true && (over || note.plain) ? null : note;
+	const over = content.quietOver === true && note.tone === "bad";
+	const word = over || (content.plainRoom === true && note.plain) ? null : note;
 	return html`<span class="room" data-tone=${over ? "bad" : nothing}>
 		<b data-numeric>${formatAmount(room.room)}</b>
 		${word ? html`<small data-tone=${word.tone ?? nothing}>${word.text}</small>` : nothing}
