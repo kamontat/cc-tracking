@@ -65,6 +65,13 @@ const augSep = [
 	purchase("b", "2026-09-05", 2_000),
 ];
 
+const sepDates: StatementDates = {
+	cardId: "kbank",
+	period: "2026-09",
+	closeDate: "2026-09-12",
+	dueDate: "2026-10-07",
+};
+
 describe("cardLedger", () => {
 	test("pays the oldest statement first", () => {
 		const l = ledger(augSep, [payment("p", 1_500)]);
@@ -134,22 +141,21 @@ describe("cardLedger", () => {
 		expect(of(l, "2026-08").remaining).toBe(500);
 	});
 
-	test("frozen dates win over the cycle", () => {
-		const l = ledger(
-			augSep,
-			[],
-			[
-				{
-					cardId: "kbank",
-					period: "2026-09",
-					closeDate: "2026-09-12",
-					dueDate: "2026-10-07",
-				},
-			],
-		);
+	test("frozen dates win over the cycle once the statement is fully paid", () => {
+		const l = ledger(augSep, [payment("p", 3_000)], [sepDates]);
 		expect(of(l, "2026-09").closeDate).toBe("2026-09-12");
 		expect(of(l, "2026-09").dueDate).toBe("2026-10-07");
 		expect(of(l, "2026-08").closeDate).toBe("2026-08-10");
+	});
+
+	test("a statement not fully paid follows the cycle, whatever dates are stored", () => {
+		const unpaid = ledger(augSep, [], [sepDates]);
+		expect(of(unpaid, "2026-09").closeDate).toBe("2026-09-10");
+		expect(of(unpaid, "2026-09").dueDate).toBe("2026-10-05");
+
+		const partly = ledger(augSep, [payment("p", 2_000)], [sepDates]);
+		expect(of(partly, "2026-09").remaining).toBe(1_000);
+		expect(of(partly, "2026-09").dueDate).toBe("2026-10-05");
 	});
 
 	test("statements are newest first", () => {
@@ -163,19 +169,47 @@ describe("cardLedger", () => {
 });
 
 describe("newlyFrozen", () => {
-	test("names statements first reached by money", () => {
-		const l = ledger(augSep, [payment("p", 500)]);
-		const result = newlyFrozen(card, l, []);
-		expect(result).toHaveLength(1);
-		expect(result[0]?.period).toBe("2026-08");
-		expect(result[0]?.closeDate).toBe(of(l, "2026-08").closeDate);
-		expect(result[0]?.dueDate).toBe(of(l, "2026-08").dueDate);
+	test("names statements the change fully pays, with their cycle dates", () => {
+		const before = ledger(augSep, []);
+		const after = ledger(augSep, [payment("p", 1_500)]);
+		const result = newlyFrozen(card, before, after);
+		expect(result).toEqual([
+			{
+				cardId: "kbank",
+				period: "2026-08",
+				closeDate: "2026-08-10",
+				dueDate: "2026-09-04",
+			},
+		]);
 	});
 
-	test("skips statements that already have a record", () => {
-		const l = ledger(augSep, [payment("p", 500)]);
-		const frozen = newlyFrozen(card, l, []);
-		expect(newlyFrozen(card, l, frozen)).toEqual([]);
+	test("a part payment freezes nothing", () => {
+		const before = ledger(augSep, []);
+		const after = ledger(augSep, [payment("p", 500)]);
+		expect(newlyFrozen(card, before, after)).toEqual([]);
+	});
+
+	test("skips statements already fully paid before", () => {
+		const before = ledger(augSep, [payment("p", 1_000)]);
+		const after = ledger(augSep, [payment("p", 1_000), payment("q", 500)]);
+		expect(newlyFrozen(card, before, after)).toEqual([]);
+	});
+
+	test("replaces dates stored while the statement was not fully paid", () => {
+		const before = ledger(augSep, [payment("p", 2_000)], [sepDates]);
+		const after = ledger(
+			augSep,
+			[payment("p", 2_000), payment("q", 1_000)],
+			[sepDates],
+		);
+		expect(newlyFrozen(card, before, after)).toEqual([
+			{
+				cardId: "kbank",
+				period: "2026-09",
+				closeDate: "2026-09-10",
+				dueDate: "2026-10-05",
+			},
+		]);
 	});
 });
 

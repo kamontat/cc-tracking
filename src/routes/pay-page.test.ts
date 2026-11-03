@@ -262,11 +262,11 @@ test("an unknown card says so above the picker and opens no sheet", async () => 
 	expect(picker()).not.toBeNull();
 });
 
-test("a paid payment is stored with its note, statement dates kept, then Transactions replaces the page", async () => {
+test("a paid payment is stored with its note, the settled statement's dates kept, then Transactions replaces the page", async () => {
 	const { repo, visited } = await setup("/pay?card=A", withStatement);
-	await fill("amount", "100");
+	await fill("amount", "10000");
 	await fill("note", "  From savings  ");
-	expect(submitText()).toBe("Record ฿100.00 to A card");
+	expect(submitText()).toBe("Record ฿10,000.00 to A card");
 	await submit();
 	expect((await repo.listStatementDates("A")).map((d) => d.period)).toEqual([
 		"2026-09",
@@ -275,7 +275,7 @@ test("a paid payment is stored with its note, statement dates kept, then Transac
 	expect(stored).toHaveLength(1);
 	expect(stored[0]).toMatchObject({
 		cardId: "A",
-		amount: 10000,
+		amount: 10_000_00,
 		date: "2026-10-31",
 		status: "paid",
 		note: "From savings",

@@ -169,7 +169,7 @@ test("a tile: id) name and the last 4, the room and its word with the cardholder
 	);
 });
 
-test("line 3 takes the open period's dates from the ledger, frozen ones included", async () => {
+test("line 3 takes the open period's dates from the ledger, a paid one's frozen dates included", async () => {
 	const a = card("A");
 	const frozen = [
 		{
@@ -179,7 +179,26 @@ test("line 3 takes the open period's dates from the ledger, frozen ones included
 			dueDate: "2026-12-07",
 		},
 	];
-	const ledgers = new Map([["A", cardLedger(a, [], [], frozen, "2026-10-30")]]);
+	const ledgers = new Map([
+		[
+			"A",
+			cardLedger(
+				a,
+				[{ id: "p", cardId: "A", date: "2026-10-28", amount: 100, note: "" }],
+				[
+					{
+						id: "c",
+						cardId: "A",
+						date: "2026-10-29",
+						amount: 100,
+						status: "paid",
+					},
+				],
+				frozen,
+				"2026-10-30",
+			),
+		],
+	]);
 	const { root } = await mount({}, { today: "2026-10-30", ledgers }, [a]);
 	expect(text(root.querySelector('a[data-card="A"] .facts'))).toBe(
 		"closes 20 Nov 2026 · due 07 Dec 2026",
