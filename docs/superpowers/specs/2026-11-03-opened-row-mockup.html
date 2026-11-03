@@ -1,0 +1,234 @@
+<title>Opened rows</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: three treatments for a row opened in place, each drawn inside copies of the real Transactions ledger and Home's Needs you, at phone and desktop width. Colours, radii and type are the app's own tokens (src/styles/tokens.css). */
+:root {
+	--bg: #f6f7f3; --surface: #ffffff; --sunken: #eef1ea; --border: #e1e6de;
+	--text: #22302a; --muted: #5f6b65; --accent: #367d5f; --accent-hover: #2f7457; --accent-text: #ffffff; --accent-surface: #e2f0e8;
+	--danger: #a8403d; --danger-surface: #f8e2e0; --success: #2f7457; --warning: #95591a; --warning-surface: #fbecd9;
+	--g-orange: #fbe6dd; --g-orange-t: #a74e2c; --g-purple: #efe5f7; --g-purple-t: #7a45a8; --g-blue: #e3e9fb; --g-blue-t: #3552b8; --g-green: #dff1e7; --g-green-t: #2f7457;
+	--sans: system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai", "Noto Sans Thai", sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+	--r-xs: 6px; --r-sm: 12px; --r-md: 18px;
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		color-scheme: dark;
+		--bg: #121815; --surface: #1b231f; --sunken: #24302a; --border: #2c3832;
+		--text: #e6ede8; --muted: #9aa9a1; --accent: #74c9a1; --accent-hover: #8ed7b4; --accent-text: #0f1a14; --accent-surface: #1d3328;
+		--danger: #ef8a86; --danger-surface: #3b1e1d; --success: #8ed7b4; --warning: #e7a55e; --warning-surface: #3a2a18;
+		--g-orange: #3a241b; --g-orange-t: #f2a882; --g-purple: #2e2240; --g-purple-t: #cfa6ef; --g-blue: #1f2944; --g-blue-t: #9fb3f5; --g-green: #1b3328; --g-green-t: #8ed7b4;
+	}
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #121815; --surface: #1b231f; --sunken: #24302a; --border: #2c3832;
+	--text: #e6ede8; --muted: #9aa9a1; --accent: #74c9a1; --accent-hover: #8ed7b4; --accent-text: #0f1a14; --accent-surface: #1d3328;
+	--danger: #ef8a86; --danger-surface: #3b1e1d; --success: #8ed7b4; --warning: #e7a55e; --warning-surface: #3a2a18;
+	--g-orange: #3a241b; --g-orange-t: #f2a882; --g-purple: #2e2240; --g-purple-t: #cfa6ef; --g-blue: #1f2944; --g-blue-t: #9fb3f5; --g-green: #1b3328; --g-green-t: #8ed7b4;
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5;
+	padding-block: 32px 72px;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: grid; gap: 48px; }
+h1 { font-size: 1.75rem; margin: 0; text-wrap: balance; }
+h2 { font-size: 1.25rem; margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 70ch; }
+.lead { color: var(--muted); }
+.part { display: grid; gap: 14px; }
+.width { font-size: 0.8125rem; font-weight: 650; color: var(--muted); }
+.scroll { overflow-x: auto; padding-bottom: 4px; }
+.frames { display: flex; gap: 24px; align-items: flex-start; }
+.device { flex: none; inline-size: 390px; border: 1px solid var(--border); border-radius: 28px; background: var(--bg); padding: 16px; display: grid; gap: 12px; }
+.device.desk { inline-size: 720px; border-radius: 16px; padding: 24px 28px; }
+.day { font-size: 0.75rem; font-weight: 650; color: var(--muted); letter-spacing: 0.04em; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0 16px; }
+.row + .row { border-top: 1px solid var(--border); }
+
+/* the row head, as the app draws it today */
+.head { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; gap: 12px; align-items: center; padding: 12px 0; }
+.chip { inline-size: 36px; block-size: 26px; border-radius: var(--r-xs); font: 700 0.6rem var(--mono); display: grid; place-items: end start; padding: 2px 4px; }
+.ic { inline-size: 36px; block-size: 36px; border-radius: var(--r-sm); display: grid; place-items: center; font-weight: 700; }
+.ic.bad { background: var(--danger-surface); color: var(--danger); }
+.ic.wait { background: var(--warning-surface); color: var(--warning); }
+.t b { font-weight: 650; }
+.t .word, .t .sub { font-size: 0.75rem; color: var(--muted); }
+.t .sub { display: block; }
+.amt { font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.amt.out { color: var(--danger); } .amt.in { color: var(--success); } .amt.muted { color: var(--muted); }
+.chev { color: var(--muted); font-size: 0.75rem; }
+.open .chev { transform: rotate(180deg); }
+.open .head { }
+
+.btn { font: inherit; font-size: 0.8125rem; font-weight: 550; line-height: 1.2; padding: 8px 12px; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--accent); color: var(--accent-text); white-space: nowrap; }
+.btn.quiet { background: var(--sunken); color: var(--text); border-color: var(--border); }
+.btn.danger { background: transparent; color: var(--danger); border-color: var(--danger); }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.phone .btns { justify-content: stretch; }
+.phone .btns .btn { flex: 1 1 0; }
+.money { font-variant-numeric: tabular-nums; }
+
+/* ---------- A · Ledger card: a sunken well of label/value pairs ---------- */
+.A .well { margin: 0 0 14px 48px; background: var(--sunken); border-radius: var(--r-sm); padding: 12px 14px; display: grid; gap: 12px; }
+.phone .A .well { margin-left: 0; }
+.A dl { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 16px; }
+.phone .A dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.A dt { font-size: 0.75rem; color: var(--muted); }
+.A dd { margin: 0; font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.A dd small { font-weight: 500; color: var(--muted); font-size: 0.75rem; }
+.A dd.bad { color: var(--danger); }
+.A .lines { display: grid; gap: 4px; font-size: 0.8125rem; }
+.A .lines div { display: flex; justify-content: space-between; gap: 12px; }
+.A .lines .tot { border-top: 1px solid var(--border); padding-top: 6px; font-weight: 650; }
+.A .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.A .foot .note { font-size: 0.75rem; color: var(--muted); }
+.phone .A .foot { display: grid; }
+
+/* ---------- B · Cycle line: where the money sits in the card's billing cycle ---------- */
+.B .drawer { margin: 0 0 14px 48px; display: grid; gap: 12px; }
+.phone .B .drawer { margin-left: 0; }
+.cycle { position: relative; block-size: 62px; }
+.cycle .track { position: absolute; inset: 25px 0 auto 0; block-size: 4px; border-radius: 2px; background: var(--sunken); }
+.cycle .fill { position: absolute; inset: 25px auto auto 0; block-size: 4px; border-radius: 2px; background: var(--muted); opacity: 0.55; }
+.cycle .fill.late { background: var(--danger); opacity: 1; }
+.cycle .mk { position: absolute; inset-block-start: 20px; translate: -50% 0; display: grid; justify-items: center; gap: 4px; font-size: 0.6875rem; color: var(--muted); white-space: nowrap; }
+.cycle .mk i { inline-size: 14px; block-size: 14px; border-radius: 50%; background: var(--surface); border: 2px solid var(--muted); }
+.cycle .mk.buy i { background: var(--text); border-color: var(--text); }
+.cycle .mk.pay i { background: var(--success); border-color: var(--success); }
+.cycle .mk.now i { inline-size: 2px; block-size: 18px; border-radius: 1px; border: 0; background: var(--accent); margin-block-start: -2px; }
+.cycle .mk.now { color: var(--accent); font-weight: 650; inset-block-start: 0; display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; }
+.cycle .mk.now i { margin-block-start: 0; }
+.cycle .mk.due.late i { border-color: var(--danger); }
+.cycle .mk.due.late { color: var(--danger); font-weight: 650; }
+.cycle .mk.start { translate: 0 0; justify-items: start; }
+.cycle .mk.end { translate: -100% 0; justify-items: end; }
+.B .say { font-size: 0.875rem; }
+.B .say .money { font-weight: 650; }
+.B .say .m { color: var(--muted); }
+.B .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.phone .B .foot { display: grid; }
+.B .parts { display: grid; gap: 4px; font-size: 0.8125rem; }
+.B .parts div { display: flex; justify-content: space-between; }
+
+/* ---------- C · Inline facts: one wrapping line of facts and text actions ---------- */
+.C .strip { margin: -4px 0 12px 48px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; font-size: 0.8125rem; }
+.phone .C .strip { margin-left: 48px; }
+.C .f { display: inline-flex; gap: 6px; align-items: baseline; }
+.C .f span { color: var(--muted); }
+.C .f b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.C .f b.bad { color: var(--danger); }
+.C .acts { margin-inline-start: auto; display: inline-flex; gap: 14px; }
+.phone .C .acts { margin-inline-start: 0; inline-size: 100%; }
+.C .acts a { color: var(--link, var(--accent)); font-weight: 600; text-decoration: none; }
+.C .acts a.primary { color: var(--accent-text); background: var(--accent); padding: 4px 10px; border-radius: var(--r-xs); }
+.C .acts a.danger { color: var(--danger); }
+
+.verdict { display: grid; gap: 6px; padding: 14px 16px; border-radius: var(--r-sm); background: var(--surface); border: 1px solid var(--border); font-size: 0.875rem; }
+.verdict b { font-weight: 650; }
+</style>
+
+<div class="wrap">
+	<header class="part">
+		<h1>Opened rows</h1>
+		<p class="lead">Three ways to draw a row once it is tapped open, each on the same four rows: a purchase and a payment in the Transactions ledger, and an overdue bill and a waiting list in Home's Needs you. Today is Tue 3 Nov 2026. The closed rows are unchanged; only what opens under them differs.</p>
+	</header>
+	<section class="part" id="A"></section>
+	<section class="part" id="B"></section>
+	<section class="part" id="C"></section>
+</div>
+
+<script>
+/* Sample rows follow the app's rules: a card closes on the 25th and is due 20 days later; a payment settles the oldest statement first. */
+const _TODAY = "3 Nov";
+const rows = {
+	purchase: { lead: `<span class="chip" style="background:var(--g-orange);color:var(--g-orange-t)">9988</span>`, title: `<b>ktc) KTC Titanium</b> <span class="word">Purchase</span>`, sub: "Fuel, Krabi · from list 29 Oct", amt: "−฿4,600.00", tone: "out" },
+	payment: { lead: `<span class="chip" style="background:var(--g-blue);color:var(--g-blue-t)">1234</span>`, title: `<b>0) Empty</b> <span class="word">Payment</span>`, sub: "From the KBank account", amt: "+฿8,000.00", tone: "in" },
+	overdue: { lead: `<span class="ic bad">!</span>`, title: `<b>Overdue: KBank Visa (RI)</b>`, sub: "for 19 days", amt: "฿12,500.00", tone: "out" },
+	waiting: { lead: `<span class="ic wait">◷</span>`, title: `<b>Waiting on list for 02 Nov 2026</b>`, sub: "KBank Visa (RI), KTC Titanium (KC)", amt: "−฿1,700.00", tone: "muted" },
+};
+const head = (r) => `<div class="head">${r.lead}<span class="t">${r.title}<span class="sub">${r.sub}</span></span><span class="amt ${r.tone}">${r.amt}</span><span class="chev">▼</span></div>`;
+
+/* A — a sunken well of facts */
+const A = {
+	purchase: `<div class="well"><dl>
+		<div><dt>Bought</dt><dd>29 Oct 2026</dd></div>
+		<div><dt>Closes</dt><dd>25 Nov <small>in 22 days</small></dd></div>
+		<div><dt>Due</dt><dd>15 Dec <small>in 42 days</small></dd></div>
+		<div><dt>Statement so far</dt><dd>฿46,000.00</dd></div>
+		</dl><div class="foot"><span class="note">On the November statement, not yet closed.</span><div class="btns"><button class="btn quiet">Open card</button><button class="btn quiet">Open list</button></div></div></div>`,
+	payment: `<div class="well"><dl>
+		<div><dt>Paid</dt><dd>25 Oct 2026</dd></div>
+		<div><dt>October statement</dt><dd>฿3,000.00 <small>now paid</small></dd></div>
+		<div><dt>Kept as credit</dt><dd>฿5,000.00</dd></div>
+		</dl><div class="foot"><span class="note">Credit is spent first on the next statement.</span><div class="btns"><button class="btn danger">Delete</button></div></div></div>`,
+	overdue: `<div class="well"><dl>
+		<div><dt>Statement</dt><dd>Closed 25 Sep</dd></div>
+		<div><dt>Was due</dt><dd class="bad">15 Oct <small>19 days ago</small></dd></div>
+		<div><dt>Billed</dt><dd>฿12,500.00</dd></div>
+		<div><dt>Left to pay</dt><dd class="bad">฿12,500.00</dd></div>
+		</dl><div class="foot"><span class="note">Nothing paid toward it yet.</span><div class="btns"><button class="btn">Pay ฿12,500.00</button><button class="btn quiet">Open card</button></div></div></div>`,
+	waiting: `<div class="well"><div class="lines">
+		<div><span>kbank) KBank Visa</span><span class="money">฿1,200.00</span></div>
+		<div><span>ktc) KTC Titanium</span><span class="money">฿500.00</span></div>
+		<div class="tot"><span>2 cards</span><span class="money">฿1,700.00</span></div>
+		</div><div class="foot"><span class="note">Sent 2 Nov. Confirm saves every line as made.</span><div class="btns"><button class="btn">Record reply</button><button class="btn quiet">Confirm</button></div></div></div>`,
+};
+
+/* B — the billing cycle as a line; markers placed on one scale from the statement's start to its due date */
+const cycle = (start, end, marks, fill, late) => {
+	const pos = (d) => ((d - start) / (end - start)) * 100;
+	return `<div class="cycle"><span class="track"></span><span class="fill${late ? " late" : ""}" style="inline-size:${pos(fill)}%"></span>${marks.map((m) => {
+		const p = pos(m.d);
+		const edge = p < 6 ? " start" : p > 94 ? " end" : "";
+		return `<span class="mk ${m.k}${edge}" style="inset-inline-start:${p}%"><i></i>${m.label}</span>`;
+	}).join("")}</div>`;
+};
+/* day numbers: 26 Oct = 0 for the November cycle (26 Oct → closes 25 Nov = 30 → due 15 Dec = 50) */
+const B = {
+	purchase: `<div class="drawer">${cycle(0, 50, [{ d: 3, k: "buy", label: "Bought 29 Oct" }, { d: 8, k: "now", label: "Today" }, { d: 30, k: "", label: "Closes 25 Nov" }, { d: 50, k: "due", label: "Due 15 Dec" }], 8)}
+		<div class="foot"><p class="say">On the November statement: <span class="money">฿46,000.00</span> <span class="m">so far, closes in 22 days</span></p><div class="btns"><button class="btn quiet">Open card</button><button class="btn quiet">Open list</button></div></div></div>`,
+	payment: `<div class="drawer"><div class="parts"><div><span>October statement</span><span class="money">฿3,000.00</span></div><div><span>Kept as credit</span><span class="money">฿5,000.00</span></div></div>
+		<div class="foot"><p class="say"><span class="m">Paid 25 Oct. Credit goes to the next statement first.</span></p><div class="btns"><button class="btn danger">Delete</button></div></div></div>`,
+	/* September cycle: 26 Aug = 0, closes 25 Sep = 30, due 15 Oct = 50, today 3 Nov = 69 */
+	overdue: `<div class="drawer">${cycle(0, 72, [{ d: 30, k: "", label: "Closed 25 Sep" }, { d: 50, k: "due late", label: "Due 15 Oct" }, { d: 69, k: "now", label: "Today" }], 69, true)}
+		<div class="foot"><p class="say"><span class="money">฿12,500.00</span> <span class="m">left of ฿12,500.00 billed, 19 days late</span></p><div class="btns"><button class="btn">Pay ฿12,500.00</button><button class="btn quiet">Open card</button></div></div></div>`,
+	waiting: `<div class="drawer"><div class="parts"><div><span>kbank) KBank Visa</span><span class="money">฿1,200.00</span></div><div><span>ktc) KTC Titanium</span><span class="money">฿500.00</span></div></div>
+		<div class="foot"><p class="say"><span class="m">Sent 2 Nov. Confirm saves every line as made.</span></p><div class="btns"><button class="btn">Record reply</button><button class="btn quiet">Confirm</button></div></div></div>`,
+};
+
+/* C — one wrapping line */
+const C = {
+	purchase: `<div class="strip"><span class="f"><span>Closes</span><b>25 Nov</b></span><span class="f"><span>Due</span><b>15 Dec</b></span><span class="f"><span>Statement</span><b>฿46,000.00</b></span><span class="acts"><a href="#">Open card</a><a href="#">Open list</a></span></div>`,
+	payment: `<div class="strip"><span class="f"><span>October</span><b>฿3,000.00</b></span><span class="f"><span>Credit</span><b>฿5,000.00</b></span><span class="acts"><a href="#" class="danger">Delete</a></span></div>`,
+	overdue: `<div class="strip"><span class="f"><span>Was due</span><b class="bad">15 Oct</b></span><span class="f"><span>Left</span><b class="bad">฿12,500.00</b></span><span class="acts"><a href="#" class="primary">Pay</a><a href="#">Open card</a></span></div>`,
+	waiting: `<div class="strip"><span class="f"><span>KBank</span><b>฿1,200.00</b></span><span class="f"><span>KTC</span><b>฿500.00</b></span><span class="acts"><a href="#" class="primary">Record reply</a><a href="#">Confirm</a></span></div>`,
+};
+
+const opts = {
+	A: { name: "A · Facts in a well", body: A, why: "The opened part sits in a sunken well under the text, with every fact as a label and a value in a grid, a one-line explanation, and the buttons at the end. Clear and even; it reads like a receipt.", plus: "Easiest to scan; every row kind uses the same grid.", minus: "Tallest of the three; a second box inside the row." },
+	B: { name: "B · Billing cycle line", body: B, why: "Purchases and bills open on a line of the card's billing cycle: when it was bought, today, when the statement closes and when it is due, drawn to scale. One sentence says the money; the buttons sit beside it. Rows with no dates (a payment, a list) open to their parts.", plus: "Shows what only this app knows: where the money sits in the cycle and how close the due date is.", minus: "Two shapes of opened row (cycle or parts); the line needs room on a phone." },
+	C: { name: "C · One line of facts", body: C, why: "The opened part is one wrapping line of short facts with text actions at its end, under the title. Nothing new is drawn; the row just gets one line taller.", plus: "Smallest change in height; feels like part of the row.", minus: "Text actions are smaller targets; little room for anything beyond two or three facts." },
+};
+
+const panel = (key, kinds, phone) => `<div class="panel">${kinds.map((k, i) => `<div class="row ${i === 0 ? "open" : ""}">${head(rows[k])}${i === 0 ? opts[key].body[k] : ""}</div>`).join("")}</div>`;
+const device = (key, phone) => `<div class="device ${phone ? "phone" : "desk"} ${key}">
+	<span class="day">Transactions · Thu 29 Oct</span>${panel(key, ["purchase", "waiting"], phone)}
+	<span class="day">Transactions · Sun 25 Oct</span>${panel(key, ["payment"], phone)}
+	<span class="day">Home · Needs you</span>${panel(key, ["overdue", "waiting"], phone)}
+</div>`;
+
+for (const key of ["A", "B", "C"]) {
+	const o = opts[key];
+	document.getElementById(key).innerHTML = `<h2>${o.name}</h2><p class="lead">${o.why}</p>
+		<div class="verdict"><span><b>For:</b> ${o.plus}</span><span><b>Against:</b> ${o.minus}</span></div>
+		<div class="scroll"><div class="frames">
+			<div><p class="width">Phone · 390 px</p>${device(key, true)}</div>
+			<div><p class="width">Desktop column · 720 px</p>${device(key, false)}</div>
+		</div></div>`;
+}
+</script>
