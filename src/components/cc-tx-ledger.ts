@@ -11,14 +11,28 @@ import {
 	type ActionRowText,
 	actionRow,
 	actionRowStyles,
-	listLines,
+	type CycleMark,
+	cycleLine,
+	listParts,
+	money,
+	partLines,
 	plannedText,
+	say,
+	sentWords,
 	useOpenRow,
 	waitingText,
 } from "#components/action-row";
 import { useTwoStep } from "#components/two-step";
-import { displayDate, headerDate, periodLabel } from "#lib/domain/date";
-import { formatAmount, MINUS } from "#lib/domain/money";
+import {
+	compareDates,
+	dayMonth,
+	daysBetween,
+	displayDate,
+	headerDate,
+	monthName,
+} from "#lib/domain/date";
+import { statementStart } from "#lib/domain/ledger";
+import { formatAmount, MINUS, sumAmounts } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
 import {
 	entriesTotal,
@@ -31,8 +45,8 @@ import type {
 	Card,
 	CardLedger,
 	CardPayment,
+	LedgerStatement,
 	LimitGroup,
-	Period,
 	PlainDate,
 	PurchaseList,
 } from "#lib/domain/types";
@@ -56,12 +70,13 @@ export type Upcoming = {
  * The ledger: purchases and paid payments, grouped under day headings (`groups`) or flat
  * (`entries`), and the *Upcoming* section above it. Each day (or the flat list) is one panel
  * of rows. Every row is the shared opening row (action-row.ts): its head is one button and it
- * opens in place, one row at a time across Upcoming and every day. A purchase opens to its
- * note, the statement it falls in and the list it came from, with *Open card* and, when from a
- * list, *Open list*; a paid payment to its note and how much reached each statement, with a
- * two-step *Delete* (DD-77). In Upcoming a waiting list opens to its lines, *Record reply* and
- * a two-step *Confirm* (`confirm-list`); a planned payment to its note, *Paid* (`mark-paid`)
- * and a two-step *Delete* (`delete-payment`). Each second step swaps the buttons in place
+ * opens in place, one row at a time across Upcoming and every day, to a drawer of one sentence
+ * and its buttons (DD-165). A purchase opens to its statement's billing cycle line and what
+ * that statement holds, with *Open card* and, when from a list, *Open list*; a paid payment to
+ * how much reached each statement and any credit kept, with a two-step *Delete* (DD-77). In
+ * Upcoming a waiting list opens to its lines, *Record reply* and a two-step *Confirm*
+ * (`confirm-list`); a planned payment to its date, *Paid* (`mark-paid`) and a two-step
+ * *Delete* (`delete-payment`). Each second step swaps the buttons in place
  * (UI-09) and focus follows the swap; a swap ends when its row closes. Only the first `limit`
  * rows show; a quiet *Show more* under them asks for more (`show-more`). The results line
  * still counts every entry.
@@ -193,12 +208,12 @@ export class CcTxLedger extends LitElement {
 		return listId ? this.lists.find((l) => l.id === listId) : undefined;
 	}
 
-	/** Draws a row that opens in place under the id `id`. */
+	/** Draws a row that opens in place under the id `id`: `drawer` above its buttons `action`. */
 	private opening(
 		id: string,
 		text: ActionRowText,
 		amount: { text: string; tone: "out" | "in" | "muted" },
-		details: TemplateResult | typeof nothing,
+		drawer: Drawer,
 		action: TemplateResult,
 		lead?: TemplateResult,
 	) {
@@ -211,57 +226,138 @@ export class CcTxLedger extends LitElement {
 				expanded: this.rows.isOpen(id),
 				onToggle: () => this.rows.toggle(id),
 				detailsId: this.rows.detailsId(id),
-				details,
+				above: drawer.above ?? nothing,
+				say: drawer.say,
 			},
 		});
 	}
 
-	/** A purchase's details: its statement's dates. The note and the list it came from are on
-	 * the row's sub line already (and *Open list* links the list), so they are not said twice. */
-	private purchaseDetails(entry: TxEntry & { kind: "purchase" }) {
+	/**
+	 * A purchase's drawer: its statement's billing cycle line, from the statement's start to its
+	 * due date, and one sentence of what the statement holds. The note and the list it came from
+	 * are on the sub line already (and *Open list* links the list), so they are not said twice.
+	 */
+	private purchaseDrawer(entry: TxEntry & { kind: "purchase" }): Drawer {
 		const { purchase } = entry;
-		const date = (d: PlainDate) => displayDate(d, getLocale());
-		const statement = this.ledgers
-			.get(purchase.cardId)
-			?.statements.find((s) => s.purchases.some((p) => p.id === purchase.id));
-		if (!statement) return nothing;
-		const total = formatAmount(statement.total);
-		const state = statement.open
-			? t("row.statementOpen", { total })
-			: statement.paid
-				? t("row.statementPaid", { total })
-				: t("row.statementLeft", {
-						total,
-						left: formatAmount(statement.remaining),
-					});
-		return html`<span>${t("row.statement", {
-			close: date(statement.closeDate),
-			due: date(statement.dueDate),
-		})}</span><span>${state}</span>`;
+		const ledger = this.ledgers.get(purchase.cardId);
+		const statement = ledger?.statements.find((s) =>
+			s.purchases.some((p) => p.id === purchase.id),
+		);
+		if (!ledger || !statement) return { say: nothing };
+		const start = entry.card
+			? statementStart(entry.card, ledger.statements, statement.period)
+			: undefined;
+		const words = this.statementWords(statement);
+		if (!start) return { say: words };
+		const today = this.today;
+		const closed =
+			!statement.open && compareDates(statement.closeDate, today) < 0;
+		const settled = statement.remaining === 0;
+		const late =
+			closed && !settled && compareDates(today, statement.dueDate) > 0;
+		const marks: CycleMark[] = [
+			{ kind: "buy", date: purchase.date },
+			{ kind: closed ? "closed" : "closes", date: statement.closeDate },
+			{ kind: "due", date: statement.dueDate },
+		];
+		// Today shows while the statement is still to pay and not yet past due.
+		if (!closed || (!settled && !late))
+			marks.push({ kind: "now", date: today });
+		return {
+			above: cycleLine({
+				start,
+				end: statement.dueDate,
+				marks,
+				fillTo: today,
+				late,
+			}),
+			say: words,
+		};
 	}
 
-	/** A paid payment's details: how much reached each statement, oldest first (its note is on
-	 * the sub line). */
-	private paymentDetails(payment: CardPayment) {
-		const parts = new Map<Period, number>();
-		const statements = this.ledgers.get(payment.cardId)?.statements ?? [];
-		for (const statement of [...statements].reverse())
-			for (const part of statement.payments)
-				if (
-					part.payment.cardId === payment.cardId &&
-					part.payment.id === payment.id
-				)
-					parts.set(
-						statement.period,
-						(parts.get(statement.period) ?? 0) + part.amount,
-					);
-		return html`${[...parts].map(
-			([period, amount]) =>
-				html`<span>${t("row.paidTo", {
-					amount: formatAmount(amount),
-					period: periodLabel(period, getLocale()),
-				})}</span>`,
-		)}`;
+	/** One sentence of what a purchase's statement holds: so far, what is left and when, or paid. */
+	private statementWords(statement: LedgerStatement): TemplateResult {
+		const total = money(formatAmount(statement.total));
+		const today = this.today;
+		if (statement.open || compareDates(statement.closeDate, today) >= 0) {
+			const days = daysBetween(today, statement.closeDate);
+			return say("row.say.open", {
+				month: monthName(statement.closeDate, getLocale()),
+				total,
+				closes:
+					days === 0
+						? t("row.say.closesToday")
+						: days === 1
+							? t("row.say.closesIn.one")
+							: t("row.say.closesIn.many", { days }),
+			});
+		}
+		if (statement.remaining === 0) return say("row.say.paid", { total });
+		const days = daysBetween(today, statement.dueDate);
+		const when =
+			days === 0
+				? t("row.say.dueToday")
+				: days === 1
+					? t("row.say.dueIn.one")
+					: days > 1
+						? t("row.say.dueIn.many", { days })
+						: html`<span class="a-late">${
+								days === -1
+									? t("row.say.late.one")
+									: t("row.say.late.many", { days: -days })
+							}</span>`;
+		return say("row.say.left", {
+			left: money(formatAmount(statement.remaining)),
+			total,
+			when,
+		});
+	}
+
+	/**
+	 * A paid payment's drawer: how much reached each statement, oldest first, and what it kept
+	 * as credit (its note is on the sub line).
+	 */
+	private paymentDrawer(payment: CardPayment): Drawer {
+		const ledger = this.ledgers.get(payment.cardId);
+		const parts: { label: string; amount: number }[] = [];
+		for (const statement of [...(ledger?.statements ?? [])].reverse()) {
+			const amount = sumAmounts(
+				statement.payments
+					.filter(
+						(part) =>
+							part.payment.cardId === payment.cardId &&
+							part.payment.id === payment.id,
+					)
+					.map((part) => part.amount),
+			);
+			if (amount > 0)
+				parts.push({
+					label: t("row.part.statement", {
+						month: monthName(statement.closeDate, getLocale()),
+					}),
+					amount,
+				});
+		}
+		// Only a known ledger can say what was not spent on a statement.
+		const credit = ledger
+			? payment.amount - sumAmounts(parts.map((part) => part.amount))
+			: 0;
+		if (credit > 0) parts.push({ label: t("row.part.credit"), amount: credit });
+		const paid = t("row.say.paidOn", {
+			date: dayMonth(payment.date, getLocale()),
+		});
+		return {
+			above:
+				parts.length > 0
+					? partLines(
+							parts.map((part) => ({
+								label: part.label,
+								amount: formatAmount(part.amount),
+							})),
+						)
+					: nothing,
+			say: credit > 0 ? `${paid} ${t("row.say.credit")}` : paid,
+		};
 	}
 
 	private row(entry: TxEntry, showDate: boolean) {
@@ -296,7 +392,7 @@ export class CcTxLedger extends LitElement {
 				entryId(entry),
 				text,
 				amount,
-				this.purchaseDetails(entry),
+				this.purchaseDrawer(entry),
 				html`<a class="btn" data-variant="quiet" data-action="open-card"
 					href=${`/card?id=${encodeURIComponent(entry.purchase.cardId)}`}>${t("row.openCard")}</a>${
 						list
@@ -311,7 +407,7 @@ export class CcTxLedger extends LitElement {
 			entryId(entry),
 			text,
 			amount,
-			this.paymentDetails(payment),
+			this.paymentDrawer(payment),
 			this.steps.paidButtons(payment, entry.card, () =>
 				this.emit("delete-payment", { payment }),
 			),
@@ -334,7 +430,10 @@ export class CcTxLedger extends LitElement {
 							text: `${MINUS}${formatAmount(listTotal(list))}`,
 							tone: "muted",
 						},
-						listLines(list, up.cards),
+						{
+							above: listParts(list, up.cards),
+							say: say("row.say.sent", { date: sentWords(list) }),
+						},
 						html`<a class="btn" data-action="record-reply" href=${listPageAddress(list)}>${t("row.recordReply")}</a>${this.steps.listButtons(
 							list,
 							() => this.emit("confirm-list", { list }),
@@ -347,7 +446,11 @@ export class CcTxLedger extends LitElement {
 						plannedText(payment, card, this.limitGroups, this.today, true),
 						{ text: `+${formatAmount(payment.amount)}`, tone: "in" },
 						// The note is on the sub line already (`plannedText`).
-						nothing,
+						{
+							say: t("row.say.planned", {
+								date: dayMonth(payment.date, getLocale()),
+							}),
+						},
 						this.steps.planButtons(payment, card, {
 							paid: () => this.emit("mark-paid", { payment }),
 							remove: () => this.emit("delete-payment", { payment }),
@@ -419,6 +522,12 @@ export class CcTxLedger extends LitElement {
 		`;
 	}
 }
+
+/** What an opened row shows above its buttons: a cycle line or parts, then one sentence. */
+type Drawer = {
+	above?: TemplateResult | typeof nothing;
+	say: string | TemplateResult | typeof nothing;
+};
 
 /** A planned payment's open-row id: a payment's id repeats across cards. */
 const planId = (payment: CardPayment) => `plan:${payment.cardId}:${payment.id}`;

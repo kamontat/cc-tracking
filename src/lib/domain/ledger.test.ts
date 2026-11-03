@@ -5,6 +5,7 @@ import {
 	ledgerUrgency,
 	newlyFrozen,
 	nextBill,
+	statementStart,
 } from "#lib/domain/ledger";
 import type {
 	Card,
@@ -372,5 +373,22 @@ describe("payment parts", () => {
 		expect(s.payments.map((x) => x.payment.id)).toEqual(["p1"]);
 		expect(l.credit).toBe(30);
 		expect(of(l, "2026-11").payments).toEqual([]);
+	});
+});
+
+describe("statementStart", () => {
+	test("a statement starts the day after the one before it closed, from the ledger", () => {
+		const statements = [
+			stmt("2026-10", { closeDate: "2026-10-10" }),
+			stmt("2026-09", { closeDate: "2026-09-12" }),
+		];
+		expect(statementStart(card, statements, "2026-10")).toBe("2026-09-13");
+	});
+
+	test("with no statement before it in the ledger, the card's cycle says when the last one closed", () => {
+		expect(statementStart(card, [stmt("2026-10")], "2026-10")).toBe(
+			"2026-09-11",
+		);
+		expect(statementStart(card, [], "2026-01")).toBe("2025-12-11");
 	});
 });

@@ -42,6 +42,8 @@ const items = (): NeedsItem[] => [
 		kind: "overdue",
 		card,
 		remaining: 41_230_00,
+		billed: 41_230_00,
+		startDate: "2026-08-19",
 		closeDate: "2026-09-30",
 		dueDate: "2026-10-15",
 		days: 16,
@@ -215,6 +217,8 @@ test("the overdue amount carries the danger tone, with its words", async () => {
 			kind: "overdue",
 			card,
 			remaining: 100,
+			billed: 100,
+			startDate: "2026-08-19",
 			closeDate: "2026-10-15",
 			dueDate: "2026-10-30",
 			days: 1,
@@ -234,6 +238,8 @@ test("one day overdue reads in the singular", async () => {
 			kind: "overdue",
 			card,
 			remaining: 100,
+			billed: 100,
+			startDate: "2026-08-19",
 			closeDate: "2026-10-15",
 			dueDate: "2026-10-30",
 			days: 1,
@@ -364,11 +370,13 @@ test("opening one row closes the other; a second tap closes it", async () => {
 	expect(root.querySelector(".a-details:not([hidden])")).toBeNull();
 });
 
-test("an opened overdue bill shows its dates and what is left, with Pay and Open card", async () => {
+test("an opened overdue bill draws its billing cycle in red to today, says what is left, and offers Pay the amount and Open card", async () => {
 	const item: NeedsItem = {
 		kind: "overdue",
 		card,
 		remaining: 41_230_00,
+		billed: 50_000_00,
+		startDate: "2026-08-19",
 		closeDate: "2026-09-18",
 		dueDate: "2026-10-03",
 		days: 28,
@@ -376,9 +384,35 @@ test("an opened overdue bill shows its dates and what is left, with Pay and Open
 	const { element, root } = await mountEl([item]);
 	await open(element, '[data-item="overdue"]');
 	const details = shownDetails(root) as HTMLElement;
-	expect(parts(details, ".a-info > *")).toEqual([
-		"Closed 18 Sep 2026 · due 03 Oct 2026",
-		"฿41,230.00 left",
+	const line = details.querySelector<HTMLElement>(".a-cycle");
+	expect(line?.getAttribute("role")).toBe("img");
+	expect(line?.getAttribute("aria-label")).toBe(
+		"Closed 18 Sep, due 3 Oct, today 31 Oct",
+	);
+	expect(
+		[...(line?.querySelectorAll<HTMLElement>(".a-mk") ?? [])].map((m) => [
+			m.dataset["mark"],
+			m.textContent?.trim(),
+			m.hasAttribute("data-late"),
+		]),
+	).toEqual([
+		["closed", "Closed 18 Sep", false],
+		["due", "Due 3 Oct", true],
+		["now", "Today", false],
+	]);
+	// The line runs from the statement's start to a few days past today, so today sits inside.
+	const now = line?.querySelector<HTMLElement>('.a-mk[data-mark="now"]');
+	const fill = line?.querySelector<HTMLElement>(".a-fill");
+	expect(fill?.hasAttribute("data-late")).toBe(true);
+	expect(fill?.style.getPropertyValue("inline-size")).toBe(
+		now?.style.getPropertyValue("inset-inline-start") as string,
+	);
+	expect(text(details, ".a-say")).toBe(
+		"฿41,230.00 left of ฿50,000.00 billed, 28 days late",
+	);
+	expect(parts(details, ".a-say .a-money")).toEqual([
+		"฿41,230.00",
+		"฿50,000.00",
 	]);
 	const links = [...details.querySelectorAll(".a-btns > *")];
 	expect(
@@ -391,13 +425,34 @@ test("an opened overdue bill shows its dates and what is left, with Pay and Open
 		["a", "btn", null],
 		["a", "btn", "quiet"],
 	]);
-	expect(links.map((e) => e.textContent?.trim())).toEqual(["Pay", "Open card"]);
+	expect(links.map((e) => e.textContent?.trim())).toEqual([
+		"Pay ฿41,230.00",
+		"Open card",
+	]);
 	expect(links[0]?.getAttribute("href")).toBe(
 		"/pay?card=SCB%2FK&amount=4123000",
 	);
 	expect(links[1]?.getAttribute("href")).toBe("/card?id=SCB%2FK");
 	// One wrapper of buttons, not one inside another.
 	expect(details.querySelector(".a-btns .a-btns")).toBeNull();
+});
+
+test("a bill one day late says so in the singular", async () => {
+	const item: NeedsItem = {
+		kind: "overdue",
+		card,
+		remaining: 100,
+		billed: 100,
+		startDate: "2026-09-19",
+		closeDate: "2026-10-18",
+		dueDate: "2026-10-30",
+		days: 1,
+	};
+	const { element, root } = await mountEl([item]);
+	await open(element, '[data-item="overdue"]');
+	expect(text(shownDetails(root) as HTMLElement, ".a-say")).toBe(
+		"฿1.00 left of ฿1.00 billed, 1 day late",
+	);
 });
 
 test("an opened planned payment shows its note; Paid emits mark-paid", async () => {
@@ -407,7 +462,8 @@ test("an opened planned payment shows its note; Paid emits mark-paid", async () 
 	const marked = events(element, "mark-paid");
 	await open(element, '[data-item="planned"]');
 	const details = shownDetails(root) as HTMLElement;
-	expect(text(details, ".a-info")).toBe("rent");
+	expect(text(details, ".a-say")).toBe("Planned for 2 Nov. rent");
+	expect(details.querySelector(".a-cycle, .a-parts")).toBeNull();
 	const buttons = [...details.querySelectorAll(".a-btns button")];
 	expect(
 		buttons.map((b) => [
@@ -453,7 +509,7 @@ test("a planned payment's Delete asks first: Delete and Cancel, and only the sec
 	expect(deleted).toEqual([{ payment: item.payment }]);
 });
 
-test("an opened waiting list shows each line and the total; Confirm asks Save before it emits", async () => {
+test("an opened waiting list shows each line and when it was sent; Confirm asks Save before it emits", async () => {
 	const sent: PurchaseList = {
 		id: "w1",
 		date: "2026-10-30",
@@ -470,13 +526,16 @@ test("an opened waiting list shows each line and the total; Confirm asks Save be
 	const saved = events(element, "confirm-list");
 	await open(element, '[data-item="waiting"]');
 	const details = shownDetails(root) as HTMLElement;
-	expect(parts(details, ".a-line > *")).toEqual([
+	expect(parts(details, ".a-part > *")).toEqual([
 		"SCB/K) SCB K (1111)",
 		"฿1,000.00",
 		"X) —",
 		"฿250.00",
 	]);
-	expect(text(details, ".a-total")).toBe("Total ฿1,250.00");
+	expect(details.querySelector(".a-total")).toBeNull();
+	expect(text(details, ".a-say")).toBe(
+		"Sent 30 Oct. Confirm saves every line as made.",
+	);
 	const first = [...details.querySelectorAll(".a-btns > *")];
 	expect(first.map((e) => e.getAttribute("data-action"))).toEqual([
 		"record-reply",
@@ -503,7 +562,8 @@ test("an opened draft offers Continue and a one-step Delete", async () => {
 	const deleted = events(element, "delete-draft");
 	await open(element, '[data-item="draft"]');
 	const details = shownDetails(root) as HTMLElement;
-	expect(text(details, ".a-total")).toBe("Total ฿1.00");
+	expect(parts(details, ".a-part > *")).toEqual(["A) —", "฿1.00"]);
+	expect(text(details, ".a-say")).toBe("Not sent yet.");
 	const [go, del] = [...details.querySelectorAll(".a-btns > *")];
 	expect(go?.getAttribute("href")).toBe("/list/draft?id=d1");
 	expect(go?.textContent?.trim()).toBe("Continue");
@@ -540,6 +600,8 @@ test("opened rows read in Thai", async () => {
 			kind: "overdue",
 			card,
 			remaining: 100,
+			billed: 100,
+			startDate: "2026-08-19",
 			closeDate: "2026-09-18",
 			dueDate: "2026-10-03",
 			days: 28,
@@ -547,12 +609,16 @@ test("opened rows read in Thai", async () => {
 		{ kind: "draft", list: list("d1", "draft", ["A"]), total: 100 },
 	]);
 	await open(element, '[data-item="overdue"]');
-	expect(parts(shownDetails(root) as HTMLElement, ".a-btns > *")).toEqual([
-		"ชำระเงิน",
-		"เปิดบัตร",
+	const due = shownDetails(root) as HTMLElement;
+	expect(parts(due, ".a-btns > *")).toEqual(["ชำระ ฿1.00", "เปิดบัตร"]);
+	expect(text(due, ".a-say")).toBe("เหลือ ฿1.00 จากยอด ฿1.00 เลยกำหนดมา 28 วัน");
+	expect(parts(due, ".a-mk")).toEqual([
+		"สรุปยอด 18 ก.ย.",
+		"ครบกำหนด 3 ต.ค.",
+		"วันนี้",
 	]);
 	await open(element, '[data-item="draft"]');
-	expect(text(shownDetails(root) as HTMLElement, ".a-total")).toBe("รวม ฿1.00");
+	expect(text(shownDetails(root) as HTMLElement, ".a-say")).toBe("ยังไม่ได้ส่ง");
 });
 
 test("a half-done swap ends when its row closes, when another opens, or when its row goes", async () => {
@@ -593,6 +659,6 @@ test("a Needs you plan says its note once, in its details", async () => {
 	const row = root.querySelector("[data-row]")?.textContent ?? "";
 	expect(row.split("Salary day").length - 1).toBe(1);
 	expect(
-		root.querySelector(".a-details:not([hidden]) .a-info")?.textContent,
+		root.querySelector(".a-details:not([hidden]) .a-say")?.textContent,
 	).toContain("Salary day");
 });

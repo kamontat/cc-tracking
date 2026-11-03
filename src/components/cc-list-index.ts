@@ -5,8 +5,11 @@ import {
 	actionRow,
 	actionRowStyles,
 	draftText,
-	listLines,
+	listParts,
+	money,
 	savedText,
+	say,
+	sentWords,
 	useOpenRow,
 	waitingText,
 } from "#components/action-row";
@@ -112,6 +115,16 @@ export class CcListIndex extends LitElement {
 		return savedText(list, this.cards, this.groups);
 	}
 
+	/** The opened row's one sentence: not sent yet, when it was sent, or what it bought. */
+	private words(list: PurchaseList) {
+		if (list.status === "draft") return t("row.say.draft");
+		if (list.status === "sent")
+			return say("row.say.sent", { date: sentWords(list) });
+		return say("row.say.saved", {
+			total: money(formatAmount(listTotal(list))),
+		});
+	}
+
 	private buttons(list: PurchaseList) {
 		const href = listPageAddress(list);
 		switch (list.status) {
@@ -148,7 +161,8 @@ export class CcListIndex extends LitElement {
 				expanded: this.rows.isOpen(id),
 				onToggle: () => this.rows.toggle(id),
 				detailsId: this.rows.detailsId(id),
-				details: listLines(list, this.cards),
+				above: listParts(list, this.cards),
+				say: this.words(list),
 			},
 		});
 	}

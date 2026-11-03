@@ -131,15 +131,16 @@ test("card tiles hover without an underline and keep a focus ring", () => {
 	}
 });
 
-test("the ledger's rows are the opening row: they stack below 900px, with no row of their own", () => {
+test("the ledger's rows are the opening row: the foot stacks below 900px, with no row of their own", () => {
 	const text = stylesOf("cc-tx-ledger");
 	// The row is one column at every width: the head button is its only child.
 	expect(text).toMatch(
 		/\.a-row\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/,
 	);
 	expect(text).not.toContain(".a-right");
+	expect(text).toMatch(/\.a-foot\s*\{[^}]*flex-direction: column;/);
 	expect(text).toMatch(
-		/@media \(max-width: 899\.98px\)\s*\{[^@]*\.a-details \.a-btns\s*\{[^}]*flex-direction: column/,
+		/@media \(min-width: 900px\)\s*\{\s*\.a-foot\s*\{[^}]*flex-direction: row;/,
 	);
 	expect(text).not.toMatch(/\.crow\[data-kind\]/);
 	expect(text).not.toContain(".pay-right");

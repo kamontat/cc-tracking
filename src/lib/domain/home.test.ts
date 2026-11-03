@@ -283,6 +283,30 @@ describe("needsYou", () => {
 		});
 	});
 
+	test("an overdue bill carries what was billed and the day its statement started", () => {
+		const d = data(
+			[mk("A")],
+			[buy("p", "A", "2026-09-10", 4_000_00)],
+			[],
+			[
+				{
+					id: "x",
+					cardId: "A",
+					date: "2026-10-01",
+					amount: 1_000_00,
+					status: "paid",
+				},
+			],
+		);
+		const [item] = needsYou(d, TODAY);
+		expect(item).toMatchObject({
+			kind: "overdue",
+			billed: 4_000_00,
+			remaining: 3_000_00,
+			startDate: "2026-08-26",
+		});
+	});
+
 	test("overdue bills: most days overdue first, ties by card id", () => {
 		const b = mk("B");
 		const a = mk("A");

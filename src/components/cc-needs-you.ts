@@ -11,15 +11,19 @@ import {
 	type ActionRowText,
 	actionRow,
 	actionRowStyles,
+	cycleLine,
 	draftText,
-	listLines,
+	listParts,
+	money,
 	overdueText,
 	plannedText,
+	say,
+	sentWords,
 	useOpenRow,
 	waitingText,
 } from "#components/action-row";
 import { useTwoStep } from "#components/two-step";
-import { displayDate } from "#lib/domain/date";
+import { addDays, dayMonth } from "#lib/domain/date";
 import type { NeedsItem } from "#lib/domain/home";
 import { formatAmount, MINUS } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
@@ -33,14 +37,18 @@ import { base, controls, rowPanel } from "#styles/shared";
 /** How many things show before *See more*. */
 const SHOWN = 5;
 
+/** How many days past today an overdue bill's cycle line runs, so today sits inside it. */
+const PAST_TODAY = 3;
+
 /**
  * What needs doing on Home, money at risk first (DD-62): bills past due, late plans, replies
  * to record, payments planned soon, drafts to finish. Each is the shared action row (DD-108):
  * its icon says the kind and the amount sits on the right. A row opens in place (one at a
- * time) to show its detail and buttons: an overdue bill *Pay* and *Open card*; a plan *Paid*
- * (`mark-paid`) and a two-step *Delete* (`delete-payment`); a waiting list its lines, *Record
- * reply* and a two-step *Confirm* (`confirm-list`); a draft its lines, *Continue* and a
- * one-step *Delete* (`delete-draft`, DD-74). Home writes them. More than five show the first
+ * time) to a drawer of one sentence and its buttons (DD-165): an overdue bill its billing cycle
+ * line, red up to today, *Pay* the amount left and *Open card*; a plan *Paid* (`mark-paid`)
+ * and a two-step *Delete* (`delete-payment`); a waiting list its lines, *Record reply* and a
+ * two-step *Confirm* (`confirm-list`); a draft its lines, *Continue* and a one-step *Delete*
+ * (`delete-draft`, DD-74). Home writes them. More than five show the first
  * five and *See more (N)*, which opens the rest in place, in the same order.
  */
 @customElement("cc-needs-you")
@@ -111,12 +119,13 @@ export class CcNeedsYou extends LitElement {
 		this.dispatchEvent(new CustomEvent(name, { detail }));
 	}
 
-	/** Draws `item` as a row that opens in place, with `details` and `action` under its head. */
+	/** Draws `item` as a row that opens in place: `above` and the sentence `words`, then `action`. */
 	private opening(
 		item: NeedsItem,
 		text: ActionRowText,
 		amount: { text: string; tone: "out" | "in" | "muted" | "danger" },
-		details: TemplateResult | typeof nothing,
+		above: TemplateResult | typeof nothing,
+		words: string | TemplateResult,
 		action: TemplateResult,
 	) {
 		const id = rowId(item);
@@ -128,13 +137,14 @@ export class CcNeedsYou extends LitElement {
 				expanded: this.rows.isOpen(id),
 				onToggle: () => this.rows.toggle(id),
 				detailsId: this.rows.detailsId(id),
-				details,
+				above,
+				say: words,
 			},
 		});
 	}
 
 	private row(item: NeedsItem) {
-		const date = (d: PlainDate) => displayDate(d, getLocale());
+		const date = (d: PlainDate) => dayMonth(d, getLocale());
 		switch (item.kind) {
 			case "waiting":
 				return this.opening(
@@ -144,7 +154,8 @@ export class CcNeedsYou extends LitElement {
 						text: `${MINUS}${formatAmount(listTotal(item.list))}`,
 						tone: "muted",
 					},
-					listLines(item.list, this.cards),
+					listParts(item.list, this.cards),
+					say("row.say.sent", { date: sentWords(item.list) }),
 					html`<a class="btn" data-action="record-reply" href=${listPageAddress(item.list)}>${t("row.recordReply")}</a>${this.steps.listButtons(
 						item.list,
 						() => this.emit("confirm-list", { list: item.list }),
@@ -155,14 +166,30 @@ export class CcNeedsYou extends LitElement {
 					item,
 					overdueText(item.card, this.groups, item.days),
 					{ text: formatAmount(item.remaining), tone: "danger" },
-					html`<span>${t("row.overdue.dates", {
-						close: date(item.closeDate),
-						due: date(item.dueDate),
-					})}</span><span>${t("row.left", { amount: formatAmount(item.remaining) })}</span>`,
+					// From the statement's start to a few days past today, so today sits inside.
+					cycleLine({
+						start: item.startDate,
+						end: addDays(this.today, PAST_TODAY),
+						marks: [
+							{ kind: "closed", date: item.closeDate },
+							{ kind: "due", date: item.dueDate },
+							{ kind: "now", date: this.today },
+						],
+						fillTo: this.today,
+						late: true,
+					}),
+					say("row.say.left", {
+						left: money(formatAmount(item.remaining)),
+						total: money(formatAmount(item.billed)),
+						when:
+							item.days === 1
+								? t("row.say.late.one")
+								: t("row.say.late.many", { days: item.days }),
+					}),
 					html`<a class="btn" data-action="pay" href=${payAddress({
 						cardId: item.card.id,
 						amount: item.remaining,
-					})}>${t("row.pay")}</a><a class="btn" data-variant="quiet" data-action="open-card"
+					})}>${t("row.payAmount", { amount: formatAmount(item.remaining) })}</a><a class="btn" data-variant="quiet" data-action="open-card"
 						href=${`/card?id=${encodeURIComponent(item.card.id)}`}>${t("row.openCard")}</a>`,
 				);
 			case "planned": {
@@ -171,7 +198,12 @@ export class CcNeedsYou extends LitElement {
 					item,
 					plannedText(payment, item.card, this.groups, this.today, false),
 					{ text: `+${formatAmount(payment.amount)}`, tone: "in" },
-					payment.note ? html`<span>${payment.note}</span>` : nothing,
+					nothing,
+					// The subtitle has no note here, so the sentence carries it.
+					[
+						t("row.say.planned", { date: date(payment.date) }),
+						...(payment.note ? [payment.note] : []),
+					].join(" "),
 					this.steps.planButtons(payment, item.card, {
 						paid: () => this.emit("mark-paid", { payment }),
 						remove: () => this.emit("delete-payment", { payment }),
@@ -186,7 +218,8 @@ export class CcNeedsYou extends LitElement {
 						text: `${MINUS}${formatAmount(listTotal(item.list))}`,
 						tone: "muted",
 					},
-					listLines(item.list, this.cards),
+					listParts(item.list, this.cards),
+					t("row.say.draft"),
 					html`<a class="btn" data-action="continue" href=${listPageAddress(item.list)}>${t("row.continue")}</a><button type="button"
 						data-variant="danger" data-action="delete-draft"
 						@click=${() => this.emit("delete-draft", { list: item.list })}>${t("common.delete")}</button>`,

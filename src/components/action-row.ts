@@ -6,16 +6,21 @@ import {
 	type ReactiveControllerHost,
 	type TemplateResult,
 } from "lit";
-import { daysBetween, displayDate } from "#lib/domain/date";
+import {
+	dayMonth,
+	daysBetween,
+	displayDate,
+	today as plainToday,
+} from "#lib/domain/date";
 import { formatAmount } from "#lib/domain/money";
-import { listTotal } from "#lib/domain/purchase-list";
 import type {
 	Card,
 	CardPayment,
 	LimitGroup,
+	PlainDate,
 	PurchaseList,
 } from "#lib/domain/types";
-import { getLocale, t } from "#lib/i18n/index";
+import { getLocale, type MessageKey, t } from "#lib/i18n/index";
 import { cardLine, cardOwnerName } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 
@@ -26,8 +31,10 @@ import { icons } from "#lib/ui/icons";
  * below are pure (given the locale), so both lists word a thing the same way.
  *
  * It is also the one row that opens in place (Needs you, the ledger, the Lists view): with
- * `open` the head is one button that shows or hides the row's details and buttons under it,
- * and `useOpenRow` keeps one row open per component.
+ * `open` the head is one button that shows or hides the row's drawer under it, and
+ * `useOpenRow` keeps one row open per component. The drawer (DD-165) holds an optional
+ * billing cycle line (`cycleLine`) or parts (`partLines`), then a foot: one sentence (`say`)
+ * and the buttons.
  */
 
 export type ActionKind =
@@ -181,43 +188,155 @@ export function overdueText(
 	};
 }
 
+/** A money figure inside a sentence: strong, where the rest of the sentence is muted. */
+export const money = (text: string): TemplateResult =>
+	html`<span class="a-money" data-numeric>${text}</span>`;
+
 /**
- * An opened list row's details: each line's card in the line form and its amount, then the
- * total. Missing cards keep their id (`cardLine`).
+ * The catalog's sentence `key` with its placeholders filled by `params`, which may be markup
+ * (a `money` figure, a red `a-late` phrase); words stay words, so the sentence reads the same in
+ * either language.
  */
-export function listLines(list: PurchaseList, cards: Card[]): TemplateResult {
+export function say(
+	key: MessageKey,
+	params: Record<string, string | number | TemplateResult> = {},
+): TemplateResult {
+	const pieces = t(key).split(/\{(\w+)\}/);
+	return html`${pieces.map((piece, i) =>
+		i % 2 === 0 ? piece : piece in params ? params[piece] : `{${piece}}`,
+	)}`;
+}
+
+/** The day a list was sent, as day and month: its `sentAt` in Bangkok, else the list's date. */
+export function sentWords(list: PurchaseList): string {
+	const at = list.sentAt ? new Date(list.sentAt) : undefined;
+	const day = at && !Number.isNaN(at.getTime()) ? plainToday(at) : list.date;
+	return dayMonth(day, getLocale());
+}
+
+/** Label and amount lines above an opened row's foot: a list's lines, a payment's statements. */
+export function partLines(
+	parts: { label: string | TemplateResult; amount: string }[],
+): TemplateResult {
+	return html`<div class="a-parts">${parts.map(
+		(part) =>
+			html`<div class="a-part"><span>${part.label}</span><span data-numeric>${part.amount}</span></div>`,
+	)}</div>`;
+}
+
+/**
+ * An opened list row's parts: each line's card in the line form and its amount (the row's head
+ * already carries the total). A saved list shows what was bought: the real amount, or "Not
+ * made" (the reply page's words). Missing cards keep their id (`cardLine`).
+ */
+export function listParts(list: PurchaseList, cards: Card[]): TemplateResult {
 	const byId = new Map(cards.map((card) => [card.id, card]));
 	const saved = list.status === "saved";
-	// A saved list shows what was bought: the real amount, or "Not made" (the reply page's words).
-	const figure = (line: PurchaseList["lines"][number]) =>
-		!saved
-			? formatAmount(line.amount)
-			: line.made
-				? formatAmount(line.actual ?? line.amount)
-				: t("reply.notMade");
-	return html`${list.lines.map(
-		(line) =>
-			html`<span class="a-line"><span>${cardLine(line.cardId, byId.get(line.cardId))}</span><span data-numeric>${figure(line)}</span></span>`,
-	)}<span class="a-total" data-numeric>${t("row.lines.total", {
-		amount: formatAmount(listTotal(list)),
-	})}</span>`;
+	return partLines(
+		list.lines.map((line) => ({
+			label: cardLine(line.cardId, byId.get(line.cardId)),
+			amount: !saved
+				? formatAmount(line.amount)
+				: line.made
+					? formatAmount(line.actual ?? line.amount)
+					: t("reply.notMade"),
+		})),
+	);
+}
+
+/** A marker on the billing cycle line: bought, the close (to come or past), due, or today. */
+export type CycleMark = {
+	kind: "buy" | "closes" | "closed" | "due" | "now";
+	date: PlainDate;
+};
+
+const MARK_WORDS: Record<CycleMark["kind"], MessageKey> = {
+	buy: "row.cycle.bought",
+	closes: "row.cycle.closes",
+	closed: "row.cycle.closed",
+	due: "row.cycle.due",
+	now: "row.cycle.spoken.today",
+};
+
+/** Within this share of an end, a marker's label aligns to that end, so it never clips. */
+const EDGE = 6;
+
+/**
+ * A statement's billing cycle drawn to scale (DD-165): a track from `start` to `end`, filled
+ * up to `fillTo` (red when `late`), and a marker for each of `marks` in date order. Every
+ * position comes from one scale, `daysBetween(start, d) / daysBetween(start, end)`, clamped to
+ * the line. *Today* is a tick with its label above the track; the rest are circles with the
+ * label under. When `late`, the due marker is red too. The line is one image to a screen
+ * reader: its `aria-label` says the dates in words, today last.
+ */
+export function cycleLine({
+	start,
+	end,
+	marks,
+	fillTo,
+	late = false,
+}: {
+	start: PlainDate;
+	end: PlainDate;
+	marks: CycleMark[];
+	fillTo: PlainDate;
+	late?: boolean;
+}): TemplateResult {
+	const span = Math.max(1, daysBetween(start, end));
+	const at = (date: PlainDate) =>
+		Math.min(100, Math.max(0, (daysBetween(start, date) / span) * 100));
+	const percent = (value: number) => `${Number(value.toFixed(2))}%`;
+	const locale = getLocale();
+	const ordered = marks
+		.map((mark, i) => ({ mark, i }))
+		.sort((a, b) => at(a.mark.date) - at(b.mark.date) || a.i - b.i)
+		.map(({ mark }) => mark);
+	const spoken = [
+		...ordered.filter((m) => m.kind !== "now"),
+		...ordered.filter((m) => m.kind === "now"),
+	].map((mark, i) => {
+		const words = t(MARK_WORDS[mark.kind], {
+			date: dayMonth(mark.date, locale),
+		});
+		return i === 0
+			? words
+			: words.charAt(0).toLocaleLowerCase(locale) + words.slice(1);
+	});
+	return html`<div class="a-cycle" role="img" aria-label=${spoken.join(t("row.cycle.join"))}>
+		<span class="a-track"></span>
+		<span class="a-fill" ?data-late=${late} style=${`inline-size: ${percent(at(fillTo))}`}></span>
+		${ordered.map((mark) => {
+			const p = at(mark.date);
+			const edge = p < EDGE ? "start" : p > 100 - EDGE ? "end" : undefined;
+			const label =
+				mark.kind === "now"
+					? t("row.cycle.today")
+					: t(MARK_WORDS[mark.kind], { date: dayMonth(mark.date, locale) });
+			return html`<span class="a-mk" aria-hidden="true" data-mark=${mark.kind}
+				data-edge=${edge ?? nothing} ?data-late=${late && mark.kind === "due"}
+				style=${`inset-inline-start: ${percent(p)}`}><i></i>${label}</span>`;
+		})}
+	</div>`;
 }
 
 export type ActionRowOptions = {
-	/** The row opens in place: the head toggles `details` and the buttons (`action`) under it.
-	 * `detailsId` names that region (`useOpenRow`'s `detailsId`). */
+	/** The row opens in place: the head toggles a drawer under it, `above` (a cycle line or
+	 * parts) then a foot of the sentence `say` and the buttons (`action`). `detailsId` names
+	 * that region (`useOpenRow`'s `detailsId`). */
 	open: {
 		expanded: boolean;
 		onToggle: () => void;
 		detailsId: string;
-		/** The muted detail lines; `nothing` for none. */
-		details: TemplateResult | typeof nothing;
+		/** The cycle line (`cycleLine`) or parts (`partLines`); none when left out. */
+		above?: TemplateResult | typeof nothing;
+		/** The one sentence; money figures through `money`, the rest muted. */
+		say: string | TemplateResult | typeof nothing;
 	};
 	/** Drawn in place of the kind's icon (a ledger row's card chip). */
 	lead?: TemplateResult | undefined;
 	/** The right-hand figure, already signed, and its tone. */
 	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" };
-	/** The buttons, in the opened details (DD-110). */
+	/** The buttons, at the end of the opened row's foot (DD-110). */
 	action?: TemplateResult | undefined;
 	/** Names the row for tests and the page: `data-row`. */
 	id?: string;
@@ -225,7 +344,7 @@ export type ActionRowOptions = {
 
 /**
  * Draws a row. The whole head (icon, text, figure and a chevron) is one button, and nothing
- * interactive sits inside it: the buttons live in the details region it controls.
+ * interactive sits inside it: the buttons live in the drawer it controls.
  */
 export function actionRow(
 	text: ActionRowText,
@@ -252,8 +371,8 @@ export function actionRow(
 		</div>
 		<div class="a-details" id=${open.detailsId} role="region"
 			aria-labelledby=${headId} ?hidden=${!open.expanded}>
-			${open.details === nothing ? nothing : html`<div class="a-info">${open.details}</div>`}
-			${action ? html`<div class="a-btns">${action}</div>` : nothing}
+			${open.above ?? nothing}
+			<div class="a-foot"><p class="a-say">${open.say}</p>${action ? html`<div class="a-btns">${action}</div>` : nothing}</div>
 		</div>
 	</div>`;
 }
@@ -423,12 +542,11 @@ export const actionRowStyles = css`
 		}
 	}
 
-	/* What opens under the head: muted detail lines, then the buttons. It lines up with the
-	   text, past the icon. */
+	/* What opens under the head, a drawer lined up with the text past the icon (DD-165): the
+	   billing cycle line or the parts, then the foot. */
 	.a-details {
-		display: flex;
-		flex-direction: column;
-		gap: var(--cc-space-2);
+		display: grid;
+		gap: var(--cc-space-3);
 		padding-block: 0 var(--cc-space-3);
 		padding-inline-start: var(--a-lead-inline);
 		min-inline-size: 0;
@@ -438,36 +556,173 @@ export const actionRowStyles = css`
 		display: none;
 	}
 
-	/* From 900px the detail lines and the buttons share one line: lines on the left, buttons
-	   at the end, so an opened row grows by as little as it can. */
+	/* The foot: one sentence, then the buttons. Below 900px they stack, the buttons wrapping at
+	   their own width from the start; from 900px they share a line, buttons at the end. */
+	.a-foot {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--cc-space-3);
+		min-inline-size: 0;
+	}
+
 	@media (min-width: 900px) {
-		.a-details {
+		.a-foot {
 			flex-direction: row;
-			align-items: flex-end;
+			align-items: center;
+			justify-content: space-between;
 		}
 
-		.a-info {
-			flex: 1;
-		}
-
-		.a-details .a-btns {
+		.a-foot .a-btns {
+			flex: none;
 			margin-inline-start: auto;
 		}
 	}
 
-	.a-info {
-		display: flex;
-		flex-direction: column;
-		gap: var(--cc-space-1);
-		min-inline-size: 0;
-		font-size: var(--cc-text-xs);
+	.a-say {
+		font-size: var(--cc-text-sm);
 		color: var(--cc-text-muted);
 		overflow-wrap: anywhere;
 	}
 
-	/* Details with no lines (a payment that reached no statement) leave no gap. */
-	.a-info:empty {
+	.a-say:empty {
 		display: none;
+	}
+
+	.a-money {
+		font-weight: 650;
+		color: var(--cc-text);
+	}
+
+	.a-late {
+		font-weight: 650;
+		color: var(--cc-danger);
+	}
+
+	/* Parts: a label on the left, its amount on the right. */
+	.a-parts {
+		display: grid;
+		gap: var(--cc-space-1);
+		font-size: var(--cc-text-sm);
+	}
+
+	.a-part {
+		display: flex;
+		flex-direction: row;
+		justify-content: space-between;
+		gap: var(--cc-space-3);
+		min-inline-size: 0;
+	}
+
+	.a-part > :first-child {
+		min-inline-size: 0;
+		overflow-wrap: anywhere;
+	}
+
+	.a-part > [data-numeric] {
+		flex: none;
+	}
+
+	/* The billing cycle line: a track on the axis, a fill from its start, and markers placed by
+	   inline style along it. Circles hang on the axis with their label under; Today is a tick
+	   with its label above, so it never meets a neighbour's label. */
+	.a-cycle {
+		position: relative;
+		block-size: var(--cc-cycle-height);
+		margin-inline: var(--cc-space-1);
+	}
+
+	.a-track,
+	.a-fill {
+		position: absolute;
+		inset-block-start: calc(var(--cc-cycle-axis) - var(--cc-cycle-track) / 2);
+		inset-inline-start: 0;
+		block-size: var(--cc-cycle-track);
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.a-track {
+		inset-inline-end: 0;
+		background: var(--cc-surface-sunken);
+	}
+
+	.a-fill {
+		background: var(--cc-text-muted);
+		opacity: var(--cc-cycle-fill-opacity);
+	}
+
+	.a-fill[data-late] {
+		background: var(--cc-danger);
+		opacity: 1;
+	}
+
+	.a-mk {
+		position: absolute;
+		inset-block-start: calc(var(--cc-cycle-axis) - var(--cc-cycle-dot) / 2);
+		translate: -50% 0;
+		display: grid;
+		justify-items: center;
+		gap: var(--cc-space-1);
+		font-size: var(--cc-text-2xs);
+		line-height: 1.5;
+		color: var(--cc-text-muted);
+		white-space: nowrap;
+	}
+
+	.a-mk i {
+		box-sizing: border-box;
+		inline-size: var(--cc-cycle-dot);
+		block-size: var(--cc-cycle-dot);
+		background: var(--cc-surface);
+		border: var(--cc-ring-width) solid var(--cc-text-muted);
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.a-mk[data-mark="buy"] i {
+		background: var(--cc-text);
+		border-color: var(--cc-text);
+	}
+
+	.a-mk[data-late] {
+		font-weight: 650;
+		color: var(--cc-danger);
+	}
+
+	.a-mk[data-late] i {
+		border-color: var(--cc-danger);
+	}
+
+	.a-mk[data-mark="now"] {
+		inset-block-start: auto;
+		inset-block-end: calc(
+			var(--cc-cycle-height) - var(--cc-cycle-axis) - var(--cc-cycle-tick) / 2
+		);
+		display: flex;
+		flex-direction: column-reverse;
+		align-items: center;
+		gap: calc(var(--cc-space-1) / 2);
+		font-weight: 650;
+		color: var(--cc-accent);
+	}
+
+	.a-mk[data-mark="now"] i {
+		inline-size: var(--cc-rule-width);
+		block-size: var(--cc-cycle-tick);
+		background: var(--cc-accent);
+		border: 0;
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.a-mk[data-edge="start"] {
+		translate: 0 0;
+		justify-items: start;
+		align-items: flex-start;
+	}
+
+	.a-mk[data-edge="end"] {
+		translate: -100% 0;
+		justify-items: end;
+		align-items: flex-end;
 	}
 
 	.a-ic {
@@ -524,24 +779,11 @@ export const actionRowStyles = css`
 		display: none;
 	}
 
-	@media (max-width: 899.98px) {
-		/* An opened row's buttons stack, each the full width, from the text's edge. */
-		.a-details .a-btns {
-			flex-direction: column;
-			align-items: stretch;
-		}
-
-		.a-details .a-btns > *,
-		.a-details .a-swap > * {
-			inline-size: 100%;
-		}
-	}
-
 	.a-btns {
 		display: flex;
 		flex-direction: row;
 		flex-wrap: wrap;
-		justify-content: flex-end;
+		justify-content: flex-start;
 		gap: var(--cc-space-2);
 	}
 
@@ -582,17 +824,4 @@ export const actionRowStyles = css`
 		background: var(--cc-border);
 	}
 
-	/* A list's line in the opened details: the card on the left, its amount on the right. */
-	.a-line {
-		display: flex;
-		flex-direction: row;
-		justify-content: space-between;
-		gap: var(--cc-space-3);
-	}
-
-	.a-total {
-		align-self: flex-end;
-		font-weight: 650;
-		color: var(--cc-text);
-	}
 `;

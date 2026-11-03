@@ -7,6 +7,8 @@
 	--cc-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 	--cc-leading: 1.65;
 
+	/* The smallest text: a label on an opened row's billing cycle line. */
+	--cc-text-2xs: 0.6875rem;
 	--cc-text-xs: 0.75rem;
 	--cc-text-sm: 0.8125rem;
 	--cc-text-md: 0.9375rem;
@@ -102,6 +104,16 @@
 
 	/* How an opening row's chevron turns (on the sheet's ease); not under prefers-reduced-motion. */
 	--cc-row-motion: 160ms;
+
+	/* An opened row's billing cycle line (DD-165): its height, where its track's centre sits
+	   from the top (room above for the Today label), the track's thickness, a marker circle,
+	   the Today tick, and how strongly the fill shows on a purchase's line. */
+	--cc-cycle-height: 3.875rem;
+	--cc-cycle-axis: 1.875rem;
+	--cc-cycle-track: 0.25rem;
+	--cc-cycle-dot: 0.875rem;
+	--cc-cycle-tick: 1.125rem;
+	--cc-cycle-fill-opacity: 0.55;
 
 	/* The widest a page's content grows. */
 	--cc-page-width: 72rem;

@@ -124,6 +124,12 @@ export function displayDate(date: PlainDate, locale: Locale): string {
 	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`;
 }
 
+/** Day and short month, unpadded and without the year ("3 Nov", "15 ธ.ค."): a date inside a sentence or on a billing cycle line, where the year goes without saying. */
+export function dayMonth(date: PlainDate, locale: Locale): string {
+	const { month, day } = parseDate(date);
+	return `${day} ${MONTH_NAMES[locale][month - 1]}`;
+}
+
 /** A statement's month as `Mon YYYY` ("Nov 2026", "พ.ย. 2026"), the year Gregorian as in `displayDate`. */
 export function periodLabel(period: Period, locale: Locale): string {
 	const { year, month } = periodParts(period);

@@ -1,5 +1,11 @@
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import { compareDates, comparePeriods, daysBetween } from "#lib/domain/date";
+import {
+	addDays,
+	addPeriods,
+	compareDates,
+	comparePeriods,
+	daysBetween,
+} from "#lib/domain/date";
 import { sumAmounts } from "#lib/domain/money";
 import { openPeriod } from "#lib/domain/statement";
 import type {
@@ -185,4 +191,19 @@ export function nextBill(
 			return s;
 	}
 	return null;
+}
+
+/**
+ * The first day of `period`'s statement: the day after the statement before it closed. The
+ * ledger's own statement before it wins (its dates may be frozen); without one, the card's
+ * cycle says when that statement closed.
+ */
+export function statementStart(
+	card: Card,
+	statements: LedgerStatement[],
+	period: Period,
+): PlainDate {
+	const before = addPeriods(period, -1);
+	const kept = statements.find((s) => s.period === before);
+	return addDays(kept?.closeDate ?? closeDateOf(card.cycle, before), 1);
 }

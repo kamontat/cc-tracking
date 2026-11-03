@@ -78,10 +78,35 @@ const tap = async (element: CcTxLedger, id: string) => {
 const shown = (root: ParentNode) =>
 	root.querySelector<HTMLElement>(".a-details:not([hidden])");
 
-const lines = (root: ParentNode) =>
-	[...(shown(root)?.querySelectorAll(".a-info > *") ?? [])].map((e) =>
-		e.textContent?.replace(/\s+/g, " ").trim(),
+/** The opened row's sentence. */
+const sentence = (root: ParentNode) =>
+	text(shown(root) as HTMLElement, ".a-say");
+
+/** The opened row's parts, each as label and amount. */
+const partsOf = (root: ParentNode) =>
+	[...(shown(root)?.querySelectorAll(".a-part") ?? [])].map((p) =>
+		[...p.children].map((c) => c.textContent?.trim()),
 	);
+
+/** The opened row's cycle markers: kind, label, position, late. */
+const marks = (root: ParentNode) =>
+	[...(shown(root)?.querySelectorAll<HTMLElement>(".a-cycle .a-mk") ?? [])].map(
+		(m) => [
+			m.dataset["mark"],
+			m.textContent?.trim(),
+			m.style.getPropertyValue("inset-inline-start"),
+			m.hasAttribute("data-late"),
+		],
+	);
+
+const ledgerCss = () =>
+	(
+		customElements.get("cc-tx-ledger") as unknown as {
+			elementStyles: { cssText: string }[];
+		}
+	).elementStyles
+		.map((s) => s.cssText)
+		.join("\n");
 
 /** Card A's ledger: `old` on the October statement, `x` on November's; `p1` pays both. */
 const ledgers = () => {
@@ -138,7 +163,7 @@ test("ledger rows are buttons that open in place, never links", async () => {
 	expect(root.querySelector(".a-details:not([hidden])")).toBeNull();
 });
 
-test("an opened purchase shows its statement and list, with Open card and Open list", async () => {
+test("an opened purchase on an open statement draws its billing cycle and says the total so far, with Open card and Open list", async () => {
 	const { entries, ledgers: books } = ledgers();
 	const fromList = { ...list("L1"), date: "2026-10-29" as const };
 	const listed = purchase("L1-0", 300_00, "gift");
@@ -150,10 +175,27 @@ test("an opened purchase shows its statement and list, with Open card and Open l
 	});
 	await tap(element, "buy:A:x");
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("true");
-	expect(lines(root)).toEqual([
-		"Closes 18 Nov 2026 · due 03 Dec 2026",
-		"Statement so far ฿1,000.00",
+	// November's statement: 19 Oct = 0, bought and today 31 Oct = 12, closes 18 Nov = 30,
+	// due 3 Dec = 45.
+	expect(marks(root)).toEqual([
+		["buy", "Bought 31 Oct", "26.67%", false],
+		["now", "Today", "26.67%", false],
+		["closes", "Closes 18 Nov", "66.67%", false],
+		["due", "Due 3 Dec", "100%", false],
 	]);
+	const line = shown(root)?.querySelector(".a-cycle");
+	expect(line?.getAttribute("aria-label")).toBe(
+		"Bought 31 Oct, closes 18 Nov, due 3 Dec, today 31 Oct",
+	);
+	expect(line?.querySelector(".a-fill[data-late]")).toBeNull();
+	expect(sentence(root)).toBe(
+		"On the November statement: ฿1,000.00 so far, closes in 18 days",
+	);
+	expect(
+		[...(shown(root)?.querySelectorAll(".a-say .a-money") ?? [])].map(
+			(e) => e.textContent,
+		),
+	).toEqual(["฿1,000.00"]);
 	const plain = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
 	expect(plain.map((b) => b.getAttribute("data-action"))).toEqual([
 		"open-card",
@@ -165,7 +207,6 @@ test("an opened purchase shows its statement and list, with Open card and Open l
 
 	await tap(element, "buy:A:L1-0");
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("false");
-	expect(lines(root)).toEqual([]);
 	const row = root.querySelector('[data-row="buy:A:L1-0"]');
 	expect(row?.textContent?.split("From list").length).toBe(2);
 	const both = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
@@ -178,34 +219,110 @@ test("an opened purchase shows its statement and list, with Open card and Open l
 	expect(both[1]?.textContent?.trim()).toBe("Open list");
 });
 
-test("an opened purchase on a closed statement says its total and what is left, or paid", async () => {
+test("a purchase on a statement that closes today says so", async () => {
+	const c = card("A");
+	const x = purchase("x", 100_00);
+	if (x.kind === "purchase") x.purchase.date = "2026-10-20";
+	const books = new Map([
+		[
+			"A",
+			cardLedger(
+				c,
+				[(x as TxEntry & { kind: "purchase" }).purchase],
+				[],
+				[],
+				"2026-11-18",
+			),
+		],
+	]);
+	const { element, root } = await mount({
+		entries: [x],
+		ledgers: books,
+		today: "2026-11-18",
+	});
+	await tap(element, "buy:A:x");
+	expect(sentence(root)).toBe(
+		"On the November statement: ฿100.00 so far, closes today",
+	);
+});
+
+test("an opened purchase on a paid statement draws Bought, Closed and Due and says it was paid", async () => {
 	const { entries, ledgers: books } = ledgers();
 	const { element, root } = await mount({ entries, ledgers: books });
 	await tap(element, "buy:A:old");
-	expect(lines(root)).toEqual([
-		"Closes 18 Oct 2026 · due 02 Nov 2026",
-		"Statement ฿500.00 · paid",
+	// October's statement: 19 Sep = 0, bought 20 Sep = 1, closed 18 Oct = 29, due 2 Nov = 44.
+	expect(marks(root)).toEqual([
+		["buy", "Bought 20 Sep", "2.27%", false],
+		["closed", "Closed 18 Oct", "65.91%", false],
+		["due", "Due 2 Nov", "100%", false],
 	]);
+	expect(sentence(root)).toBe("Statement ฿500.00 paid");
 	setLocale("th");
 	await element.updateComplete;
-	expect(lines(root)[1]).toBe("ยอดรอบบิล ฿500.00 · ชำระแล้ว");
+	expect(sentence(root)).toBe("ยอดรอบบิล ฿500.00 ชำระแล้ว");
 	setLocale("en");
 });
 
-test("from 900px an opened row puts its details and buttons on one line, tightly", () => {
-	const text = (
-		customElements.get("cc-tx-ledger") as unknown as {
-			elementStyles: { cssText: string }[];
-		}
-	).elementStyles
-		.map((s) => s.cssText)
-		.join("\n");
-	expect(text).toMatch(
-		/@media \(min-width: 900px\)\s*\{[^@]*\.a-details\s*\{[^}]*flex-direction: row;[^}]*align-items: flex-end;/,
+/** Card A's October statement (฿500.00) with ฿100.00 paid toward it, seen on `today`. */
+const owing = (today: string) => {
+	const c = card("A");
+	const old = purchase("old", 500_00);
+	if (old.kind === "purchase") old.purchase.date = "2026-09-20";
+	const pay = { ...payment("p1", 100_00), date: "2026-10-20" as const };
+	return {
+		entries: [old],
+		today,
+		ledgers: new Map([
+			[
+				"A",
+				cardLedger(
+					c,
+					[(old as TxEntry & { kind: "purchase" }).purchase],
+					[pay],
+					[],
+					today,
+				),
+			],
+		]),
+	};
+};
+
+test("an opened purchase on a closed statement with money left says what is left and when it is due", async () => {
+	const { element, root } = await mount(owing("2026-10-31"));
+	await tap(element, "buy:A:old");
+	expect(marks(root)).toEqual([
+		["buy", "Bought 20 Sep", "2.27%", false],
+		["closed", "Closed 18 Oct", "65.91%", false],
+		["now", "Today", "95.45%", false],
+		["due", "Due 2 Nov", "100%", false],
+	]);
+	expect(sentence(root)).toBe("฿400.00 left of ฿500.00 billed, due in 2 days");
+	expect(
+		[...(shown(root)?.querySelectorAll(".a-say .a-money") ?? [])].map(
+			(e) => e.textContent,
+		),
+	).toEqual(["฿400.00", "฿500.00"]);
+	expect(shown(root)?.querySelector(".a-say .a-late")).toBeNull();
+});
+
+test("a closed statement past its due date says how late in red, with no Today marker", async () => {
+	const { element, root } = await mount(owing("2026-11-05"));
+	await tap(element, "buy:A:old");
+	expect(marks(root).map((m) => m[0])).toEqual(["buy", "closed", "due"]);
+	expect(sentence(root)).toBe("฿400.00 left of ฿500.00 billed, 3 days late");
+	expect(text(shown(root) as HTMLElement, ".a-say .a-late")).toBe(
+		"3 days late",
 	);
-	expect(text).toMatch(
-		/\.a-details\s*\{[^}]*gap: var\(--cc-space-2\);[^}]*padding-block: 0 var\(--cc-space-3\);/,
+	expect(ledgerCss()).toMatch(/\.a-late\s*\{[^}]*color: var\(--cc-danger\)/);
+});
+
+test("an opened row is a drawer under the text: its cycle or parts, then the foot", () => {
+	const css = ledgerCss();
+	expect(css).toMatch(
+		/\.a-details\s*\{[^}]*display: grid;[^}]*padding-block: 0 var\(--cc-space-3\);[^}]*padding-inline-start: var\(--a-lead-inline\)/,
 	);
+	// The old 900px row of details and buttons is gone.
+	expect(css).not.toMatch(/\.a-details\s*\{[^}]*flex-direction: row/);
 });
 
 test("a purchase named like a list id opens to its card alone when no such list exists", async () => {
@@ -225,13 +342,49 @@ test("an opened payment says how much went to each statement, oldest first", asy
 	const { entries, ledgers: books } = ledgers();
 	const { element, root } = await mount({ entries, ledgers: books });
 	await tap(element, "pay:A:p1");
-	expect(lines(root)).toEqual(["฿500.00 to Oct 2026", "฿200.00 to Nov 2026"]);
+	expect(partsOf(root)).toEqual([
+		["October statement", "฿500.00"],
+		["November statement", "฿200.00"],
+	]);
+	expect(sentence(root)).toBe("Paid 31 Oct.");
+	expect(shown(root)?.querySelector(".a-cycle")).toBeNull();
 	setLocale("th");
 	await element.updateComplete;
-	expect(lines(root)).toEqual([
-		"฿500.00 เข้ารอบบิล ต.ค. 2026",
-		"฿200.00 เข้ารอบบิล พ.ย. 2026",
+	expect(partsOf(root)).toEqual([
+		["รอบบิลตุลาคม", "฿500.00"],
+		["รอบบิลพฤศจิกายน", "฿200.00"],
 	]);
+	expect(sentence(root)).toBe("ชำระเมื่อ 31 ต.ค.");
+});
+
+test("a payment that left credit says how much was kept and where it goes", async () => {
+	const c = card("A");
+	const x = purchase("x", 1_000_00);
+	const pay = payment("p1", 1_500_00);
+	const books = new Map([
+		[
+			"A",
+			cardLedger(
+				c,
+				[(x as TxEntry & { kind: "purchase" }).purchase],
+				[pay],
+				[],
+				"2026-10-31",
+			),
+		],
+	]);
+	const { element, root } = await mount({
+		entries: [payEntry("p1", 1_500_00)],
+		ledgers: books,
+	});
+	await tap(element, "pay:A:p1");
+	expect(partsOf(root)).toEqual([
+		["November statement", "฿1,000.00"],
+		["Kept as credit", "฿500.00"],
+	]);
+	expect(sentence(root)).toBe(
+		"Paid 31 Oct. Credit goes to the next statement first.",
+	);
 });
 
 test("at most one row is open across Upcoming and every day panel", async () => {
@@ -419,7 +572,11 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 	expect(text(waiting, ".a-hit [data-numeric]")).toBe("−฿150.00");
 	expect(shown(root)).toBeNull();
 	await tap(element, "list:w1");
-	expect(text(shown(root) as HTMLElement, ".a-total")).toBe("Total ฿150.00");
+	expect(partsOf(root)).toEqual([
+		["A) Card A (1029)", "฿100.00"],
+		["B) —", "฿50.00"],
+	]);
+	expect(sentence(root)).toBe("Sent 30 Oct. Confirm saves every line as made.");
 	const reply = shown(root)?.querySelector("[data-action=record-reply]");
 	expect(reply?.getAttribute("href")).toBe("/list/reply?id=w1");
 	expect(reply?.textContent?.trim()).toBe("Record reply");
@@ -434,6 +591,7 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 	expect(row.querySelector(".a-hit .amount.in")?.textContent).toBe("+฿900.00");
 	expect(row.querySelector(".a-details")?.hasAttribute("hidden")).toBe(true);
 	await tap(element, "plan:A:pl1");
+	expect(sentence(root)).toBe("Planned for 2 Nov.");
 	expect(text(row, "[data-action=mark-paid]")).toBe("Paid");
 	// The buttons sit in the opened area, none in the head. Delete is a danger button after Paid.
 	expect(head(root, "plan:A:pl1")?.querySelector("a, button")).toBeNull();
@@ -796,6 +954,7 @@ test("an opened row says its note once, on its sub line", async () => {
 	expect(times(root, "pay:A:p1", "From savings")).toBe(1);
 	await tap(element, "plan:A:pl1");
 	expect(times(root, "plan:A:pl1", "Salary day")).toBe(1);
-	// Nothing else to say: no empty details block.
-	expect(shown(root)?.querySelector(".a-info")).toBeNull();
+	// Upcoming's plan keeps its note on the sub line, not in the sentence.
+	expect(sentence(root)).toBe("Planned for 31 Oct.");
+	expect(shown(root)?.querySelector(".a-parts, .a-cycle")).toBeNull();
 });
