@@ -224,14 +224,20 @@ export class CcTxLedger extends LitElement {
 		const statement = this.ledgers
 			.get(purchase.cardId)
 			?.statements.find((s) => s.purchases.some((p) => p.id === purchase.id));
-		return html`${
-			statement
-				? html`<span>${t("row.statement", {
-						close: date(statement.closeDate),
-						due: date(statement.dueDate),
-					})}</span>`
-				: nothing
-		}`;
+		if (!statement) return nothing;
+		const total = formatAmount(statement.total);
+		const state = statement.open
+			? t("row.statementOpen", { total })
+			: statement.paid
+				? t("row.statementPaid", { total })
+				: t("row.statementLeft", {
+						total,
+						left: formatAmount(statement.remaining),
+					});
+		return html`<span>${t("row.statement", {
+			close: date(statement.closeDate),
+			due: date(statement.dueDate),
+		})}</span><span>${state}</span>`;
 	}
 
 	/** A paid payment's details: how much reached each statement, oldest first (its note is on

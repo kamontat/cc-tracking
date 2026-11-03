@@ -576,7 +576,10 @@ export const en = {
 	"row.openList": "Open list",
 	"row.open": "Open",
 	"row.saved": "Saved list for {date}",
-	"row.statement": "Statement {close} · due {due}",
+	"row.statement": "Closes {close} · due {due}",
+	"row.statementOpen": "Statement so far {total}",
+	"row.statementLeft": "Statement {total} · {left} left",
+	"row.statementPaid": "Statement {total} · paid",
 	"row.paidTo": "{amount} to {period}",
 	"reply.error.notWaitingSave":
 		"This list is no longer waiting for a reply, so nothing was saved.",

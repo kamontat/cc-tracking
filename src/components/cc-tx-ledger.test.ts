@@ -150,7 +150,10 @@ test("an opened purchase shows its statement and list, with Open card and Open l
 	});
 	await tap(element, "buy:A:x");
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("true");
-	expect(lines(root)).toEqual(["Statement 18 Nov 2026 · due 03 Dec 2026"]);
+	expect(lines(root)).toEqual([
+		"Closes 18 Nov 2026 · due 03 Dec 2026",
+		"Statement so far ฿1,000.00",
+	]);
 	const plain = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])];
 	expect(plain.map((b) => b.getAttribute("data-action"))).toEqual([
 		"open-card",
@@ -173,6 +176,36 @@ test("an opened purchase shows its statement and list, with Open card and Open l
 	expect(both[1]?.getAttribute("href")).toBe("/list/view?id=L1");
 	expect(both[1]?.getAttribute("data-variant")).toBe("quiet");
 	expect(both[1]?.textContent?.trim()).toBe("Open list");
+});
+
+test("an opened purchase on a closed statement says its total and what is left, or paid", async () => {
+	const { entries, ledgers: books } = ledgers();
+	const { element, root } = await mount({ entries, ledgers: books });
+	await tap(element, "buy:A:old");
+	expect(lines(root)).toEqual([
+		"Closes 18 Oct 2026 · due 02 Nov 2026",
+		"Statement ฿500.00 · paid",
+	]);
+	setLocale("th");
+	await element.updateComplete;
+	expect(lines(root)[1]).toBe("ยอดรอบบิล ฿500.00 · ชำระแล้ว");
+	setLocale("en");
+});
+
+test("from 900px an opened row puts its details and buttons on one line, tightly", () => {
+	const text = (
+		customElements.get("cc-tx-ledger") as unknown as {
+			elementStyles: { cssText: string }[];
+		}
+	).elementStyles
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toMatch(
+		/@media \(min-width: 900px\)\s*\{[^@]*\.a-details\s*\{[^}]*flex-direction: row;[^}]*align-items: flex-end;/,
+	);
+	expect(text).toMatch(
+		/\.a-details\s*\{[^}]*gap: var\(--cc-space-2\);[^}]*padding-block: 0 var\(--cc-space-3\);/,
+	);
 });
 
 test("a purchase named like a list id opens to its card alone when no such list exists", async () => {

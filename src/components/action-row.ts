@@ -428,7 +428,7 @@ export const actionRowStyles = css`
 	.a-details {
 		display: flex;
 		flex-direction: column;
-		gap: var(--cc-space-3);
+		gap: var(--cc-space-2);
 		padding-block: 0 var(--cc-space-3);
 		padding-inline-start: var(--a-lead-inline);
 		min-inline-size: 0;
@@ -436,6 +436,23 @@ export const actionRowStyles = css`
 
 	.a-details[hidden] {
 		display: none;
+	}
+
+	/* From 900px the detail lines and the buttons share one line: lines on the left, buttons
+	   at the end, so an opened row grows by as little as it can. */
+	@media (min-width: 900px) {
+		.a-details {
+			flex-direction: row;
+			align-items: flex-end;
+		}
+
+		.a-info {
+			flex: 1;
+		}
+
+		.a-details .a-btns {
+			margin-inline-start: auto;
+		}
 	}
 
 	.a-info {
