@@ -2,13 +2,19 @@ import "#components/cc-error-banner";
 import "#components/cc-modal";
 import { css, html, LitElement, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import {
+	GROUP_COLORS,
+	type GroupColor,
+	pickColor,
+	toGroupColor,
+} from "#lib/domain/group-color";
 import { amountOf, formatAmountInput } from "#lib/domain/money";
 import { OWNERS, type Owner, ownerOf } from "#lib/domain/owner";
 import type { LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { base, controls } from "#styles/shared";
+import { base, controls, groupInk } from "#styles/shared";
 
 /**
  * A limit group in a sheet over Cards: name, limit and account holder (a segmented control),
@@ -22,6 +28,7 @@ export class CcGroupSheet extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		groupInk,
 		css`
 			:host {
 				display: contents;
@@ -71,6 +78,26 @@ export class CcGroupSheet extends LitElement {
 				border-color: var(--cc-border);
 			}
 
+			.swatches {
+				display: flex;
+				flex-wrap: wrap;
+				gap: var(--cc-space-2);
+				align-items: center;
+			}
+
+			.swatches button[data-color] {
+				inline-size: calc(2 * var(--cc-space-4));
+				block-size: calc(2 * var(--cc-space-4));
+				padding: 0;
+				background: var(--g-bg);
+				border: var(--cc-space-1) solid transparent;
+				border-radius: 50%;
+			}
+
+			.swatches button[data-color][aria-pressed="true"] {
+				border-color: var(--g-fg);
+			}
+
 			input {
 				min-inline-size: 0;
 				padding: var(--cc-space-3);
@@ -103,6 +130,10 @@ export class CcGroupSheet extends LitElement {
 	@property({ attribute: false }) group: LimitGroup | null = null;
 	/** A card uses the group, so it cannot be deleted. */
 	@property({ type: Boolean }) inUse = false;
+	/** Every stored group; the sheet leaves its own out when judging which colours are free. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** The draw behind a random colour; tests inject it. */
+	@property({ attribute: false }) random: () => number = Math.random;
 	/** Why the last save or delete failed; typing is kept. */
 	@property() error = "";
 	/** A save is under way: the button waits and the sheet holds open. */
@@ -111,6 +142,7 @@ export class CcGroupSheet extends LitElement {
 	@state() private name = "";
 	@state() private limit = "";
 	@state() private owner: Owner | null = null;
+	@state() private color: GroupColor = GROUP_COLORS[0];
 	@state() private asking = false;
 	// The catalog key, so a language switch re-renders the message in place.
 	@state() private errorKey: MessageKey | "" = "";
@@ -138,8 +170,18 @@ export class CcGroupSheet extends LitElement {
 		this.name = group?.name ?? "";
 		this.limit = group ? formatAmountInput(group.limit) : "";
 		this.owner = group ? ownerOf(group) : null;
+		this.color = toGroupColor(group?.color) ?? this.freeColor();
 		this.asking = false;
 		this.errorKey = "";
+	}
+
+	/** A random colour none of the other groups wear. */
+	private freeColor(): GroupColor {
+		const id = this.group?.id;
+		return pickColor(
+			this.groups.filter((g) => g.id !== id),
+			this.random,
+		);
 	}
 
 	protected override updated() {
@@ -181,6 +223,7 @@ export class CcGroupSheet extends LitElement {
 					name,
 					limit,
 					owner: this.owner,
+					color: this.color,
 				},
 			}),
 		);
@@ -240,6 +283,25 @@ export class CcGroupSheet extends LitElement {
 								this.owner = owner;
 							}}>${owner}</button>`,
 					)}</div>
+				</fieldset>
+				<fieldset>
+					<legend>${t("limits.color")}</legend>
+					<div class="swatches">
+						${GROUP_COLORS.map(
+							(
+								color,
+							) => html`<button type="button" data-color=${color} data-g=${color}
+								aria-label=${t(`color.${color}`)}
+								aria-pressed=${this.color === color ? "true" : "false"}
+								@click=${() => {
+									this.color = color;
+								}}></button>`,
+						)}
+						<button type="button" data-variant="quiet" data-action="random-color"
+							@click=${() => {
+								this.color = this.freeColor();
+							}}>${t("limits.color.random")}</button>
+					</div>
 				</fieldset>
 				<button type="submit" ?disabled=${this.busy}>${
 					group ? t("limits.save") : t("limits.add")

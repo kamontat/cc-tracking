@@ -1,8 +1,9 @@
 import { afterEach, expect, test } from "bun:test";
 import "#components/cc-group-sheet";
 import type { CcGroupSheet } from "#components/cc-group-sheet";
+import { GROUP_COLORS, type GroupColor } from "#lib/domain/group-color";
 import type { LimitGroup } from "#lib/domain/types";
-import { setLocale } from "#lib/i18n/index";
+import { setLocale, t } from "#lib/i18n/index";
 
 afterEach(() => setLocale("en"));
 
@@ -120,7 +121,7 @@ test("an existing group fills the fields and keeps its id", async () => {
 	const got = saved(element);
 	await type(element, "name", "SCB Biz");
 	await submit(element);
-	expect(got).toEqual([{ ...scb, name: "SCB Biz" }]);
+	expect(got).toEqual([{ ...scb, name: "SCB Biz", color: expect.any(String) }]);
 });
 
 test("Delete group asks twice, focus following the swap", async () => {
@@ -210,4 +211,75 @@ test("Delete NAME? stays after Delete, so a failed delete still shows it and the
 		root.querySelector<HTMLElement & { message: string }>("cc-error-banner")
 			?.message,
 	).toBe("Could not delete that limit group.");
+});
+
+const withColor = (id: string, color: GroupColor): LimitGroup => ({
+	id,
+	name: id,
+	limit: 1_000_00,
+	owner: "KC",
+	color,
+});
+
+const pressed = (root: ShadowRoot) =>
+	[...root.querySelectorAll('.swatches [aria-pressed="true"]')].map((b) =>
+		b.getAttribute("data-color"),
+	);
+
+test("a new group's sheet opens with the one unused colour chosen", async () => {
+	const others = GROUP_COLORS.filter((c) => c !== "cyan").map((c) =>
+		withColor(c, c),
+	);
+	const { root } = await mount({ groups: others });
+	expect(pressed(root)).toEqual(["cyan"]);
+});
+
+test("an existing group opens with its colour pressed and saves it unchanged", async () => {
+	const { element, root } = await mount({
+		group: { ...scb, color: "rose" },
+		groups: [{ ...scb, color: "rose" }, withColor("g2", "blue")],
+	});
+	expect(pressed(root)).toEqual(["rose"]);
+	const got = saved(element);
+	await type(element, "name", "SCB 2");
+	await submit(element);
+	expect(got[0]?.color).toBe("rose");
+});
+
+test("pressing a swatch chooses it and saving emits it", async () => {
+	const { element, root } = await mount({ group: { ...scb, color: "rose" } });
+	const got = saved(element);
+	await click(element, '.swatches [data-color="teal"]');
+	expect(pressed(root)).toEqual(["teal"]);
+	await submit(element);
+	expect(got[0]?.color).toBe("teal");
+});
+
+test("Random picks a colour no other group uses", async () => {
+	const others = [withColor("g2", "blue")];
+	const { element, root } = await mount({
+		group: { ...scb, color: "rose" },
+		groups: [{ ...scb, color: "rose" }, ...others],
+		random: () => 0,
+	});
+	await click(element, '[data-action="random-color"]');
+	expect(pressed(root)).toEqual(["green"]);
+});
+
+test("each swatch is named by its colour, in the language of the page", async () => {
+	const { root } = await mount();
+	const label = (c: string) =>
+		root
+			.querySelector(`.swatches [data-color="${c}"]`)
+			?.getAttribute("aria-label");
+	expect(label("teal")).toBe("Teal");
+	setLocale("th");
+	await mount();
+	const th = document.querySelector("cc-group-sheet")?.shadowRoot;
+	expect(
+		th
+			?.querySelector('.swatches [data-color="teal"]')
+			?.getAttribute("aria-label"),
+	).toBe(t("color.teal"));
+	expect(t("color.teal")).not.toBe("Teal");
 });
