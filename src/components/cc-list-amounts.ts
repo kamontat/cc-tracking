@@ -26,13 +26,20 @@ import type {
 } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardLine, cardName, cardPanel } from "#lib/ui/card-label";
+import {
+	cardMini,
+	cardName,
+	cardPanel,
+	cardPanelLabel,
+} from "#lib/ui/card-label";
 import {
 	actionBarStyles,
 	base,
 	cardBits,
 	controls,
+	lineCards,
 	listLayout,
+	rowPanel,
 } from "#styles/shared";
 
 /**
@@ -46,6 +53,8 @@ export class CcListAmounts extends LitElement {
 		base,
 		cardBits,
 		controls,
+		lineCards,
+		rowPanel,
 		listLayout,
 		actionBarStyles,
 		css`
@@ -55,15 +64,6 @@ export class CcListAmounts extends LitElement {
 
 			.when {
 				gap: var(--cc-space-3);
-			}
-
-			.line {
-				display: grid;
-				gap: var(--cc-space-3);
-				padding: var(--cc-space-4);
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
 			}
 
 			/* The amber outline joins the warning text below it; never the only signal. */
@@ -150,12 +150,6 @@ export class CcListAmounts extends LitElement {
 
 			.note > span {
 				display: block;
-			}
-
-			.picker {
-				display: flex;
-				flex-direction: column;
-				gap: var(--cc-space-2);
 			}
 
 			.empty {
@@ -440,11 +434,13 @@ export class CcListAmounts extends LitElement {
 				}}>+ ${t("purchaseList.addCard")}</button>
 			${
 				this.picking
-					? html`<div class="picker">
+					? html`<div class="picker panel">
 						${this.candidates.map(
-							(card) => html`<button data-variant="quiet" data-card=${card.id}
+							(
+								card,
+							) => html`<button type="button" class="crow" data-card=${card.id}
 								@click=${() => this.emit("add", { cardId: card.id })}
-							>${cardLine(card.id, card)}</button>`,
+							>${cardMini(card, this.groups)}<span class="what"><b>${cardPanelLabel(card.id, card)}</b></span></button>`,
 						)}
 					</div>`
 					: nothing

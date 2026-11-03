@@ -3,6 +3,7 @@ import "#components/cc-list-reply";
 import type { CcListReply } from "#components/cc-list-reply";
 import type { Card, ListLine, PurchaseList } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { lineCards } from "#styles/shared";
 
 afterEach(() => setLocale("en"));
 
@@ -285,4 +286,17 @@ test("each note box is named for its card", async () => {
 			.querySelector('[data-field="note"]')
 			?.getAttribute("aria-label"),
 	).toBe("Note for c-[C]");
+});
+
+test("the line card style is the shared one, not a local copy", async () => {
+	const { element } = await mount();
+	const text = (
+		(element.constructor as typeof CcListReply).styles as {
+			cssText: string;
+		}[]
+	)
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toContain(lineCards.cssText);
+	expect(text.split(".line {")).toHaveLength(2);
 });

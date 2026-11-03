@@ -8,7 +8,7 @@ import { t } from "#lib/i18n/index";
 import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
 import { payTag } from "#lib/ui/pay-tag";
-import { base, cardBits, controls } from "#styles/shared";
+import { base, cardBits, controls, rowPanel } from "#styles/shared";
 
 /** The card a row asks to pay. */
 export type PickDetail = { cardId: string };
@@ -23,6 +23,7 @@ export class CcPayPicker extends LitElement {
 		base,
 		controls,
 		cardBits,
+		rowPanel,
 		css`
 			:host {
 				display: flex;
@@ -57,16 +58,6 @@ export class CcPayPicker extends LitElement {
 				border-radius: var(--cc-radius-sm);
 			}
 
-			.list {
-				display: flex;
-				flex-direction: column;
-				padding: 0 var(--cc-space-4);
-				overflow: clip;
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
-			}
-
 			button[data-card] {
 				display: grid;
 				grid-template-columns: auto minmax(0, 1fr) auto;
@@ -83,10 +74,6 @@ export class CcPayPicker extends LitElement {
 				background: transparent;
 				border: 0;
 				border-radius: 0;
-			}
-
-			button[data-card] + button[data-card] {
-				border-top: var(--cc-border-width) solid var(--cc-border);
 			}
 
 			/* A quiet ground on hover, never an underline (DD-105), reaching the list's inner
@@ -168,7 +155,7 @@ export class CcPayPicker extends LitElement {
 			${
 				shown.length === 0
 					? html`<p class="empty">${t("pay.noMatch")}</p>`
-					: html`<div class="list">${shown.map((choice) => {
+					: html`<div class="panel">${shown.map((choice) => {
 							const tag = payTag(choice);
 							return html`<button type="button" data-card=${choice.card.id}
 								@click=${() => this.pick(choice.card.id)}>

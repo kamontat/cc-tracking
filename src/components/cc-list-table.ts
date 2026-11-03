@@ -3,7 +3,7 @@ import { customElement, property } from "lit/decorators.js";
 import type { Card, ListStatus, PurchaseList } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { shareTable } from "#lib/ui/list-share";
-import { base, dataTable } from "#styles/shared";
+import { base, dataTable, rowPanel } from "#styles/shared";
 
 /** The purchase list as a document: what Copy text and Save image also say. */
 @customElement("cc-list-table")
@@ -11,16 +11,16 @@ export class CcListTable extends LitElement {
 	static override styles = [
 		base,
 		dataTable,
+		rowPanel,
 		css`
 			:host {
 				display: block;
 			}
 
 			.doc {
-				padding: var(--cc-space-4);
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
+				display: flex;
+				flex-direction: column;
+				gap: var(--cc-space-3);
 			}
 
 			h3 {
@@ -33,16 +33,40 @@ export class CcListTable extends LitElement {
 				color: var(--cc-text-muted);
 			}
 
-			table {
-				margin-top: var(--cc-space-3);
+			/* The table is a row list: one panel, a hairline between the body rows, a muted
+			   header row and a bold total row. */
+			.panel {
+				display: block;
+			}
+
+			th {
+				padding-inline: 0;
+				border-bottom: 0;
+			}
+
+			td {
+				padding-inline: 0;
+				border-bottom: 0;
+			}
+
+			tbody tr + tr,
+			tfoot tr {
+				border-top: var(--cc-border-width) solid var(--cc-border);
+			}
+
+			tbody tr:last-child td {
+				border-bottom: 0;
 			}
 
 			tfoot td {
 				font-weight: 700;
-				border-bottom: 0;
 			}
 
 			@media (max-width: 639px) {
+				tr {
+					border-bottom: 0;
+				}
+
 				tfoot tr {
 					flex-direction: row;
 					justify-content: space-between;
@@ -70,9 +94,11 @@ export class CcListTable extends LitElement {
 		const [cardHead, nameHead, amountHead] = table.headers;
 		return html`
 			<div class="doc">
-				<h3>${table.title}</h3>
-				<p>${table.date}</p>
-				<table>
+				<div>
+					<h3>${table.title}</h3>
+					<p>${table.date}</p>
+				</div>
+				<div class="panel"><table>
 					<thead>
 						<tr>
 							<th>${cardHead}</th>
@@ -97,7 +123,7 @@ export class CcListTable extends LitElement {
 							<td data-numeric>${table.total[1]}</td>
 						</tr>
 					</tfoot>
-				</table>
+				</table></div>
 			</div>
 		`;
 	}

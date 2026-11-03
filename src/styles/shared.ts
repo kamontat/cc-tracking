@@ -1047,3 +1047,15 @@ export const setRows = css`
 		box-shadow: var(--cc-shadow-sm);
 	}
 `;
+
+/** The card-list section of a list page: each line its own panel (the amounts and the reply). */
+export const lineCards = css`
+	.line {
+		display: grid;
+		gap: var(--cc-space-3);
+		padding: var(--cc-space-4);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+	}
+`;

@@ -4,6 +4,7 @@ import type { CcListAmounts } from "#components/cc-list-amounts";
 import type { GroupRoom } from "#lib/domain/room";
 import type { Card, CardLedger, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { lineCards } from "#styles/shared";
 
 afterEach(() => setLocale("en"));
 
@@ -261,7 +262,10 @@ test("remove and add", async () => {
 	const pick = root.querySelector(
 		'.picker [data-card="C"]',
 	) as HTMLButtonElement;
-	expect(flat(pick)).toBe("C) Card C (1111)");
+	expect(flat(pick)).toBe("1111C) Card C");
+	expect(flat(pick.querySelector(".mini"))).toBe("1111");
+	expect(pick.closest(".panel")).toBe(root.querySelector(".picker.panel"));
+	expect(root.querySelectorAll(".picker button[data-card]")).toHaveLength(1);
 	pick.click();
 	expect(adds).toEqual([{ cardId: "C" }]);
 });
@@ -437,4 +441,17 @@ test("each note box is named for its card", async () => {
 			?.getAttribute("aria-label"),
 	).toBe("หมายเหตุของ Card B");
 	setLocale("en");
+});
+
+test("the line card style is the shared one, not a local copy", async () => {
+	const { element } = await mount();
+	const text = (
+		(element.constructor as typeof CcListAmounts).styles as {
+			cssText: string;
+		}[]
+	)
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toContain(lineCards.cssText);
+	expect(text.split(".line {")).toHaveLength(2);
 });

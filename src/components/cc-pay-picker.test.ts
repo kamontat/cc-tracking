@@ -1,9 +1,10 @@
 import { expect, test } from "bun:test";
 import "#components/cc-pay-picker";
-import type { CcPayPicker, PickDetail } from "#components/cc-pay-picker";
+import { CcPayPicker, type PickDetail } from "#components/cc-pay-picker";
 import type { PayChoice } from "#lib/domain/pay";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { rowPanel } from "#styles/shared";
 
 const card = (id: string, name: string, last4 = "1234"): Card => ({
 	id,
@@ -187,4 +188,22 @@ test("with cards stored but none to pay, says archived paid-off cards are hidden
 	expect(element.shadowRoot?.textContent?.trim()).toBe(
 		"No cards yet. Add one on the Cards page.",
 	);
+});
+
+test("the rows sit in a row panel, with no local list rule", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-pay-picker") as CcPayPicker;
+	element.choices = choices();
+	document.body.append(element);
+	await element.updateComplete;
+	const root = element.shadowRoot as ShadowRoot;
+	expect(root.querySelectorAll(".panel > button[data-card]").length).toBe(
+		choices().length,
+	);
+	const text = (CcPayPicker.styles as { cssText: string }[])
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toContain(rowPanel.cssText);
+	expect(text).not.toContain(".list {");
 });
