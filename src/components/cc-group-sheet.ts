@@ -310,9 +310,14 @@ export class CcGroupSheet extends LitElement {
 		attr: string,
 		choose: (value: T) => void,
 	) {
+		// Step from the focused radio, which is the checked one unless none is checked yet.
+		const from =
+			(event.target as Element | null)
+				?.closest(`[${attr}]`)
+				?.getAttribute(attr) ?? current;
 		const next = radioStep(
 			event.key,
-			current === null ? -1 : values.indexOf(current),
+			from === null ? -1 : values.indexOf(from as T),
 			values.length,
 		);
 		const value = next === null ? undefined : values[next];

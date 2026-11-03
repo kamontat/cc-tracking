@@ -1077,3 +1077,27 @@ test("focus stays put when the open row goes but did not hold it", async () => {
 	await element.updateComplete;
 	expect(root.activeElement ?? null).toBeNull();
 });
+
+test("when a row alone on its day goes, focus moves to the next day's heading", async () => {
+	const c = card("A");
+	const on = (id: string, date: string): TxEntry => ({
+		kind: "payment",
+		payment: { ...payment(id, 100_00, "paid", c), date },
+		card: c,
+	});
+	const days = [
+		on("p1", "2026-10-31"),
+		on("p2", "2026-10-30"),
+		on("p3", "2026-10-29"),
+	];
+	const { element, root } = await mount({ groups: byDay(days) });
+	await tap(element, "pay:A:p2");
+	root
+		.querySelector<HTMLElement>('[data-row="pay:A:p2"] [data-action="delete"]')
+		?.focus();
+	element.groups = byDay([days[0], days[2]] as TxEntry[]);
+	await element.updateComplete;
+	expect(deepActive()).toBe(
+		root.querySelector('[data-refocus="day:2026-10-29"]'),
+	);
+});

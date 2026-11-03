@@ -351,6 +351,27 @@ test("after Paid takes a row away, focus moves to the next row's head", async ()
 	);
 });
 
+test("in a folded list, focus moves to the row that slides into the gone row's place", async () => {
+	const repo = new InMemoryRepository();
+	const dates = [
+		"2026-10-29",
+		"2026-10-30",
+		"2026-10-31",
+		"2026-11-01",
+		"2026-11-02",
+		"2026-11-03",
+	];
+	for (const plan of plans(...dates)) await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	const { shadow } = await needs(root);
+	// Five show; the sixth waits behind See more.
+	expect(shadow.querySelector('[data-row="plan:A:c6"]')).toBeNull();
+	await pressIn(root, "plan:A:c5", "mark-paid");
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c6"] .a-hit'),
+	);
+});
+
 test("after Paid takes the last row away, focus moves to the row before it", async () => {
 	const repo = new InMemoryRepository();
 	for (const plan of plans("2026-11-01", "2026-11-02"))

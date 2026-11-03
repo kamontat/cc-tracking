@@ -527,14 +527,26 @@ export function actionRow(
  *     rows.detailsId(`buy:${cardId}:${purchase.id}`);
  *     rows.prune(lists.map((list) => `list:${list.id}`));
  */
+/** The row heads directly in a panel, in order. */
+const panelHeads = (panel: Element) => [
+	...panel.querySelectorAll<HTMLElement>(":scope > .a-wrap button.a-hit"),
+];
+
 export class OpenRowController implements ReactiveController {
 	private open: string | undefined;
 	private readonly prefix: string;
 	/**
-	 * Where focus goes once a pruned row, which held it, has left the screen: the heads beside
-	 * it in its panel, nearest first (after it, then before it), and its section's heading.
+	 * Where focus goes once a pruned row, which held it, has left the screen: its panel and its
+	 * place in it, the heads beside it, nearest first (after it, then before it), and the
+	 * headings after and before it.
 	 */
-	private landing: { heads: string[]; heading: string | null } | null = null;
+	private landing: {
+		panel: Element | null;
+		at: number;
+		heads: string[];
+		after: string | null;
+		before: string | null;
+	} | null = null;
 
 	constructor(
 		private readonly host: ReactiveControllerHost,
@@ -560,13 +572,22 @@ export class OpenRowController implements ReactiveController {
 		if (!root) return;
 		const byId = (id: string) =>
 			root.querySelector<HTMLElement>(`[id="${CSS.escape(id)}"]`);
-		const head = landing.heads.map(byId).find((el) => el !== null);
+		const near = landing.heads.map(byId).filter((el) => el !== null);
+		// The row that slid into the gone row's place: in a folded list (Needs you, the ledger's
+		// page) it was not drawn before. Only while the panel still holds the same list.
+		const { panel } = landing;
+		const slid =
+			panel?.isConnected && near.some((el) => panel.contains(el))
+				? panelHeads(panel)[landing.at]
+				: undefined;
 		const headings = [...root.querySelectorAll<HTMLElement>("[data-refocus]")];
+		const heading = (name: string | null) =>
+			headings.find((el) => el.getAttribute("data-refocus") === name);
 		const target =
-			head ??
-			headings.find(
-				(el) => el.getAttribute("data-refocus") === landing.heading,
-			) ??
+			slid ??
+			near[0] ??
+			heading(landing.after) ??
+			heading(landing.before) ??
 			headings[0];
 		target?.focus();
 	}
@@ -608,22 +629,20 @@ export class OpenRowController implements ReactiveController {
 		const wrap = head?.closest(".a-wrap");
 		const active = root?.activeElement;
 		if (!root || !wrap || !active || !wrap.contains(active)) return null;
-		const panel = [
-			...(wrap.parentElement?.querySelectorAll<HTMLElement>(
-				":scope > .a-wrap button.a-hit",
-			) ?? []),
-		].map((b) => b.id);
-		const at = panel.indexOf(head?.id ?? "");
-		const heads = [...panel.slice(at + 1), ...panel.slice(0, at).reverse()];
-		const before = [
-			...root.querySelectorAll<HTMLElement>("[data-refocus]"),
-		].filter(
-			(el) =>
-				el.compareDocumentPosition(wrap) & Node.DOCUMENT_POSITION_FOLLOWING,
-		);
+		const panel = wrap.parentElement;
+		const ids = panel ? panelHeads(panel).map((b) => b.id) : [];
+		const at = ids.indexOf(head?.id ?? "");
+		const marks = [...root.querySelectorAll<HTMLElement>("[data-refocus]")];
+		const follows = (el: Element) =>
+			el.compareDocumentPosition(wrap) & Node.DOCUMENT_POSITION_FOLLOWING;
 		return {
-			heads,
-			heading: before.at(-1)?.getAttribute("data-refocus") ?? null,
+			panel,
+			at,
+			heads: [...ids.slice(at + 1), ...ids.slice(0, at).reverse()],
+			after:
+				marks.find((el) => !follows(el))?.getAttribute("data-refocus") ?? null,
+			before:
+				marks.filter(follows).at(-1)?.getAttribute("data-refocus") ?? null,
 		};
 	}
 

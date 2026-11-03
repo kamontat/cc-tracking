@@ -478,3 +478,13 @@ test("Space and Enter choose the focused radio, as its button's own press", asyn
 	expect(nt?.getAttribute("aria-checked")).toBe("true");
 	expect(nt?.getAttribute("tabindex")).toBe("0");
 });
+
+test("with no holder chosen, ArrowRight on the focused first holder chooses the next", async () => {
+	const { element, root } = await mount();
+	root.querySelector<HTMLElement>("[data-owner=KC]")?.focus();
+	await key(element, ".seg", "ArrowRight");
+	expect(
+		root.querySelector("[data-owner=NT]")?.getAttribute("aria-checked"),
+	).toBe("true");
+	expect(root.activeElement?.getAttribute("data-owner")).toBe("NT");
+});
