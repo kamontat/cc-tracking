@@ -154,12 +154,14 @@ test("ledger rows are buttons that open in place, never links", async () => {
 	const [a, b, c] = heads;
 	expect(text(a as Element, "[data-numeric]")).toBe("−฿1,000.00");
 	expect(a?.querySelector(".amount.out")).not.toBeNull();
-	expect(a?.textContent).toContain("Purchase");
+	// The sign and the colour say which way the money went; no word repeats it.
+	expect(a?.textContent).not.toContain("Purchase");
+	expect(a?.querySelector(".word")).toBeNull();
 	expect(a?.querySelector(".mini")).not.toBeNull();
 	expect(b?.textContent).toContain("coffee");
 	expect(text(c as Element, "[data-numeric]")).toBe("+฿700.00");
 	expect(c?.querySelector(".amount.in")).not.toBeNull();
-	expect(c?.textContent).toContain("Payment");
+	expect(c?.textContent).not.toContain("Payment");
 	expect(root.querySelector(".a-details:not([hidden])")).toBeNull();
 });
 
@@ -765,10 +767,15 @@ test("no Upcoming section when nothing is upcoming", async () => {
 });
 
 test("Thai words after a language switch", async () => {
-	const { element, root } = await mount({ entries: [purchase("x", 100_00)] });
+	const { element, root } = await mount({
+		entries: [purchase("L1-1", 100_00)],
+		lists: [{ ...list("L1"), date: "2026-10-29" }],
+	});
 	setLocale("th");
 	await element.updateComplete;
-	expect(root.querySelector("[data-item]")?.textContent).toContain("การซื้อ");
+	expect(root.querySelector("[data-item]")?.textContent).toContain(
+		"จากใบรายการซื้อ",
+	);
 });
 
 test("rows name the card in the panel form and say which list a purchase came from", async () => {

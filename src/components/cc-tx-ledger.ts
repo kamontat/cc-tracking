@@ -368,7 +368,6 @@ export class CcTxLedger extends LitElement {
 	private row(entry: TxEntry, showDate: boolean) {
 		const purchase = entry.kind === "purchase";
 		const id = purchase ? entry.purchase.cardId : entry.payment.cardId;
-		const word = t(purchase ? "tx.type.purchase" : "tx.type.payment");
 		const list = purchase ? this.listOf(entry) : undefined;
 		const parts: string[] = [];
 		const note = purchase ? entry.purchase.note : entry.payment.note;
@@ -380,7 +379,9 @@ export class CcTxLedger extends LitElement {
 		if (showDate) parts.push(displayDate(entryDate(entry), getLocale()));
 		const text: ActionRowText = {
 			kind: entry.kind,
-			title: html`${cardPanelLabel(id, entry.card)} <span class="word">${word}</span>`,
+			// The signed, coloured amount says purchase or payment (UI-07: the sign is the
+			// non-colour signal), so the title is the card alone.
+			title: cardPanelLabel(id, entry.card),
 			subtitle: html`${parts.length > 0 ? html`<span>${parts.join(" · ")}</span>` : nothing}${
 				entry.card?.archived
 					? html`<span class="tag archived">${t("cards.archived")}</span>`
