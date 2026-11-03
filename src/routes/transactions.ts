@@ -30,6 +30,7 @@ import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
 import {
 	confirmWaitingList,
+	deleteDraftList,
 	deletePlannedPayment,
 	markPlanPaid,
 } from "#lib/ui/row-actions";
@@ -95,6 +96,10 @@ export function renderTransactionsPage(
 		state.guard(async () => {
 			await confirmWaitingList(repo, list.id, clock());
 		}, "tx.error.confirmList");
+	const removeDraft = (list: PurchaseList) =>
+		state.guard(async () => {
+			await deleteDraftList(repo, list.id);
+		}, "purchaseList.error.delete");
 	const remove = (payment: CardPayment) =>
 		state.guard(async () => {
 			await deletePlannedPayment(repo, payment);
@@ -266,7 +271,10 @@ export function renderTransactionsPage(
 											? html`<cc-list-index
 												.lists=${d.lists}
 												.cards=${d.cards}
+												.groups=${d.groups}
 												.status=${view.status}
+												@confirm-list=${(e: CustomEvent<{ list: PurchaseList }>) => confirmList(e.detail.list)}
+												@delete-draft=${(e: CustomEvent<{ list: PurchaseList }>) => removeDraft(e.detail.list)}
 												@status=${(e: CustomEvent<{ status: ListStatus[] }>) => change({ status: e.detail.status })}
 											></cc-list-index>`
 											: ledgerView()

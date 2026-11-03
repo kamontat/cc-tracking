@@ -54,26 +54,101 @@ const mount = async (props: Partial<CcListIndex> = {}) => {
 	return { element, root: element.shadowRoot as ShadowRoot };
 };
 
-test("rows link each list's own page with date, cards, status and total", async () => {
+const text = (el: Element | null | undefined) =>
+	el?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+const head = (root: ShadowRoot, id: string) =>
+	root.querySelector<HTMLElement>(`[data-row="list:${id}"] .a-hit`);
+const shown = (root: ShadowRoot) =>
+	root.querySelector<HTMLElement>(".a-details:not([hidden])");
+const events = (el: HTMLElement, name: string) => {
+	const seen: unknown[] = [];
+	el.addEventListener(name, (e) => seen.push((e as CustomEvent).detail));
+	return seen;
+};
+
+test("rows are buttons, not links, with date, cards and total", async () => {
 	const { root } = await mount();
-	const rows = Array.from(root.querySelectorAll("a[data-list]"));
-	expect(rows.map((a) => a.getAttribute("href"))).toEqual([
-		"/list/draft?id=d1",
-		"/list/reply?id=w1",
-		"/list/view?id=s1",
+	expect(root.querySelector("a[data-list]")).toBeNull();
+	expect(
+		[...root.querySelectorAll(".panel [data-row]")].map((r) =>
+			r.getAttribute("data-row"),
+		),
+	).toEqual(["list:d1", "list:w1", "list:s1"]);
+	expect(head(root, "d1")?.localName).toBe("button");
+	expect(text(head(root, "w1"))).toContain("2026");
+	expect(text(head(root, "w1"))).toContain("Card A, Card B");
+	expect(text(head(root, "w1"))).toContain("฿300.00");
+	expect(text(head(root, "s1"))).toContain("฿90.00");
+	expect(shown(root)).toBeNull();
+});
+
+test("one row is open at a time", async () => {
+	const { element, root } = await mount();
+	head(root, "d1")?.click();
+	await element.updateComplete;
+	head(root, "w1")?.click();
+	await element.updateComplete;
+	expect(root.querySelectorAll(".a-details:not([hidden])").length).toBe(1);
+	expect(head(root, "w1")?.getAttribute("aria-expanded")).toBe("true");
+	expect(head(root, "d1")?.getAttribute("aria-expanded")).toBe("false");
+});
+
+test("an opened draft shows its lines, Continue and a one-step Delete", async () => {
+	const { element, root } = await mount();
+	const seen = events(element, "delete-draft");
+	head(root, "d1")?.click();
+	await element.updateComplete;
+	const open = shown(root) as HTMLElement;
+	expect(text(open.querySelector(".a-line"))).toContain("฿100.00");
+	expect(text(open.querySelector(".a-total"))).toBe("Total ฿100.00");
+	const btns = [...open.querySelectorAll(".a-btns > *")];
+	expect(btns.map((b) => b.getAttribute("data-action"))).toEqual([
+		"continue",
+		"delete-draft",
 	]);
-	expect(rows[1]?.textContent).toContain("Waiting for the spender");
-	expect(rows[1]?.textContent).toContain("2 cards");
-	expect(rows[1]?.textContent).toContain("฿300.00");
-	expect(rows[0]?.textContent).toContain("1 card");
-	expect(rows[2]?.textContent).toContain("Saved");
-	expect(rows[2]?.textContent).toContain("฿90.00");
-	expect(rows[0]?.querySelector("[data-numeric]")).not.toBeNull();
+	expect(btns[0]?.getAttribute("href")).toBe("/list/draft?id=d1");
+	(btns[1] as HTMLElement).click();
+	expect(seen).toEqual([{ list: lists()[0] }]);
+});
+
+test("an opened sent list offers Record reply and a two-step Confirm", async () => {
+	const { element, root } = await mount();
+	const seen = events(element, "confirm-list");
+	head(root, "w1")?.click();
+	await element.updateComplete;
+	const btns = [
+		...(shown(root) as HTMLElement).querySelectorAll(".a-btns > *"),
+	];
+	expect(btns.map((b) => b.getAttribute("data-action"))).toEqual([
+		"record-reply",
+		"confirm-list",
+	]);
+	expect(btns[0]?.getAttribute("href")).toBe("/list/reply?id=w1");
+	(btns[1] as HTMLElement).click();
+	await element.updateComplete;
+	expect(seen).toEqual([]);
+	(root.querySelector("[data-action=save-list]") as HTMLElement).click();
+	expect(seen).toEqual([{ list: lists()[1] }]);
+});
+
+test("an opened saved list shows made and not made, and Open links its page", async () => {
+	const { element, root } = await mount();
+	head(root, "s1")?.click();
+	await element.updateComplete;
+	const open = shown(root) as HTMLElement;
+	const lines = [...open.querySelectorAll(".a-line")].map(text);
+	expect(lines[0]).toContain("฿90.00");
+	expect(lines[1]).toContain("Not made");
+	expect(text(open.querySelector(".a-total"))).toBe("Total ฿90.00");
+	const btns = [...open.querySelectorAll(".a-btns > *")];
+	expect(btns.map((b) => b.getAttribute("data-action"))).toEqual(["open"]);
+	expect(btns[0]?.getAttribute("href")).toBe("/list/view?id=s1");
+	expect(text(btns[0])).toBe("Open");
 });
 
 test("status chips filter and toggle through the event", async () => {
 	const { element, root } = await mount({ status: ["saved"] });
-	expect(root.querySelectorAll("a[data-list]").length).toBe(1);
+	expect(root.querySelectorAll(".panel [data-row]").length).toBe(1);
 	expect(
 		root.querySelector("[data-status=saved]")?.getAttribute("aria-pressed"),
 	).toBe("true");
@@ -99,5 +174,5 @@ test("lists that no chip matches say so instead of asking for a first list", asy
 	expect(root.querySelector(".empty")?.textContent?.trim()).toBe(
 		"No list has these statuses. Clear a status to see more.",
 	);
-	expect(root.querySelector("a[data-list]")).toBeNull();
+	expect(root.querySelector("[data-row]")).toBeNull();
 });

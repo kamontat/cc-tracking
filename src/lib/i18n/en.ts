@@ -574,6 +574,8 @@ export const en = {
 	"row.overdue.dates": "Closed {close} · due {due}",
 	"row.left": "{amount} left",
 	"row.openList": "Open list",
+	"row.open": "Open",
+	"row.saved": "Saved list for {date}",
 	"row.statement": "Statement {close} · due {due}",
 	"row.paidTo": "{amount} to {period}",
 	"reply.error.notWaitingSave":

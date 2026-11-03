@@ -121,6 +121,23 @@ export function draftText(
 	};
 }
 
+/** A saved list; its total (the made lines) is the row's amount. */
+export function savedText(
+	list: PurchaseList,
+	cards: Card[],
+	groups: LimitGroup[],
+): ActionRowText {
+	return {
+		kind: "saved",
+		title: t("row.saved", { date: listDate(list) }),
+		subtitle: cardsOrCount(
+			list.lines.map((l) => l.cardId),
+			cards,
+			groups,
+		),
+	};
+}
+
 /**
  * A planned payment: the amount is on the right (DD-108); the date sits under the title. In
  * Needs you how far off it is follows the date; Upcoming keeps it in the title and adds the
@@ -170,9 +187,17 @@ export function overdueText(
  */
 export function listLines(list: PurchaseList, cards: Card[]): TemplateResult {
 	const byId = new Map(cards.map((card) => [card.id, card]));
+	const saved = list.status === "saved";
+	// A saved list shows what was bought: the real amount, or "Not made" (the reply page's words).
+	const figure = (line: PurchaseList["lines"][number]) =>
+		!saved
+			? formatAmount(line.amount)
+			: line.made
+				? formatAmount(line.actual ?? line.amount)
+				: t("reply.notMade");
 	return html`${list.lines.map(
 		(line) =>
-			html`<span class="a-line"><span>${cardLine(line.cardId, byId.get(line.cardId))}</span><span data-numeric>${formatAmount(line.amount)}</span></span>`,
+			html`<span class="a-line"><span>${cardLine(line.cardId, byId.get(line.cardId))}</span><span data-numeric>${figure(line)}</span></span>`,
 	)}<span class="a-total" data-numeric>${t("row.lines.total", {
 		amount: formatAmount(listTotal(list)),
 	})}</span>`;

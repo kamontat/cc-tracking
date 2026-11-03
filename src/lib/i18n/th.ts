@@ -568,6 +568,8 @@ export const th: Catalog = {
 	"row.overdue.dates": "สรุปยอด {close} · ครบกำหนด {due}",
 	"row.left": "เหลือ {amount}",
 	"row.openList": "เปิดใบรายการซื้อ",
+	"row.open": "เปิด",
+	"row.saved": "ใบรายการซื้อที่บันทึกแล้ววันที่ {date}",
 	"row.statement": "รอบบิลสรุปยอด {close} · ครบกำหนด {due}",
 	"row.paidTo": "{amount} เข้ารอบบิล {period}",
 	"reply.error.notWaitingSave": "ใบรายการนี้ไม่ได้รอคำตอบแล้ว จึงไม่ได้บันทึก",

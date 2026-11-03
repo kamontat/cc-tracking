@@ -8,6 +8,7 @@ import type { Repository } from "#lib/storage/repository";
 import { InMemoryRepository } from "#lib/storage/repository";
 import {
 	CLOCK,
+	draft,
 	flatText,
 	mount,
 	seed,
@@ -158,6 +159,36 @@ test("the Lists view filters by status chip", async () => {
 	expect((root.querySelector("cc-list-index") as CcListIndex).status).toEqual([
 		"saved",
 	]);
+});
+
+const inIndex = (root: HTMLElement, selector: string) =>
+	(
+		root.querySelector("cc-list-index") as CcListIndex
+	).shadowRoot?.querySelector<HTMLElement>(selector) ?? null;
+
+test("the Lists view's Confirm saves a sent list after the second step", async () => {
+	const { root, repo } = await open("?view=lists");
+	await press(inIndex(root, '[data-row="list:w1"] .a-hit'));
+	await press(inIndex(root, `${shown} [data-action="confirm-list"]`));
+	expect(
+		(await repo.listPurchaseLists()).find((l) => l.id === "w1")?.status,
+	).toBe("sent");
+	await press(inIndex(root, '[data-action="save-list"]'));
+	await settle(5);
+	expect(
+		(await repo.listPurchaseLists()).find((l) => l.id === "w1")?.status,
+	).toBe("saved");
+});
+
+test("the Lists view's Delete removes a draft in one step", async () => {
+	const { root, repo } = await open("?view=lists", async (r) => {
+		await r.savePurchaseList(draft("d9", ["A"]));
+	});
+	await press(inIndex(root, '[data-row="list:d9"] .a-hit'));
+	await press(inIndex(root, `${shown} [data-action="delete-draft"]`));
+	await settle(5);
+	expect((await repo.listPurchaseLists()).map((l) => l.id)).toEqual(["w1"]);
+	expect(inIndex(root, '[data-row="list:d9"]')).toBeNull();
 });
 
 test("the switch changes the view and the address", async () => {
