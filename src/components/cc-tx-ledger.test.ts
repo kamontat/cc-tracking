@@ -634,8 +634,8 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 	);
 
 	const row = root.querySelector('[data-row="plan:A:pl1"]') as HTMLElement;
-	expect(text(row, ".a-title")).toBe("Planned: pay Card A (KC) in 2 days");
-	expect(text(row, ".a-sub")).toBe("02 Nov 2026");
+	expect(text(row, ".a-title")).toBe("Planned: pay Card A (KC)");
+	expect(text(row, ".a-sub")).toBe("02 Nov 2026 · in 2 days");
 	expect(row.querySelector(".tag")).toBeNull();
 	expect(row.querySelector(".a-hit .amount.in")?.textContent).toBe("+฿900.00");
 	expect(row.querySelector(".a-details")?.hasAttribute("hidden")).toBe(true);
@@ -808,7 +808,7 @@ test("a card no longer stored keeps its id", async () => {
 	);
 });
 
-test("a payment's note shows on its sub line, in the ledger and under Upcoming", async () => {
+test("a paid payment's note shows on its sub line; a plan's says when instead", async () => {
 	const c = card("A");
 	const paid: TxEntry = {
 		kind: "payment",
@@ -831,7 +831,7 @@ test("a payment's note shows on its sub line, in the ledger and under Upcoming",
 	expect(text(rows[0] as Element, ".a-sub")).toBe("From savings · 31 Oct 2026");
 	expect(text(rows[1] as Element, ".a-sub")).toBe("31 Oct 2026");
 	expect(text(root, '[data-row="plan:A:pl1"] .a-sub')).toBe(
-		"31 Oct 2026 · Salary day",
+		"31 Oct 2026 · today",
 	);
 });
 
@@ -979,7 +979,7 @@ const times = (root: ParentNode, id: string, word: string) =>
 	(root.querySelector(`[data-row="${id}"]`)?.textContent ?? "").split(word)
 		.length - 1;
 
-test("an opened row says its note once, on its sub line", async () => {
+test("an opened row says its note once", async () => {
 	const c = card("A");
 	const paid: TxEntry = {
 		kind: "payment",
@@ -1008,7 +1008,10 @@ test("an opened row says its note once, on its sub line", async () => {
 	expect(times(root, "pay:A:p1", "From savings")).toBe(1);
 	await tap(element, "plan:A:pl1");
 	expect(times(root, "plan:A:pl1", "Salary day")).toBe(1);
-	// Upcoming's plan keeps its note on the sub line, not in the sentence.
-	expect(sentence(root)).toBe("Planned for 31 Oct.");
+	// Upcoming's plan, as Needs you's, says its note in the sentence, not on the sub line.
+	expect(sentence(root)).toBe("Planned for 31 Oct. Salary day");
+	expect(text(root, '[data-row="plan:A:pl1"] .a-sub')).not.toContain(
+		"Salary day",
+	);
 	expect(shown(root)?.querySelector(".a-parts, .a-cycle")).toBeNull();
 });

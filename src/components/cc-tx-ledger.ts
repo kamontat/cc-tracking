@@ -17,6 +17,7 @@ import {
 	money,
 	PAST_TODAY,
 	partLines,
+	plannedSay,
 	plannedText,
 	say,
 	sentWords,
@@ -449,14 +450,10 @@ export class CcTxLedger extends LitElement {
 				${up.planned.map(({ payment, card }) =>
 					this.opening(
 						planId(payment),
-						plannedText(payment, card, this.limitGroups, this.today, true),
+						plannedText(payment, card, this.limitGroups, this.today),
 						{ text: `+${formatAmount(payment.amount)}`, tone: "in" },
-						// The note is on the sub line already (`plannedText`).
-						{
-							say: t("row.say.planned", {
-								date: dayMonth(payment.date, getLocale()),
-							}),
-						},
+						// The subtitle has no note, so the sentence carries it.
+						{ say: plannedSay(payment) },
 						this.steps.planButtons(payment, card, {
 							paid: () => this.emit("mark-paid", { payment }),
 							remove: () => this.emit("delete-payment", { payment }),

@@ -146,31 +146,31 @@ export function savedText(
 }
 
 /**
- * A planned payment: the amount is on the right (DD-108); the date sits under the title. In
- * Needs you how far off it is follows the date; Upcoming keeps it in the title and adds the
- * payment's note.
+ * A planned payment, the same in Needs you and Upcoming (DD-155): the amount is on the right
+ * (DD-108); the date and how far off it is sit under the title. The note is not on the row; the
+ * opened details say it (`plannedSay`).
  */
 export function plannedText(
 	payment: CardPayment,
 	card: Card | undefined,
 	groups: LimitGroup[],
 	today: string,
-	upcoming: boolean,
 ): ActionRowText {
 	const name = cardOwnerName(payment.cardId, card, groups);
 	const date = displayDate(payment.date, getLocale());
-	const when = whenWords(payment.date, today);
-	if (!upcoming)
-		return {
-			kind: "planned",
-			title: t("row.plannedPay", { card: name }),
-			subtitle: `${date} · ${when}`,
-		};
 	return {
 		kind: "planned",
-		title: t("row.planned", { card: name, when }),
-		subtitle: [date, ...(payment.note ? [payment.note] : [])].join(" · "),
+		title: t("row.plannedPay", { card: name }),
+		subtitle: `${date} · ${whenWords(payment.date, today)}`,
 	};
+}
+
+/** An opened planned payment's sentence: when it is planned for, then its note (DD-165). */
+export function plannedSay(payment: CardPayment): string {
+	return [
+		t("row.say.planned", { date: dayMonth(payment.date, getLocale()) }),
+		...(payment.note ? [payment.note] : []),
+	].join(" ");
 }
 
 /** A bill past its due date: `days` is how many days past it. */

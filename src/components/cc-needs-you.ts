@@ -17,6 +17,7 @@ import {
 	money,
 	overdueText,
 	PAST_TODAY,
+	plannedSay,
 	plannedText,
 	say,
 	sentWords,
@@ -25,13 +26,13 @@ import {
 	waitingText,
 } from "#components/action-row";
 import { useTwoStep } from "#components/two-step";
-import { addDays, dayMonth } from "#lib/domain/date";
+import { addDays } from "#lib/domain/date";
 import type { NeedsItem } from "#lib/domain/home";
 import { formatAmount, MINUS } from "#lib/domain/money";
 import { listTotal } from "#lib/domain/purchase-list";
 import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
+import { t } from "#lib/i18n/index";
 import { listPageAddress } from "#lib/ui/list-address";
 import { payAddress } from "#lib/ui/pay-address";
 import { base, controls, rowPanel } from "#styles/shared";
@@ -145,7 +146,6 @@ export class CcNeedsYou extends LitElement {
 	}
 
 	private row(item: NeedsItem) {
-		const date = (d: PlainDate) => dayMonth(d, getLocale());
 		switch (item.kind) {
 			case "waiting":
 				return this.opening(
@@ -197,14 +197,11 @@ export class CcNeedsYou extends LitElement {
 				const { payment } = item;
 				return this.opening(
 					item,
-					plannedText(payment, item.card, this.groups, this.today, false),
+					plannedText(payment, item.card, this.groups, this.today),
 					{ text: `+${formatAmount(payment.amount)}`, tone: "in" },
 					nothing,
-					// The subtitle has no note here, so the sentence carries it.
-					[
-						t("row.say.planned", { date: date(payment.date) }),
-						...(payment.note ? [payment.note] : []),
-					].join(" "),
+					// The subtitle has no note, so the sentence carries it.
+					plannedSay(payment),
 					this.steps.planButtons(payment, item.card, {
 						paid: () => this.emit("mark-paid", { payment }),
 						remove: () => this.emit("delete-payment", { payment }),

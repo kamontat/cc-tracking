@@ -552,7 +552,6 @@ export const en = {
 	"home.caughtUpDetail": "No replies to record and no bill overdue.",
 	"row.draft": "Draft list for {date}",
 	"row.waiting": "Waiting on list for {date}",
-	"row.planned": "Planned: pay {card} {when}",
 	"row.plannedPay": "Planned: pay {card}",
 	"row.overdue": "Overdue: {card}",
 	"row.for.one": "for 1 day",

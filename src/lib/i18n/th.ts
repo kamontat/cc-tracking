@@ -546,7 +546,6 @@ export const th: Catalog = {
 	"home.caughtUpDetail": "ไม่มีคำตอบให้บันทึก และไม่มีบิลที่เลยกำหนด",
 	"row.draft": "ใบรายการซื้อฉบับร่างวันที่ {date}",
 	"row.waiting": "รอคำตอบใบรายการซื้อวันที่ {date}",
-	"row.planned": "วางแผนไว้: ชำระ {card} {when}",
 	"row.plannedPay": "วางแผนไว้: ชำระ {card}",
 	"row.overdue": "เลยกำหนด: {card}",
 	"row.for.one": "เป็นเวลา 1 วัน",
