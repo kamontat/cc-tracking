@@ -2,6 +2,7 @@ import "#components/cc-error-banner";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { messageOf } from "#lib/i18n/error";
 import { subscribe, t } from "#lib/i18n/index";
+import { migrateGroupColors } from "#lib/storage/assign-group-colors";
 import { createRepository } from "#lib/storage/index";
 import { migrateLocations } from "#lib/storage/migrate-locations";
 import { migratePayments } from "#lib/storage/migrate-payments";
@@ -84,6 +85,14 @@ export async function bootstrap(
 		banner.addEventListener("retry", () => location.reload());
 		(document.querySelector("main") ?? document.body).prepend(banner);
 		return;
+	}
+
+	// A missing colour is cosmetic and the step runs again on the next load, so a failure is
+	// only logged: the page still renders.
+	try {
+		await migrateGroupColors(repo, storage);
+	} catch (failure) {
+		console.error(failure);
 	}
 
 	render(repo);

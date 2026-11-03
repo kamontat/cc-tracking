@@ -79,7 +79,7 @@ describe("backup version 3", () => {
 		const out = await exportBackupV3(repo, NOW);
 		expect(out.version).toBe(BACKUP_V3);
 		expect(out.exportedAt).toBe(NOW.toISOString());
-		expect(out.limitGroups).toEqual([sampleLimitGroup()]);
+		expect(out.limitGroups).toEqual([sampleLimitGroup({ color: "blue" })]);
 		expect(out.cards).toEqual([sampleCard()]);
 		expect(out.purchases).toEqual([samplePurchase()]);
 		expect(out.payments).toEqual([sampleCardPayment()]);

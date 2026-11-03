@@ -7,6 +7,7 @@ import {
 } from "#lib/storage/contract";
 import type { Repository } from "#lib/storage/repository";
 import { InMemoryRepository } from "#lib/storage/repository";
+import { limitGroupProblem } from "#lib/storage/transfer";
 import {
 	importBackupV3 as importBackup,
 	parseAnyBackup as parseBackup,
@@ -413,5 +414,13 @@ describe("entry time in a backup", () => {
 				problem: "backup.problem.badAddedAt",
 			});
 		}
+	});
+});
+
+describe("colour in a backup", () => {
+	test("a limit group with any colour passes the shape check", () => {
+		const group = { id: "g", name: "Pool", limit: 100 };
+		expect(limitGroupProblem({ ...group, color: "nope" })).toBeNull();
+		expect(limitGroupProblem({ ...group, color: "rose" })).toBeNull();
 	});
 });

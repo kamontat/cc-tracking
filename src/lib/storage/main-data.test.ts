@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
+import { toGroupColor } from "#lib/domain/group-color";
 import { cardLedger } from "#lib/domain/ledger";
 import type { Card, LimitGroup, Purchase } from "#lib/domain/types";
+import { migrateGroupColors } from "#lib/storage/assign-group-colors";
 import { memoryStorage } from "#lib/storage/contract";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { migrateLocations } from "#lib/storage/migrate-locations";
@@ -30,13 +32,18 @@ const open = async () => {
 	await seedLocations(repo, storage);
 	await migrateLocations(repo, storage);
 	await migratePayments(repo, storage);
+	await migrateGroupColors(repo, storage);
 	return repo;
 };
 
 test("cards, limit groups and purchases saved by main read back unchanged", async () => {
 	const repo = await open();
 	expect(await repo.listCards()).toEqual(expected.cards);
-	expect(await repo.listLimitGroups()).toEqual(expected.groups);
+	// Main stored no colour; the startup step adds one to each group, the first blue.
+	const groups = await repo.listLimitGroups();
+	expect(groups.every((g) => toGroupColor(g.color) !== null)).toBe(true);
+	expect(groups[0]?.color).toBe("blue");
+	expect(groups.map(({ color, ...rest }) => rest)).toEqual(expected.groups);
 	const cards = await repo.listCards();
 	const purchases = (
 		await Promise.all(cards.map((c) => repo.listPurchases(c.id)))
