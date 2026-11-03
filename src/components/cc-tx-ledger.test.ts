@@ -268,11 +268,15 @@ test("a purchase made the day before its statement closes shows Closes, and Boug
 		today: "2026-11-17",
 	});
 	await tap(element, "buy:A:x");
-	expect(marks(root).map((m) => [m[0], m[1]])).toEqual([
-		["buy", ""],
-		["now", "Today"],
-		["closes", "Closes 18 Nov"],
-		["due", "Due 3 Dec"],
+	expect(
+		[...(shown(root)?.querySelectorAll<HTMLElement>(".a-mk") ?? [])].map(
+			(m) => [m.dataset["mark"], m.hasAttribute("data-quiet")],
+		),
+	).toEqual([
+		["buy", true],
+		["now", false],
+		["closes", false],
+		["due", false],
 	]);
 	expect(shown(root)?.querySelector('.a-mk[data-mark="buy"] i')).not.toBeNull();
 });

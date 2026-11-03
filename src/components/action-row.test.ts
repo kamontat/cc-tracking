@@ -5,10 +5,13 @@ import {
 	actionRow,
 	actionRowStyles,
 	cycleLine,
+	fitCycle,
+	fitLabels,
 	listParts,
 	money,
 	partLines,
 	say,
+	useCycleFit,
 	useOpenRow,
 } from "#components/action-row";
 import type { PurchaseList } from "#lib/domain/types";
@@ -315,6 +318,7 @@ const cycle = (args: Parameters<typeof cycleLine>[0]) => {
 	const marks = [...line.querySelectorAll<HTMLElement>(".a-mk")].map((m) => ({
 		mark: m.dataset["mark"],
 		text: m.textContent?.trim(),
+		quiet: m.hasAttribute("data-quiet"),
 		at: m.style.getPropertyValue("inset-inline-start"),
 		edge: m.dataset["edge"] ?? null,
 		late: m.hasAttribute("data-late"),
@@ -345,6 +349,7 @@ test("a purchase's cycle line puts each marker on one scale from the statement's
 		{
 			mark: "buy",
 			text: "Bought 29 Oct",
+			quiet: false,
 			at: "6%",
 			edge: "start",
 			late: false,
@@ -353,6 +358,7 @@ test("a purchase's cycle line puts each marker on one scale from the statement's
 		{
 			mark: "now",
 			text: "Today",
+			quiet: false,
 			at: "16%",
 			edge: null,
 			late: false,
@@ -361,6 +367,7 @@ test("a purchase's cycle line puts each marker on one scale from the statement's
 		{
 			mark: "closes",
 			text: "Closes 25 Nov",
+			quiet: false,
 			at: "60%",
 			edge: null,
 			late: false,
@@ -369,6 +376,7 @@ test("a purchase's cycle line puts each marker on one scale from the statement's
 		{
 			mark: "due",
 			text: "Due 15 Dec",
+			quiet: false,
 			at: "100%",
 			edge: "end",
 			late: false,
@@ -482,7 +490,7 @@ test("a marker within 10% of an end aligns its label to that end, so a bill a da
 	]);
 });
 
-test("labels under the track never collide: the less important one keeps only its dot", () => {
+test("on first paint, labels under the track guess at room: the less important of two close ones keeps only its dot", () => {
 	// 26 Oct = 0 .. 15 Dec = 50: bought 24 Nov = 29 (58%), closes 25 Nov = 30 (60%), due 100%.
 	const near = cycle({
 		start: "2026-10-26",
@@ -495,11 +503,11 @@ test("labels under the track never collide: the less important one keeps only it
 		],
 		fillTo: "2026-11-24",
 	});
-	expect(near.marks.map((m) => [m.mark, m.text])).toEqual([
-		["buy", ""],
-		["now", "Today"],
-		["closes", "Closes 25 Nov"],
-		["due", "Due 15 Dec"],
+	expect(near.marks.map((m) => [m.mark, m.text, m.quiet])).toEqual([
+		["buy", "Bought 24 Nov", true],
+		["now", "Today", false],
+		["closes", "Closes 25 Nov", false],
+		["due", "Due 15 Dec", false],
 	]);
 	expect(near.line.querySelector('.a-mk[data-mark="buy"] i')).not.toBeNull();
 	// Every mark is still said.
@@ -517,9 +525,185 @@ test("labels under the track never collide: the less important one keeps only it
 		],
 		fillTo: "2026-10-27",
 	});
-	expect(late.marks.map((m) => m.text)).toEqual([
-		"Bought 27 Oct",
-		"",
-		"Due 15 Dec",
+	expect(late.marks.map((m) => m.quiet)).toEqual([false, true, false]);
+	expect(actionRowStyles.cssText).toMatch(
+		/\.a-mk\[data-quiet\] \.a-lbl\s*\{\s*visibility: hidden/,
+	);
+});
+
+const box = (kind: string, left: number, right: number) => ({
+	kind: kind as "buy" | "closes" | "closed" | "due" | "now",
+	left,
+	right,
+});
+
+test("measured labels: one overlapping a kept label goes quiet, in the order due, close, bought", () => {
+	// Thai at 390px: all three overlap; only Due keeps its words.
+	expect(
+		fitLabels([
+			box("buy", 0, 125),
+			box("closed", 50, 140),
+			box("due", 120, 200),
+			box("now", 100, 130),
+		]),
+	).toEqual([true, true, false, false]);
+	// A label that only overlapped a quiet one keeps its words.
+	expect(
+		fitLabels([
+			box("buy", 0, 70),
+			box("closed", 50, 140),
+			box("due", 120, 200),
+		]),
+	).toEqual([false, true, false]);
+	// The close is kept over Bought when only those two overlap.
+	expect(
+		fitLabels([
+			box("buy", 0, 60),
+			box("closes", 58, 120),
+			box("due", 300, 360),
+		]),
+	).toEqual([true, false, false]);
+	// A gap under 4px counts as touching.
+	expect(fitLabels([box("closes", 0, 50), box("due", 52, 100)])).toEqual([
+		true,
+		false,
 	]);
+});
+
+test("measured labels with room all keep their words, and Due always does", () => {
+	expect(
+		fitLabels([
+			box("buy", 0, 40),
+			box("closes", 100, 160),
+			box("due", 300, 360),
+		]),
+	).toEqual([false, false, false]);
+	expect(fitLabels([box("due", 0, 500), box("buy", 0, 500)])).toEqual([
+		false,
+		true,
+	]);
+	// Today is above the track: never quiet, never in the way.
+	expect(fitLabels([box("now", 0, 500), box("buy", 0, 500)])).toEqual([
+		false,
+		false,
+	]);
+});
+
+test("fitting a drawn line sets data-quiet from the labels' boxes and leaves the aria-label alone", () => {
+	const { line } = cycle({
+		start: "2026-10-26",
+		end: "2026-12-15",
+		marks: [
+			{ kind: "buy", date: "2026-10-29" },
+			{ kind: "closes", date: "2026-11-25" },
+			{ kind: "due", date: "2026-12-15" },
+		],
+		fillTo: "2026-10-29",
+	});
+	const aria = line.getAttribute("aria-label");
+	const rects: Record<string, [number, number]> = {
+		buy: [0, 90],
+		closes: [80, 170],
+		due: [160, 250],
+	};
+	for (const mark of line.querySelectorAll<HTMLElement>(".a-mk")) {
+		const label = mark.querySelector(".a-lbl") as HTMLElement;
+		const [left, right] = rects[mark.dataset["mark"] as string] as [
+			number,
+			number,
+		];
+		label.getBoundingClientRect = () =>
+			({ left, right, width: right - left }) as DOMRect;
+	}
+	fitCycle(line);
+	expect(
+		[...line.querySelectorAll(".a-mk")].map((m) =>
+			m.hasAttribute("data-quiet"),
+		),
+	).toEqual([false, true, false]);
+	expect(line.getAttribute("aria-label")).toBe(aria);
+	// Unlaid-out labels (a closed row, happy-dom) keep the first guess.
+	const unlaid = cycle({
+		start: "2026-10-26",
+		end: "2026-12-15",
+		marks: [
+			{ kind: "buy", date: "2026-10-29" },
+			{ kind: "due", date: "2026-12-15" },
+		],
+		fillTo: "2026-10-29",
+	});
+	fitCycle(unlaid.line);
+	expect(unlaid.line.querySelector("[data-quiet]")).toBeNull();
+});
+
+test("useCycleFit fits every cycle line after each update, refits on resize, and lets go on disconnect", () => {
+	const observed: Element[] = [];
+	let callback: ResizeObserverCallback = () => {};
+	let disconnected = 0;
+	const real = globalThis.ResizeObserver;
+	globalThis.ResizeObserver = class {
+		constructor(cb: ResizeObserverCallback) {
+			callback = cb;
+		}
+		observe(el: Element) {
+			observed.push(el);
+		}
+		unobserve() {}
+		disconnect() {
+			disconnected += 1;
+		}
+	} as unknown as typeof ResizeObserver;
+	try {
+		const root = document.createElement("div");
+		const controllers: ReactiveController[] = [];
+		const host = {
+			renderRoot: root,
+			addController: (c: ReactiveController) => controllers.push(c),
+			removeController: () => {},
+			requestUpdate: () => {},
+			updateComplete: Promise.resolve(true),
+		};
+		const fit = useCycleFit(host);
+		expect(controllers).toContain(fit);
+		render(
+			cycleLine({
+				start: "2026-10-26",
+				end: "2026-12-15",
+				marks: [
+					{ kind: "buy", date: "2026-10-29" },
+					{ kind: "due", date: "2026-12-15" },
+				],
+				fillTo: "2026-10-29",
+			}),
+			root,
+		);
+		const line = root.querySelector(".a-cycle") as HTMLElement;
+		const labels = [...line.querySelectorAll<HTMLElement>(".a-lbl")];
+		for (const label of labels)
+			label.getBoundingClientRect = () =>
+				({ left: 0, right: 100, width: 100 }) as DOMRect;
+		fit.hostUpdated();
+		expect(observed).toEqual([line]);
+		expect(
+			line.querySelector('[data-mark="buy"]')?.hasAttribute("data-quiet"),
+		).toBe(true);
+		// Room again after a resize: the label comes back.
+		(labels[0] as HTMLElement).getBoundingClientRect = () =>
+			({ left: 0, right: 40, width: 40 }) as DOMRect;
+		(labels[1] as HTMLElement).getBoundingClientRect = () =>
+			({ left: 200, right: 260, width: 60 }) as DOMRect;
+		callback(
+			[{ target: line } as unknown as ResizeObserverEntry],
+			{} as ResizeObserver,
+		);
+		expect(
+			line.querySelector('[data-mark="buy"]')?.hasAttribute("data-quiet"),
+		).toBe(false);
+		fit.hostUpdated();
+		expect(observed).toEqual([line]);
+		fit.hostDisconnected();
+		expect(disconnected).toBe(1);
+	} finally {
+		globalThis.ResizeObserver = real;
+	}
 });

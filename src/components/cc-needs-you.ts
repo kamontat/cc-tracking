@@ -20,6 +20,7 @@ import {
 	plannedText,
 	say,
 	sentWords,
+	useCycleFit,
 	useOpenRow,
 	waitingText,
 } from "#components/action-row";
@@ -107,6 +108,8 @@ export class CcNeedsYou extends LitElement {
 	constructor() {
 		super();
 		new LocaleController(this);
+		// Cycle line labels make room by measuring (DD-165).
+		useCycleFit(this);
 	}
 
 	protected override willUpdate(changed: PropertyValues<this>) {

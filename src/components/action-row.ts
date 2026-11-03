@@ -261,8 +261,12 @@ const MARK_WORDS: Record<CycleMark["kind"], MessageKey> = {
 /** Within this share of an end, a marker's label aligns to that end, so it never clips. */
 const EDGE = 10;
 
-/** Labels under the track closer than this share of it would overlap, even on a phone. */
+/** The first paint's guess at crowding: labels under the track closer than this share of it.
+ * `useCycleFit` then measures the real labels and corrects it. */
 const CROWD = 18;
+
+/** The least room, in px, between two labels under the track that both keep their words. */
+const LABEL_GAP = 4;
 
 /** Which of two crowded labels under the track keeps its words: due, then the close, then bought. */
 const RANK: Record<CycleMark["kind"], number> = {
@@ -281,8 +285,8 @@ export const PAST_TODAY = 3;
  * up to `fillTo` (red when `late`), and a marker for each of `marks` in date order. Every
  * position comes from one scale, `daysBetween(start, d) / daysBetween(start, end)`, clamped to
  * the line. *Today* is a tick with its label above the track; the rest are circles with the
- * label under, and where two of those would overlap (closer than `CROWD`) the less important
- * one keeps only its dot (`RANK`). When `late`, the due marker is red too. The line is one
+ * label under, and where two of those would overlap the less important one keeps only its dot
+ * (`RANK`, `data-quiet`): a guess from `CROWD` on first paint, then measured (`useCycleFit`). When `late`, the due marker is red too. The line is one
  * image to a screen reader: its `aria-label` says every date in words, how late a late due date
  * is, and today last.
  */
@@ -347,14 +351,106 @@ export function cycleLine({
 			const label =
 				mark.kind === "now"
 					? t("row.cycle.today")
-					: quiet.has(mark)
-						? nothing
-						: t(MARK_WORDS[mark.kind], { date: dayMonth(mark.date, locale) });
+					: t(MARK_WORDS[mark.kind], { date: dayMonth(mark.date, locale) });
 			return html`<span class="a-mk" aria-hidden="true" data-mark=${mark.kind}
 				data-edge=${edge ?? nothing} ?data-late=${late && mark.kind === "due"}
-				style=${`inset-inline-start: ${percent(p)}`}><i></i>${label}</span>`;
+				?data-quiet=${quiet.has(mark)}
+				style=${`inset-inline-start: ${percent(p)}`}><i></i><span class="a-lbl">${label}</span></span>`;
 		})}
 	</div>`;
+}
+
+/**
+ * Which labels go quiet, given each one's box on screen: walking the labels under the track in
+ * `RANK` order (due, the close, bought; ties in order given), one keeps its words only if it
+ * clears every label kept before it by `gap` px. Today's label is above the track: it is never
+ * quiet and never in the way. Returns a flag per label, in the order given.
+ */
+export function fitLabels(
+	labels: { kind: CycleMark["kind"]; left: number; right: number }[],
+	gap = LABEL_GAP,
+): boolean[] {
+	const quiet = labels.map(() => false);
+	const kept: { left: number; right: number }[] = [];
+	const order = labels
+		.map((label, i) => ({ label, i }))
+		.filter(({ label }) => label.kind !== "now")
+		.sort((a, b) => RANK[b.label.kind] - RANK[a.label.kind] || a.i - b.i);
+	for (const { label, i } of order) {
+		const clash = kept.some(
+			(k) => label.left < k.right + gap && k.left < label.right + gap,
+		);
+		if (clash) quiet[i] = true;
+		else kept.push(label);
+	}
+	return quiet;
+}
+
+/**
+ * Measures a drawn cycle line's labels and sets `data-quiet` where one would overlap a more
+ * important one (`fitLabels`). A line not laid out (its row closed) keeps what it has.
+ */
+export function fitCycle(line: Element): void {
+	const marks = [...line.querySelectorAll<HTMLElement>(".a-mk")];
+	const boxes = marks.map((mark) => {
+		const rect = mark.querySelector(".a-lbl")?.getBoundingClientRect();
+		return {
+			kind: (mark.getAttribute("data-mark") ?? "now") as CycleMark["kind"],
+			left: rect?.left ?? 0,
+			right: rect?.right ?? 0,
+			width: rect?.width ?? 0,
+		};
+	});
+	if (boxes.some((b) => b.width <= 0)) return;
+	fitLabels(boxes).forEach((quiet, i) => {
+		marks[i]?.toggleAttribute("data-quiet", quiet);
+	});
+}
+
+/**
+ * Keeps a host's cycle lines fitted: after each update it measures every `.a-cycle` in its
+ * render root, and a `ResizeObserver` refits a line whenever its size changes (a row opening,
+ * a rotated phone). The observer lets go when the host disconnects.
+ */
+export class CycleFitController implements ReactiveController {
+	private observer: ResizeObserver | undefined;
+	private readonly watched = new WeakSet<Element>();
+
+	constructor(
+		private readonly host: ReactiveControllerHost & { renderRoot: ParentNode },
+	) {
+		host.addController(this);
+	}
+
+	hostConnected(): void {}
+
+	hostUpdated(): void {
+		for (const line of this.host.renderRoot.querySelectorAll(".a-cycle")) {
+			fitCycle(line);
+			this.watch(line);
+		}
+	}
+
+	hostDisconnected(): void {
+		this.observer?.disconnect();
+		this.observer = undefined;
+	}
+
+	private watch(line: Element) {
+		if (typeof ResizeObserver === "undefined") return;
+		this.observer ??= new ResizeObserver((entries) => {
+			for (const entry of entries) fitCycle(entry.target);
+		});
+		if (this.watched.has(line)) return;
+		this.watched.add(line);
+		this.observer.observe(line);
+	}
+}
+
+export function useCycleFit(
+	host: ReactiveControllerHost & { renderRoot: ParentNode },
+): CycleFitController {
+	return new CycleFitController(host);
 }
 
 export type ActionRowOptions = {
@@ -710,6 +806,11 @@ export const actionRowStyles = css`
 		background: var(--cc-surface);
 		border: var(--cc-ring-width) solid var(--cc-text-muted);
 		border-radius: var(--cc-radius-pill);
+	}
+
+	/* A label that would overlap a more important one keeps its place but not its words. */
+	.a-mk[data-quiet] .a-lbl {
+		visibility: hidden;
 	}
 
 	.a-mk[data-mark="buy"] i {

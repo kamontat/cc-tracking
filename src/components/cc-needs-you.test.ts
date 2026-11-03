@@ -662,3 +662,38 @@ test("a Needs you plan says its note once, in its details", async () => {
 		root.querySelector(".a-details:not([hidden]) .a-say")?.textContent,
 	).toContain("Salary day");
 });
+
+test("an opened overdue bill's line is fitted by measuring its labels", async () => {
+	const item: NeedsItem = {
+		kind: "overdue",
+		card,
+		remaining: 100,
+		billed: 100,
+		startDate: "2026-08-19",
+		closeDate: "2026-09-18",
+		dueDate: "2026-10-03",
+		days: 28,
+	};
+	const { element, root } = await mountEl([item]);
+	const real = HTMLElement.prototype.getBoundingClientRect;
+	// Every label laid out on top of the others: only Due keeps its words.
+	HTMLElement.prototype.getBoundingClientRect = function () {
+		return this.classList.contains("a-lbl")
+			? ({ left: 0, right: 100, width: 100 } as DOMRect)
+			: real.call(this);
+	};
+	try {
+		await open(element, '[data-item="overdue"]');
+		expect(
+			[
+				...(shownDetails(root)?.querySelectorAll<HTMLElement>(".a-mk") ?? []),
+			].map((m) => [m.dataset["mark"], m.hasAttribute("data-quiet")]),
+		).toEqual([
+			["closed", true],
+			["due", false],
+			["now", false],
+		]);
+	} finally {
+		HTMLElement.prototype.getBoundingClientRect = real;
+	}
+});
