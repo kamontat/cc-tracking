@@ -531,6 +531,7 @@ export const th: Catalog = {
 	"row.draft": "ใบรายการซื้อฉบับร่างวันที่ {date}",
 	"row.waiting": "รอคำตอบใบรายการซื้อวันที่ {date}",
 	"row.planned": "วางแผนไว้: ชำระ {card} {when}",
+	"row.plannedPay": "วางแผนไว้: ชำระ {card}",
 	"row.overdue": "เลยกำหนด: {card}",
 	"row.for.one": "เป็นเวลา 1 วัน",
 	"row.for.many": "เป็นเวลา {days} วัน",

@@ -139,8 +139,8 @@ test("each kind fills the row's title and subtitle, with the amount on the right
 		amount: "−฿2.00",
 	});
 	expect(slots(plan as Element)).toEqual({
-		title: "Planned: pay SCB K (RI) in 2 days",
-		subtitle: "02 Nov 2026",
+		title: "Planned: pay SCB K (RI)",
+		subtitle: "02 Nov 2026 · in 2 days",
 		amount: "+฿5,000.00",
 	});
 	expect(root.querySelector(".a-row button")).toBeNull();
@@ -227,14 +227,22 @@ test("a list id is encoded in its link", async () => {
 	).toEqual(["/list/reply?id=w%201%2F2", "/list/draft?id=d%261"]);
 });
 
-test("a planned payment says how far off it is, and a past plan says how long ago", async () => {
-	const title = async (date: string) =>
-		text(await mount([planned(date)], [], "2026-10-31"), ".a-title");
-	expect(await title("2026-10-31")).toBe("Planned: pay SCB K (RI) today");
-	expect(await title("2026-11-01")).toBe("Planned: pay SCB K (RI) tomorrow");
-	expect(await title("2026-11-03")).toBe("Planned: pay SCB K (RI) in 3 days");
-	expect(await title("2026-10-30")).toBe("Planned: pay SCB K (RI) 1 day ago");
-	expect(await title("2026-10-28")).toBe("Planned: pay SCB K (RI) 3 days ago");
+test("a planned payment says how far off it is after its date, and a past plan how long ago", async () => {
+	const row = async (date: string) => {
+		const root = await mount([planned(date)], [], "2026-10-31");
+		return [text(root, ".a-title"), text(root, ".a-sub")];
+	};
+	expect(await row("2026-10-31")).toEqual([
+		"Planned: pay SCB K (RI)",
+		"31 Oct 2026 · today",
+	]);
+	expect((await row("2026-11-01"))[1]).toBe("01 Nov 2026 · tomorrow");
+	expect((await row("2026-11-03"))[1]).toBe("03 Nov 2026 · in 3 days");
+	expect((await row("2026-10-30"))[1]).toBe("30 Oct 2026 · 1 day ago");
+	expect((await row("2026-10-28"))[1]).toBe("28 Oct 2026 · 3 days ago");
+	setLocale("th");
+	expect((await row("2026-10-30"))[0]).toBe("วางแผนไว้: ชำระ SCB K (RI)");
+	setLocale("en");
 });
 
 const many = (count: number): NeedsItem[] =>

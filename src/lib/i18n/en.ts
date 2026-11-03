@@ -537,6 +537,7 @@ export const en = {
 	"row.draft": "Draft list for {date}",
 	"row.waiting": "Waiting on list for {date}",
 	"row.planned": "Planned: pay {card} {when}",
+	"row.plannedPay": "Planned: pay {card}",
 	"row.overdue": "Overdue: {card}",
 	"row.for.one": "for 1 day",
 	"row.for.many": "for {days} days",

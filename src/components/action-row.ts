@@ -98,8 +98,9 @@ export function draftText(
 }
 
 /**
- * A planned payment: the amount is on the right (DD-108); the date sits under the title, and
- * Upcoming adds the payment's note.
+ * A planned payment: the amount is on the right (DD-108); the date sits under the title. In
+ * Needs you how far off it is follows the date; Upcoming keeps it in the title and adds the
+ * payment's note.
  */
 export function plannedText(
 	payment: CardPayment,
@@ -108,16 +109,19 @@ export function plannedText(
 	today: string,
 	upcoming: boolean,
 ): ActionRowText {
+	const name = cardOwnerName(payment.cardId, card, groups);
+	const date = displayDate(payment.date, getLocale());
+	const when = whenWords(payment.date, today);
+	if (!upcoming)
+		return {
+			kind: "planned",
+			title: t("row.plannedPay", { card: name }),
+			subtitle: `${date} · ${when}`,
+		};
 	return {
 		kind: "planned",
-		title: t("row.planned", {
-			card: cardOwnerName(payment.cardId, card, groups),
-			when: whenWords(payment.date, today),
-		}),
-		subtitle: [
-			displayDate(payment.date, getLocale()),
-			...(upcoming && payment.note ? [payment.note] : []),
-		].join(" · "),
+		title: t("row.planned", { card: name, when }),
+		subtitle: [date, ...(payment.note ? [payment.note] : [])].join(" · "),
 	};
 }
 
