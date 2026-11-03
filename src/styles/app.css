@@ -650,15 +650,28 @@ a:any-link:hover {
 	}
 }
 
-/* The rounded panel: rows inside it, a rule between each. A component's rows (cc-display-
-   settings, cc-about) draw their own rules in their shadow root (`setRows` in shared.ts). */
-.set {
-	display: flex;
-	flex-direction: column;
-	padding: var(--cc-space-1) var(--cc-space-4);
+/* The one row panel of the light DOM, the twin of `rowPanel`'s `.panel` in shared.ts: rows
+   inside a rounded surface, a rule between each, no padding above the first or below the last.
+   Settings (`.set`) and a list's saved lines take it; a component's rows (cc-display-settings,
+   cc-about) draw their own rules in their shadow root (`setRows`). */
+.row-panel,
+.set,
+.saved-lines {
+	padding: 0 var(--cc-space-4);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
+}
+
+.set {
+	display: flex;
+	flex-direction: column;
+}
+
+.row-panel > * + *,
+.set > * + *,
+.saved-lines > * + * {
+	border-top: var(--cc-border-width) solid var(--cc-border);
 }
 
 /* A row: its label and muted line on the left, its control on the right. A row that is wholly
@@ -691,7 +704,9 @@ a:any-link:hover {
 }
 
 /* After `.page .set-row`, which clears a button's own border, so the rule between rows holds. */
-.page .set > * + * {
+.page .row-panel > * + *,
+.page .set > * + *,
+.page .saved-lines > * + * {
 	border-top: var(--cc-border-width) solid var(--cc-border);
 }
 
@@ -1553,11 +1568,7 @@ a:any-link:hover {
 
 .saved-lines {
 	margin: 0;
-	padding: 0 var(--cc-space-4);
 	list-style: none;
-	background: var(--cc-surface);
-	border: var(--cc-border-width) solid var(--cc-border);
-	border-radius: var(--cc-radius-md);
 }
 
 .saved-lines li {
@@ -1566,10 +1577,6 @@ a:any-link:hover {
 	justify-content: space-between;
 	gap: var(--cc-space-3);
 	padding-block: var(--cc-space-3);
-}
-
-.saved-lines li + li {
-	border-top: var(--cc-border-width) solid var(--cc-border);
 }
 
 .saved-lines .what {
