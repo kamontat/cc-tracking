@@ -15,7 +15,8 @@ commit: changelog entry first, then merge, then cleanup, ending back on an up-to
 
 1. **Catch up with main, in the worktree.** `git fetch origin` then
    `git merge origin/main`, so the changelog edit sees entries other PRs landed. Resolve
-   conflicts, rerun `bun run check` and `bun run test`.
+   conflicts, rerun `bun run check` and `bun run test`. Check that `PRD.md` and
+   `PRD_TH.md` were updated together for any behaviour the change ships.
 2. **Changelog entry, on the PR branch.** Edit `CHANGELOG.md` following
    `.claude/skills/changelog`, which owns the entry format (`## YYYY-MM-DD: <title>` with
    BREAKING CHANGES, Features, Improvements, Bug fixes and Decisions). The date is today's.
@@ -37,10 +38,12 @@ commit: changelog entry first, then merge, then cleanup, ending back on an up-to
    ```sh
    git checkout main
    git pull --ff-only
-   git worktree remove .claude/worktrees/<name>
-   git branch -d worktree-<name>
+   git worktree remove <worktree path>
+   git branch -d <branch>
    git fetch --prune
    ```
+   Use the worktree's real path and branch, as `git worktree list` shows them; don't assume
+   `.claude/worktrees/<name>` on `worktree-<name>`.
    `branch -d` (not `-D`) succeeds only when the branch is merged — if it refuses, the
    merge didn't reach `main`; find out why before forcing anything. Confirm with
    `git status` (on `main`, clean, up to date with `origin/main`) and `git worktree list`

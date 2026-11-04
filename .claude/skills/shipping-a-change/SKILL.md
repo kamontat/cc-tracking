@@ -20,7 +20,9 @@ size or "just" are not permission. When they do skip one, say which in the PR te
 
 1. **Worktree.** Call `EnterWorktree` with a short kebab-case `name` describing the change
    (no `worktree-` prefix — the tool adds it). It creates `.claude/worktrees/<name>` on branch `worktree-<name>` from `origin/main`.
-   Already inside a worktree for this change? Keep using it. Then run `bun install` — a new
+   Already inside a worktree for this change? Keep using it. When the user asks for a
+   long-running branch instead (as the redesign used `redesign/*`), work there; the pull
+   request's base may then be that branch rather than `main`. Then run `bun install` — a new
    worktree has no `node_modules`.
 2. **Test first.** REQUIRED SUB-SKILL: superpowers:test-driven-development. Write the
    failing test next to the code (`*.test.ts`), run `bun test <file>` and watch it fail for
@@ -29,7 +31,9 @@ size or "just" are not permission. When they do skip one, say which in the PR te
    `AGENTS.md` (tokens only through `var(--cc-*)`, the three button variants, no selectors
    on translated text). User-facing text lives in `src/lib/i18n/en.ts` and `th.ts`;
    change both.
-4. **Check, format, test.** All must pass before committing:
+4. **Docs.** When behaviour changes, update `PRD.md` and `PRD_TH.md` together, keeping
+   their IDs in step. When an address or query key changes, update `ENDPOINTS.md`.
+5. **Check, format, test.** All must pass before committing:
    ```sh
    bun run format      # biome check --unsafe --write
    bun run check       # biome check
@@ -39,11 +43,14 @@ size or "just" are not permission. When they do skip one, say which in the PR te
    ```
    A failure means fix and rerun the whole list, not commit and fix later. `format` rewrites
    files, so stage after it (`git add -A`), and check `git status` for stray files.
-5. **Commit.** Conventional commits, lower case, scoped to the area:
+6. **Screenshots.** For a UI change, run the app and screenshot each changed page at 390 and
+   1280 px wide, in light and dark, in English and Thai, and look at them before handing
+   over.
+7. **Commit.** Conventional commits, lower case, scoped to the area:
    `feat(cards): ...`, `fix(purchases): ...`, `ci: ...`. One logical change per commit.
    Do not touch `CHANGELOG.md` yet — that happens when landing.
-6. **Push.** `git push -u origin HEAD` (SSH push works without a token).
-7. **Pull request.** GitHub API calls need the personal account token:
+8. **Push.** `git push -u origin HEAD` (SSH push works without a token).
+9. **Pull request.** GitHub API calls need the personal account token:
    ```sh
    GH_TOKEN=$(gh auth token --user kamontat) gh pr create --base main \
      --title "<type>(<scope>): <summary>" --body "<Summary bullets + Test plan>"
@@ -51,7 +58,7 @@ size or "just" are not permission. When they do skip one, say which in the PR te
    Body: `## Summary` bullets, `## Test plan` checklist (tests ticked, preview checks
    unticked), then the Claude Code attribution line. Pushing more commits to an open PR
    updates it — don't open a second one.
-8. **Deployed URL.** Wait for the preview deploy, then report the URL:
+10. **Deployed URL.** Wait for the preview deploy, then report the URL:
    ```sh
    GH_TOKEN=$(gh auth token --user kamontat) gh pr checks <number> --watch
    ```
