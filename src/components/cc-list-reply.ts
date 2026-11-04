@@ -19,6 +19,7 @@ import {
 	base,
 	cardBits,
 	controls,
+	lineCards,
 	listLayout,
 } from "#styles/shared";
 
@@ -37,6 +38,7 @@ export class CcListReply extends LitElement {
 		base,
 		cardBits,
 		controls,
+		lineCards,
 		listLayout,
 		actionBarStyles,
 		css`
@@ -49,15 +51,6 @@ export class CcListReply extends LitElement {
 				font-size: var(--cc-text-sm);
 				background: var(--cc-surface-sunken);
 				border-radius: var(--cc-radius-sm);
-			}
-
-			.line {
-				display: grid;
-				gap: var(--cc-space-3);
-				padding: var(--cc-space-4);
-				background: var(--cc-surface);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-md);
 			}
 
 			.top {

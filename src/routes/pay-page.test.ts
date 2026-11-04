@@ -142,6 +142,27 @@ test("/pay is the card picker under a sub-header, with no sheet, and hides the P
 	expect(css).toMatch(/:root\[data-pay-page\] \.fab-menu,/);
 });
 
+test("the picker's tiles get each group's room, so a tile's rail shows its used share", async () => {
+	await setup("/pay", withStatement);
+	const rooms = picker()?.rooms;
+	expect(rooms?.get("g1")?.used).toBe(10_000_00);
+	expect(rooms?.get("g1")?.room).toBe(90_000_00);
+	const [first, second] = await pickerRows();
+	expect(first?.classList.contains("tile")).toBe(true);
+	expect(first?.querySelector(".rail")?.getAttribute("aria-label")).toBe(
+		"10% of the limit used",
+	);
+	expect(flatText(first?.querySelector(".facts") ?? null)).toMatch(
+		/^Bill closed 25 Sep 2026 · ฿10,000.00 left$/,
+	);
+	// B has no bill: its last line says when the open statement closes and is due.
+	expect(picker()?.today).toBe("2026-10-31");
+	expect(picker()?.ledgers.get("A")?.owed).toBe(10_000_00);
+	expect(flatText(second?.querySelector(".facts") ?? null)).toBe(
+		"closes 25 Nov 2026 · due 15 Dec 2026",
+	);
+});
+
 test("/pay?card= opens the sheet over the picker, the amount prefilled from the address", async () => {
 	await setup("/pay?card=A&amount=12050", withStatement);
 	expect(picker()).not.toBeNull();
@@ -241,11 +262,11 @@ test("an unknown card says so above the picker and opens no sheet", async () => 
 	expect(picker()).not.toBeNull();
 });
 
-test("a paid payment is stored with its note, statement dates kept, then Transactions replaces the page", async () => {
+test("a paid payment is stored with its note, the settled statement's dates kept, then Transactions replaces the page", async () => {
 	const { repo, visited } = await setup("/pay?card=A", withStatement);
-	await fill("amount", "100");
+	await fill("amount", "10000");
 	await fill("note", "  From savings  ");
-	expect(submitText()).toBe("Record ฿100.00 to A card");
+	expect(submitText()).toBe("Record ฿10,000.00 to A card");
 	await submit();
 	expect((await repo.listStatementDates("A")).map((d) => d.period)).toEqual([
 		"2026-09",
@@ -254,7 +275,7 @@ test("a paid payment is stored with its note, statement dates kept, then Transac
 	expect(stored).toHaveLength(1);
 	expect(stored[0]).toMatchObject({
 		cardId: "A",
-		amount: 10000,
+		amount: 10_000_00,
 		date: "2026-10-31",
 		status: "paid",
 		note: "From savings",

@@ -265,6 +265,7 @@ export function renderCardsPage(
 		if (sheetId !== NEW_GROUP && !group) return nothing;
 		return html`<cc-group-sheet
 			.group=${group}
+			.groups=${groups}
 			.inUse=${group ? cards.some((c) => c.limitGroupId === group.id) : false}
 			.error=${sheetFailed ? state.error : ""}
 			.busy=${busy}

@@ -478,6 +478,29 @@ a:any-link:hover {
 	}
 }
 
+/* Home (DD-152): Needs you above Ready to use on a phone; from 900px Ready to use on the left
+   and Needs you on the right, as the prototype's `.homeg`. */
+.home-grid {
+	display: grid;
+	gap: var(--cc-space-5);
+	align-items: start;
+}
+
+@media (min-width: 900px) {
+	.home-grid {
+		grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+		grid-template-areas: "ready needs";
+	}
+
+	.home-grid > cc-needs-you {
+		grid-area: needs;
+	}
+
+	.home-grid > cc-ready-panel {
+		grid-area: ready;
+	}
+}
+
 /* From 900px the bar is gone; the page clears only the floating button. */
 @media (min-width: 900px) {
 	.page {
@@ -627,15 +650,28 @@ a:any-link:hover {
 	}
 }
 
-/* The rounded panel: rows inside it, a rule between each. A component's rows (cc-display-
-   settings, cc-about) draw their own rules in their shadow root (`setRows` in shared.ts). */
-.set {
-	display: flex;
-	flex-direction: column;
-	padding: var(--cc-space-1) var(--cc-space-4);
+/* The one row panel of the light DOM, the twin of `rowPanel`'s `.panel` in shared.ts: rows
+   inside a rounded surface, a rule between each, no padding above the first or below the last.
+   Settings (`.set`) and a list's saved lines take it; a component's rows (cc-display-settings,
+   cc-about) draw their own rules in their shadow root (`setRows`). */
+.row-panel,
+.set,
+.saved-lines {
+	padding: 0 var(--cc-space-4);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
+}
+
+.set {
+	display: flex;
+	flex-direction: column;
+}
+
+.row-panel > * + *,
+.set > * + *,
+.saved-lines > * + * {
+	border-top: var(--cc-border-width) solid var(--cc-border);
 }
 
 /* A row: its label and muted line on the left, its control on the right. A row that is wholly
@@ -668,7 +704,9 @@ a:any-link:hover {
 }
 
 /* After `.page .set-row`, which clears a button's own border, so the rule between rows holds. */
-.page .set > * + * {
+.page .row-panel > * + *,
+.page .set > * + *,
+.page .saved-lines > * + * {
 	border-top: var(--cc-border-width) solid var(--cc-border);
 }
 
@@ -1072,24 +1110,81 @@ a:any-link:hover {
 	font-size: calc(var(--cc-text-xs) * 0.88);
 }
 
-.mini[data-g="1"] {
-	color: var(--cc-group-1-text);
-	background: var(--cc-group-1);
+[data-g="blue"] {
+	--g-bg: var(--cc-group-blue);
+	--g-fg: var(--cc-group-blue-text);
+	--g-soft: var(--cc-group-blue-soft);
 }
 
-.mini[data-g="2"] {
-	color: var(--cc-group-2-text);
-	background: var(--cc-group-2);
+[data-g="green"] {
+	--g-bg: var(--cc-group-green);
+	--g-fg: var(--cc-group-green-text);
+	--g-soft: var(--cc-group-green-soft);
 }
 
-.mini[data-g="3"] {
-	color: var(--cc-group-3-text);
-	background: var(--cc-group-3);
+[data-g="purple"] {
+	--g-bg: var(--cc-group-purple);
+	--g-fg: var(--cc-group-purple-text);
+	--g-soft: var(--cc-group-purple-soft);
 }
 
-.mini[data-g="4"] {
-	color: var(--cc-group-4-text);
-	background: var(--cc-group-4);
+[data-g="orange"] {
+	--g-bg: var(--cc-group-orange);
+	--g-fg: var(--cc-group-orange-text);
+	--g-soft: var(--cc-group-orange-soft);
+}
+
+[data-g="teal"] {
+	--g-bg: var(--cc-group-teal);
+	--g-fg: var(--cc-group-teal-text);
+	--g-soft: var(--cc-group-teal-soft);
+}
+
+[data-g="rose"] {
+	--g-bg: var(--cc-group-rose);
+	--g-fg: var(--cc-group-rose-text);
+	--g-soft: var(--cc-group-rose-soft);
+}
+
+[data-g="amber"] {
+	--g-bg: var(--cc-group-amber);
+	--g-fg: var(--cc-group-amber-text);
+	--g-soft: var(--cc-group-amber-soft);
+}
+
+[data-g="indigo"] {
+	--g-bg: var(--cc-group-indigo);
+	--g-fg: var(--cc-group-indigo-text);
+	--g-soft: var(--cc-group-indigo-soft);
+}
+
+[data-g="olive"] {
+	--g-bg: var(--cc-group-olive);
+	--g-fg: var(--cc-group-olive-text);
+	--g-soft: var(--cc-group-olive-soft);
+}
+
+[data-g="cyan"] {
+	--g-bg: var(--cc-group-cyan);
+	--g-fg: var(--cc-group-cyan-text);
+	--g-soft: var(--cc-group-cyan-soft);
+}
+
+[data-g="plum"] {
+	--g-bg: var(--cc-group-plum);
+	--g-fg: var(--cc-group-plum-text);
+	--g-soft: var(--cc-group-plum-soft);
+}
+
+[data-g="slate"] {
+	--g-bg: var(--cc-group-slate);
+	--g-fg: var(--cc-group-slate-text);
+	--g-soft: var(--cc-group-slate-soft);
+}
+
+.mini[data-g] {
+	color: var(--g-fg);
+	background: var(--g-bg);
 }
 
 /* A card chip names the card in the line form, and its short form on a phone (UI-14). */
@@ -1473,11 +1568,7 @@ a:any-link:hover {
 
 .saved-lines {
 	margin: 0;
-	padding: 0 var(--cc-space-4);
 	list-style: none;
-	background: var(--cc-surface);
-	border: var(--cc-border-width) solid var(--cc-border);
-	border-radius: var(--cc-radius-md);
 }
 
 .saved-lines li {
@@ -1486,10 +1577,6 @@ a:any-link:hover {
 	justify-content: space-between;
 	gap: var(--cc-space-3);
 	padding-block: var(--cc-space-3);
-}
-
-.saved-lines li + li {
-	border-top: var(--cc-border-width) solid var(--cc-border);
 }
 
 .saved-lines .what {

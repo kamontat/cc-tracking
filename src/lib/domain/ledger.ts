@@ -1,5 +1,11 @@
 import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import { compareDates, comparePeriods, daysBetween } from "#lib/domain/date";
+import {
+	addDays,
+	addPeriods,
+	compareDates,
+	comparePeriods,
+	daysBetween,
+} from "#lib/domain/date";
 import { sumAmounts } from "#lib/domain/money";
 import { openPeriod } from "#lib/domain/statement";
 import type {
@@ -88,8 +94,11 @@ export function cardLedger(
 
 	const statements: LedgerStatement[] = rows
 		.map((row): LedgerStatement => {
-			const dates = frozenFor(row.period);
 			const remaining = row.total - row.paid;
+			const paid = row.paid > 0 && remaining === 0;
+			// Kept dates hold only while the statement is fully paid (DD-167): one that still
+			// owes money follows the card's cycle, so editing the cycle moves its due date.
+			const dates = paid ? frozenFor(row.period) : undefined;
 			return {
 				cardId: card.id,
 				period: row.period,
@@ -100,7 +109,7 @@ export function cardLedger(
 				paidAmount: row.paid,
 				payments: row.parts,
 				remaining,
-				paid: row.paid > 0 && remaining === 0,
+				paid,
 				open: row.period === open,
 			};
 		})
@@ -127,26 +136,30 @@ export function ledgersFor(
 }
 
 /**
- * Statements money has reached that have no kept dates yet. Saving these keeps a paid
- * statement's close and due dates steady if the card's cycle is edited later.
+ * Statements a change fully pays: paid in `after` but not in `before`. Each keeps the dates
+ * it had in `before`, from the card's cycle, so a paid statement stays steady if the cycle is
+ * edited later. They replace any dates stored while the statement still owed money (DD-167).
  */
 export function newlyFrozen(
 	card: Card,
-	ledger: CardLedger,
-	frozen: StatementDates[],
+	before: CardLedger,
+	after: CardLedger,
 ): StatementDates[] {
-	return ledger.statements
+	return after.statements
 		.filter(
 			(s) =>
-				s.paidAmount > 0 &&
-				!frozen.some((f) => f.cardId === card.id && f.period === s.period),
+				s.paid &&
+				!before.statements.some((b) => b.period === s.period && b.paid),
 		)
-		.map((s) => ({
-			cardId: card.id,
-			period: s.period,
-			closeDate: s.closeDate,
-			dueDate: s.dueDate,
-		}));
+		.map((s) => {
+			const was = before.statements.find((b) => b.period === s.period);
+			return {
+				cardId: card.id,
+				period: s.period,
+				closeDate: was?.closeDate ?? closeDateOf(card.cycle, s.period),
+				dueDate: was?.dueDate ?? dueDateOf(card.cycle, s.period),
+			};
+		});
 }
 
 export type LedgerUrgency = "overdue" | "soon" | "due" | "open" | "paid";
@@ -185,4 +198,19 @@ export function nextBill(
 			return s;
 	}
 	return null;
+}
+
+/**
+ * The first day of `period`'s statement: the day after the statement before it closed. The
+ * ledger's own statement before it wins (its dates may be frozen); without one, the card's
+ * cycle says when that statement closed.
+ */
+export function statementStart(
+	card: Card,
+	statements: LedgerStatement[],
+	period: Period,
+): PlainDate {
+	const before = addPeriods(period, -1);
+	const kept = statements.find((s) => s.period === before);
+	return addDays(kept?.closeDate ?? closeDateOf(card.cycle, before), 1);
 }

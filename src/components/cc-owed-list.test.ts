@@ -1,9 +1,11 @@
 import { afterEach, expect, test } from "bun:test";
 import "#components/cc-owed-list";
-import type { CcOwedList } from "#components/cc-owed-list";
+import { CcOwedList } from "#components/cc-owed-list";
 import type { PayChoice } from "#lib/domain/pay";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { rowPanel } from "#styles/shared";
+import { cardTileStyles } from "./card-tile";
 
 afterEach(() => setLocale("en"));
 
@@ -80,18 +82,80 @@ test("empty says nothing is owed", async () => {
 	);
 });
 
-test("heads the panel and names each card in the panel form", async () => {
+test("heads the list and draws each card as a wallet tile in one column", async () => {
 	const { root } = await mount({
-		groups: [{ id: "g1", name: "One", limit: 1 }],
-		rows: rows().map((r) => ({
-			...r,
-			card: { ...r.card, limitGroupId: "g1" },
-		})),
+		groups: [{ id: "g1", name: "One", limit: 1_000_00, color: "blue" }],
+		rooms: new Map([
+			[
+				"g1",
+				{
+					group: { id: "g1", name: "One", limit: 1_000_00, color: "blue" },
+					used: 250_00,
+					available: 750_00,
+					held: 0,
+					room: 750_00,
+					level: "within",
+					sharedWith: 0,
+				},
+			],
+		]),
+		today: "2026-11-04",
+		rows: rows().map((r, i) =>
+			i === 0
+				? {
+						...r,
+						card: { ...r.card, limitGroupId: "g1" },
+						bill: {
+							period: "2026-09",
+							cardId: "A",
+							closeDate: "2026-09-18",
+							dueDate: "2026-10-03",
+							total: 500_00,
+							paidAmount: 0,
+							remaining: 500_00,
+							parts: [],
+							open: false,
+						},
+					}
+				: r,
+		) as PayChoice[],
 	});
 	expect(root.querySelector("h2")?.textContent).toBe("Owed on each card");
-	const first = root.querySelector("a[data-card]");
-	expect(first?.querySelector(".what b")?.textContent).toBe("A) Card A");
-	expect(first?.querySelector(".mini")?.textContent).toBe("1111");
-	expect(first?.querySelector(".mini")?.getAttribute("data-g")).toBe("1");
-	expect(root.querySelectorAll(".panel")).toHaveLength(1);
+	expect(root.querySelector(".panel")).toBeNull();
+	expect(root.querySelectorAll(".tiles")).toHaveLength(1);
+	const [a, b] = Array.from(
+		root.querySelectorAll<HTMLAnchorElement>(".tiles > a.tile[data-card]"),
+	);
+	const flat = (e: Element | null | undefined) =>
+		e?.textContent?.replace(/\s+/g, " ").trim() ?? "";
+	expect(flat(a?.querySelector(".name"))).toBe("A) Card A");
+	expect(flat(a?.querySelector(".corner"))).toBe("•••• 1111");
+	expect(a?.getAttribute("data-g")).toBe("blue");
+	expect(flat(a?.querySelector(".room"))).toBe("฿500.00 owed");
+	expect(flat(a?.querySelector(".aside"))).toBe("Overdue 3 days");
+	expect(a?.querySelector(".aside")?.getAttribute("data-tone")).toBe("bad");
+	expect(flat(a?.querySelector(".facts"))).toBe(
+		"Bill closed 18 Sep 2026 · ฿500.00 left",
+	);
+	expect(a?.querySelector(".rail")?.getAttribute("aria-label")).toBe(
+		"25% of the limit used",
+	);
+	expect(a?.getAttribute("aria-label")).toBe("Card A, ฿500.00 owed");
+	expect(flat(b?.querySelector(".room"))).toBe("Credit ฿120.00");
+	expect(flat(b?.querySelector(".facts"))).toBe(
+		"closes 18 Nov 2026 · due 03 Dec 2026",
+	);
+	expect(b?.hasAttribute("data-g")).toBe(false);
+	expect(b?.querySelector(".rail")).toBeNull();
+});
+
+test("the owed list draws tiles in a single column, not a row panel", () => {
+	const text = (CcOwedList.styles as { cssText: string }[])
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toContain(cardTileStyles.cssText);
+	expect(text).not.toContain(rowPanel.cssText);
+	expect(text).toMatch(
+		/\.tiles\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+	);
 });

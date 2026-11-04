@@ -1,3 +1,4 @@
+import type { GroupColor } from "#lib/domain/group-color";
 import type { Owner } from "#lib/domain/owner";
 
 /** A calendar date in Asia/Bangkok, formatted `YYYY-MM-DD`. */
@@ -43,6 +44,8 @@ export type LimitGroup = {
 	limit: number;
 	/** Absent on groups saved before the field existed; see `ownerOf` in `#lib/domain/owner`. */
 	owner?: Owner;
+	/** Absent on groups saved before the field existed; see `group-color.ts`. */
+	color?: GroupColor;
 };
 
 export type Purchase = {

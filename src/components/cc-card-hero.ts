@@ -19,8 +19,8 @@ import type {
 import { LocaleController } from "#lib/i18n/controller";
 import { nameOfLocation } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { groupTone } from "#lib/ui/card-label";
-import { base } from "#styles/shared";
+import { groupColor } from "#lib/ui/card-label";
+import { base, groupInk } from "#styles/shared";
 
 /**
  * The top of a card's page (prototype `vCard`): the hero on the group's pastel -- the group and
@@ -33,6 +33,7 @@ import { base } from "#styles/shared";
 export class CcCardHero extends LitElement {
 	static override styles = [
 		base,
+		groupInk,
 		css`
 			:host {
 				display: flex;
@@ -51,28 +52,11 @@ export class CcCardHero extends LitElement {
 			}
 
 			.hero[data-g] {
+				color: var(--g-fg);
+				background: var(--g-bg);
 				border-color: transparent;
 			}
 
-			.hero[data-g="1"] {
-				color: var(--cc-group-1-text);
-				background: var(--cc-group-1);
-			}
-
-			.hero[data-g="2"] {
-				color: var(--cc-group-2-text);
-				background: var(--cc-group-2);
-			}
-
-			.hero[data-g="3"] {
-				color: var(--cc-group-3-text);
-				background: var(--cc-group-3);
-			}
-
-			.hero[data-g="4"] {
-				color: var(--cc-group-4-text);
-				background: var(--cc-group-4);
-			}
 
 			.who,
 			.used {
@@ -218,7 +202,7 @@ export class CcCardHero extends LitElement {
 
 	private hero(card: Card) {
 		const room = this.room;
-		const tone = groupTone(card, this.groups);
+		const tone = groupColor(card, this.groups);
 		if (!room)
 			return html`<section class="hero"><p>${t("card.hero.noGroup")}</p></section>`;
 		const { group } = room;

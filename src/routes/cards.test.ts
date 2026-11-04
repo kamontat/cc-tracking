@@ -4,6 +4,7 @@ import type { CcCardsList } from "#components/cc-cards-list";
 import type { CcGroupPanels } from "#components/cc-group-panels";
 import type { CcGroupSheet } from "#components/cc-group-sheet";
 import { DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
+import { toGroupColor } from "#lib/domain/group-color";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { memoryStorage } from "#lib/storage/contract";
@@ -477,6 +478,31 @@ test("a group no card uses can be deleted; the sheet closes once it is gone", as
 	expect((await repo.listLimitGroups()).map((g) => g.id)).toEqual(["g1", "g2"]);
 	expect(sheet()).toBeNull();
 	expect(address.calls).toEqual(["replace /cards"]);
+});
+
+test("a group added through the sheet is stored with a valid colour", async () => {
+	const { repo } = await setup("/cards?newGroup=1");
+	await settle();
+	const el = sheet();
+	const root = el?.shadowRoot as ShadowRoot;
+	const set = (name: string, value: string) => {
+		const input = root.querySelector<HTMLInputElement>(`input[name=${name}]`);
+		if (!input) throw new Error(name);
+		input.value = value;
+		input.dispatchEvent(new Event("input"));
+	};
+	set("name", "Coloured");
+	set("limit", "5000");
+	root.querySelector<HTMLElement>('[data-owner="KC"]')?.click();
+	await el?.updateComplete;
+	root
+		.querySelector("form")
+		?.dispatchEvent(new Event("submit", { cancelable: true }));
+	await settle(5);
+	const saved = (await repo.listLimitGroups()).find(
+		(g) => g.name === "Coloured",
+	);
+	expect(toGroupColor(saved?.color)).not.toBeNull();
 });
 
 test("Add group pushes ?newGroup=1 and saves the new group, then closes", async () => {

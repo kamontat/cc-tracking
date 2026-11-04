@@ -48,6 +48,8 @@ const row = (
 	closeDate: "2026-11-10",
 	dueDate: "2026-11-30",
 	overdue: false,
+	billDue: null,
+	credit: 0,
 });
 
 const rows = (): ReadyRow[] => [

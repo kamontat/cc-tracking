@@ -2,13 +2,45 @@ import "#components/cc-error-banner";
 import "#components/cc-modal";
 import { css, html, LitElement, nothing, type PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import {
+	GROUP_COLORS,
+	type GroupColor,
+	pickColor,
+	toGroupColor,
+} from "#lib/domain/group-color";
 import { amountOf, formatAmountInput } from "#lib/domain/money";
 import { OWNERS, type Owner, ownerOf } from "#lib/domain/owner";
 import type { LimitGroup } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { base, controls } from "#styles/shared";
+import { icons } from "#lib/ui/icons";
+import { base, controls, groupInk } from "#styles/shared";
+
+/** A radio's tab stop: the checked one, else the first when none is checked (roving tabindex). */
+function tabStop<T>(values: readonly T[], current: T | null, value: T) {
+	const stop =
+		current !== null && values.includes(current) ? current : values[0];
+	return value === stop ? "0" : "-1";
+}
+
+/** Where a key moves a radio group's choice: the index it lands on, or null for other keys. */
+function radioStep(key: string, at: number, length: number): number | null {
+	switch (key) {
+		case "ArrowRight":
+		case "ArrowDown":
+			return (at + 1) % length;
+		case "ArrowLeft":
+		case "ArrowUp":
+			return at < 0 ? length - 1 : (at - 1 + length) % length;
+		case "Home":
+			return 0;
+		case "End":
+			return length - 1;
+		default:
+			return null;
+	}
+}
 
 /**
  * A limit group in a sheet over Cards: name, limit and account holder (a segmented control),
@@ -22,6 +54,7 @@ export class CcGroupSheet extends LitElement {
 	static override styles = [
 		base,
 		controls,
+		groupInk,
 		css`
 			:host {
 				display: contents;
@@ -64,11 +97,43 @@ export class CcGroupSheet extends LitElement {
 				border-color: transparent;
 			}
 
-			.seg button[aria-pressed="true"] {
+			.seg button[aria-checked="true"] {
 				font-weight: 650;
 				color: var(--cc-success);
 				background: var(--cc-surface);
 				border-color: var(--cc-border);
+			}
+
+			.swatch-row,
+			.swatches {
+				display: flex;
+				flex-direction: row;
+				flex-wrap: wrap;
+				gap: var(--cc-space-2);
+				align-items: center;
+			}
+
+			.swatch-row button {
+				align-self: center;
+			}
+
+			.swatches button[data-color] {
+				display: inline-grid;
+				place-items: center;
+				inline-size: calc(2 * var(--cc-space-4));
+				block-size: calc(2 * var(--cc-space-4));
+				padding: 0;
+				color: var(--g-fg);
+				background: var(--g-bg);
+				border: var(--cc-border-width) solid
+					color-mix(in oklab, var(--g-fg) 35%, transparent);
+				border-radius: 50%;
+			}
+
+			.swatches button[data-color][aria-checked="true"] {
+				box-shadow:
+					0 0 0 var(--cc-rule-width) var(--cc-surface),
+					0 0 0 calc(2 * var(--cc-rule-width)) var(--g-fg);
 			}
 
 			input {
@@ -103,6 +168,10 @@ export class CcGroupSheet extends LitElement {
 	@property({ attribute: false }) group: LimitGroup | null = null;
 	/** A card uses the group, so it cannot be deleted. */
 	@property({ type: Boolean }) inUse = false;
+	/** Every stored group; the sheet leaves its own out when judging which colours are free. */
+	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** The draw behind a random colour; tests inject it. */
+	@property({ attribute: false }) random: () => number = Math.random;
 	/** Why the last save or delete failed; typing is kept. */
 	@property() error = "";
 	/** A save is under way: the button waits and the sheet holds open. */
@@ -111,6 +180,7 @@ export class CcGroupSheet extends LitElement {
 	@state() private name = "";
 	@state() private limit = "";
 	@state() private owner: Owner | null = null;
+	@state() private color: GroupColor = GROUP_COLORS[0];
 	@state() private asking = false;
 	// The catalog key, so a language switch re-renders the message in place.
 	@state() private errorKey: MessageKey | "" = "";
@@ -138,8 +208,27 @@ export class CcGroupSheet extends LitElement {
 		this.name = group?.name ?? "";
 		this.limit = group ? formatAmountInput(group.limit) : "";
 		this.owner = group ? ownerOf(group) : null;
+		this.color = toGroupColor(group?.color) ?? this.freeColor();
 		this.asking = false;
 		this.errorKey = "";
+	}
+
+	/**
+	 * A random colour none of the other groups wear. `avoid` is a colour to leave out too, so
+	 * Random never lands on the one already chosen; `pickColor` falls back to it only when
+	 * nothing else is free.
+	 */
+	private freeColor(avoid?: GroupColor): GroupColor {
+		const id = this.group?.id;
+		const others = this.groups.filter((g) => g.id !== id);
+		const picked = pickColor(others, this.random);
+		if (!avoid || picked !== avoid) return picked;
+		// Drew the chosen colour: draw again with it counted as taken. When it was the only
+		// free colour that draw falls back to the whole palette, so keep the first draw then.
+		const used = new Set(others.map((g) => g.color));
+		const free = GROUP_COLORS.filter((c) => !used.has(c));
+		if (free.length < 2) return picked;
+		return pickColor([...others, { color: avoid } as LimitGroup], this.random);
 	}
 
 	protected override updated() {
@@ -181,6 +270,7 @@ export class CcGroupSheet extends LitElement {
 					name,
 					limit,
 					owner: this.owner,
+					color: this.color,
 				},
 			}),
 		);
@@ -208,6 +298,36 @@ export class CcGroupSheet extends LitElement {
 		</div>`;
 	}
 
+	/**
+	 * A radio group's keys (the holders, the colours): an arrow moves to the next or previous
+	 * choice, wrapping, Home and End to the first and last; moving chooses it and takes focus
+	 * with it. Space and Enter press the focused radio as a button does.
+	 */
+	private async arrow<T extends string>(
+		event: KeyboardEvent,
+		values: readonly T[],
+		current: T | null,
+		attr: string,
+		choose: (value: T) => void,
+	) {
+		// Step from the focused radio, which is the checked one unless none is checked yet.
+		const from =
+			(event.target as Element | null)
+				?.closest(`[${attr}]`)
+				?.getAttribute(attr) ?? current;
+		const next = radioStep(
+			event.key,
+			from === null ? -1 : values.indexOf(from as T),
+			values.length,
+		);
+		const value = next === null ? undefined : values[next];
+		if (value === undefined) return;
+		event.preventDefault();
+		choose(value);
+		await this.updateComplete;
+		this.renderRoot.querySelector<HTMLElement>(`[${attr}="${value}"]`)?.focus();
+	}
+
 	override render() {
 		const group = this.group;
 		return html`<cc-modal sheet .held=${this.busy}
@@ -232,14 +352,51 @@ export class CcGroupSheet extends LitElement {
 							this.limit = (e.target as HTMLInputElement).value;
 						}} /></label>
 				<fieldset>
-					<legend>${t("limits.owner")}</legend>
-					<div class="seg">${OWNERS.map(
-						(owner) => html`<button type="button" data-owner=${owner}
-							aria-pressed=${this.owner === owner ? "true" : "false"}
-							@click=${() => {
+					<legend id="owner-legend">${t("limits.owner")}</legend>
+					<div class="seg" role="radiogroup" aria-labelledby="owner-legend"
+						@keydown=${(e: KeyboardEvent) =>
+							this.arrow(e, OWNERS, this.owner, "data-owner", (owner) => {
 								this.owner = owner;
-							}}>${owner}</button>`,
-					)}</div>
+							})}>${OWNERS.map(
+							(
+								owner,
+							) => html`<button type="button" role="radio" data-owner=${owner}
+									aria-checked=${this.owner === owner ? "true" : "false"}
+									tabindex=${tabStop(OWNERS, this.owner, owner)}
+									@click=${() => {
+										this.owner = owner;
+									}}>${owner}</button>`,
+						)}</div>
+				</fieldset>
+				<fieldset>
+					<legend id="color-legend">${t("limits.color")}</legend>
+					<div class="swatch-row">
+						<div class="swatches" role="radiogroup" aria-labelledby="color-legend"
+							@keydown=${(e: KeyboardEvent) =>
+								this.arrow(
+									e,
+									GROUP_COLORS,
+									this.color,
+									"data-color",
+									(color) => {
+										this.color = color;
+									},
+								)}>${GROUP_COLORS.map(
+								(
+									color,
+								) => html`<button type="button" role="radio" data-color=${color} data-g=${color}
+										aria-label=${t(`color.${color}`)}
+										aria-checked=${this.color === color ? "true" : "false"}
+										tabindex=${tabStop(GROUP_COLORS, this.color, color)}
+										@click=${() => {
+											this.color = color;
+										}}>${this.color === color ? icons.check : nothing}</button>`,
+							)}</div>
+						<button type="button" data-variant="quiet" data-action="random-color"
+							@click=${() => {
+								this.color = this.freeColor(this.color);
+							}}>${t("limits.color.random")}</button>
+					</div>
 				</fieldset>
 				<button type="submit" ?disabled=${this.busy}>${
 					group ? t("limits.save") : t("limits.add")

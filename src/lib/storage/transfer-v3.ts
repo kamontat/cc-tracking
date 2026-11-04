@@ -1,3 +1,4 @@
+import { toGroupColor } from "#lib/domain/group-color";
 import { defaultLocations } from "#lib/domain/locations";
 import { toSettings } from "#lib/domain/settings";
 import type {
@@ -12,6 +13,7 @@ import type {
 } from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
 import { MessageError } from "#lib/i18n/error";
+import { assignGroupColors } from "#lib/storage/assign-group-colors";
 import {
 	convertPayments,
 	PAYMENTS_MIGRATION_KEY,
@@ -387,7 +389,15 @@ export async function importBackupV3(
 	backup: BackupV3,
 	options: ImportOptions = {},
 ): Promise<void> {
-	for (const group of backup.limitGroups) await repo.saveLimitGroup(group);
+	// A file's colour wins when it is a valid one; otherwise the stored group keeps its own,
+	// and a group new to the device gets one below. A colour never makes a restore refuse.
+	const storedGroups = new Map(
+		(await repo.listLimitGroups()).map((group) => [group.id, group]),
+	);
+	for (const { color, ...group } of backup.limitGroups) {
+		const kept = toGroupColor(color) ?? storedGroups.get(group.id)?.color;
+		await repo.saveLimitGroup(kept ? { ...group, color: kept } : group);
+	}
 	const stored = await repo.listLocations();
 	const overwrite =
 		options.overSeeded === true &&
@@ -427,12 +437,20 @@ export async function importBackupV3(
 			await repo.deleteLocation(seed.id);
 		}
 	}
+	// The data has landed; a colour that cannot be stored must not report the restore as failed.
+	try {
+		await assignGroupColors(repo);
+	} catch (failure) {
+		console.error(failure);
+	}
 }
 
 /**
  * Destructive: forgets everything stored, then writes the backup, so the file's location
  * records are the ones kept. The payments marker is
- * set again afterwards, so the startup conversion does not run over the restored data.
+ * set again afterwards, so the startup conversion does not run over the restored data. Every
+ * group leaves with a colour (`importBackupV3` assigns them), so the colours marker is not
+ * needed and `clearAll` having removed it is harmless.
  */
 export async function replaceWithBackupV3(
 	repo: Repository,

@@ -3,6 +3,7 @@ import "#components/cc-list-table";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { shareTable } from "#lib/ui/list-share";
+import { rowPanel } from "#styles/shared";
 
 const card = (id: string, name: string, last4: string): Card => ({
 	id,
@@ -49,4 +50,40 @@ test("the table matches the share table", async () => {
 	expect(numeric("thead th:last-child")).toBe(true);
 	expect(numeric("tfoot td:last-child")).toBe(true);
 	expect(root.querySelectorAll("tbody td[data-numeric]")).toHaveLength(2);
+});
+
+test("the table sits in a row panel, body rows divided by the hairline", async () => {
+	setLocale("en");
+	document.body.innerHTML = "";
+	const element = document.createElement("cc-list-table") as HTMLElement & {
+		updateComplete: Promise<boolean>;
+	};
+	(element as unknown as { list: unknown }).list = {
+		date: "2026-10-31",
+		lines: [],
+	};
+	document.body.append(element);
+	await element.updateComplete;
+	const root = element.shadowRoot as ShadowRoot;
+	expect(root.querySelector(".panel table")).toBeInstanceOf(HTMLElement);
+	const text = (
+		element.constructor as unknown as { styles: { cssText: string }[] }
+	).styles
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toContain(rowPanel.cssText);
+	expect(text).toMatch(
+		/tbody tr \+ tr[^{]*\{[^}]*border-top: var\(--cc-border-width\) solid var\(--cc-border\)/,
+	);
+});
+
+test("a hairline also sits between the header and the first body row", () => {
+	const text = (
+		customElements.get("cc-list-table") as unknown as {
+			styles: { cssText: string }[];
+		}
+	).styles
+		.map((s) => s.cssText)
+		.join("\n");
+	expect(text).toMatch(/tbody tr:first-child[^{]*\{[^}]*border-top/);
 });

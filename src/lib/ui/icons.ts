@@ -21,6 +21,7 @@ export const icons: Record<
 	| "clock"
 	| "alert"
 	| "back"
+	| "chevron"
 	| "check"
 	| "copy"
 	| "image"
@@ -28,7 +29,8 @@ export const icons: Record<
 	| "search"
 	| "filter"
 	| "list"
-	| "wallet",
+	| "wallet"
+	| "bookmark",
 	SVGTemplateResult
 > = {
 	home: icon(
@@ -50,6 +52,8 @@ export const icons: Record<
 		svg`<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>`,
 	),
 	back: icon(svg`<path d="m15 18-6-6 6-6"/>`),
+	// Lucide's `chevron-down`: a row that opens in place (turned up once open).
+	chevron: icon(svg`<path d="m6 9 6 6 6-6"/>`),
 	check: icon(svg`<path d="M20 6 9 17l-5-5"/>`),
 	copy: icon(
 		svg`<rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>`,
@@ -67,5 +71,9 @@ export const icons: Record<
 	// Lucide's `wallet`: making a payment.
 	wallet: icon(
 		svg`<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>`,
+	),
+	// Lucide's `bookmark`: a saved purchase list.
+	bookmark: icon(
+		svg`<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>`,
 	),
 };

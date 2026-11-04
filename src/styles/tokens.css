@@ -7,6 +7,8 @@
 	--cc-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 	--cc-leading: 1.65;
 
+	/* The smallest text: a label on an opened row's billing cycle line. */
+	--cc-text-2xs: 0.6875rem;
 	--cc-text-xs: 0.75rem;
 	--cc-text-sm: 0.8125rem;
 	--cc-text-md: 0.9375rem;
@@ -100,6 +102,22 @@
 	--cc-sheet-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 	--cc-sheet-scale-from: 0.96;
 
+	/* How an opening row's chevron turns (on the sheet's ease); not under prefers-reduced-motion. */
+	--cc-row-motion: 160ms;
+
+	/* An opened row's billing cycle line (DD-165): its height, where its track's centre sits
+	   from the top (room above for the Today label), the track's thickness, a marker circle,
+	   the Today tick, and how strongly the fill shows on a purchase's line. */
+	--cc-cycle-height: 3.875rem;
+	--cc-cycle-axis: 1.875rem;
+	--cc-cycle-track: 0.25rem;
+	--cc-cycle-dot: 0.875rem;
+	--cc-cycle-tick: 1.125rem;
+	--cc-cycle-fill-opacity: 0.55;
+
+	/* How wide an opened row's sentence wants to be before its buttons drop under it. */
+	--cc-foot-say: 18rem;
+
 	/* The widest a page's content grows. */
 	--cc-page-width: 72rem;
 
@@ -107,6 +125,9 @@
 	   and actions are not stretched across a tablet. From 900px it takes the page width and
 	   parks its side panel beside the lines. */
 	--cc-page-narrow: 48rem;
+
+	/* The narrowest a card tile gets in the tiles grid from 900px (DD-151). */
+	--cc-tile-min: 16rem;
 
 	/* The purchase list's side panel from 900px: the date, the summary and the one action. */
 	--cc-side-panel: 20rem;
@@ -149,14 +170,46 @@
 	--cc-warning-surface: #fbecd9;
 
 	/* Pastel pairs for grouping: a soft ground and the ink that reads on it. */
-	--cc-group-1: #e3e9fb;
-	--cc-group-1-text: #3552b8;
-	--cc-group-2: #dff1e7;
-	--cc-group-2-text: #2f7457;
-	--cc-group-3: #efe5f7;
-	--cc-group-3-text: #7a45a8;
-	--cc-group-4: #fbe6dd;
-	--cc-group-4-text: #a74e2c;
+
+	/* The twelve colours a limit group can carry (GROUP_COLORS): the ground, the ink that reads
+	   on it, and a lighter tint for quiet surfaces. Ink holds at least 4.5:1 on both, light and
+	   dark (lowest pair: 4.63:1, orange ink on its ground). */
+	--cc-group-blue: #e3e9fb;
+	--cc-group-blue-text: #3552b8;
+	--cc-group-blue-soft: #f1f4fd;
+	--cc-group-green: #dff1e7;
+	--cc-group-green-text: #2f7457;
+	--cc-group-green-soft: #eff8f3;
+	--cc-group-purple: #efe5f7;
+	--cc-group-purple-text: #7a45a8;
+	--cc-group-purple-soft: #f7f2fb;
+	--cc-group-orange: #fbe6dd;
+	--cc-group-orange-text: #a74e2c;
+	--cc-group-orange-soft: #fdf3ee;
+	--cc-group-teal: #ddf8f7;
+	--cc-group-teal-text: #217370;
+	--cc-group-teal-soft: #eefcfb;
+	--cc-group-rose: #fbdae2;
+	--cc-group-rose-text: #9c1c3c;
+	--cc-group-rose-soft: #fdedf1;
+	--cc-group-amber: #fbf1da;
+	--cc-group-amber-text: #745611;
+	--cc-group-amber-soft: #fdf8ed;
+	--cc-group-indigo: #e1dcf9;
+	--cc-group-indigo-text: #372593;
+	--cc-group-indigo-soft: #f0eefc;
+	--cc-group-olive: #f0f6df;
+	--cc-group-olive-text: #516024;
+	--cc-group-olive-soft: #f8fbef;
+	--cc-group-cyan: #dbf1fa;
+	--cc-group-cyan-text: #1a5f7a;
+	--cc-group-cyan-soft: #edf8fd;
+	--cc-group-plum: #f6dff6;
+	--cc-group-plum-text: #853285;
+	--cc-group-plum-soft: #fbeffb;
+	--cc-group-slate: #e4eaf1;
+	--cc-group-slate-text: #404f64;
+	--cc-group-slate-soft: #f2f5f8;
 
 	/* Resolved at use, so the dark block below re-points these for free. */
 	--cc-urgency-overdue: var(--cc-danger);
@@ -214,14 +267,42 @@
 		--cc-warning: #e7a55e;
 		--cc-warning-surface: #3a2a18;
 
-		--cc-group-1: #1f2944;
-		--cc-group-1-text: #9fb3f5;
-		--cc-group-2: #1b3328;
-		--cc-group-2-text: #8ed7b4;
-		--cc-group-3: #2e2240;
-		--cc-group-3-text: #cfa6ef;
-		--cc-group-4: #3a241b;
-		--cc-group-4-text: #f2a882;
+		--cc-group-blue: #1f2944;
+		--cc-group-blue-text: #9fb3f5;
+		--cc-group-blue-soft: #1d2632;
+		--cc-group-green: #1b3328;
+		--cc-group-green-text: #8ed7b4;
+		--cc-group-green-soft: #1b2b24;
+		--cc-group-purple: #2e2240;
+		--cc-group-purple-text: #cfa6ef;
+		--cc-group-purple-soft: #252330;
+		--cc-group-orange: #3a241b;
+		--cc-group-orange-text: #f2a882;
+		--cc-group-orange-soft: #2b241d;
+		--cc-group-teal: #233e3d;
+		--cc-group-teal-text: #8beeeb;
+		--cc-group-teal-soft: #1f312e;
+		--cc-group-rose: #411f28;
+		--cc-group-rose-text: #f584a1;
+		--cc-group-rose-soft: #2e2124;
+		--cc-group-amber: #43381e;
+		--cc-group-amber-text: #f5d384;
+		--cc-group-amber-soft: #2f2e1f;
+		--cc-group-indigo: #27223f;
+		--cc-group-indigo-text: #9988f2;
+		--cc-group-indigo-soft: #21232f;
+		--cc-group-olive: #363c25;
+		--cc-group-olive-text: #d2e892;
+		--cc-group-olive-soft: #293022;
+		--cc-group-cyan: #203740;
+		--cc-group-cyan-text: #84d5f5;
+		--cc-group-cyan-soft: #1e2d30;
+		--cc-group-plum: #3c253c;
+		--cc-group-plum-text: #e892e8;
+		--cc-group-plum-soft: #2c242e;
+		--cc-group-slate: #2b3036;
+		--cc-group-slate-text: #a1b8d9;
+		--cc-group-slate-soft: #232a2b;
 
 		--cc-focus-ring: 0 0 0 3px rgb(116 201 161 / 0.45);
 		--cc-focus-ring-inset: inset 0 0 0 3px rgb(116 201 161 / 0.45);
@@ -258,14 +339,42 @@
 	--cc-warning: #e7a55e;
 	--cc-warning-surface: #3a2a18;
 
-	--cc-group-1: #1f2944;
-	--cc-group-1-text: #9fb3f5;
-	--cc-group-2: #1b3328;
-	--cc-group-2-text: #8ed7b4;
-	--cc-group-3: #2e2240;
-	--cc-group-3-text: #cfa6ef;
-	--cc-group-4: #3a241b;
-	--cc-group-4-text: #f2a882;
+	--cc-group-blue: #1f2944;
+	--cc-group-blue-text: #9fb3f5;
+	--cc-group-blue-soft: #1d2632;
+	--cc-group-green: #1b3328;
+	--cc-group-green-text: #8ed7b4;
+	--cc-group-green-soft: #1b2b24;
+	--cc-group-purple: #2e2240;
+	--cc-group-purple-text: #cfa6ef;
+	--cc-group-purple-soft: #252330;
+	--cc-group-orange: #3a241b;
+	--cc-group-orange-text: #f2a882;
+	--cc-group-orange-soft: #2b241d;
+	--cc-group-teal: #233e3d;
+	--cc-group-teal-text: #8beeeb;
+	--cc-group-teal-soft: #1f312e;
+	--cc-group-rose: #411f28;
+	--cc-group-rose-text: #f584a1;
+	--cc-group-rose-soft: #2e2124;
+	--cc-group-amber: #43381e;
+	--cc-group-amber-text: #f5d384;
+	--cc-group-amber-soft: #2f2e1f;
+	--cc-group-indigo: #27223f;
+	--cc-group-indigo-text: #9988f2;
+	--cc-group-indigo-soft: #21232f;
+	--cc-group-olive: #363c25;
+	--cc-group-olive-text: #d2e892;
+	--cc-group-olive-soft: #293022;
+	--cc-group-cyan: #203740;
+	--cc-group-cyan-text: #84d5f5;
+	--cc-group-cyan-soft: #1e2d30;
+	--cc-group-plum: #3c253c;
+	--cc-group-plum-text: #e892e8;
+	--cc-group-plum-soft: #2c242e;
+	--cc-group-slate: #2b3036;
+	--cc-group-slate-text: #a1b8d9;
+	--cc-group-slate-soft: #232a2b;
 
 	--cc-focus-ring: 0 0 0 3px rgb(116 201 161 / 0.45);
 	--cc-focus-ring-inset: inset 0 0 0 3px rgb(116 201 161 / 0.45);

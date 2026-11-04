@@ -4,7 +4,7 @@ import type { CardsResults, CardsRooms } from "#lib/domain/cards-view";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { displayDate, today } from "#lib/domain/date";
 import { takesPurchases } from "#lib/domain/locations";
-import { formatAmount } from "#lib/domain/money";
+import { cardOwnerOf } from "#lib/domain/owner";
 import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
@@ -16,10 +16,9 @@ import type {
 import { LocaleController } from "#lib/i18n/controller";
 import { nameOfLocation } from "#lib/i18n/format";
 import { getLocale, t } from "#lib/i18n/index";
-import { cardMini, cardRowTitle } from "#lib/ui/card-label";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
-import { roomNote } from "#lib/ui/room-note";
-import { base, cardBits, controls, rowPanel } from "#styles/shared";
+import { base, controls } from "#styles/shared";
+import { cardTileStyles, lastFour, tileBody, tileTone } from "./card-tile";
 
 const ARCHIVE_PANEL = "cards-archive";
 
@@ -31,17 +30,17 @@ const cardsCount = (count: number) =>
 /**
  * The Cards page's results (DD prototype `cardResults`): by place, a section per location
  * headed by its name, its count and whether it takes purchases; under any other sort, one flat
- * list headed by its count whose rows also say the place and holder. Archived matches fold at
- * the end (`cc:panel:cards-archive`). A row links to its card page and shows, on the right, its
- * group's room with *room*, *N% used* from 80%, or the credit the card holds.
+ * list headed by its count whose tiles also say the place. Archived matches fold at the end
+ * (`cc:panel:cards-archive`). Each card is a card tile (DD-151) that opens its card page: the
+ * last 4, the group's room and its word, the cardholder (`· Sub` for a supplementary card),
+ * and the open period's dates.
  */
 @customElement("cc-cards-list")
 export class CcCardsList extends LitElement {
 	static override styles = [
 		base,
 		controls,
-		cardBits,
-		rowPanel,
+		cardTileStyles,
 		css`
 			:host {
 				display: flex;
@@ -72,30 +71,6 @@ export class CcCardsList extends LitElement {
 
 			.result-head {
 				font-size: var(--cc-text-sm);
-			}
-
-			.t {
-				display: inline;
-			}
-
-			.title {
-				display: flex;
-				flex-wrap: wrap;
-				align-items: baseline;
-				gap: var(--cc-space-1) var(--cc-space-2);
-			}
-
-			.sub {
-				font-size: var(--cc-text-sm);
-				color: var(--cc-text-muted);
-			}
-
-			.r small[data-tone="warn"] {
-				color: var(--cc-warning);
-			}
-
-			.r small[data-tone="muted"] {
-				color: var(--cc-text-muted);
 			}
 
 			details.archive {
@@ -151,17 +126,6 @@ export class CcCardsList extends LitElement {
 		new LocaleController(this);
 	}
 
-	private right(card: Card) {
-		const room = card.limitGroupId ? this.rooms.get(card.limitGroupId) : null;
-		if (!room)
-			return html`<span class="r"><small data-tone="muted">${t("cards.page.noGroup")}</small></span>`;
-		const note = roomNote(room, this.credits.get(card.id) ?? 0);
-		return html`<span class="r">
-			<b class="amount" data-numeric>${formatAmount(room.room)}</b>
-			<small data-tone=${note.warn ? "warn" : nothing}>${note.text}</small>
-		</span>`;
-	}
-
 	private dates(card: Card): string {
 		const period = openPeriod(card, this.today);
 		// The ledger's open statement honours kept dates; the cycle only fills in without one.
@@ -176,25 +140,32 @@ export class CcCardsList extends LitElement {
 		});
 	}
 
-	private row(card: Card, flat: boolean) {
-		const extra = flat ? nameOfLocation(this.locations, card.location) : "";
-		return html`<a class="crow" data-card=${card.id}
-			href=${`/card?id=${encodeURIComponent(card.id)}`}>
-			${cardMini(card, this.groups)}
-			<span class="what"><span class="title"><span class="t"><b>${cardRowTitle(card, this.groups)}</b>${
-				extra ? html` <span class="word">· ${extra}</span>` : nothing
-			}</span>${
-				card.supplementary
-					? html`<span class="tag">${t("cards.page.supplementary")}</span>`
-					: nothing
-			}</span>
-			<span class="sub">${this.dates(card)}</span></span>
-			${this.right(card)}
-		</a>`;
+	/** Line 2's aside: the cardholder, then `· Sub` for a supplementary card. */
+	private holder(card: Card): string {
+		const group = this.groups.find((g) => g.id === card.limitGroupId) ?? null;
+		const owner = cardOwnerOf(card, group) ?? "";
+		return card.supplementary
+			? [owner, t("tile.sub")].filter(Boolean).join(" · ")
+			: owner;
 	}
 
-	private panel(cards: Card[], flat: boolean) {
-		return html`<div class="panel">${cards.map((c) => this.row(c, flat))}</div>`;
+	private tile(card: Card, flat: boolean) {
+		const place = flat ? nameOfLocation(this.locations, card.location) : "";
+		const room = card.limitGroupId ? this.rooms.get(card.limitGroupId) : null;
+		return html`<a class="tile" data-g=${tileTone(card, this.groups)} data-card=${card.id}
+			href=${`/card?id=${encodeURIComponent(card.id)}`}>${tileBody({
+				card,
+				room: room ?? null,
+				credit: this.credits.get(card.id) ?? 0,
+				corner: lastFour(card),
+				mono: true,
+				aside: this.holder(card),
+				facts: place ? `${this.dates(card)} · ${place}` : this.dates(card),
+			})}</a>`;
+	}
+
+	private tiles(cards: Card[], flat: boolean) {
+		return html`<div class="tiles">${cards.map((c) => this.tile(c, flat))}</div>`;
 	}
 
 	private archive() {
@@ -203,7 +174,7 @@ export class CcCardsList extends LitElement {
 		return html`<details class="archive" ?open=${panelOpen(ARCHIVE_PANEL, false)}
 			@toggle=${rememberPanel(ARCHIVE_PANEL)}>
 			<summary>${t("cards.archivedList", { count: archived.length })}</summary>
-			${this.panel(archived, true)}
+			${this.tiles(archived, true)}
 		</details>`;
 	}
 
@@ -223,14 +194,14 @@ export class CcCardsList extends LitElement {
 							? ` · ${t("cards.page.takesPurchases")}`
 							: ""
 					}</small></h2>
-					${this.panel(cards, false)}
+					${this.tiles(cards, false)}
 				</section>`,
 			)}
 			${
 				flat && flat.length > 0
 					? html`<section>
 						<p class="result-head">${cardsCount(flat.length)}</p>
-						${this.panel(flat, true)}
+						${this.tiles(flat, true)}
 					</section>`
 					: nothing
 			}

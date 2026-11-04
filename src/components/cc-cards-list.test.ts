@@ -30,8 +30,15 @@ const g1: LimitGroup = {
 	name: "SCB",
 	limit: 100_000_00,
 	owner: "KC",
+	color: "blue",
 };
-const g2: LimitGroup = { id: "g2", name: "UOB", limit: 10_000_00, owner: "NT" };
+const g2: LimitGroup = {
+	id: "g2",
+	name: "UOB",
+	limit: 10_000_00,
+	owner: "NT",
+	color: "rose",
+};
 const room = (group: LimitGroup, used: number): GroupRoom => ({
 	group,
 	used,
@@ -117,26 +124,26 @@ test("places are named by their records; one with no record by its id", async ()
 		...cards,
 		card("G", { location: "gone" }),
 	]);
-	expect(text(flat.root.querySelector('a[data-card="G"] .word'))).toBe(
-		"· gone",
+	expect(text(flat.root.querySelector('a[data-card="G"] .facts'))).toMatch(
+		/ · gone$/,
 	);
 });
 
-test("rows link to the card page, encoded, with the chip and id) name", async () => {
+test("tiles link to the card page, encoded, in the group's colour", async () => {
 	const { root } = await mount();
 	const links = [
-		...root.querySelectorAll<HTMLAnchorElement>("section a.crow[data-card]"),
+		...root.querySelectorAll<HTMLAnchorElement>("section a.tile[data-card]"),
 	];
 	expect(links.map((a) => a.getAttribute("href"))).toEqual([
 		"/card?id=A",
 		"/card?id=B%2F2",
 		"/card?id=C",
 	]);
-	expect(links[0]?.querySelector(".mini")?.textContent).toBe("1111");
-	expect(text(links[0]?.querySelector(".t"))).toBe("A) Card A · KC (1111)");
+	expect(links.map((a) => a.dataset["g"])).toEqual(["blue", "rose", "blue"]);
+	expect(root.querySelectorAll("section .tiles")).toHaveLength(2);
 });
 
-test("rows are titled id) name · holder (last4), with the open period's dates and a Supplementary tag", async () => {
+test("a tile: id) name and the last 4, the room and its word with the cardholder, then the open period's dates", async () => {
 	const { limitGroupId: _unused, ...bare } = card("N", { last4: "" });
 	const list = [
 		card("A"),
@@ -144,18 +151,25 @@ test("rows are titled id) name · holder (last4), with the open period's dates a
 		bare,
 	];
 	const { root } = await mount({}, { today: "2026-10-30" }, list);
-	const row = (id: string) => root.querySelector(`a[data-card="${id}"]`);
-	expect(text(row("A")?.querySelector(".t"))).toBe("A) Card A · KC (1111)");
-	expect(text(row("A")?.querySelector(".sub"))).toBe(
+	const tile = (id: string) => root.querySelector(`a[data-card="${id}"]`);
+	expect(text(tile("A")?.querySelector(".name"))).toBe("A) Card A");
+	expect(text(tile("A")?.querySelector(".corner"))).toBe("•••• 1111");
+	expect(text(tile("A")?.querySelector(".aside"))).toBe("KC");
+	expect(text(tile("A")?.querySelector(".facts"))).toBe(
 		"closes 18 Nov 2026 · due 03 Dec 2026",
 	);
-	expect(row("A")?.querySelector(".tag")).toBeNull();
-	expect(text(row("S")?.querySelector(".tag"))).toBe("Supplementary");
-	expect(text(row("S")?.querySelector(".t"))).toBe("S) Card S · NT (1111)");
-	expect(text(row("N")?.querySelector(".t"))).toBe("N) Card N");
+	expect(tile("A")?.querySelector(".tag")).toBeNull();
+	expect(text(tile("S")?.querySelector(".aside"))).toBe("NT · Sub");
+	expect(text(tile("N")?.querySelector(".name"))).toBe("N) Card N");
+	expect(text(tile("N")?.querySelector(".corner"))).toBe("");
+	setLocale("th");
+	const thai = await mount({}, { today: "2026-10-30" }, list);
+	expect(text(thai.root.querySelector('a[data-card="S"] .aside'))).toBe(
+		"NT · เสริม",
+	);
 });
 
-test("the subtitle takes the open period's dates from the ledger, frozen ones included", async () => {
+test("line 3 takes the open period's dates from the ledger, a paid one's frozen dates included", async () => {
 	const a = card("A");
 	const frozen = [
 		{
@@ -165,42 +179,79 @@ test("the subtitle takes the open period's dates from the ledger, frozen ones in
 			dueDate: "2026-12-07",
 		},
 	];
-	const ledgers = new Map([["A", cardLedger(a, [], [], frozen, "2026-10-30")]]);
+	const ledgers = new Map([
+		[
+			"A",
+			cardLedger(
+				a,
+				[{ id: "p", cardId: "A", date: "2026-10-28", amount: 100, note: "" }],
+				[
+					{
+						id: "c",
+						cardId: "A",
+						date: "2026-10-29",
+						amount: 100,
+						status: "paid",
+					},
+				],
+				frozen,
+				"2026-10-30",
+			),
+		],
+	]);
 	const { root } = await mount({}, { today: "2026-10-30", ledgers }, [a]);
-	expect(text(root.querySelector('a[data-card="A"] .sub'))).toBe(
+	expect(text(root.querySelector('a[data-card="A"] .facts'))).toBe(
 		"closes 20 Nov 2026 · due 07 Dec 2026",
 	);
 });
 
-test("the right side: room, N% used from 80% in the warn tone, or credit", async () => {
+test("line 2: room, N% used from 80% in the warn tone, over limit in red, or credit; the rail matches", async () => {
+	const over = new Map(rooms);
+	over.set("g2", room(g2, 12_000_00));
 	const { root } = await mount();
-	const right = (id: string) => root.querySelector(`a[data-card="${id}"] .r`);
-	expect(text(right("A"))).toBe("฿80,000.00 room");
-	expect(text(right("B/2"))).toBe("฿1,000.00 90% used");
-	expect(right("B/2")?.querySelector("small")?.getAttribute("data-tone")).toBe(
+	const line = (r: ParentNode, id: string) =>
+		r.querySelector(`a[data-card="${id}"] .room`);
+	const rail = (r: ParentNode, id: string) =>
+		r.querySelector<HTMLElement>(`a[data-card="${id}"] .rail`)?.dataset[
+			"level"
+		];
+	expect(text(line(root, "A"))).toBe("฿80,000.00 room");
+	expect(rail(root, "A")).toBe("within");
+	expect(text(line(root, "B/2"))).toBe("฿1,000.00 90% used");
+	expect(line(root, "B/2")?.querySelector("small")?.dataset["tone"]).toBe(
 		"warn",
 	);
-	expect(right("B/2")?.querySelector("[data-numeric]")).not.toBeNull();
-	expect(text(right("C"))).toBe("฿80,000.00 credit ฿250.00");
+	expect(rail(root, "B/2")).toBe("high");
+	expect(text(line(root, "C"))).toBe("฿80,000.00 credit ฿250.00");
+	const red = await mount({}, { rooms: over });
+	expect(text(line(red.root, "B/2"))).toBe("−฿2,000.00 over limit");
+	expect(line(red.root, "B/2")?.querySelector("small")?.dataset["tone"]).toBe(
+		"bad",
+	);
+	expect(rail(red.root, "B/2")).toBe("over");
 });
 
-test("a card with no limit group, or a deleted one, says so in place of a dash", async () => {
+test("a card with no limit group, or a deleted one, says so, with no colour and no rail", async () => {
 	const { root } = await mount({}, {}, [
 		(({ limitGroupId: _, ...rest }) => rest)(card("N")),
 		card("D", { limitGroupId: "gone" }),
 	]);
 	for (const id of ["N", "D"]) {
-		const right = root.querySelector(`a[data-card="${id}"] .r`);
-		expect(text(right)).toBe("No limit group");
-		expect(right?.querySelector("[data-numeric]")).toBeNull();
+		const tile = root.querySelector<HTMLElement>(`a[data-card="${id}"]`);
+		expect(text(tile?.querySelector(".room"))).toBe("No limit group");
+		expect(tile?.querySelector("[data-numeric]")).toBeNull();
+		expect(tile?.querySelector(".rail")).toBeNull();
+		expect(tile?.dataset["g"]).toBeUndefined();
 	}
 });
 
-test("any other sort is one flat list headed N cards, rows adding the place", async () => {
+test("any other sort is one flat list headed N cards, line 3 adding the place", async () => {
 	const { root } = await mount({ sort: "name" });
 	expect(root.querySelector("section[data-location]")).toBeNull();
 	expect(text(root.querySelector(".result-head"))).toBe("3 cards");
-	expect(text(root.querySelector('a[data-card="B/2"] .word'))).toBe("· Krabi");
+	expect(text(root.querySelector('a[data-card="B/2"] .facts'))).toMatch(
+		/ · Krabi$/,
+	);
 });
 
 test("archived cards fold at the end, closed, and remember being opened", async () => {
@@ -244,7 +295,7 @@ test("a language switch re-renders in place", async () => {
 	const { element, root } = await mount();
 	setLocale("th");
 	await element.updateComplete;
-	expect(text(root.querySelector('a[data-card="A"] .r small'))).not.toBe(
+	expect(text(root.querySelector('a[data-card="A"] .room small'))).not.toBe(
 		"room",
 	);
 });
@@ -258,4 +309,12 @@ test("only archived cards match: the no-match line shows above the folded Archiv
 	expect(children[0]?.classList.contains("empty")).toBe(true);
 	expect(children[1]?.matches("details.archive")).toBe(true);
 	expect(text(children[1]?.querySelector("summary"))).toBe("Archived (1)");
+});
+
+test("a group with a colour that is not in the palette gives a tile with no colour", async () => {
+	const { element: el, root } = await mount({}, {}, [card("A")]);
+	el.groups = [{ ...g1, color: "nope" as never }, g2];
+	await el.updateComplete;
+	const tile = root.querySelector<HTMLElement>('a[data-card="A"]');
+	expect(tile?.dataset["g"]).toBeUndefined();
 });

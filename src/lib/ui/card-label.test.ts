@@ -13,7 +13,7 @@ import {
 	cardRowTitle,
 	cardShort,
 	cardTitle,
-	groupTone,
+	groupColor,
 } from "#lib/ui/card-label";
 
 afterEach(() => setLocale("en"));
@@ -29,11 +29,9 @@ const card: Card = {
 };
 
 const groups: LimitGroup[] = [
-	{ id: "g1", name: "SCB", limit: 1 },
-	{ id: "g2", name: "UOB", limit: 1 },
-	{ id: "g3", name: "K", limit: 1 },
-	{ id: "g4", name: "B", limit: 1 },
-	{ id: "g5", name: "T", limit: 1 },
+	{ id: "g1", name: "SCB", limit: 1, color: "blue" },
+	{ id: "g2", name: "UOB", limit: 1, color: "rose" },
+	{ id: "g5", name: "T", limit: 1, color: "nope" as never },
 ];
 
 const { limitGroupId: _, ...ungrouped } = card;
@@ -78,7 +76,7 @@ test("the panel form is the last-4 chip, then id) name", () => {
 	const host = document.createElement("div");
 	render(cardPanel("10", card, groups), host);
 	expect(host.querySelector(".mini")?.textContent).toBe("4412");
-	expect(host.querySelector(".mini")?.getAttribute("data-g")).toBe("2");
+	expect(host.querySelector(".mini")?.getAttribute("data-g")).toBe("rose");
 	expect(text(host.querySelector(".card-label"))).toBe("10) Card A10");
 	expect(text(host)).toBe("4412 10) Card A10");
 
@@ -87,12 +85,13 @@ test("the panel form is the last-4 chip, then id) name", () => {
 	expect(text(host.querySelector(".card-label"))).toBe("A) —");
 });
 
-test("a card's colour follows its group's place in the stored order, four colours round", () => {
-	expect(groupTone({ ...card, limitGroupId: "g1" }, groups)).toBe(1);
-	expect(groupTone({ ...card, limitGroupId: "g2" }, groups)).toBe(2);
-	expect(groupTone({ ...card, limitGroupId: "g5" }, groups)).toBe(1);
-	expect(groupTone({ ...card, limitGroupId: "nope" }, groups)).toBeNull();
-	expect(groupTone(ungrouped, groups)).toBeNull();
+test("a card's colour is its group's stored colour; none without a group or with a bad colour", () => {
+	expect(groupColor({ ...card, limitGroupId: "g1" }, groups)).toBe("blue");
+	expect(groupColor({ ...card, limitGroupId: "g2" }, groups)).toBe("rose");
+	expect(groupColor({ ...card, limitGroupId: "g5" }, groups)).toBeNull();
+	expect(groupColor({ ...card, limitGroupId: "gone" }, groups)).toBeNull();
+	expect(groupColor(ungrouped, groups)).toBeNull();
+	expect(groupColor(undefined, groups)).toBeNull();
 });
 
 test("the mini chip shows the last 4 in the group's colour", () => {
@@ -100,7 +99,7 @@ test("the mini chip shows the last 4 in the group's colour", () => {
 	render(cardMini(card, groups, true), host);
 	const mini = host.querySelector(".mini");
 	expect(mini?.textContent).toBe("4412");
-	expect(mini?.getAttribute("data-g")).toBe("2");
+	expect(mini?.getAttribute("data-g")).toBe("rose");
 	expect(mini?.hasAttribute("data-big")).toBe(true);
 	render(cardMini(ungrouped, groups), host);
 	expect(host.querySelector(".mini")?.hasAttribute("data-g")).toBe(false);

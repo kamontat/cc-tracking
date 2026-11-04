@@ -5,6 +5,7 @@ import {
 	clampDay,
 	compareDates,
 	comparePeriods,
+	dayMonth,
 	daysBetween,
 	daysInMonth,
 	displayDate,
@@ -206,5 +207,13 @@ describe("periodLabel", () => {
 	test("names a statement month as Mon YYYY, the year Gregorian in both languages", () => {
 		expect(periodLabel("2026-11", "en")).toBe("Nov 2026");
 		expect(periodLabel("2026-01", "th")).toBe("ม.ค. 2026");
+	});
+});
+
+describe("dayMonth", () => {
+	test("says a date as day and short month, no padding and no year", () => {
+		expect(dayMonth("2026-11-03", "en")).toBe("3 Nov");
+		expect(dayMonth("2026-10-29", "en")).toBe("29 Oct");
+		expect(dayMonth("2026-12-15", "th")).toBe("15 ธ.ค.");
 	});
 });

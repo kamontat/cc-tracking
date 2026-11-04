@@ -11,9 +11,15 @@ export const testCard = (id: string): Card => ({
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
+	limitGroupId: "g",
 });
 
-const group: LimitGroup = { id: "g", name: "G", limit: 100_000_00 };
+export const testGroup: LimitGroup = {
+	id: "g",
+	name: "G",
+	limit: 100_000_00,
+	color: "teal",
+};
 
 export const testRow = (
 	id: string,
@@ -31,13 +37,17 @@ export const testRow = (
 		used?: number;
 		/** The credit the card holds, in satang; none by default. */
 		credit?: number;
+		/** A closed bill's due date still ahead; none by default. */
+		billDue?: string;
 	} = {},
 ): ReadyRow => ({
 	card: extra.holder
 		? { ...testCard(id), supplementary: true, owner: extra.holder }
 		: testCard(id),
 	room: {
-		group: extra.groupOwner ? { ...group, owner: extra.groupOwner } : group,
+		group: extra.groupOwner
+			? { ...testGroup, owner: extra.groupOwner }
+			: testGroup,
 		used: extra.used ?? 40_000_00,
 		available: room,
 		held: 0,
@@ -48,6 +58,7 @@ export const testRow = (
 	closeDate,
 	dueDate,
 	overdue: extra.overdue ?? false,
+	billDue: extra.billDue ?? null,
 	credit: extra.credit ?? 0,
 });
 

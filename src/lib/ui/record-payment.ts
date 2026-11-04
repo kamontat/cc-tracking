@@ -4,10 +4,10 @@ import type { Repository } from "#lib/storage/repository";
 import type { MoneyData } from "#lib/ui/money-data";
 
 /**
- * Saves a payment, then keeps the dates of every statement it now reaches (DD-49). The
- * ledger used for that includes the payment, replacing any stored one with the same id, so
+ * Saves a payment, then keeps the dates of every statement it fully pays (DD-49, DD-167).
+ * The ledger after includes the payment, replacing any stored one with the same id, so
  * marking a planned payment paid freezes the same way a new paid payment does. A planned
- * payment reaches nothing, so it freezes nothing.
+ * payment pays nothing, so it freezes nothing.
  */
 export async function savePayment(
 	repo: Repository,
@@ -25,8 +25,15 @@ export async function savePayment(
 		),
 		payment,
 	];
-	const ledger = cardLedger(card, data.purchases, payments, data.dates, today);
-	for (const kept of newlyFrozen(card, ledger, data.dates)) {
+	const before = cardLedger(
+		card,
+		data.purchases,
+		data.payments,
+		data.dates,
+		today,
+	);
+	const after = cardLedger(card, data.purchases, payments, data.dates, today);
+	for (const kept of newlyFrozen(card, before, after)) {
 		await repo.saveStatementDates(kept);
 	}
 }

@@ -1,7 +1,7 @@
 import { canPurchase } from "#lib/domain/card";
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
 import { compareDates, daysBetween } from "#lib/domain/date";
-import { ledgerUrgency, nextBill } from "#lib/domain/ledger";
+import { ledgerUrgency, nextBill, statementStart } from "#lib/domain/ledger";
 import { plannedHorizon } from "#lib/domain/pay";
 import { listTotal } from "#lib/domain/purchase-list";
 import { type GroupRoom, groupRoom } from "#lib/domain/room";
@@ -77,6 +77,11 @@ export type ReadyRow = {
 	closeDate: PlainDate;
 	dueDate: PlainDate;
 	overdue: boolean;
+	/**
+	 * The due date of a closed bill still to pay whose due date is today or later, else null:
+	 * between a statement's close and its due date, the date that matters next.
+	 */
+	billDue: PlainDate | null;
 	/** The credit the card holds (`CardLedger.credit`), in satang; 0 for none. */
 	credit: number;
 };
@@ -99,6 +104,10 @@ export function readyRows(data: ReadyData, today: PlainDate): ReadyRow[] {
 			closeDate: closeDateOf(card.cycle, period),
 			dueDate: dueDateOf(card.cycle, period),
 			overdue: bill !== null && ledgerUrgency(bill, today) === "overdue",
+			billDue:
+				bill !== null && compareDates(bill.dueDate, today) >= 0
+					? bill.dueDate
+					: null,
 			credit: ledger?.credit ?? 0,
 		});
 	}
@@ -121,6 +130,12 @@ export type NeedsItem =
 			kind: "overdue";
 			card: Card;
 			remaining: number;
+			/** The statement's total, what was billed. */
+			billed: number;
+			/** The statement's first day: where its billing cycle line starts. */
+			startDate: PlainDate;
+			/** The bill's statement close date, shown when its row opens. */
+			closeDate: PlainDate;
 			dueDate: PlainDate;
 			days: number;
 	  }
@@ -143,11 +158,14 @@ export function needsYou(
 		if (card.archived) continue;
 		const ledger = data.ledgers.get(card.id);
 		const bill = ledger ? nextBill(ledger, today) : null;
-		if (!bill || ledgerUrgency(bill, today) !== "overdue") continue;
+		if (!ledger || !bill || ledgerUrgency(bill, today) !== "overdue") continue;
 		overdue.push({
 			kind: "overdue",
 			card,
 			remaining: bill.remaining,
+			billed: bill.total,
+			startDate: statementStart(card, ledger.statements, bill.period),
+			closeDate: bill.closeDate,
 			dueDate: bill.dueDate,
 			days: daysBetween(bill.dueDate, today),
 		});

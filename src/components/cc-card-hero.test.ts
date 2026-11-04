@@ -7,7 +7,12 @@ import { setLocale } from "#lib/i18n/index";
 
 afterEach(() => setLocale("en"));
 
-const scb: LimitGroup = { id: "g1", name: "SCB Business", limit: 200_000_00 };
+const scb: LimitGroup = {
+	id: "g1",
+	name: "SCB Business",
+	limit: 200_000_00,
+	color: "rose",
+};
 const other: LimitGroup = { id: "g0", name: "KBank", limit: 100_000_00 };
 
 const card: Card = {
@@ -73,7 +78,7 @@ const text = (el: Element | null | undefined) =>
 test("the hero names the group, its holder and the cards it is shared with, on the group's pastel", async () => {
 	const root = await mount();
 	const hero = root.querySelector(".hero");
-	expect(hero?.getAttribute("data-g")).toBe("2");
+	expect(hero?.getAttribute("data-g")).toBe("rose");
 	expect(text(hero?.querySelector(".who"))).toBe(
 		"SCB Business · KC · shared with SCB-K",
 	);

@@ -1,74 +1,51 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { displayDate } from "#lib/domain/date";
 import type { ReadyRow } from "#lib/domain/home";
 import { formatAmount } from "#lib/domain/money";
+import { cardOwnerOf, ownerOf } from "#lib/domain/owner";
 import type { LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
+import { getLocale, t } from "#lib/i18n/index";
 import { cardName } from "#lib/ui/card-label";
 import { icons } from "#lib/ui/icons";
-import { base, cardBits, rowPanel, usageBar } from "#styles/shared";
-import { readyRowParts, readyRowStyles } from "./ready-row";
+import { base } from "#styles/shared";
+import { cardTileStyles, tileBody, tileTone } from "./card-tile";
 
 /**
- * The new-list picker's rows (DD-103): the ready cards as given (already filtered and sorted),
- * in one panel. A row is a plain container (DD-150): its tick is the toggle, a `<button
- * aria-pressed>` named only by the card and its room, so a screen reader is not read the whole
- * row on every tab, and the card's link is the tick's sibling, never inside it. A tap anywhere
- * on the row but the link emits `toggle` with the card, once; the link stops its own click.
+ * Line 1's corner: the cardholder; for a supplementary card, the cardholder and whose account
+ * it draws on (`NT · KC's account`). A supplementary card saved without a holder names the
+ * account holder, as Cards does.
+ */
+function holders(row: ReadyRow): string {
+	const account = ownerOf(row.room.group);
+	if (!row.card.supplementary) return account;
+	const holder = cardOwnerOf(row.card, row.room.group) ?? account;
+	return t("tile.subAccount", { holder, owner: account });
+}
+
+/**
+ * The new-list picker's cards (DD-103): the ready cards as given (already filtered and sorted),
+ * as card tiles (DD-151). A whole tile is the toggle, a native `<button aria-pressed>` named only
+ * by the card and its room, so a screen reader is not read the whole tile on every tab; nothing
+ * inside it is interactive. A tap emits `toggle` with the card. A ticked tile wears an accent
+ * outline and a filled tick.
  */
 @customElement("cc-ready-picker")
 export class CcReadyPicker extends LitElement {
 	static override styles = [
 		base,
-		cardBits,
-		usageBar,
-		rowPanel,
-		readyRowStyles,
+		cardTileStyles,
 		css`
 			:host {
 				display: block;
-			}
-
-			/* The focused tick rings the whole row, as the row button did. */
-			.ready-row:has(> .tick:focus-visible) {
-				box-shadow: var(--cc-focus-ring);
-			}
-
-			.tick:focus-visible {
-				box-shadow: none;
-			}
-
-			.tick {
-				display: grid;
-				padding: 0;
-				font: inherit;
-				cursor: pointer;
-				background: transparent;
-				place-items: center;
-				align-self: center;
-				inline-size: var(--cc-space-5);
-				block-size: var(--cc-space-5);
-				border: var(--cc-border-width) solid var(--cc-border);
-				border-radius: var(--cc-radius-xs);
-				color: var(--cc-accent-text);
-			}
-
-			.tick[aria-pressed="true"] {
-				background: var(--cc-accent);
-				border-color: var(--cc-accent);
-			}
-
-			.tick .icon {
-				inline-size: var(--cc-icon-size-sm);
-				block-size: var(--cc-icon-size-sm);
 			}
 		`,
 	];
 
 	@property({ attribute: false }) rows: ReadyRow[] = [];
 	@property({ attribute: false }) selected: string[] = [];
-	/** The stored limit groups, in order: a card's chip takes its group's colour. */
+	/** The stored limit groups, in order: a tile takes its group's colour. */
 	@property({ attribute: false }) groups: LimitGroup[] = [];
 	@property() today: PlainDate = "";
 
@@ -88,17 +65,25 @@ export class CcReadyPicker extends LitElement {
 	}
 
 	override render() {
-		return html`<div class="panel">${this.rows.map((row) => {
+		const locale = getLocale();
+		return html`<div class="tiles">${this.rows.map((row) => {
 			const id = row.card.id;
 			const on = this.selected.includes(id);
-			return html`<div class="crow ready-row" data-toggle data-card=${id} ?data-on=${on}
-				@click=${() => this.toggle(id)}>
-				<button type="button" class="tick" aria-pressed=${on ? "true" : "false"}
-					aria-label=${t("ready.pickName", { card: cardName(id, row.card), room: formatAmount(row.room.room) })}>${
-						on ? icons.check : nothing
-					}</button>
-				${readyRowParts(row, this.groups, this.today, true)}
-			</div>`;
+			return html`<button type="button" class="tile" data-g=${tileTone(row.card, this.groups)}
+				data-card=${id} aria-pressed=${on ? "true" : "false"}
+				aria-label=${t("ready.pickName", { card: cardName(id, row.card), room: formatAmount(row.room.room) })}
+				@click=${() => this.toggle(id)}>${tileBody({
+					card: row.card,
+					room: row.room,
+					credit: row.credit,
+					lead: html`<span class="tick" aria-hidden="true">${on ? icons.check : nothing}</span>`,
+					corner: holders(row),
+					plainRoom: true,
+					facts: t("cards.page.dates", {
+						close: displayDate(row.closeDate, locale),
+						due: displayDate(row.dueDate, locale),
+					}),
+				})}</button>`;
 		})}</div>`;
 	}
 }

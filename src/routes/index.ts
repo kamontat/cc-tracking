@@ -10,12 +10,19 @@ import { today } from "#lib/domain/date";
 import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home";
 import { unassignedCards } from "#lib/domain/limit";
 import { plannedOf } from "#lib/domain/pay";
+import type { CardPayment, PurchaseList } from "#lib/domain/types";
 import { purchasePlaces } from "#lib/i18n/format";
 import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
+import {
+	confirmWaitingList,
+	deleteDraftList,
+	deletePlannedPayment,
+	markPlanPaid,
+} from "#lib/ui/row-actions";
 
 export type HomeOptions = {
 	/** The page's only clock reading: today's date. */
@@ -26,7 +33,8 @@ export type HomeOptions = {
 
 /**
  * Renders Home into `root`, wiring it to `repo`: what needs the reader first, then a short
- * *Ready to use* that leads to the new-list picker (DD-103).
+ * *Ready to use* that leads to the new-list picker (DD-103). From 900px the two sit side by
+ * side, *Ready to use* on the left (DD-152).
  */
 export function renderHomePage(
 	repo: Repository,
@@ -44,6 +52,25 @@ export function renderHomePage(
 		paint: () => paint(),
 	});
 
+	// What a Needs you row's buttons write: the same calls and errors as Transactions. The
+	// guard reloads after, so a done item goes and a failed one stays, with the banner.
+	const mark = (payment: CardPayment) =>
+		state.guard(async () => {
+			if (data) await markPlanPaid(repo, data, payment, now);
+		}, "tx.error.markPaid");
+	const removePlan = (payment: CardPayment) =>
+		state.guard(() => deletePlannedPayment(repo, payment), "tx.error.delete");
+	const confirmList = (list: PurchaseList) =>
+		state.guard(
+			() => confirmWaitingList(repo, list.id, clock()),
+			"tx.error.confirmList",
+		);
+	const removeDraft = (list: PurchaseList) =>
+		state.guard(
+			() => deleteDraftList(repo, list.id),
+			"purchaseList.error.delete",
+		);
+
 	const paint = () => {
 		let rows: ReadyRow[] = [];
 		let unassigned = 0;
@@ -57,15 +84,21 @@ export function renderHomePage(
 		render(
 			html`
 				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
-					.cards=${data?.cards ?? []} .groups=${data?.groups ?? []} .today=${now}></cc-needs-you>
-				<cc-ready-panel
-					.rows=${rows}
-					.places=${data ? purchasePlaces(data.locations) : []}
-					.groups=${data?.groups ?? []}
-					.today=${now}
-					.unassigned=${unassigned}
-				></cc-ready-panel>
+				<div class="home-grid">
+					<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
+						.cards=${data?.cards ?? []} .groups=${data?.groups ?? []} .today=${now}
+						@mark-paid=${(e: CustomEvent<{ payment: CardPayment }>) => mark(e.detail.payment)}
+						@delete-payment=${(e: CustomEvent<{ payment: CardPayment }>) => removePlan(e.detail.payment)}
+						@confirm-list=${(e: CustomEvent<{ list: PurchaseList }>) => confirmList(e.detail.list)}
+						@delete-draft=${(e: CustomEvent<{ list: PurchaseList }>) => removeDraft(e.detail.list)}></cc-needs-you>
+					<cc-ready-panel
+						.rows=${rows}
+						.places=${data ? purchasePlaces(data.locations) : []}
+						.groups=${data?.groups ?? []}
+						.today=${now}
+						.unassigned=${unassigned}
+					></cc-ready-panel>
+				</div>
 			`,
 			root,
 		);

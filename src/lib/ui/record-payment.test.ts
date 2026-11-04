@@ -37,15 +37,50 @@ const setup = async () => {
 	return repo;
 };
 
-test("saving a paid payment freezes the statements it reaches", async () => {
+test("saving a paid payment freezes the statements it fully pays", async () => {
 	const repo = await setup();
 	const data = await loadMoneyData(repo, TODAY);
+	const full: CardPayment = { ...payment("paid"), amount: 10_000_00 };
 
-	await savePayment(repo, data, payment("paid"), TODAY);
+	await savePayment(repo, data, full, TODAY);
 
-	expect(await repo.listCardPayments("A")).toEqual([payment("paid")]);
+	expect(await repo.listCardPayments("A")).toEqual([full]);
 	const dates = await repo.listStatementDates("A");
 	expect(dates.map((d) => d.period)).toEqual(["2026-09"]);
+});
+
+test("a part payment freezes nothing, so a cycle edit still moves the statement", async () => {
+	const repo = await setup();
+	await savePayment(
+		repo,
+		await loadMoneyData(repo, TODAY),
+		payment("paid"),
+		TODAY,
+	);
+	expect(await repo.listStatementDates("A")).toEqual([]);
+});
+
+test("the payment that settles a statement replaces dates kept while it was part paid", async () => {
+	const repo = await setup();
+	await repo.saveCardPayment(payment("paid"));
+	await repo.saveStatementDates({
+		cardId: "A",
+		period: "2026-09",
+		closeDate: "2026-09-25",
+		dueDate: "2026-10-05",
+	});
+	const rest: CardPayment = { ...payment("paid"), id: "c2", amount: 6_000_00 };
+
+	await savePayment(repo, await loadMoneyData(repo, TODAY), rest, TODAY);
+
+	expect(await repo.listStatementDates("A")).toEqual([
+		{
+			cardId: "A",
+			period: "2026-09",
+			closeDate: "2026-09-25",
+			dueDate: "2026-10-15",
+		},
+	]);
 });
 
 test("a planned payment freezes none", async () => {

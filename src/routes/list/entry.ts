@@ -13,7 +13,7 @@ import type {
 	PlainDate,
 	PurchaseList,
 } from "#lib/domain/types";
-import { MessageError, messageOf } from "#lib/i18n/error";
+import { messageOf } from "#lib/i18n/error";
 import { getLocale, subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
 import { cardLines } from "#lib/ui/card-label";
@@ -28,6 +28,7 @@ import {
 } from "#lib/ui/list-share";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { createPageState } from "#lib/ui/page-state";
+import { deleteDraftList, storedDraft } from "#lib/ui/row-actions";
 import { subHeader } from "#lib/ui/sub-header";
 import {
 	banner,
@@ -236,24 +237,12 @@ export function renderEntryPage(
 		paint();
 	};
 
-	/**
-	 * The draft as stored now: one sent or saved since (in another tab, say) is not written
-	 * over, as the reply page refuses a list already saved.
-	 */
-	const storedDraft = async (id: string): Promise<PurchaseList> => {
-		const current = (await repo.listPurchaseLists()).find((l) => l.id === id);
-		if (!current) throw new MessageError("purchaseList.missing");
-		if (current.status !== "draft")
-			throw new MessageError("purchaseList.error.notDraft");
-		return current;
-	};
-
 	const save = async (send: boolean) => {
 		const list = reviewed;
 		if (!list) return;
 		let saved = false;
 		await state.guard(async () => {
-			if (editingId) await storedDraft(editingId);
+			if (editingId) await storedDraft(repo, editingId);
 			saveId ??= editingId ?? newId();
 			await repo.savePurchaseList(
 				composeList({
@@ -278,8 +267,7 @@ export function renderEntryPage(
 		if (!id) return;
 		let deleted = false;
 		await state.guard(async () => {
-			await storedDraft(id);
-			await repo.deletePurchaseList(id);
+			await deleteDraftList(repo, id);
 			deleted = true;
 		}, "purchaseList.error.delete");
 		if (deleted) navigate("/");

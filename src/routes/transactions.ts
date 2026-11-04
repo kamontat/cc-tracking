@@ -10,7 +10,8 @@ import { LEDGER_PAGE } from "#components/cc-tx-ledger";
 import { type FilterPill, filterControls } from "#components/list-controls";
 import { displayDate, monthName, today } from "#lib/domain/date";
 import { formatAmount, MINUS } from "#lib/domain/money";
-import { markPaid, plannedOf } from "#lib/domain/pay";
+import { plannedOf } from "#lib/domain/pay";
+import { groupRoom } from "#lib/domain/room";
 import {
 	byDay,
 	filterEntries,
@@ -28,8 +29,12 @@ import { cardLine, cardLineHtml } from "#lib/ui/card-label";
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
-import { deletePayment, savePayment } from "#lib/ui/record-payment";
-import { writeListReply } from "#lib/ui/save-list-reply";
+import {
+	confirmWaitingList,
+	deleteDraftList,
+	deletePlannedPayment,
+	markPlanPaid,
+} from "#lib/ui/row-actions";
 import { readTxView, type TxView, writeTxView } from "#lib/ui/tx-query";
 
 export type TransactionsOptions = {
@@ -85,16 +90,20 @@ export function renderTransactionsPage(
 
 	const mark = (payment: CardPayment) =>
 		state.guard(async () => {
-			if (data) await savePayment(repo, data, markPaid(payment, now), now);
+			if (data) await markPlanPaid(repo, data, payment, now);
 		}, "tx.error.markPaid");
 	/** Upcoming's *Confirm*: the waiting list saved as is, every line made (DD-108). */
 	const confirmList = (list: PurchaseList) =>
 		state.guard(async () => {
-			await writeListReply(repo, list.id, { now: clock() });
+			await confirmWaitingList(repo, list.id, clock());
 		}, "tx.error.confirmList");
+	const removeDraft = (list: PurchaseList) =>
+		state.guard(async () => {
+			await deleteDraftList(repo, list.id);
+		}, "purchaseList.error.delete");
 	const remove = (payment: CardPayment) =>
 		state.guard(async () => {
-			await deletePayment(repo, payment);
+			await deletePlannedPayment(repo, payment);
 		}, "tx.error.delete");
 
 	// A card's chip shows its line form with its short form beside it.
@@ -200,6 +209,7 @@ export function renderTransactionsPage(
 				.groups=${dated ? byDay(rows) : null}
 				.entries=${rows}
 				.lists=${d.lists}
+				.ledgers=${d.ledgers}
 				.limitGroups=${d.groups}
 				.today=${now}
 				.filtered=${narrowed}
@@ -262,7 +272,10 @@ export function renderTransactionsPage(
 											? html`<cc-list-index
 												.lists=${d.lists}
 												.cards=${d.cards}
+												.groups=${d.groups}
 												.status=${view.status}
+												@confirm-list=${(e: CustomEvent<{ list: PurchaseList }>) => confirmList(e.detail.list)}
+												@delete-draft=${(e: CustomEvent<{ list: PurchaseList }>) => removeDraft(e.detail.list)}
 												@status=${(e: CustomEvent<{ status: ListStatus[] }>) => change({ status: e.detail.status })}
 											></cc-list-index>`
 											: ledgerView()
@@ -276,6 +289,14 @@ export function renderTransactionsPage(
 								<cc-owed-list
 									.rows=${owedRows(d.cards, d.ledgers, now, view.owedSort)}
 									.groups=${d.groups}
+									.rooms=${new Map(
+										d.groups.map((group) => [
+											group.id,
+											groupRoom(group, d.cards, d.ledgers, d.lists, ""),
+										]),
+									)}
+									.ledgers=${d.ledgers}
+									.today=${now}
 									.sort=${view.owedSort}
 									@sort=${(e: CustomEvent<{ sort: TxView["owedSort"] }>) => change({ owedSort: e.detail.sort })}
 								></cc-owed-list>

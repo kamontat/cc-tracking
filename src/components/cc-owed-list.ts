@@ -1,27 +1,24 @@
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
-import { formatAmount } from "#lib/domain/money";
+import { today } from "#lib/domain/date";
 import type { PayChoice } from "#lib/domain/pay";
+import type { GroupRoom } from "#lib/domain/room";
 import type { OwedSort } from "#lib/domain/transactions";
-import type { LimitGroup } from "#lib/domain/types";
+import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types";
 import { LocaleController } from "#lib/i18n/controller";
 import { t } from "#lib/i18n/index";
-import { cardMini, cardPanelLabel } from "#lib/ui/card-label";
 import { payAddress } from "#lib/ui/pay-address";
-import { payTag } from "#lib/ui/pay-tag";
-import {
-	base,
-	cardBits,
-	controls,
-	listControls,
-	rowPanel,
-} from "#styles/shared";
+import { base, controls, listControls } from "#styles/shared";
+import { cardTileStyles, tileTone } from "./card-tile";
+import { payTileBody, payTileName } from "./pay-tile";
 
 const SORTS: OwedSort[] = ["urgency", "card", "due", "left"];
 
 /**
- * "Owed on each card": a heading with its sort chip, then one panel with a row for every card
- * that owes money or holds credit, each row opening the payment sheet on it.
+ * "Owed on each card": a heading with its sort chip, then a card list of payment tiles, one for
+ * every card that owes money or holds credit, each a link to the payment sheet on its card. The
+ * tile is the payment picker's (DD-166); the list is one column, since it sits in a narrow
+ * column beside the ledger from 900px and has the phone's width below it.
  */
 @customElement("cc-owed-list")
 export class CcOwedList extends LitElement {
@@ -29,8 +26,7 @@ export class CcOwedList extends LitElement {
 		base,
 		controls,
 		listControls,
-		cardBits,
-		rowPanel,
+		cardTileStyles,
 		css`
 			:host {
 				display: flex;
@@ -53,8 +49,9 @@ export class CcOwedList extends LitElement {
 				font-weight: 700;
 			}
 
-			.what {
-				gap: var(--cc-space-1);
+			/* One column at every width: the side column is narrow, a phone narrower. */
+			.tiles {
+				grid-template-columns: minmax(0, 1fr);
 			}
 
 			.empty {
@@ -67,8 +64,14 @@ export class CcOwedList extends LitElement {
 	];
 
 	@property({ attribute: false }) rows: PayChoice[] = [];
-	/** The stored limit groups, in order: a row's chip takes its group's colour. */
+	/** The stored limit groups, in order: a tile takes its group's colour. */
 	@property({ attribute: false }) groups: LimitGroup[] = [];
+	/** Each group's room, by group id: a tile's rail shows its group's used share. */
+	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
+	/** Each card's ledger, by card id: its open statement holds the dates line 3 shows. */
+	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
+	/** Today, which picks a card's open period when its ledger has no open statement. */
+	@property() today: PlainDate = today(new Date());
 	@property() sort: OwedSort = "urgency";
 
 	constructor() {
@@ -102,22 +105,11 @@ export class CcOwedList extends LitElement {
 			return html`${head}<p class="empty">${t("tx.owed.empty")}</p>`;
 		return html`
 			${head}
-			<div class="panel">${this.rows.map((row) => {
-				const tag = payTag(row);
-				return html`<a class="crow" data-card=${row.card.id}
-					href=${payAddress({ cardId: row.card.id })}>
-					${cardMini(row.card, this.groups)}
-					<span class="what"><b>${cardPanelLabel(row.card.id, row.card)}</b>${
-						tag
-							? html`<span class="tag" data-urgency=${tag.urgency}>${tag.text}</span>`
-							: nothing
-					}</span>
-					<span class="r">
-						<b class="amount" data-numeric>${formatAmount(row.owed)}</b>
-						<small>${t("pay.owedUnder")}</small>
-					</span>
-				</a>`;
-			})}</div>
+			<div class="tiles">${this.rows.map(
+				(row) => html`<a class="tile" data-g=${tileTone(row.card, this.groups)}
+					data-card=${row.card.id} aria-label=${payTileName(row)}
+					href=${payAddress({ cardId: row.card.id })}>${payTileBody(row, this)}</a>`,
+			)}</div>
 		`;
 	}
 }

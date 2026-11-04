@@ -1,4 +1,5 @@
-import { css } from "lit";
+import { css, unsafeCSS } from "lit";
+import { GROUP_COLORS } from "#lib/domain/group-color";
 
 /**
  * The shadow-root counterpart to the document reset. `@kcstyles/reset.css` is a
@@ -357,7 +358,8 @@ export const badge = css`
 
 /**
  * How much of a limit is spent, as a thin bar. The fill's width is the share itself, set
- * inline; `data-level` (from `usageLevel`) tints it, and the level is also said in text
+ * inline; `data-level` tints it as a card tile's rail (grey, amber from 80%, red past the
+ * limit, DD-153), and the level is also said in text
  * beside the bar wherever it is used, so colour is never the only signal.
  */
 export const usageBar = css`
@@ -373,7 +375,7 @@ export const usageBar = css`
 	.usage > span {
 		display: block;
 		block-size: 100%;
-		background: var(--cc-accent);
+		background: var(--cc-text-muted);
 		border-radius: var(--cc-radius-sm);
 	}
 
@@ -629,14 +631,31 @@ export const actionBarStyles = css`
 `;
 
 /**
+ * One rule per group colour, setting the three properties coloured elements read: `--g-bg` (the
+ * pastel), `--g-fg` (its text) and `--g-soft` (a tint of the pastel). A shadow root that renders
+ * a `[data-g]` element includes this; app.css keeps a copy for the light-DOM pages.
+ */
+export const groupInk = unsafeCSS(
+	GROUP_COLORS.map(
+		(name) => `[data-g="${name}"] {
+	--g-bg: var(--cc-group-${name});
+	--g-fg: var(--cc-group-${name}-text);
+	--g-soft: var(--cc-group-${name}-soft);
+}`,
+	).join("\n"),
+);
+
+/**
  * The pieces a card's name is drawn from (card-label.ts, UI-14): `.mini`, the last-4 chip in the
- * group's pastel (`data-g` 1 to 4, `data-big` for the payment sheet's card), `.card-panel`, the
+ * group's pastel (`data-g` a colour name, `data-big` for the payment sheet's card), `.card-panel`, the
  * chip and `id) name` side by side, `.cl-short` hidden by default (a `cardLineHtml` pair shows its
  * full form unless a narrow place swaps it in its own media or container query), and
  * `.tag`, a pill with a dot that carries a word as well as a colour (`data-urgency` from
  * `payTag`). app.css keeps a copy of `.mini` and `.card-panel` for the light-DOM pages.
  */
 export const cardBits = css`
+	${groupInk}
+
 	.card-panel {
 		display: inline-flex;
 		flex-direction: row;
@@ -671,24 +690,9 @@ export const cardBits = css`
 		font-size: calc(var(--cc-text-xs) * 0.88);
 	}
 
-	.mini[data-g="1"] {
-		color: var(--cc-group-1-text);
-		background: var(--cc-group-1);
-	}
-
-	.mini[data-g="2"] {
-		color: var(--cc-group-2-text);
-		background: var(--cc-group-2);
-	}
-
-	.mini[data-g="3"] {
-		color: var(--cc-group-3-text);
-		background: var(--cc-group-3);
-	}
-
-	.mini[data-g="4"] {
-		color: var(--cc-group-4-text);
-		background: var(--cc-group-4);
+	.mini[data-g] {
+		color: var(--g-fg);
+		background: var(--g-bg);
 	}
 
 	.tag {
@@ -778,6 +782,12 @@ export const rowPanel = css`
 	.crow:any-link,
 	button.crow {
 		color: var(--cc-text);
+	}
+
+	/* After and above the rows' own border: 0 resets (.crow, a picker's button[data-card]),
+	   so a line is always drawn between rows of any kind. */
+	.panel > * + :is(.crow, button, a, div, section, article) {
+		border-top: var(--cc-border-width) solid var(--cc-border);
 	}
 
 	/* Hover is a quiet ground, never an underline (DD-105). The two side shadows carry the
@@ -1041,5 +1051,17 @@ export const setRows = css`
 		color: var(--cc-text);
 		background: var(--cc-surface);
 		box-shadow: var(--cc-shadow-sm);
+	}
+`;
+
+/** The card-list section of a list page: each line its own panel (the amounts and the reply). */
+export const lineCards = css`
+	.line {
+		display: grid;
+		gap: var(--cc-space-3);
+		padding: var(--cc-space-4);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
 	}
 `;
