@@ -1,0 +1,106 @@
+import type { DraftLine } from "#lib/domain/amount-warnings";
+import { compareDates } from "#lib/domain/date";
+import { parseAmount } from "#lib/domain/money";
+import type { GroupRoom } from "#lib/domain/room";
+import type {
+	Card,
+	CardLedger,
+	CardPayment,
+	ListLine,
+	PlainDate,
+	PurchaseList,
+} from "#lib/domain/types";
+
+/** 0 for blank text, satang for an amount, null for text that is not money. */
+export function lineAmount(text: string): number | null {
+	if (text.trim() === "") return 0;
+	try {
+		return parseAmount(text);
+	} catch {
+		return null;
+	}
+}
+
+/** One DraftLine per card that has a room and a ledger, in card order; planned holds group-mates' plans due by `date` (`allCards` is where group-mates come from). */
+export function draftLines(
+	cards: Card[],
+	amounts: Record<string, number>,
+	rooms: Map<string, GroupRoom>,
+	ledgers: Map<string, CardLedger>,
+	planned: CardPayment[] = [],
+	date?: PlainDate,
+	allCards: Card[] = cards,
+): DraftLine[] {
+	const lines: DraftLine[] = [];
+	for (const card of cards) {
+		const room = rooms.get(card.id);
+		const ledger = ledgers.get(card.id);
+		if (!room || !ledger) continue;
+		const groupCards = new Set(
+			allCards
+				.filter((c) => c.limitGroupId === card.limitGroupId)
+				.map((c) => c.id),
+		);
+		lines.push({
+			card,
+			amount: amounts[card.id] ?? 0,
+			room,
+			ledger,
+			planned: planned.filter(
+				(p) =>
+					p.status === "planned" &&
+					groupCards.has(p.cardId) &&
+					(date === undefined || compareDates(p.date, date) <= 0),
+			),
+		});
+	}
+	return lines;
+}
+
+/** The line's group room less every amount on the list in that group. */
+export function roomAfter(line: DraftLine, lines: DraftLine[]): number {
+	let total = 0;
+	for (const l of lines) {
+		if (l.room.group.id === line.room.group.id) total += l.amount;
+	}
+	return line.room.room - total;
+}
+
+/** A line's note as stored: trimmed, and absent when blank. */
+export function withNote(line: ListLine, text: string | undefined): ListLine {
+	const note = text?.trim();
+	return note ? { ...line, note } : line;
+}
+
+/** Lines with an amount above zero, in card order, each with its note when one was typed. */
+export function listLines(
+	cardIds: string[],
+	amounts: Record<string, number>,
+	notes: Record<string, string> = {},
+): ListLine[] {
+	const lines: ListLine[] = [];
+	for (const cardId of cardIds) {
+		const amount = amounts[cardId] ?? 0;
+		if (amount > 0) lines.push(withNote({ cardId, amount }, notes[cardId]));
+	}
+	return lines;
+}
+
+export function composeList(input: {
+	id: string;
+	date: PlainDate;
+	lines: ListLine[];
+	send: boolean;
+	now: string;
+}): PurchaseList {
+	const base = { id: input.id, date: input.date, lines: input.lines };
+	return input.send
+		? { ...base, status: "sent", sentAt: input.now }
+		: { ...base, status: "draft" };
+}
+
+/** `${prefix}-0`, `${prefix}-1`, … one per call. */
+export function sequentialIds(prefix: string): () => string {
+	let n = 0;
+	return () => `${prefix}-${n++}`;
+}

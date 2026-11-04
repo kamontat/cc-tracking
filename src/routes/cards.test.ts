@@ -1,555 +1,745 @@
 import { expect, test } from "bun:test";
-import type { CcCardForm } from "#components/cc-card-form";
-import type { CcErrorBanner } from "#components/cc-error-banner";
-import type { CcLimitGroupForm } from "#components/cc-limit-group-form";
-import { today } from "#lib/domain/date";
-import type { Card } from "#lib/domain/types";
+import type { CcCardsFilter } from "#components/cc-cards-filter";
+import type { CcCardsList } from "#components/cc-cards-list";
+import type { CcGroupPanels } from "#components/cc-group-panels";
+import type { CcGroupSheet } from "#components/cc-group-sheet";
+import { DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
+import { toGroupColor } from "#lib/domain/group-color";
+import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
+import { memoryStorage } from "#lib/storage/contract";
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations";
-import { InMemoryRepository } from "#lib/storage/repository";
-import { renderCardsPage } from "./cards";
+import { InMemoryRepository, type Repository } from "#lib/storage/repository";
+import { type CardsAddressBar, renderCardsPage } from "./cards";
+import {
+	CLOCK,
+	flatText,
+	mount,
+	saveLocations,
+	settle,
+} from "./list/test-support";
 
-/** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
-const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
-
-const mount = (): HTMLElement => {
-	document.body.innerHTML = "";
-	const root = document.createElement("div");
-	document.body.append(root);
-	return root;
+/** An address bar that records what the page did to it, and can play Back and Forward. */
+const fakeBar = (start: string) => {
+	const entries = [start];
+	let at = 0;
+	const calls: string[] = [];
+	let pop = () => {};
+	const bar: CardsAddressBar = {
+		search: () => {
+			const entry = entries[at] ?? "";
+			const q = entry.indexOf("?");
+			return q === -1 ? "" : entry.slice(q);
+		},
+		push: (url) => {
+			calls.push(`push ${url}`);
+			entries.splice(at + 1, entries.length, url);
+			at++;
+		},
+		replace: (url) => {
+			calls.push(`replace ${url}`);
+			entries[at] = url;
+		},
+		onPop: (listener) => {
+			pop = listener;
+		},
+		length: () => entries.length,
+		back: () => {
+			calls.push("back");
+			at = Math.max(0, at - 1);
+			pop();
+		},
+	};
+	const forward = () => {
+		at = Math.min(entries.length - 1, at + 1);
+		pop();
+	};
+	return { bar, calls, forward, now: () => entries[at] };
 };
 
-const fill = (root: HTMLElement, name: string, value: string) => {
-	const field = root
-		.querySelector("cc-card-form")
-		?.shadowRoot?.querySelector<HTMLInputElement>(`[name="${name}"]`);
-	if (!field) throw new Error(`no field named ${name}`);
-	field.value = value;
-	field.dispatchEvent(new Event("input", { bubbles: true }));
-};
-
-const submit = (root: HTMLElement) => {
-	root
-		.querySelector("cc-card-form")
-		?.shadowRoot?.querySelector("form")
-		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-};
-
-const bannerMessage = (root: HTMLElement): string =>
-	root.querySelector("cc-error-banner")?.message ?? "";
-
-/** The error shown inside the open dialog, where the reader can see it over the backdrop. */
-const modalBannerMessage = (root: HTMLElement): string =>
-	root.querySelector<CcErrorBanner>("cc-modal cc-error-banner")?.message ?? "";
-
-const press = async (root: HTMLElement, action: string) => {
-	const button = root.querySelector<HTMLButtonElement>(
-		`button[data-action="${action}"]`,
-	);
-	if (!button) throw new Error(`no ${action} button`);
-	button.click();
-	await settle();
-};
-
-const openAddCard = (root: HTMLElement) => press(root, "add-card");
-const openAddGroup = (root: HTMLElement) => press(root, "add-group");
-
-const sampleCard: Card = {
-	id: "kbank",
-	name: "KBank Visa",
-	last4: "4821",
+const card = (id: string, extra: Partial<Card> = {}): Card => ({
+	id,
+	name: `${id} card`,
+	last4: "1234",
 	location: "krabi",
-	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-	comment: "",
+	cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 20 },
 	archived: false,
+	limitGroupId: "g1",
+	...extra,
+});
+
+const G1: LimitGroup = {
+	id: "g1",
+	name: "KBank",
+	limit: 100_000_00,
+	owner: "KC",
+};
+const G2: LimitGroup = { id: "g2", name: "SCB", limit: 50_000_00, owner: "NT" };
+
+const seed = async (repo: Repository) => {
+	await repo.saveLimitGroup(G1);
+	await repo.saveLimitGroup(G2);
+	await repo.saveCard(card("A"));
+	await repo.saveCard(card("B", { location: "bangkok", limitGroupId: "g2" }));
+	await repo.saveCard(card("Z", { archived: true }));
+	await saveLocations(repo, ["krabi"]);
 };
 
-/** A repository whose saveCard always rejects, to exercise the failure path in isolation. */
-class RejectingSaveRepository extends InMemoryRepository {
-	override saveCard(): Promise<void> {
-		return Promise.reject(new Error("disk is full"));
+const setup = async (
+	start = "/cards",
+	options: {
+		repo?: Repository;
+		before?: (repo: Repository) => Promise<void>;
+		storage?: Storage;
+		skipSeed?: boolean;
+	} = {},
+) => {
+	setLocale("en");
+	const repo = options.repo ?? new InMemoryRepository();
+	if (!options.skipSeed) await seed(repo);
+	await options.before?.(repo);
+	const root = mount();
+	const address = fakeBar(start);
+	renderCardsPage(repo, root, {
+		clock: CLOCK,
+		address: address.bar,
+		storage: options.storage ?? memoryStorage(),
+	});
+	await settle(5);
+	return { repo, root, address };
+};
+
+const list = (root: HTMLElement) =>
+	root.querySelector<CcCardsList>("cc-cards-list");
+const panels = (root: HTMLElement) =>
+	root.querySelector<CcGroupPanels>("cc-group-panels");
+const sheet = () => document.querySelector<CcGroupSheet>("cc-group-sheet");
+const filter = (root: HTMLElement) =>
+	root.querySelector<CcCardsFilter>("cc-cards-filter");
+
+test("the heading names the page and links Add card to the new card form", async () => {
+	const { root } = await setup();
+	expect(flatText(root.querySelector("h1"))).toBe("Cards");
+	const add = root.querySelector<HTMLAnchorElement>(
+		'a[data-action="add-card"]',
+	);
+	expect(add?.getAttribute("href")).toBe("/card/new");
+	expect(flatText(add)).toBe("Add card");
+});
+
+test("the header: title and switch on one row, the add button for the view under them", async () => {
+	const { root, address } = await setup();
+	const head = root.querySelector(".cards-main > .cards-head");
+	expect(head?.querySelector(":scope > h1")).not.toBeNull();
+	expect(head?.querySelector(":scope > .cards-switch")).not.toBeNull();
+	const adds = head?.querySelector(":scope > .cards-adds");
+	expect(adds?.querySelector('a[data-action="add-card"]')).not.toBeNull();
+	expect(adds?.querySelector('[data-action="add-group"]')).toBeNull();
+	root
+		.querySelector<HTMLButtonElement>('.cards-switch [data-view="groups"]')
+		?.click();
+	await settle();
+	const group = root.querySelector<HTMLButtonElement>(
+		'.cards-head .cards-adds button[data-action="add-group"]',
+	);
+	expect(flatText(group)).toBe("Add group");
+	expect(group?.getAttribute("data-variant")).toBe("quiet");
+	group?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("push /cards?view=groups&newGroup=1");
+	expect(sheet()?.group).toBeNull();
+});
+
+test("by place, sections run A to Z by shown name; a place with no record comes last", async () => {
+	const { root } = await setup("/cards", {
+		before: async (repo) => {
+			await repo.saveLocation({
+				id: "chiang-mai",
+				name: "Chiang Mai",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("P", { location: "phichit" }));
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
+			await repo.saveCard(card("G", { location: "gone" }));
+		},
+	});
+	const el = list(root);
+	expect(el?.results.sections?.map((s) => s.location)).toEqual([
+		"bangkok",
+		"chiang-mai",
+		"krabi",
+		"phichit",
+		"gone",
+	]);
+	expect(el?.results.count).toBe(5);
+	expect(el?.results.archived.map((c) => c.id)).toEqual(["Z"]);
+	expect(el?.total).toBe(6);
+	const head = (id: string) =>
+		flatText(
+			el?.shadowRoot?.querySelector(`section[data-location="${id}"] .place b`),
+		);
+	expect(head("chiang-mai")).toBe("Chiang Mai");
+	expect(head("gone")).toBe("gone");
+});
+
+test("the place order follows the language on every paint", async () => {
+	const { root } = await setup("/cards", {
+		before: async (repo) => {
+			// "Zebra" sorts last in English; renamed Krabi "Aardvark" sorts first.
+			await repo.saveLocation({
+				id: "krabi",
+				name: "Aardvark",
+				takesPurchases: true,
+			});
+			await repo.saveLocation({
+				id: "zebra",
+				name: "Zebra",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("Q", { location: "zebra" }));
+		},
+	});
+	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
+		"krabi",
+		"bangkok",
+		"zebra",
+	]);
+	setLocale("th");
+	await settle();
+	// In Thai, Bangkok reads กรุงเทพฯ, which Thai order puts before the Latin names.
+	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
+		"bangkok",
+		"krabi",
+		"zebra",
+	]);
+	setLocale("en");
+});
+
+test("every group gets a room, computed from its cards' ledgers", async () => {
+	const { root } = await setup("/cards", {
+		before: async (repo) => {
+			await repo.savePurchase({
+				id: "p1",
+				cardId: "A",
+				date: "2026-10-10",
+				amount: 10_000_00,
+				note: "fuel",
+			});
+		},
+	});
+	const el = list(root);
+	expect(el?.rooms.get("g1")?.room).toBe(90_000_00);
+	expect(el?.rooms.get("g2")?.room).toBe(50_000_00);
+	const shown = panels(root)?.panels ?? [];
+	expect(shown.map((p) => [p.group.id, p.room, p.usedPct])).toEqual([
+		["g1", 90_000_00, 10],
+		["g2", 50_000_00, 0],
+	]);
+});
+
+test("a card holding credit passes it to its row", async () => {
+	const { root } = await setup("/cards", {
+		before: async (repo) => {
+			await repo.saveCardPayment({
+				id: "pay1",
+				cardId: "B",
+				date: "2026-10-01",
+				amount: 500_00,
+				status: "paid",
+			});
+		},
+	});
+	expect(list(root)?.credits.get("B")).toBe(500_00);
+});
+
+test("a phone switch picks Cards or Limit groups, kept in the address", async () => {
+	const { root, address } = await setup("/cards?sort=name");
+	const grid = root.querySelector(".cards-grid");
+	const button = (name: string) =>
+		root.querySelector<HTMLButtonElement>(
+			`.cards-switch [data-view="${name}"]`,
+		);
+	expect(flatText(button("cards"))).toBe("Cards");
+	expect(flatText(button("groups"))).toBe("Limit groups");
+	expect(button("cards")?.getAttribute("aria-pressed")).toBe("true");
+	expect(button("groups")?.getAttribute("aria-pressed")).toBe("false");
+	expect(grid?.getAttribute("data-show")).toBe("cards");
+	button("groups")?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("replace /cards?view=groups&sort=name");
+	expect(grid?.getAttribute("data-show")).toBe("groups");
+	expect(button("groups")?.getAttribute("aria-pressed")).toBe("true");
+	button("cards")?.click();
+	await settle();
+	expect(address.calls.at(-1)).toBe("replace /cards?sort=name");
+});
+
+test("a reload on ?view=groups keeps the groups shown, and opening a group keeps it", async () => {
+	const { root, address } = await setup("/cards?view=groups");
+	expect(root.querySelector(".cards-grid")?.getAttribute("data-show")).toBe(
+		"groups",
+	);
+	expect(
+		root
+			.querySelector('.cards-switch [data-view="groups"]')
+			?.getAttribute("aria-pressed"),
+	).toBe("true");
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g1" } }),
+	);
+	await settle();
+	expect(address.calls.at(-1)).toBe("push /cards?view=groups&group=g1");
+});
+
+test("the address seeds the view; typing a search replaces it", async () => {
+	const { root, address } = await setup("/cards?sort=name&owner=NT");
+	const el = list(root);
+	expect(el?.results.flat?.map((c) => c.id)).toEqual(["B"]);
+	const input = root.querySelector<HTMLInputElement>('input[name="q"]');
+	if (!input) throw new Error("no search");
+	input.value = "zzz";
+	input.dispatchEvent(new Event("input"));
+	await settle();
+	expect(address.calls.at(-1)).toBe("replace /cards?q=zzz&owner=NT&sort=name");
+	expect(list(root)?.results.count).toBe(0);
+	expect(list(root)?.total).toBe(3);
+});
+
+test("the filter sheet applies a whole view, shown as chips that clear one at a time", async () => {
+	const { root, address } = await setup();
+	expect(filter(root)).toBeNull();
+	root.querySelector<HTMLButtonElement>('[data-action="filter"]')?.click();
+	await settle();
+	const sheetEl = filter(root);
+	expect(sheetEl).not.toBeNull();
+	expect(
+		sheetEl?.count({ ...DEFAULT_CARDS_VIEW, locations: ["bangkok"] }),
+	).toBe(1);
+	sheetEl?.dispatchEvent(
+		new CustomEvent("apply", {
+			detail: { ...DEFAULT_CARDS_VIEW, locations: ["krabi"], sort: "room" },
+		}),
+	);
+	await settle();
+	expect(filter(root)).toBeNull();
+	expect(address.now()).toBe("/cards?loc=krabi&sort=room");
+	expect(list(root)?.results.flat?.map((c) => c.id)).toEqual(["A"]);
+	expect(flatText(root.querySelector(".tx-count"))).toBe("1");
+	const chip = root.querySelector<HTMLButtonElement>('[data-chip="loc:krabi"]');
+	expect(flatText(chip)).toBe("Krabi ×");
+	expect(flatText(root.querySelector('[data-action="sort"]'))).toContain(
+		"Most room",
+	);
+	chip?.click();
+	await settle();
+	expect(address.now()).toBe("/cards?sort=room");
+});
+
+test("the filter offers every stored place A to Z, and a custom choice survives a reload", async () => {
+	const { root, address } = await setup("/cards", {
+		before: async (repo) => {
+			await repo.saveLocation({
+				id: "chiang-mai",
+				name: "Chiang Mai",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
+		},
+	});
+	root.querySelector<HTMLButtonElement>('[data-action="filter"]')?.click();
+	await settle();
+	expect(filter(root)?.locations.map((r) => r.id)).toEqual([
+		"bangkok",
+		"chiang-mai",
+		"krabi",
+		"phichit",
+	]);
+	filter(root)?.dispatchEvent(
+		new CustomEvent("apply", {
+			detail: { ...DEFAULT_CARDS_VIEW, locations: ["chiang-mai", "bangkok"] },
+		}),
+	);
+	await settle();
+	const url = address.now() ?? "";
+	expect(url).toBe("/cards?loc=chiang-mai&loc=bangkok");
+	const again = await setup(url, {
+		before: async (repo) => {
+			await repo.saveLocation({
+				id: "chiang-mai",
+				name: "Chiang Mai",
+				takesPurchases: false,
+			});
+			await repo.saveCard(card("C", { location: "chiang-mai" }));
+		},
+	});
+	expect(list(again.root)?.results.sections?.map((s) => s.location)).toEqual([
+		"bangkok",
+		"chiang-mai",
+	]);
+	expect(
+		flatText(again.root.querySelector('[data-chip="loc:chiang-mai"]')),
+	).toBe("Chiang Mai ×");
+	again.root
+		.querySelector<HTMLButtonElement>('[data-action="filter"]')
+		?.click();
+	await settle();
+	expect(filter(again.root)?.view.locations).toEqual(["chiang-mai", "bangkok"]);
+});
+
+test("a place in the address with no record is dropped", async () => {
+	const { root } = await setup("/cards?loc=mars&loc=krabi");
+	expect(list(root)?.results.sections?.map((s) => s.location)).toEqual([
+		"krabi",
+	]);
+	expect(root.querySelector('[data-chip="loc:mars"]')).toBeNull();
+});
+
+test("closing the filter sheet keeps the view", async () => {
+	const { root, address } = await setup();
+	root.querySelector<HTMLButtonElement>('[data-action="filter"]')?.click();
+	await settle();
+	filter(root)?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+	expect(filter(root)).toBeNull();
+	expect(address.calls).toEqual([]);
+});
+
+test("no cards at all tells the list so", async () => {
+	const { root } = await setup("/cards", { skipSeed: true });
+	expect(list(root)?.total).toBe(0);
+	expect(panels(root)?.panels).toEqual([]);
+});
+
+test("tapping a group pushes its address and opens the sheet; Close steps back", async () => {
+	const { root, address } = await setup("/cards?sort=name");
+	expect(sheet()).toBeNull();
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g1" } }),
+	);
+	await settle();
+	expect(address.calls).toEqual(["push /cards?sort=name&group=g1"]);
+	expect(sheet()?.group).toEqual(G1);
+	expect(sheet()?.inUse).toBe(true);
+	sheet()?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+	expect(address.calls.at(-1)).toBe("back");
+	expect(address.now()).toBe("/cards?sort=name");
+	expect(sheet()).toBeNull();
+});
+
+test("Back closes a pushed sheet, and Forward reopens it", async () => {
+	const { root, address } = await setup();
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g2" } }),
+	);
+	await settle();
+	address.bar.back();
+	await settle();
+	expect(sheet()).toBeNull();
+	address.forward();
+	await settle();
+	expect(sheet()?.group?.id).toBe("g2");
+	sheet()?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+	expect(address.calls.at(-1)).toBe("back");
+});
+
+test("a sheet opened from the address closes by replacing it without the group", async () => {
+	const { address } = await setup("/cards?q=A&group=g2");
+	expect(sheet()?.group?.id).toBe("g2");
+	sheet()?.dispatchEvent(new CustomEvent("close"));
+	await settle();
+	expect(address.calls).toEqual(["replace /cards?q=A"]);
+	expect(sheet()).toBeNull();
+});
+
+test("an unknown group in the address opens no sheet", async () => {
+	await setup("/cards?group=nope");
+	expect(sheet()).toBeNull();
+});
+
+test("a group no card uses can be deleted; the sheet closes once it is gone", async () => {
+	const { repo, address } = await setup("/cards?group=g3", {
+		before: async (r) => {
+			await r.saveLimitGroup({
+				id: "g3",
+				name: "Spare",
+				limit: 1_000_00,
+				owner: "RI",
+			});
+		},
+	});
+	expect(sheet()?.inUse).toBe(false);
+	const group = sheet()?.group;
+	sheet()?.dispatchEvent(
+		new CustomEvent("delete-group", { detail: { group } }),
+	);
+	await settle(5);
+	expect((await repo.listLimitGroups()).map((g) => g.id)).toEqual(["g1", "g2"]);
+	expect(sheet()).toBeNull();
+	expect(address.calls).toEqual(["replace /cards"]);
+});
+
+test("a group added through the sheet is stored with a valid colour", async () => {
+	const { repo } = await setup("/cards?newGroup=1");
+	await settle();
+	const el = sheet();
+	const root = el?.shadowRoot as ShadowRoot;
+	const set = (name: string, value: string) => {
+		const input = root.querySelector<HTMLInputElement>(`input[name=${name}]`);
+		if (!input) throw new Error(name);
+		input.value = value;
+		input.dispatchEvent(new Event("input"));
+	};
+	set("name", "Coloured");
+	set("limit", "5000");
+	root.querySelector<HTMLElement>('[data-owner="KC"]')?.click();
+	await el?.updateComplete;
+	root
+		.querySelector("form")
+		?.dispatchEvent(new Event("submit", { cancelable: true }));
+	await settle(5);
+	const saved = (await repo.listLimitGroups()).find(
+		(g) => g.name === "Coloured",
+	);
+	expect(toGroupColor(saved?.color)).not.toBeNull();
+});
+
+test("Add group pushes ?newGroup=1 and saves the new group, then closes", async () => {
+	const { root, repo, address } = await setup();
+	panels(root)?.dispatchEvent(new CustomEvent("add-group"));
+	await settle();
+	expect(address.calls).toEqual(["push /cards?newGroup=1"]);
+	expect(sheet()?.group).toBeNull();
+	sheet()?.dispatchEvent(
+		new CustomEvent("save-group", {
+			detail: { id: "ignored", name: "New", limit: 20_000_00, owner: "RI" },
+		}),
+	);
+	await settle(5);
+	const saved = (await repo.listLimitGroups()).find((g) => g.name === "New");
+	expect(saved?.limit).toBe(20_000_00);
+	expect(address.calls.at(-1)).toBe("back");
+	expect(sheet()).toBeNull();
+	expect(panels(root)?.panels).toHaveLength(3);
+});
+
+class FlakyGroupRepository extends InMemoryRepository {
+	failures = 0;
+	tried: string[] = [];
+	override async saveLimitGroup(group: LimitGroup): Promise<void> {
+		this.tried.push(group.id);
+		if (this.failures > 0) {
+			this.failures--;
+			throw new Error("disk is full");
+		}
+		return super.saveLimitGroup(group);
 	}
 }
 
-test("a failed save keeps its error message after the refresh that follows it", async () => {
-	const repo = new RejectingSaveRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
+test("a failed save keeps the sheet open with the reason, and a retry keeps the new group's id", async () => {
+	const repo = new FlakyGroupRepository();
+	await seed(repo);
+	repo.failures = 1;
+	repo.tried = [];
+	const { root, address } = await setup("/cards?newGroup=1", {
+		repo,
+		skipSeed: true,
 	});
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-	await openAddCard(root);
-
-	fill(root, "id", "kbank");
-	fill(root, "name", "KBank Visa");
-	fill(root, "last4", "4821");
-	fill(root, "location", "krabi");
-	fill(root, "closeDay", "18");
-	fill(root, "dueOffsetDays", "15");
-	fill(root, "limitGroupId", "pool");
-	submit(root);
-	await settle();
-
-	// The write failed, but the read that follows it (to refresh the table) succeeds:
-	// the banner must still show the failure, not be wiped by that successful read.
-	expect(bannerMessage(root)).toContain("disk is full");
-	// ...and the dialog stays open with the failure in it, not hidden behind its backdrop.
-	expect(modalBannerMessage(root)).toContain("disk is full");
-	expect(root.querySelector("cc-modal cc-card-form")).not.toBeNull();
+	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
+	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
+	await settle(5);
+	expect(sheet()).not.toBeNull();
+	expect(sheet()?.group).toBeNull();
+	expect(sheet()?.error).toContain("Could not save that limit group.");
+	expect(sheet()?.busy).toBe(false);
+	expect(address.calls).toEqual([]);
+	// The page's banner leaves the reason to the sheet it failed in.
+	expect(root.querySelector("cc-error-banner")?.message ?? "").toBe("");
+	sheet()?.dispatchEvent(
+		new CustomEvent("save-group", { detail: { ...detail, id: "y" } }),
+	);
+	await settle(5);
+	expect(repo.tried).toHaveLength(2);
+	expect(repo.tried[0]).toBe(repo.tried[1]);
+	expect(sheet()).toBeNull();
+	expect(address.calls).toEqual(["replace /cards"]);
 });
 
-test("creating a card with an id that already exists does not overwrite it", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-	await openAddCard(root);
-
-	fill(root, "id", "kbank");
-	fill(root, "name", "A completely different card");
-	fill(root, "last4", "9999");
-	fill(root, "location", "bangkok");
-	fill(root, "closeDay", "1");
-	fill(root, "dueOffsetDays", "10");
-	fill(root, "limitGroupId", "pool");
-	submit(root);
-	await settle();
-
-	expect(await repo.getCard("kbank")).toEqual(sampleCard);
-	const message = modalBannerMessage(root);
-	expect(message).toContain("kbank");
-	expect(message.toLowerCase()).toContain("unique");
-	// Refused, the dialog stays open on what the reader typed, so only the id needs changing.
-	const name = root
-		.querySelector("cc-card-form")
-		?.shadowRoot?.querySelector<HTMLInputElement>('[name="name"]');
-	expect(name?.value).toBe("A completely different card");
+test("closing the sheet after a failed save leaves the banner empty", async () => {
+	const repo = new FlakyGroupRepository();
+	await seed(repo);
+	repo.failures = 1;
+	const { root } = await setup("/cards?newGroup=1", { repo, skipSeed: true });
+	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
+	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
+	await settle(5);
+	expect(sheet()?.error).toContain("disk is full");
+	sheet()?.dispatchEvent(new CustomEvent("close"));
+	await settle(5);
+	expect(sheet()).toBeNull();
+	expect(root.querySelector("cc-error-banner")?.message ?? "").toBe("");
 });
 
-test("a successful save clears the banner and the card appears in the table", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-	await openAddCard(root);
+class FailThenHoldRepository extends InMemoryRepository {
+	armed = false;
+	calls = 0;
+	release = () => {};
+	override async saveLimitGroup(group: LimitGroup): Promise<void> {
+		if (!this.armed) return super.saveLimitGroup(group);
+		this.calls++;
+		if (this.calls === 1) throw new Error("disk is full");
+		await new Promise<void>((resolve) => {
+			this.release = resolve;
+		});
+		return super.saveLimitGroup(group);
+	}
+}
 
-	fill(root, "id", "scb");
-	fill(root, "name", "SCB Mastercard");
-	fill(root, "last4", "1234");
-	fill(root, "location", "bangkok");
-	fill(root, "closeDay", "18");
-	fill(root, "dueOffsetDays", "15");
-	fill(root, "limitGroupId", "pool");
-	submit(root);
-	await settle();
-
-	expect(bannerMessage(root)).toBe("");
-	expect(root.querySelector("cc-modal")).toBeNull();
-
-	const table = root.querySelector("cc-card-table");
-	await table?.updateComplete;
-	expect(table?.shadowRoot?.textContent).toContain("scb");
+test("the page banner stays empty while a retry is under way", async () => {
+	const repo = new FailThenHoldRepository();
+	await seed(repo);
+	repo.armed = true;
+	const { root } = await setup("/cards?newGroup=1", { repo, skipSeed: true });
+	const detail = { id: "x", name: "New", limit: 20_000_00, owner: "RI" };
+	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
+	await settle(5);
+	sheet()?.dispatchEvent(new CustomEvent("save-group", { detail }));
+	await settle(5);
+	expect(sheet()?.busy).toBe(true);
+	expect(root.querySelector("cc-error-banner")?.message ?? "").toBe("");
+	repo.release();
+	await settle(5);
 });
 
-test("names the cards whose location was reset, once", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	const storage = globalThis.localStorage;
-	storage.clear();
-	storage.setItem(MIGRATION_KEY, JSON.stringify(["KBank Visa", "SCB"]));
+class SlowGroupRepository extends InMemoryRepository {
+	release = () => {};
+	override async saveLimitGroup(group: LimitGroup): Promise<void> {
+		if (group.id === "g2" && group.name === "SCB 2")
+			await new Promise<void>((resolve) => {
+				this.release = resolve;
+			});
+		return super.saveLimitGroup(group);
+	}
+}
 
-	renderCardsPage(repo, root, storage);
+test("opening another group while a save is under way is ignored", async () => {
+	const repo = new SlowGroupRepository();
+	const { root, address } = await setup("/cards?group=g2", { repo });
+	sheet()?.dispatchEvent(
+		new CustomEvent("save-group", { detail: { ...G2, name: "SCB 2" } }),
+	);
 	await settle();
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g1" } }),
+	);
+	await settle();
+	expect(address.calls).toEqual([]);
+	repo.release();
+	await settle(5);
+	expect(sheet()).toBeNull();
+	expect(address.now()).toBe("/cards");
+});
 
+test("an edited group saves under its own id", async () => {
+	const { repo } = await setup("/cards?group=g2");
+	sheet()?.dispatchEvent(
+		new CustomEvent("save-group", { detail: { ...G2, name: "SCB 2" } }),
+	);
+	await settle(5);
+	expect((await repo.listLimitGroups()).find((g) => g.id === "g2")?.name).toBe(
+		"SCB 2",
+	);
+	expect(sheet()).toBeNull();
+});
+
+test("the location reset notice shows once and can be dismissed", async () => {
+	const storage = memoryStorage();
+	storage.setItem(MIGRATION_KEY, JSON.stringify(["Old card"]));
+	const { root } = await setup("/cards", { storage });
 	const notice = root.querySelector('[data-testid="location-reset"]');
-	expect(notice?.textContent).toContain("KBank Visa");
-	expect(notice?.textContent).toContain("SCB");
+	expect(flatText(notice)).toContain("Old card");
+	notice?.querySelector("button")?.click();
+	await settle();
+	expect(root.querySelector('[data-testid="location-reset"]')).toBeNull();
 	expect(storage.getItem(MIGRATION_KEY)).toBeNull();
-
-	// A second render of a fresh page must not repeat it.
-	const second = mount();
-	renderCardsPage(repo, second, storage);
-	await settle();
-	expect(second.querySelector('[data-testid="location-reset"]')).toBeNull();
 });
 
-test("leaves backup to the settings page, offering no export or import of its own", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	expect(root.querySelector('input[type="file"]')).toBeNull();
-	expect(root.textContent).not.toContain("Export JSON");
-});
-
-test("renders its heading in the chosen language", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-	expect(root.querySelector("h1")?.textContent).toBe("Cards");
-
+test("a language switch re-renders the page in place", async () => {
+	const { root } = await setup();
 	setLocale("th");
 	await settle();
-	expect(root.querySelector("h1")?.textContent).toBe("บัตร");
-});
-
-test("shows the limit groups with what each has used", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" });
-	await repo.savePurchase({
-		id: "p1",
-		cardId: sampleCard.id,
-		date: today(),
-		amount: 120_000,
-		note: "fuel",
-	});
-
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	const section = root.querySelector("cc-limit-group-table");
-	expect(section?.groups).toHaveLength(1);
-	expect(section?.usage).toEqual({ pool: 120_000 });
-	expect(section?.counts).toEqual({ pool: 1 });
-});
-
-test("saves a new limit group", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-	await openAddGroup(root);
-
-	expect(
-		root.querySelector<CcLimitGroupForm>("cc-modal cc-limit-group-form")?.group,
-	).toBeNull();
-	root.querySelector("cc-limit-group-form")?.dispatchEvent(
-		new CustomEvent("save-group", {
-			detail: { id: "pool", name: "KBank account", limit: 500_000 },
-		}),
+	expect(flatText(root.querySelector("h1"))).toBe("บัตร");
+	expect(flatText(root.querySelector('[data-action="add-card"]'))).toBe(
+		"เพิ่มบัตร",
 	);
-	await settle();
-
-	expect(await repo.listLimitGroups()).toEqual([
-		{ id: "pool", name: "KBank account", limit: 500_000 },
-	]);
-	expect(root.querySelector("cc-modal")).toBeNull();
+	setLocale("en");
 });
 
-test("deletes a limit group", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	root
-		.querySelector("cc-limit-group-table")
-		?.dispatchEvent(new CustomEvent("remove-group", { detail: "pool" }));
-	await settle();
-
-	expect(await repo.listLimitGroups()).toEqual([]);
-});
-
-test("opens the group being edited in a dialog, and closes it once it is saved", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	root
-		.querySelector("cc-limit-group-table")
-		?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
-	await settle();
-
-	expect(
-		root.querySelector<CcLimitGroupForm>("cc-modal cc-limit-group-form")?.group
-			?.id,
-	).toBe("pool");
-	expect(root.querySelector("cc-modal")?.heading).toBe("Edit KBank account");
-
-	root.querySelector("cc-limit-group-form")?.dispatchEvent(
-		new CustomEvent("save-group", {
-			detail: {
-				id: "pool",
-				name: "KBank account",
-				limit: 700_000,
-				owner: "NT",
-			},
-		}),
-	);
-	await settle();
-
-	expect(root.querySelector("cc-limit-group-form")).toBeNull();
-	expect(await repo.listLimitGroups()).toEqual([
-		{ id: "pool", name: "KBank account", limit: 700_000, owner: "NT" },
-	]);
-});
-
-test("lets go of a group that is deleted while it is being edited", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	root
-		.querySelector("cc-limit-group-table")
-		?.dispatchEvent(new CustomEvent("edit-group", { detail: "pool" }));
-	await settle();
-	root
-		.querySelector("cc-limit-group-table")
-		?.dispatchEvent(new CustomEvent("remove-group", { detail: "pool" }));
-	await settle();
-
-	// Still open, a Save would write the deleted group straight back.
-	expect(root.querySelector("cc-limit-group-form")).toBeNull();
-});
-
-test("lets go of a card that is deleted while it is being edited", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	root
-		.querySelector("cc-card-table")
-		?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
-	await settle();
-	root
-		.querySelector("cc-card-table")
-		?.dispatchEvent(new CustomEvent("remove", { detail: sampleCard.id }));
-	await settle();
-
-	expect(root.querySelector("cc-card-form")).toBeNull();
-});
-
-test("opens the card being edited in a dialog titled with its name", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	root
-		.querySelector("cc-card-table")
-		?.dispatchEvent(new CustomEvent("edit", { detail: sampleCard.id }));
-	await settle();
-
-	expect(
-		root.querySelector<CcCardForm>("cc-modal cc-card-form")?.card?.id,
-	).toBe("kbank");
-	expect(root.querySelector("cc-modal")?.heading).toBe("Edit KBank Visa");
-});
-
-test("closes a dialog without saving when the reader cancels or dismisses it", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	await openAddCard(root);
-	expect(root.querySelector("cc-modal")?.heading).toBe("Add a card");
-	root.querySelector("cc-card-form")?.dispatchEvent(new CustomEvent("cancel"));
-	await settle();
-	expect(root.querySelector("cc-modal")).toBeNull();
-
-	await openAddGroup(root);
-	expect(root.querySelector("cc-modal")?.heading).toBe("Add limit group");
-	// Escape, the backdrop and the close button all arrive as the dialog's own `close`.
-	root.querySelector("cc-modal")?.dispatchEvent(new CustomEvent("close"));
-	await settle();
-	expect(root.querySelector("cc-modal")).toBeNull();
-
-	expect(await repo.listLimitGroups()).toEqual([]);
-	expect(await repo.listCards()).toEqual([sampleCard]);
-});
-
-test("starts each add on a blank form, even after the last one was saved", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 });
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	await openAddCard(root);
-	fill(root, "id", "scb");
-	fill(root, "name", "SCB Mastercard");
-	fill(root, "last4", "1234");
-	fill(root, "closeDay", "18");
-	fill(root, "dueOffsetDays", "15");
-	fill(root, "limitGroupId", "pool");
-	submit(root);
-	await settle();
-	expect(root.querySelector("cc-modal")).toBeNull();
-
-	await openAddCard(root);
-	const value = (name: string) =>
-		root
-			.querySelector("cc-card-form")
-			?.shadowRoot?.querySelector<HTMLInputElement>(`[name="${name}"]`)?.value;
-	expect(value("id")).toBe("");
-	expect(value("name")).toBe("");
-});
-
-test("says so when a limit group cannot be saved", async () => {
-	class Rejecting extends InMemoryRepository {
-		override saveLimitGroup(): Promise<void> {
-			return Promise.reject(new Error("disk is full"));
-		}
+class HeldGroupRepository extends InMemoryRepository {
+	hold = false;
+	release: () => void = () => {};
+	override saveLimitGroup(group: LimitGroup): Promise<void> {
+		if (!this.hold) return super.saveLimitGroup(group);
+		return new Promise((resolve) => {
+			this.release = () => resolve(super.saveLimitGroup(group));
+		});
 	}
-	const root = mount();
-	renderCardsPage(new Rejecting(), root);
-	await settle();
-	await openAddGroup(root);
+}
 
-	root.querySelector("cc-limit-group-form")?.dispatchEvent(
-		new CustomEvent("save-group", {
-			detail: { id: "pool", name: "KBank account", limit: 500_000 },
-		}),
+test("Back during a pending save: the save closes nothing further once it lands", async () => {
+	const repo = new HeldGroupRepository();
+	const { root, address } = await setup("/cards", { repo });
+	repo.hold = true;
+	panels(root)?.dispatchEvent(
+		new CustomEvent("open-group", { detail: { id: "g2" } }),
 	);
 	await settle();
-
-	expect(modalBannerMessage(root)).toContain("disk is full");
-	expect(root.querySelector("cc-modal cc-limit-group-form")).not.toBeNull();
-});
-
-test("opens the form on the card a link asked to edit", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	renderCardsPage(repo, root, globalThis.localStorage, "kbank");
-	await settle();
-
-	const form = root.querySelector("cc-card-form");
-	await form?.updateComplete;
-	expect(form?.card?.id).toBe("kbank");
-	expect(form?.closest("cc-modal")).not.toBeNull();
-});
-
-test("ignores an edit link to a card that is not there", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	renderCardsPage(repo, root, globalThis.localStorage, "gone");
-	await settle();
-
-	expect(root.querySelector("cc-modal")).toBeNull();
-});
-
-test("shows no form until asked, offering one add button beside each list", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderCardsPage(repo, root);
-	await settle();
-
-	expect(root.querySelector("cc-modal")).toBeNull();
-	expect(root.querySelector("cc-card-form")).toBeNull();
-	expect(root.querySelector("cc-limit-group-form")).toBeNull();
-
-	const sectionOf = (action: string) =>
-		root.querySelector(`button[data-action="${action}"]`)?.closest("article");
-	expect(sectionOf("add-card")?.querySelector("cc-card-table")).not.toBeNull();
-	expect(
-		sectionOf("add-group")?.querySelector("cc-limit-group-table"),
-	).not.toBeNull();
-	expect(
-		root.querySelector('button[data-action="add-card"]')?.textContent?.trim(),
-	).toBe("Add a card");
-});
-
-test("opens both lists on the view its query names", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 });
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	renderCardsPage(
-		repo,
-		root,
-		globalThis.localStorage,
-		null,
-		new URLSearchParams("sort=name&dir=desc&gq=kbank"),
+	sheet()?.dispatchEvent(
+		new CustomEvent("save-group", { detail: { ...G2, name: "SCB 2" } }),
 	);
 	await settle();
+	expect(sheet()?.busy).toBe(true);
+	address.bar.back(); // the reader's Back while the write is pending
+	await settle();
+	repo.release();
+	await settle(5);
+	expect(address.calls.filter((c) => c === "back")).toHaveLength(1);
+	expect(address.now()).toBe("/cards");
+	expect(sheet()).toBeNull();
+	expect((await repo.listLimitGroups()).find((g) => g.id === "g2")?.name).toBe(
+		"SCB 2",
+	);
+});
 
-	expect(root.querySelector("cc-card-table")?.view).toMatchObject({
-		sort: "name",
-		dir: "desc",
+test("?group=new opens the group whose id is new; ?newGroup=1 opens the blank sheet", async () => {
+	await setup("/cards?group=new", {
+		before: async (r) => {
+			await r.saveLimitGroup({
+				id: "new",
+				name: "Odd",
+				limit: 1_00,
+				owner: "RI",
+			});
+		},
 	});
-	expect(root.querySelector("cc-limit-group-table")?.view.q).toBe("kbank");
+	expect(sheet()?.group?.name).toBe("Odd");
+	await setup("/cards?newGroup=1");
+	expect(sheet()?.group).toBeNull();
+	expect(sheet()).not.toBeNull();
 });
 
-test("writes a changed view back into the query, keeping keys it does not own", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(sampleCard);
-	const root = mount();
-	const written: string[] = [];
-	renderCardsPage(
-		repo,
-		root,
-		globalThis.localStorage,
-		null,
-		new URLSearchParams("edit=kbank"),
-		(query) => written.push(query.toString()),
-	);
-	await settle();
-
-	const table = root.querySelector("cc-card-table");
-	table?.dispatchEvent(
-		new CustomEvent("view-change", {
-			detail: { ...table.view, location: "krabi" },
-		}),
-	);
-	const groups = root.querySelector("cc-limit-group-table");
-	groups?.dispatchEvent(
-		new CustomEvent("view-change", {
-			detail: { ...groups.view, owner: "NT" },
-		}),
-	);
-	await settle();
-
-	expect(written).toEqual([
-		"edit=kbank&loc=krabi",
-		"edit=kbank&loc=krabi&gowner=NT",
-	]);
-	expect(root.querySelector("cc-card-table")?.view.location).toBe("krabi");
-	expect(root.querySelector("cc-limit-group-table")?.view.owner).toBe("NT");
+test("?ungrouped=1 lists only cards with no stored group, and shows a chip for it", async () => {
+	const { root } = await setup("/cards?ungrouped=1", {
+		before: async (r) => {
+			const { limitGroupId: _, ...loose } = card("N");
+			await r.saveCard(loose);
+			await r.saveCard(card("O", { limitGroupId: "gone" }));
+		},
+	});
+	const ids = [
+		...(list(root)?.shadowRoot?.querySelectorAll("a[data-card]") ?? []),
+	].map((a) => a.getAttribute("data-card"));
+	expect(ids.sort()).toEqual(["N", "O"]);
+	expect(root.textContent).toContain("Not in a group");
 });

@@ -2,11 +2,15 @@ export type BuildEnv = {
 	BUN_PUBLIC_COMMIT_SHA: string;
 	BUN_PUBLIC_BUILT_AT: string;
 	BUN_PUBLIC_PR_NUMBER: string;
+	BUN_PUBLIC_ENVIRONMENT: string;
+	BUN_PUBLIC_BRANCH: string;
 };
 
 export type BuildEnvInput = {
 	/** What `git rev-parse HEAD` printed, or `""` when git could not answer. */
 	sha: string;
+	/** What `git rev-parse --abbrev-ref HEAD` printed; `""` (the default) when it could not answer. */
+	branch?: string;
 	now: Date;
 	env: Record<string, string | undefined>;
 };
@@ -17,14 +21,24 @@ export type BuildEnvInput = {
  * An value already in the environment wins over what git says: a CI job building from a
  * detached or shallow checkout knows the commit it was triggered for, and git there may not.
  *
+ * The environment is `local` unless a deploy workflow says otherwise. The branch from the
+ * checkout reads `HEAD` on a detached CI checkout, which is why the workflows set it explicitly.
+ *
  * The PR number only ever comes from the preview deploy workflow, but it is always set, empty
  * elsewhere: the bundler only rewrites variables that exist, and an unset one would survive
  * into the browser as a `process.env` read that throws.
  */
-export function resolveBuildEnv({ sha, now, env }: BuildEnvInput): BuildEnv {
+export function resolveBuildEnv({
+	sha,
+	branch = "",
+	now,
+	env,
+}: BuildEnvInput): BuildEnv {
 	return {
 		BUN_PUBLIC_COMMIT_SHA: env.BUN_PUBLIC_COMMIT_SHA ?? sha.trim(),
 		BUN_PUBLIC_BUILT_AT: env.BUN_PUBLIC_BUILT_AT ?? now.toISOString(),
 		BUN_PUBLIC_PR_NUMBER: env.BUN_PUBLIC_PR_NUMBER ?? "",
+		BUN_PUBLIC_ENVIRONMENT: env.BUN_PUBLIC_ENVIRONMENT ?? "local",
+		BUN_PUBLIC_BRANCH: env.BUN_PUBLIC_BRANCH ?? branch.trim(),
 	};
 }

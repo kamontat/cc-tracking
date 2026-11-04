@@ -6,7 +6,7 @@ import {
 } from "#lib/storage/contract";
 import { LocalStorageRepository } from "#lib/storage/local";
 import { StorageError } from "#lib/storage/repository";
-import { exportBackup } from "#lib/storage/transfer";
+import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
 
 const freshStorage = (): Storage => {
 	localStorage.clear();
@@ -30,19 +30,32 @@ describe("LocalStorageRepository key layout", () => {
 		).not.toBeNull();
 	});
 
-	test("stores the batch start under cc:batch-start", async () => {
+	test("reset still removes a leftover batch start", async () => {
 		const repo = new LocalStorageRepository(freshStorage());
-		await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
-		expect(localStorage.getItem("cc:batch-start")).toBe(
+		localStorage.setItem(
+			"cc:batch-start",
 			JSON.stringify("2026-10-27T03:00:00.000Z"),
 		);
+
+		await repo.clearAll();
+
+		expect(localStorage.getItem("cc:batch-start")).toBeNull();
 	});
 
-	test("keeps the batch start out of a backup export", async () => {
+	test("reset removes the location seed marker, so the defaults can be seeded again", async () => {
 		const repo = new LocalStorageRepository(freshStorage());
-		await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
-		const text = JSON.stringify(await exportBackup(repo));
-		expect(text).not.toContain("2026-10-27T03:00:00.000Z");
+		await seedLocations(repo, localStorage);
+		expect(localStorage.getItem(SEED_KEY)).toBe("done");
+
+		await repo.clearAll();
+
+		expect(localStorage.getItem(SEED_KEY)).toBeNull();
+		await seedLocations(repo, localStorage);
+		expect((await repo.listLocations()).map((record) => record.id)).toEqual([
+			"bangkok",
+			"krabi",
+			"phichit",
+		]);
 	});
 
 	test("ignores unrelated keys in the same origin", async () => {

@@ -1,16 +1,16 @@
 import { expect, test } from "bun:test";
-import type { CcErrorBanner } from "#components/cc-error-banner";
-import type { CcPaymentForm } from "#components/cc-payment-form";
-import type { CcQuickAdd } from "#components/cc-quick-add";
-import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import { addDays, addPeriods, today } from "#lib/domain/date";
-import type { Card, Purchase } from "#lib/domain/types";
+import type { CcNeedsYou } from "#components/cc-needs-you";
+import type { CcReadyPanel } from "#components/cc-ready-panel";
+import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
-import { InMemoryRepository } from "#lib/storage/repository";
-import { renderDashboardPage } from "./index";
+import { LocalStorageRepository } from "#lib/storage/local";
+import { InMemoryRepository, type Repository } from "#lib/storage/repository";
+import { renderHomePage } from "./index";
+import { saveLocations } from "./list/test-support";
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
-const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+const settle = (ms = 0) =>
+	new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const mount = (): HTMLElement => {
 	document.body.innerHTML = "";
@@ -19,769 +19,516 @@ const mount = (): HTMLElement => {
 	return root;
 };
 
-const bannerMessage = (root: HTMLElement): string =>
-	root.querySelector("cc-error-banner")?.message ?? "";
-
-const card: Card = {
-	id: "kbank",
-	name: "KBank Visa",
-	last4: "4821",
+const card = (id: string, extra: Partial<Card> = {}): Card => ({
+	id,
+	name: id,
+	last4: "0000",
 	location: "krabi",
-	supplementary: false,
-	cycle: { kind: "offset", closeDay: 1, dueOffsetDays: 5 },
+	cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 20 },
 	archived: false,
-};
+	limitGroupId: "g1",
+	...extra,
+});
 
-// 70 days ago is well outside the current period, so this purchase always lands in a
-// statement that is already closed, unpaid, and overdue -- regardless of what "today" is
-// when the test runs -- giving the row a "Mark paid" button to click.
-const purchaseDate = addDays(today(), -70);
-const period = periodOfPurchase(card.cycle, purchaseDate);
-const purchase: Purchase = {
-	id: "a",
-	cardId: "kbank",
-	date: purchaseDate,
-	amount: 35_000,
-	note: "fuel",
-};
-
-/** A repository whose savePayment always rejects, to exercise the failure path in isolation. */
-class RejectingPaymentRepository extends InMemoryRepository {
-	override savePayment(): Promise<void> {
-		return Promise.reject(new Error("disk is full"));
-	}
-}
-
-/** A repository whose savePurchase always rejects, to exercise the failure path in isolation. */
-class RejectingPurchaseRepository extends InMemoryRepository {
-	override savePurchase(): Promise<void> {
-		return Promise.reject(new Error("disk is full"));
-	}
-}
-
-// closeDay 18, dueOffsetDays 15: a purchase on the 18th closes that same month's
-// statement; one on the 19th spills into the following month's statement instead.
-const quickAddCard: Card = {
-	id: "scb",
-	name: "SCB Mastercard",
-	last4: "1234",
-	location: "krabi",
-	supplementary: false,
-	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-	archived: false,
-};
-
-const fillQuickAdd = (quickAdd: HTMLElement, name: string, value: string) => {
-	const field = quickAdd.shadowRoot?.querySelector<
-		HTMLInputElement | HTMLSelectElement
-	>(`[name="${name}"]`);
-	if (!field) throw new Error(`no field named ${name}`);
-	field.value = value;
-	field.dispatchEvent(new Event("input", { bubbles: true }));
-};
-
-const submitQuickAdd = (quickAdd: HTMLElement) =>
-	quickAdd.shadowRoot
-		?.querySelector("form")
-		?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-
-/** The purchase form, always on the dashboard rather than behind a dialog. */
-const openQuickAdd = async (root: HTMLElement) => {
-	const quickAdd = root.querySelector<CcQuickAdd>("cc-quick-add[inline]");
-	if (!quickAdd) throw new Error("the dashboard has no purchase form");
-	await quickAdd.updateComplete;
-	return quickAdd;
-};
-
-const formValue = (quickAdd: HTMLElement, name: string) =>
-	quickAdd.shadowRoot?.querySelector<HTMLInputElement | HTMLSelectElement>(
-		`[name="${name}"]`,
-	)?.value;
-
-const sittingRows = async (root: HTMLElement) => {
-	const list = root.querySelector("cc-sitting-list");
-	await list?.updateComplete;
-	return [
-		...(list?.shadowRoot?.querySelectorAll('[data-testid="sitting-row"]') ??
-			[]),
-	];
-};
-
-/** A clock the test can move, fixed at 10:00 Bangkok on 27 Oct 2026 to start. */
-const fixedClock = (iso = "2026-10-27T03:00:00.000Z") => {
-	let at = new Date(iso);
+/** 10:00 Bangkok on 31 Oct 2026, movable. */
+const movableClock = () => {
+	let at = new Date("2026-10-31T03:00:00Z");
 	return {
 		clock: () => at,
-		set: (next: string) => {
-			at = new Date(next);
+		set: (iso: string) => {
+			at = new Date(iso);
 		},
 	};
 };
 
-/** The confirmation the page shows under its heading once a purchase is saved. */
-const answerText = (root: HTMLElement): string =>
-	root.querySelector(".purchase-status p")?.textContent?.trim() ?? "";
-
-/** The due list's own "Mark paid" button, not one of its sorting headings. */
-const MARK_PAID = 'button[data-action="mark-paid"]';
-
-/** Submits the open payment dialog, with `amount` typed over the default when given. */
-const submitPayment = async (root: HTMLElement, amount?: string) => {
-	const form = root.querySelector<CcPaymentForm>("cc-modal cc-payment-form");
-	if (!form) throw new Error("the payment dialog did not open");
-	await form.updateComplete;
-	const input =
-		form.shadowRoot?.querySelector<HTMLInputElement>('[name="amount"]');
-	if (input && amount !== undefined) input.value = amount;
-	form.shadowRoot?.querySelector("form")?.requestSubmit();
-	await settle();
+const seed = async (repo: Repository) => {
+	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 });
+	await repo.saveCard(card("A"));
+	await repo.saveCard(card("B"));
+	await saveLocations(repo, ["krabi"]);
 };
 
-const formBannerMessage = (root: HTMLElement): string =>
-	root.querySelector<CcErrorBanner>('[data-panel="add"] cc-error-banner')
-		?.message ?? "";
-
-test("offers only the cards kept where purchases are allowed, while listing them all as due", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	await repo.saveCard({
-		...quickAddCard,
-		id: "ktb",
-		name: "KTB Debit",
-		location: "bangkok",
-	});
+const setup = async (repo: Repository = new InMemoryRepository()) => {
+	setLocale("en");
 	const root = mount();
-	renderDashboardPage(repo, root);
+	await seed(repo);
+	const time = movableClock();
+	renderHomePage(repo, root, { clock: time.clock });
 	await settle();
+	return { root, repo, time };
+};
 
-	const quickAdd = await openQuickAdd(root);
-	expect(quickAdd.cards.map((entry) => entry.id)).toEqual(["scb"]);
+const readyList = async (root: HTMLElement): Promise<CcReadyPanel> => {
+	const list = root.querySelector<CcReadyPanel>("cc-ready-panel");
+	if (!list) throw new Error("no ready panel");
+	await list.updateComplete;
+	return list;
+};
 
-	const dueList = root.querySelector("cc-due-list");
-	await dueList?.updateComplete;
-	expect(dueList?.shadowRoot?.textContent).toContain("KTB Debit");
-});
-
-test("turning a location on in settings opens its cards to purchases", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard({
-		...quickAddCard,
-		id: "ktb",
-		name: "KTB Debit",
-		location: "bangkok",
-	});
-	await repo.saveSettings({ purchaseLocations: ["krabi", "bangkok"] });
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-	expect(quickAdd.cards.map((entry) => entry.id)).toEqual(["ktb"]);
-});
-
-test("a purchase dated on the close day lands on that statement", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-
-	fillQuickAdd(quickAdd, "date", "2026-09-18");
-	fillQuickAdd(quickAdd, "amount", "500");
-	fillQuickAdd(quickAdd, "note", "dinner");
-	submitQuickAdd(quickAdd);
-	await settle();
-
-	expect(bannerMessage(root)).toBe("");
-	const purchases = await repo.listPurchases("scb");
-	expect(purchases).toHaveLength(1);
-	expect(purchases[0]).toMatchObject({
-		cardId: "scb",
-		date: "2026-09-18",
-		amount: 50_000,
-		note: "dinner",
-	});
-	expect(answerText(root)).toBe(
-		"Lands on the statement closing 18 Sep 2026 — pay by 03 Oct 2026.",
+test("needs you comes before ready to use", async () => {
+	const { root } = await setup();
+	const tags = [...root.querySelectorAll("cc-needs-you, cc-ready-panel")].map(
+		(element) => element.localName,
 	);
+	expect(tags).toEqual(["cc-needs-you", "cc-ready-panel"]);
 });
 
-test("a purchase dated the day after the close day lands on the next statement", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-
-	fillQuickAdd(quickAdd, "date", "2026-09-19");
-	fillQuickAdd(quickAdd, "amount", "500");
-	submitQuickAdd(quickAdd);
-	await settle();
-
-	const purchases = await repo.listPurchases("scb");
-	expect(purchases).toHaveLength(1);
-	expect(purchases[0]?.date).toBe("2026-09-19");
-	expect(answerText(root)).toBe(
-		"Lands on the statement closing 18 Oct 2026 — pay by 02 Nov 2026.",
-	);
-});
-
-test("a failed add keeps the typing and shows the error in the form panel", async () => {
-	const repo = new RejectingPurchaseRepository();
-	await repo.saveCard(quickAddCard);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-
-	fillQuickAdd(quickAdd, "date", "2026-09-18");
-	fillQuickAdd(quickAdd, "amount", "500");
-	fillQuickAdd(quickAdd, "note", "dinner");
-	submitQuickAdd(quickAdd);
-	await settle();
-
-	expect(await repo.listPurchases("scb")).toEqual([]);
-	expect(answerText(root)).toBe("");
-	expect(formBannerMessage(root)).toContain("disk is full");
-	expect(formValue(quickAdd, "amount")).toBe("500");
-	expect(formValue(quickAdd, "note")).toBe("dinner");
-});
-
-test("shows the add form without opening a dialog", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	expect(root.querySelector("cc-quick-add[inline]")).not.toBeNull();
-	expect(root.querySelector("cc-modal")).toBeNull();
-	expect(root.querySelector('button[data-action="add-purchase"]')).toBeNull();
-	expect(root.querySelector('[data-panel="add"] h2')?.textContent?.trim()).toBe(
-		"Add a purchase",
-	);
-});
-
-test("an added purchase records addedAt and appears in This sitting", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const { clock } = fixedClock();
-	const root = mount();
-	renderDashboardPage(repo, root, { clock });
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-	fillQuickAdd(quickAdd, "date", "2026-10-20");
-	fillQuickAdd(quickAdd, "amount", "500");
-	submitQuickAdd(quickAdd);
-	await settle();
-
-	const [stored] = await repo.listPurchases("scb");
-	expect(stored?.addedAt).toBe("2026-10-27T03:00:00.000Z");
-	expect(await sittingRows(root)).toHaveLength(1);
-	expect(answerText(root)).not.toBe("");
-});
-
-test("a successful add clears amount and note, keeps card and date", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	await repo.saveCard({ ...quickAddCard, id: "ktb", name: "KTB Debit" });
-	const root = mount();
-	renderDashboardPage(repo, root, { clock: fixedClock().clock });
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-	const select =
-		quickAdd.shadowRoot?.querySelector<HTMLSelectElement>('[name="cardId"]');
-	if (!select) throw new Error("no card picker");
-	select.value = "scb";
-	select.dispatchEvent(new Event("change"));
-	fillQuickAdd(quickAdd, "date", "2026-10-20");
-	fillQuickAdd(quickAdd, "amount", "500");
-	fillQuickAdd(quickAdd, "note", "dinner");
-	submitQuickAdd(quickAdd);
-	await settle();
-	await quickAdd.updateComplete;
-
-	expect(formValue(quickAdd, "amount")).toBe("");
-	expect(formValue(quickAdd, "note")).toBe("");
-	expect(formValue(quickAdd, "cardId")).toBe("scb");
-	expect(formValue(quickAdd, "date")).toBe("2026-10-20");
-});
-
-test("first load with no batch start saves one, so This sitting starts empty", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	await repo.savePurchase({
-		id: "earlier",
-		cardId: "scb",
-		date: "2026-10-26",
-		amount: 100,
-		note: "",
-		addedAt: "2026-10-27T02:00:00.000Z",
-	});
-	const root = mount();
-	renderDashboardPage(repo, root, { clock: fixedClock().clock });
-	await settle();
-
-	expect(await repo.getBatchStart()).toBe("2026-10-27T03:00:00.000Z");
-	expect(await sittingRows(root)).toHaveLength(0);
-});
-
-test("This sitting survives a reload", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const { clock, set } = fixedClock();
-	const root = mount();
-	renderDashboardPage(repo, root, { clock });
-	await settle();
-	set("2026-10-27T03:05:00.000Z");
-	const quickAdd = await openQuickAdd(root);
-	fillQuickAdd(quickAdd, "amount", "500");
-	submitQuickAdd(quickAdd);
-	await settle();
-
-	set("2026-10-28T03:00:00.000Z");
-	const again = mount();
-	renderDashboardPage(repo, again, { clock });
-	await settle();
-	expect(await sittingRows(again)).toHaveLength(1);
-});
-
-test("Start new batch, confirmed, empties This sitting", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	await repo.saveBatchStart("2026-10-27T01:00:00.000Z");
-	await repo.savePurchase({
-		id: "a",
-		cardId: "scb",
-		date: "2026-10-26",
-		amount: 100,
-		note: "",
-		addedAt: "2026-10-27T02:00:00.000Z",
-	});
-	const { clock } = fixedClock();
-	const root = mount();
-	renderDashboardPage(repo, root, { clock });
-	await settle();
-	expect(await sittingRows(root)).toHaveLength(1);
-
-	root
-		.querySelector("cc-sitting-list")
-		?.dispatchEvent(new CustomEvent("start-batch"));
-	await settle();
-
-	expect(await repo.getBatchStart()).toBe("2026-10-27T03:00:00.000Z");
-	expect(await sittingRows(root)).toHaveLength(0);
-});
-
-test("purchases from before addedAt existed do not show in This sitting", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	await repo.saveBatchStart("2026-10-01T00:00:00.000Z");
-	await repo.savePurchase({
-		id: "legacy",
-		cardId: "scb",
-		date: "2026-10-26",
-		amount: 100,
-		note: "",
-	});
-	const root = mount();
-	renderDashboardPage(repo, root, { clock: fixedClock().clock });
-	await settle();
-	expect(await sittingRows(root)).toHaveLength(0);
-});
-
-test("Purchases by date counts across cards, archived included", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	await repo.saveCard({ ...quickAddCard, id: "old", archived: true });
-	for (const [id, cardId] of [
-		["a", "scb"],
-		["b", "old"],
-	] as const) {
-		await repo.savePurchase({
-			id,
-			cardId,
-			date: "2026-10-10",
-			amount: 100,
-			note: "",
-		});
+test("no dashboard panel is left", async () => {
+	const { root } = await setup();
+	for (const selector of [
+		"cc-quick-add",
+		"cc-sitting-list",
+		"cc-spendable",
+		"cc-due-list",
+		"cc-purchase-range",
+		"[data-panel]",
+	]) {
+		expect(root.querySelector(selector)).toBeNull();
 	}
-	const root = mount();
-	renderDashboardPage(repo, root, { clock: fixedClock().clock });
-	await settle();
-
-	const range = root.querySelector("cc-purchase-range");
-	await range?.updateComplete;
-	expect(
-		range?.shadowRoot
-			?.querySelector('[data-testid="range-count"]')
-			?.textContent?.trim(),
-	).toBe("2");
-	expect(range?.today).toBe("2026-10-27");
 });
 
-test("midnight keeps a purchase date the reader picked", async () => {
+test("the batch start is never touched", async () => {
+	localStorage.clear();
+	await setup(new LocalStorageRepository(localStorage));
+	await settle();
+	expect(localStorage.getItem("cc:batch-start")).toBeNull();
+});
+
+test("Home has no selection: the short panel has no Start a list", async () => {
+	const { root } = await setup();
+	const panel = await readyList(root);
+	expect(panel.rows.map((row) => row.card.id)).toEqual(["A", "B"]);
+	const shadow = panel.shadowRoot as ShadowRoot;
+	expect(shadow.querySelector(".tick")).toBeNull();
+	expect(shadow.querySelector('[data-action="start"]')).toBeNull();
+	expect(root.querySelector('[data-testid="selection"]')).toBeNull();
+	expect(document.documentElement.hasAttribute("data-selecting")).toBe(false);
+});
+
+test("the floating Payment button stays on Home", async () => {
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(css).not.toContain("data-selecting");
+});
+
+test("stored payments and sent lists move the room", async () => {
 	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const { clock, set } = fixedClock("2026-10-27T16:59:00.000Z");
-	const root = mount();
-	renderDashboardPage(repo, root, { clock, tickMs: 5 });
-	await settle();
-	fillQuickAdd(await openQuickAdd(root), "date", "2026-10-25");
-
-	set("2026-10-27T17:01:00.000Z");
-	await new Promise((resolve) => setTimeout(resolve, 25));
-
-	expect(formValue(await openQuickAdd(root), "date")).toBe("2026-10-25");
-	root.remove();
-});
-
-test("today rolls over at midnight", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	// 23:59 in Bangkok on the 27th.
-	const { clock, set } = fixedClock("2026-10-27T16:59:00.000Z");
-	const root = mount();
-	renderDashboardPage(repo, root, { clock, tickMs: 5 });
-	await settle();
-	expect((await openQuickAdd(root)).today).toBe("2026-10-27");
-
-	set("2026-10-27T17:01:00.000Z");
-	await new Promise((resolve) => setTimeout(resolve, 25));
-
-	const form = await openQuickAdd(root);
-	expect(form.today).toBe("2026-10-28");
-	expect(formValue(form, "date")).toBe("2026-10-28");
-	expect(root.querySelector("cc-purchase-range")?.today).toBe("2026-10-28");
-	root.remove();
-});
-
-test("lets the reader dismiss the purchase confirmation", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-	fillQuickAdd(quickAdd, "date", "2026-09-18");
-	fillQuickAdd(quickAdd, "amount", "500");
-	submitQuickAdd(quickAdd);
-	await settle();
-	expect(answerText(root)).not.toBe("");
-
-	root.querySelector<HTMLButtonElement>(".purchase-status button")?.click();
-	await settle();
-
-	expect(answerText(root)).toBe("");
-	// The live region itself stays, so the next confirmation is still announced.
-	expect(root.querySelector(".purchase-status")?.getAttribute("role")).toBe(
-		"status",
-	);
-});
-
-test("a failed mark-paid keeps its error message after the refresh that follows it", async () => {
-	const repo = new RejectingPaymentRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const list = root.querySelector("cc-due-list");
-	await list?.updateComplete;
-	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
-	await settle();
-	await submitPayment(root);
-
-	expect(bannerMessage(root)).toContain("disk is full");
-	expect(await repo.listPayments("kbank")).toEqual([]);
-});
-
-test("marking a statement paid records the payment and clears it from the due list", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const list = root.querySelector("cc-due-list");
-	await list?.updateComplete;
-	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
-	await settle();
-	await submitPayment(root);
-
-	expect(bannerMessage(root)).toBe("");
-	expect(root.querySelector("cc-modal")).toBeNull();
-	const payments = await repo.listPayments("kbank");
-	expect(payments).toHaveLength(1);
-	expect(payments[0]?.period).toBe(period);
-
-	const listAfter = root.querySelector("cc-due-list");
-	await listAfter?.updateComplete;
-	expect(listAfter?.shadowRoot?.querySelector(MARK_PAID)).toBeNull();
-	expect(
-		listAfter?.shadowRoot?.querySelector("[data-urgency='overdue']"),
-	).toBeNull();
-});
-
-test("paying part of a statement keeps it in the due list with what is left", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const list = root.querySelector("cc-due-list");
-	await list?.updateComplete;
-	list?.shadowRoot?.querySelector<HTMLButtonElement>(MARK_PAID)?.click();
-	await settle();
-	await submitPayment(root, "100");
-
-	const listAfter = root.querySelector("cc-due-list");
-	await listAfter?.updateComplete;
-	expect(listAfter?.rows[0]?.statement.remaining).toBe(25_000);
-	expect(listAfter?.shadowRoot?.querySelector(MARK_PAID)).not.toBeNull();
-});
-
-test("marking paid freezes the dates of the event's own period, not whatever nextActionable recomputes", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	await repo.savePurchase(purchase);
-	// A second, later statement that has also already closed and gone unpaid. `nextActionable`
-	// would return `period` (the oldest unpaid one), but this test asks to mark `newerPeriod`
-	// paid instead, by dispatching the event directly rather than clicking the row -- exactly
-	// the kind of stale-period request nothing else in this flow currently prevents.
-	const newerPeriod = addPeriods(period, 1);
-	await repo.savePurchase({
-		id: "b",
-		cardId: "kbank",
-		date: closeDateOf(card.cycle, newerPeriod),
-		amount: 12_000,
-		note: "parts",
-	});
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const list = root.querySelector("cc-due-list");
-	await list?.updateComplete;
-	list?.dispatchEvent(
-		new CustomEvent("mark-paid", {
-			detail: { cardId: "kbank", period: newerPeriod },
-		}),
-	);
-	await settle();
-	await submitPayment(root);
-
-	expect(bannerMessage(root)).toBe("");
-	const payments = await repo.listPayments("kbank");
-	expect(payments).toHaveLength(1);
-	expect(payments[0]?.period).toBe(newerPeriod);
-	expect(payments[0]?.closeDate).toBe(closeDateOf(card.cycle, newerPeriod));
-	expect(payments[0]?.dueDate).toBe(dueDateOf(card.cycle, newerPeriod));
-});
-
-test("the panel lists spendable cards and counts those with no group", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
-	const { limitGroupId: _limitGroupId, ...noGroupCard } = quickAddCard;
-	await repo.saveCard({ ...noGroupCard, id: "nogroup" });
-
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const panel = root.querySelector("cc-spendable");
-	expect(panel?.rows.map((row) => row.card.id)).toEqual([quickAddCard.id]);
-	expect(panel?.unassigned).toBe(1);
-});
-
-test("the panel is told today's date, so it can say how far off each statement is", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
-
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	expect(root.querySelector("cc-spendable")?.today).toBe(today());
-});
-
-test("an archived card's unpaid balance still holds down the group it shares", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 500_000,
-	});
-	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
-	await repo.saveCard({
-		...quickAddCard,
-		id: "retired",
-		archived: true,
-		limitGroupId: "pool",
-	});
 	await repo.savePurchase({
 		id: "p1",
-		cardId: "retired",
-		date: today(),
-		amount: 150_000,
-		note: "old",
+		cardId: "A",
+		date: "2026-09-10",
+		amount: 20_000_00,
+		note: "",
 	});
-
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const panel = root.querySelector("cc-spendable");
-	expect(panel?.rows).toHaveLength(1);
-	expect(panel?.rows[0]?.available).toBe(350_000);
-});
-
-test("renders its heading in the chosen language", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-	expect(root.textContent).toContain("Dashboard");
-
-	setLocale("th");
-	await settle();
-	expect(root.textContent).toContain("หน้าหลัก");
-});
-
-test("folds each panel under its heading, spend open and due closed at first, then left as the reader sets it", async () => {
-	const repo = new InMemoryRepository();
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-	const panel = (name: string) =>
-		root.querySelector<HTMLDetailsElement>(`details[data-panel="${name}"]`);
-	expect(panel("spendable")?.open).toBe(true);
-	expect(panel("spendable")?.querySelector("summary")?.textContent).toContain(
-		"Can spend now",
-	);
-	expect(panel("spendable")?.querySelector("cc-spendable")).not.toBeNull();
-	expect(panel("due")?.open).toBe(false);
-	expect(panel("due")?.querySelector("summary")?.textContent).toContain(
-		"Due next",
-	);
-	expect(panel("due")?.querySelector("cc-due-list")).not.toBeNull();
-
-	const [spend, due] = [panel("spendable"), panel("due")];
-	if (spend) spend.open = false;
-	if (due) due.open = true;
-	setLocale("th");
-	await settle();
-	expect(panel("spendable")?.open).toBe(false);
-	expect(panel("due")?.open).toBe(true);
-});
-
-test("reopens each panel as the reader left it after a reload", async () => {
-	const repo = new InMemoryRepository();
-	const first = mount();
-	renderDashboardPage(repo, first);
-	await settle();
-	const panel = (root: HTMLElement, name: string) =>
-		root.querySelector<HTMLDetailsElement>(`details[data-panel="${name}"]`);
-	const [spend, due] = [panel(first, "spendable"), panel(first, "due")];
-	if (!spend || !due) throw new Error("no panels");
-	spend.open = false;
-	due.open = true;
-	await settle();
-
-	const reloaded = mount();
-	renderDashboardPage(repo, reloaded);
-	await settle();
-	expect(panel(reloaded, "spendable")?.open).toBe(false);
-	expect(panel(reloaded, "due")?.open).toBe(true);
-});
-
-test("the purchase confirmation re-renders in the new language instead of freezing or clearing", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveCard(quickAddCard);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
-
-	const quickAdd = await openQuickAdd(root);
-
-	fillQuickAdd(quickAdd, "date", "2026-09-18");
-	fillQuickAdd(quickAdd, "amount", "500");
-	submitQuickAdd(quickAdd);
-	await settle();
-
-	expect(answerText(root)).toBe(
-		"Lands on the statement closing 18 Sep 2026 — pay by 03 Oct 2026.",
-	);
-
-	setLocale("th");
-	await settle();
-
-	// Same confirmation, re-resolved in the new language -- not cleared, not left in English.
-	expect(answerText(root)).toBe(
-		"อยู่ในใบแจ้งยอดที่สรุปยอดวันที่ 18 ก.ย. 2026 — ชำระภายใน 03 ต.ค. 2026",
-	);
-});
-
-test("confirms a purchase that goes over the limit, and still saves it", async () => {
-	const repo = new InMemoryRepository();
-	await repo.saveLimitGroup({
-		id: "pool",
-		name: "KBank account",
-		limit: 50_000,
+	await repo.saveCardPayment({
+		id: "c1",
+		cardId: "A",
+		date: "2026-10-01",
+		amount: 20_000_00,
+		status: "paid",
+		period: "2026-09",
 	});
-	await repo.saveCard({ ...quickAddCard, limitGroupId: "pool" });
+	await repo.savePurchase({
+		id: "p2",
+		cardId: "A",
+		date: "2026-10-28",
+		amount: 5_000_00,
+		note: "",
+	});
+	await repo.savePurchaseList({
+		id: "l1",
+		date: "2026-10-31",
+		status: "sent",
+		lines: [{ cardId: "B", amount: 10_000_00 }],
+	});
+	const { root } = await setup(repo);
 
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
+	const list = await readyList(root);
+	expect(list.rows.length).toBe(2);
+	for (const row of list.rows) expect(row.room.room).toBe(85_000_00);
 
-	(await openQuickAdd(root)).dispatchEvent(
-		new CustomEvent("add", {
-			detail: {
-				cardId: quickAddCard.id,
-				date: today(),
-				amount: 80_000,
-				note: "laptop",
-			},
-		}),
-	);
-	await settle();
-
-	expect(await repo.listPurchases(quickAddCard.id)).toHaveLength(1);
-	const answer = answerText(root);
-	expect(answer).toContain("฿300.00");
-	expect(answer).toContain("KBank account");
+	const kinds = (
+		root.querySelector<CcNeedsYou>("cc-needs-you")?.items ?? []
+	).map((item) => item.kind);
+	expect(kinds).toContain("waiting");
+	expect(kinds).not.toContain("overdue");
 });
 
-test("leaves where each card is kept to the card list, which filters by location", async () => {
+test("a planned payment due soon needs you, a far one does not", async () => {
 	const repo = new InMemoryRepository();
-	await repo.saveCard(card);
-	const root = mount();
-	renderDashboardPage(repo, root);
-	await settle();
+	await repo.saveCardPayment({
+		id: "c1",
+		cardId: "A",
+		date: "2026-11-02",
+		amount: 1_000_00,
+		status: "planned",
+	});
+	await repo.saveCardPayment({
+		id: "c2",
+		cardId: "A",
+		date: "2026-12-25",
+		amount: 1_000_00,
+		status: "planned",
+	});
+	const { root } = await setup(repo);
+	const planned = (
+		root.querySelector<CcNeedsYou>("cc-needs-you")?.items ?? []
+	).filter((item) => item.kind === "planned");
+	expect(planned.length).toBe(1);
+});
 
-	expect(root.querySelector("cc-location-groups")).toBeNull();
-	expect(root.textContent).not.toContain("Cards by location");
+test("an overdue bill needs you", async () => {
+	const repo = new InMemoryRepository();
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "A",
+		date: "2026-09-10",
+		amount: 3_000_00,
+		note: "",
+	});
+	const { root } = await setup(repo);
+
+	const items = root.querySelector<CcNeedsYou>("cc-needs-you")?.items ?? [];
+	expect(
+		items.some((item) => item.kind === "overdue" && item.card.id === "A"),
+	).toBe(true);
+});
+
+test("past midnight moves today", async () => {
+	setLocale("en");
+	const repo = new InMemoryRepository();
+	await seed(repo);
+	const root = mount();
+	const time = movableClock();
+	renderHomePage(repo, root, { clock: time.clock, tickMs: 5 });
+	await settle();
+	expect((await readyList(root)).today).toBe("2026-10-31");
+
+	time.set("2026-11-01T03:00:00Z");
+	await settle(30);
+	expect((await readyList(root)).today).toBe("2026-11-01");
+	root.remove();
+});
+
+class FailingReadRepository extends InMemoryRepository {
+	override listCards(): Promise<Card[]> {
+		return Promise.reject(new Error("disk is gone"));
+	}
+}
+
+test("ready to use names the places that take purchases, A to Z in the reader's language", async () => {
+	const { root, repo } = await setup();
+	await repo.saveLocation({
+		id: "chiang-mai",
+		name: "Chiang Mai",
+		takesPurchases: true,
+	});
+	await repo.saveCard(card("C", { location: "chiang-mai" }));
+	renderHomePage(repo, root);
+	await settle();
+	const panel = await readyList(root);
+	expect(panel.places).toEqual(["Chiang Mai", "Krabi"]);
+	expect(panel.rows.map((row) => row.card.id).sort()).toEqual(["A", "B", "C"]);
+
+	// A language switch repaints with the names, and their order, in that language.
+	setLocale("th");
+	await settle();
+	expect((await readyList(root)).places).toEqual(["กระบี่", "Chiang Mai"]);
+	setLocale("en");
+});
+
+test("with nothing ready, the panel still names no place that takes none", async () => {
+	const { root, repo } = await setup();
+	await saveLocations(repo, []);
+	renderHomePage(repo, root);
+	await settle();
+	const panel = await readyList(root);
+	expect(panel.rows).toEqual([]);
+	expect(panel.places).toEqual([]);
+});
+
+test("a failed read shows the banner", async () => {
+	setLocale("en");
+	const root = mount();
+	renderHomePage(new FailingReadRepository(), root, {
+		clock: movableClock().clock,
+	});
+	await settle();
+	const banner = root.querySelector("cc-error-banner");
+	expect(banner?.message.startsWith("Could not read your cards.")).toBe(true);
+});
+
+test("Home is two columns from 900px: Ready to use left, Needs you right; a phone keeps Needs you first", async () => {
+	const { root } = await setup();
+	const grid = root.querySelector(".home-grid") as HTMLElement;
+	expect([...grid.children].map((c) => c.localName)).toEqual([
+		"cc-needs-you",
+		"cc-ready-panel",
+	]);
+	const css = await Bun.file("src/styles/app.css").text();
+	expect(css).toMatch(
+		/@media \(min-width: 900px\)\s*\{\s*\.home-grid\s*\{[^}]*grid-template-columns: minmax\(0, 1\.5fr\) minmax\(0, 1fr\);[^}]*grid-template-areas: "ready needs";/,
+	);
+	expect(css).toMatch(/\.home-grid > cc-needs-you\s*\{\s*grid-area: needs;/);
+	expect(css).toMatch(/\.home-grid > cc-ready-panel\s*\{\s*grid-area: ready;/);
+});
+
+const needs = async (root: HTMLElement) => {
+	const element = root.querySelector<CcNeedsYou>("cc-needs-you");
+	if (!element) throw new Error("no needs you");
+	await element.updateComplete;
+	return { element, shadow: element.shadowRoot as ShadowRoot };
+};
+
+/** Opens the Needs you row `row` and taps `action` in it, then lets the page write and reload. */
+const tapIn = async (root: HTMLElement, row: string, action: string) => {
+	const { element, shadow } = await needs(root);
+	const head = shadow.querySelector<HTMLElement>(`[data-row="${row}"] .a-hit`);
+	if (head?.getAttribute("aria-expanded") !== "true") head?.click();
+	await element.updateComplete;
+	shadow
+		.querySelector<HTMLElement>(`[data-row="${row}"] [data-action="${action}"]`)
+		?.click();
+	await settle(5);
+	await element.updateComplete;
+};
+
+const soonPlan = {
+	id: "c1",
+	cardId: "A",
+	date: "2026-11-02",
+	amount: 1_000_00,
+	status: "planned" as const,
+};
+
+test("Paid on a Needs you plan stores it paid and the row goes", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCardPayment(soonPlan);
+	const { root } = await setup(repo);
+	await tapIn(root, "plan:A:c1", "mark-paid");
+	const [stored] = await repo.listCardPayments("A");
+	expect(stored?.status).toBe("paid");
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="plan:A:c1"]')).toBeNull();
+	expect(root.querySelector("cc-error-banner")?.message).toBe("");
+});
+
+/** The focused element, through every shadow root. */
+const deepActive = (): Element | null => {
+	let active: Element | null = document.activeElement;
+	while (active?.shadowRoot?.activeElement)
+		active = active.shadowRoot.activeElement;
+	return active;
+};
+
+/** Opens row `row`, focuses its `action` as a keyboard would, and presses it. */
+const pressIn = async (root: HTMLElement, row: string, action: string) => {
+	const { element, shadow } = await needs(root);
+	shadow.querySelector<HTMLElement>(`[data-row="${row}"] .a-hit`)?.click();
+	await element.updateComplete;
+	const button = shadow.querySelector<HTMLElement>(
+		`[data-row="${row}"] [data-action="${action}"]`,
+	);
+	button?.focus();
+	expect(deepActive()).toBe(button);
+	button?.click();
+	await settle(5);
+	await element.updateComplete;
+};
+
+const plans = (...dates: string[]) =>
+	dates.map((date, i) => ({ ...soonPlan, id: `c${i + 1}`, date }));
+
+test("after Paid takes a row away, focus moves to the next row's head", async () => {
+	const repo = new InMemoryRepository();
+	for (const plan of plans("2026-11-01", "2026-11-02", "2026-11-03"))
+		await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	await pressIn(root, "plan:A:c2", "mark-paid");
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="plan:A:c2"]')).toBeNull();
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c3"] .a-hit'),
+	);
+});
+
+test("in a folded list, focus moves to the row that slides into the gone row's place", async () => {
+	const repo = new InMemoryRepository();
+	const dates = [
+		"2026-10-29",
+		"2026-10-30",
+		"2026-10-31",
+		"2026-11-01",
+		"2026-11-02",
+		"2026-11-03",
+	];
+	for (const plan of plans(...dates)) await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	const { shadow } = await needs(root);
+	// Five show; the sixth waits behind See more.
+	expect(shadow.querySelector('[data-row="plan:A:c6"]')).toBeNull();
+	await pressIn(root, "plan:A:c5", "mark-paid");
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c6"] .a-hit'),
+	);
+});
+
+test("after Paid takes the last row away, focus moves to the row before it", async () => {
+	const repo = new InMemoryRepository();
+	for (const plan of plans("2026-11-01", "2026-11-02"))
+		await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	await pressIn(root, "plan:A:c2", "mark-paid");
+	const { shadow } = await needs(root);
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c1"] .a-hit'),
+	);
+});
+
+test("after Paid takes the only row away, focus moves to the heading", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCardPayment(soonPlan);
+	const { root } = await setup(repo);
+	await pressIn(root, "plan:A:c1", "mark-paid");
+	const { shadow } = await needs(root);
+	const heading = shadow.querySelector("h1");
+	expect(heading?.getAttribute("tabindex")).toBe("-1");
+	expect(deepActive()).toBe(heading);
+});
+
+test("after a two-step Delete takes a row away, focus moves to the next row's head", async () => {
+	const repo = new InMemoryRepository();
+	for (const plan of plans("2026-11-01", "2026-11-02"))
+		await repo.saveCardPayment(plan);
+	const { root } = await setup(repo);
+	const { element, shadow } = await needs(root);
+	shadow.querySelector<HTMLElement>('[data-row="plan:A:c1"] .a-hit')?.click();
+	await element.updateComplete;
+	const first = shadow.querySelector<HTMLElement>(
+		'[data-row="plan:A:c1"] [data-action="delete"]',
+	);
+	first?.focus();
+	first?.click();
+	await element.updateComplete;
+	// The swap moved focus to the asking Delete.
+	const second = shadow.querySelector<HTMLElement>(
+		'[data-row="plan:A:c1"] [data-action="confirm-delete"]',
+	);
+	expect(deepActive()).toBe(second);
+	second?.click();
+	await settle(5);
+	await element.updateComplete;
+	expect(shadow.querySelector('[data-row="plan:A:c1"]')).toBeNull();
+	expect(deepActive()).toBe(
+		shadow.querySelector('[data-row="plan:A:c2"] .a-hit'),
+	);
+});
+
+class FailingWriteRepository extends InMemoryRepository {
+	override saveCardPayment(): Promise<void> {
+		return Promise.reject(new Error("disk is full"));
+	}
+}
+
+test("a failed write shows the banner and keeps the row open", async () => {
+	const repo = new FailingWriteRepository();
+	await InMemoryRepository.prototype.saveCardPayment.call(repo, soonPlan);
+	const { root } = await setup(repo);
+	await tapIn(root, "plan:A:c1", "mark-paid");
+	expect(root.querySelector("cc-error-banner")?.message).toBe(
+		"Could not mark the payment paid. disk is full",
+	);
+	const { shadow } = await needs(root);
+	expect(
+		shadow
+			.querySelector('[data-row="plan:A:c1"] .a-hit')
+			?.getAttribute("aria-expanded"),
+	).toBe("true");
+});
+
+const draft = {
+	id: "d1",
+	date: "2026-10-31",
+	status: "draft" as const,
+	lines: [{ cardId: "A", amount: 1_000_00 }],
+};
+
+test("Delete on a Needs you draft removes it at once", async () => {
+	const repo = new InMemoryRepository();
+	await repo.savePurchaseList(draft);
+	const { root } = await setup(repo);
+	await tapIn(root, "list:d1", "delete-draft");
+	expect(await repo.listPurchaseLists()).toEqual([]);
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="list:d1"]')).toBeNull();
+});
+
+test("Delete refuses a draft sent since, and says why", async () => {
+	const repo = new InMemoryRepository();
+	await repo.savePurchaseList(draft);
+	const { root } = await setup(repo);
+	await repo.savePurchaseList({ ...draft, status: "sent" });
+	await tapIn(root, "list:d1", "delete-draft");
+	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual([
+		"sent",
+	]);
+	expect(root.querySelector("cc-error-banner")?.message).toBe(
+		"Could not delete the draft. This list was sent or saved elsewhere, so it was not changed.",
+	);
+});
+
+/** Taps the first step, then the second, of a two-step button in a Needs you row. */
+const tapTwice = async (
+	root: HTMLElement,
+	row: string,
+	first: string,
+	second: string,
+) => {
+	const { element, shadow } = await needs(root);
+	const head = shadow.querySelector<HTMLElement>(`[data-row="${row}"] .a-hit`);
+	head?.click();
+	await element.updateComplete;
+	shadow
+		.querySelector<HTMLElement>(`[data-row="${row}"] [data-action="${first}"]`)
+		?.click();
+	await element.updateComplete;
+	// Nothing is written by the first step.
+	await settle(5);
+	return async () => {
+		shadow
+			.querySelector<HTMLElement>(
+				`[data-row="${row}"] [data-action="${second}"]`,
+			)
+			?.click();
+		await settle(5);
+		await element.updateComplete;
+	};
+};
+
+test("Delete on a planned payment is two steps, then the stored payment is gone", async () => {
+	const repo = new InMemoryRepository();
+	await repo.saveCardPayment(soonPlan);
+	const { root } = await setup(repo);
+	const second = await tapTwice(root, "plan:A:c1", "delete", "confirm-delete");
+	expect(await repo.listCardPayments("A")).toHaveLength(1);
+	await second();
+	expect(await repo.listCardPayments("A")).toEqual([]);
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="plan:A:c1"]')).toBeNull();
+	expect(root.querySelector("cc-error-banner")?.message).toBe("");
+});
+
+test("Confirm on a waiting list is two steps, then Save stores the list saved", async () => {
+	const repo = new InMemoryRepository();
+	await repo.savePurchaseList({ ...draft, id: "w1", status: "sent" });
+	const { root } = await setup(repo);
+	const second = await tapTwice(root, "list:w1", "confirm-list", "save-list");
+	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual([
+		"sent",
+	]);
+	await second();
+	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual([
+		"saved",
+	]);
+	const { shadow } = await needs(root);
+	expect(shadow.querySelector('[data-row="list:w1"]')).toBeNull();
 });

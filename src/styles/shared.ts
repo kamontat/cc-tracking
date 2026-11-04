@@ -1,4 +1,5 @@
-import { css } from "lit";
+import { css, unsafeCSS } from "lit";
+import { GROUP_COLORS } from "#lib/domain/group-color";
 
 /**
  * The shadow-root counterpart to the document reset. `@kcstyles/reset.css` is a
@@ -180,7 +181,7 @@ export const controls = css`
 		font-weight: 600;
 		color: var(--cc-text-muted);
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: var(--cc-tracking-label);
 	}
 
 	p[role="alert"] {
@@ -260,7 +261,7 @@ export const dataTable = css`
 		color: var(--cc-text-muted);
 		text-align: left;
 		text-transform: uppercase;
-		letter-spacing: 0.04em;
+		letter-spacing: var(--cc-tracking-label);
 		border-bottom: var(--cc-border-width) solid var(--cc-border);
 	}
 
@@ -331,7 +332,7 @@ export const dataTable = css`
 			font-size: var(--cc-text-xs);
 			color: var(--cc-text-muted);
 			text-transform: uppercase;
-			letter-spacing: 0.04em;
+			letter-spacing: var(--cc-tracking-label);
 		}
 	}
 `;
@@ -357,7 +358,8 @@ export const badge = css`
 
 /**
  * How much of a limit is spent, as a thin bar. The fill's width is the share itself, set
- * inline; `data-level` (from `usageLevel`) tints it, and the level is also said in text
+ * inline; `data-level` tints it as a card tile's rail (grey, amber from 80%, red past the
+ * limit, DD-153), and the level is also said in text
  * beside the bar wherever it is used, so colour is never the only signal.
  */
 export const usageBar = css`
@@ -373,7 +375,7 @@ export const usageBar = css`
 	.usage > span {
 		display: block;
 		block-size: 100%;
-		background: var(--cc-accent);
+		background: var(--cc-text-muted);
 		border-radius: var(--cc-radius-sm);
 	}
 
@@ -504,5 +506,562 @@ export const listControls = css`
 	th[aria-sort="ascending"] .sort-arrow,
 	th[aria-sort="descending"] .sort-arrow {
 		color: inherit;
+	}
+`;
+
+/**
+ * The purchase list's two columns, for the steps drawn in a shadow root (amounts, reply); the
+ * page's own `.list-layout` in app.css draws the review and saved views the same way. On a
+ * phone the side panel's pieces flow into the one column, a `data-place="start"` piece above
+ * the lines; from 900px the panel parks beside them, sticky under the sub-header, and the bottom
+ * action bar inside it loses its own frame.
+ */
+export const listLayout = css`
+	.list-layout {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-4);
+	}
+
+	.list-layout__main {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-4);
+		min-inline-size: 0;
+	}
+
+	.list-layout__side {
+		display: contents;
+	}
+
+	.list-layout [data-place="start"] {
+		order: -1;
+	}
+
+	.lines {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		align-items: start;
+		gap: var(--cc-space-4);
+	}
+
+	@media (min-width: 900px) {
+		.list-layout {
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
+			align-items: start;
+			gap: var(--cc-space-5);
+		}
+
+		.list-layout__side {
+			position: sticky;
+			top: calc(
+				var(--cc-header-height) + var(--cc-sub-header-height) + var(--cc-space-4)
+			);
+			display: flex;
+			flex-direction: column;
+			gap: var(--cc-space-3);
+			padding: var(--cc-panel-padding);
+			background: var(--cc-surface);
+			border: var(--cc-border-width) solid var(--cc-border);
+			border-radius: var(--cc-radius-md);
+			box-shadow: var(--cc-shadow-sm);
+		}
+
+		.list-layout [data-place="start"] {
+			order: 0;
+		}
+
+		.list-layout__side .action-bar {
+			position: static;
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			gap: var(--cc-space-3);
+			padding: 0;
+			background: none;
+			border: 0;
+			box-shadow: none;
+		}
+
+		.list-layout__side .action-bar button {
+			align-self: stretch;
+			text-align: center;
+		}
+	}
+
+	/* Two line cards side by side once the main column is wide enough for both. */
+	@media (min-width: 1200px) {
+		.lines {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+`;
+
+/**
+ * The sticky bar at the foot of a list page: a summary on the left, its actions on the right.
+ * It sticks above the phone's tab bar; `listLayout` turns it into a plain column in the side
+ * panel from 900px. The new-list picker's selection bar is light DOM, so `app.css` keeps its own copy.
+ */
+export const actionBarStyles = css`
+	.action-bar {
+		position: sticky;
+		bottom: calc(
+			var(--cc-tabbar-height) + var(--cc-space-3) + env(safe-area-inset-bottom, 0px)
+		);
+		z-index: 5;
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--cc-space-1) var(--cc-space-3);
+		/* As tall as the floating + New button (--cc-bar-height); a bar that wraps grows. */
+		min-block-size: var(--cc-bar-height);
+		padding: var(--cc-space-1) var(--cc-space-4);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+		box-shadow: var(--cc-shadow-lg);
+	}
+
+	.action-bar button {
+		align-self: center;
+	}
+`;
+
+/**
+ * One rule per group colour, setting the three properties coloured elements read: `--g-bg` (the
+ * pastel), `--g-fg` (its text) and `--g-soft` (a tint of the pastel). A shadow root that renders
+ * a `[data-g]` element includes this; app.css keeps a copy for the light-DOM pages.
+ */
+export const groupInk = unsafeCSS(
+	GROUP_COLORS.map(
+		(name) => `[data-g="${name}"] {
+	--g-bg: var(--cc-group-${name});
+	--g-fg: var(--cc-group-${name}-text);
+	--g-soft: var(--cc-group-${name}-soft);
+}`,
+	).join("\n"),
+);
+
+/**
+ * The pieces a card's name is drawn from (card-label.ts, UI-14): `.mini`, the last-4 chip in the
+ * group's pastel (`data-g` a colour name, `data-big` for the payment sheet's card), `.card-panel`, the
+ * chip and `id) name` side by side, `.cl-short` hidden by default (a `cardLineHtml` pair shows its
+ * full form unless a narrow place swaps it in its own media or container query), and
+ * `.tag`, a pill with a dot that carries a word as well as a colour (`data-urgency` from
+ * `payTag`). app.css keeps a copy of `.mini` and `.card-panel` for the light-DOM pages.
+ */
+export const cardBits = css`
+	${groupInk}
+
+	.card-panel {
+		display: inline-flex;
+		flex-direction: row;
+		align-items: center;
+		gap: var(--cc-space-2);
+		min-inline-size: 0;
+	}
+
+	.cl-short {
+		display: none;
+	}
+
+	.mini {
+		display: inline-grid;
+		place-items: end start;
+		flex: none;
+		inline-size: calc(var(--cc-space-5) + var(--cc-space-3));
+		block-size: calc(var(--cc-space-5) + var(--cc-space-1) / 2);
+		padding: calc(var(--cc-space-1) / 2) var(--cc-space-1);
+		font-family: var(--cc-font-mono);
+		font-size: calc(var(--cc-text-xs) * 0.8);
+		font-weight: 700;
+		line-height: 1;
+		color: var(--cc-text-muted);
+		background: var(--cc-surface-sunken);
+		border-radius: var(--cc-radius-xs);
+	}
+
+	.mini[data-big] {
+		inline-size: calc(var(--cc-space-7) + var(--cc-space-1));
+		block-size: calc(var(--cc-space-5) + var(--cc-space-3) - var(--cc-space-1) / 2);
+		font-size: calc(var(--cc-text-xs) * 0.88);
+	}
+
+	.mini[data-g] {
+		color: var(--g-fg);
+		background: var(--g-bg);
+	}
+
+	.tag {
+		display: inline-flex;
+		flex-direction: row;
+		align-items: center;
+		align-self: flex-start;
+		gap: calc(var(--cc-space-1) * 1.25);
+		padding: 0 var(--cc-space-2);
+		font-size: var(--cc-text-xs);
+		font-weight: 650;
+		line-height: 1.6;
+		white-space: nowrap;
+		color: var(--cc-text-muted);
+		background: var(--cc-surface-sunken);
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.tag::before {
+		content: "";
+		inline-size: calc(var(--cc-space-1) * 1.5);
+		block-size: calc(var(--cc-space-1) * 1.5);
+		background: currentColor;
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.tag[data-urgency="overdue"] {
+		color: var(--cc-danger);
+		background: var(--cc-danger-surface);
+	}
+
+	.tag[data-urgency="soon"] {
+		color: var(--cc-warning);
+		background: var(--cc-warning-surface);
+	}
+
+	.tag[data-urgency="credit"] {
+		color: var(--cc-success);
+		background: var(--cc-accent-surface);
+	}
+`;
+
+/**
+ * Phase 4's row panels (the ledger, Upcoming, owed, lists): one `.panel` holding `.crow` rows
+ * with a line between each. A row is a grid -- a leading chip or `.ic` tile, the `.what` (a
+ * bold title, a muted `.word`, then a `.sub` line), and a right-aligned `.r` figure. `.out`
+ * marks money going out (red), `.in` money coming in (green). `.tag[data-tone]` tints a status pill that carries no urgency.
+ * A row that is a plain container with its own controls inside (the picker's, DD-150) sets
+ * `data-toggle` to take the same hover.
+ */
+export const rowPanel = css`
+	.panel {
+		display: flex;
+		flex-direction: column;
+		padding: 0 var(--cc-space-4);
+		overflow: clip;
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+	}
+
+	.panel > * + * {
+		border-top: var(--cc-border-width) solid var(--cc-border);
+	}
+
+	.crow {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: center;
+		align-self: stretch;
+		gap: var(--cc-space-1) var(--cc-space-3);
+		padding: var(--cc-space-3) 0;
+		font: inherit;
+		font-size: var(--cc-text-md);
+		font-weight: 400;
+		line-height: var(--cc-leading);
+		white-space: normal;
+		text-align: start;
+		text-decoration: none;
+		color: var(--cc-text);
+		cursor: pointer;
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+	}
+
+	.crow:any-link,
+	button.crow {
+		color: var(--cc-text);
+	}
+
+	/* After and above the rows' own border: 0 resets (.crow, a picker's button[data-card]),
+	   so a line is always drawn between rows of any kind. */
+	.panel > * + :is(.crow, button, a, div, section, article) {
+		border-top: var(--cc-border-width) solid var(--cc-border);
+	}
+
+	/* Hover is a quiet ground, never an underline (DD-105). The two side shadows carry the
+	   ground across the panel's side padding to its inner edges (DD-109); the panel clips them
+	   at its rounded corners, and the lines between rows stay whole. A neutral badge, whose
+	   fill is that ground, turns to the surface so it still shows. Focus keeps its ring (UI-16). */
+	button.crow:hover,
+	.crow:any-link:hover,
+	.crow[data-toggle]:hover {
+		text-decoration: none;
+		background: var(--cc-surface-sunken);
+		box-shadow:
+			calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
+			var(--cc-space-4) 0 0 var(--cc-surface-sunken);
+	}
+
+	button.crow:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]),
+	.crow:any-link:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]),
+	.crow[data-toggle]:hover .tag:not([data-tone], [data-urgency="overdue"], [data-urgency="soon"], [data-urgency="credit"]) {
+		background: var(--cc-surface);
+	}
+
+	button.crow:focus-visible,
+	.crow:any-link:focus-visible {
+		box-shadow: var(--cc-focus-ring);
+	}
+
+	.what {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: calc(var(--cc-space-1) / 2);
+		min-inline-size: 0;
+		line-height: 1.35;
+	}
+
+	.what b {
+		font-weight: 650;
+	}
+
+	.word,
+	.sub {
+		font-size: var(--cc-text-xs);
+		font-weight: 400;
+		color: var(--cc-text-muted);
+	}
+
+	.sub {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0 var(--cc-space-2);
+	}
+
+	.r {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: var(--cc-space-1);
+		line-height: 1.25;
+		text-align: end;
+	}
+
+	.r small {
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
+	}
+
+	.amount {
+		font-weight: 650;
+		white-space: nowrap;
+	}
+
+	/* Purchases read red and payments green, always with their sign and word (UI-07). */
+	.amount.out,
+	.amount.danger {
+		color: var(--cc-danger);
+	}
+
+	.amount.in {
+		color: var(--cc-success);
+	}
+
+	.amount.muted {
+		color: var(--cc-text-muted);
+	}
+
+	.ic {
+		display: grid;
+		place-items: center;
+		flex: none;
+		inline-size: calc(var(--cc-space-5) + var(--cc-space-3));
+		block-size: calc(var(--cc-space-5) + var(--cc-space-3));
+		color: var(--cc-warning);
+		background: var(--cc-warning-surface);
+		border-radius: var(--cc-radius-sm);
+	}
+
+	.ic .icon {
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
+	}
+
+	.tag[data-tone="warn"] {
+		color: var(--cc-warning);
+		background: var(--cc-warning-surface);
+	}
+
+	.tag[data-tone="ok"] {
+		color: var(--cc-success);
+		background: var(--cc-accent-surface);
+	}
+
+	.empty {
+		padding: var(--cc-space-4);
+		color: var(--cc-text-muted);
+	}
+`;
+
+/**
+ * A filter sheet's body (`cc-tx-filter`, `cc-ready-filter`): fieldsets of pill choices under a
+ * muted legend (`.choices`, `aria-pressed` marks a pick), optional `.dates`, and a `.footer`
+ * with a quiet *Clear all* and the full-width apply button (`data-action="apply"`).
+ */
+export const filterSheet = css`
+	:host {
+		display: contents;
+	}
+
+	fieldset {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-1);
+		min-inline-size: 0;
+		padding: 0;
+		border: 0;
+	}
+
+	legend {
+		padding: 0;
+		margin-bottom: var(--cc-space-1);
+		font-size: var(--cc-text-sm);
+		font-weight: 400;
+		letter-spacing: normal;
+		text-transform: none;
+		color: var(--cc-text-muted);
+	}
+
+	.choices {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: var(--cc-space-2);
+	}
+
+	.choices button {
+		padding: var(--cc-space-1) var(--cc-space-3);
+		font-weight: 400;
+		color: var(--cc-text);
+		background: var(--cc-surface-sunken);
+		border-color: transparent;
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.choices button:hover {
+		background: var(--cc-border);
+	}
+
+	.choices button[aria-pressed="true"] {
+		font-weight: 600;
+		color: var(--cc-success);
+		background: var(--cc-accent-surface);
+	}
+
+	.dates {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: var(--cc-space-3);
+		margin-top: var(--cc-space-2);
+	}
+
+	.dates label {
+		flex: 1 1 0;
+	}
+
+	.footer {
+		display: flex;
+		flex-direction: row;
+		gap: var(--cc-space-2);
+	}
+
+	.footer button {
+		padding-block: var(--cc-space-3);
+		font-size: var(--cc-text-md);
+		font-weight: 650;
+	}
+
+	.footer [data-action="apply"] {
+		flex: 1 1 auto;
+	}
+`;
+
+/**
+ * Rows a component draws inside a settings `.set` panel (prototype `setRow`): a label, with an
+ * optional muted `.sub` line under it, on the left and its control on the right, a rule between
+ * rows. `.seg` is a segmented choice whose pressed button (`aria-pressed`) lifts out of the
+ * sunken track, as the Transactions switch does. The light-DOM `.set-row` in app.css matches.
+ */
+export const setRows = css`
+	:host {
+		display: block;
+	}
+
+	.set-row {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--cc-space-1) var(--cc-space-3);
+		padding-block: var(--cc-space-3);
+	}
+
+	.set-row + .set-row {
+		border-top: var(--cc-border-width) solid var(--cc-border);
+	}
+
+	.sub {
+		display: block;
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
+	}
+
+	.seg {
+		display: inline-grid;
+		grid-auto-flow: column;
+		grid-auto-columns: 1fr;
+		padding: calc(var(--cc-space-1) * 0.75);
+		background: var(--cc-surface-sunken);
+		border-radius: var(--cc-radius-sm);
+	}
+
+	.seg button {
+		padding: var(--cc-space-1) var(--cc-space-3);
+		font-weight: 600;
+		color: var(--cc-text-muted);
+		text-align: center;
+		background: transparent;
+		border: 0;
+		border-radius: calc(var(--cc-radius-sm) - var(--cc-space-1) * 0.75);
+	}
+
+	.seg button:hover {
+		color: var(--cc-text);
+		background: transparent;
+	}
+
+	.seg button[aria-pressed="true"] {
+		color: var(--cc-text);
+		background: var(--cc-surface);
+		box-shadow: var(--cc-shadow-sm);
+	}
+`;
+
+/** The card-list section of a list page: each line its own panel (the amounts and the reply). */
+export const lineCards = css`
+	.line {
+		display: grid;
+		gap: var(--cc-space-3);
+		padding: var(--cc-space-4);
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
 	}
 `;

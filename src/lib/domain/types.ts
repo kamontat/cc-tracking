@@ -1,4 +1,4 @@
-import type { Location } from "#lib/domain/location";
+import type { GroupColor } from "#lib/domain/group-color";
 import type { Owner } from "#lib/domain/owner";
 
 /** A calendar date in Asia/Bangkok, formatted `YYYY-MM-DD`. */
@@ -17,7 +17,8 @@ export type Card = {
 	id: string;
 	name: string;
 	last4: string;
-	location: Location;
+	/** The id of the location record the card is kept at. */
+	location: string;
 	/**
 	 * A บัตรเสริม — a supplementary card issued against someone else's account. Absent on
 	 * cards saved before the field existed, which reads the same as not being one.
@@ -43,6 +44,8 @@ export type LimitGroup = {
 	limit: number;
 	/** Absent on groups saved before the field existed; see `ownerOf` in `#lib/domain/owner`. */
 	owner?: Owner;
+	/** Absent on groups saved before the field existed; see `group-color.ts`. */
+	color?: GroupColor;
 };
 
 export type Purchase = {
@@ -97,4 +100,80 @@ export type Statement = {
 	/** A payment exists and nothing remains. */
 	paid: boolean;
 	payment: StatementPayment | null;
+};
+
+export type PaymentStatus = "planned" | "paid";
+
+/** Money paid toward a card. `period` is set only on records converted from the old model. */
+export type CardPayment = {
+	id: string;
+	cardId: string;
+	date: PlainDate;
+	amount: number;
+	status: PaymentStatus;
+	period?: Period;
+	/** What the payer wrote about it, e.g. which account it came from; absent when none. */
+	note?: string;
+};
+
+/** Close and due dates kept once money first reached a statement. */
+export type StatementDates = {
+	cardId: string;
+	period: Period;
+	closeDate: PlainDate;
+	dueDate: PlainDate;
+};
+
+export type LedgerStatement = {
+	cardId: string;
+	period: Period;
+	closeDate: PlainDate;
+	dueDate: PlainDate;
+	purchases: Purchase[];
+	total: number;
+	paidAmount: number;
+	/** The parts of payments that settled it, in the order they were spent; sums to `paidAmount`. */
+	payments: { payment: CardPayment; amount: number }[];
+	remaining: number;
+	paid: boolean;
+	open: boolean;
+};
+
+export type CardLedger = {
+	statements: LedgerStatement[];
+	owed: number;
+	credit: number;
+};
+
+export type ListStatus = "draft" | "sent" | "saved";
+
+export type ListLine = {
+	cardId: string;
+	/** Satang planned. A positive integer. */
+	amount: number;
+	/** Absent until the spender answers. */
+	made?: boolean;
+	/** Satang really spent, when it differs from the plan. */
+	actual?: number;
+	/** What the purchase is for, trimmed; absent when blank. Becomes the purchase's note. */
+	note?: string;
+};
+
+export type PurchaseList = {
+	id: string;
+	date: PlainDate;
+	status: ListStatus;
+	lines: ListLine[];
+	/** ISO 8601 instants. */
+	sentAt?: string;
+	savedAt?: string;
+	/** Id of the draft that took this list's not-made lines. */
+	movedTo?: string;
+};
+
+/** A place cards are kept, as a record the user can rename and extend. */
+export type LocationRecord = {
+	id: string;
+	name: string;
+	takesPurchases: boolean;
 };

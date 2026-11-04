@@ -1,5 +1,7 @@
 import type { DateParts, Period, PlainDate } from "#lib/domain/types";
-import type { Locale } from "#lib/i18n/catalog";
+import type { Catalog, Locale, MessageKey } from "#lib/i18n/catalog";
+import { en } from "#lib/i18n/en";
+import { th } from "#lib/i18n/th";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD_PATTERN = /^\d{4}-\d{2}$/;
@@ -120,6 +122,84 @@ export function today(now: Date = new Date()): PlainDate {
 export function displayDate(date: PlainDate, locale: Locale): string {
 	const { year, month, day } = parseDate(date);
 	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`;
+}
+
+/** Day and short month, unpadded and without the year ("3 Nov", "15 ธ.ค."): a date inside a sentence or on a billing cycle line, where the year goes without saying. */
+export function dayMonth(date: PlainDate, locale: Locale): string {
+	const { month, day } = parseDate(date);
+	return `${day} ${MONTH_NAMES[locale][month - 1]}`;
+}
+
+/** A statement's month as `Mon YYYY` ("Nov 2026", "พ.ย. 2026"), the year Gregorian as in `displayDate`. */
+export function periodLabel(period: Period, locale: Locale): string {
+	const { year, month } = periodParts(period);
+	return `${MONTH_NAMES[locale][month - 1]} ${year}`;
+}
+
+const LONG_MONTH_NAMES: Record<Locale, readonly string[]> = {
+	en: [
+		"January",
+		"February",
+		"March",
+		"April",
+		"May",
+		"June",
+		"July",
+		"August",
+		"September",
+		"October",
+		"November",
+		"December",
+	],
+	th: [
+		"มกราคม",
+		"กุมภาพันธ์",
+		"มีนาคม",
+		"เมษายน",
+		"พฤษภาคม",
+		"มิถุนายน",
+		"กรกฎาคม",
+		"สิงหาคม",
+		"กันยายน",
+		"ตุลาคม",
+		"พฤศจิกายน",
+		"ธันวาคม",
+	],
+};
+
+/** The date's month in full ("October", "ตุลาคม"), for a heading like "October so far". */
+export function monthName(date: PlainDate, locale: Locale): string {
+	return LONG_MONTH_NAMES[locale][parseDate(date).month - 1] ?? "";
+}
+
+const WEEKDAY_CATALOGS: Record<Locale, Catalog> = { en, th };
+/** Sunday first, as `Date#getUTCDay` counts. */
+const WEEKDAY_KEYS: readonly MessageKey[] = [
+	"date.weekday.0",
+	"date.weekday.1",
+	"date.weekday.2",
+	"date.weekday.3",
+	"date.weekday.4",
+	"date.weekday.5",
+	"date.weekday.6",
+];
+
+/**
+ * The header's date: `<day>, dd MMM` on a phone, with ` yyyy` added on a desktop. The weekday
+ * names live in the catalogs (`date.weekday.0` is Sunday); the day is padded and the year
+ * Gregorian, without `Intl`, for the same reasons as `displayDate`.
+ */
+export function headerDate(
+	date: PlainDate,
+	locale: Locale,
+	withYear: boolean,
+): string {
+	const { year, month, day } = parseDate(date);
+	const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+	const name =
+		WEEKDAY_CATALOGS[locale][WEEKDAY_KEYS[weekday] ?? "date.weekday.0"];
+	const short = `${name}, ${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]}`;
+	return withYear ? `${short} ${year}` : short;
 }
 
 export function periodOf(date: PlainDate): Period {

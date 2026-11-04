@@ -1,76 +1,27 @@
 import { isValidDate } from "#lib/domain/date";
 import { toLocation } from "#lib/domain/location";
 import { toOwner } from "#lib/domain/owner";
-import { type Settings, toSettings } from "#lib/domain/settings";
-import type {
-	Card,
-	LimitGroup,
-	Purchase,
-	StatementPayment,
-} from "#lib/domain/types";
 import type { MessageKey } from "#lib/i18n/catalog";
-import { MessageError } from "#lib/i18n/error";
-import type { Repository } from "#lib/storage/repository";
 
-export const BACKUP_VERSION = 2;
+export const isList = (value: unknown): value is unknown[] =>
+	Array.isArray(value);
 
-export type Backup = {
-	version: typeof BACKUP_VERSION;
-	exportedAt: string;
-	limitGroups: LimitGroup[];
-	cards: Card[];
-	purchases: Purchase[];
-	payments: StatementPayment[];
-	/**
-	 * Absent in files written before settings existed. The version stays 2 rather than
-	 * bumping to 3 for a field whose absence means "leave what is already stored alone":
-	 * a bump would reject every backup already sitting in someone's downloads folder.
-	 */
-	settings?: Settings;
-};
-
-export async function exportBackup(
-	repo: Repository,
-	now: Date = new Date(),
-): Promise<Backup> {
-	const limitGroups = await repo.listLimitGroups();
-	const cards = await repo.listCards();
-	const settings = await repo.getSettings();
-	const purchases: Purchase[] = [];
-	const payments: StatementPayment[] = [];
-
-	for (const card of cards) {
-		purchases.push(...(await repo.listPurchases(card.id)));
-		payments.push(...(await repo.listPayments(card.id)));
-	}
-
-	return {
-		version: BACKUP_VERSION,
-		exportedAt: now.toISOString(),
-		limitGroups,
-		cards,
-		purchases,
-		payments,
-		settings,
-	};
-}
-
-const isList = (value: unknown): value is unknown[] => Array.isArray(value);
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+export const isPlainObject = (
+	value: unknown,
+): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null && !Array.isArray(value);
 
 /** A single indexed read, so callers never write a literal computed member biome would rather see as dot access -- `value` is untrusted JSON and may not have `key` at all. */
-const prop = (value: Record<string, unknown>, key: string): unknown =>
+export const prop = (value: Record<string, unknown>, key: string): unknown =>
 	value[key];
 
-const isNonEmptyString = (value: unknown): value is string =>
+export const isNonEmptyString = (value: unknown): value is string =>
 	typeof value === "string" && value.length > 0;
 
-const isInteger = (value: unknown): value is number =>
+export const isInteger = (value: unknown): value is number =>
 	typeof value === "number" && Number.isInteger(value);
 
-const isPlainDate = (value: unknown): value is string =>
+export const isPlainDate = (value: unknown): value is string =>
 	typeof value === "string" && isValidDate(value);
 
 /** `null` when the cycle is well-formed, otherwise which catalog key names what's wrong. */
@@ -92,16 +43,26 @@ function cycleProblem(value: unknown): MessageKey | null {
 	return "backup.problem.badCycleKind";
 }
 
-/** `null` when the card is well-formed, otherwise which catalog key names what's wrong. */
-function cardProblem(value: unknown): MessageKey | null {
+/**
+ * `null` when the card is well-formed, otherwise which catalog key names what's wrong. A card's
+ * location is checked against `locationIds` when given (a version 3 file's own locations),
+ * otherwise against the closed set a version 2 file was written with (DC-06).
+ */
+export function cardProblem(
+	value: unknown,
+	locationIds?: ReadonlySet<string>,
+): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
 	if (!isNonEmptyString(prop(value, "name")))
 		return "backup.problem.missingName";
 	if (!isNonEmptyString(prop(value, "last4")))
 		return "backup.problem.missingLast4";
-	if (toLocation(prop(value, "location")) === null)
-		return "backup.problem.badLocation";
+	const location = prop(value, "location");
+	if (locationIds) {
+		if (typeof location !== "string" || !locationIds.has(location))
+			return "backup.problem.unknownLocation";
+	} else if (toLocation(location) === null) return "backup.problem.badLocation";
 	// The same rule a limit group's owner follows: absent is a card from before the field, and
 	// present-but-unknown is a claim about whose card it is that the closed set cannot keep.
 	const owner = prop(value, "owner");
@@ -111,7 +72,7 @@ function cardProblem(value: unknown): MessageKey | null {
 }
 
 /** `null` when the purchase is well-formed, otherwise which catalog key names what's wrong. */
-function purchaseProblem(value: unknown): MessageKey | null {
+export function purchaseProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
 	if (!isNonEmptyString(prop(value, "cardId")))
@@ -128,7 +89,7 @@ function purchaseProblem(value: unknown): MessageKey | null {
 }
 
 /** `null` when the payment is well-formed, otherwise which catalog key names what's wrong. */
-function paymentProblem(value: unknown): MessageKey | null {
+export function paymentProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "cardId")))
 		return "backup.problem.missingCardId";
@@ -159,7 +120,7 @@ function paymentProblem(value: unknown): MessageKey | null {
 }
 
 /** `null` when the limit group is well-formed, otherwise which catalog key names what's wrong. */
-function limitGroupProblem(value: unknown): MessageKey | null {
+export function limitGroupProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject";
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId";
 	if (!isNonEmptyString(prop(value, "name")))
@@ -172,122 +133,4 @@ function limitGroupProblem(value: unknown): MessageKey | null {
 	if (owner !== undefined && toOwner(owner) === null)
 		return "backup.problem.badOwner";
 	return null;
-}
-
-export function parseBackup(text: string): Backup {
-	let value: unknown;
-	try {
-		value = JSON.parse(text);
-	} catch (cause) {
-		const failure = new MessageError("backup.unreadable");
-		failure.cause = cause;
-		throw failure;
-	}
-
-	if (!isPlainObject(value)) {
-		throw new MessageError("backup.unreadable");
-	}
-
-	const version = prop(value, "version");
-	if (version !== BACKUP_VERSION) {
-		throw new MessageError("backup.version", {
-			found: JSON.stringify(version),
-			expected: BACKUP_VERSION,
-		});
-	}
-
-	const limitGroups = prop(value, "limitGroups");
-	const cards = prop(value, "cards");
-	const purchases = prop(value, "purchases");
-	const payments = prop(value, "payments");
-	if (
-		!isList(limitGroups) ||
-		!isList(cards) ||
-		!isList(purchases) ||
-		!isList(payments)
-	) {
-		throw new MessageError("backup.unreadable");
-	}
-
-	for (const [index, group] of limitGroups.entries()) {
-		const problem = limitGroupProblem(group);
-		if (problem) {
-			throw new MessageError("backup.limitGroup", {
-				index: index + 1,
-				problem,
-			});
-		}
-	}
-	for (const [index, card] of cards.entries()) {
-		const problem = cardProblem(card);
-		if (problem) {
-			throw new MessageError("backup.card", { index: index + 1, problem });
-		}
-	}
-	for (const [index, purchase] of purchases.entries()) {
-		const problem = purchaseProblem(purchase);
-		if (problem) {
-			throw new MessageError("backup.purchase", { index: index + 1, problem });
-		}
-	}
-	for (const [index, payment] of payments.entries()) {
-		const problem = paymentProblem(payment);
-		if (problem) {
-			throw new MessageError("backup.payment", { index: index + 1, problem });
-		}
-	}
-
-	// Narrowed rather than trusted, and left absent when the file carries nothing usable, so
-	// that importing an older backup leaves the settings already stored alone.
-	const settings = prop(value, "settings");
-	const parsed = value as unknown as Backup;
-	if (isPlainObject(settings)) parsed.settings = toSettings(settings);
-	else delete parsed.settings;
-	return parsed;
-}
-
-/** How many of each record an import wrote. */
-export type ImportCounts = {
-	cards: number;
-	purchases: number;
-	payments: number;
-	limitGroups: number;
-};
-
-/** Additive: writes every record over whatever shares its key, and deletes nothing. */
-export async function importBackup(
-	repo: Repository,
-	backup: Backup,
-): Promise<ImportCounts> {
-	for (const group of backup.limitGroups) await repo.saveLimitGroup(group);
-	for (const card of backup.cards) await repo.saveCard(card);
-	for (const purchase of backup.purchases) await repo.savePurchase(purchase);
-	for (const payment of backup.payments) await repo.savePayment(payment);
-	if (backup.settings) await repo.saveSettings(backup.settings);
-	return {
-		cards: backup.cards.length,
-		purchases: backup.purchases.length,
-		payments: backup.payments.length,
-		limitGroups: backup.limitGroups.length,
-	};
-}
-
-/** How many of each record `repo` holds now, in the same shape an import reports. */
-export async function countRecords(repo: Repository): Promise<ImportCounts> {
-	const backup = await exportBackup(repo);
-	return {
-		cards: backup.cards.length,
-		purchases: backup.purchases.length,
-		payments: backup.payments.length,
-		limitGroups: backup.limitGroups.length,
-	};
-}
-
-/** Destructive: forgets everything stored, then writes the backup, so only its records remain. */
-export async function replaceWithBackup(
-	repo: Repository,
-	backup: Backup,
-): Promise<ImportCounts> {
-	await repo.clearAll();
-	return importBackup(repo, backup);
 }

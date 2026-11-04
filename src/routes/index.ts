@@ -1,325 +1,127 @@
 import "@kcstyles/reset.css";
 import "../styles/tokens.css";
 import "../styles/app.css";
-import "#components/cc-due-list";
 import "#components/cc-error-banner";
-import "#components/cc-purchase-range";
-import "#components/cc-quick-add";
-import "#components/cc-sitting-list";
-import "#components/cc-spendable";
-import { html, nothing, render } from "lit";
-import type { DueRow } from "#components/cc-due-list";
-import type { PaymentDetail } from "#components/cc-payment-form";
-import type { QuickAddDetail } from "#components/cc-quick-add";
+import "#components/cc-needs-you";
+import "#components/cc-ready-panel";
+import { html, render } from "lit";
 import { canPurchase } from "#lib/domain/card";
-import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import { displayDate, today } from "#lib/domain/date";
-import { spendableRows, unassignedCards } from "#lib/domain/limit";
-import { formatAmount } from "#lib/domain/money";
-import { sittingPurchases } from "#lib/domain/purchase-range";
-import { DEFAULT_SETTINGS, type Settings } from "#lib/domain/settings";
-import { buildStatement, nextActionable } from "#lib/domain/statement";
-import type {
-	Card,
-	LimitGroup,
-	Purchase,
-	Statement,
-	StatementPayment,
-} from "#lib/domain/types";
-import { getLocale, subscribe, t } from "#lib/i18n/index";
+import { today } from "#lib/domain/date";
+import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home";
+import { unassignedCards } from "#lib/domain/limit";
+import { plannedOf } from "#lib/domain/pay";
+import type { CardPayment, PurchaseList } from "#lib/domain/types";
+import { purchasePlaces } from "#lib/i18n/format";
+import { subscribe, t } from "#lib/i18n/index";
 import type { Repository } from "#lib/storage/repository";
+import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
 import { bootstrap } from "#lib/ui/page";
 import { createPageState } from "#lib/ui/page-state";
-import { panelOpen, rememberPanel } from "#lib/ui/panel";
-import { paymentDialog, savePart } from "#lib/ui/payment-dialog";
-import { purchaseStatus } from "#lib/ui/purchase-dialog";
+import {
+	confirmWaitingList,
+	deleteDraftList,
+	deletePlannedPayment,
+	markPlanPaid,
+} from "#lib/ui/row-actions";
 
-export type DashboardOptions = {
-	/** The page's only clock reading: today's date, entry times, the batch start and "ago". */
+export type HomeOptions = {
+	/** The page's only clock reading: today's date. */
 	clock?: () => Date;
 	/** How often the page re-reads the clock, so a tab left open past midnight moves on. */
 	tickMs?: number;
 };
 
 /**
- * Renders the dashboard into `root`, wiring it to `repo`: a workspace for entering a pile of
- * receipts, with the purchase form always open, what this sitting has entered beside it, and
- * purchases by date, due statements and spendable room alongside.
+ * Renders Home into `root`, wiring it to `repo`: what needs the reader first, then a short
+ * *Ready to use* that leads to the new-list picker (DD-103). From 900px the two sit side by
+ * side, *Ready to use* on the left (DD-152).
  */
-export function renderDashboardPage(
+export function renderHomePage(
 	repo: Repository,
 	root: HTMLElement,
-	{ clock = () => new Date(), tickMs = 60_000 }: DashboardOptions = {},
+	{ clock = () => new Date(), tickMs = 60_000 }: HomeOptions = {},
 ): void {
 	let now = today(clock());
-	let cards: Card[] = [];
-	let groups: LimitGroup[] = [];
-	let purchases: Purchase[] = [];
-	let payments: StatementPayment[] = [];
-	let settings: Settings = DEFAULT_SETTINGS;
-	let batchStart = clock().toISOString();
-	// Carries the card and period a purchase landed on, not a resolved sentence: paint()
-	// resolves it every time, so a language switch re-renders the confirmation instead of
-	// leaving it frozen in whatever language it was written in (or clearing it outright).
-	let confirmedPurchase: {
-		card: Card;
-		period: string;
-		over: number;
-		groupName: string;
-	} | null = null;
-	// Bumped once a purchase is stored, which readies the form for the next receipt.
-	let cleared = 0;
-	// Whether the last write was an add, so its failure shows beside the form the reader is
-	// typing in rather than at the top of the page, possibly a screen away.
-	let lastWriteWasAdd = false;
-	// The statement the payment dialog is open for, or null when it is closed.
-	let paying: { cardId: string; period: string } | null = null;
-	let paySubmitted = false;
+	let data: MoneyData | null = null;
 
 	const state = createPageState({
 		fetch: async () => {
-			cards = await repo.listCards();
-			groups = await repo.listLimitGroups();
-			settings = await repo.getSettings();
-			purchases = (
-				await Promise.all(cards.map((card) => repo.listPurchases(card.id)))
-			).flat();
-			payments = (
-				await Promise.all(cards.map((card) => repo.listPayments(card.id)))
-			).flat();
-			const stored = await repo.getBatchStart();
-			// A first visit starts a batch then and there, so the list opens empty rather than
-			// counting whatever was entered before it existed.
-			if (stored === null) await repo.saveBatchStart(batchStart);
-			batchStart = stored ?? batchStart;
+			data = await loadMoneyData(repo, now);
 		},
-		fallbackKey: "dashboard.error.read",
+		fallbackKey: "home.error.read",
 		paint: () => paint(),
 	});
 
-	/**
-	 * The statement the event names, not whatever nextActionable happens to recompute right
-	 * now -- those can disagree, and the payment must freeze the dates of the one asked for.
-	 */
-	const statementFor = (target: {
-		cardId: string;
-		period: string;
-	}): Statement | null => {
-		const card = cards.find((c) => c.id === target.cardId);
-		if (!card) return null;
-		const payment =
-			payments.find(
-				(entry) =>
-					entry.cardId === target.cardId && entry.period === target.period,
-			) ?? null;
-		return buildStatement(card, target.period, purchases, payment);
-	};
-
-	// Mark paid only opens the payment dialog; the payment is recorded once it is submitted.
-	const onMarkPaid = (
-		event: CustomEvent<{ cardId: string; period: string }>,
-	) => {
-		paying = event.detail;
-		paySubmitted = false;
-		paint();
-	};
-
-	const closePay = () => {
-		paying = null;
-		paint();
-	};
-
-	// Closes the dialog only once the payment is stored, so a failed save keeps the reader's typing.
-	const onPay = (event: CustomEvent<PaymentDetail>) => {
-		lastWriteWasAdd = false;
-		paySubmitted = true;
-		return state.guard(async () => {
-			const statement = statementFor(event.detail);
-			if (!statement) return;
-			await savePart(repo, statement, event.detail);
-			paying = null;
-		}, "dashboard.error.markPaid");
-	};
-
-	const payingDialog = () => {
-		const statement = paying ? statementFor(paying) : null;
-		if (!statement) return nothing;
-		return paymentDialog({
-			statement,
-			today: now,
-			error: paySubmitted ? state.error : "",
-			onPay,
-			onClose: closePay,
-			onRetry: () => state.load(),
-		});
-	};
-
-	// The form is cleared only once the purchase is stored; a failed save leaves the reader's
-	// typing in place, with the reason beside it.
-	const onAdd = (event: CustomEvent<QuickAddDetail>) => {
-		lastWriteWasAdd = true;
-		return state.guard(async () => {
-			const { cardId, date, amount, note } = event.detail;
-			const card = cards.find((c) => c.id === cardId);
-			if (!card) return;
-			const row = spendableRows(
-				cards,
-				groups,
-				purchases,
-				payments,
-				now,
-				settings,
-			).find((candidate) => candidate.card.id === cardId);
-			await repo.savePurchase({
-				id: crypto.randomUUID(),
-				cardId,
-				date,
-				amount,
-				note,
-				addedAt: clock().toISOString(),
-			});
-			const period = periodOfPurchase(card.cycle, date);
-			confirmedPurchase = {
-				card,
-				period,
-				over: row ? Math.max(0, amount - row.available) : 0,
-				groupName: row?.group.name ?? "",
-			};
-			cleared += 1;
-		}, "dashboard.error.addPurchase");
-	};
-
-	const onStartBatch = () => {
-		lastWriteWasAdd = false;
-		return state.guard(async () => {
-			const at = clock().toISOString();
-			await repo.saveBatchStart(at);
-			batchStart = at;
-		}, "dashboard.error.startBatch");
-	};
-
-	/** Cards the page shows. Archived ones are still loaded: they weigh on a shared limit. */
-	const visible = (): Card[] => cards.filter((card) => !card.archived);
-
-	const rows = (): DueRow[] =>
-		visible().map((card) => ({
-			card,
-			statement: nextActionable(card, purchases, payments, now),
-		}));
+	// What a Needs you row's buttons write: the same calls and errors as Transactions. The
+	// guard reloads after, so a done item goes and a failed one stays, with the banner.
+	const mark = (payment: CardPayment) =>
+		state.guard(async () => {
+			if (data) await markPlanPaid(repo, data, payment, now);
+		}, "tx.error.markPaid");
+	const removePlan = (payment: CardPayment) =>
+		state.guard(() => deletePlannedPayment(repo, payment), "tx.error.delete");
+	const confirmList = (list: PurchaseList) =>
+		state.guard(
+			() => confirmWaitingList(repo, list.id, clock()),
+			"tx.error.confirmList",
+		);
+	const removeDraft = (list: PurchaseList) =>
+		state.guard(
+			() => deleteDraftList(repo, list.id),
+			"purchaseList.error.delete",
+		);
 
 	const paint = () => {
-		const spendable = spendableRows(
-			cards,
-			groups,
-			purchases,
-			payments,
-			now,
-			settings,
-		);
-		const over =
-			confirmedPurchase && confirmedPurchase.over > 0
-				? ` ${t("dashboard.answerOver", {
-						over: formatAmount(confirmedPurchase.over),
-						name: confirmedPurchase.groupName,
-					})}`
-				: "";
-		const answer = confirmedPurchase
-			? `${t("dashboard.answer", {
-					close: displayDate(
-						closeDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
-						getLocale(),
-					),
-					due: displayDate(
-						dueDateOf(confirmedPurchase.card.cycle, confirmedPurchase.period),
-						getLocale(),
-					),
-				})}${over}`
-			: "";
-		const pageError = lastWriteWasAdd ? "" : state.error;
-		const formError = lastWriteWasAdd ? state.error : "";
+		let rows: ReadyRow[] = [];
+		let unassigned = 0;
+		if (data) {
+			rows = readyRows(data, now);
+			const locations = data.locations;
+			unassigned = unassignedCards(data.cards, data.groups).filter((card) =>
+				canPurchase(card, locations),
+			).length;
+		}
 		render(
 			html`
-				<div class="page-title" row>
-					<h1>${t("dashboard.title")}</h1>
+				<cc-error-banner .message=${state.error} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
+				<div class="home-grid">
+					<cc-needs-you .items=${data ? needsYou(data, now, plannedOf(data.payments)) : []}
+						.cards=${data?.cards ?? []} .groups=${data?.groups ?? []} .today=${now}
+						@mark-paid=${(e: CustomEvent<{ payment: CardPayment }>) => mark(e.detail.payment)}
+						@delete-payment=${(e: CustomEvent<{ payment: CardPayment }>) => removePlan(e.detail.payment)}
+						@confirm-list=${(e: CustomEvent<{ list: PurchaseList }>) => confirmList(e.detail.list)}
+						@delete-draft=${(e: CustomEvent<{ list: PurchaseList }>) => removeDraft(e.detail.list)}></cc-needs-you>
+					<cc-ready-panel
+						.rows=${rows}
+						.places=${data ? purchasePlaces(data.locations) : []}
+						.groups=${data?.groups ?? []}
+						.today=${now}
+						.unassigned=${unassigned}
+					></cc-ready-panel>
 				</div>
-				<cc-error-banner .message=${pageError} retry-label=${t("common.reload")} @retry=${() => state.load()}></cc-error-banner>
-				${purchaseStatus(answer, () => {
-					confirmedPurchase = null;
-					paint();
-				})}
-				<div class="split split--workspace">
-					<div class="split__column">
-						<article>
-							<section class="panel" data-panel="add">
-								<h2>${t("dashboard.addPurchase")}</h2>
-								<cc-error-banner .message=${formError} retry-label=${t("common.reload")}
-									@retry=${() => state.load()}></cc-error-banner>
-								<cc-quick-add inline
-									.cards=${visible().filter((entry) => canPurchase(entry, settings))}
-									.rows=${spendable}
-									.today=${now}
-									.cleared=${cleared}
-									@add=${onAdd}></cc-quick-add>
-							</section>
-						</article>
-						<article>
-							<section class="panel" data-panel="sitting">
-								<h2>${t("sitting.title")}</h2>
-								<cc-sitting-list
-									.purchases=${sittingPurchases(purchases, batchStart)}
-									.cards=${cards}
-									.now=${clock().getTime()}
-									@start-batch=${onStartBatch}></cc-sitting-list>
-							</section>
-						</article>
-					</div>
-					<div class="split__column split__aside">
-						<article>
-							<details class="panel" data-panel="range" ?open=${panelOpen("range", true)} @toggle=${rememberPanel("range")}>
-								<summary><h2>${t("range.title")}</h2></summary>
-								<cc-purchase-range .purchases=${purchases} .cards=${cards} .today=${now}></cc-purchase-range>
-							</details>
-						</article>
-						<article>
-							<details class="panel" data-panel="due" ?open=${panelOpen("due", false)} @toggle=${rememberPanel("due")}>
-								<summary><h2>${t("dashboard.dueNext")}</h2></summary>
-								<cc-due-list .rows=${rows()} .today=${now} @mark-paid=${onMarkPaid}></cc-due-list>
-							</details>
-						</article>
-						<article>
-							<details class="panel" data-panel="spendable" ?open=${panelOpen("spendable", true)} @toggle=${rememberPanel("spendable")}>
-								<summary><h2>${t("spendable.title")}</h2></summary>
-								<cc-spendable
-									.rows=${spendable}
-									.unassigned=${unassignedCards(cards, groups).length}
-									.today=${now}
-								></cc-spendable>
-							</details>
-						</article>
-					</div>
-				</div>
-				${payingDialog()}
 			`,
 			root,
 		);
 	};
 
-	// Re-reads the clock now and then: "how long ago" keeps up, and a tab left open past
-	// midnight moves its default date and presets on to the new day. Stops once the page is gone.
+	// Re-reads the clock now and then, so a tab left open past midnight moves on to the new day.
+	// A new day reloads, since every ledger is worked out against today. Stops once the page is gone.
 	const timer = setInterval(() => {
 		if (!root.isConnected) {
 			clearInterval(timer);
 			return;
 		}
-		now = today(clock());
-		paint();
+		const next = today(clock());
+		if (next === now) return;
+		now = next;
+		void state.load();
 	}, tickMs);
 
 	subscribe(() => paint());
 	void state.load();
 }
 
-bootstrap("title.dashboard", (repo) => {
+bootstrap("title.home", (repo) => {
 	const root = document.querySelector<HTMLElement>("#page");
-	if (root) renderDashboardPage(repo, root);
+	if (root) renderHomePage(repo, root);
 });

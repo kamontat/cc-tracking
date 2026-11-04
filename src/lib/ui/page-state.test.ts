@@ -101,7 +101,7 @@ test("load prefixes the translated fallback onto a StorageError's own message, s
 		fetch: async () => {
 			throw new StorageError("Stored value at cc:card:scb is not readable");
 		},
-		fallbackKey: "dashboard.error.read",
+		fallbackKey: "home.error.read",
 		paint: () => {},
 	});
 
@@ -116,21 +116,21 @@ test("the error follows a locale switch instead of freezing in whatever language
 	setLocale("en");
 	const state = createPageState({
 		fetch: async () => {},
-		fallbackKey: "dashboard.error.read",
+		fallbackKey: "home.error.read",
 		paint: () => {},
 	});
 
 	await state.guard(async () => {
 		throw new Error("localStorage is full");
-	}, "dashboard.error.markPaid");
+	}, "card.error.deletePurchase");
 
 	expect(state.error).toBe(
-		"Could not record the payment. localStorage is full",
+		"Could not delete the purchase. localStorage is full",
 	);
 
 	// No further guard/load call: reading `error` again after the switch is the whole
 	// point -- it must re-translate from the failure it kept, not replay a cached sentence.
 	setLocale("th");
 
-	expect(state.error).toBe("บันทึกการชำระเงินไม่สำเร็จ localStorage is full");
+	expect(state.error).toBe("ลบรายการใช้จ่ายไม่สำเร็จ localStorage is full");
 });

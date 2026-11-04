@@ -1,5 +1,8 @@
 const AMOUNT_PATTERN = /^\d+(\.\d{1,2})?$/;
 
+/** The minus sign (U+2212) a signed amount reads with, not the hyphen. */
+export const MINUS = "−";
+
 /** Parse user-typed THB into satang. Throws RangeError on anything that is not a positive amount. */
 export function parseAmount(input: string): number {
 	const cleaned = input.trim().replace(/,/g, "");
@@ -12,8 +15,18 @@ export function parseAmount(input: string): number {
 	return value;
 }
 
+/** `parseAmount`, but null on anything that is not an amount instead of throwing. */
+export function amountOf(input: string): number | null {
+	try {
+		return parseAmount(input);
+	} catch {
+		return null;
+	}
+}
+
+/** Satang as `฿1,234.56`; a negative amount takes the minus sign: `−฿21,065.00`. */
 export function formatAmount(satang: number): string {
-	const sign = satang < 0 ? "-" : "";
+	const sign = satang < 0 ? MINUS : "";
 	const absolute = Math.abs(satang);
 	const baht = Math.floor(absolute / 100).toLocaleString("en-US");
 	return `${sign}฿${baht}.${String(absolute % 100).padStart(2, "0")}`;

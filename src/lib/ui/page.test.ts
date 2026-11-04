@@ -1,16 +1,22 @@
 import { expect, test } from "bun:test";
 import { setLocale } from "#lib/i18n/index";
+import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
+import { InMemoryRepository } from "#lib/storage/repository";
+import { SEED_KEY } from "#lib/storage/seed-locations";
+import { buildInfo, titleMark } from "#lib/ui/build-info";
 import { bootstrap } from "#lib/ui/page";
 
 const mountNav = () => {
 	document.body.innerHTML = `
-		<nav>
-			<strong id="nav-brand">cc-tracking</strong>
-			<a href="/" id="nav-dashboard">Dashboard</a>
-			<a href="/cards" id="nav-cards">Cards</a>
-		</nav>
-		<main></main>`;
+		<header class="site-header" id="site-header"></header>
+		<main class="page" id="page"></main>
+		<div id="tabbar"></div>`;
 };
+
+const tabTexts = (tab: string) =>
+	[...document.querySelectorAll(`[data-tab="${tab}"]`)].map((link) =>
+		link.textContent?.trim(),
+	);
 
 test("falls back to document.body when the page has no <main>", () => {
 	document.body.innerHTML = "";
@@ -52,11 +58,13 @@ test("applies chrome in the current language even when storage is unavailable an
 		// this page's static HTML is translated anyway, not left in whatever the markup
 		// happened to be hard-coded to.
 		expect(called).toBe(false);
-		expect(document.title).toBe("ทะเบียนบัตร — cc-tracking");
-		expect(document.querySelector("#nav-dashboard")?.textContent).toBe(
-			"หน้าหลัก",
+		// The test run has no inlined build, so the title carries whatever mark that reads as.
+		const { environment, pr } = buildInfo();
+		expect(document.title).toBe(
+			`บัตร — cc-tracking${titleMark(environment, pr)}`,
 		);
-		expect(document.querySelector("#nav-cards")?.textContent).toBe("บัตร");
+		expect(tabTexts("home")).toEqual(["หน้าหลัก", "หน้าหลัก"]);
+		expect(tabTexts("cards")).toEqual(["บัตร", "บัตร"]);
 		expect(document.documentElement.lang).toBe("th");
 	} finally {
 		globalThis.localStorage = original;
@@ -93,4 +101,86 @@ test("the storage-unavailable banner follows a locale switch instead of freezing
 	} finally {
 		globalThis.localStorage = original;
 	}
+});
+
+test("a failed payment conversion shows the banner, not the page", async () => {
+	mountNav();
+	setLocale("en");
+	const storage = globalThis.localStorage;
+	storage.removeItem(PAYMENTS_MIGRATION_KEY);
+	const repo = new InMemoryRepository();
+	await repo.saveCard({
+		id: "A",
+		name: "A",
+		last4: "0000",
+		location: "krabi",
+		cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 20 },
+		archived: false,
+		limitGroupId: "g1",
+	});
+	await repo.savePurchase({
+		id: "p1",
+		cardId: "A",
+		date: "2026-09-10",
+		amount: 1_00,
+		note: "",
+	});
+	await repo.savePayment({
+		cardId: "A",
+		period: "2026-09",
+		paidAt: "2026-10-01",
+		closeDate: "2026-09-25",
+		dueDate: "2026-10-15",
+		parts: [{ paidAt: "2026-10-01", amount: 1_00 }],
+	});
+	repo.saveCardPayment = async () => {
+		throw new Error("disk full");
+	};
+	repo.saveStatementDates = async () => {};
+	let rendered = false;
+	const spy = console.error;
+	console.error = () => {};
+	try {
+		await bootstrap(
+			"title.cards",
+			() => {
+				rendered = true;
+			},
+			{ storage, createRepo: () => repo },
+		);
+	} finally {
+		console.error = spy;
+	}
+
+	expect(rendered).toBe(false);
+	const banner = document.querySelector("cc-error-banner");
+	expect(banner?.message).toBe(
+		"Could not update your saved payments. Nothing was lost. Reload to try again.",
+	);
+	expect(storage.getItem(PAYMENTS_MIGRATION_KEY)).toBeNull();
+});
+
+test("no page carries a payment sheet of its own: paying is the /pay page", async () => {
+	mountNav();
+	setLocale("en");
+	const storage = globalThis.localStorage;
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done");
+	const repo = new InMemoryRepository();
+	await bootstrap("title.cards", () => {}, { storage, createRepo: () => repo });
+	expect(document.querySelector("#pay-sheet")).toBeNull();
+	expect(document.querySelector("cc-modal")).toBeNull();
+});
+
+test("a fresh repository has the three location records once the page renders", async () => {
+	mountNav();
+	const storage = globalThis.localStorage;
+	storage.removeItem(SEED_KEY);
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done");
+	const repo = new InMemoryRepository();
+	await bootstrap("title.cards", () => {}, { storage, createRepo: () => repo });
+	expect((await repo.listLocations()).map((r) => r.id).sort()).toEqual([
+		"bangkok",
+		"krabi",
+		"phichit",
+	]);
 });

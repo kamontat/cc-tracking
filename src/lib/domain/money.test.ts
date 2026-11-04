@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	amountOf,
 	formatAmount,
 	formatAmountInput,
 	parseAmount,
@@ -41,6 +42,11 @@ describe("formatAmount", () => {
 		expect(formatAmount(120_000)).toBe("฿1,200.00");
 		expect(formatAmount(50)).toBe("฿0.50");
 	});
+
+	test("a negative amount reads with the minus sign, not a hyphen", () => {
+		expect(formatAmount(-2_106_500)).toBe("−฿21,065.00");
+		expect(formatAmount(-50)).toBe("−฿0.50");
+	});
 });
 
 describe("formatAmountInput", () => {
@@ -71,5 +77,14 @@ describe("sumAmounts", () => {
 
 	test("is zero for nothing", () => {
 		expect(sumAmounts([])).toBe(0);
+	});
+});
+
+describe("amountOf", () => {
+	test("reads an amount, or null instead of throwing", () => {
+		expect(amountOf("1,200.50")).toBe(120_050);
+		expect(amountOf("")).toBeNull();
+		expect(amountOf("abc")).toBeNull();
+		expect(amountOf("0")).toBeNull();
 	});
 });

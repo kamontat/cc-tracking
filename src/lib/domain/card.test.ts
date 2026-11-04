@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import { canPurchase } from "#lib/domain/card";
-import { DEFAULT_SETTINGS, withPurchaseAt } from "#lib/domain/settings";
-import type { Card } from "#lib/domain/types";
+import type { Card, LocationRecord } from "#lib/domain/types";
 
 const card = (fields: Partial<Card>): Card => ({
 	id: "kbank",
@@ -14,28 +13,34 @@ const card = (fields: Partial<Card>): Card => ({
 	...fields,
 });
 
-test("a card kept where purchases are allowed may take one", () => {
-	expect(canPurchase(card({ location: "krabi" }), DEFAULT_SETTINGS)).toBe(true);
+const locations: LocationRecord[] = [
+	{ id: "bangkok", name: "Bangkok", takesPurchases: false },
+	{ id: "krabi", name: "Krabi", takesPurchases: true },
+];
+
+test("a card kept at a place that takes purchases may take one", () => {
+	expect(canPurchase(card({ location: "krabi" }), locations)).toBe(true);
 });
 
-test("a card kept anywhere else may not", () => {
-	expect(canPurchase(card({ location: "bangkok" }), DEFAULT_SETTINGS)).toBe(
-		false,
-	);
-	expect(canPurchase(card({ location: "phichit" }), DEFAULT_SETTINGS)).toBe(
-		false,
-	);
+test("a card kept at a place that takes none may not", () => {
+	expect(canPurchase(card({ location: "bangkok" }), locations)).toBe(false);
 });
 
-test("turning a location on lets every card kept there take purchases", () => {
-	const settings = withPurchaseAt(DEFAULT_SETTINGS, "bangkok", true);
-	expect(canPurchase(card({ location: "bangkok" }), settings)).toBe(true);
-	expect(canPurchase(card({ location: "phichit" }), settings)).toBe(false);
+test("a card kept at a place with no record may not", () => {
+	expect(canPurchase(card({ location: "phichit" }), locations)).toBe(false);
+});
+
+test("ticking a place lets every card kept there take purchases", () => {
+	const ticked = locations.map((record) => ({
+		...record,
+		takesPurchases: true,
+	}));
+	expect(canPurchase(card({ location: "bangkok" }), ticked)).toBe(true);
 });
 
 test("the answer comes from the location, not from a flag left on the card", () => {
-	// `canPurchase` was a per-card field before this moved to settings. Stored cards still
-	// carry it; it must no longer decide anything.
+	// `canPurchase` was a per-card field once. Stored cards still carry it; it must no longer
+	// decide anything.
 	const stale = { ...card({ location: "bangkok" }), canPurchase: true };
-	expect(canPurchase(stale as Card, DEFAULT_SETTINGS)).toBe(false);
+	expect(canPurchase(stale as Card, locations)).toBe(false);
 });

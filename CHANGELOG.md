@@ -4,6 +4,210 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-04: The redesign ships, and no page is indexed
+
+### BREAKING CHANGES
+
+- Backups are version 3: `{ version: 3, exportedAt, limitGroups, cards, purchases, payments,
+  statementDates, lists, locations }`, with card payments in `payments` and each group's
+  `color`. Download and copy write only version 3, so a build from before the redesign can't
+  restore a new file; keep an old download if you may need to go back. A version 2 file still
+  restores, converted on the way in (payments with their `parts` become card payments, its
+  `settings` give the locations); version 1 and any other version are rejected.
+- Restore is stricter. A file is refused, naming the record and the problem, when an amount or
+  limit is not above zero, `last4` is not four digits, a cycle day is out of range, a status or
+  `takesPurchases` is not one of its values, or (version 3) a card names a location the file
+  does not hold. Nothing is written when any record is bad.
+- Stored data migrates once at startup, and the old records stay on disk unread:
+  - Per-statement `cc:payment:` records become card payments (`cc:cardpayment:<cardId>:<id>`,
+    ids `m:<cardId>:<period>:<index>`), marked done by `cc:migration:payments`. Every
+    statement keeps its left amount; an old overpayment is capped at the statement's total,
+    so a statement that showed 1,500 paid on 1,000 now shows 1,000 paid. If the step fails
+    the page shows an error with *Reload* instead of numbers, and the reload retries.
+  - Purchase places become location records (`cc:location:<id>`), seeded once from
+    `settings.purchaseLocations` and marked by `cc:migration:location-records`. The app no
+    longer writes `cc:settings`, and a card at a location with no record is moved, with a
+    one-time notice.
+  - Every limit group gets a stored colour (`cc:migration:group-colors`): the first four in
+    stored order keep the colour they showed, the rest get a random unused one.
+  - `cc:batch-start` and the `cc:panel:` keys `cards`, `cards-archived` and `limit-groups` are
+    no longer read; the Cards page's archived fold uses `cc:panel:cards-archive`.
+- Payments belong to a card, not a statement. Money settles the oldest statement first and any
+  extra stays as credit, so an overpaid card now shows credit and more room than its limit.
+  *Mark paid* and per-part *Unmark* are gone from the card page; pay from `/pay`, and delete a
+  wrong payment from Transactions.
+- A statement keeps its close and due dates only once it is fully paid. One that still owes
+  money, part paid included, follows the card's current cycle, so its dates can move after a
+  cycle edit; dates stored earlier for such a statement are ignored.
+- Storage now refuses to delete a card that has purchases or is on a draft or waiting list, a
+  limit group a card uses, or a location a card is kept at (`guard.cardOnList`,
+  `guard.locationInUse`), not just the interface hiding the buttons.
+- Retired pages and addresses, with no redirects (question 15):
+  - the dashboard at `/` is Home; the registry at `/cards` is the Cards page
+  - the `/cards` query keys `edit`, `group` as a filter, `dir`, `gq`, `gowner`, `gsort` and
+    `gdir`, and the `/cards?edit=<id>` deep link, are no longer read; a card is edited at
+    `/card/edit?id=<id>`
+  - `/backup` still redirects to `/settings`
+- Removed from the interface: the page footer (now Settings › About), the dashboard's purchase
+  form, *This sitting* and *Start new batch*, *Can spend now*, the dashboard's *Due next* and
+  *Purchases by date* (now in Transactions), the card page's Add purchase dialog
+  (`cc-quick-add`), the registry's card and group tables and dialogs, the payment dialog
+  (`cc-payment-form`), and Settings' *Purchases* section and side-by-side backup boxes.
+- 148 message keys are gone, among them every `footer.`, `dashboard.`, `due.`, `range.`,
+  `sitting.` and `payment.` key, with the components that used them (`cc-site-footer`,
+  `cc-due-list`, `cc-purchase-range`, `cc-sitting-list`, `cc-spendable`, `cc-card-table`,
+  `cc-limit-group-table`, `cc-limit-group-form`, `cc-statement-list`, `cc-card-summary`,
+  `cc-settings`).
+- Things to re-learn:
+  - Purchases are planned as lists: pick cards with *+ New › New purchase list*, enter amounts,
+    send the list, then record the spender's reply. A single purchase is added from the card
+    page's *Add purchase*.
+  - Tapping a row in *Needs you*, *Upcoming*, the ledger or *Lists* opens it in place instead
+    of going to another page; the page it led to is a button inside (*Open card*, *Open list*,
+    *Pay*, *Record reply*).
+  - Places that take purchases are ticked per location at Settings › Locations.
+  - Archive and Delete for a card are in the card page's More menu (`⋯`), not the edit form.
+  - Restoring opens a sheet that reads the clipboard first.
+  - A ledger row no longer says *Purchase* or *Payment*: the sign (− or +) says it, backed by
+    red or green.
+
+### Features
+
+- Four pages, Home, Transactions, Cards and Settings: a bottom bar on a phone, tabs on the right
+  of the header from 900px, and a floating *+ New* menu with *New purchase list* and *Make a
+  payment* on every page but the list, form and payment pages. Sub-pages share a slim
+  sub-header with a back arrow.
+- Purchase lists: the new-list picker `/list/new` (search, *Kept in* and *Account holder*
+  filters, three sorts), entering amounts with a note per line, a review table copied as plain
+  lines or saved as an image for the chat, *Mark sent*, and the spender's reply (*Made* or *Not
+  made* with the real amount), which saves the purchases and can move not-made lines to the next
+  day's draft. Each state has its own page: `/list/new`, `/list/draft`, `/list/reply`,
+  `/list/view`. A waiting list holds its amounts against its group's room.
+- Warnings while entering amounts, none blocking: over the room (with *Lower to*, and room a
+  waiting list holds or a planned payment would make), a shared limit, an overdue bill, the
+  close date, and a date that has passed (with *Change to today*).
+- Home: *Needs you*, money at risk first (overdue bills, late plans, waiting lists, plans in the
+  next three days, drafts), beside *Ready to use* from 900px, which shows the four cards with
+  the most room and opens the rest in place.
+- Payments on any day at `/pay`: a card picker, most pressing first, then a sheet with *Next
+  bill* and *Everything owed*, the date, an optional note, and a button that names the amount
+  and card. A later date makes a planned payment, which counts only once marked *Paid*.
+- Transactions: one ledger of purchases (−) and payments (+) by day, a month summary,
+  *Upcoming* (waiting lists with a two-step *Confirm*, planned payments with *Paid* and
+  *Delete*), search, filters as removable chips, four sorts, 50 rows at a time, a *Lists* view
+  and *Owed on each card*, the view kept in the address.
+- Rows that open in place in *Needs you*, *Upcoming*, the ledger and *Lists*: one open at a
+  time, with a sentence and the actions there, and a billing cycle line that shows where a
+  purchase or bill sits between its start, close and due dates, and today. Home gains *Paid*,
+  *Delete* and *Confirm*.
+- Cards page: by place or one flat list, search, a filter sheet (place, holder, *Not in a
+  group*, sort), archived cards folded at the end, and limit group panels (a *Cards · Limit
+  groups* switch on a phone) whose sheet adds and edits a group at `?group=<id>` or
+  `?newGroup=1`.
+- One wallet tile for every list of cards (*Ready to use*, the new-list picker, Cards, the
+  payment picker and *Owed on each card*), in its limit group's colour, with a rail for the
+  group's used share: grey, amber from 80%, red past the limit.
+- Each limit group keeps one of twelve colours, chosen in the group sheet from swatches or with
+  *Random*; tiles, chips, the card hero and the group panels wear it.
+- The card page: room, owed, next bill and credit up front, *Use on a list*, *Add purchase*
+  and *Make a payment*, and statements that unfold to their purchases (with *Edit* and a
+  two-step *Delete*) and the payment parts that settled them. Cards are added and edited on a
+  full screen, `/card/new` and `/card/edit?id=`, in four sections.
+- Locations at `/settings/locations`: add, rename, delete one no card uses (never the last),
+  and tick *Takes purchases*. Default names show in the reader's language, and every list of
+  places sorts A to Z.
+- Settings › Reset › *Delete old purchases*: older than 6 months, 1 year, 3 years or all, with a
+  count, a line for what stays and a second ask. Only purchases on fully paid statements go,
+  with the payments that settled them, so no owed, credit or room figure moves.
+- Settings › About lists the environment, build time, source and commit. Builds other than
+  production tint the header and bar, mark the brand and tab title (`(dev)`, `(local)`,
+  `(pr-<n>)`, `(preview)`), and set the tint before the first paint.
+- No page goes into a search index. Every page carries
+  `<meta name="robots" content="noindex, nofollow">`, and `public/_headers` sends
+  `X-Robots-Tag: noindex, nofollow` on every response, scripts and favicon included (DD-169).
+
+### Improvements
+
+- A calm new look: sage neutrals, a green accent, rounded panels and generous spacing in both
+  themes, with amber and rose for warnings, always with words. Light-theme text colours were
+  darkened where the prototype's fell short of AA contrast.
+- One rule for naming a card (*panel*, *line* and *name* forms from `card-label.ts`), and cards
+  titled `name · holder (last4)` on their own page and edit form.
+- Every repeated list is a row list (one panel, a line between rows) or a card list (a panel
+  per item), each drawn from one shared style (UI-22).
+- Negative amounts read with the minus sign, `−฿21,065.00`, as signed amounts do.
+- Sheets and the *+ New* menu animate out as well as in, and not at all under reduced motion.
+- Keyboard: when an action takes an open row away, focus moves to the next row, the previous
+  one, or the nearest heading; the group sheet's holder and colour choices are radio groups
+  with arrow keys.
+
+### Bug fixes
+
+- A page no longer flashes the wrong theme on load: the saved theme is applied before the first
+  paint.
+- A part-paid statement no longer keeps due dates from an old cycle: Kbank Passion's October
+  statement read *due 04 Nov* after its cycle changed to due 15 days after the 25th (09 Nov).
+
+### Decisions
+
+- Built in six phases on stacked pull requests (#29 to #34), squashed into one branch, then a
+  refinement round (#35), and merged to main once, so production only sees the finished app.
+- Payments convert once, marked by `cc:migration:payments` with ids that repeat on a rerun, and
+  a converted payment pays its own statement first, overpayments capped. Every old statement
+  keeps the left amount it showed. Rejected: feeding old payments into the oldest-first pool,
+  turning old overpayments into credit, and deciding "already converted" by whether any card
+  payment exists.
+- A failed payment conversion stops the page with a reload button, since numbers from half
+  converted data would be wrong. The group colour step only logs a failure, because a colour is
+  cosmetic.
+- Backup moved to version 3, and download and restore switched with the startup conversion,
+  because the old export wrote `cc:payment:` records that never convert once the marker is set.
+  Rejected: staying at version 2 with optional fields.
+- A Merge of a version 3 file is purely additive and keeps local location records, so an old
+  backup can't undo a rename or a *Takes purchases* tick. Rejected: saying in the help that
+  Merge can delete; overwriting locations as other records are.
+- Location records are seeded once behind a marker, and become the one truth for where purchases
+  happen. Rejected: keeping `settings.purchaseLocations` beside them; seeding whenever none is
+  stored. A card at an unknown place is repaired rather than the data refused, and the last
+  location can't be deleted, since a card always needs one.
+- `/pay` is a page with the payment sheet over it, and every way to pay is a link to it.
+  Rejected: the form inline on the page; one sheet mounted on every page and opened by an event.
+- Each list state has its own address, so a link says what it opens. Rejected: one `/list` page
+  choosing by status; a page per step.
+- The copied list is plain lines and the image a table always drawn on white, because a chat
+  breaks any text table and other people see paper, not this reader's dark mode. Rejected:
+  tab-separated text; a ` | ` table; an image that follows the theme.
+- Delete draft and Cancel list act at once, since both only remove a list nothing was bought
+  from (the user's call). A payment's *Delete* and a list's *Confirm* stay two-step everywhere
+  they appear.
+- Statement dates freeze when a statement is fully paid, not at the first payment: settled
+  history must not move, but a statement that still owes money is not settled. Rejected:
+  rewriting kept dates on a cycle edit; letting the user edit one statement's dates. Old
+  records are ignored rather than migrated.
+- One wallet tile for every list of cards, its colour the group it draws on and never its
+  health. Rejected: a row design per page; a taller wallet card; a card link inside a tickable
+  row.
+- Group colours come from a fixed palette of twelve, stored on the group, so text stays readable
+  in both themes and adding or deleting a group never recolours another. Rejected: a colour
+  from the group's place in the order; a free colour picker; a colour per card.
+- A tapped row opens in place, its head one button with nothing inside, and one row opens at a
+  time. Rejected: a row that both navigates and toggles; many rows open; the open row in the
+  address.
+- The opened row shows a billing cycle line and one sentence (option B of three mockups), since
+  where the money sits in the cycle is what only this app knows. Rejected: label and value pairs
+  in a well; one line of facts with text actions.
+- A purchase can again be added without a list, only from the card page, after the user found
+  some purchases are recorded that way. Rejected: a purchase form on Transactions; a separate
+  `/purchase` page (built, then removed).
+- Old addresses don't redirect (question 15), and the Cards address is new, replaced rather than
+  pushed so typing doesn't fill Back. Rejected: keeping the old keys working.
+- Restore is a sheet, clipboard first: three clicks with data, two on an empty browser, down
+  from four or five. Rejected: the side-by-side boxes; a paste box always open.
+- No `robots.txt`. A crawler barred by `Disallow: /` never reads a page's `noindex`, so it
+  could still list a bare address linked from elsewhere; the meta and the header let it read
+  the page and leave it out. The `pr-*` previews show Cloudflare's own `noindex` header in
+  place of ours, so the header is checked with `wrangler dev` (DD-169).
+
 ## 2026-10-30: Redesign decided from a clickable prototype
 
 ### BREAKING CHANGES

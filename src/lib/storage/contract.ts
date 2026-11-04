@@ -3,10 +3,15 @@ import type { Location } from "#lib/domain/location";
 import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type {
 	Card,
+	CardPayment,
 	LimitGroup,
+	LocationRecord,
 	Purchase,
+	PurchaseList,
+	StatementDates,
 	StatementPayment,
 } from "#lib/domain/types";
+import { MessageError } from "#lib/i18n/error";
 import type { Repository } from "#lib/storage/repository";
 
 export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
@@ -51,6 +56,77 @@ export const sampleLimitGroup = (
 	owner: "KC",
 	...overrides,
 });
+
+export const sampleCardPayment = (
+	overrides: Partial<CardPayment> = {},
+): CardPayment => ({
+	id: "cp1",
+	cardId: "kbank",
+	date: "2026-10-01",
+	amount: 5_000,
+	status: "paid",
+	...overrides,
+});
+
+export const sampleStatementDates = (
+	overrides: Partial<StatementDates> = {},
+): StatementDates => ({
+	cardId: "kbank",
+	period: "2026-09",
+	closeDate: "2026-09-18",
+	dueDate: "2026-10-03",
+	...overrides,
+});
+
+export const samplePurchaseList = (
+	overrides: Partial<PurchaseList> = {},
+): PurchaseList => ({
+	id: "l1",
+	date: "2026-10-05",
+	status: "draft",
+	lines: [{ cardId: "kbank", amount: 10_000 }],
+	...overrides,
+});
+
+export const sampleLocation = (
+	overrides: Partial<LocationRecord> = {},
+): LocationRecord => ({
+	id: "krabi",
+	name: "Krabi",
+	takesPurchases: true,
+	...overrides,
+});
+
+const guardKey = async (action: Promise<unknown>): Promise<string | null> => {
+	try {
+		await action;
+		return null;
+	} catch (error) {
+		return error instanceof MessageError ? error.key : "other";
+	}
+};
+
+/**
+ * A `Storage` held in a map, private to one test. Tests hand it to code that takes a storage
+ * so nothing they write lands in the shared happy-dom `localStorage`.
+ */
+export const memoryStorage = (): Storage => {
+	const map = new Map<string, string>();
+	return {
+		get length() {
+			return map.size;
+		},
+		clear: () => map.clear(),
+		getItem: (key) => map.get(key) ?? null,
+		key: (i) => [...map.keys()][i] ?? null,
+		removeItem: (key) => {
+			map.delete(key);
+		},
+		setItem: (key, value) => {
+			map.set(key, value);
+		},
+	};
+};
 
 /** Runs the behaviour every Repository implementation must have. */
 export function repositoryContract(
@@ -106,7 +182,7 @@ export function repositoryContract(
 			expect(await repo.getCard("kbank")).toBeNull();
 		});
 
-		test("deleting a card cascades to its purchases and payments", async () => {
+		test("deleting a card removes its payments once its purchases are gone", async () => {
 			// Save first card with purchase and payment
 			await repo.saveCard(sampleCard({ id: "kbank" }));
 			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank" }));
@@ -121,11 +197,12 @@ export function repositoryContract(
 				samplePayment({ cardId: "scb", period: "2026-09" }),
 			);
 
-			// Delete first card
+			// A card with purchases cannot be deleted (RD-07); remove them first
+			await repo.deletePurchase("kbank", "p1");
 			await repo.deleteCard("kbank");
 
 			// Verify first card's records are gone
-			expect(await repo.listPurchases("kbank")).toEqual([]);
+			expect(await repo.getCard("kbank")).toBeNull();
 			expect(await repo.listPayments("kbank")).toEqual([]);
 
 			// Verify second card's records remain untouched
@@ -148,11 +225,12 @@ export function repositoryContract(
 				samplePayment({ cardId: "abc:def", period: "2026-09" }),
 			);
 
-			// Delete the shorter-id card
+			// Delete the shorter-id card (purchases first, RD-07)
+			await repo.deletePurchase("abc", "p1");
 			await repo.deleteCard("abc");
 
 			// Verify abc's records are gone
-			expect(await repo.listPurchases("abc")).toEqual([]);
+			expect(await repo.getCard("abc")).toBeNull();
 			expect(await repo.listPayments("abc")).toEqual([]);
 
 			// Verify abc:def's records are intact
@@ -390,21 +468,234 @@ export function repositoryContract(
 			expect(await repo.listPurchases("kbank")).toEqual([edited]);
 		});
 
-		test("has no batch start before one is saved", async () => {
-			expect(await repo.getBatchStart()).toBeNull();
+		test("card payments: save, replace, list one card only by date then id, delete", async () => {
+			await repo.saveCardPayment(
+				sampleCardPayment({ id: "b", date: "2026-10-02" }),
+			);
+			await repo.saveCardPayment(
+				sampleCardPayment({ id: "c", date: "2026-10-01" }),
+			);
+			await repo.saveCardPayment(
+				sampleCardPayment({ id: "a", date: "2026-10-02" }),
+			);
+			await repo.saveCardPayment(sampleCardPayment({ id: "z", cardId: "scb" }));
+			expect((await repo.listCardPayments("kbank")).map((p) => p.id)).toEqual([
+				"c",
+				"a",
+				"b",
+			]);
+			const edited = sampleCardPayment({
+				id: "a",
+				date: "2026-10-02",
+				amount: 9,
+				period: "2026-09",
+			});
+			await repo.saveCardPayment(edited);
+			expect((await repo.listCardPayments("kbank"))[1]).toEqual(edited);
+			await repo.deleteCardPayment("kbank", "a");
+			expect((await repo.listCardPayments("kbank")).map((p) => p.id)).toEqual([
+				"c",
+				"b",
+			]);
+			expect(await repo.listCardPayments("scb")).toHaveLength(1);
 		});
 
-		test("saves and reads the batch start back", async () => {
-			await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
-			expect(await repo.getBatchStart()).toBe("2026-10-27T03:00:00.000Z");
-			await repo.saveBatchStart("2026-10-28T01:00:00.000Z");
-			expect(await repo.getBatchStart()).toBe("2026-10-28T01:00:00.000Z");
+		test("statement dates: save, list by period, delete", async () => {
+			await repo.saveStatementDates(
+				sampleStatementDates({ period: "2026-10" }),
+			);
+			await repo.saveStatementDates(
+				sampleStatementDates({ period: "2026-09" }),
+			);
+			await repo.saveStatementDates(sampleStatementDates({ cardId: "scb" }));
+			const dates = await repo.listStatementDates("kbank");
+			expect(dates.map((d) => d.period)).toEqual(["2026-09", "2026-10"]);
+			await repo.deleteStatementDates("kbank", "2026-09");
+			expect(
+				(await repo.listStatementDates("kbank")).map((d) => d.period),
+			).toEqual(["2026-10"]);
+			expect(await repo.listStatementDates("scb")).toHaveLength(1);
 		});
 
-		test("clearAll forgets the batch start", async () => {
-			await repo.saveBatchStart("2026-10-27T03:00:00.000Z");
+		test("purchase lists: save, replace, list by date then id, delete", async () => {
+			await repo.savePurchaseList(
+				samplePurchaseList({ id: "b", date: "2026-10-06" }),
+			);
+			await repo.savePurchaseList(
+				samplePurchaseList({ id: "c", date: "2026-10-05" }),
+			);
+			await repo.savePurchaseList(
+				samplePurchaseList({ id: "a", date: "2026-10-06" }),
+			);
+			expect((await repo.listPurchaseLists()).map((l) => l.id)).toEqual([
+				"c",
+				"a",
+				"b",
+			]);
+			const edited = samplePurchaseList({
+				id: "a",
+				date: "2026-10-06",
+				status: "sent",
+				sentAt: "2026-10-06T01:00:00.000Z",
+			});
+			await repo.savePurchaseList(edited);
+			expect((await repo.listPurchaseLists())[1]).toEqual(edited);
+			await repo.deletePurchaseList("a");
+			expect((await repo.listPurchaseLists()).map((l) => l.id)).toEqual([
+				"c",
+				"b",
+			]);
+		});
+
+		test("locations: save, replace, list by id, delete", async () => {
+			await repo.saveLocation(sampleLocation({ id: "phuket", name: "Phuket" }));
+			await repo.saveLocation(sampleLocation());
+			expect((await repo.listLocations()).map((l) => l.id)).toEqual([
+				"krabi",
+				"phuket",
+			]);
+			const renamed = sampleLocation({
+				name: "Krabi town",
+				takesPurchases: false,
+			});
+			await repo.saveLocation(renamed);
+			expect((await repo.listLocations())[0]).toEqual(renamed);
+			await repo.deleteLocation("phuket");
+			expect(await repo.listLocations()).toEqual([renamed]);
+		});
+
+		test("deleting a card removes its card payments and statement dates", async () => {
+			await repo.saveCard(sampleCard({ id: "kbank" }));
+			await repo.saveCard(sampleCard({ id: "scb" }));
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "kbank" }));
+			await repo.saveStatementDates(sampleStatementDates({ cardId: "kbank" }));
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "scb" }));
+			await repo.saveStatementDates(sampleStatementDates({ cardId: "scb" }));
+			await repo.deleteCard("kbank");
+			expect(await repo.listCardPayments("kbank")).toEqual([]);
+			expect(await repo.listStatementDates("kbank")).toEqual([]);
+			expect(await repo.listCardPayments("scb")).toHaveLength(1);
+			expect(await repo.listStatementDates("scb")).toHaveLength(1);
+		});
+
+		test("cascade does not touch the new records of a card whose id is a prefix", async () => {
+			await repo.saveCard(sampleCard({ id: "abc" }));
+			await repo.saveCard(sampleCard({ id: "abc:def" }));
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "abc" }));
+			await repo.saveStatementDates(sampleStatementDates({ cardId: "abc" }));
+			await repo.saveCardPayment(
+				sampleCardPayment({ id: "cp2", cardId: "abc:def" }),
+			);
+			await repo.saveStatementDates(
+				sampleStatementDates({ cardId: "abc:def" }),
+			);
+			await repo.deleteCard("abc");
+			expect(await repo.listCardPayments("abc")).toEqual([]);
+			expect(await repo.listStatementDates("abc")).toEqual([]);
+			expect(await repo.listCardPayments("abc:def")).toHaveLength(1);
+			expect(await repo.listStatementDates("abc:def")).toHaveLength(1);
+		});
+
+		test("a card id containing ':' does not collide with another card's records", async () => {
+			await repo.saveCard(sampleCard({ id: "a:b" }));
+			await repo.saveCard(sampleCard({ id: "a" }));
+			await repo.savePurchase(samplePurchase({ id: "c", cardId: "a:b" }));
+			await repo.savePurchase(samplePurchase({ id: "b:c", cardId: "a" }));
+			await repo.saveCardPayment(sampleCardPayment({ id: "c", cardId: "a:b" }));
+			await repo.saveCardPayment(sampleCardPayment({ id: "b:c", cardId: "a" }));
+			await repo.saveStatementDates(
+				sampleStatementDates({ cardId: "a:b", period: "x" }),
+			);
+			await repo.saveStatementDates(
+				sampleStatementDates({ cardId: "a", period: "b:x" }),
+			);
+			await repo.savePayment(samplePayment({ cardId: "a:b", period: "x" }));
+			await repo.savePayment(samplePayment({ cardId: "a", period: "b:x" }));
+			expect((await repo.listPurchases("a:b")).map((p) => p.id)).toEqual(["c"]);
+			expect((await repo.listPurchases("a")).map((p) => p.id)).toEqual(["b:c"]);
+			expect((await repo.listCardPayments("a:b")).map((p) => p.id)).toEqual([
+				"c",
+			]);
+			expect((await repo.listCardPayments("a")).map((p) => p.id)).toEqual([
+				"b:c",
+			]);
+			expect(
+				(await repo.listStatementDates("a:b")).map((d) => d.period),
+			).toEqual(["x"]);
+			expect((await repo.listStatementDates("a")).map((d) => d.period)).toEqual(
+				["b:x"],
+			);
+			expect((await repo.listPayments("a:b")).map((p) => p.period)).toEqual([
+				"x",
+			]);
+			expect((await repo.listPayments("a")).map((p) => p.period)).toEqual([
+				"b:x",
+			]);
+		});
+
+		test("clearAll removes the new records", async () => {
+			await repo.saveCardPayment(sampleCardPayment());
+			await repo.saveStatementDates(sampleStatementDates());
+			await repo.savePurchaseList(samplePurchaseList());
+			await repo.saveLocation(sampleLocation());
 			await repo.clearAll();
-			expect(await repo.getBatchStart()).toBeNull();
+			expect(await repo.listCardPayments("kbank")).toEqual([]);
+			expect(await repo.listStatementDates("kbank")).toEqual([]);
+			expect(await repo.listPurchaseLists()).toEqual([]);
+			expect(await repo.listLocations()).toEqual([]);
+		});
+
+		test("refuses to delete a card that has purchases", async () => {
+			await repo.saveCard(sampleCard());
+			await repo.savePurchase(samplePurchase());
+			expect(await guardKey(repo.deleteCard("kbank"))).toBe(
+				"guard.cardHasPurchases",
+			);
+			expect(await repo.getCard("kbank")).not.toBeNull();
+			expect(await repo.listPurchases("kbank")).toHaveLength(1);
+		});
+
+		test("refuses to delete a card on a draft or sent list, not a saved one", async () => {
+			await repo.saveCard(sampleCard());
+			for (const status of ["draft", "sent"] as const) {
+				await repo.savePurchaseList(samplePurchaseList({ status }));
+				expect(await guardKey(repo.deleteCard("kbank"))).toBe(
+					"guard.cardOnList",
+				);
+				expect(await repo.getCard("kbank")).not.toBeNull();
+			}
+			await repo.savePurchaseList(samplePurchaseList({ status: "saved" }));
+			await repo.deleteCard("kbank");
+			expect(await repo.getCard("kbank")).toBeNull();
+		});
+
+		test("refuses to delete a limit group a card uses", async () => {
+			await repo.saveLimitGroup(sampleLimitGroup());
+			await repo.saveCard(sampleCard({ limitGroupId: "pool" }));
+			expect(await guardKey(repo.deleteLimitGroup("pool"))).toBe(
+				"guard.groupInUse",
+			);
+			expect(await repo.listLimitGroups()).toHaveLength(1);
+			await repo.saveCard(sampleCard());
+			await repo.deleteLimitGroup("pool");
+			expect(await repo.listLimitGroups()).toEqual([]);
+		});
+
+		test("refuses to delete a location a card is kept in", async () => {
+			await repo.saveLocation(sampleLocation());
+			await repo.saveCard(sampleCard({ location: "krabi" }));
+			expect(await guardKey(repo.deleteLocation("krabi"))).toBe(
+				"guard.locationInUse",
+			);
+			expect(await repo.listLocations()).toHaveLength(1);
+		});
+
+		test("a location can be deleted once no card is kept there", async () => {
+			await repo.saveLocation(sampleLocation());
+			await repo.saveCard(sampleCard({ location: "krabi" }));
+			await repo.saveCard(sampleCard({ location: "bangkok" }));
+			await repo.deleteLocation("krabi");
+			expect(await repo.listLocations()).toEqual([]);
 		});
 	});
 }
