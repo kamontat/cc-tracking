@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-04: The redesign ships
+## 2026-11-04: The redesign ships, and no page is indexed
 
 ### BREAKING CHANGES
 
@@ -122,6 +122,9 @@ reasons don't show up in the code.
 - Settings › About lists the environment, build time, source and commit. Builds other than
   production tint the header and bar, mark the brand and tab title (`(dev)`, `(local)`,
   `(pr-<n>)`, `(preview)`), and set the tint before the first paint.
+- No page goes into a search index. Every page carries
+  `<meta name="robots" content="noindex, nofollow">`, and `public/_headers` sends
+  `X-Robots-Tag: noindex, nofollow` on every response, scripts and favicon included (DD-169).
 
 ### Improvements
 
@@ -200,6 +203,10 @@ reasons don't show up in the code.
   pushed so typing doesn't fill Back. Rejected: keeping the old keys working.
 - Restore is a sheet, clipboard first: three clicks with data, two on an empty browser, down
   from four or five. Rejected: the side-by-side boxes; a paste box always open.
+- No `robots.txt`. A crawler barred by `Disallow: /` never reads a page's `noindex`, so it
+  could still list a bare address linked from elsewhere; the meta and the header let it read
+  the page and leave it out. The `pr-*` previews show Cloudflare's own `noindex` header in
+  place of ours, so the header is checked with `wrangler dev` (DD-169).
 
 ## 2026-10-30: Redesign decided from a clickable prototype
 
