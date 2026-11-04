@@ -9,101 +9,23 @@ Default to using Bun instead of Node.js.
 - Use `bunx <package> <command>` instead of `npx <package> <command>`
 - Bun automatically loads .env, so don't use dotenv.
 
-## APIs
+## Stack
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
-
-## Testing
-
-Use `bun test` to run tests.
-
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
-```
-
-## Frontend
-
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
-
-Server:
-
-```ts#index.ts
-import index from "./index.html"
-
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
-
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+- Static pages, no server code. Each page is `src/routes/<path>.html` with a module that
+  renders Lit components (`lit`, decorators) from `src/components/`; domain rules live in
+  `src/lib/domain/`, storage (browser `localStorage`) in `src/lib/storage/`.
+- `@kctools/bun-server` builds and serves the pages: `bun run dev` (dev server, `--port` to
+  change it from 3000), `bun run build` (through `scripts/build.ts`, which stamps the
+  `BUN_PUBLIC_*` build info, into `dist/`) and `bun run preview` (serves the build).
+- Deployed as Cloudflare static assets: `wrangler.jsonc` serves `dist/`, and
+  `public/_redirects` holds the redirects.
+- Tests are `bun test` with happy-dom preloaded (`bunfig.toml`, `tests/setup-happydom.ts`),
+  so components render in tests. `bun run check` is Biome, `bun run typecheck` is `tsc`.
+- Import through the aliases in `package.json` `imports`: `#lib/*`, `#components/*` and
+  `#styles/*`, each mapping to a `.ts` file.
+- Every piece of UI text is a catalog key with an entry in both `src/lib/i18n/en.ts` and
+  `src/lib/i18n/th.ts`.
+- An address or query key change must update `ENDPOINTS.md` in the same change.
 
 ## Change workflow
 
@@ -116,7 +38,9 @@ For more information, read the Bun API docs in `node_modules/bun-types/docs/**.m
 
 - Values live once, in `src/styles/tokens.css`. Shadow CSS (`src/styles/shared.ts`, and any
   component's local `css`) references them only through `var(--cc-*)`, never a literal hex,
-  `rem`/`px`, or colour. This rule is not machine-checked, so review for it by eye.
+  `rem`/`px`, or colour. Only part of this is machine-checked
+  (`src/components/token-leftovers.test.ts`, `src/styles/tokens.test.ts`,
+  `src/styles/row-panel.test.ts`), so review the rest by eye.
 - Buttons take `data-variant="quiet"` or `data-variant="danger"`; no attribute means the primary
   variant. Don't invent a fourth.
 - Never key a CSS selector off translated text -- the interface ships in English and Thai. Use
