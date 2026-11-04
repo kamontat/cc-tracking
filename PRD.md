@@ -848,19 +848,23 @@ The redesign is done when all of these hold.
 - [ ] *(Dropped 2026-10-30, question 15.)* `/cards` links with a query and `/cards?edit=<id>`
       still open the same view.
 - [x] The delete guards in DR-19 still hold (DC-13). *(Checked 2026-11-02: the contract suite refuses both.)*
-- [ ] Every interface rule (UI-01 to UI-21) holds, checked in English and Thai, light and dark,
-      at phone and desktop widths.
-- [ ] Each decision that changed has a dated entry in `CHANGELOG.md` saying what replaced it
-      and why, and is updated here.
+- [x] Every interface rule (UI-01 to UI-21) holds, checked in English and Thai, light and dark,
+      at phone and desktop widths. *(Checked 2026-11-04: the controller checked screenshots of
+      every changed screen at 390 and 1280, in English and Thai, light and dark, during phases 1
+      to 7.)*
+- [x] Each decision that changed has a dated entry in `CHANGELOG.md` saying what replaced it
+      and why, and is updated here. *(Checked 2026-11-04: the entry "2026-11-04: The redesign
+      ships".)*
 - [ ] *(Dropped 2026-10-30, question 15.)* Retired page addresses redirect.
-- [ ] A purchase list for three cards takes no more than: tick the cards, enter the amounts,
-      review, mark sent; then *Made* or *Not made* per line and save (G3).
+- [x] A purchase list for three cards takes no more than: tick the cards, enter the amounts,
+      review, mark sent; then *Made* or *Not made* per line and save (G3). *(Checked 2026-11-04:
+      the user walked the main flows on the preview and approved them.)*
 - [x] Payment records saved before RD-11 load as card payments, and every statement's paid
       and left amounts stay the same.
 - [x] Every decided change (RD-03 to RD-21) is built, and the rows it names are updated or
       retired. *(Checked 2026-11-02: each row carries its phase.)*
-- [ ] The user has walked the main flows on the preview, on a phone and a desktop, and
-      approved them.
+- [x] The user has walked the main flows on the preview, on a phone and a desktop, and
+      approved them. *(Checked 2026-11-04: the user approved on 2026-11-04.)*
 
 ## Constraints and known limits
 
