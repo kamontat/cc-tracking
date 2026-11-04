@@ -16,29 +16,49 @@ bun run check      # biome check
 ```
 
 `bun run build` goes through `scripts/build.ts`, which stamps
-`BUN_PUBLIC_COMMIT_SHA` and `BUN_PUBLIC_BUILT_AT` into the environment before
-handing over to `bun-server build`; the bundler inlines both, and Settings > About
-shows them alongside a link to the repository and to the commit. Set either
-variable yourself to override what git reports. A dev server inlines nothing,
-so About there reads as a development build with no build time.
+`BUN_PUBLIC_COMMIT_SHA`, `BUN_PUBLIC_BUILT_AT`, `BUN_PUBLIC_ENVIRONMENT`,
+`BUN_PUBLIC_BRANCH` and `BUN_PUBLIC_PR_NUMBER` into the environment before handing
+over to `bun-server build`; the bundler inlines them all. Settings > About shows the
+commit, build time and branch alongside a link to the repository and to the commit.
+The environment (`local` unless a deploy workflow sets `preview` or `production`)
+tints the header and marks the tab title and brand — `(local)`, `(pr-<n>)` on a
+preview — so no build is mistaken for production, which carries no mark. Set any
+of these variables yourself to override what git reports. A dev server inlines
+nothing, so About there reads as a development build with no build time, marked
+`(dev)`.
+
+## Deploy
+
+The site is static assets on Cloudflare (`wrangler.jsonc` serves `dist/`). A push
+to `main` deploys production at https://cc-tracking.kc.in.th, and each pull request
+gets a preview at `https://pr-<n>-cc-tracking.kcinth.workers.dev`.
+`public/_redirects` sends the old `/backup` address to `/settings` with a 301.
 
 ## Pages
 
-- `/` — Home. *Needs you* comes first: purchase lists waiting for the spender's
-  reply, overdue bills and draft lists, or *All caught up* when there are none.
-  Under it, *Ready to use* lists the cards that can take a purchase (see *Which
-  cards can take a purchase* below), each with its group's room, its close and due
-  dates, sortable by most room, longest to close or latest due. Ticking cards
-  shows a bar at the bottom with how many are selected, *Clear*, and *Enter
-  amounts*, which opens a new purchase list for those cards in the order they
-  were ticked.
+Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
+
+- `/` — Home. *Needs you* comes first: overdue bills, planned payments that are
+  late, purchase lists waiting for the spender's reply, planned payments due in
+  the next three days, and draft lists, or *All caught up* when there are none.
+  Each row opens in place with what it needs: *Pay* and *Open card* on an overdue
+  bill, *Paid* and *Delete* on a planned payment, *Record reply* and a two-step
+  *Confirm* on a waiting list, *Continue* and *Delete* on a draft. Under it,
+  *Ready to use* shows the four cards with the most room (see *Which cards can
+  take a purchase* below), sorted by room, each opening its card page, then *See
+  more* for the rest.
+- `/list/new` — the picker for a new purchase list: search, a Filter sheet (where
+  a card is kept, its owner) and a sort (most room, longest to close, latest
+  due), all kept in the address as `q`, `loc`, `owner` and `sort`. Ticking cards
+  shows a bar with how many are selected, *Clear*, and *Enter amounts*, which goes
+  on to the next step for those cards in the order they were ticked.
 - `/list/new?card=<id>` (once per card) — a new purchase list for those cards.
   Enter an amount per card and the purchase date, with warnings that never block
-  (over the group's room, room held by lists waiting for the spender, a shared
-  limit, an overdue bill, the close date, a date that has passed). *Review* shows
-  the dated table with *Copy text* and *Save image* (on a phone that can share
-  files, the image goes to the share sheet; elsewhere it downloads), then *Mark
-  as sent* or *Save as draft instead*.
+  (over the group's room, with *Lower to* the room left; room held by lists
+  waiting for the spender; a shared limit; an overdue bill; the close date; a date
+  that has passed). *Review* shows the dated table with *Copy text* and *Save
+  image* (on a phone that can share files, the image goes to the share sheet;
+  elsewhere it downloads), then *Mark as sent* or *Save as draft instead*.
 - `/list/draft?id=<list id>` — the same two steps for a stored draft, which names
   any card that can no longer take purchases and leaves it out, plus *Delete
   draft*, which deletes it at once.
@@ -49,38 +69,53 @@ so About there reads as a development build with no build time.
 - `/list/view?id=<list id>` — a saved list, read-only: what was bought.
   Each list page opened on a list in another state links to that list's own
   page.
-- `/transactions` — a placeholder until the Transactions page arrives; the + and
-  Payment buttons open it for now.
-- `/cards` — the card registry and the limit groups, each list searchable,
-  filterable, sortable and foldable. Cards and limit groups are added and edited
-  in a dialog. When adding or editing a card, you choose its physical location from a dropdown: one of Bangkok,
-  Phichit, or Krabi, and can mark it as a supplementary card (บัตรเสริม) with its
-  own cardholder. Cards
-  already stored in this browser from before the locations were fixed are reset
-  to Bangkok once at startup; the page then names those cards, once, with a
-  Dismiss button, so you can pick the correct location by hand.
-- `/settings` — language and theme, which places take new purchases, saving and
-  restoring a backup, and resetting all data. The old `/backup` address redirects here.
-- `/card?id=<cardId>` — one card's statements, purchases, and paid state, with
-  paging. A month with no purchases in it starts collapsed, so a long run of
-  unused months stays one line each. Each purchase can be edited in place (date,
-  amount and note; the card stays fixed) or deleted. Its add/edit purchase
-  dialog stays until phase 5 of the redesign replaces the card page; new
-  purchases otherwise come from purchase lists.
+- `/transactions` — the ledger of purchases and payments, with an *Upcoming*
+  section above it for planned payments and waiting lists, plus the *Lists* and
+  *Owed* views. The *+ New* menu in the header offers *New purchase list* and
+  *Make a payment*.
+- `/pay` — *Make a payment*: pick a card, then a sheet takes the amount, the date
+  and a note. A date after today saves it as a planned payment.
+- `/cards` — the card list and the limit groups, side by side from 900px and
+  switched between *Cards* and *Limit groups* on a phone. Each is searchable,
+  filterable (including *Not in a group*, `/cards?ungrouped=1`) and sortable.
+  Limit groups are added and edited in a sheet (`?group=<id>`, or `?newGroup=1`
+  for a new one); each group has a colour, one of 12 swatches or *Random*.
+- `/card/new` and `/card/edit?id=<cardId>` — the full-page card form: name, id,
+  last 4, cycle, limit group, where it is kept (one of the stored locations), and whether
+  it is a supplementary card (บัตรเสริม) with its own cardholder.
+- `/card?id=<cardId>` — one card. A hero gives the room left in its group, what
+  it owes, the next bill and any credit. Its statements open to the purchases on
+  them and the payment parts that paid them; each purchase can be edited in place
+  (date, amount and note; the card stays fixed) or deleted. *Add purchase* opens a
+  sheet. *Edit* leads to `/card/edit`, and the ⋯ menu holds *Archive card* (or
+  *Unarchive card*) and, while the card has no purchases and is on no open list,
+  *Delete card*.
+- `/settings` — sections for *Display* (language and theme), *Locations*,
+  *Backup*, *Reset* (*Delete old purchases* and *Delete all data*) and *About*.
+  The old `/backup` address redirects here.
+- `/settings/locations` — the stored locations: add, rename, delete (only one no
+  card is kept at), and tick *Takes purchases*.
 
 ## Which cards can take a purchase
 
-The answer belongs to where a card is kept, not to the card. The *Purchases*
-section on `/settings` ticks the places that take new purchases; only unarchived
-cards kept in a ticked place, in a limit group, appear in Home's *Ready to use*.
-Every card still appears everywhere else, including the overdue bills in *Needs
-you*.
+The answer belongs to where a card is kept, not to the card. Each location on
+`/settings/locations` has a *Takes purchases* tick; only unarchived cards kept in
+a ticked place, in a limit group, appear in Home's *Ready to use* and on the
+`/list/new` picker. Every card still appears everywhere else, including the
+overdue bills in *Needs you*.
 
-Out of the box only Krabi is ticked, which reproduces the rule that was in force
-before: purchases were only ever entered against the Krabi cards. Unticking every
-place is kept as a real answer, and the purchase form then says that no card can
-take a purchase and *Ready to use* says that no card can be used and points at
-Settings.
+The first load stores Bangkok, Phichit and Krabi as location records, taking their
+ticks from the old `cc:settings` record when there is one, and otherwise ticking
+only Krabi, which reproduces the rule that was in force before: purchases were only
+ever entered against the Krabi cards. That is the only time `cc:settings` is read.
+Unticking every place is kept as a real answer, and *Ready to use* then says that
+no card can be used and points at Locations.
+
+Every load also checks each card's location against the stored records. A card
+kept at one of the three starting places whose record has gone gets that record
+back, taking no purchases; any other unknown value moves the card to the Krabi
+record when it exists, else to the first record by id. The cards page names the
+moved cards once, so you can pick the correct location by hand.
 
 ## Limit groups and how much room is left
 
@@ -89,14 +124,13 @@ points at a group, and two cards that share a limit — one account with two
 physical cards, say — point at the same group, so there is one number to watch
 for both of them rather than two that would drift apart.
 
-A group's available credit is its limit less what is still owed on every
-closed statement, plus the whole of the open period — the cycle still being
-spent on right now. Money spent this cycle leaves the limit the moment it is
-spent; it comes back only as payments are recorded against the statement it
-landed on, once that statement has closed. A statement can be paid in parts —
-*Mark paid* asks for the amount and the date, starting at what is left and
-today — and each payment returns exactly its own amount. The statement counts
-as paid once its payments cover its total.
+A group's available credit is its limit less what its cards owe, less any credit
+they hold, counting the open period — the cycle still being spent on right now.
+Money spent this cycle leaves the limit the moment it is spent. Payments belong to
+a card, not to a statement: they settle the card's oldest unpaid statement first,
+the open period included, and whatever is left over stays as credit. Pay at
+`/pay`, from a card's page, or from an overdue bill in *Needs you*; a payment dated
+after today is a planned payment, which counts only once it is marked paid.
 
 An archived card still weighs on the group it shares. Archiving a card retires
 it from new purchases and from Home, not from what it already owes, so its
@@ -111,28 +145,28 @@ under *Needs you*: that answers what has to be paid, this answers what happens i
 you spend today, and on a card with an overdue statement the two disagree — both
 are correct for the question they answer.
 
-A purchase entered for more than a group's remaining credit is still saved.
+A purchase entered for more than a group's remaining room is still saved.
 The app is a record of what happened, not a gate on what is allowed, and a
 stored limit can itself be stale or wrong; refusing the entry would just mean
-a real purchase goes unrecorded. The confirmation names the amount it went
-over by instead.
+a real purchase goes unrecorded. While amounts are entered on a list, going over
+is a warning with *Lower to* the room left; a purchase added on the card page
+that goes over says by how much, once, under the card's hero.
 
-A card stored before this feature existed has no group at all. It shows as
-unassigned in the card table and is left out of *Ready to use* until it
-is edited once and a group is chosen — the card form will not save a card
-without one.
+A card stored before limit groups existed has no group at all. It shows under
+the *Not in a group* filter (`/cards?ungrouped=1`) and is left out of *Ready to
+use* until it is edited once and a group is chosen — the card form will not save
+a card without one.
 
 ## How statements work
 
 Each card carries a billing cycle rule: either *closes on day N, due M days
 later* or *closes on day N, due on day M*. Statements are never stored — they
 are computed from that rule, so a period's close date, due date, purchases, and
-total are always derived from the card as it is now. Only a statement with a
-payment against it leaves a record behind: one record per card and period,
-listing every payment toward it. The first payment freezes the close and due
-dates, so editing a cycle rule can never rewrite settled history. A record saved
-before partial payments existed has no list of payments and reads as one
-payment of the whole total.
+total are always derived from the card as it is now. Payments are stored per card
+as `cc:cardpayment:<cardId>:<id>`. Once a statement is fully paid, its close and
+due dates are kept under `cc:statementdates:<cardId>:<period>`, so editing a cycle
+rule can never rewrite settled history; the kept dates hold only while the
+statement stays fully paid (DD-167).
 
 A purchase dated exactly on the close date belongs to that statement, not the
 next one.
@@ -140,54 +174,66 @@ next one.
 ## Where the data lives
 
 Everything lives in this browser's `localStorage`, under keys shaped like
-`cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`,
-`cc:payment:<cardId>:<period>`, `cc:limitgroup:<id>` and `cc:list:<id>` (a
-purchase list, with its lines and status; `/list/draft`, `/list/reply` or
-`/list/view` opens it by that status), plus `cc:settings` for the purchase
-places. A purchase saved from a spender's reply takes the id `<list id>-<n>`
-instead of a uuid, and a draft moved from it `<list id>-<n>` too, so a retried
-save overwrites what a failed one wrote instead of doubling it. The old dashboard's `cc:batch-start` is no longer read
-or written; a leftover one stays until a reset in Settings clears it. Those shapes hold
-as written for an ordinary card id, date, and uuid; each segment is actually
-percent-encoded, so a card id containing `:` or other reserved characters
-produces a key that looks a little different from the documented shape,
-though it still round-trips correctly. Nothing is sent to a server: the
-Cloudflare Worker only serves the built pages, so data is not shared between
-browsers or devices except through a backup.
+`cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`, `cc:limitgroup:<id>`,
+`cc:cardpayment:<cardId>:<id>`, `cc:statementdates:<cardId>:<period>`,
+`cc:location:<id>` and `cc:list:<id>` (a purchase list, with its lines and status;
+`/list/draft`, `/list/reply` or `/list/view` opens it by that status). One-off
+markers and notices from data migrations sit under `cc:migration:*`, and which
+panels are folded under `cc:panel:*`. A purchase saved from a spender's reply takes
+the id `<list id>-<n>` instead of a uuid, and a draft moved from it `<list id>-<n>`
+too, so a retried save overwrites what a failed one wrote instead of doubling it.
 
-A card's location is stored as one of three lowercase keys: `bangkok`,
-`phichit`, or `krabi`. These are the display-neutral keys; when a card is
-shown on screen or in the UI, the location goes through a display function
-that renders them as "Bangkok", "Phichit", and "Krabi".
+Older records are kept but no longer read: `cc:payment:<cardId>:<period>` (the
+per-statement payments, converted to card payments once at startup), `cc:settings`
+(read only to seed the locations; nothing writes it now), and the old dashboard's
+`cc:batch-start`. A reset in Settings clears them. Those shapes hold as written
+for an ordinary card id, date, and uuid; each segment is actually percent-encoded,
+so a card id containing `:` or other reserved characters produces a key that looks
+a little different from the documented shape, though it still round-trips
+correctly. Nothing is sent to a server: the Cloudflare Worker only serves the
+built pages, so data is not shared between browsers or devices except through a
+backup.
 
-Use *Save a copy* on `/settings` as your backup: *Download file* saves indented
-JSON, and *Copy text* puts the same backup on the clipboard as compact JSON.
-*Restore a copy* takes a file or pasted text. If this browser already holds
-records, it shows what is here next to what is in the copy and asks: *Merge*
-keeps what is here and adds the copy's records, updating any it shares, while
-*Replace* deletes everything here first, settings included. An empty browser
-restores straight away. *Reset* on the same page deletes every record and
-setting after showing how many of each will go. Backups are version 2 and carry
-`limitGroups` alongside the three lists that were already there; a version 1
-file — one written before limit groups existed — is rejected outright, since
-there is no code to invent groups for it. A file that is not valid JSON, is
-missing its expected lists, has a limit group/card/purchase/payment with the
-wrong shape, or was written by a different backup version is rejected with a
-message naming what was wrong, and nothing is imported. A backup whose card
-names any location other than the three known places is rejected by its
-position in the file — for instance,
-a card might be rejected with
-`That backup's card #1 has a location that is not bangkok, phichit, or krabi.`
-— and nothing is imported. Import itself is not atomic, though: it writes
-limit groups, then cards, then purchases, then payments one at a time —
-groups before cards, so a card's limit group always has something to point
-at — and a failure partway through (for instance, storage filling up) can
-leave some records imported and others not.
+A location is a stored record: an id, a name, and whether it takes purchases. The
+three starting places have the ids `bangkok`, `phichit` and `krabi`; a location
+added later takes a slug of its name. A card stores the id, so renaming a location
+changes nothing on its cards.
+
+The *Backup* section on `/settings` is how you keep a copy: *Download a copy*
+saves indented JSON, and *Copy as text* puts the same backup on the clipboard as
+compact JSON. *Restore…* opens a sheet that offers the clipboard first, then a
+file or text pasted by hand. If this browser already holds records, it shows what
+is here next to what is in the copy and asks: *Merge* keeps what is here and adds
+the copy's records, updating any it shares, while *Replace* deletes everything
+here first. An empty browser restores straight away.
+
+The *Reset* section has two actions. *Delete old purchases* removes purchases
+older than 6 months, 1 year, 3 years or all of them, but only those on statements
+that are fully paid, with the payments that settled them and the saved lists from
+the same time, so what each card owes, its credit and its room stay the same.
+*Delete all data* deletes every record after showing how many of each will go;
+language and theme stay.
+
+Backups are version 3 and carry limit groups (with their colours), cards,
+purchases, card payments, statement dates, purchase lists and locations. A
+version 2 file is converted on the way in: its payments become card payments, its
+locations come from its settings, and it has no lists. A version 1 file is
+rejected outright. A file that is not valid JSON, is missing its expected lists,
+has a record with the wrong shape, or was written by another backup version is
+rejected with a message naming what was wrong, and nothing is imported. In a
+version 3 file each card must name one of the file's own locations; one that does
+not is rejected by its position in the file — for instance `That backup's card #1
+…` — and nothing is imported. Import itself is not atomic, though: it writes limit
+groups, then locations, cards, purchases, card payments, statement dates and lists
+one at a time — groups and locations before cards, so a card always has something
+to point at — and then gives a colour to any group without one. A failure partway
+through (for instance, storage filling up) can leave some records imported and
+others not.
 
 ## Language
 
 The interface is available in English and Thai. The picker is in the *Display*
-panel on `/settings`, next to the theme picker (Match device, Light or Dark);
+section on `/settings`, next to the theme picker (Device, Light or Dark);
 switching language re-renders the page in place — no reload, and nothing typed
 into an open form is lost. Both choices are remembered in this browser's
 `localStorage`, under `cc:lang` and `cc:theme`, so they survive a reload and future
@@ -208,8 +254,8 @@ translated. Only the application's own wording comes from the catalog.
 
 One consequence of avoiding `Intl` is worth knowing: card ids, where Home breaks a tie
 between cards in *Ready to use* and *Needs you*, sort by plain UTF-16 code-unit order,
-not Thai collation, and the two can disagree. (Card and group names on `/cards` are
-compared with `Intl.Collator` instead, so this applies to ids only.)
+not Thai collation, and the two can disagree. (Card, group and location names are
+compared with `localeCompare(…, locale)` instead, so this applies to ids only.)
 A Thai dictionary treats a leading vowel like เ as following the consonant it is
 pronounced with, not preceding it, so `เกา` ("to scratch") collates as if it
 were spelled starting with ก and sorts *before* `ขาว` ("white") — confirmed with
@@ -226,8 +272,8 @@ avoid.
 ## Product requirements
 
 What the app must keep doing, the rules behind its numbers, the data it already
-holds, the decisions made along the way, and what is still open for the coming
-redesign are in [`PRD.md`](PRD.md), and in Thai in [`PRD_TH.md`](PRD_TH.md).
+holds, and the decisions made along the way, including the redesign that shipped
+on 2026-11-04, are in [`PRD.md`](PRD.md), and in Thai in [`PRD_TH.md`](PRD_TH.md).
 Read it before refactoring or redesigning anything.
 
 ## Changelog

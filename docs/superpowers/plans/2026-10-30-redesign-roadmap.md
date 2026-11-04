@@ -19,6 +19,13 @@ on guesses.
 Each phase updates `PRD.md` and `PRD_TH.md` for what it ships (the overridden rows are updated
 or retired) and adds a dated changelog entry when it lands.
 
+## Status (2026-11-04)
+
+Phases 1 to 6 shipped as #29 to #34. The stack was squashed into `redesign/implement`, one
+commit per phase, rather than merged pull request by pull request. A seventh phase of
+refinement followed as #35 (the card tile, limit group colours, the list kinds and rows that
+open in place) and is merged into `redesign/implement`. All of it lands on main through #36.
+
 ## Notes for later phases
 
 Left by the final review of phase 1, then of phase 3. Phase 2 is the look and the shell only,

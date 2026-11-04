@@ -1,8 +1,9 @@
 # Endpoints
 
-Every address the app answers, as of the redesign (phases 1 to 6). The site is static: each
-page is `src/routes/<path>.html`, served at `/<path>` (`index.html` at `/`). The pages read
-their state from the query string only; no page reads or writes a fragment (`#...`).
+Every address the app answers, as of the redesign (phases 1 to 7; no address changed in
+phase 7). The site is static: each page is `src/routes/<path>.html`, served at `/<path>`
+(`index.html` at `/`). The pages read their state from the query string only; no page reads
+or writes a fragment (`#...`).
 
 Unknown query keys are ignored, and a value the page does not know reads as the default.
 Keys marked *repeated* may appear more than once (`?card=a&card=b`). Pages that rewrite their
