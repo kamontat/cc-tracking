@@ -8,8 +8,9 @@
   purchase lists, locations), so the reader sees which data grows and how close they are to
   the limit before a save fails. `cc:settings` is no longer written; a leftover one is small.
 - Move the addresses to record paths with ids in the path, so an address says what it opens
-  and the same record keeps one address. Nothing is built yet; PR #37 is the proof of
-  concept (`/poc/items/<id>`, preview `https://pr-37-cc-tracking.kcinth.workers.dev/poc/items`).
+  and the same record keeps one address. Nothing is built yet. PR #37 was the proof of
+  concept (`/poc/items/<id>`); it is closed, and its branch `redesign/endpoints` is kept so
+  it can be reopened to bring its preview back.
 
   Decided:
   - Records own their paths: `/cards/*`, `/payments/*`, `/purchases/*`. Ids go in the path,
@@ -58,6 +59,5 @@
   5. Trailing slash: `/cards/abc/` is a 404 on Workers; add `/:id/` rules or never write one.
   6. Local dev: `@kctools/bun-server` (dev and preview) ignores `_redirects`, so the deeper
      paths 404 locally. Teach it `_redirects`, or develop with `wrangler dev`.
-  7. Close PR #37 or keep it as a reference until the real change lands.
 
   Then update `ENDPOINTS.md`, `PRD.md` and `PRD_TH.md` together, and build it test-first.
