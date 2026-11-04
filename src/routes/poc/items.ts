@@ -1,6 +1,7 @@
 import "@kcstyles/reset.css";
 import "../../styles/tokens.css";
 import "./poc.css";
+import { afterExit } from "#lib/ui/motion";
 import { BASE, parseSheet, type Sheet, sheetPath } from "./route";
 
 /**
@@ -55,9 +56,9 @@ function sheetBody(sheet: Sheet): string {
 	}
 }
 
-function render(animate: boolean) {
+/** Draws the page once; only the diagnostics and the sheet change after this. */
+function drawPage() {
 	if (!page) return;
-	const sheet = parseSheet(location.pathname);
 	page.innerHTML = `
 		<h1>POC: sheet addresses as paths</h1>
 		<p>Open a sheet, then try Back, Forward, reload, and opening a link in a new tab.</p>
@@ -69,20 +70,63 @@ function render(animate: boolean) {
 			<a href="/poc/other/a1">/poc/other/a1</a> ·
 			<a href="/poc/other/a1/deep/er">/poc/other/a1/deep/er</a> ·
 			<a href="/poc/items/a1/nope">/poc/items/a1/nope (unknown: no sheet)</a></p>
-		${diagnostics()}
-		<div class="poc-backdrop" ${sheet.kind === "none" ? "hidden" : ""}></div>
-		<section class="poc-sheet" role="dialog" aria-modal="true"
-			${sheet.kind === "none" ? "hidden" : ""} ${animate ? "data-animate" : ""}>
+		<div id="poc-diag"></div>
+		<div class="poc-backdrop" hidden></div>
+		<section class="poc-sheet" role="dialog" aria-modal="true" hidden>
 			<button type="button" class="poc-close">Close</button>
-			${sheetBody(sheet)}
+			<div class="poc-sheet-body"></div>
 		</section>`;
+}
+
+/**
+ * Brings the sheet in step with the address. Closed to open slides it up (only when the page
+ * itself changed the address; a direct load shows it at once); open to open swaps the content
+ * in place; open to closed slides it down and hides it once the animation ends.
+ */
+function sync(animate: boolean) {
+	const diag = document.querySelector("#poc-diag");
+	if (diag) diag.innerHTML = diagnostics();
+	const el = document.querySelector<HTMLElement>(".poc-sheet");
+	const backdrop = document.querySelector<HTMLElement>(".poc-backdrop");
+	const body = document.querySelector<HTMLElement>(".poc-sheet-body");
+	if (!el || !backdrop || !body) return;
+	const sheet = parseSheet(location.pathname);
+	const open = !el.hidden && !el.hasAttribute("data-closing");
+
+	if (sheet.kind === "none") {
+		if (!open) return;
+		el.removeAttribute("data-opening");
+		backdrop.removeAttribute("data-opening");
+		el.setAttribute("data-closing", "");
+		backdrop.setAttribute("data-closing", "");
+		afterExit(el, () => {
+			// Reopened while sliding down: leave it open.
+			if (!el.hasAttribute("data-closing")) return;
+			el.removeAttribute("data-closing");
+			backdrop.removeAttribute("data-closing");
+			el.hidden = true;
+			backdrop.hidden = true;
+		});
+		return;
+	}
+
+	body.innerHTML = sheetBody(sheet);
+	if (open) return;
+	el.removeAttribute("data-closing");
+	backdrop.removeAttribute("data-closing");
+	el.hidden = false;
+	backdrop.hidden = false;
+	if (animate) {
+		el.setAttribute("data-opening", "");
+		backdrop.setAttribute("data-opening", "");
+	}
 }
 
 function close() {
 	if (pushed) history.back();
 	else {
 		history.replaceState(null, "", BASE);
-		render(false);
+		sync(true);
 	}
 }
 
@@ -106,7 +150,7 @@ document.addEventListener("click", (event) => {
 	event.preventDefault();
 	history.pushState({ poc: true }, "", anchor.getAttribute("href"));
 	pushed = true;
-	render(true);
+	sync(true);
 });
 
 document.addEventListener("keydown", (event) => {
@@ -116,7 +160,8 @@ document.addEventListener("keydown", (event) => {
 
 window.addEventListener("popstate", (event) => {
 	pushed = Boolean((event.state as { poc?: boolean } | null)?.poc);
-	render(true);
+	sync(true);
 });
 
-render(false);
+drawPage();
+sync(false);

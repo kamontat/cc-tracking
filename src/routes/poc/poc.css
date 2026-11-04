@@ -41,12 +41,49 @@
 	box-shadow: var(--cc-shadow-lg);
 }
 
-.poc-sheet[data-animate] {
+.poc-sheet[data-opening] {
 	animation: poc-slide-up var(--cc-sheet-motion) var(--cc-sheet-ease) both;
+}
+
+.poc-sheet[data-closing] {
+	animation: poc-slide-down var(--cc-sheet-motion) var(--cc-sheet-ease) both;
+}
+
+.poc-backdrop[data-opening] {
+	animation: poc-fade-in var(--cc-sheet-motion) var(--cc-sheet-ease) both;
+}
+
+.poc-backdrop[data-closing] {
+	animation: poc-fade-out var(--cc-sheet-motion) var(--cc-sheet-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.poc-sheet,
+	.poc-backdrop {
+		animation: none;
+	}
 }
 
 .poc-close {
 	justify-self: end;
+}
+
+@keyframes poc-slide-down {
+	to {
+		transform: translateY(100%);
+	}
+}
+
+@keyframes poc-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+
+@keyframes poc-fade-out {
+	to {
+		opacity: 0;
+	}
 }
 
 @keyframes poc-slide-up {
