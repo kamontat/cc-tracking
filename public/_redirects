@@ -1,1 +1,7 @@
 /backup /settings 301
+# POC: path addresses served by one file (200 = rewrite, the address bar keeps the path).
+# Fixed paths before placeholders: the first match wins.
+/poc/items/new            /poc/items   200
+/poc/items/:id/edit       /poc/items   200
+/poc/items/:id            /poc/items   200
+/poc/other/*              /poc/other   200

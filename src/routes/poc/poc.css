@@ -1,0 +1,56 @@
+.poc {
+	padding: var(--cc-space-4);
+	color: var(--cc-text);
+	background: var(--cc-bg);
+	min-height: 100vh;
+	display: grid;
+	gap: var(--cc-space-3);
+	align-content: start;
+}
+
+.poc-list {
+	display: grid;
+	gap: var(--cc-space-2);
+}
+
+.poc-diag {
+	display: grid;
+	grid-template-columns: max-content 1fr;
+	gap: var(--cc-space-1) var(--cc-space-3);
+	padding: var(--cc-space-3);
+	background: var(--cc-surface-sunken);
+	border-radius: var(--cc-radius-md);
+	overflow-wrap: anywhere;
+}
+
+.poc-backdrop {
+	position: fixed;
+	inset: 0;
+	background: var(--cc-text);
+	opacity: 0.3;
+}
+
+.poc-sheet {
+	position: fixed;
+	inset: auto 0 0;
+	padding: var(--cc-space-5);
+	display: grid;
+	gap: var(--cc-space-3);
+	background: var(--cc-surface);
+	border-radius: var(--cc-radius-md) var(--cc-radius-md) 0 0;
+	box-shadow: var(--cc-shadow-lg);
+}
+
+.poc-sheet[data-animate] {
+	animation: poc-slide-up var(--cc-sheet-motion) var(--cc-sheet-ease) both;
+}
+
+.poc-close {
+	justify-self: end;
+}
+
+@keyframes poc-slide-up {
+	from {
+		transform: translateY(100%);
+	}
+}
