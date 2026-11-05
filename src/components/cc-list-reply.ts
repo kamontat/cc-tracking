@@ -1,30 +1,20 @@
-import { css, html, LitElement, nothing, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { ifDefined } from "lit/directives/if-defined.js";
-import { live } from "lit/directives/live.js";
-import { addDays, headerDate } from "#lib/domain/date";
-import { lineAmount, withNote } from "#lib/domain/list-entry";
-import { formatAmount, formatAmountInput } from "#lib/domain/money";
-import type {
-	Card,
-	LimitGroup,
-	ListLine,
-	PurchaseList,
-} from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
-import { cardName, cardPanel } from "#lib/ui/card-label";
-import {
-	actionBarStyles,
-	base,
-	cardBits,
-	controls,
-	lineCards,
-	listLayout,
-} from "#styles/shared";
+import type { Card, LimitGroup, ListLine, PurchaseList } from "#lib/domain/types"
+
+import { css, html, LitElement, nothing, type PropertyValues } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+import { ifDefined } from "lit/directives/if-defined.js"
+import { live } from "lit/directives/live.js"
+
+import { addDays, headerDate } from "#lib/domain/date"
+import { lineAmount, withNote } from "#lib/domain/list-entry"
+import { formatAmount, formatAmountInput } from "#lib/domain/money"
+import { LocaleController } from "#lib/i18n/controller"
+import { getLocale, t } from "#lib/i18n/index"
+import { cardName, cardPanel } from "#lib/ui/card-label"
+import { actionBarStyles, base, cardBits, controls, lineCards, listLayout } from "#styles/shared"
 
 /** One line's answer: unanswered, made or not, the real amount and the note as typed. */
-type Answer = { made: boolean | undefined; text: string; note: string };
+type Answer = { made: boolean | undefined; text: string; note: string }
 
 /**
  * The spender's reply to a sent list: Made or Not made per line, with the real amount of a
@@ -125,7 +115,7 @@ export class CcListReply extends LitElement {
 				align-self: stretch;
 			}
 		`,
-	];
+	]
 
 	/** The sent list being answered; read once, as the starting answers. */
 	@property({ attribute: false }) list: PurchaseList = {
@@ -133,62 +123,60 @@ export class CcListReply extends LitElement {
 		date: "",
 		status: "sent",
 		lines: [],
-	};
-	@property({ attribute: false }) cards: Card[] = [];
+	}
+	@property({ attribute: false }) cards: Card[] = []
 	/** The stored limit groups, in order: a card's chip takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 
 	// The answers live here, not in the buttons or inputs, so a re-render keeps them.
-	@state() private answers: Answer[] = [];
-	@state() private moveUnmade = true;
-	private started = false;
+	@state() private answers: Answer[] = []
+	@state() private moveUnmade = true
+	private started = false
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override willUpdate(changed: PropertyValues<this>) {
-		super.willUpdate(changed);
+		super.willUpdate(changed)
 		if (!this.started) {
-			this.started = true;
+			this.started = true
 			this.answers = this.list.lines.map((line) => ({
 				made: line.made,
 				text: formatAmountInput(line.actual ?? line.amount),
 				note: line.note ?? "",
-			}));
+			}))
 		}
 	}
 
 	private setAnswer(index: number, change: Partial<Answer>) {
-		this.answers = this.answers.map((answer, i) =>
-			i === index ? { ...answer, ...change } : answer,
-		);
+		this.answers = this.answers.map((answer, i) => (i === index ? { ...answer, ...change } : answer))
 	}
 
 	/** The real amount in satang; null when it is blank or not money. */
 	private real(index: number): number | null {
-		const amount = lineAmount(this.answers[index]?.text ?? "");
-		return amount === null || amount === 0 ? null : amount;
+		const amount = lineAmount(this.answers[index]?.text ?? "")
+		return amount === null || amount === 0 ? null : amount
 	}
 
 	private save() {
 		const lines = this.list.lines.map((line, i): ListLine => {
-			const made = this.answers[i]?.made === true;
-			const real = this.real(i);
+			const made = this.answers[i]?.made === true
+			const real = this.real(i)
 			const answered: ListLine =
 				made && real !== null && real !== line.amount
 					? { cardId: line.cardId, amount: line.amount, made, actual: real }
-					: { cardId: line.cardId, amount: line.amount, made };
-			return withNote(answered, this.answers[i]?.note);
-		});
+					: { cardId: line.cardId, amount: line.amount, made }
+			return withNote(answered, this.answers[i]?.note)
+		})
 		this.dispatchEvent(
 			new CustomEvent("save-reply", {
 				detail: { lines, moveUnmade: this.moveUnmade },
 				bubbles: true,
 				composed: true,
 			}),
-		);
+		)
 	}
 
 	private section(line: ListLine, index: number, byId: Map<string, Card>) {
@@ -196,11 +184,11 @@ export class CcListReply extends LitElement {
 			made: undefined,
 			text: "",
 			note: "",
-		};
-		const real = this.real(index);
-		const diff = real === null ? 0 : real - line.amount;
-		const made = answer.made === true;
-		const notMade = answer.made === false;
+		}
+		const real = this.real(index)
+		const diff = real === null ? 0 : real - line.amount
+		const made = answer.made === true
+		const notMade = answer.made === false
 		return html`
 			<section class="line" data-card=${line.cardId}>
 				<div class="top" row>
@@ -250,20 +238,18 @@ export class CcListReply extends LitElement {
 							})} />
 				</label>
 			</section>
-		`;
+		`
 	}
 
 	override render() {
-		const lines = this.list.lines;
-		const byId = new Map(this.cards.map((card) => [card.id, card]));
-		const answered = this.answers.filter((a) => a.made !== undefined).length;
-		const allAnswered = answered === lines.length;
-		const madeIndexes = lines.flatMap((_, i) =>
-			this.answers[i]?.made === true ? [i] : [],
-		);
-		const allMoney = madeIndexes.every((i) => this.real(i) !== null);
-		const total = madeIndexes.reduce((sum, i) => sum + (this.real(i) ?? 0), 0);
-		const unmade = lines.filter((_, i) => this.answers[i]?.made === false);
+		const lines = this.list.lines
+		const byId = new Map(this.cards.map((card) => [card.id, card]))
+		const answered = this.answers.filter((a) => a.made !== undefined).length
+		const allAnswered = answered === lines.length
+		const madeIndexes = lines.flatMap((_, i) => (this.answers[i]?.made === true ? [i] : []))
+		const allMoney = madeIndexes.every((i) => this.real(i) !== null)
+		const total = madeIndexes.reduce((sum, i) => sum + (this.real(i) ?? 0), 0)
+		const unmade = lines.filter((_, i) => this.answers[i]?.made === false)
 
 		const label = !allAnswered
 			? t("reply.answerAll", { answered, count: lines.length })
@@ -272,7 +258,7 @@ export class CcListReply extends LitElement {
 				: t("reply.save.many", {
 						count: madeIndexes.length,
 						total: formatAmount(total),
-					});
+					})
 
 		return html`<div class="list-layout">
 			<div class="list-layout__main">
@@ -286,7 +272,7 @@ export class CcListReply extends LitElement {
 						? html`<label>
 							<input type="checkbox" data-field="move" .checked=${live(this.moveUnmade)}
 								@change=${(e: Event) => {
-									this.moveUnmade = (e.target as HTMLInputElement).checked;
+									this.moveUnmade = (e.target as HTMLInputElement).checked
 								}} />
 							${t("reply.move", {
 								cards: unmade
@@ -297,11 +283,7 @@ export class CcListReply extends LitElement {
 										),
 									)
 									.join(", "),
-								date: headerDate(
-									addDays(this.list.date, 1),
-									getLocale(),
-									false,
-								),
+								date: headerDate(addDays(this.list.date, 1), getLocale(), false),
 							})}
 						</label>`
 						: nothing
@@ -311,12 +293,12 @@ export class CcListReply extends LitElement {
 			</div>
 			<slot name="side"></slot>
 			</div>
-		</div>`;
+		</div>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-list-reply": CcListReply;
+		"cc-list-reply": CcListReply
 	}
 }

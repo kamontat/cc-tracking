@@ -1,8 +1,9 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { base, controls, panel } from "#styles/shared";
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property } from "lit/decorators.js"
+
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { base, controls, panel } from "#styles/shared"
 
 @customElement("cc-error-banner")
 export class CcErrorBanner extends LitElement {
@@ -17,28 +18,28 @@ export class CcErrorBanner extends LitElement {
 				display: none;
 			}
 		`,
-	];
+	]
 
-	@property() message = "";
+	@property() message = ""
 	// Left empty rather than defaulting to a catalog string: a property default is evaluated
 	// once at construction, which would freeze the language at load. render() falls back to
 	// t("common.retry") instead, re-evaluated on every render.
-	@property({ attribute: "retry-label" }) retryLabel = "";
+	@property({ attribute: "retry-label" }) retryLabel = ""
 
 	/** Hides the retry button, for a banner with nothing to retry. */
-	@property({ type: Boolean, attribute: "no-retry" }) noRetry = false;
+	@property({ type: Boolean, attribute: "no-retry" }) noRetry = false
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override willUpdate() {
-		this.toggleAttribute("hidden", !this.message);
+		this.toggleAttribute("hidden", !this.message)
 	}
 
 	override render() {
-		if (!this.message) return nothing;
+		if (!this.message) return nothing
 		return html`
 			<article role="alert" data-tone="danger">
 				<p>${this.message}</p>
@@ -50,12 +51,12 @@ export class CcErrorBanner extends LitElement {
 						</button>`
 				}
 			</article>
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-error-banner": CcErrorBanner;
+		"cc-error-banner": CcErrorBanner
 	}
 }

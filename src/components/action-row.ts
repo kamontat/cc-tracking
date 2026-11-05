@@ -1,28 +1,12 @@
-import {
-	css,
-	html,
-	nothing,
-	type ReactiveController,
-	type ReactiveControllerHost,
-	type TemplateResult,
-} from "lit";
-import {
-	dayMonth,
-	daysBetween,
-	displayDate,
-	today as plainToday,
-} from "#lib/domain/date";
-import { formatAmount } from "#lib/domain/money";
-import type {
-	Card,
-	CardPayment,
-	LimitGroup,
-	PlainDate,
-	PurchaseList,
-} from "#lib/domain/types";
-import { getLocale, type MessageKey, t } from "#lib/i18n/index";
-import { cardLine, cardOwnerName } from "#lib/ui/card-label";
-import { icons } from "#lib/ui/icons";
+import type { Card, CardPayment, LimitGroup, PlainDate, PurchaseList } from "#lib/domain/types"
+
+import { css, html, nothing, type ReactiveController, type ReactiveControllerHost, type TemplateResult } from "lit"
+
+import { dayMonth, daysBetween, displayDate, today as plainToday } from "#lib/domain/date"
+import { formatAmount } from "#lib/domain/money"
+import { getLocale, type MessageKey, t } from "#lib/i18n/index"
+import { cardLine, cardOwnerName } from "#lib/ui/card-label"
+import { icons } from "#lib/ui/icons"
 
 /*
  * One row shape for Home's *Needs you* and Transactions' *Upcoming* (DD-108): an icon that
@@ -37,21 +21,14 @@ import { icons } from "#lib/ui/icons";
  * and the buttons.
  */
 
-export type ActionKind =
-	| "waiting"
-	| "overdue"
-	| "planned"
-	| "draft"
-	| "purchase"
-	| "payment"
-	| "saved";
+export type ActionKind = "waiting" | "overdue" | "planned" | "draft" | "purchase" | "payment" | "saved"
 
 export type ActionRowText = {
-	kind: ActionKind;
+	kind: ActionKind
 	/** Words, or markup where a part of it reads differently (a ledger row's muted kind). */
-	title: string | TemplateResult;
-	subtitle: string | TemplateResult;
-};
+	title: string | TemplateResult
+	subtitle: string | TemplateResult
+}
 
 const ICONS: Record<ActionKind, TemplateResult> = {
 	waiting: icons.clock,
@@ -61,62 +38,48 @@ const ICONS: Record<ActionKind, TemplateResult> = {
 	purchase: icons.cards,
 	payment: icons.wallet,
 	saved: icons.bookmark,
-};
+}
 
 /** A list's cards as `name (owner)` when three or fewer, else "N cards" (DD-110). */
-export function cardsOrCount(
-	ids: string[],
-	cards: Card[],
-	groups: LimitGroup[],
-): string {
-	const byId = new Map(cards.map((card) => [card.id, card]));
+export function cardsOrCount(ids: string[], cards: Card[], groups: LimitGroup[]): string {
+	const byId = new Map(cards.map((card) => [card.id, card]))
 	return ids.length <= 3
 		? ids.map((id) => cardOwnerName(id, byId.get(id), groups)).join(", ")
-		: t("row.cards", { count: ids.length });
+		: t("row.cards", { count: ids.length })
 }
 
 /** How far a plan's date is from today: today, tomorrow, in N days, or N days ago once past. */
 export function whenWords(date: string, today: string): string {
-	const days = daysBetween(today, date);
-	if (days === 0) return t("row.when.today");
-	if (days === 1) return t("row.when.tomorrow");
-	if (days > 1) return t("row.when.in", { days });
-	return agoWords(-days);
+	const days = daysBetween(today, date)
+	if (days === 0) return t("row.when.today")
+	if (days === 1) return t("row.when.tomorrow")
+	if (days > 1) return t("row.when.in", { days })
+	return agoWords(-days)
 }
 
 /** "1 day ago" / "N days ago". */
-export const agoWords = (days: number): string =>
-	days === 1 ? t("row.ago.one") : t("row.ago.many", { days });
+export const agoWords = (days: number): string => (days === 1 ? t("row.ago.one") : t("row.ago.many", { days }))
 
 /** "for 1 day" / "for N days": how long a bill has been overdue. */
-export const forWords = (days: number): string =>
-	days === 1 ? t("row.for.one") : t("row.for.many", { days });
+export const forWords = (days: number): string => (days === 1 ? t("row.for.one") : t("row.for.many", { days }))
 
-const listDate = (list: PurchaseList) => displayDate(list.date, getLocale());
+const listDate = (list: PurchaseList) => displayDate(list.date, getLocale())
 
 /** A waiting list; the total is the row's amount on the right (DD-108), not in the subtitle. */
-export function waitingText(
-	list: PurchaseList,
-	cards: Card[],
-	groups: LimitGroup[],
-): ActionRowText {
+export function waitingText(list: PurchaseList, cards: Card[], groups: LimitGroup[]): ActionRowText {
 	const named = cardsOrCount(
 		list.lines.map((l) => l.cardId),
 		cards,
 		groups,
-	);
+	)
 	return {
 		kind: "waiting",
 		title: t("row.waiting", { date: listDate(list) }),
 		subtitle: named,
-	};
+	}
 }
 
-export function draftText(
-	list: PurchaseList,
-	cards: Card[],
-	groups: LimitGroup[],
-): ActionRowText {
+export function draftText(list: PurchaseList, cards: Card[], groups: LimitGroup[]): ActionRowText {
 	return {
 		kind: "draft",
 		title: t("row.draft", { date: listDate(list) }),
@@ -125,15 +88,11 @@ export function draftText(
 			cards,
 			groups,
 		),
-	};
+	}
 }
 
 /** A saved list; its total (the made lines) is the row's amount. */
-export function savedText(
-	list: PurchaseList,
-	cards: Card[],
-	groups: LimitGroup[],
-): ActionRowText {
+export function savedText(list: PurchaseList, cards: Card[], groups: LimitGroup[]): ActionRowText {
 	return {
 		kind: "saved",
 		title: t("row.saved", { date: listDate(list) }),
@@ -142,7 +101,7 @@ export function savedText(
 			cards,
 			groups,
 		),
-	};
+	}
 }
 
 /**
@@ -156,13 +115,13 @@ export function plannedText(
 	groups: LimitGroup[],
 	today: string,
 ): ActionRowText {
-	const name = cardOwnerName(payment.cardId, card, groups);
-	const date = displayDate(payment.date, getLocale());
+	const name = cardOwnerName(payment.cardId, card, groups)
+	const date = displayDate(payment.date, getLocale())
 	return {
 		kind: "planned",
 		title: t("row.plannedPay", { card: name }),
 		subtitle: `${date} · ${whenWords(payment.date, today)}`,
-	};
+	}
 }
 
 /** An opened planned payment's sentence: when it is planned for, then its note (DD-165). */
@@ -170,58 +129,45 @@ export function plannedSay(payment: CardPayment): string {
 	return [
 		t("row.say.planned", { date: dayMonth(payment.date, getLocale()) }),
 		...(payment.note ? [payment.note] : []),
-	].join(" ");
+	].join(" ")
 }
 
 /** A bill past its due date: `days` is how many days past it. */
-export function overdueText(
-	card: Card,
-	groups: LimitGroup[],
-	days: number,
-): ActionRowText {
+export function overdueText(card: Card, groups: LimitGroup[], days: number): ActionRowText {
 	return {
 		kind: "overdue",
 		title: t("row.overdue", {
 			card: cardOwnerName(card.id, card, groups),
 		}),
 		subtitle: forWords(days),
-	};
+	}
 }
 
 /** A money figure inside a sentence: strong, where the rest of the sentence is muted. */
-export const money = (text: string): TemplateResult =>
-	html`<span class="a-money" data-numeric>${text}</span>`;
+export const money = (text: string): TemplateResult => html`<span class="a-money" data-numeric>${text}</span>`
 
 /**
  * The catalog's sentence `key` with its placeholders filled by `params`, which may be markup
  * (a `money` figure, a red `a-late` phrase); words stay words, so the sentence reads the same in
  * either language.
  */
-export function say(
-	key: MessageKey,
-	params: Record<string, string | number | TemplateResult> = {},
-): TemplateResult {
-	const pieces = t(key).split(/\{(\w+)\}/);
-	return html`${pieces.map((piece, i) =>
-		i % 2 === 0 ? piece : piece in params ? params[piece] : `{${piece}}`,
-	)}`;
+export function say(key: MessageKey, params: Record<string, string | number | TemplateResult> = {}): TemplateResult {
+	const pieces = t(key).split(/\{(\w+)\}/)
+	return html`${pieces.map((piece, i) => (i % 2 === 0 ? piece : piece in params ? params[piece] : `{${piece}}`))}`
 }
 
 /** The day a list was sent, as day and month: its `sentAt` in Bangkok, else the list's date. */
 export function sentWords(list: PurchaseList): string {
-	const at = list.sentAt ? new Date(list.sentAt) : undefined;
-	const day = at && !Number.isNaN(at.getTime()) ? plainToday(at) : list.date;
-	return dayMonth(day, getLocale());
+	const at = list.sentAt ? new Date(list.sentAt) : undefined
+	const day = at && !Number.isNaN(at.getTime()) ? plainToday(at) : list.date
+	return dayMonth(day, getLocale())
 }
 
 /** Label and amount lines above an opened row's foot: a list's lines, a payment's statements. */
-export function partLines(
-	parts: { label: string | TemplateResult; amount: string }[],
-): TemplateResult {
+export function partLines(parts: { label: string | TemplateResult; amount: string }[]): TemplateResult {
 	return html`<div class="a-parts">${parts.map(
-		(part) =>
-			html`<div class="a-part"><span>${part.label}</span><span data-numeric>${part.amount}</span></div>`,
-	)}</div>`;
+		(part) => html`<div class="a-part"><span>${part.label}</span><span data-numeric>${part.amount}</span></div>`,
+	)}</div>`
 }
 
 /**
@@ -230,8 +176,8 @@ export function partLines(
  * made" (the reply page's words). Missing cards keep their id (`cardLine`).
  */
 export function listParts(list: PurchaseList, cards: Card[]): TemplateResult {
-	const byId = new Map(cards.map((card) => [card.id, card]));
-	const saved = list.status === "saved";
+	const byId = new Map(cards.map((card) => [card.id, card]))
+	const saved = list.status === "saved"
 	return partLines(
 		list.lines.map((line) => ({
 			label: cardLine(line.cardId, byId.get(line.cardId)),
@@ -241,14 +187,14 @@ export function listParts(list: PurchaseList, cards: Card[]): TemplateResult {
 					? formatAmount(line.actual ?? line.amount)
 					: t("reply.notMade"),
 		})),
-	);
+	)
 }
 
 /** A marker on the billing cycle line: bought, the close (to come or past), due, or today. */
 export type CycleMark = {
-	kind: "buy" | "closes" | "closed" | "due" | "now";
-	date: PlainDate;
-};
+	kind: "buy" | "closes" | "closed" | "due" | "now"
+	date: PlainDate
+}
 
 const MARK_WORDS: Record<CycleMark["kind"], MessageKey> = {
 	buy: "row.cycle.bought",
@@ -256,17 +202,17 @@ const MARK_WORDS: Record<CycleMark["kind"], MessageKey> = {
 	closed: "row.cycle.closed",
 	due: "row.cycle.due",
 	now: "row.cycle.spoken.today",
-};
+}
 
 /** Within this share of an end, a marker's label aligns to that end, so it never clips. */
-const EDGE = 10;
+const EDGE = 10
 
 /** The first paint's guess at crowding: labels under the track closer than this share of it.
  * `useCycleFit` then measures the real labels and corrects it. */
-const CROWD = 18;
+const CROWD = 18
 
 /** The least room, in px, between two labels under the track that both keep their words. */
-const LABEL_GAP = 4;
+const LABEL_GAP = 4
 
 /** Which of two crowded labels under the track keeps its words: due, then the close, then bought. */
 const RANK: Record<CycleMark["kind"], number> = {
@@ -275,10 +221,10 @@ const RANK: Record<CycleMark["kind"], number> = {
 	closed: 2,
 	buy: 1,
 	now: 0,
-};
+}
 
 /** How many days past today a late bill's cycle line runs, so today sits inside it. */
-export const PAST_TODAY = 3;
+export const PAST_TODAY = 3
 
 /**
  * A statement's billing cycle drawn to scale (DD-165): a track from `start` to `end`, filled
@@ -297,67 +243,58 @@ export function cycleLine({
 	fillTo,
 	late = false,
 }: {
-	start: PlainDate;
-	end: PlainDate;
-	marks: CycleMark[];
-	fillTo: PlainDate;
-	late?: boolean;
+	start: PlainDate
+	end: PlainDate
+	marks: CycleMark[]
+	fillTo: PlainDate
+	late?: boolean
 }): TemplateResult {
-	const span = Math.max(1, daysBetween(start, end));
-	const at = (date: PlainDate) =>
-		Math.min(100, Math.max(0, (daysBetween(start, date) / span) * 100));
-	const percent = (value: number) => `${Number(value.toFixed(2))}%`;
-	const locale = getLocale();
+	const span = Math.max(1, daysBetween(start, end))
+	const at = (date: PlainDate) => Math.min(100, Math.max(0, (daysBetween(start, date) / span) * 100))
+	const percent = (value: number) => `${Number(value.toFixed(2))}%`
+	const locale = getLocale()
 	const ordered = marks
 		.map((mark, i) => ({ mark, i }))
 		.sort((a, b) => at(a.mark.date) - at(b.mark.date) || a.i - b.i)
-		.map(({ mark }) => mark);
-	const today = ordered.find((m) => m.kind === "now")?.date ?? fillTo;
+		.map(({ mark }) => mark)
+	const today = ordered.find((m) => m.kind === "now")?.date ?? fillTo
 	const words = (mark: CycleMark) => {
-		const date = dayMonth(mark.date, locale);
-		if (!late || mark.kind !== "due") return t(MARK_WORDS[mark.kind], { date });
-		const days = daysBetween(mark.date, today);
+		const date = dayMonth(mark.date, locale)
+		if (!late || mark.kind !== "due") return t(MARK_WORDS[mark.kind], { date })
+		const days = daysBetween(mark.date, today)
 		return t("row.cycle.dueLate", {
 			date,
-			late:
-				days === 1 ? t("row.say.late.one") : t("row.say.late.many", { days }),
-		});
-	};
-	// The labels under the track that keep their words, most important first.
-	const labelled: number[] = [];
-	const quiet = new Set<CycleMark>();
-	for (const mark of [...ordered]
-		.filter((m) => m.kind !== "now")
-		.sort((a, b) => RANK[b.kind] - RANK[a.kind])) {
-		const p = at(mark.date);
-		if (labelled.some((q) => Math.abs(q - p) < CROWD)) quiet.add(mark);
-		else labelled.push(p);
+			late: days === 1 ? t("row.say.late.one") : t("row.say.late.many", { days }),
+		})
 	}
-	const spoken = [
-		...ordered.filter((m) => m.kind !== "now"),
-		...ordered.filter((m) => m.kind === "now"),
-	].map((mark, i) => {
-		const said = words(mark);
-		return i === 0
-			? said
-			: said.charAt(0).toLocaleLowerCase(locale) + said.slice(1);
-	});
+	// The labels under the track that keep their words, most important first.
+	const labelled: number[] = []
+	const quiet = new Set<CycleMark>()
+	for (const mark of [...ordered].filter((m) => m.kind !== "now").sort((a, b) => RANK[b.kind] - RANK[a.kind])) {
+		const p = at(mark.date)
+		if (labelled.some((q) => Math.abs(q - p) < CROWD)) quiet.add(mark)
+		else labelled.push(p)
+	}
+	const spoken = [...ordered.filter((m) => m.kind !== "now"), ...ordered.filter((m) => m.kind === "now")].map(
+		(mark, i) => {
+			const said = words(mark)
+			return i === 0 ? said : said.charAt(0).toLocaleLowerCase(locale) + said.slice(1)
+		},
+	)
 	return html`<div class="a-cycle" role="img" aria-label=${spoken.join(t("row.cycle.join"))}>
 		<span class="a-track"></span>
 		<span class="a-fill" ?data-late=${late} style=${`inline-size: ${percent(at(fillTo))}`}></span>
 		${ordered.map((mark) => {
-			const p = at(mark.date);
-			const edge = p < EDGE ? "start" : p > 100 - EDGE ? "end" : undefined;
+			const p = at(mark.date)
+			const edge = p < EDGE ? "start" : p > 100 - EDGE ? "end" : undefined
 			const label =
-				mark.kind === "now"
-					? t("row.cycle.today")
-					: t(MARK_WORDS[mark.kind], { date: dayMonth(mark.date, locale) });
+				mark.kind === "now" ? t("row.cycle.today") : t(MARK_WORDS[mark.kind], { date: dayMonth(mark.date, locale) })
 			return html`<span class="a-mk" aria-hidden="true" data-mark=${mark.kind}
 				data-edge=${edge ?? nothing} ?data-late=${late && mark.kind === "due"}
 				?data-quiet=${quiet.has(mark)}
-				style=${`inset-inline-start: ${percent(p)}`}><i></i><span class="a-lbl">${label}</span></span>`;
+				style=${`inset-inline-start: ${percent(p)}`}><i></i><span class="a-lbl">${label}</span></span>`
 		})}
-	</div>`;
+	</div>`
 }
 
 /**
@@ -370,20 +307,18 @@ export function fitLabels(
 	labels: { kind: CycleMark["kind"]; left: number; right: number }[],
 	gap = LABEL_GAP,
 ): boolean[] {
-	const quiet = labels.map(() => false);
-	const kept: { left: number; right: number }[] = [];
+	const quiet = labels.map(() => false)
+	const kept: { left: number; right: number }[] = []
 	const order = labels
 		.map((label, i) => ({ label, i }))
 		.filter(({ label }) => label.kind !== "now")
-		.sort((a, b) => RANK[b.label.kind] - RANK[a.label.kind] || a.i - b.i);
+		.sort((a, b) => RANK[b.label.kind] - RANK[a.label.kind] || a.i - b.i)
 	for (const { label, i } of order) {
-		const clash = kept.some(
-			(k) => label.left < k.right + gap && k.left < label.right + gap,
-		);
-		if (clash) quiet[i] = true;
-		else kept.push(label);
+		const clash = kept.some((k) => label.left < k.right + gap && k.left < label.right + gap)
+		if (clash) quiet[i] = true
+		else kept.push(label)
 	}
-	return quiet;
+	return quiet
 }
 
 /**
@@ -391,20 +326,20 @@ export function fitLabels(
  * important one (`fitLabels`). A line not laid out (its row closed) keeps what it has.
  */
 export function fitCycle(line: Element): void {
-	const marks = [...line.querySelectorAll<HTMLElement>(".a-mk")];
+	const marks = [...line.querySelectorAll<HTMLElement>(".a-mk")]
 	const boxes = marks.map((mark) => {
-		const rect = mark.querySelector(".a-lbl")?.getBoundingClientRect();
+		const rect = mark.querySelector(".a-lbl")?.getBoundingClientRect()
 		return {
 			kind: (mark.getAttribute("data-mark") ?? "now") as CycleMark["kind"],
 			left: rect?.left ?? 0,
 			right: rect?.right ?? 0,
 			width: rect?.width ?? 0,
-		};
-	});
-	if (boxes.some((b) => b.width <= 0)) return;
+		}
+	})
+	if (boxes.some((b) => b.width <= 0)) return
 	fitLabels(boxes).forEach((quiet, i) => {
-		marks[i]?.toggleAttribute("data-quiet", quiet);
-	});
+		marks[i]?.toggleAttribute("data-quiet", quiet)
+	})
 }
 
 /**
@@ -413,44 +348,40 @@ export function fitCycle(line: Element): void {
  * a rotated phone). The observer lets go when the host disconnects.
  */
 export class CycleFitController implements ReactiveController {
-	private observer: ResizeObserver | undefined;
-	private readonly watched = new WeakSet<Element>();
+	private observer: ResizeObserver | undefined
+	private readonly watched = new WeakSet<Element>()
 
-	constructor(
-		private readonly host: ReactiveControllerHost & { renderRoot: ParentNode },
-	) {
-		host.addController(this);
+	constructor(private readonly host: ReactiveControllerHost & { renderRoot: ParentNode }) {
+		host.addController(this)
 	}
 
 	hostConnected(): void {}
 
 	hostUpdated(): void {
 		for (const line of this.host.renderRoot.querySelectorAll(".a-cycle")) {
-			fitCycle(line);
-			this.watch(line);
+			fitCycle(line)
+			this.watch(line)
 		}
 	}
 
 	hostDisconnected(): void {
-		this.observer?.disconnect();
-		this.observer = undefined;
+		this.observer?.disconnect()
+		this.observer = undefined
 	}
 
 	private watch(line: Element) {
-		if (typeof ResizeObserver === "undefined") return;
+		if (typeof ResizeObserver === "undefined") return
 		this.observer ??= new ResizeObserver((entries) => {
-			for (const entry of entries) fitCycle(entry.target);
-		});
-		if (this.watched.has(line)) return;
-		this.watched.add(line);
-		this.observer.observe(line);
+			for (const entry of entries) fitCycle(entry.target)
+		})
+		if (this.watched.has(line)) return
+		this.watched.add(line)
+		this.observer.observe(line)
 	}
 }
 
-export function useCycleFit(
-	host: ReactiveControllerHost & { renderRoot: ParentNode },
-): CycleFitController {
-	return new CycleFitController(host);
+export function useCycleFit(host: ReactiveControllerHost & { renderRoot: ParentNode }): CycleFitController {
+	return new CycleFitController(host)
 }
 
 export type ActionRowOptions = {
@@ -458,44 +389,36 @@ export type ActionRowOptions = {
 	 * parts) then a foot of the sentence `say` and the buttons (`action`). `detailsId` names
 	 * that region (`useOpenRow`'s `detailsId`). */
 	open: {
-		expanded: boolean;
-		onToggle: () => void;
-		detailsId: string;
+		expanded: boolean
+		onToggle: () => void
+		detailsId: string
 		/** The cycle line (`cycleLine`) or parts (`partLines`); none when left out. */
-		above?: TemplateResult | typeof nothing;
+		above?: TemplateResult | typeof nothing
 		/** The one sentence; money figures through `money`, the rest muted. */
-		say: string | TemplateResult | typeof nothing;
-	};
+		say: string | TemplateResult | typeof nothing
+	}
 	/** Drawn in place of the kind's icon (a ledger row's card chip). */
-	lead?: TemplateResult | undefined;
+	lead?: TemplateResult | undefined
 	/** The right-hand figure, already signed, and its tone. */
-	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" };
+	amount?: { text: string; tone: "out" | "in" | "muted" | "danger" }
 	/** The buttons, at the end of the opened row's foot (DD-110). */
-	action?: TemplateResult | undefined;
+	action?: TemplateResult | undefined
 	/** Names the row for tests and the page: `data-row`. */
-	id?: string;
-};
+	id?: string
+}
 
 /**
  * Draws a row. The whole head (icon, text, figure and a chevron) is one button, and nothing
  * interactive sits inside it: the buttons live in the drawer it controls.
  */
-export function actionRow(
-	text: ActionRowText,
-	{ open, lead, amount, action, id }: ActionRowOptions,
-): TemplateResult {
-	const figure = amount
-		? html`<b class="amount ${amount.tone}" data-numeric>${amount.text}</b>`
-		: nothing;
-	const inside = html`${
-		lead ??
-		html`<span class="a-ic" data-kind=${text.kind}>${ICONS[text.kind]}</span>`
-	}
+export function actionRow(text: ActionRowText, { open, lead, amount, action, id }: ActionRowOptions): TemplateResult {
+	const figure = amount ? html`<b class="amount ${amount.tone}" data-numeric>${amount.text}</b>` : nothing
+	const inside = html`${lead ?? html`<span class="a-ic" data-kind=${text.kind}>${ICONS[text.kind]}</span>`}
 		<span class="a-text">
 			<b class="a-title">${text.title}</b>
 			<span class="a-sub">${text.subtitle}</span>
-		</span>`;
-	const headId = `${open.detailsId}-head`;
+		</span>`
+	const headId = `${open.detailsId}-head`
 	return html`<div class="a-wrap" data-row=${id ?? nothing}>
 		<div class="a-row">
 			<button type="button" class="a-hit" id=${headId} data-item=${text.kind}
@@ -508,7 +431,7 @@ export function actionRow(
 			${open.above ?? nothing}
 			<div class="a-foot"><p class="a-say">${open.say}</p>${action ? html`<div class="a-btns">${action}</div>` : nothing}</div>
 		</div>
-	</div>`;
+	</div>`
 }
 
 /**
@@ -528,32 +451,30 @@ export function actionRow(
  *     rows.prune(lists.map((list) => `list:${list.id}`));
  */
 /** The row heads directly in a panel, in order. */
-const panelHeads = (panel: Element) => [
-	...panel.querySelectorAll<HTMLElement>(":scope > .a-wrap button.a-hit"),
-];
+const panelHeads = (panel: Element) => [...panel.querySelectorAll<HTMLElement>(":scope > .a-wrap button.a-hit")]
 
 export class OpenRowController implements ReactiveController {
-	private open: string | undefined;
-	private readonly prefix: string;
+	private open: string | undefined
+	private readonly prefix: string
 	/**
 	 * Where focus goes once a pruned row, which held it, has left the screen: its panel and its
 	 * place in it, the heads beside it, nearest first (after it, then before it), and the
 	 * headings after and before it.
 	 */
 	private landing: {
-		panel: Element | null;
-		at: number;
-		heads: string[];
-		after: string | null;
-		before: string | null;
-	} | null = null;
+		panel: Element | null
+		at: number
+		heads: string[]
+		after: string | null
+		before: string | null
+	} | null = null
 
 	constructor(
 		private readonly host: ReactiveControllerHost,
 		private readonly onChange: () => void = () => {},
 	) {
-		host.addController(this);
-		this.prefix = host instanceof Element ? host.localName : "row";
+		host.addController(this)
+		this.prefix = host instanceof Element ? host.localName : "row"
 	}
 
 	hostConnected(): void {}
@@ -565,45 +486,35 @@ export class OpenRowController implements ReactiveController {
 	 * Row heads are found by id, since a list without keys reuses a gone row's elements.
 	 */
 	hostUpdated(): void {
-		const landing = this.landing;
-		if (!landing) return;
-		this.landing = null;
-		const root = this.root();
-		if (!root) return;
-		const byId = (id: string) =>
-			root.querySelector<HTMLElement>(`[id="${CSS.escape(id)}"]`);
-		const near = landing.heads.map(byId).filter((el) => el !== null);
+		const landing = this.landing
+		if (!landing) return
+		this.landing = null
+		const root = this.root()
+		if (!root) return
+		const byId = (id: string) => root.querySelector<HTMLElement>(`[id="${CSS.escape(id)}"]`)
+		const near = landing.heads.map(byId).filter((el) => el !== null)
 		// The row that slid into the gone row's place: in a folded list (Needs you, the ledger's
 		// page) it was not drawn before. Only while the panel still holds the same list.
-		const { panel } = landing;
-		const slid =
-			panel?.isConnected && near.some((el) => panel.contains(el))
-				? panelHeads(panel)[landing.at]
-				: undefined;
-		const headings = [...root.querySelectorAll<HTMLElement>("[data-refocus]")];
-		const heading = (name: string | null) =>
-			headings.find((el) => el.getAttribute("data-refocus") === name);
-		const target =
-			slid ??
-			near[0] ??
-			heading(landing.after) ??
-			heading(landing.before) ??
-			headings[0];
-		target?.focus();
+		const { panel } = landing
+		const slid = panel?.isConnected && near.some((el) => panel.contains(el)) ? panelHeads(panel)[landing.at] : undefined
+		const headings = [...root.querySelectorAll<HTMLElement>("[data-refocus]")]
+		const heading = (name: string | null) => headings.find((el) => el.getAttribute("data-refocus") === name)
+		const target = slid ?? near[0] ?? heading(landing.after) ?? heading(landing.before) ?? headings[0]
+		target?.focus()
 	}
 
 	private root(): ParentNode | null {
-		return (this.host as { renderRoot?: ParentNode }).renderRoot ?? null;
+		return (this.host as { renderRoot?: ParentNode }).renderRoot ?? null
 	}
 
 	isOpen(id: string): boolean {
-		return this.open === id;
+		return this.open === id
 	}
 
 	toggle(id: string): void {
-		this.open = this.open === id ? undefined : id;
-		this.onChange();
-		this.host.requestUpdate();
+		this.open = this.open === id ? undefined : id
+		this.onChange()
+		this.host.requestUpdate()
 	}
 
 	/** Forgets the open row when `ids` (the rows still drawn) no longer holds it; call it
@@ -611,53 +522,43 @@ export class OpenRowController implements ReactiveController {
 	 * goes while it holds focus hands it on once the repaint is done (`hostUpdated`). */
 	prune(ids: string[]): void {
 		if (this.open !== undefined && !ids.includes(this.open)) {
-			this.landing = this.landingFor(this.open);
-			this.open = undefined;
-			this.onChange();
-			this.host.requestUpdate();
+			this.landing = this.landingFor(this.open)
+			this.open = undefined
+			this.onChange()
+			this.host.requestUpdate()
 		}
 	}
 
 	/** Reads, before the repaint, where focus should land if row `id` holds it; else null. */
 	private landingFor(id: string): OpenRowController["landing"] {
-		const root = this.root() as
-			| (ParentNode & { activeElement?: Element | null })
-			| null;
-		const head = root?.querySelector(
-			`[id="${CSS.escape(`${this.detailsId(id)}-head`)}"]`,
-		);
-		const wrap = head?.closest(".a-wrap");
-		const active = root?.activeElement;
-		if (!root || !wrap || !active || !wrap.contains(active)) return null;
-		const panel = wrap.parentElement;
-		const ids = panel ? panelHeads(panel).map((b) => b.id) : [];
-		const at = ids.indexOf(head?.id ?? "");
-		const marks = [...root.querySelectorAll<HTMLElement>("[data-refocus]")];
-		const follows = (el: Element) =>
-			el.compareDocumentPosition(wrap) & Node.DOCUMENT_POSITION_FOLLOWING;
+		const root = this.root() as (ParentNode & { activeElement?: Element | null }) | null
+		const head = root?.querySelector(`[id="${CSS.escape(`${this.detailsId(id)}-head`)}"]`)
+		const wrap = head?.closest(".a-wrap")
+		const active = root?.activeElement
+		if (!root || !wrap || !active || !wrap.contains(active)) return null
+		const panel = wrap.parentElement
+		const ids = panel ? panelHeads(panel).map((b) => b.id) : []
+		const at = ids.indexOf(head?.id ?? "")
+		const marks = [...root.querySelectorAll<HTMLElement>("[data-refocus]")]
+		const follows = (el: Element) => el.compareDocumentPosition(wrap) & Node.DOCUMENT_POSITION_FOLLOWING
 		return {
 			panel,
 			at,
 			heads: [...ids.slice(at + 1), ...ids.slice(0, at).reverse()],
-			after:
-				marks.find((el) => !follows(el))?.getAttribute("data-refocus") ?? null,
-			before:
-				marks.filter(follows).at(-1)?.getAttribute("data-refocus") ?? null,
-		};
+			after: marks.find((el) => !follows(el))?.getAttribute("data-refocus") ?? null,
+			before: marks.filter(follows).at(-1)?.getAttribute("data-refocus") ?? null,
+		}
 	}
 
 	/** The id of a row's details region: `${host tag}-${id}`, each run of whitespace made
 	 * `_` so it stays one id that `aria-controls` can name. */
 	detailsId(id: string): string {
-		return `${this.prefix}-${id.replace(/\s+/g, "_")}`;
+		return `${this.prefix}-${id.replace(/\s+/g, "_")}`
 	}
 }
 
-export function useOpenRow(
-	host: ReactiveControllerHost,
-	onChange?: () => void,
-): OpenRowController {
-	return new OpenRowController(host, onChange);
+export function useOpenRow(host: ReactiveControllerHost, onChange?: () => void): OpenRowController {
+	return new OpenRowController(host, onChange)
 }
 
 /** The row's styles; the host also takes `rowPanel`. */
@@ -1044,4 +945,4 @@ export const actionRowStyles = css`
 		background: var(--cc-border);
 	}
 
-`;
+`

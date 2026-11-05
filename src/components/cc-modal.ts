@@ -1,9 +1,10 @@
-import { css, html, LitElement } from "lit";
-import { customElement, property, query } from "lit/decorators.js";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { afterExit } from "#lib/ui/motion";
-import { base, controls } from "#styles/shared";
+import { css, html, LitElement } from "lit"
+import { customElement, property, query } from "lit/decorators.js"
+
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { afterExit } from "#lib/ui/motion"
+import { base, controls } from "#styles/shared"
 
 /**
  * A modal dialog around whatever is slotted into it. It opens itself the moment it is placed on
@@ -183,47 +184,47 @@ export class CcModal extends LitElement {
 				}
 			}
 		`,
-	];
+	]
 
-	@property() heading = "";
+	@property() heading = ""
 	/** Draw as a sheet (bottom sheet on a phone, centred from 900px) with a worded Close. */
-	@property({ type: Boolean, reflect: true }) sheet = false;
+	@property({ type: Boolean, reflect: true }) sheet = false
 	/**
 	 * Held open: Escape, the backdrop and Close do nothing, so a page that would refuse to
 	 * close (a save in flight) never sees its sheet slide away first.
 	 */
-	@property({ type: Boolean }) held = false;
+	@property({ type: Boolean }) held = false
 
-	@query("dialog") private dialog!: HTMLDialogElement;
+	@query("dialog") private dialog!: HTMLDialogElement
 
 	// Whatever had focus when this opened. A dialog that is close()d hands focus back itself, but
 	// this one is rendered away instead, which skips that step and drops focus onto <body>.
-	private opener: HTMLElement | null = null;
+	private opener: HTMLElement | null = null
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override connectedCallback() {
-		super.connectedCallback();
+		super.connectedCallback()
 		// Walked down through shadow roots: `document.activeElement` names only the outermost
 		// host, and focusing a host does not focus the button inside it.
-		let active = document.activeElement;
+		let active = document.activeElement
 		while (active?.shadowRoot?.activeElement) {
-			active = active.shadowRoot.activeElement;
+			active = active.shadowRoot.activeElement
 		}
-		this.opener = active instanceof HTMLElement ? active : null;
+		this.opener = active instanceof HTMLElement ? active : null
 	}
 
 	override disconnectedCallback() {
-		super.disconnectedCallback();
-		if (this.opener?.isConnected) this.opener.focus();
-		this.opener = null;
+		super.disconnectedCallback()
+		if (this.opener?.isConnected) this.opener.focus()
+		this.opener = null
 	}
 
 	override firstUpdated() {
-		this.dialog.showModal();
+		this.dialog.showModal()
 	}
 
 	/**
@@ -233,17 +234,17 @@ export class CcModal extends LitElement {
 	 * drops the mark again, since it has nothing to play.
 	 */
 	leave(then: () => void): void {
-		if (this.hasAttribute("closing")) return;
-		this.toggleAttribute("closing", true);
+		if (this.hasAttribute("closing")) return
+		this.toggleAttribute("closing", true)
 		afterExit(this.dialog, () => {
-			if (!this.sheet) this.removeAttribute("closing");
-			then();
-		});
+			if (!this.sheet) this.removeAttribute("closing")
+			then()
+		})
 	}
 
 	private requestClose() {
-		if (this.held) return;
-		this.leave(() => this.dispatchEvent(new CustomEvent("close")));
+		if (this.held) return
+		this.leave(() => this.dispatchEvent(new CustomEvent("close")))
 	}
 
 	override render() {
@@ -251,15 +252,15 @@ export class CcModal extends LitElement {
 			<dialog
 				aria-labelledby="heading"
 				@cancel=${(event: Event) => {
-					event.preventDefault();
-					this.requestClose();
+					event.preventDefault()
+					this.requestClose()
 				}}
 				@click=${(event: Event) => {
-					if (event.target === this.dialog) this.requestClose();
+					if (event.target === this.dialog) this.requestClose()
 				}}
 				@close=${() => {
 					// A second Escape closes a dialog with no cancel to refuse; a held one opens again.
-					if (this.held && this.isConnected) this.dialog.showModal();
+					if (this.held && this.isConnected) this.dialog.showModal()
 				}}
 			>
 				<div class="body">
@@ -277,12 +278,12 @@ export class CcModal extends LitElement {
 					<slot></slot>
 				</div>
 			</dialog>
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-modal": CcModal;
+		"cc-modal": CcModal
 	}
 }

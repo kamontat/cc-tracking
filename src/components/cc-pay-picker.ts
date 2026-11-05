@@ -1,18 +1,20 @@
-import { css, html, LitElement, type TemplateResult } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { today } from "#lib/domain/date";
-import { matchesCard, type PayChoice } from "#lib/domain/pay";
-import type { GroupRoom } from "#lib/domain/room";
-import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { icons } from "#lib/ui/icons";
-import { base, controls } from "#styles/shared";
-import { cardTileStyles, tileTone } from "./card-tile";
-import { payTileBody, payTileName } from "./pay-tile";
+import type { GroupRoom } from "#lib/domain/room"
+import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
+
+import { css, html, LitElement, type TemplateResult } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { today } from "#lib/domain/date"
+import { matchesCard, type PayChoice } from "#lib/domain/pay"
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { icons } from "#lib/ui/icons"
+import { base, controls } from "#styles/shared"
+import { cardTileStyles, tileTone } from "./card-tile"
+import { payTileBody, payTileName } from "./pay-tile"
 
 /** The card a row asks to pay. */
-export type PickDetail = { cardId: string };
+export type PickDetail = { cardId: string }
 
 /**
  * The payment sheet's first step: every card a payment can go to, most pressing first, with a
@@ -64,64 +66,61 @@ export class CcPayPicker extends LitElement {
 				color: var(--cc-text-muted);
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) choices: PayChoice[] = [];
+	@property({ attribute: false }) choices: PayChoice[] = []
 	/** The stored limit groups, in order: a tile takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** Each group's room, by group id: a tile's rail shows its group's used share. */
-	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
+	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map()
 	/** Each card's ledger, by card id: its open statement holds the dates line 3 shows. */
-	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
+	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map()
 	/** Today, which picks a card's open period when its ledger has no open statement. */
-	@property() today: PlainDate = today(new Date());
+	@property() today: PlainDate = today(new Date())
 	/** How many cards are stored, to tell "none yet" from "only archived, paid off". */
-	@property({ type: Number }) total = 0;
-	@state() private query = "";
+	@property({ type: Number }) total = 0
+	@state() private query = ""
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	private pick(cardId: string) {
-		this.dispatchEvent(
-			new CustomEvent<PickDetail>("pick", { detail: { cardId } }),
-		);
+		this.dispatchEvent(new CustomEvent<PickDetail>("pick", { detail: { cardId } }))
 	}
 
 	private tile(choice: PayChoice): TemplateResult {
-		const { card } = choice;
+		const { card } = choice
 		return html`<button type="button" class="tile" data-g=${tileTone(card, this.groups)}
 			data-card=${card.id} aria-label=${payTileName(choice)}
-			@click=${() => this.pick(card.id)}>${payTileBody(choice, this)}</button>`;
+			@click=${() => this.pick(card.id)}>${payTileBody(choice, this)}</button>`
 	}
 
 	override render() {
 		if (this.choices.length === 0) {
-			if (this.total > 0)
-				return html`<p class="empty" data-empty="archived">${t("pay.noneToPay")}</p>`;
-			return html`<p class="empty" data-empty="no-cards"><a href="/cards">${t("pay.noCards")}</a></p>`;
+			if (this.total > 0) return html`<p class="empty" data-empty="archived">${t("pay.noneToPay")}</p>`
+			return html`<p class="empty" data-empty="no-cards"><a href="/cards">${t("pay.noCards")}</a></p>`
 		}
-		const shown = this.choices.filter((c) => matchesCard(c.card, this.query));
+		const shown = this.choices.filter((c) => matchesCard(c.card, this.query))
 		return html`
 			<p class="hint">${t("pay.pickHint")}</p>
 			<label class="search">${icons.search}<input type="search" name="q" .value=${this.query}
 				aria-label=${t("pay.searchPlaceholder")} placeholder=${t("pay.searchPlaceholder")}
 				@input=${(event: Event) => {
-					this.query = (event.target as HTMLInputElement).value;
+					this.query = (event.target as HTMLInputElement).value
 				}} /></label>
 			${
 				shown.length === 0
 					? html`<p class="empty">${t("pay.noMatch")}</p>`
 					: html`<div class="tiles">${shown.map((choice) => this.tile(choice))}</div>`
 			}
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-pay-picker": CcPayPicker;
+		"cc-pay-picker": CcPayPicker
 	}
 }

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "vitest"
 
 /**
  * Every page shows one person's own data from their browser, so none belongs in a search
@@ -13,10 +13,10 @@ import { expect, test } from "vitest";
  */
 
 test("every response carries the noindex header", async () => {
-	const headers = await Bun.file("public/_headers").text();
-	expect(headers).toContain("/*\n  X-Robots-Tag: noindex, nofollow");
-});
+	const headers = await Bun.file("public/_headers").text()
+	expect(headers).toContain("/*\n  X-Robots-Tag: noindex, nofollow")
+})
 
 test("no robots.txt blocks crawlers from reading the noindex", async () => {
-	expect(await Bun.file("public/robots.txt").exists()).toBe(false);
-});
+	expect(await Bun.file("public/robots.txt").exists()).toBe(false)
+})

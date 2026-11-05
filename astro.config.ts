@@ -1,6 +1,7 @@
-import { execFileSync } from "node:child_process";
-import { defineConfig } from "astro/config";
-import { type BuildEnv, resolveBuildEnv } from "./scripts/build-env";
+import { execFileSync } from "node:child_process"
+import { defineConfig } from "astro/config"
+
+import { type BuildEnv, resolveBuildEnv } from "./scripts/build-env"
 
 /** What `git <args>` prints, or `""` in a tree without git (a source tarball, a sandbox). */
 const git = (...args: string[]): string => {
@@ -8,11 +9,11 @@ const git = (...args: string[]): string => {
 		return execFileSync("git", args, {
 			encoding: "utf8",
 			stdio: ["ignore", "pipe", "ignore"],
-		});
+		})
 	} catch {
-		return "";
+		return ""
 	}
-};
+}
 
 // The commit and build time Settings > About shows. Vite inlines every `PUBLIC_*` variable it
 // finds in the environment, so the stamps go there before it starts.
@@ -24,7 +25,7 @@ Object.assign(
 		now: new Date(),
 		env: process.env as Partial<BuildEnv>,
 	}),
-);
+)
 
 // https://docs.astro.build/en/reference/configuration-reference/
 export default defineConfig({
@@ -32,4 +33,4 @@ export default defineConfig({
 	// "file" writes about.astro to dist/about.html, served at /about by Cloudflare static assets.
 	build: { format: "file" },
 	trailingSlash: "never",
-});
+})

@@ -1,58 +1,42 @@
-import "#components/cc-list-amounts";
-import "#components/cc-list-table";
-import { html, nothing, render } from "lit";
-import { headerDate, isValidDate, today } from "#lib/domain/date";
-import { isReady, roomFor } from "#lib/domain/home";
-import { composeList, lineAmount, listLines } from "#lib/domain/list-entry";
-import { formatAmountInput } from "#lib/domain/money";
-import { plannedOf } from "#lib/domain/pay";
-import type { GroupRoom } from "#lib/domain/room";
-import type {
-	Card,
-	ListLine,
-	PlainDate,
-	PurchaseList,
-} from "#lib/domain/types";
-import { messageOf } from "#lib/i18n/error";
-import { getLocale, subscribe, t } from "#lib/i18n/index";
-import type { Repository } from "#lib/storage/repository";
-import { cardLines } from "#lib/ui/card-label";
-import { icons } from "#lib/ui/icons";
-import { newListAddress } from "#lib/ui/list-address";
-import {
-	browserShare,
-	imageName,
-	type ShareApi,
-	shareTable,
-	shareText,
-} from "#lib/ui/list-share";
-import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
-import { createPageState } from "#lib/ui/page-state";
-import { deleteDraftList, storedDraft } from "#lib/ui/row-actions";
-import { subHeader } from "#lib/ui/sub-header";
-import {
-	banner,
-	elsewhereView,
-	type ListPageOptions,
-	listId,
-	listPageDefaults,
-	markListPage,
-} from "./common";
+import "#components/cc-list-amounts"
+import "#components/cc-list-table"
+import type { GroupRoom } from "#lib/domain/room"
+import type { Card, ListLine, PlainDate, PurchaseList } from "#lib/domain/types"
+import type { Repository } from "#lib/storage/repository"
+
+import { html, nothing, render } from "lit"
+
+import { headerDate, isValidDate, today } from "#lib/domain/date"
+import { isReady, roomFor } from "#lib/domain/home"
+import { composeList, lineAmount, listLines } from "#lib/domain/list-entry"
+import { formatAmountInput } from "#lib/domain/money"
+import { plannedOf } from "#lib/domain/pay"
+import { messageOf } from "#lib/i18n/error"
+import { getLocale, subscribe, t } from "#lib/i18n/index"
+import { cardLines } from "#lib/ui/card-label"
+import { icons } from "#lib/ui/icons"
+import { newListAddress } from "#lib/ui/list-address"
+import { browserShare, imageName, type ShareApi, shareTable, shareText } from "#lib/ui/list-share"
+import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
+import { createPageState } from "#lib/ui/page-state"
+import { deleteDraftList, storedDraft } from "#lib/ui/row-actions"
+import { subHeader } from "#lib/ui/sub-header"
+import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults, markListPage } from "./common"
 
 /** A new list from the cards picked on Home (`/list/new`), or a stored draft (`/list/draft`). */
-export type EntryMode = "new" | "draft";
+export type EntryMode = "new" | "draft"
 
 export type EntryPageOptions = ListPageOptions & {
 	/** What this browser can do with the review's table; `browserShare()` by default. */
-	share?: ShareApi;
+	share?: ShareApi
 	/** The id a new list is stored under; `crypto.randomUUID` by default. */
-	newId?: () => string;
+	newId?: () => string
 	/** Rewrites the address without a history entry; `history.replaceState` by default. */
-	replaceAddress?: (url: string) => void;
-};
+	replaceAddress?: (url: string) => void
+}
 
 /** `elsewhere` is a draft page opened on an id that is not stored, or not a draft. */
-type View = "loading" | "amounts" | "review" | "elsewhere";
+type View = "loading" | "amounts" | "review" | "elsewhere"
 
 /** How the last Copy text or Save image went, kept raw so it re-translates on a locale switch. */
 type ShareStatus =
@@ -60,9 +44,9 @@ type ShareStatus =
 	| { kind: "copy-failed" }
 	| { kind: "image-saved" }
 	| { kind: "image-shared" }
-	| { kind: "image-failed"; failure: unknown };
+	| { kind: "image-failed"; failure: unknown }
 
-const unique = (ids: string[]): string[] => [...new Set(ids)];
+const unique = (ids: string[]): string[] => [...new Set(ids)]
 
 /**
  * Renders the two steps of writing a purchase list into `root`: enter amounts, then review the
@@ -77,173 +61,164 @@ export function renderEntryPage(
 	mode: EntryMode,
 	options: EntryPageOptions = {},
 ): void {
-	const { clock, search, navigate } = listPageDefaults(options);
-	markListPage(root);
-	const share = options.share ?? browserShare();
-	const newId = options.newId ?? (() => crypto.randomUUID());
-	const replaceAddress =
-		options.replaceAddress ??
-		((url: string) => history.replaceState(history.state, "", url));
-	const now = today(clock());
-	let data: MoneyData | null = null;
-	let view: View = "loading";
+	const { clock, search, navigate } = listPageDefaults(options)
+	markListPage(root)
+	const share = options.share ?? browserShare()
+	const newId = options.newId ?? (() => crypto.randomUUID())
+	const replaceAddress = options.replaceAddress ?? ((url: string) => history.replaceState(history.state, "", url))
+	const now = today(clock())
+	let data: MoneyData | null = null
+	let view: View = "loading"
 	// The stored draft being edited, if any; its id is kept and its own lines hold no room.
-	let editingId: string | undefined;
+	let editingId: string | undefined
 	// What a draft page found instead of a draft: nothing, or a list in another state.
-	let elsewhere: PurchaseList | undefined;
+	let elsewhere: PurchaseList | undefined
 	// The id this page saves under, fixed on the first save so a retry overwrites, not doubles.
-	let saveId: string | undefined;
-	let cardIds: string[] = [];
+	let saveId: string | undefined
+	let cardIds: string[] = []
 	// Cards a reopened draft (or this page) had that can no longer take purchases, left out.
-	let dropped: string[] = [];
-	let date: PlainDate = now;
-	let entries: Record<string, string> = {};
-	let notes: Record<string, string> = {};
-	let reviewed: { date: PlainDate; lines: ListLine[] } | null = null;
-	let status: ShareStatus | null = null;
+	let dropped: string[] = []
+	let date: PlainDate = now
+	let entries: Record<string, string> = {}
+	let notes: Record<string, string> = {}
+	let reviewed: { date: PlainDate; lines: ListLine[] } | null = null
+	let status: ShareStatus | null = null
 
 	const readyCards = (from: MoneyData): Card[] =>
-		from.cards.filter((card) => isReady(card, from.groups, from.locations));
+		from.cards.filter((card) => isReady(card, from.groups, from.locations))
 
 	// Reads the address once, against the first data that loads.
 	const start = (from: MoneyData) => {
-		const ready = new Set(readyCards(from).map((card) => card.id));
+		const ready = new Set(readyCards(from).map((card) => card.id))
 		if (mode === "new") {
-			const params = new URLSearchParams(search);
-			cardIds = unique(params.getAll("card")).filter((c) => ready.has(c));
-			view = "amounts";
-			return;
+			const params = new URLSearchParams(search)
+			cardIds = unique(params.getAll("card")).filter((c) => ready.has(c))
+			view = "amounts"
+			return
 		}
-		const id = listId(search);
-		const list = from.lists.find((l) => l.id === id);
+		const id = listId(search)
+		const list = from.lists.find((l) => l.id === id)
 		if (list?.status !== "draft") {
-			elsewhere = list;
-			view = "elsewhere";
-			return;
+			elsewhere = list
+			view = "elsewhere"
+			return
 		}
-		editingId = list.id;
-		date = list.date;
-		const onList = unique(list.lines.map((line) => line.cardId));
-		cardIds = onList.filter((c) => ready.has(c));
-		dropped = onList.filter((c) => !ready.has(c));
-		entries = {};
-		notes = {};
+		editingId = list.id
+		date = list.date
+		const onList = unique(list.lines.map((line) => line.cardId))
+		cardIds = onList.filter((c) => ready.has(c))
+		dropped = onList.filter((c) => !ready.has(c))
+		entries = {}
+		notes = {}
 		for (const line of list.lines) {
-			if (!cardIds.includes(line.cardId)) continue;
-			entries[line.cardId] = formatAmountInput(line.amount);
-			if (line.note) notes[line.cardId] = line.note;
+			if (!cardIds.includes(line.cardId)) continue
+			entries[line.cardId] = formatAmountInput(line.amount)
+			if (line.note) notes[line.cardId] = line.note
 		}
-		view = "amounts";
-	};
+		view = "amounts"
+	}
 
 	const state = createPageState({
 		fetch: async () => {
-			data = await loadMoneyData(repo, now);
-			if (view === "loading") start(data);
+			data = await loadMoneyData(repo, now)
+			if (view === "loading") start(data)
 		},
 		fallbackKey: "purchaseList.error.read",
 		paint: () => paint(),
-	});
+	})
 
 	const show = (next: View) => {
-		view = next;
-		status = null;
-		paint();
-	};
+		view = next
+		status = null
+		paint()
+	}
 
 	const onEntryChange = (
 		event: CustomEvent<{
-			date: PlainDate;
-			entries: Record<string, string>;
-			notes?: Record<string, string>;
+			date: PlainDate
+			entries: Record<string, string>
+			notes?: Record<string, string>
 		}>,
 	) => {
-		const moved = event.detail.date !== date;
-		date = event.detail.date;
-		entries = { ...event.detail.entries };
-		notes = { ...event.detail.notes };
+		const moved = event.detail.date !== date
+		date = event.detail.date
+		entries = { ...event.detail.entries }
+		notes = { ...event.detail.notes }
 		// The sub-header names the date; typing an amount repaints nothing.
-		if (moved) paint();
-	};
+		if (moved) paint()
+	}
 
 	/** The sub-header's muted line: the list's date and how many cards are on it. */
 	const subtitle = (count: number, on: PlainDate): string | undefined =>
 		isValidDate(on)
-			? t(
-					count === 1
-						? "purchaseList.subtitle.one"
-						: "purchaseList.subtitle.many",
-					{ date: headerDate(on, getLocale(), true), count },
-				)
-			: undefined;
+			? t(count === 1 ? "purchaseList.subtitle.one" : "purchaseList.subtitle.many", {
+					date: headerDate(on, getLocale(), true),
+					count,
+				})
+			: undefined
 
 	const onReview = (event: CustomEvent<{ date: PlainDate }>) => {
-		date = event.detail.date;
+		date = event.detail.date
 		// Lines come from the cards on the list now: the typed amounts can still hold a key for a
 		// card that was removed.
-		const amounts: Record<string, number> = {};
-		for (const id of cardIds) amounts[id] = lineAmount(entries[id] ?? "") ?? 0;
-		reviewed = { date, lines: listLines(cardIds, amounts, notes) };
-		show("review");
-	};
+		const amounts: Record<string, number> = {}
+		for (const id of cardIds) amounts[id] = lineAmount(entries[id] ?? "") ?? 0
+		reviewed = { date, lines: listLines(cardIds, amounts, notes) }
+		show("review")
+	}
 
 	// A new list's address names its cards, so a reload or shared link shows the same ones; a
 	// draft's cards come from the stored draft, so its address stays as it is.
 	const syncAddress = () => {
-		if (mode === "new") replaceAddress(newListAddress(cardIds, search));
-	};
+		if (mode === "new") replaceAddress(newListAddress(cardIds, search))
+	}
 
 	const onRemove = (event: CustomEvent<{ cardId: string }>) => {
-		cardIds = cardIds.filter((id) => id !== event.detail.cardId);
-		syncAddress();
-		paint();
-	};
+		cardIds = cardIds.filter((id) => id !== event.detail.cardId)
+		syncAddress()
+		paint()
+	}
 
 	const onAdd = (event: CustomEvent<{ cardId: string }>) => {
-		if (!cardIds.includes(event.detail.cardId))
-			cardIds = [...cardIds, event.detail.cardId];
-		syncAddress();
-		paint();
-	};
+		if (!cardIds.includes(event.detail.cardId)) cardIds = [...cardIds, event.detail.cardId]
+		syncAddress()
+		paint()
+	}
 
-	const table = () =>
-		reviewed && data ? shareTable(reviewed, data.cards) : null;
+	const table = () => (reviewed && data ? shareTable(reviewed, data.cards) : null)
 
 	const copy = async () => {
-		const words = table();
-		if (!share.copy || !words) return;
+		const words = table()
+		if (!share.copy || !words) return
 		try {
-			await share.copy(shareText(words));
-			status = { kind: "copied" };
+			await share.copy(shareText(words))
+			status = { kind: "copied" }
 		} catch {
-			status = { kind: "copy-failed" };
+			status = { kind: "copy-failed" }
 		}
-		paint();
-	};
+		paint()
+	}
 
 	const saveImage = async () => {
-		const words = table();
-		if (!share.saveImage || !words || !reviewed) return;
+		const words = table()
+		if (!share.saveImage || !words || !reviewed) return
 		try {
-			const outcome = await share.saveImage(words, imageName(reviewed.date));
+			const outcome = await share.saveImage(words, imageName(reviewed.date))
 			// Closing the share sheet is the reader changing their mind, not a failure.
-			status =
-				outcome === "cancelled"
-					? null
-					: { kind: outcome === "shared" ? "image-shared" : "image-saved" };
+			status = outcome === "cancelled" ? null : { kind: outcome === "shared" ? "image-shared" : "image-saved" }
 		} catch (failure) {
-			status = { kind: "image-failed", failure };
+			status = { kind: "image-failed", failure }
 		}
-		paint();
-	};
+		paint()
+	}
 
 	const save = async (send: boolean) => {
-		const list = reviewed;
-		if (!list) return;
-		let saved = false;
+		const list = reviewed
+		if (!list) return
+		let saved = false
 		await state.guard(async () => {
-			if (editingId) await storedDraft(repo, editingId);
-			saveId ??= editingId ?? newId();
+			if (editingId) await storedDraft(repo, editingId)
+			saveId ??= editingId ?? newId()
 			await repo.savePurchaseList(
 				composeList({
 					id: saveId,
@@ -252,63 +227,63 @@ export function renderEntryPage(
 					send,
 					now: clock().toISOString(),
 				}),
-			);
-			saved = true;
-		}, "purchaseList.error.save");
-		if (saved) navigate("/");
-	};
+			)
+			saved = true
+		}, "purchaseList.error.save")
+		if (saved) navigate("/")
+	}
 
 	/**
 	 * Deletes the stored draft at once, with no second step (the user's decision, DD-74): it
 	 * holds nothing that was bought. A draft sent or saved since is refused, like a save.
 	 */
 	const deleteDraft = async () => {
-		const id = editingId;
-		if (!id) return;
-		let deleted = false;
+		const id = editingId
+		if (!id) return
+		let deleted = false
 		await state.guard(async () => {
-			await deleteDraftList(repo, id);
-			deleted = true;
-		}, "purchaseList.error.delete");
-		if (deleted) navigate("/");
-	};
+			await deleteDraftList(repo, id)
+			deleted = true
+		}, "purchaseList.error.delete")
+		if (deleted) navigate("/")
+	}
 
 	/** Delete draft, on a draft's page only; `side` slots it into a list element's panel. */
 	const deleteButton = (slot?: "side") =>
 		editingId
 			? html`<button data-variant="danger" data-action="delete-draft" slot=${slot ?? nothing} @click=${deleteDraft}>${t("purchaseList.deleteDraft")}</button>`
-			: nothing;
+			: nothing
 
 	const statusText = (): string => {
-		if (!status) return "";
+		if (!status) return ""
 		switch (status.kind) {
 			case "copied":
-				return t("purchaseList.copied");
+				return t("purchaseList.copied")
 			case "copy-failed":
-				return t("backup.error.copy");
+				return t("backup.error.copy")
 			case "image-saved":
-				return t("purchaseList.imageSaved");
+				return t("purchaseList.imageSaved")
 			case "image-shared":
-				return t("purchaseList.imageShared");
+				return t("purchaseList.imageShared")
 			case "image-failed":
-				return messageOf(status.failure, "purchaseList.error.image");
+				return messageOf(status.failure, "purchaseList.error.image")
 		}
-	};
+	}
 
 	const amountsView = (from: MoneyData) => {
-		const ready = readyCards(from);
-		const byId = new Map(ready.map((card) => [card.id, card]));
+		const ready = readyCards(from)
+		const byId = new Map(ready.map((card) => [card.id, card]))
 		// A card that stopped being ready since the page opened drops off the list, and says so.
-		const gone = cardIds.filter((id) => !byId.has(id));
+		const gone = cardIds.filter((id) => !byId.has(id))
 		if (gone.length > 0) {
-			dropped = unique([...dropped, ...gone]);
-			cardIds = cardIds.filter((id) => byId.has(id));
+			dropped = unique([...dropped, ...gone])
+			cardIds = cardIds.filter((id) => byId.has(id))
 		}
-		const cards = cardIds.flatMap((id) => byId.get(id) ?? []);
-		const rooms = new Map<string, GroupRoom>();
+		const cards = cardIds.flatMap((id) => byId.get(id) ?? [])
+		const rooms = new Map<string, GroupRoom>()
 		for (const card of cards) {
-			const room = roomFor(card, from, editingId);
-			if (room) rooms.set(card.id, room);
+			const room = roomFor(card, from, editingId)
+			if (room) rooms.set(card.id, room)
 		}
 		return html`
 			${subHeader({
@@ -321,9 +296,7 @@ export function renderEntryPage(
 			${
 				dropped.length > 0
 					? html`<p class="note" data-dropped>${t(
-							dropped.length === 1
-								? "purchaseList.dropped.one"
-								: "purchaseList.dropped.many",
+							dropped.length === 1 ? "purchaseList.dropped.one" : "purchaseList.dropped.many",
 							{ cards: cardLines(dropped, from.cards) },
 						)}</p>`
 					: nothing
@@ -345,15 +318,13 @@ export function renderEntryPage(
 				@remove=${onRemove}
 				@add=${onAdd}
 			>${deleteButton("side")}</cc-list-amounts>
-		`;
-	};
+		`
+	}
 
 	const reviewView = (from: MoneyData) => html`
 		${subHeader({
 			title: t("purchaseList.reviewTitle"),
-			detail: reviewed
-				? subtitle(reviewed.lines.length, reviewed.date)
-				: undefined,
+			detail: reviewed ? subtitle(reviewed.lines.length, reviewed.date) : undefined,
 			back: () => show("amounts"),
 		})}
 		${banner(state)}
@@ -385,16 +356,16 @@ export function renderEntryPage(
 		${deleteButton()}
 		</div>
 		</div>
-	`;
+	`
 
 	const paint = () => {
-		let body: unknown = banner(state);
-		if (view === "elsewhere") body = elsewhereView(elsewhere, state);
-		else if (data && view === "amounts") body = amountsView(data);
-		else if (data && view === "review") body = reviewView(data);
-		render(body, root);
-	};
+		let body: unknown = banner(state)
+		if (view === "elsewhere") body = elsewhereView(elsewhere, state)
+		else if (data && view === "amounts") body = amountsView(data)
+		else if (data && view === "review") body = reviewView(data)
+		render(body, root)
+	}
 
-	subscribe(() => paint());
-	void state.load();
+	subscribe(() => paint())
+	void state.load()
 }

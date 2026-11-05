@@ -1,142 +1,124 @@
-import { expect, test } from "vitest";
-import { GROUP_COLORS } from "#lib/domain/group-color";
+import { expect, test } from "vitest"
+
+import { GROUP_COLORS } from "#lib/domain/group-color"
 
 /** Build details live in Settings > About, so no page carries a footer of its own. */
 test("no route page carries a footer", async () => {
-	const offenders: string[] = [];
+	const offenders: string[] = []
 
-	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(
-		".",
-	)) {
-		const source = await Bun.file(path).text();
-		if (source.includes("<cc-site-footer")) offenders.push(path);
+	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(".")) {
+		const source = await Bun.file(path).text()
+		if (source.includes("<cc-site-footer")) offenders.push(path)
 	}
 
-	expect(offenders).toEqual([]);
-});
+	expect(offenders).toEqual([])
+})
 
 /** The shell's slots are checked on every rendered page in tests/pages/pages.test.ts. */
 test("no route page carries the old header nav", async () => {
-	const offenders: string[] = [];
+	const offenders: string[] = []
 
-	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(
-		".",
-	)) {
-		const source = await Bun.file(path).text();
-		if (source.includes("site-header__nav")) offenders.push(path);
+	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(".")) {
+		const source = await Bun.file(path).text()
+		if (source.includes("site-header__nav")) offenders.push(path)
 	}
 
-	expect(offenders).toEqual([]);
-});
+	expect(offenders).toEqual([])
+})
 
 /** Language and theme are picked on the settings page, not in every page's header. */
 test("no route page carries a language picker in its header", async () => {
-	const offenders: string[] = [];
+	const offenders: string[] = []
 
-	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(
-		".",
-	)) {
-		const source = await Bun.file(path).text();
-		if (source.includes("<cc-lang-switch>")) offenders.push(path);
+	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(".")) {
+		const source = await Bun.file(path).text()
+		if (source.includes("<cc-lang-switch>")) offenders.push(path)
 	}
 
-	expect(offenders).toEqual([]);
-});
+	expect(offenders).toEqual([])
+})
 
 /**
  * The dark palette is written twice in tokens.css -- once for a device in dark mode with no
  * explicit pick, once for an explicit dark pick -- because CSS cannot share one declaration
  * block between a media query and a plain selector. This keeps the two copies identical.
  */
-const tokens = await Bun.file("src/styles/tokens.css").text();
+const tokens = await Bun.file("src/styles/tokens.css").text()
 
 const blockAfter = (marker: string): string => {
-	const at = tokens.indexOf(marker);
-	if (at < 0) throw new Error(`no ${marker} in tokens.css`);
-	const start = tokens.indexOf("{", at);
-	let depth = 0;
+	const at = tokens.indexOf(marker)
+	if (at < 0) throw new Error(`no ${marker} in tokens.css`)
+	const start = tokens.indexOf("{", at)
+	let depth = 0
 	for (let index = start; index < tokens.length; index++) {
-		if (tokens[index] === "{") depth++;
+		if (tokens[index] === "{") depth++
 		if (tokens[index] === "}" && --depth === 0) {
-			return tokens.slice(start + 1, index);
+			return tokens.slice(start + 1, index)
 		}
 	}
-	throw new Error(`unclosed block after ${marker}`);
-};
+	throw new Error(`unclosed block after ${marker}`)
+}
 
 const declarations = (block: string) =>
 	block
 		.replace(/\/\*[\s\S]*?\*\//g, "")
 		.split(";")
 		.map((line) => line.trim())
-		.filter(Boolean);
+		.filter(Boolean)
 
-const names = (block: string) =>
-	declarations(block).map((line) => line.slice(0, line.indexOf(":")).trim());
+const names = (block: string) => declarations(block).map((line) => line.slice(0, line.indexOf(":")).trim())
 
 test("both dark palettes in the tokens declare the same values", () => {
-	const system = declarations(blockAfter(':root:not([data-theme="light"])'));
-	const picked = declarations(blockAfter(':root[data-theme="dark"]'));
+	const system = declarations(blockAfter(':root:not([data-theme="light"])'))
+	const picked = declarations(blockAfter(':root[data-theme="dark"]'))
 
-	expect(system.length).toBeGreaterThan(0);
-	expect(picked).toEqual(system);
-});
+	expect(system.length).toBeGreaterThan(0)
+	expect(picked).toEqual(system)
+})
 
 test("every build but production has a tint", () => {
 	for (const env of ["development", "local", "preview"]) {
-		const found = names(blockAfter(`:root[data-env="${env}"]`));
-		expect(found).toContain("--cc-env");
+		const found = names(blockAfter(`:root[data-env="${env}"]`))
+		expect(found).toContain("--cc-env")
 	}
-});
+})
 
 test("group pastels exist in both themes", () => {
-	const wanted = GROUP_COLORS.flatMap((n) => [
-		`--cc-group-${n}`,
-		`--cc-group-${n}-text`,
-		`--cc-group-${n}-soft`,
-	]);
-	for (const block of [
-		blockAfter(":root {"),
-		blockAfter(':root[data-theme="dark"]'),
-	]) {
-		expect(names(block)).toEqual(expect.arrayContaining(wanted));
+	const wanted = GROUP_COLORS.flatMap((n) => [`--cc-group-${n}`, `--cc-group-${n}-text`, `--cc-group-${n}-soft`])
+	for (const block of [blockAfter(":root {"), blockAfter(':root[data-theme="dark"]')]) {
+		expect(names(block)).toEqual(expect.arrayContaining(wanted))
 	}
-});
+})
 
 test("dark palettes only override tokens the light palette defines", () => {
-	const light = names(blockAfter(":root {"));
+	const light = names(blockAfter(":root {"))
 	for (const name of names(blockAfter(':root[data-theme="dark"]'))) {
-		if (name === "color-scheme") continue;
-		expect(light).toContain(name);
+		if (name === "color-scheme") continue
+		expect(light).toContain(name)
 	}
-});
+})
 
 test("leading leaves room for Thai", () => {
-	const light = declarations(blockAfter(":root {"));
+	const light = declarations(blockAfter(":root {"))
 	const value = (name: string) =>
 		light
 			.find((line) => line.startsWith(`${name}:`))
 			?.split(":")[1]
-			?.trim() ?? "";
-	expect(Number.parseFloat(value("--cc-leading"))).toBeGreaterThanOrEqual(1.65);
-	expect(value("--cc-font-sans")).toContain('"Noto Sans Thai"');
-});
+			?.trim() ?? ""
+	expect(Number.parseFloat(value("--cc-leading"))).toBeGreaterThanOrEqual(1.65)
+	expect(value("--cc-font-sans")).toContain('"Noto Sans Thai"')
+})
 
 test("the page ends with room for the floating + New button, on a phone and from 900px", async () => {
-	const css = await Bun.file("src/styles/app.css").text();
+	const css = await Bun.file("src/styles/app.css").text()
 	const rule = (from: number) => {
-		const block = css.slice(css.indexOf("\n.page {", from));
-		return block.slice(0, block.indexOf("}"));
-	};
-	const phone = rule(0);
-	for (const token of [
-		"--cc-tabbar-height",
-		"--cc-bar-height",
-		"safe-area-inset-bottom",
-	])
-		expect(phone).toContain(token);
-	const wide = css.slice(css.indexOf("From 900px the bar is gone"));
-	const wideRule = wide.slice(0, wide.indexOf("}\n}"));
-	for (const token of ["--cc-bar-height", "safe-area-inset-bottom"])
-		expect(wideRule).toContain(token);
-});
+		const block = css.slice(css.indexOf("\n.page {", from))
+		return block.slice(0, block.indexOf("}"))
+	}
+	const phone = rule(0)
+	for (const token of ["--cc-tabbar-height", "--cc-bar-height", "safe-area-inset-bottom"])
+		expect(phone).toContain(token)
+	const wide = css.slice(css.indexOf("From 900px the bar is gone"))
+	const wideRule = wide.slice(0, wide.indexOf("}\n}"))
+	for (const token of ["--cc-bar-height", "safe-area-inset-bottom"]) expect(wideRule).toContain(token)
+})

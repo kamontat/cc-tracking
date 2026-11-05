@@ -1,16 +1,18 @@
-import "#components/cc-error-banner";
-import "#components/cc-modal";
-import { css, html, LitElement, nothing, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { isCloseDate } from "#lib/domain/cycle";
-import { compareDates, isValidDate } from "#lib/domain/date";
-import { amountOf, formatAmountInput } from "#lib/domain/money";
-import type { Card, LimitGroup, PlainDate, Purchase } from "#lib/domain/types";
-import type { MessageKey } from "#lib/i18n/catalog";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { cardPanel } from "#lib/ui/card-label";
-import { base, cardBits, controls } from "#styles/shared";
+import "#components/cc-error-banner"
+import "#components/cc-modal"
+import type { Card, LimitGroup, PlainDate, Purchase } from "#lib/domain/types"
+import type { MessageKey } from "#lib/i18n/catalog"
+
+import { css, html, LitElement, nothing, type PropertyValues } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { isCloseDate } from "#lib/domain/cycle"
+import { compareDates, isValidDate } from "#lib/domain/date"
+import { amountOf, formatAmountInput } from "#lib/domain/money"
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { cardPanel } from "#lib/ui/card-label"
+import { base, cardBits, controls } from "#styles/shared"
 
 /**
  * A purchase in a sheet, the card fixed and named (FR-21), then its date, amount and note.
@@ -89,35 +91,35 @@ export class CcPurchaseSheet extends LitElement {
 				border-radius: var(--cc-radius-sm);
 			}
 		`,
-	];
+	]
 
 	/** The card the purchase is on; it is shown, never picked. */
-	@property({ attribute: false }) card: Card | null = null;
+	@property({ attribute: false }) card: Card | null = null
 	/** Every stored group, for the card chip's pastel. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** The purchase to edit; none adds a new one. */
-	@property({ attribute: false }) purchase: Purchase | null = null;
+	@property({ attribute: false }) purchase: Purchase | null = null
 	/** The clock a new purchase's `addedAt` is read from. */
-	@property({ attribute: false }) now: () => Date = () => new Date();
-	@property() today: PlainDate = "";
+	@property({ attribute: false }) now: () => Date = () => new Date()
+	@property() today: PlainDate = ""
 	/** Why the last save failed; typing is kept. */
-	@property() error = "";
+	@property() error = ""
 	/** A save is under way: the button waits and the sheet holds open. */
-	@property({ type: Boolean }) busy = false;
+	@property({ type: Boolean }) busy = false
 
-	@state() private date: PlainDate = "";
-	@state() private amount = "";
-	@state() private note = "";
+	@state() private date: PlainDate = ""
+	@state() private amount = ""
+	@state() private note = ""
 	// The catalog key, so a language switch re-renders the message in place.
-	@state() private errorKey: MessageKey | "" = "";
+	@state() private errorKey: MessageKey | "" = ""
 	/** The purchase id the fields were last filled from; unset before the first fill. */
-	private filledFor: string | undefined = undefined;
+	private filledFor: string | undefined = undefined
 	/** A new purchase's id, made when the add sheet opens on a card. */
-	private newId = "";
+	private newId = ""
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	/**
@@ -125,58 +127,54 @@ export class CcPurchaseSheet extends LitElement {
 	 * the same purchase -- a reload after a failed save -- keeps what was typed.
 	 */
 	protected override willUpdate(changed: PropertyValues<this>) {
-		if (!changed.has("purchase") && !changed.has("card")) return;
-		const purchase = this.purchase;
+		if (!changed.has("purchase") && !changed.has("card")) return
+		const purchase = this.purchase
 		if (!purchase) {
 			// Adding: a fresh, blank purchase each time the sheet turns to another card.
-			const key = this.card ? `new:${this.card.id}` : undefined;
-			if (!key || key === this.filledFor) return;
-			this.filledFor = key;
-			this.newId = crypto.randomUUID();
-			this.date = this.today;
-			this.amount = "";
-			this.note = "";
-			this.errorKey = "";
-			return;
+			const key = this.card ? `new:${this.card.id}` : undefined
+			if (!key || key === this.filledFor) return
+			this.filledFor = key
+			this.newId = crypto.randomUUID()
+			this.date = this.today
+			this.amount = ""
+			this.note = ""
+			this.errorKey = ""
+			return
 		}
-		if (purchase.id === this.filledFor) return;
-		this.filledFor = purchase.id;
-		this.date = purchase.date;
-		this.amount = formatAmountInput(purchase.amount);
-		this.note = purchase.note;
-		this.errorKey = "";
+		if (purchase.id === this.filledFor) return
+		this.filledFor = purchase.id
+		this.date = purchase.date
+		this.amount = formatAmountInput(purchase.amount)
+		this.note = purchase.note
+		this.errorKey = ""
 	}
 
 	private get inFuture(): boolean {
-		return isValidDate(this.date) && compareDates(this.date, this.today) > 0;
+		return isValidDate(this.date) && compareDates(this.date, this.today) > 0
 	}
 
 	private get onCloseDate(): boolean {
-		return (
-			this.card !== null &&
-			isValidDate(this.date) &&
-			isCloseDate(this.card.cycle, this.date)
-		);
+		return this.card !== null && isValidDate(this.date) && isCloseDate(this.card.cycle, this.date)
 	}
 
 	private onSubmit(event: Event) {
-		event.preventDefault();
-		if (this.busy) return;
-		const purchase = this.purchase;
-		const card = this.card;
-		if (!purchase && !card) return;
-		const date = this.date.trim();
+		event.preventDefault()
+		if (this.busy) return
+		const purchase = this.purchase
+		const card = this.card
+		if (!purchase && !card) return
+		const date = this.date.trim()
 		if (!isValidDate(date)) {
-			this.errorKey = "quickAdd.error.badDate";
-			return;
+			this.errorKey = "quickAdd.error.badDate"
+			return
 		}
-		const amount = amountOf(this.amount.trim());
+		const amount = amountOf(this.amount.trim())
 		if (amount === null) {
-			this.errorKey = "quickAdd.error.badAmount";
-			return;
+			this.errorKey = "quickAdd.error.badAmount"
+			return
 		}
-		this.errorKey = "";
-		const note = this.note.trim();
+		this.errorKey = ""
+		const note = this.note.trim()
 		const detail: Purchase = purchase
 			? {
 					id: purchase.id,
@@ -193,8 +191,8 @@ export class CcPurchaseSheet extends LitElement {
 					amount,
 					note,
 					addedAt: this.now().toISOString(),
-				};
-		this.dispatchEvent(new CustomEvent<Purchase>("save-purchase", { detail }));
+				}
+		this.dispatchEvent(new CustomEvent<Purchase>("save-purchase", { detail }))
 	}
 
 	private field(
@@ -209,18 +207,18 @@ export class CcPurchaseSheet extends LitElement {
 				autocomplete="off"
 				.value=${this[name]}
 				@input=${(e: Event) => {
-					this[name] = (e.target as HTMLInputElement).value;
-				}} /></label>`;
+					this[name] = (e.target as HTMLInputElement).value
+				}} /></label>`
 	}
 
 	override render() {
-		const card = this.card;
-		const adding = this.purchase === null;
+		const card = this.card
+		const adding = this.purchase === null
 		return html`<cc-modal sheet .held=${this.busy}
 			heading=${t(adding ? "card.purchase.add" : "card.purchase.edit")}
 			@close=${(event: Event) => {
-				event.stopPropagation();
-				this.dispatchEvent(new CustomEvent("close"));
+				event.stopPropagation()
+				this.dispatchEvent(new CustomEvent("close"))
 			}}>
 			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
 			<form @submit=${this.onSubmit} novalidate>
@@ -255,12 +253,12 @@ export class CcPurchaseSheet extends LitElement {
 				}
 				<button type="submit" ?disabled=${this.busy}>${t(adding ? "card.purchase.saveNew" : "quickAdd.save")}</button>
 			</form>
-		</cc-modal>`;
+		</cc-modal>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-purchase-sheet": CcPurchaseSheet;
+		"cc-purchase-sheet": CcPurchaseSheet
 	}
 }

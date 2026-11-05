@@ -1,6 +1,3 @@
-import { compareDates } from "#lib/domain/date";
-import { partsOf } from "#lib/domain/payment";
-import { buildStatement } from "#lib/domain/statement";
 import type {
 	Card,
 	CardPayment,
@@ -9,8 +6,12 @@ import type {
 	Purchase,
 	StatementDates,
 	StatementPayment,
-} from "#lib/domain/types";
-import type { Repository } from "#lib/storage/repository";
+} from "#lib/domain/types"
+import type { Repository } from "#lib/storage/repository"
+
+import { compareDates } from "#lib/domain/date"
+import { partsOf } from "#lib/domain/payment"
+import { buildStatement } from "#lib/domain/statement"
 
 /**
  * `parts` trimmed so they sum to at most `total`. The old model accepted money paid beyond
@@ -21,23 +22,21 @@ import type { Repository } from "#lib/storage/repository";
 function capParts(parts: PaymentPart[], total: number): PaymentPart[] {
 	const byDate = parts
 		.map((part, index) => ({ part, index }))
-		.sort(
-			(a, b) => compareDates(a.part.paidAt, b.part.paidAt) || a.index - b.index,
-		)
-		.map(({ part }) => part);
+		.sort((a, b) => compareDates(a.part.paidAt, b.part.paidAt) || a.index - b.index)
+		.map(({ part }) => part)
 
-	let room = Math.max(0, total);
-	const kept: PaymentPart[] = [];
+	let room = Math.max(0, total)
+	const kept: PaymentPart[] = []
 	for (const part of byDate) {
-		const amount = Math.min(part.amount, room);
-		room -= amount;
-		if (amount > 0) kept.push({ paidAt: part.paidAt, amount });
+		const amount = Math.min(part.amount, room)
+		room -= amount
+		if (amount > 0) kept.push({ paidAt: part.paidAt, amount })
 	}
-	return kept;
+	return kept
 }
 
 /** Where `migratePayments` records that it finished, so it never runs again. */
-export const PAYMENTS_MIGRATION_KEY = "cc:migration:payments";
+export const PAYMENTS_MIGRATION_KEY = "cc:migration:payments"
 
 /**
  * The id a converted part gets: its card, its record's period and its position after capping.
@@ -46,11 +45,7 @@ export const PAYMENTS_MIGRATION_KEY = "cc:migration:payments";
  * always converts to the same ids, so a rerun after a failed write overwrites rather than
  * duplicates.
  */
-export const convertedId = (
-	cardId: string,
-	period: Period,
-	index: number,
-): string => `m:${cardId}:${period}:${index}`;
+export const convertedId = (cardId: string, period: Period, index: number): string => `m:${cardId}:${period}:${index}`
 
 /**
  * Turns old per-statement records into card payments and kept statement dates.
@@ -65,18 +60,15 @@ export function convertPayments(
 	purchases: Purchase[],
 	old: StatementPayment[],
 ): { payments: CardPayment[]; dates: StatementDates[] } {
-	const payments: CardPayment[] = [];
-	const dates: StatementDates[] = [];
+	const payments: CardPayment[] = []
+	const dates: StatementDates[] = []
 
 	for (const record of old) {
-		const card = cards.find((c) => c.id === record.cardId);
-		if (!card) continue;
+		const card = cards.find((c) => c.id === record.cardId)
+		if (!card) continue
 
-		const { total } = buildStatement(card, record.period, purchases, record);
-		for (const [index, part] of capParts(
-			partsOf(record, total),
-			total,
-		).entries()) {
+		const { total } = buildStatement(card, record.period, purchases, record)
+		for (const [index, part] of capParts(partsOf(record, total), total).entries()) {
 			payments.push({
 				id: convertedId(record.cardId, record.period, index),
 				cardId: record.cardId,
@@ -84,17 +76,17 @@ export function convertPayments(
 				amount: part.amount,
 				status: "paid",
 				period: record.period,
-			});
+			})
 		}
 		dates.push({
 			cardId: record.cardId,
 			period: record.period,
 			closeDate: record.closeDate,
 			dueDate: record.dueDate,
-		});
+		})
 	}
 
-	return { payments, dates };
+	return { payments, dates }
 }
 
 /**
@@ -111,24 +103,21 @@ export function convertPayments(
  * `cc:payment:` records stay where they are (DD-14). `clearAll` removes the marker together
  * with those records, so a reset leaves nothing to convert.
  */
-export async function migratePayments(
-	repo: Repository,
-	storage: Storage,
-): Promise<number> {
-	if (storage.getItem(PAYMENTS_MIGRATION_KEY) !== null) return 0;
+export async function migratePayments(repo: Repository, storage: Storage): Promise<number> {
+	if (storage.getItem(PAYMENTS_MIGRATION_KEY) !== null) return 0
 
-	const cards = await repo.listCards();
-	const purchases: Purchase[] = [];
-	const old: StatementPayment[] = [];
+	const cards = await repo.listCards()
+	const purchases: Purchase[] = []
+	const old: StatementPayment[] = []
 	for (const card of cards) {
-		purchases.push(...(await repo.listPurchases(card.id)));
-		old.push(...(await repo.listPayments(card.id)));
+		purchases.push(...(await repo.listPurchases(card.id)))
+		old.push(...(await repo.listPayments(card.id)))
 	}
 
-	const { payments, dates } = convertPayments(cards, purchases, old);
-	for (const kept of dates) await repo.saveStatementDates(kept);
-	for (const payment of payments) await repo.saveCardPayment(payment);
+	const { payments, dates } = convertPayments(cards, purchases, old)
+	for (const kept of dates) await repo.saveStatementDates(kept)
+	for (const payment of payments) await repo.saveCardPayment(payment)
 
-	storage.setItem(PAYMENTS_MIGRATION_KEY, "done");
-	return payments.length;
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done")
+	return payments.length
 }

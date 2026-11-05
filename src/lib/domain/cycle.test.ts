@@ -1,116 +1,113 @@
-import { describe, expect, test } from "vitest";
-import {
-	closeDateOf,
-	describeCycle,
-	dueDateOf,
-	isCloseDate,
-	periodOfPurchase,
-} from "#lib/domain/cycle";
-import type { CycleRule } from "#lib/domain/types";
+import type { CycleRule } from "#lib/domain/types"
 
-const offset: CycleRule = { kind: "offset", closeDay: 18, dueOffsetDays: 15 };
-const fixed: CycleRule = { kind: "fixed", closeDay: 18, dueDay: 5 };
-const fixedSameMonth: CycleRule = { kind: "fixed", closeDay: 5, dueDay: 25 };
-const endOfMonth: CycleRule = { kind: "fixed", closeDay: 31, dueDay: 31 };
+import { describe, expect, test } from "vitest"
+
+import { closeDateOf, describeCycle, dueDateOf, isCloseDate, periodOfPurchase } from "#lib/domain/cycle"
+
+const offset: CycleRule = { kind: "offset", closeDay: 18, dueOffsetDays: 15 }
+const fixed: CycleRule = { kind: "fixed", closeDay: 18, dueDay: 5 }
+const fixedSameMonth: CycleRule = { kind: "fixed", closeDay: 5, dueDay: 25 }
+const endOfMonth: CycleRule = { kind: "fixed", closeDay: 31, dueDay: 31 }
 
 describe("closeDateOf", () => {
 	test("uses the close day of the period's month", () => {
-		expect(closeDateOf(offset, "2026-09")).toBe("2026-09-18");
-		expect(closeDateOf(fixed, "2026-09")).toBe("2026-09-18");
-	});
+		expect(closeDateOf(offset, "2026-09")).toBe("2026-09-18")
+		expect(closeDateOf(fixed, "2026-09")).toBe("2026-09-18")
+	})
 
 	test("clamps a close day the month does not have", () => {
-		expect(closeDateOf(endOfMonth, "2026-02")).toBe("2026-02-28");
-		expect(closeDateOf(endOfMonth, "2026-04")).toBe("2026-04-30");
-	});
+		expect(closeDateOf(endOfMonth, "2026-02")).toBe("2026-02-28")
+		expect(closeDateOf(endOfMonth, "2026-04")).toBe("2026-04-30")
+	})
 
 	test("clamps into a leap-year February instead of a common one", () => {
-		expect(closeDateOf(endOfMonth, "2028-02")).toBe("2028-02-29");
-		expect(closeDateOf(endOfMonth, "2000-02")).toBe("2000-02-29"); // divisible by 400
-		expect(closeDateOf(endOfMonth, "1900-02")).toBe("1900-02-28"); // century, not by 400
-	});
-});
+		expect(closeDateOf(endOfMonth, "2028-02")).toBe("2028-02-29")
+		expect(closeDateOf(endOfMonth, "2000-02")).toBe("2000-02-29") // divisible by 400
+		expect(closeDateOf(endOfMonth, "1900-02")).toBe("1900-02-28") // century, not by 400
+	})
+})
 
 describe("dueDateOf, offset rule", () => {
 	test("adds the offset to the close date", () => {
-		expect(dueDateOf(offset, "2026-09")).toBe("2026-10-03");
-	});
+		expect(dueDateOf(offset, "2026-09")).toBe("2026-10-03")
+	})
 
 	test("crosses a year boundary", () => {
-		expect(dueDateOf(offset, "2026-12")).toBe("2027-01-02");
-	});
-});
+		expect(dueDateOf(offset, "2026-12")).toBe("2027-01-02")
+	})
+})
 
 describe("dueDateOf, fixed rule", () => {
 	test("falls in the next month when the due day is not after the close day", () => {
-		expect(dueDateOf(fixed, "2026-09")).toBe("2026-10-05");
-	});
+		expect(dueDateOf(fixed, "2026-09")).toBe("2026-10-05")
+	})
 
 	test("falls in the same month when the due day is after the close day", () => {
-		expect(dueDateOf(fixedSameMonth, "2026-09")).toBe("2026-09-25");
-	});
+		expect(dueDateOf(fixedSameMonth, "2026-09")).toBe("2026-09-25")
+	})
 
 	test("crosses a year boundary", () => {
-		expect(dueDateOf(fixed, "2026-12")).toBe("2027-01-05");
-	});
+		expect(dueDateOf(fixed, "2026-12")).toBe("2027-01-05")
+	})
 
 	test("clamps a due day the target month does not have", () => {
 		// Closes 31 Jan, due day 31 lands in February.
-		expect(dueDateOf(endOfMonth, "2026-01")).toBe("2026-02-28");
-	});
-});
+		expect(dueDateOf(endOfMonth, "2026-01")).toBe("2026-02-28")
+	})
+})
 
 describe("periodOfPurchase", () => {
 	test("a purchase before the close date belongs to that month's statement", () => {
-		expect(periodOfPurchase(offset, "2026-09-05")).toBe("2026-09");
-	});
+		expect(periodOfPurchase(offset, "2026-09-05")).toBe("2026-09")
+	})
 
 	test("a purchase exactly on the close date belongs to that statement", () => {
-		expect(periodOfPurchase(offset, "2026-09-18")).toBe("2026-09");
-	});
+		expect(periodOfPurchase(offset, "2026-09-18")).toBe("2026-09")
+	})
 
 	test("a purchase after the close date rolls into the next statement", () => {
-		expect(periodOfPurchase(offset, "2026-09-19")).toBe("2026-10");
-	});
+		expect(periodOfPurchase(offset, "2026-09-19")).toBe("2026-10")
+	})
 
 	test("rolls across a year boundary", () => {
-		expect(periodOfPurchase(offset, "2026-12-20")).toBe("2027-01");
-	});
+		expect(periodOfPurchase(offset, "2026-12-20")).toBe("2027-01")
+	})
 
 	test("respects a clamped close date", () => {
 		// February 2026 closes on the 28th, so the 28th is still February's statement.
-		expect(periodOfPurchase(endOfMonth, "2026-02-28")).toBe("2026-02");
-	});
-});
+		expect(periodOfPurchase(endOfMonth, "2026-02-28")).toBe("2026-02")
+	})
+})
 
 describe("describeCycle", () => {
 	test("describes an offset rule as a key and its parameters", () => {
-		expect(
-			describeCycle({ kind: "offset", closeDay: 18, dueOffsetDays: 15 }),
-		).toEqual({ key: "cycle.offset", params: { closeDay: 18, days: 15 } });
-	});
+		expect(describeCycle({ kind: "offset", closeDay: 18, dueOffsetDays: 15 })).toEqual({
+			key: "cycle.offset",
+			params: { closeDay: 18, days: 15 },
+		})
+	})
 
 	test("describes a fixed rule as a key and its parameters", () => {
 		expect(describeCycle({ kind: "fixed", closeDay: 18, dueDay: 5 })).toEqual({
 			key: "cycle.fixed",
 			params: { closeDay: 18, dueDay: 5 },
-		});
-	});
-});
+		})
+	})
+})
 
 describe("isCloseDate", () => {
 	test("is true on the close date itself", () => {
-		expect(isCloseDate(offset, "2026-09-18")).toBe(true);
-	});
+		expect(isCloseDate(offset, "2026-09-18")).toBe(true)
+	})
 
 	test("is false the day before and the day after", () => {
-		expect(isCloseDate(offset, "2026-09-17")).toBe(false);
-		expect(isCloseDate(offset, "2026-09-19")).toBe(false);
-	});
+		expect(isCloseDate(offset, "2026-09-17")).toBe(false)
+		expect(isCloseDate(offset, "2026-09-19")).toBe(false)
+	})
 
 	test("follows a close day clamped to a short month", () => {
-		const late: CycleRule = { kind: "offset", closeDay: 31, dueOffsetDays: 15 };
-		expect(isCloseDate(late, "2026-02-28")).toBe(true);
-		expect(isCloseDate(late, "2026-03-30")).toBe(false);
-	});
-});
+		const late: CycleRule = { kind: "offset", closeDay: 31, dueOffsetDays: 15 }
+		expect(isCloseDate(late, "2026-02-28")).toBe(true)
+		expect(isCloseDate(late, "2026-03-30")).toBe(false)
+	})
+})

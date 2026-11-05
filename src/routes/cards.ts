@@ -1,24 +1,22 @@
-import "#components/cc-cards-filter";
-import "#components/cc-cards-list";
-import "#components/cc-error-banner";
-import "#components/cc-group-panels";
-import "#components/cc-group-sheet";
-import { html, nothing, render } from "lit";
-import { cardsSortLabel } from "#components/cc-cards-filter";
-import { type FilterPill, filterControls } from "#components/list-controls";
-import {
-	type CardsRooms,
-	type CardsView,
-	cardsResults,
-	groupPanels,
-} from "#lib/domain/cards-view";
-import { today } from "#lib/domain/date";
-import { groupRoom } from "#lib/domain/room";
-import type { LimitGroup } from "#lib/domain/types";
-import { nameOfLocation, placeOrder } from "#lib/i18n/format";
-import { subscribe, t } from "#lib/i18n/index";
-import { takeResetNotice } from "#lib/storage/migrate-locations";
-import type { Repository } from "#lib/storage/repository";
+import "#components/cc-cards-filter"
+import "#components/cc-cards-list"
+import "#components/cc-error-banner"
+import "#components/cc-group-panels"
+import "#components/cc-group-sheet"
+import type { LimitGroup } from "#lib/domain/types"
+import type { Repository } from "#lib/storage/repository"
+import type { PayAddressBar } from "./pay-page"
+
+import { html, nothing, render } from "lit"
+
+import { cardsSortLabel } from "#components/cc-cards-filter"
+import { type FilterPill, filterControls } from "#components/list-controls"
+import { type CardsRooms, type CardsView, cardsResults, groupPanels } from "#lib/domain/cards-view"
+import { today } from "#lib/domain/date"
+import { groupRoom } from "#lib/domain/room"
+import { nameOfLocation, placeOrder } from "#lib/i18n/format"
+import { subscribe, t } from "#lib/i18n/index"
+import { takeResetNotice } from "#lib/storage/migrate-locations"
 import {
 	type CardsShow,
 	groupSheetAddress,
@@ -27,15 +25,14 @@ import {
 	readCardsView,
 	readGroupSheet,
 	writeCardsView,
-} from "#lib/ui/cards-query";
-import { icons } from "#lib/ui/icons";
-import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
-import { bootstrap } from "#lib/ui/page";
-import { createPageState } from "#lib/ui/page-state";
-import type { PayAddressBar } from "./pay-page";
+} from "#lib/ui/cards-query"
+import { icons } from "#lib/ui/icons"
+import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
+import { bootstrap } from "#lib/ui/page"
+import { createPageState } from "#lib/ui/page-state"
 
 /** The address bar as the Cards page uses it, the same seam as `/pay`'s. */
-export type CardsAddressBar = PayAddressBar;
+export type CardsAddressBar = PayAddressBar
 
 const browserBar = (): CardsAddressBar => ({
 	search: () => location.search,
@@ -44,27 +41,26 @@ const browserBar = (): CardsAddressBar => ({
 	onPop: (listener) => addEventListener("popstate", listener),
 	length: () => history.length,
 	back: () => history.back(),
-});
+})
 
 export type CardsPageOptions = {
 	/** Today's date, read once. */
-	clock?: () => Date;
-	address?: CardsAddressBar;
+	clock?: () => Date
+	address?: CardsAddressBar
 	/** Where the location-reset notice is read from. */
-	storage?: Storage;
-};
+	storage?: Storage
+}
 
 /** Everything the page draws from, read once per load. */
 type CardsData = {
-	money: MoneyData;
-	rooms: CardsRooms;
-	credits: Map<string, number>;
-};
+	money: MoneyData
+	rooms: CardsRooms
+	credits: Map<string, number>
+}
 
-const SHOWS: readonly CardsShow[] = ["cards", "groups"];
+const SHOWS: readonly CardsShow[] = ["cards", "groups"]
 
-const locationIds = (money: MoneyData): string[] =>
-	money.locations.map((record) => record.id);
+const locationIds = (money: MoneyData): string[] => money.locations.map((record) => record.id)
 
 /**
  * The Cards page (prototype `vCards`): the heading with *Add card*, the shared search, filter
@@ -79,150 +75,129 @@ const locationIds = (money: MoneyData): string[] =>
  * rewrites the address without the group (DD-102). A save or delete closes the sheet only
  * once written; a failed one keeps it, and what was typed, with the reason.
  */
-export function renderCardsPage(
-	repo: Repository,
-	root: HTMLElement,
-	options: CardsPageOptions = {},
-): void {
-	const now = today((options.clock ?? (() => new Date()))());
-	const address = options.address ?? browserBar();
-	const storage = options.storage ?? globalThis.localStorage;
+export function renderCardsPage(repo: Repository, root: HTMLElement, options: CardsPageOptions = {}): void {
+	const now = today((options.clock ?? (() => new Date()))())
+	const address = options.address ?? browserBar()
+	const storage = options.storage ?? globalThis.localStorage
 
-	let data: CardsData | null = null;
+	let data: CardsData | null = null
 	// No location is known before the first load, so the address is read again once one lands.
-	let view: CardsView = readCardsView(address.search(), []);
+	let view: CardsView = readCardsView(address.search(), [])
 	// Below 900px the page shows the cards or the limit groups, never both.
-	let show: CardsShow = readCardsShow(address.search());
+	let show: CardsShow = readCardsShow(address.search())
 	// The filter sheet is open; it takes a fresh copy of the view, so its draft starts there.
-	let filterOpen = false;
+	let filterOpen = false
 	// Read once per page load: the notice is consumed here, not on every paint.
-	let resetNames = takeResetNotice(storage);
-	let busy = false;
+	let resetNames = takeResetNotice(storage)
+	let busy = false
 	// A failed save's reason shows in the sheet it failed in, and goes when that sheet closes.
-	let sheetFailed = false;
+	let sheetFailed = false
 	// Whether this page pushed the entry now showing; see `/pay`.
-	let pushed = false;
-	let openedOnce = false;
+	let pushed = false
+	let openedOnce = false
 	// A new group's id, made once when its sheet opens, so a retry after a failed save writes
 	// the same record rather than a second one.
-	let newId: string | null = null;
+	let newId: string | null = null
 	/** Makes a new group's id when the address opens the blank sheet, and drops it otherwise. */
 	const syncNewId = () => {
-		newId =
-			readGroupSheet(address.search()) === NEW_GROUP
-				? (newId ?? crypto.randomUUID())
-				: null;
-	};
-	syncNewId();
-	const sheetHost = root.ownerDocument.createElement("div");
-	sheetHost.id = "group-sheet";
+		newId = readGroupSheet(address.search()) === NEW_GROUP ? (newId ?? crypto.randomUUID()) : null
+	}
+	syncNewId()
+	const sheetHost = root.ownerDocument.createElement("div")
+	sheetHost.id = "group-sheet"
 
 	const state = createPageState({
 		fetch: async () => {
-			const money = await loadMoneyData(repo, now);
+			const money = await loadMoneyData(repo, now)
 			const rooms: CardsRooms = new Map(
-				money.groups.map((group) => [
-					group.id,
-					groupRoom(group, money.cards, money.ledgers, money.lists, ""),
-				]),
-			);
-			const credits = new Map(
-				money.cards.map((c) => [c.id, money.ledgers.get(c.id)?.credit ?? 0]),
-			);
-			view = readCardsView(address.search(), locationIds(money));
-			data = { money, rooms, credits };
+				money.groups.map((group) => [group.id, groupRoom(group, money.cards, money.ledgers, money.lists, "")]),
+			)
+			const credits = new Map(money.cards.map((c) => [c.id, money.ledgers.get(c.id)?.credit ?? 0]))
+			view = readCardsView(address.search(), locationIds(money))
+			data = { money, rooms, credits }
 		},
 		fallbackKey: "cards.error.read",
 		paint: () => paint(),
-	});
+	})
 
 	const sheetAddress = (group: string | typeof NEW_GROUP | null) =>
-		`/cards${groupSheetAddress(writeCardsView(view, show), group)}`;
+		`/cards${groupSheetAddress(writeCardsView(view, show), group)}`
 
 	const change = (next: Partial<CardsView>) => {
-		view = { ...view, ...next };
-		address.replace(sheetAddress(readGroupSheet(address.search())));
-		paint();
-	};
+		view = { ...view, ...next }
+		address.replace(sheetAddress(readGroupSheet(address.search())))
+		paint()
+	}
 
 	const choose = (next: CardsShow) => {
-		show = next;
-		address.replace(sheetAddress(readGroupSheet(address.search())));
-		paint();
-	};
+		show = next
+		address.replace(sheetAddress(readGroupSheet(address.search())))
+		paint()
+	}
 
 	const openSheet = (id: string | typeof NEW_GROUP) => {
 		// A write under way closes the sheet it began in; opening another now would let that
 		// landing save close the wrong one.
-		if (busy) return;
-		sheetFailed = false;
-		pushed = true;
-		openedOnce = true;
-		address.push(sheetAddress(id));
-		syncNewId();
-		paint();
-	};
+		if (busy) return
+		sheetFailed = false
+		pushed = true
+		openedOnce = true
+		address.push(sheetAddress(id))
+		syncNewId()
+		paint()
+	}
 
 	const closeSheet = () => {
-		if (busy) return;
-		sheetFailed = false;
+		if (busy) return
+		sheetFailed = false
 		// The failed write's reason belongs to the sheet; it goes when the sheet does.
-		state.clear();
+		state.clear()
 		if (pushed) {
-			pushed = false;
+			pushed = false
 			// The pop that follows repaints without the sheet.
-			address.back();
-			return;
+			address.back()
+			return
 		}
-		address.replace(sheetAddress(null));
-		syncNewId();
-		paint();
-	};
+		address.replace(sheetAddress(null))
+		syncNewId()
+		paint()
+	}
 
 	/** Runs a write for the sheet; closes it once written, else keeps it with the reason. */
-	const write = async (
-		action: () => Promise<void>,
-		key: "cards.error.saveGroup" | "cards.error.deleteGroup",
-	) => {
-		if (busy) return;
-		busy = true;
-		sheetFailed = false;
-		paint();
-		let done = false;
+	const write = async (action: () => Promise<void>, key: "cards.error.saveGroup" | "cards.error.deleteGroup") => {
+		if (busy) return
+		busy = true
+		sheetFailed = false
+		paint()
+		let done = false
 		await state.guard(async () => {
-			await action();
-			done = true;
-		}, key);
-		busy = false;
+			await action()
+			done = true
+		}, key)
+		busy = false
 		// Back may have closed the sheet while the write was under way; then there is nothing
 		// left to close, and stepping back again would leave the page.
-		const open = readGroupSheet(address.search()) !== null;
+		const open = readGroupSheet(address.search()) !== null
 		if (done) {
-			newId = null;
-			if (open) closeSheet();
-			else paint();
-			return;
+			newId = null
+			if (open) closeSheet()
+			else paint()
+			return
 		}
-		sheetFailed = open;
-		paint();
-	};
+		sheetFailed = open
+		paint()
+	}
 
 	const saveGroup = (group: LimitGroup, isNew: boolean) =>
-		write(
-			() =>
-				repo.saveLimitGroup(isNew && newId ? { ...group, id: newId } : group),
-			"cards.error.saveGroup",
-		);
+		write(() => repo.saveLimitGroup(isNew && newId ? { ...group, id: newId } : group), "cards.error.saveGroup")
 
-	const deleteGroup = (group: LimitGroup) =>
-		write(() => repo.deleteLimitGroup(group.id), "cards.error.deleteGroup");
+	const deleteGroup = (group: LimitGroup) => write(() => repo.deleteLimitGroup(group.id), "cards.error.deleteGroup")
 
 	const chips = (): FilterPill[] => [
 		...view.locations.map((location) => ({
 			key: `loc:${location}`,
 			label: nameOfLocation(data?.money.locations ?? [], location),
-			clear: () =>
-				change({ locations: view.locations.filter((l) => l !== location) }),
+			clear: () => change({ locations: view.locations.filter((l) => l !== location) }),
 		})),
 		...view.owners.map((owner) => ({
 			key: `owner:${owner}`,
@@ -238,28 +213,25 @@ export function renderCardsPage(
 					},
 				]
 			: []),
-	];
+	]
 
 	const notice = () =>
 		resetNames.length > 0
 			? html`<article data-testid="location-reset">
 				<p>${t("cards.locationReset", { names: resetNames.join(", ") })}</p>
 				<button data-variant="quiet" type="button" @click=${() => {
-					resetNames = [];
-					paint();
+					resetNames = []
+					paint()
 				}}>${t("common.dismiss")}</button>
 			</article>`
-			: nothing;
+			: nothing
 
 	const sheet = (d: CardsData) => {
-		const sheetId = readGroupSheet(address.search());
-		if (sheetId === null) return nothing;
-		const { groups, cards } = d.money;
-		const group =
-			sheetId === NEW_GROUP
-				? null
-				: (groups.find((g) => g.id === sheetId) ?? null);
-		if (sheetId !== NEW_GROUP && !group) return nothing;
+		const sheetId = readGroupSheet(address.search())
+		if (sheetId === null) return nothing
+		const { groups, cards } = d.money
+		const group = sheetId === NEW_GROUP ? null : (groups.find((g) => g.id === sheetId) ?? null)
+		if (sheetId !== NEW_GROUP && !group) return nothing
 		return html`<cc-group-sheet
 			.group=${group}
 			.groups=${groups}
@@ -269,25 +241,25 @@ export function renderCardsPage(
 			@save-group=${(e: CustomEvent<LimitGroup>) => void saveGroup(e.detail, group === null)}
 			@delete-group=${(e: CustomEvent<{ group: LimitGroup }>) => void deleteGroup(e.detail.group)}
 			@close=${closeSheet}
-		></cc-group-sheet>`;
-	};
+		></cc-group-sheet>`
+	}
 
 	const results = (d: CardsData) => {
-		const { cards, groups } = d.money;
-		const active = chips();
+		const { cards, groups } = d.money
+		const active = chips()
 		// Sorted on every paint, so the sections follow a language switch.
 		const order = placeOrder(
 			d.money.locations,
 			cards.map((c) => c.location),
-		);
+		)
 		return html`
 			${filterControls({
 				q: view.q,
 				placeholder: t("cards.searchPlaceholder"),
 				onSearch: (q) => change({ q }),
 				onOpen: () => {
-					filterOpen = true;
-					paint();
+					filterOpen = true
+					paint()
 				},
 				count: active.length,
 				sort: cardsSortLabel(view.sort),
@@ -308,24 +280,23 @@ export function renderCardsPage(
 					? html`<cc-cards-filter
 						.view=${{ ...view }}
 						.locations=${d.money.locations}
-						.count=${(v: CardsView) =>
-							cardsResults(cards, groups, d.rooms, v, order).count}
+						.count=${(v: CardsView) => cardsResults(cards, groups, d.rooms, v, order).count}
 						@apply=${(e: CustomEvent<CardsView>) => {
-							filterOpen = false;
-							change({ ...e.detail });
+							filterOpen = false
+							change({ ...e.detail })
 						}}
 						@close=${() => {
-							filterOpen = false;
-							paint();
+							filterOpen = false
+							paint()
 						}}
 					></cc-cards-filter>`
 					: nothing
 			}
-		`;
-	};
+		`
+	}
 
 	const paint = () => {
-		const d = data;
+		const d = data
 		render(
 			html`
 				<div class="cards-grid" data-show=${show}>
@@ -375,29 +346,29 @@ export function renderCardsPage(
 				</div>
 			`,
 			root,
-		);
+		)
 		// The sheet lives outside the page's root, so painting the page never re-creates it.
-		if (!sheetHost.isConnected) root.after(sheetHost);
-		render(d ? sheet(d) : nothing, sheetHost);
-	};
+		if (!sheetHost.isConnected) root.after(sheetHost)
+		render(d ? sheet(d) : nothing, sheetHost)
+	}
 
 	address.onPop(() => {
 		// Read the new entry even while a write is under way, so the write's close knows what
 		// is still open and never steps back past this page.
-		sheetFailed = false;
-		view = readCardsView(address.search(), data ? locationIds(data.money) : []);
-		show = readCardsShow(address.search());
+		sheetFailed = false
+		view = readCardsView(address.search(), data ? locationIds(data.money) : [])
+		show = readCardsShow(address.search())
 		// Back off a sheet, or Forward onto one only a tap could have made.
-		pushed = openedOnce && readGroupSheet(address.search()) !== null;
-		syncNewId();
-		if (busy) return;
-		paint();
-	});
-	subscribe(() => paint());
-	void state.load();
+		pushed = openedOnce && readGroupSheet(address.search()) !== null
+		syncNewId()
+		if (busy) return
+		paint()
+	})
+	subscribe(() => paint())
+	void state.load()
 }
 
 bootstrap("title.cards", (repo) => {
-	const root = document.querySelector<HTMLElement>("#page");
-	if (root) renderCardsPage(repo, root);
-});
+	const root = document.querySelector<HTMLElement>("#page")
+	if (root) renderCardsPage(repo, root)
+})

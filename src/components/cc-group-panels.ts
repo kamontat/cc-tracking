@@ -1,20 +1,21 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import type { GroupPanel } from "#lib/domain/cards-view";
-import { toGroupColor } from "#lib/domain/group-color";
-import { formatAmount } from "#lib/domain/money";
-import { ownerOf } from "#lib/domain/owner";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { icons } from "#lib/ui/icons";
-import { base, controls, groupInk, usageBar } from "#styles/shared";
+import type { GroupPanel } from "#lib/domain/cards-view"
+
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property } from "lit/decorators.js"
+
+import { toGroupColor } from "#lib/domain/group-color"
+import { formatAmount } from "#lib/domain/money"
+import { ownerOf } from "#lib/domain/owner"
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { icons } from "#lib/ui/icons"
+import { base, controls, groupInk, usageBar } from "#styles/shared"
 
 /**
  * The bar's tint, as a card tile's rail (`roomLevel`): over once the room is below zero,
  * getting full from 80%, else within.
  */
-const level = (panel: GroupPanel) =>
-	panel.room < 0 ? "over" : panel.full ? "high" : "within";
+const level = (panel: GroupPanel) => (panel.room < 0 ? "over" : panel.full ? "high" : "within")
 
 /**
  * The Cards page's *Limit groups* (prototype `vCards` aside): one heading row (`part="head"`,
@@ -143,34 +144,29 @@ export class CcGroupPanels extends LitElement {
 				border-radius: var(--cc-radius-md);
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) panels: GroupPanel[] = [];
+	@property({ attribute: false }) panels: GroupPanel[] = []
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	private panel(panel: GroupPanel) {
-		const { group } = panel;
-		const over = level(panel) === "over";
+		const { group } = panel
+		const over = level(panel) === "over"
 		const note = [
 			panel.cardIds.join(", "),
-			over
-				? t("cards.page.over")
-				: t("cards.page.used", { pct: panel.usedPct }),
+			over ? t("cards.page.over") : t("cards.page.used", { pct: panel.usedPct }),
 			panel.full && !over ? t("cards.group.full") : "",
 		]
 			.filter(Boolean)
-			.join(" · ");
-		const width = Math.min(100, Math.max(0, panel.usedPct));
+			.join(" · ")
+		const width = Math.min(100, Math.max(0, panel.usedPct))
 		return html`<button type="button" class="gpanel" data-group=${group.id}
 			data-g=${toGroupColor(group.color) ?? nothing}
-			@click=${() =>
-				this.dispatchEvent(
-					new CustomEvent("open-group", { detail: { id: group.id } }),
-				)}>
+			@click=${() => this.dispatchEvent(new CustomEvent("open-group", { detail: { id: group.id } }))}>
 			<span class="ghead">
 				<span class="gname">${group.name} (${ownerOf(group)})</span>
 				<span data-numeric>${t("cards.group.roomOf", {
@@ -182,7 +178,7 @@ export class CcGroupPanels extends LitElement {
 				<span style=${`inline-size: ${width}%`}></span>
 			</span>
 			<span class="gnote">${note}</span>
-		</button>`;
+		</button>`
 	}
 
 	override render() {
@@ -200,12 +196,12 @@ export class CcGroupPanels extends LitElement {
 					? html`<p class="empty">${t("cards.group.empty")}</p>`
 					: this.panels.map((p) => this.panel(p))
 			}
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-group-panels": CcGroupPanels;
+		"cc-group-panels": CcGroupPanels
 	}
 }

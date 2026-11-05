@@ -1,19 +1,19 @@
 export type BuildEnv = {
-	PUBLIC_COMMIT_SHA: string;
-	PUBLIC_BUILT_AT: string;
-	PUBLIC_PR_NUMBER: string;
-	PUBLIC_ENVIRONMENT: string;
-	PUBLIC_BRANCH: string;
-};
+	PUBLIC_COMMIT_SHA: string
+	PUBLIC_BUILT_AT: string
+	PUBLIC_PR_NUMBER: string
+	PUBLIC_ENVIRONMENT: string
+	PUBLIC_BRANCH: string
+}
 
 export type BuildEnvInput = {
 	/** What `git rev-parse HEAD` printed, or `""` when git could not answer. */
-	sha: string;
+	sha: string
 	/** What `git rev-parse --abbrev-ref HEAD` printed; `""` (the default) when it could not answer. */
-	branch?: string;
-	now: Date;
-	env: Partial<BuildEnv>;
-};
+	branch?: string
+	now: Date
+	env: Partial<BuildEnv>
+}
 
 /**
  * The build stamps `astro.config.ts` puts in the environment, which Vite inlines into the bundle
@@ -28,17 +28,12 @@ export type BuildEnvInput = {
  * The PR number only ever comes from the preview deploy workflow, but it is always set, empty
  * elsewhere, so every build carries the same five stamps.
  */
-export function resolveBuildEnv({
-	sha,
-	branch = "",
-	now,
-	env,
-}: BuildEnvInput): BuildEnv {
+export function resolveBuildEnv({ sha, branch = "", now, env }: BuildEnvInput): BuildEnv {
 	return {
 		PUBLIC_COMMIT_SHA: env.PUBLIC_COMMIT_SHA ?? sha.trim(),
 		PUBLIC_BUILT_AT: env.PUBLIC_BUILT_AT ?? now.toISOString(),
 		PUBLIC_PR_NUMBER: env.PUBLIC_PR_NUMBER ?? "",
 		PUBLIC_ENVIRONMENT: env.PUBLIC_ENVIRONMENT ?? "local",
 		PUBLIC_BRANCH: env.PUBLIC_BRANCH ?? branch.trim(),
-	};
+	}
 }

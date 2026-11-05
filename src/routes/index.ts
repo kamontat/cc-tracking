@@ -1,32 +1,29 @@
-import "#components/cc-error-banner";
-import "#components/cc-needs-you";
-import "#components/cc-ready-panel";
-import { html, render } from "lit";
-import { canPurchase } from "#lib/domain/card";
-import { today } from "#lib/domain/date";
-import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home";
-import { unassignedCards } from "#lib/domain/limit";
-import { plannedOf } from "#lib/domain/pay";
-import type { CardPayment, PurchaseList } from "#lib/domain/types";
-import { purchasePlaces } from "#lib/i18n/format";
-import { subscribe, t } from "#lib/i18n/index";
-import type { Repository } from "#lib/storage/repository";
-import { loadMoneyData, type MoneyData } from "#lib/ui/money-data";
-import { bootstrap } from "#lib/ui/page";
-import { createPageState } from "#lib/ui/page-state";
-import {
-	confirmWaitingList,
-	deleteDraftList,
-	deletePlannedPayment,
-	markPlanPaid,
-} from "#lib/ui/row-actions";
+import "#components/cc-error-banner"
+import "#components/cc-needs-you"
+import "#components/cc-ready-panel"
+import type { CardPayment, PurchaseList } from "#lib/domain/types"
+import type { Repository } from "#lib/storage/repository"
+
+import { html, render } from "lit"
+
+import { canPurchase } from "#lib/domain/card"
+import { today } from "#lib/domain/date"
+import { needsYou, type ReadyRow, readyRows } from "#lib/domain/home"
+import { unassignedCards } from "#lib/domain/limit"
+import { plannedOf } from "#lib/domain/pay"
+import { purchasePlaces } from "#lib/i18n/format"
+import { subscribe, t } from "#lib/i18n/index"
+import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
+import { bootstrap } from "#lib/ui/page"
+import { createPageState } from "#lib/ui/page-state"
+import { confirmWaitingList, deleteDraftList, deletePlannedPayment, markPlanPaid } from "#lib/ui/row-actions"
 
 export type HomeOptions = {
 	/** The page's only clock reading: today's date. */
-	clock?: () => Date;
+	clock?: () => Date
 	/** How often the page re-reads the clock, so a tab left open past midnight moves on. */
-	tickMs?: number;
-};
+	tickMs?: number
+}
 
 /**
  * Renders Home into `root`, wiring it to `repo`: what needs the reader first, then a short
@@ -38,45 +35,36 @@ export function renderHomePage(
 	root: HTMLElement,
 	{ clock = () => new Date(), tickMs = 60_000 }: HomeOptions = {},
 ): void {
-	let now = today(clock());
-	let data: MoneyData | null = null;
+	let now = today(clock())
+	let data: MoneyData | null = null
 
 	const state = createPageState({
 		fetch: async () => {
-			data = await loadMoneyData(repo, now);
+			data = await loadMoneyData(repo, now)
 		},
 		fallbackKey: "home.error.read",
 		paint: () => paint(),
-	});
+	})
 
 	// What a Needs you row's buttons write: the same calls and errors as Transactions. The
 	// guard reloads after, so a done item goes and a failed one stays, with the banner.
 	const mark = (payment: CardPayment) =>
 		state.guard(async () => {
-			if (data) await markPlanPaid(repo, data, payment, now);
-		}, "tx.error.markPaid");
-	const removePlan = (payment: CardPayment) =>
-		state.guard(() => deletePlannedPayment(repo, payment), "tx.error.delete");
+			if (data) await markPlanPaid(repo, data, payment, now)
+		}, "tx.error.markPaid")
+	const removePlan = (payment: CardPayment) => state.guard(() => deletePlannedPayment(repo, payment), "tx.error.delete")
 	const confirmList = (list: PurchaseList) =>
-		state.guard(
-			() => confirmWaitingList(repo, list.id, clock()),
-			"tx.error.confirmList",
-		);
+		state.guard(() => confirmWaitingList(repo, list.id, clock()), "tx.error.confirmList")
 	const removeDraft = (list: PurchaseList) =>
-		state.guard(
-			() => deleteDraftList(repo, list.id),
-			"purchaseList.error.delete",
-		);
+		state.guard(() => deleteDraftList(repo, list.id), "purchaseList.error.delete")
 
 	const paint = () => {
-		let rows: ReadyRow[] = [];
-		let unassigned = 0;
+		let rows: ReadyRow[] = []
+		let unassigned = 0
 		if (data) {
-			rows = readyRows(data, now);
-			const locations = data.locations;
-			unassigned = unassignedCards(data.cards, data.groups).filter((card) =>
-				canPurchase(card, locations),
-			).length;
+			rows = readyRows(data, now)
+			const locations = data.locations
+			unassigned = unassignedCards(data.cards, data.groups).filter((card) => canPurchase(card, locations)).length
 		}
 		render(
 			html`
@@ -98,27 +86,27 @@ export function renderHomePage(
 				</div>
 			`,
 			root,
-		);
-	};
+		)
+	}
 
 	// Re-reads the clock now and then, so a tab left open past midnight moves on to the new day.
 	// A new day reloads, since every ledger is worked out against today. Stops once the page is gone.
 	const timer = setInterval(() => {
 		if (!root.isConnected) {
-			clearInterval(timer);
-			return;
+			clearInterval(timer)
+			return
 		}
-		const next = today(clock());
-		if (next === now) return;
-		now = next;
-		void state.load();
-	}, tickMs);
+		const next = today(clock())
+		if (next === now) return
+		now = next
+		void state.load()
+	}, tickMs)
 
-	subscribe(() => paint());
-	void state.load();
+	subscribe(() => paint())
+	void state.load()
 }
 
 bootstrap("title.home", (repo) => {
-	const root = document.querySelector<HTMLElement>("#page");
-	if (root) renderHomePage(repo, root);
-});
+	const root = document.querySelector<HTMLElement>("#page")
+	if (root) renderHomePage(repo, root)
+})

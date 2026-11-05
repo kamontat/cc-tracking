@@ -1,7 +1,8 @@
-import { defaultLocations } from "#lib/domain/locations";
-import type { Repository } from "#lib/storage/repository";
+import type { Repository } from "#lib/storage/repository"
 
-export const SEED_KEY = "cc:migration:location-records";
+import { defaultLocations } from "#lib/domain/locations"
+
+export const SEED_KEY = "cc:migration:location-records"
 
 /**
  * Stores the three starting locations as records, once. The tick on each comes from the
@@ -9,15 +10,12 @@ export const SEED_KEY = "cc:migration:location-records";
  * stored are left alone; the marker then stops a later empty list (everything deleted) from
  * being seeded again.
  */
-export async function seedLocations(
-	repo: Repository,
-	storage: Pick<Storage, "getItem" | "setItem">,
-): Promise<void> {
-	if (storage.getItem(SEED_KEY) !== null) return;
+export async function seedLocations(repo: Repository, storage: Pick<Storage, "getItem" | "setItem">): Promise<void> {
+	if (storage.getItem(SEED_KEY) !== null) return
 	if ((await repo.listLocations()).length === 0) {
 		for (const record of defaultLocations(await repo.getSettings())) {
-			await repo.saveLocation(record);
+			await repo.saveLocation(record)
 		}
 	}
-	storage.setItem(SEED_KEY, "done");
+	storage.setItem(SEED_KEY, "done")
 }

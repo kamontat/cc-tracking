@@ -1,88 +1,72 @@
-import { describeCycle } from "#lib/domain/cycle";
-import { daysBetween } from "#lib/domain/date";
-import type { CycleRule, LocationRecord, PlainDate } from "#lib/domain/types";
-import { getLocale, t } from "#lib/i18n/index";
+import type { CycleRule, LocationRecord, PlainDate } from "#lib/domain/types"
+
+import { describeCycle } from "#lib/domain/cycle"
+import { daysBetween } from "#lib/domain/date"
+import { getLocale, t } from "#lib/i18n/index"
 
 /** The English names the three seeded locations ship with. */
 const defaultNames = {
 	bangkok: "Bangkok",
 	phichit: "Phichit",
 	krabi: "Krabi",
-} as const;
+} as const
 
 /**
  * A location's name as the reader sees it. A seeded location still carrying its English
  * default reads from the catalog, so it follows the language; once renamed, or when custom,
  * the stored name is shown as typed.
  */
-export function locationName(
-	record: Pick<LocationRecord, "id" | "name">,
-): string {
-	if (
-		record.id in defaultNames &&
-		record.name === defaultNames[record.id as keyof typeof defaultNames]
-	)
-		return t(`location.${record.id as keyof typeof defaultNames}` as const);
-	return record.name;
+export function locationName(record: Pick<LocationRecord, "id" | "name">): string {
+	if (record.id in defaultNames && record.name === defaultNames[record.id as keyof typeof defaultNames])
+		return t(`location.${record.id as keyof typeof defaultNames}` as const)
+	return record.name
 }
 
 /** A new array of `records`, A to Z by shown name in the reader's language, then by id. */
-export function sortLocations<T extends Pick<LocationRecord, "id" | "name">>(
-	records: T[],
-): T[] {
-	const locale = getLocale();
-	return [...records].sort(
-		(a, b) =>
-			locationName(a).localeCompare(locationName(b), locale) ||
-			a.id.localeCompare(b.id),
-	);
+export function sortLocations<T extends Pick<LocationRecord, "id" | "name">>(records: T[]): T[] {
+	const locale = getLocale()
+	return [...records].sort((a, b) => locationName(a).localeCompare(locationName(b), locale) || a.id.localeCompare(b.id))
 }
 
 /** The shown names of the locations that take purchases, A to Z in the reader's language. */
 export function purchasePlaces(records: LocationRecord[]): string[] {
-	return sortLocations(records.filter((record) => record.takesPurchases)).map(
-		locationName,
-	);
+	return sortLocations(records.filter((record) => record.takesPurchases)).map(locationName)
 }
 
 /** The shown name of the location with `id`, or `id` itself when no record has it. */
 export function nameOfLocation(records: LocationRecord[], id: string): string {
-	const record = records.find((r) => r.id === id);
-	return record ? locationName(record) : id;
+	const record = records.find((r) => r.id === id)
+	return record ? locationName(record) : id
 }
 
 /**
  * Every place to list, as ids: the records A to Z (`sortLocations`), then each id in `used`
  * that no record has, by id, once. A card at a place with no record still gets listed.
  */
-export function placeOrder(
-	records: LocationRecord[],
-	used: Iterable<string>,
-): string[] {
-	const order = sortLocations(records).map((record) => record.id);
-	const known = new Set(order);
-	const orphans = [...new Set(used)].filter((id) => !known.has(id)).sort();
-	return [...order, ...orphans];
+export function placeOrder(records: LocationRecord[], used: Iterable<string>): string[] {
+	const order = sortLocations(records).map((record) => record.id)
+	const known = new Set(order)
+	const orphans = [...new Set(used)].filter((id) => !known.has(id)).sort()
+	return [...order, ...orphans]
 }
 
 /** "1st", "2nd", "3rd", "18th". English only — Thai writes the bare number. */
 function ordinalEn(day: number): string {
-	const lastTwo = day % 100;
-	if (lastTwo >= 11 && lastTwo <= 13) return `${day}th`;
+	const lastTwo = day % 100
+	if (lastTwo >= 11 && lastTwo <= 13) return `${day}th`
 	switch (day % 10) {
 		case 1:
-			return `${day}st`;
+			return `${day}st`
 		case 2:
-			return `${day}nd`;
+			return `${day}nd`
 		case 3:
-			return `${day}rd`;
+			return `${day}rd`
 		default:
-			return `${day}th`;
+			return `${day}th`
 	}
 }
 
-const day = (value: number): string =>
-	getLocale() === "en" ? ordinalEn(value) : String(value);
+const day = (value: number): string => (getLocale() === "en" ? ordinalEn(value) : String(value))
 
 /**
  * How far `date` is from `from`, in words: "today", "in 9 days", "2 days ago".
@@ -92,15 +76,13 @@ const day = (value: number): string =>
  * needs wording that says only how far away the day is.
  */
 export function relativeDayText(from: PlainDate, date: PlainDate): string {
-	const days = daysBetween(from, date);
-	if (days === 0) return t("relative.today");
-	return days > 0
-		? t("relative.inDays", { days })
-		: t("relative.agoDays", { days: Math.abs(days) });
+	const days = daysBetween(from, date)
+	if (days === 0) return t("relative.today")
+	return days > 0 ? t("relative.inDays", { days }) : t("relative.agoDays", { days: Math.abs(days) })
 }
 
 export function describeCycleText(rule: CycleRule): string {
-	const description = describeCycle(rule);
+	const description = describeCycle(rule)
 	return description.key === "cycle.offset"
 		? t("cycle.offset", {
 				closeDay: day(description.params.closeDay),
@@ -109,5 +91,5 @@ export function describeCycleText(rule: CycleRule): string {
 		: t("cycle.fixed", {
 				closeDay: day(description.params.closeDay),
 				dueDay: day(description.params.dueDay),
-			});
+			})
 }

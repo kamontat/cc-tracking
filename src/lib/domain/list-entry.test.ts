@@ -1,14 +1,9 @@
-import { describe, expect, test } from "vitest";
-import {
-	composeList,
-	draftLines,
-	lineAmount,
-	listLines,
-	roomAfter,
-	sequentialIds,
-} from "#lib/domain/list-entry";
-import type { GroupRoom } from "#lib/domain/room";
-import type { Card, CardLedger, CardPayment } from "#lib/domain/types";
+import type { GroupRoom } from "#lib/domain/room"
+import type { Card, CardLedger, CardPayment } from "#lib/domain/types"
+
+import { describe, expect, test } from "vitest"
+
+import { composeList, draftLines, lineAmount, listLines, roomAfter, sequentialIds } from "#lib/domain/list-entry"
 
 const mk = (id: string, limitGroupId = "g"): Card => ({
 	id,
@@ -18,7 +13,7 @@ const mk = (id: string, limitGroupId = "g"): Card => ({
 	cycle: { kind: "offset", closeDay: 10, dueOffsetDays: 25 },
 	archived: false,
 	limitGroupId,
-});
+})
 
 const room = (groupId: string, r: number): GroupRoom => ({
 	group: { id: groupId, name: groupId, limit: 100_000_00 },
@@ -28,61 +23,57 @@ const room = (groupId: string, r: number): GroupRoom => ({
 	room: r,
 	level: "within",
 	sharedWith: 0,
-});
+})
 
-const empty: CardLedger = { statements: [], owed: 0, credit: 0 };
+const empty: CardLedger = { statements: [], owed: 0, credit: 0 }
 
 describe("list entry", () => {
 	test("reads typed amounts", () => {
-		expect(lineAmount("")).toBe(0);
-		expect(lineAmount("  ")).toBe(0);
-		expect(lineAmount("1,250.5")).toBe(125050);
+		expect(lineAmount("")).toBe(0)
+		expect(lineAmount("  ")).toBe(0)
+		expect(lineAmount("1,250.5")).toBe(125050)
 		for (const bad of ["12.345", "-5", "abc", "0"]) {
-			expect(lineAmount(bad)).toBeNull();
+			expect(lineAmount(bad)).toBeNull()
 		}
-	});
+	})
 
 	test("a group-mate's plan dated by the list date lands in planned", () => {
-		const cards = [mk("a", "g"), mk("b", "g"), mk("c", "h")];
-		const rooms = new Map(cards.map((c) => [c.id, room("g", 1)]));
-		const ledgers = new Map(cards.map((c) => [c.id, empty]));
+		const cards = [mk("a", "g"), mk("b", "g"), mk("c", "h")]
+		const rooms = new Map(cards.map((c) => [c.id, room("g", 1)]))
+		const ledgers = new Map(cards.map((c) => [c.id, empty]))
 		const plan = (id: string, cardId: string, date: string): CardPayment => ({
 			id,
 			cardId,
 			date,
 			amount: 100,
 			status: "planned",
-		});
-		const planned = [
-			plan("p1", "b", "2026-10-31"),
-			plan("p2", "b", "2026-11-09"),
-			plan("p3", "c", "2026-10-31"),
-		];
-		const lines = draftLines(cards, {}, rooms, ledgers, planned, "2026-11-01");
-		expect(lines[0]?.planned.map((p) => p.id)).toEqual(["p1"]);
-		expect(lines[1]?.planned.map((p) => p.id)).toEqual(["p1"]);
-		expect(lines[2]?.planned.map((p) => p.id)).toEqual(["p3"]);
-	});
+		})
+		const planned = [plan("p1", "b", "2026-10-31"), plan("p2", "b", "2026-11-09"), plan("p3", "c", "2026-10-31")]
+		const lines = draftLines(cards, {}, rooms, ledgers, planned, "2026-11-01")
+		expect(lines[0]?.planned.map((p) => p.id)).toEqual(["p1"])
+		expect(lines[1]?.planned.map((p) => p.id)).toEqual(["p1"])
+		expect(lines[2]?.planned.map((p) => p.id)).toEqual(["p3"])
+	})
 
 	test("room after counts the whole group on the list", () => {
 		const rooms = new Map([
 			["a", room("g", 50_000_00)],
 			["b", room("g", 50_000_00)],
 			["c", room("h", 40_000_00)],
-		]);
+		])
 		const ledgers = new Map([
 			["a", empty],
 			["b", empty],
 			["c", empty],
-		]);
+		])
 		const lines = draftLines(
 			[mk("a"), mk("b"), mk("c", "h")],
 			{ a: 20_000_00, b: 10_000_00, c: 5_000_00 },
 			rooms,
 			ledgers,
-		);
-		expect(lines.map((line) => roomAfter(line, lines))).toEqual([20_000_00, 20_000_00, 35_000_00]);
-	});
+		)
+		expect(lines.map((line) => roomAfter(line, lines))).toEqual([20_000_00, 20_000_00, 35_000_00])
+	})
 
 	test("draft lines skip cards without a room", () => {
 		const lines = draftLines(
@@ -93,17 +84,15 @@ describe("list entry", () => {
 				["a", empty],
 				["b", empty],
 			]),
-		);
-		expect(lines.map((l) => l.card.id)).toEqual(["a"]);
-		expect(lines[0]?.planned).toEqual([]);
-		expect(lines[0]?.amount).toBe(100);
-	});
+		)
+		expect(lines.map((l) => l.card.id)).toEqual(["a"])
+		expect(lines[0]?.planned).toEqual([])
+		expect(lines[0]?.amount).toBe(100)
+	})
 
 	test("blank lines are left off the list", () => {
-		expect(listLines(["A", "B", "C"], { A: 100, C: 0 })).toEqual([
-			{ cardId: "A", amount: 100 },
-		]);
-	});
+		expect(listLines(["A", "B", "C"], { A: 100, C: 0 })).toEqual([{ cardId: "A", amount: 100 }])
+	})
 
 	test("a line keeps its note, trimmed; a blank note is not stored", () => {
 		expect(
@@ -119,8 +108,8 @@ describe("list entry", () => {
 		).toEqual([
 			{ cardId: "A", amount: 100, note: "fuel for the van" },
 			{ cardId: "B", amount: 200 },
-		]);
-	});
+		])
+	})
 
 	test("a sent list carries its sent time", () => {
 		const base = {
@@ -128,17 +117,17 @@ describe("list entry", () => {
 			date: "2026-10-31",
 			lines: [],
 			now: "2026-10-31T01:00:00.000Z",
-		};
-		const sent = composeList({ ...base, send: true });
-		expect(sent.status).toBe("sent");
-		expect(sent.sentAt).toBe(base.now);
-		const draft = composeList({ ...base, send: false });
-		expect(draft.status).toBe("draft");
-		expect("sentAt" in draft).toBe(false);
-	});
+		}
+		const sent = composeList({ ...base, send: true })
+		expect(sent.status).toBe("sent")
+		expect(sent.sentAt).toBe(base.now)
+		const draft = composeList({ ...base, send: false })
+		expect(draft.status).toBe("draft")
+		expect("sentAt" in draft).toBe(false)
+	})
 
 	test("ids follow the prefix", () => {
-		const next = sequentialIds("l1");
-		expect([next(), next(), next()]).toEqual(["l1-0", "l1-1", "l1-2"]);
-	});
-});
+		const next = sequentialIds("l1")
+		expect([next(), next(), next()]).toEqual(["l1-0", "l1-1", "l1-2"])
+	})
+})

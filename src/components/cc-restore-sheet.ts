@@ -1,12 +1,14 @@
-import "#components/cc-modal";
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { LocaleController } from "#lib/i18n/controller";
-import { messageOf } from "#lib/i18n/error";
-import { t } from "#lib/i18n/index";
-import { migrateLocations } from "#lib/storage/migrate-locations";
-import type { Repository } from "#lib/storage/repository";
-import { seedLocations } from "#lib/storage/seed-locations";
+import "#components/cc-modal"
+import type { Repository } from "#lib/storage/repository"
+
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { LocaleController } from "#lib/i18n/controller"
+import { messageOf } from "#lib/i18n/error"
+import { t } from "#lib/i18n/index"
+import { migrateLocations } from "#lib/storage/migrate-locations"
+import { seedLocations } from "#lib/storage/seed-locations"
 import {
 	type BackupV3,
 	backupCounts,
@@ -16,27 +18,26 @@ import {
 	parseAnyBackup,
 	replaceWithBackupV3,
 	type V3Counts,
-} from "#lib/storage/transfer-v3";
-import { countsText } from "#lib/ui/record-counts";
-import { base, controls } from "#styles/shared";
+} from "#lib/storage/transfer-v3"
+import { countsText } from "#lib/ui/record-counts"
+import { base, controls } from "#styles/shared"
 
 /** Where the sheet is: picking a source, typing text in, or asking merge or replace. */
-export type RestoreStep = "start" | "paste" | "question";
+export type RestoreStep = "start" | "paste" | "question"
 
 /** What `restored` carries: what the copy held, and the file's name when it came from one. */
-export type RestoredDetail = { file?: string } & V3Counts;
+export type RestoredDetail = { file?: string } & V3Counts
 
 /** A parsed copy waiting on the merge-or-replace answer. No `file` means it was pasted. */
 type Pending = {
-	file: string | undefined;
-	backup: BackupV3;
-	existing: V3Counts;
-	incoming: V3Counts;
-};
+	file: string | undefined
+	backup: BackupV3
+	existing: V3Counts
+	incoming: V3Counts
+}
 
 // Older Firefox and plain-http pages do not expose it.
-const canReadClipboard = (): boolean =>
-	typeof navigator.clipboard?.readText === "function";
+const canReadClipboard = (): boolean => typeof navigator.clipboard?.readText === "function"
 
 /**
  * *Restore a copy*, clipboard first, in a sheet. The start offers *Paste from clipboard*
@@ -177,57 +178,54 @@ export class CcRestoreSheet extends LitElement {
 				font-weight: 400;
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) repo!: Repository;
+	@property({ attribute: false }) repo!: Repository
 	/** Where the location and payments markers live. */
-	@property({ attribute: false }) storage: Storage = globalThis.localStorage;
+	@property({ attribute: false }) storage: Storage = globalThis.localStorage
 
-	@state() private step: RestoreStep = canReadClipboard() ? "start" : "paste";
-	@state() private text = "";
+	@state() private step: RestoreStep = canReadClipboard() ? "start" : "paste"
+	@state() private text = ""
 	/** The clipboard read was refused, so the text area says to paste by hand. */
-	@state() private refused = false;
+	@state() private refused = false
 	/** Why the last parse or write failed, kept raw so a language switch re-translates it. */
-	@state() private failure: unknown = null;
-	@state() private pending: Pending | null = null;
+	@state() private failure: unknown = null
+	@state() private pending: Pending | null = null
 	/** A read or write is under way: buttons wait and the sheet holds open. */
-	@state() private busy = false;
+	@state() private busy = false
 	/** The copy is in and the sheet is sliding away: it stays busy until it is gone. */
-	private leaving = false;
+	private leaving = false
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	/** Runs `work` with the buttons waiting, keeping any failure to show in the sheet. */
 	private async run(work: () => Promise<void>) {
-		if (this.busy) return;
-		this.busy = true;
-		this.failure = null;
+		if (this.busy) return
+		this.busy = true
+		this.failure = null
 		try {
-			await work();
+			await work()
 		} catch (failure) {
-			this.failure = failure;
+			this.failure = failure
 		} finally {
-			if (!this.leaving) this.busy = false;
+			if (!this.leaving) this.busy = false
 		}
 	}
 
 	/** Parses `text`, then restores it at once into an empty browser or asks first otherwise. */
 	private async start(file: string | undefined, text: string) {
-		const backup = parseAnyBackup(text);
-		const existing = await countRecordsV3(this.repo);
+		const backup = parseAnyBackup(text)
+		const existing = await countRecordsV3(this.repo)
 		const empty =
-			Object.values(existing).every((count) => count === 0) &&
-			onlySeededDefaults(await this.repo.listLocations());
+			Object.values(existing).every((count) => count === 0) && onlySeededDefaults(await this.repo.listLocations())
 		if (empty) {
-			await this.finish(file, backup, (repo, copy) =>
-				importBackupV3(repo, copy, { overSeeded: true }),
-			);
+			await this.finish(file, backup, (repo, copy) => importBackupV3(repo, copy, { overSeeded: true }))
 		} else {
-			this.pending = { file, backup, existing, incoming: backupCounts(backup) };
-			this.step = "question";
+			this.pending = { file, backup, existing, incoming: backupCounts(backup) }
+			this.step = "question"
 		}
 	}
 
@@ -240,61 +238,55 @@ export class CcRestoreSheet extends LitElement {
 		backup: BackupV3,
 		write: (repo: Repository, backup: BackupV3) => Promise<void>,
 	) {
-		await write(this.repo, backup);
-		await seedLocations(this.repo, this.storage);
-		await migrateLocations(this.repo, this.storage);
-		const counts = backupCounts(backup);
-		const detail: RestoredDetail =
-			file === undefined ? counts : { file, ...counts };
-		const emit = () =>
-			this.dispatchEvent(
-				new CustomEvent<RestoredDetail>("restored", { detail }),
-			);
-		this.leaving = true;
-		const sheet = this.renderRoot.querySelector("cc-modal");
-		if (sheet) sheet.leave(emit);
-		else emit();
+		await write(this.repo, backup)
+		await seedLocations(this.repo, this.storage)
+		await migrateLocations(this.repo, this.storage)
+		const counts = backupCounts(backup)
+		const detail: RestoredDetail = file === undefined ? counts : { file, ...counts }
+		const emit = () => this.dispatchEvent(new CustomEvent<RestoredDetail>("restored", { detail }))
+		this.leaving = true
+		const sheet = this.renderRoot.querySelector("cc-modal")
+		if (sheet) sheet.leave(emit)
+		else emit()
 	}
 
 	private onClipboard() {
 		return this.run(async () => {
-			let text: string;
+			let text: string
 			try {
-				text = await navigator.clipboard.readText();
+				text = await navigator.clipboard.readText()
 			} catch {
-				this.refused = true;
-				this.step = "paste";
-				return;
+				this.refused = true
+				this.step = "paste"
+				return
 			}
-			await this.start(undefined, text);
-		});
+			await this.start(undefined, text)
+		})
 	}
 
 	private onFile(event: Event) {
-		const input = event.target as HTMLInputElement;
-		const file = input.files?.[0];
-		if (!file) return;
-		input.value = "";
-		return this.run(async () => this.start(file.name, await file.text()));
+		const input = event.target as HTMLInputElement
+		const file = input.files?.[0]
+		if (!file) return
+		input.value = ""
+		return this.run(async () => this.start(file.name, await file.text()))
 	}
 
 	private answer(replace: boolean) {
-		const waiting = this.pending;
-		if (!waiting) return;
+		const waiting = this.pending
+		if (!waiting) return
 		return this.run(() =>
 			this.finish(waiting.file, waiting.backup, (repo, backup) =>
-				replace
-					? replaceWithBackupV3(repo, backup, this.storage)
-					: importBackupV3(repo, backup),
+				replace ? replaceWithBackupV3(repo, backup, this.storage) : importBackupV3(repo, backup),
 			),
-		);
+		)
 	}
 
 	private onCancel(event: Event) {
-		const sheet = (event.currentTarget as HTMLElement).closest("cc-modal");
-		const close = () => this.dispatchEvent(new CustomEvent("close"));
-		if (sheet) sheet.leave(close);
-		else close();
+		const sheet = (event.currentTarget as HTMLElement).closest("cc-modal")
+		const close = () => this.dispatchEvent(new CustomEvent("close"))
+		if (sheet) sheet.leave(close)
+		else close()
 	}
 
 	private startStep() {
@@ -306,10 +298,10 @@ export class CcRestoreSheet extends LitElement {
 				@change=${this.onFile} /></label>
 			<button type="button" class="by-hand" data-variant="quiet" data-action="paste-by-hand"
 				?disabled=${this.busy} @click=${() => {
-					this.failure = null;
-					this.step = "paste";
+					this.failure = null
+					this.step = "paste"
 				}}>${t("backup.paste")}</button>
-		</div>`;
+		</div>`
 	}
 
 	private pasteStep() {
@@ -318,21 +310,17 @@ export class CcRestoreSheet extends LitElement {
 			<label>${t("backup.pasteLabel")}
 				<textarea rows="6" spellcheck="false" .value=${this.text}
 					@input=${(event: Event) => {
-						this.text = (event.target as HTMLTextAreaElement).value;
+						this.text = (event.target as HTMLTextAreaElement).value
 					}}></textarea></label>
 			<button type="button" data-action="import-text" ?disabled=${this.busy}
-				@click=${() => this.run(() => this.start(undefined, this.text))}>${t(
-					"backup.importText",
-				)}</button>
-		</div>`;
+				@click=${() => this.run(() => this.start(undefined, this.text))}>${t("backup.importText")}</button>
+		</div>`
 	}
 
 	private questionStep(waiting: Pending) {
 		return html`<div class="step" data-step="question">
 			<p class="ask">${
-				waiting.file === undefined
-					? t("backup.question.pasted")
-					: t("backup.question.file", { file: waiting.file })
+				waiting.file === undefined ? t("backup.question.pasted") : t("backup.question.file", { file: waiting.file })
 			}</p>
 			<dl class="compare">
 				<div><dt>${t("backup.here")}</dt><dd>${countsText(waiting.existing)}</dd></div>
@@ -350,28 +338,24 @@ export class CcRestoreSheet extends LitElement {
 			</button>
 			<button type="button" data-variant="quiet" data-action="cancel"
 				?disabled=${this.busy} @click=${this.onCancel}>${t("common.cancel")}</button>
-		</div>`;
+		</div>`
 	}
 
 	/** The lead sentence, then why, unless the reason is that same sentence again. */
 	private failureText(): string {
-		const lead = t("backup.error.import");
-		const reason = messageOf(this.failure, "backup.error.import");
-		return reason === lead ? lead : `${lead} ${reason}`;
+		const lead = t("backup.error.import")
+		const reason = messageOf(this.failure, "backup.error.import")
+		return reason === lead ? lead : `${lead} ${reason}`
 	}
 
 	override render() {
-		const waiting = this.pending;
+		const waiting = this.pending
 		return html`<cc-modal sheet .held=${this.busy} heading=${t("backup.restore.title")}
 			@close=${(event: Event) => {
-				event.stopPropagation();
-				this.dispatchEvent(new CustomEvent("close"));
+				event.stopPropagation()
+				this.dispatchEvent(new CustomEvent("close"))
 			}}>
-			${
-				this.failure === null
-					? nothing
-					: html`<p role="alert">${this.failureText()}</p>`
-			}
+			${this.failure === null ? nothing : html`<p role="alert">${this.failureText()}</p>`}
 			${
 				this.step === "question" && waiting
 					? this.questionStep(waiting)
@@ -379,12 +363,12 @@ export class CcRestoreSheet extends LitElement {
 						? this.pasteStep()
 						: this.startStep()
 			}
-		</cc-modal>`;
+		</cc-modal>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-restore-sheet": CcRestoreSheet;
+		"cc-restore-sheet": CcRestoreSheet
 	}
 }

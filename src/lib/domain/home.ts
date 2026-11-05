@@ -1,11 +1,3 @@
-import { canPurchase } from "#lib/domain/card";
-import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
-import { compareDates, daysBetween } from "#lib/domain/date";
-import { ledgerUrgency, nextBill, statementStart } from "#lib/domain/ledger";
-import { plannedHorizon } from "#lib/domain/pay";
-import { listTotal } from "#lib/domain/purchase-list";
-import { type GroupRoom, groupRoom } from "#lib/domain/room";
-import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	CardLedger,
@@ -14,50 +6,39 @@ import type {
 	LocationRecord,
 	PlainDate,
 	PurchaseList,
-} from "#lib/domain/types";
+} from "#lib/domain/types"
+
+import { canPurchase } from "#lib/domain/card"
+import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
+import { compareDates, daysBetween } from "#lib/domain/date"
+import { ledgerUrgency, nextBill, statementStart } from "#lib/domain/ledger"
+import { plannedHorizon } from "#lib/domain/pay"
+import { listTotal } from "#lib/domain/purchase-list"
+import { type GroupRoom, groupRoom } from "#lib/domain/room"
+import { openPeriod } from "#lib/domain/statement"
 
 export type RoomData = {
-	cards: Card[];
-	groups: LimitGroup[];
-	ledgers: Map<string, CardLedger>;
-	lists: PurchaseList[];
-};
+	cards: Card[]
+	groups: LimitGroup[]
+	ledgers: Map<string, CardLedger>
+	lists: PurchaseList[]
+}
 
 /** What *Ready to use* reads: the room data and the location records that say where purchases happen. */
-export type ReadyData = RoomData & { locations: LocationRecord[] };
+export type ReadyData = RoomData & { locations: LocationRecord[] }
 
-const byId = (a: { id: string }, b: { id: string }): number =>
-	a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+const byId = (a: { id: string }, b: { id: string }): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
 /** Unarchived, kept where purchases are entered, and in a group that exists. */
-export function isReady(
-	card: Card,
-	groups: LimitGroup[],
-	locations: LocationRecord[],
-): boolean {
-	return (
-		!card.archived &&
-		canPurchase(card, locations) &&
-		groups.some((g) => g.id === card.limitGroupId)
-	);
+export function isReady(card: Card, groups: LimitGroup[], locations: LocationRecord[]): boolean {
+	return !card.archived && canPurchase(card, locations) && groups.some((g) => g.id === card.limitGroupId)
 }
 
 /** The card's group room, counting sent lists only; null when the group is missing. */
-export function roomFor(
-	card: Card,
-	data: RoomData,
-	exceptListId?: string,
-): GroupRoom | null {
-	const group = data.groups.find((g) => g.id === card.limitGroupId);
-	if (!group) return null;
-	return groupRoom(
-		group,
-		data.cards,
-		data.ledgers,
-		data.lists,
-		card.id,
-		exceptListId,
-	);
+export function roomFor(card: Card, data: RoomData, exceptListId?: string): GroupRoom | null {
+	const group = data.groups.find((g) => g.id === card.limitGroupId)
+	if (!group) return null
+	return groupRoom(group, data.cards, data.ledgers, data.lists, card.id, exceptListId)
 }
 
 /**
@@ -66,99 +47,90 @@ export function roomFor(
  * 0 when it fits or the card draws on no group.
  */
 export function overRoom(card: Card, data: RoomData, amount: number): number {
-	const room = roomFor(card, data);
-	if (!room) return 0;
-	return Math.max(0, amount - Math.max(room.room, 0));
+	const room = roomFor(card, data)
+	if (!room) return 0
+	return Math.max(0, amount - Math.max(room.room, 0))
 }
 
 export type ReadyRow = {
-	card: Card;
-	room: GroupRoom;
-	closeDate: PlainDate;
-	dueDate: PlainDate;
-	overdue: boolean;
+	card: Card
+	room: GroupRoom
+	closeDate: PlainDate
+	dueDate: PlainDate
+	overdue: boolean
 	/**
 	 * The due date of a closed bill still to pay whose due date is today or later, else null:
 	 * between a statement's close and its due date, the date that matters next.
 	 */
-	billDue: PlainDate | null;
+	billDue: PlainDate | null
 	/** The credit the card holds (`CardLedger.credit`), in satang; 0 for none. */
-	credit: number;
-};
+	credit: number
+}
 
-export type ReadySort = "room" | "close" | "due";
-export const READY_SORTS: readonly ReadySort[] = ["room", "close", "due"];
+export type ReadySort = "room" | "close" | "due"
+export const READY_SORTS: readonly ReadySort[] = ["room", "close", "due"]
 
 export function readyRows(data: ReadyData, today: PlainDate): ReadyRow[] {
-	const rows: ReadyRow[] = [];
+	const rows: ReadyRow[] = []
 	for (const card of data.cards) {
-		if (!isReady(card, data.groups, data.locations)) continue;
-		const room = roomFor(card, data);
-		if (!room) continue;
-		const period = openPeriod(card, today);
-		const ledger = data.ledgers.get(card.id);
-		const bill = ledger ? nextBill(ledger, today) : null;
+		if (!isReady(card, data.groups, data.locations)) continue
+		const room = roomFor(card, data)
+		if (!room) continue
+		const period = openPeriod(card, today)
+		const ledger = data.ledgers.get(card.id)
+		const bill = ledger ? nextBill(ledger, today) : null
 		rows.push({
 			card,
 			room,
 			closeDate: closeDateOf(card.cycle, period),
 			dueDate: dueDateOf(card.cycle, period),
 			overdue: bill !== null && ledgerUrgency(bill, today) === "overdue",
-			billDue:
-				bill !== null && compareDates(bill.dueDate, today) >= 0
-					? bill.dueDate
-					: null,
+			billDue: bill !== null && compareDates(bill.dueDate, today) >= 0 ? bill.dueDate : null,
 			credit: ledger?.credit ?? 0,
-		});
+		})
 	}
-	return rows;
+	return rows
 }
 
 /** A new array: most room, longest to close, or latest due first; ties by card id. */
 export function sortReady(rows: ReadyRow[], sort: ReadySort): ReadyRow[] {
 	const key = (a: ReadyRow, b: ReadyRow): number => {
-		if (sort === "room") return b.room.room - a.room.room;
-		if (sort === "close") return compareDates(b.closeDate, a.closeDate);
-		return compareDates(b.dueDate, a.dueDate);
-	};
-	return [...rows].sort((a, b) => key(a, b) || byId(a.card, b.card));
+		if (sort === "room") return b.room.room - a.room.room
+		if (sort === "close") return compareDates(b.closeDate, a.closeDate)
+		return compareDates(b.dueDate, a.dueDate)
+	}
+	return [...rows].sort((a, b) => key(a, b) || byId(a.card, b.card))
 }
 
 export type NeedsItem =
 	| { kind: "waiting"; list: PurchaseList; total: number }
 	| {
-			kind: "overdue";
-			card: Card;
-			remaining: number;
+			kind: "overdue"
+			card: Card
+			remaining: number
 			/** The statement's total, what was billed. */
-			billed: number;
+			billed: number
 			/** The statement's first day: where its billing cycle line starts. */
-			startDate: PlainDate;
+			startDate: PlainDate
 			/** The bill's statement close date, shown when its row opens. */
-			closeDate: PlainDate;
-			dueDate: PlainDate;
-			days: number;
+			closeDate: PlainDate
+			dueDate: PlainDate
+			days: number
 	  }
 	| { kind: "planned"; payment: CardPayment; card: Card | undefined }
-	| { kind: "draft"; list: PurchaseList; total: number };
+	| { kind: "draft"; list: PurchaseList; total: number }
 
-const byDateThenId = (a: PurchaseList, b: PurchaseList): number =>
-	compareDates(a.date, b.date) || byId(a, b);
+const byDateThenId = (a: PurchaseList, b: PurchaseList): number => compareDates(a.date, b.date) || byId(a, b)
 
-export function needsYou(
-	data: RoomData,
-	today: PlainDate,
-	planned: CardPayment[] = [],
-): NeedsItem[] {
-	const ofStatus = (status: PurchaseList["status"]) =>
-		data.lists.filter((l) => l.status === status).sort(byDateThenId);
+export function needsYou(data: RoomData, today: PlainDate, planned: CardPayment[] = []): NeedsItem[] {
+	const ofStatus = (status: PurchaseList["status"]) => data.lists.filter((l) => l.status === status).sort(byDateThenId)
 
-	const overdue: Extract<NeedsItem, { kind: "overdue" }>[] = [];
+	const overdue: Extract<NeedsItem, { kind: "overdue" }>[] = []
 	for (const card of data.cards) {
-		if (card.archived) continue;
-		const ledger = data.ledgers.get(card.id);
-		const bill = ledger ? nextBill(ledger, today) : null;
-		if (!ledger || !bill || ledgerUrgency(bill, today) !== "overdue") continue;
+		if (card.archived) continue
+		const ledger = data.ledgers.get(card.id)
+		const bill = ledger ? nextBill(ledger, today) : null
+		if (!ledger || !bill || ledgerUrgency(bill, today) !== "overdue") continue
 		overdue.push({
 			kind: "overdue",
 			card,
@@ -168,33 +140,29 @@ export function needsYou(
 			closeDate: bill.closeDate,
 			dueDate: bill.dueDate,
 			days: daysBetween(bill.dueDate, today),
-		});
+		})
 	}
-	overdue.sort((a, b) => b.days - a.days || byId(a.card, b.card));
+	overdue.sort((a, b) => b.days - a.days || byId(a.card, b.card))
 
-	const horizon = plannedHorizon(today);
+	const horizon = plannedHorizon(today)
 	const plannedItem = (payment: CardPayment): NeedsItem => ({
 		kind: "planned",
 		payment,
 		card: data.cards.find((c) => c.id === payment.cardId),
-	});
+	})
 	const dueSoon = planned
 		.filter((p) => p.status === "planned" && compareDates(p.date, horizon) <= 0)
-		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b));
-	const late = dueSoon.filter((p) => compareDates(p.date, today) <= 0);
-	const soon = dueSoon.filter((p) => compareDates(p.date, today) > 0);
+		.sort((a, b) => compareDates(a.date, b.date) || byId(a, b))
+	const late = dueSoon.filter((p) => compareDates(p.date, today) <= 0)
+	const soon = dueSoon.filter((p) => compareDates(p.date, today) > 0)
 
 	// Money at risk first (DD-62): overdue bills, late plans, waiting lists, plans in the next
 	// three days, then drafts.
 	return [
 		...overdue,
 		...late.map(plannedItem),
-		...ofStatus("sent").map(
-			(list): NeedsItem => ({ kind: "waiting", list, total: listTotal(list) }),
-		),
+		...ofStatus("sent").map((list): NeedsItem => ({ kind: "waiting", list, total: listTotal(list) })),
 		...soon.map(plannedItem),
-		...ofStatus("draft").map(
-			(list): NeedsItem => ({ kind: "draft", list, total: listTotal(list) }),
-		),
-	];
+		...ofStatus("draft").map((list): NeedsItem => ({ kind: "draft", list, total: listTotal(list) })),
+	]
 }

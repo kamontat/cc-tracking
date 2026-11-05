@@ -1,6 +1,7 @@
-import type { MessageKey } from "#lib/i18n/catalog";
-import { MessageError, messageOf } from "#lib/i18n/error";
-import { t } from "#lib/i18n/index";
+import type { MessageKey } from "#lib/i18n/catalog"
+
+import { MessageError, messageOf } from "#lib/i18n/error"
+import { t } from "#lib/i18n/index"
 
 /**
  * The load / guard / paint trio shared by every page.
@@ -22,18 +23,18 @@ import { t } from "#lib/i18n/index";
 export type PageState = {
 	/** The current error message, translated into the current locale, or "" when there is
 	 * none. Re-resolved on every read -- never cache this across a locale switch. */
-	readonly error: string;
-	load(preserveError?: boolean): Promise<void>;
-	guard(action: () => Promise<void>, messageKey: MessageKey): Promise<void>;
+	readonly error: string
+	load(preserveError?: boolean): Promise<void>
+	guard(action: () => Promise<void>, messageKey: MessageKey): Promise<void>
 	/** Forgets the current error without reloading; the caller paints. For a failed write's
 	 * reason once the sheet it was shown in closes. */
-	clear(): void;
-};
+	clear(): void
+}
 
 /** What `load` failed on, kept raw so it can be re-translated on every read of `error`. */
-type LoadFailure = { kind: "load"; failure: unknown; fallbackKey: MessageKey };
+type LoadFailure = { kind: "load"; failure: unknown; fallbackKey: MessageKey }
 /** What `guard` failed on, same reason. */
-type GuardFailure = { kind: "guard"; failure: unknown; messageKey: MessageKey };
+type GuardFailure = { kind: "guard"; failure: unknown; messageKey: MessageKey }
 
 /**
  * Resolves a `load` failure into the reader's language. A `MessageError` is already a
@@ -44,64 +45,57 @@ type GuardFailure = { kind: "guard"; failure: unknown; messageKey: MessageKey };
  * entirely in English. Anything else (a non-Error rejection) has no detail worth appending,
  * so it is just the translated fallback alone.
  */
-function describeLoadFailure(
-	failure: unknown,
-	fallbackKey: MessageKey,
-): string {
-	if (failure instanceof MessageError) return messageOf(failure, fallbackKey);
-	if (failure instanceof Error) return `${t(fallbackKey)} ${failure.message}`;
-	return t(fallbackKey);
+function describeLoadFailure(failure: unknown, fallbackKey: MessageKey): string {
+	if (failure instanceof MessageError) return messageOf(failure, fallbackKey)
+	if (failure instanceof Error) return `${t(fallbackKey)} ${failure.message}`
+	return t(fallbackKey)
 }
 
 export function createPageState(options: {
 	/** Fetches this page's data into its own state. Its return value is ignored; its
 	 * rejection becomes `error`. */
-	fetch: () => Promise<void>;
+	fetch: () => Promise<void>
 	/** Shown when `fetch` rejects with something that carries no message of its own. */
-	fallbackKey: MessageKey;
+	fallbackKey: MessageKey
 	/** Called after every `load`. Reads `error` (and whatever else the page owns) to render. */
-	paint: () => void;
+	paint: () => void
 }): PageState {
-	let source: LoadFailure | GuardFailure | null = null;
+	let source: LoadFailure | GuardFailure | null = null
 
 	const load = async (preserveError = false): Promise<void> => {
 		try {
-			await options.fetch();
-			if (!preserveError) source = null;
+			await options.fetch()
+			if (!preserveError) source = null
 		} catch (failure) {
-			source = { kind: "load", failure, fallbackKey: options.fallbackKey };
+			source = { kind: "load", failure, fallbackKey: options.fallbackKey }
 		}
-		options.paint();
-	};
+		options.paint()
+	}
 
-	const guard = async (
-		action: () => Promise<void>,
-		messageKey: MessageKey,
-	): Promise<void> => {
-		let failed = false;
+	const guard = async (action: () => Promise<void>, messageKey: MessageKey): Promise<void> => {
+		let failed = false
 		try {
-			await action();
-			source = null;
+			await action()
+			source = null
 		} catch (failure) {
-			source = { kind: "guard", failure, messageKey };
-			failed = true;
+			source = { kind: "guard", failure, messageKey }
+			failed = true
 		}
 		// Refresh from storage either way, but keep a failure's message on screen
 		// instead of letting a successful read silently wipe it.
-		await load(failed);
-	};
+		await load(failed)
+	}
 
 	return {
 		get error() {
-			if (source === null) return "";
-			if (source.kind === "load")
-				return describeLoadFailure(source.failure, source.fallbackKey);
-			return `${t(source.messageKey)} ${messageOf(source.failure, source.messageKey)}`;
+			if (source === null) return ""
+			if (source.kind === "load") return describeLoadFailure(source.failure, source.fallbackKey)
+			return `${t(source.messageKey)} ${messageOf(source.failure, source.messageKey)}`
 		},
 		load,
 		guard,
 		clear: () => {
-			source = null;
+			source = null
 		},
-	};
+	}
 }

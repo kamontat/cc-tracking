@@ -1,16 +1,18 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { displayDate } from "#lib/domain/date";
-import type { ReadyRow } from "#lib/domain/home";
-import { formatAmount } from "#lib/domain/money";
-import { cardOwnerOf, ownerOf } from "#lib/domain/owner";
-import type { LimitGroup, PlainDate } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
-import { cardName } from "#lib/ui/card-label";
-import { icons } from "#lib/ui/icons";
-import { base } from "#styles/shared";
-import { cardTileStyles, tileBody, tileTone } from "./card-tile";
+import type { ReadyRow } from "#lib/domain/home"
+import type { LimitGroup, PlainDate } from "#lib/domain/types"
+
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property } from "lit/decorators.js"
+
+import { displayDate } from "#lib/domain/date"
+import { formatAmount } from "#lib/domain/money"
+import { cardOwnerOf, ownerOf } from "#lib/domain/owner"
+import { LocaleController } from "#lib/i18n/controller"
+import { getLocale, t } from "#lib/i18n/index"
+import { cardName } from "#lib/ui/card-label"
+import { icons } from "#lib/ui/icons"
+import { base } from "#styles/shared"
+import { cardTileStyles, tileBody, tileTone } from "./card-tile"
 
 /**
  * Line 1's corner: the cardholder; for a supplementary card, the cardholder and whose account
@@ -18,10 +20,10 @@ import { cardTileStyles, tileBody, tileTone } from "./card-tile";
  * account holder, as Cards does.
  */
 function holders(row: ReadyRow): string {
-	const account = ownerOf(row.room.group);
-	if (!row.card.supplementary) return account;
-	const holder = cardOwnerOf(row.card, row.room.group) ?? account;
-	return t("tile.subAccount", { holder, owner: account });
+	const account = ownerOf(row.room.group)
+	if (!row.card.supplementary) return account
+	const holder = cardOwnerOf(row.card, row.room.group) ?? account
+	return t("tile.subAccount", { holder, owner: account })
 }
 
 /**
@@ -41,17 +43,17 @@ export class CcReadyPicker extends LitElement {
 				display: block;
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) rows: ReadyRow[] = [];
-	@property({ attribute: false }) selected: string[] = [];
+	@property({ attribute: false }) rows: ReadyRow[] = []
+	@property({ attribute: false }) selected: string[] = []
 	/** The stored limit groups, in order: a tile takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
-	@property() today: PlainDate = "";
+	@property({ attribute: false }) groups: LimitGroup[] = []
+	@property() today: PlainDate = ""
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	private toggle(cardId: string) {
@@ -61,14 +63,14 @@ export class CcReadyPicker extends LitElement {
 				bubbles: true,
 				composed: true,
 			}),
-		);
+		)
 	}
 
 	override render() {
-		const locale = getLocale();
+		const locale = getLocale()
 		return html`<div class="tiles">${this.rows.map((row) => {
-			const id = row.card.id;
-			const on = this.selected.includes(id);
+			const id = row.card.id
+			const on = this.selected.includes(id)
 			return html`<button type="button" class="tile" data-g=${tileTone(row.card, this.groups)}
 				data-card=${id} aria-pressed=${on ? "true" : "false"}
 				aria-label=${t("ready.pickName", { card: cardName(id, row.card), room: formatAmount(row.room.room) })}
@@ -83,13 +85,13 @@ export class CcReadyPicker extends LitElement {
 						close: displayDate(row.closeDate, locale),
 						due: displayDate(row.dueDate, locale),
 					}),
-				})}</button>`;
-		})}</div>`;
+				})}</button>`
+		})}</div>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-ready-picker": CcReadyPicker;
+		"cc-ready-picker": CcReadyPicker
 	}
 }

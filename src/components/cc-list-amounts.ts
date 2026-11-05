@@ -1,46 +1,18 @@
-import { css, html, LitElement, nothing, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { live } from "lit/directives/live.js";
-import {
-	type AmountWarning,
-	type DraftLine,
-	datePassed,
-	lineWarnings,
-} from "#lib/domain/amount-warnings";
-import { displayDate, isValidDate } from "#lib/domain/date";
-import {
-	draftLines,
-	lineAmount,
-	listLines,
-	roomAfter,
-} from "#lib/domain/list-entry";
-import { formatAmount, formatAmountInput } from "#lib/domain/money";
-import type { GroupRoom } from "#lib/domain/room";
-import type {
-	Card,
-	CardLedger,
-	CardPayment,
-	LimitGroup,
-	ListLine,
-	PlainDate,
-} from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
-import {
-	cardMini,
-	cardName,
-	cardPanel,
-	cardPanelLabel,
-} from "#lib/ui/card-label";
-import {
-	actionBarStyles,
-	base,
-	cardBits,
-	controls,
-	lineCards,
-	listLayout,
-	rowPanel,
-} from "#styles/shared";
+import type { GroupRoom } from "#lib/domain/room"
+import type { Card, CardLedger, CardPayment, LimitGroup, ListLine, PlainDate } from "#lib/domain/types"
+
+import { css, html, LitElement, nothing, type PropertyValues } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+import { live } from "lit/directives/live.js"
+
+import { type AmountWarning, type DraftLine, datePassed, lineWarnings } from "#lib/domain/amount-warnings"
+import { displayDate, isValidDate } from "#lib/domain/date"
+import { draftLines, lineAmount, listLines, roomAfter } from "#lib/domain/list-entry"
+import { formatAmount, formatAmountInput } from "#lib/domain/money"
+import { LocaleController } from "#lib/i18n/controller"
+import { getLocale, t } from "#lib/i18n/index"
+import { cardMini, cardName, cardPanel, cardPanelLabel } from "#lib/ui/card-label"
+import { actionBarStyles, base, cardBits, controls, lineCards, listLayout, rowPanel } from "#styles/shared"
 
 /**
  * Step 2 of a purchase list: a date and one amount per card, each line warned about what the
@@ -172,67 +144,65 @@ export class CcListAmounts extends LitElement {
 				font-variant-numeric: tabular-nums;
 			}
 		`,
-	];
+	]
 
 	/** The list's cards, in order. */
-	@property({ attribute: false }) cards: Card[] = [];
+	@property({ attribute: false }) cards: Card[] = []
 	/** The stored limit groups, in order: a card's chip takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** Every card, so a planned payment on a group-mate not on the list still counts. */
-	@property({ attribute: false }) allCards: Card[] = [];
+	@property({ attribute: false }) allCards: Card[] = []
 	/** Planned payments (`plannedOf`). */
-	@property({ attribute: false }) planned: CardPayment[] = [];
+	@property({ attribute: false }) planned: CardPayment[] = []
 	/** Ready cards not on the list, offered by Add another card. */
-	@property({ attribute: false }) candidates: Card[] = [];
-	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
-	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
-	@property() today: PlainDate = "";
+	@property({ attribute: false }) candidates: Card[] = []
+	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map()
+	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map()
+	@property() today: PlainDate = ""
 	/** Read once, as the starting date. */
-	@property() date: PlainDate = "";
+	@property() date: PlainDate = ""
 	/** Read once, as the starting amounts. */
-	@property({ attribute: false }) entries: Record<string, string> = {};
+	@property({ attribute: false }) entries: Record<string, string> = {}
 	/** Read once, as the starting notes, by card. */
-	@property({ attribute: false }) notes: Record<string, string> = {};
+	@property({ attribute: false }) notes: Record<string, string> = {}
 
 	// What the reader typed lives here, not in the inputs, so a re-render keeps it.
-	@state() private typed: Record<string, string> = {};
-	@state() private typedNotes: Record<string, string> = {};
-	@state() private dateText = "";
-	@state() private picking = false;
-	private started = false;
+	@state() private typed: Record<string, string> = {}
+	@state() private typedNotes: Record<string, string> = {}
+	@state() private dateText = ""
+	@state() private picking = false
+	private started = false
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override willUpdate(changed: PropertyValues<this>) {
-		super.willUpdate(changed);
+		super.willUpdate(changed)
 		if (!this.started) {
-			this.started = true;
-			this.typed = { ...this.entries };
-			this.typedNotes = { ...this.notes };
-			this.dateText = this.date;
+			this.started = true
+			this.typed = { ...this.entries }
+			this.typedNotes = { ...this.notes }
+			this.dateText = this.date
 		}
 	}
 
 	/** The purchase date; an emptied or impossible field reads as today. */
 	private get effectiveDate(): PlainDate {
-		return isValidDate(this.dateText) ? this.dateText : this.today;
+		return isValidDate(this.dateText) ? this.dateText : this.today
 	}
 
 	private amounts(): Record<string, number | null> {
-		const out: Record<string, number | null> = {};
+		const out: Record<string, number | null> = {}
 		for (const card of this.cards) {
-			out[card.id] = lineAmount(this.typed[card.id] ?? "");
+			out[card.id] = lineAmount(this.typed[card.id] ?? "")
 		}
-		return out;
+		return out
 	}
 
 	private emit(name: string, detail: unknown) {
-		this.dispatchEvent(
-			new CustomEvent(name, { detail, bubbles: true, composed: true }),
-		);
+		this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }))
 	}
 
 	private changed() {
@@ -240,27 +210,27 @@ export class CcListAmounts extends LitElement {
 			date: this.effectiveDate,
 			entries: { ...this.typed },
 			notes: { ...this.typedNotes },
-		});
+		})
 	}
 
 	private setNote(cardId: string, text: string) {
-		this.typedNotes = { ...this.typedNotes, [cardId]: text };
-		this.changed();
+		this.typedNotes = { ...this.typedNotes, [cardId]: text }
+		this.changed()
 	}
 
 	private setAmount(cardId: string, text: string) {
-		this.typed = { ...this.typed, [cardId]: text };
-		this.changed();
+		this.typed = { ...this.typed, [cardId]: text }
+		this.changed()
 	}
 
 	private setDate(text: string) {
-		this.dateText = text;
-		this.changed();
+		this.dateText = text
+		this.changed()
 	}
 
 	/** Cards' names for a notice, comma separated (the name form, UI-14). */
 	private names(ids: string[]): string {
-		const all = this.allCards.length > 0 ? this.allCards : this.cards;
+		const all = this.allCards.length > 0 ? this.allCards : this.cards
 		return ids
 			.map((id) =>
 				cardName(
@@ -268,11 +238,11 @@ export class CcListAmounts extends LitElement {
 					all.find((card) => card.id === id),
 				),
 			)
-			.join(", ");
+			.join(", ")
 	}
 
 	private warningNote(card: Card, warning: AmountWarning, line: DraftLine) {
-		const locale = getLocale();
+		const locale = getLocale()
 		switch (warning.kind) {
 			case "over-room":
 				return html`
@@ -288,12 +258,9 @@ export class CcListAmounts extends LitElement {
 						}
 						${
 							warning.plannedBefore > 0
-								? html`<span data-part="planned">${t(
-										"purchaseList.warn.planned",
-										{
-											amount: formatAmount(warning.plannedBefore),
-										},
-									)}</span>`
+								? html`<span data-part="planned">${t("purchaseList.warn.planned", {
+										amount: formatAmount(warning.plannedBefore),
+									})}</span>`
 								: nothing
 						}
 						${
@@ -304,7 +271,7 @@ export class CcListAmounts extends LitElement {
 								: nothing
 						}
 					</p>
-				`;
+				`
 			case "shared-limit":
 				return html`
 					<p class="note" data-warning="shared-limit">
@@ -315,7 +282,7 @@ export class CcListAmounts extends LitElement {
 							room: formatAmount(line.room.room),
 						})}
 					</p>
-				`;
+				`
 			case "overdue-bill":
 				return html`
 					<p class="note" data-warning="overdue-bill">
@@ -327,7 +294,7 @@ export class CcListAmounts extends LitElement {
 						<a data-action="see-card" href=${`/card?id=${encodeURIComponent(card.id)}`}
 							>${t("purchaseList.warn.seeCard")}</a>
 					</p>
-				`;
+				`
 			case "close-date":
 				return html`
 					<p class="note" data-warning="close-date">
@@ -336,16 +303,16 @@ export class CcListAmounts extends LitElement {
 							date: displayDate(warning.closeDate, locale),
 						})}
 					</p>
-				`;
+				`
 		}
 	}
 
 	override render() {
-		const date = this.effectiveDate;
-		const amounts = this.amounts();
-		const money: Record<string, number> = {};
+		const date = this.effectiveDate
+		const amounts = this.amounts()
+		const money: Record<string, number> = {}
 		for (const [id, amount] of Object.entries(amounts)) {
-			money[id] = amount ?? 0;
+			money[id] = amount ?? 0
 		}
 		const lines = draftLines(
 			this.cards,
@@ -355,18 +322,17 @@ export class CcListAmounts extends LitElement {
 			this.planned,
 			date,
 			this.allCards.length > 0 ? this.allCards : this.cards,
-		);
-		const passed = datePassed(date, this.today);
+		)
+		const passed = datePassed(date, this.today)
 
-		let warned = 0;
+		let warned = 0
 		const sections = this.cards.map((card) => {
-			const line = lines.find((l) => l.card.id === card.id);
-			const warnings = line ? lineWarnings(line, lines, date, this.today) : [];
-			const bad = amounts[card.id] === null;
-			const warn = bad || warnings.length > 0;
-			if (warn) warned++;
-			const after =
-				line && !bad ? formatAmount(roomAfter(line, lines)) : t("common.none");
+			const line = lines.find((l) => l.card.id === card.id)
+			const warnings = line ? lineWarnings(line, lines, date, this.today) : []
+			const bad = amounts[card.id] === null
+			const warn = bad || warnings.length > 0
+			if (warn) warned++
+			const after = line && !bad ? formatAmount(roomAfter(line, lines)) : t("common.none")
 			return html`
 				<section class="line" data-card=${card.id} ?data-warn=${warn}>
 					<div class="top" row>
@@ -380,11 +346,7 @@ export class CcListAmounts extends LitElement {
 						<input inputmode="decimal" data-field="amount" placeholder="0"
 							aria-label=${t("purchaseList.amountFor", { card: cardName(card.id, card) })}
 							.value=${live(this.typed[card.id] ?? "")}
-							@input=${(e: Event) =>
-								this.setAmount(
-									card.id,
-									(e.target as HTMLInputElement).value,
-								)} />
+							@input=${(e: Event) => this.setAmount(card.id, (e.target as HTMLInputElement).value)} />
 					</label>
 					${bad ? html`<p class="error">${t("quickAdd.error.badAmount")}</p>` : nothing}
 					<div class="after" row>
@@ -395,34 +357,28 @@ export class CcListAmounts extends LitElement {
 						<input data-field="note" placeholder=${t("purchaseList.notePlaceholder")}
 							aria-label=${t("purchaseList.noteFor", { card: cardName(card.id, card) })}
 							.value=${live(this.typedNotes[card.id] ?? "")}
-							@input=${(e: Event) =>
-								this.setNote(card.id, (e.target as HTMLInputElement).value)} />
+							@input=${(e: Event) => this.setNote(card.id, (e.target as HTMLInputElement).value)} />
 					</label>
 					${line ? warnings.map((w) => this.warningNote(card, w, line)) : nothing}
 				</section>
-			`;
-		});
+			`
+		})
 
-		const values = Object.values(amounts);
-		const total = values.reduce<number>((n, a) => n + (a ?? 0), 0);
-		const canReview =
-			values.some((a) => a !== null && a > 0) &&
-			values.every((a) => a !== null);
+		const values = Object.values(amounts)
+		const total = values.reduce<number>((n, a) => n + (a ?? 0), 0)
+		const canReview = values.some((a) => a !== null && a > 0) && values.every((a) => a !== null)
 
-		const parts: string[] = [];
-		if (warned === 1) parts.push(t("purchaseList.warn.lines.one"));
-		if (warned > 1)
-			parts.push(t("purchaseList.warn.lines.many", { count: warned }));
-		if (passed) parts.push(t("purchaseList.warn.datePassedShort"));
+		const parts: string[] = []
+		if (warned === 1) parts.push(t("purchaseList.warn.lines.one"))
+		if (warned > 1) parts.push(t("purchaseList.warn.lines.many", { count: warned }))
+		if (passed) parts.push(t("purchaseList.warn.datePassedShort"))
 		const summary =
 			parts.length > 0
 				? html`<span class="summary warned">${parts.join(" · ")}</span>`
 				: html`<span class="summary">${t(
-						this.cards.length === 1
-							? "purchaseList.total.one"
-							: "purchaseList.total.many",
+						this.cards.length === 1 ? "purchaseList.total.one" : "purchaseList.total.many",
 						{ count: this.cards.length },
-					)}</span>`;
+					)}</span>`
 
 		return html`<div class="list-layout">
 			<div class="list-layout__main">
@@ -430,15 +386,13 @@ export class CcListAmounts extends LitElement {
 			<button data-variant="quiet" data-action="add-card"
 				aria-expanded=${this.picking ? "true" : "false"}
 				@click=${() => {
-					this.picking = !this.picking;
+					this.picking = !this.picking
 				}}>+ ${t("purchaseList.addCard")}</button>
 			${
 				this.picking
 					? html`<div class="picker panel">
 						${this.candidates.map(
-							(
-								card,
-							) => html`<button type="button" class="crow" data-card=${card.id}
+							(card) => html`<button type="button" class="crow" data-card=${card.id}
 								@click=${() => this.emit("add", { cardId: card.id })}
 							>${cardMini(card, this.groups)}<span class="what"><b>${cardPanelLabel(card.id, card)}</b></span></button>`,
 						)}
@@ -480,12 +434,12 @@ export class CcListAmounts extends LitElement {
 			</div>
 			<slot name="side"></slot>
 			</div>
-		</div>`;
+		</div>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-list-amounts": CcListAmounts;
+		"cc-list-amounts": CcListAmounts
 	}
 }

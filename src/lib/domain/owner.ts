@@ -1,11 +1,11 @@
-import type { Card, LimitGroup } from "#lib/domain/types";
+import type { Card, LimitGroup } from "#lib/domain/types"
 
 /** The three people an account can belong to. Stored as these initials, which are not translated. */
-export const OWNERS = ["KC", "NT", "RI"] as const;
+export const OWNERS = ["KC", "NT", "RI"] as const
 
-export type Owner = (typeof OWNERS)[number];
+export type Owner = (typeof OWNERS)[number]
 
-export const DEFAULT_OWNER: Owner = "KC";
+export const DEFAULT_OWNER: Owner = "KC"
 
 /**
  * Narrows untrusted data to an `Owner`, or `null` when it is not one.
@@ -15,10 +15,8 @@ export const DEFAULT_OWNER: Owner = "KC";
  * can vouch for.
  */
 export function toOwner(value: unknown): Owner | null {
-	const known: readonly string[] = OWNERS;
-	return typeof value === "string" && known.includes(value)
-		? (value as Owner)
-		: null;
+	const known: readonly string[] = OWNERS
+	return typeof value === "string" && known.includes(value) ? (value as Owner) : null
 }
 
 /**
@@ -30,7 +28,7 @@ export function toOwner(value: unknown): Owner | null {
  * default too rather than printing junk in the column.
  */
 export function ownerOf(group: LimitGroup): Owner {
-	return toOwner(group.owner) ?? DEFAULT_OWNER;
+	return toOwner(group.owner) ?? DEFAULT_OWNER
 }
 
 /**
@@ -39,12 +37,9 @@ export function ownerOf(group: LimitGroup): Owner {
  * card, and a supplementary one saved before the field existed, belongs to whoever owns the
  * group it draws on. `null` only for a card with neither: no owner of its own and no group.
  */
-export function cardOwnerOf(
-	card: Card,
-	group: LimitGroup | null,
-): Owner | null {
-	const own = card.supplementary ? toOwner(card.owner) : null;
-	return own ?? (group ? ownerOf(group) : null);
+export function cardOwnerOf(card: Card, group: LimitGroup | null): Owner | null {
+	const own = card.supplementary ? toOwner(card.owner) : null
+	return own ?? (group ? ownerOf(group) : null)
 }
 
 /**
@@ -52,5 +47,5 @@ export function cardOwnerOf(
  * so neither is the pattern.
  */
 export function groupLabel(group: LimitGroup): string {
-	return `${group.name} (${ownerOf(group)})`;
+	return `${group.name} (${ownerOf(group)})`
 }

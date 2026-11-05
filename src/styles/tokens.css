@@ -2,8 +2,7 @@
 	color-scheme: light dark;
 
 	--cc-font-sans:
-		system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai",
-		"Noto Sans Thai", "Sarabun", sans-serif;
+		system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai", "Noto Sans Thai", "Sarabun", sans-serif;
 	--cc-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 	--cc-leading: 1.65;
 
@@ -51,13 +50,7 @@
 	   into the padding and add nothing. Derived, not typed, so the two cannot drift by a pixel
 	   as a hand-measured 3.25rem (52px) did. Keep this in step if the header's padding or
 	   contents change. */
-	--cc-header-height: calc(
-		2 *
-		var(--cc-space-3) +
-		var(--cc-text-md) *
-		var(--cc-leading) +
-		var(--cc-rule-width)
-	);
+	--cc-header-height: calc(2 * var(--cc-space-3) + var(--cc-text-md) * var(--cc-leading) + var(--cc-rule-width));
 
 	/* The sticky `.sub-header` under it, so a list page's sticky side panel parks below both:
 	   the back control (an icon and its padding) and the bar's own block padding. The title
@@ -82,8 +75,7 @@
 	/* One height for the floating + New button (the round button's diameter, the pill's
 	   height) and the selection bars at the foot of a page, so the two read as one family. */
 	--cc-bar-height: 3.125rem;
-	--cc-fab-shadow: 0 8px 18px
-		color-mix(in oklab, var(--cc-accent) 40%, transparent);
+	--cc-fab-shadow: 0 8px 18px color-mix(in oklab, var(--cc-accent) 40%, transparent);
 
 	/* How strongly a non-production build tints the page, and the width of its top rule. */
 	--cc-env-tint: 16%;

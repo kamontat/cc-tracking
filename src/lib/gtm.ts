@@ -1,7 +1,7 @@
-type GtmWindow = Window & { dataLayer?: unknown[] };
+type GtmWindow = Window & { dataLayer?: unknown[] }
 
-const GTM_ID = /^GTM-[A-Z0-9]+$/;
-const GTM_ORIGIN = "https://www.googletagmanager.com";
+const GTM_ID = /^GTM-[A-Z0-9]+$/
+const GTM_ORIGIN = "https://www.googletagmanager.com"
 
 /**
  * Load the Google Tag Manager container `id` into `doc`, the script half of Google's
@@ -9,18 +9,18 @@ const GTM_ORIGIN = "https://www.googletagmanager.com";
  * when the container script is already on the page.
  */
 export const loadGtm = (id: string | undefined, doc: Document): boolean => {
-	if (id === undefined || !GTM_ID.test(id)) return false;
-	if (doc.querySelector(`script[src^="${GTM_ORIGIN}/gtm.js"]`)) return false;
+	if (id === undefined || !GTM_ID.test(id)) return false
+	if (doc.querySelector(`script[src^="${GTM_ORIGIN}/gtm.js"]`)) return false
 
-	const win = doc.defaultView as GtmWindow | null;
+	const win = doc.defaultView as GtmWindow | null
 	if (win) {
-		win.dataLayer = win.dataLayer ?? [];
-		win.dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" });
+		win.dataLayer = win.dataLayer ?? []
+		win.dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" })
 	}
 
-	const script = doc.createElement("script");
-	script.async = true;
-	script.src = `${GTM_ORIGIN}/gtm.js?id=${id}`;
-	doc.head.append(script);
-	return true;
-};
+	const script = doc.createElement("script")
+	script.async = true
+	script.src = `${GTM_ORIGIN}/gtm.js?id=${id}`
+	doc.head.append(script)
+	return true
+}

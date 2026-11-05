@@ -1,35 +1,37 @@
-import "#components/cc-error-banner";
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { displayDate, isValidDate } from "#lib/domain/date";
-import { amountOf, formatAmount, formatAmountInput } from "#lib/domain/money";
-import { payPreview } from "#lib/domain/pay";
-import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
-import { cardMini, cardName, cardPanelLabel } from "#lib/ui/card-label";
-import { base, cardBits, controls } from "#styles/shared";
+import "#components/cc-error-banner"
+import type { Card, LimitGroup, PlainDate } from "#lib/domain/types"
+
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { displayDate, isValidDate } from "#lib/domain/date"
+import { amountOf, formatAmount, formatAmountInput } from "#lib/domain/money"
+import { payPreview } from "#lib/domain/pay"
+import { LocaleController } from "#lib/i18n/controller"
+import { getLocale, t } from "#lib/i18n/index"
+import { cardMini, cardName, cardPanelLabel } from "#lib/ui/card-label"
+import { base, cardBits, controls } from "#styles/shared"
 
 export type PayDetail = {
 	/** Satang. */
-	amount: number;
-	date: PlainDate;
+	amount: number
+	date: PlainDate
 	/** What was typed in the optional Note field, trimmed; absent when it is blank. */
-	note?: string;
-};
+	note?: string
+}
 
 export type PayFigures = {
-	owed: number;
-	credit: number;
-	nextBill: number;
-	overdue: boolean;
-};
+	owed: number
+	credit: number
+	nextBill: number
+	overdue: boolean
+}
 
 /** An amount that may wrap only after the baht sign or a comma, so no digit is left alone. */
 const figure = (satang: number) =>
 	formatAmount(satang)
 		.split(/(?<=[,฿])/)
-		.map((part, i) => (i === 0 ? part : html`<wbr>${part}`));
+		.map((part, i) => (i === 0 ? part : html`<wbr>${part}`))
 
 /**
  * The payment sheet's second step, for one card: the card with *Change*, its owed, next bill
@@ -193,90 +195,85 @@ export class CcPayForm extends LitElement {
 				text-align: center;
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) card: Card | null = null;
+	@property({ attribute: false }) card: Card | null = null
 	/** The stored limit groups, in order: the card's chip takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	@property({ attribute: false }) figures: PayFigures = {
 		owed: 0,
 		credit: 0,
 		nextBill: 0,
 		overdue: false,
-	};
-	@property() today: PlainDate = "";
+	}
+	@property() today: PlainDate = ""
 	/** The amount's first text; typing replaces it. */
-	@property() amount = "";
+	@property() amount = ""
 	/** Why the last save failed, shown above the form; typing is kept. */
-	@property() error = "";
+	@property() error = ""
 
 	/** A save is under way; the button waits so a second tap cannot record it twice. */
-	@property({ type: Boolean }) busy = false;
+	@property({ type: Boolean }) busy = false
 
 	/** The date's first value, for a sheet reopened on what was typed before; else today. */
-	@property() startDate: PlainDate = "";
+	@property() startDate: PlainDate = ""
 	/** The note's first text, for a sheet reopened on what was typed before. */
-	@property() startNote = "";
+	@property() startNote = ""
 
-	@state() private text = "";
-	@state() private date: PlainDate = "";
-	@state() private note = "";
+	@state() private text = ""
+	@state() private date: PlainDate = ""
+	@state() private note = ""
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override willUpdate(changed: Map<string, unknown>) {
-		if (changed.has("amount")) this.text = this.amount;
-		if (changed.has("startDate") && this.startDate) this.date = this.startDate;
-		if (changed.has("startNote")) this.note = this.startNote;
-		if (changed.has("today") && this.date === "") this.date = this.today;
+		if (changed.has("amount")) this.text = this.amount
+		if (changed.has("startDate") && this.startDate) this.date = this.startDate
+		if (changed.has("startNote")) this.note = this.startNote
+		if (changed.has("today") && this.date === "") this.date = this.today
 	}
 
 	/** The amount to send, or null while the button is disabled: one rule for both. */
 	private readyAmount(): number | null {
-		const amount = amountOf(this.text);
-		return amount !== null && amount > 0 && isValidDate(this.date)
-			? amount
-			: null;
+		const amount = amountOf(this.text)
+		return amount !== null && amount > 0 && isValidDate(this.date) ? amount : null
 	}
 
 	private onSubmit(event: Event) {
-		event.preventDefault();
-		if (this.busy) return;
-		const amount = this.readyAmount();
-		if (amount === null) return;
-		const note = this.note.trim();
+		event.preventDefault()
+		if (this.busy) return
+		const amount = this.readyAmount()
+		if (amount === null) return
+		const note = this.note.trim()
 		this.dispatchEvent(
 			new CustomEvent<PayDetail>("pay", {
-				detail: note
-					? { amount, date: this.date, note }
-					: { amount, date: this.date },
+				detail: note ? { amount, date: this.date, note } : { amount, date: this.date },
 			}),
-		);
+		)
 	}
 
 	private fill(satang: number) {
-		this.text = formatAmountInput(satang);
+		this.text = formatAmountInput(satang)
 	}
 
 	private chip(kind: "bill" | "owed", satang: number, label: string) {
 		return html`<button type="button" data-variant="quiet" data-chip=${kind}
 			aria-pressed=${amountOf(this.text) === satang ? "true" : "false"}
-			@click=${() => this.fill(satang)}>${label}</button>`;
+			@click=${() => this.fill(satang)}>${label}</button>`
 	}
 
 	override render() {
-		const card = this.card;
-		if (!card) return nothing;
-		const { owed, credit, nextBill, overdue } = this.figures;
-		const amount = this.readyAmount();
-		const ready = amount !== null;
-		const preview =
-			amount !== null ? payPreview(amount, this.date, owed, this.today) : null;
-		const locale = getLocale();
-		let submit = t("pay.submit.empty");
+		const card = this.card
+		if (!card) return nothing
+		const { owed, credit, nextBill, overdue } = this.figures
+		const amount = this.readyAmount()
+		const ready = amount !== null
+		const preview = amount !== null ? payPreview(amount, this.date, owed, this.today) : null
+		const locale = getLocale()
+		let submit = t("pay.submit.empty")
 		if (preview && amount !== null) {
 			submit = preview.plan
 				? t("pay.submit.plan", {
@@ -287,7 +284,7 @@ export class CcPayForm extends LitElement {
 				: t("pay.submit.record", {
 						amount: formatAmount(amount),
 						card: cardName(card.id, card),
-					});
+					})
 		}
 		return html`
 			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
@@ -323,11 +320,7 @@ export class CcPayForm extends LitElement {
 							}
 							${
 								owed > 0 && owed !== nextBill
-									? this.chip(
-											"owed",
-											owed,
-											t("pay.chip.owed", { amount: formatAmount(owed) }),
-										)
+									? this.chip("owed", owed, t("pay.chip.owed", { amount: formatAmount(owed) }))
 									: nothing
 							}
 						</div>`
@@ -338,18 +331,18 @@ export class CcPayForm extends LitElement {
 						<input name="amount" inputmode="decimal" .value=${this.text}
 							placeholder=${t("quickAdd.amountPlaceholder")}
 							@input=${(e: Event) => {
-								this.text = (e.target as HTMLInputElement).value;
+								this.text = (e.target as HTMLInputElement).value
 							}} /></label>
 					<label>${t("pay.date")}
 						<input name="date" type="date" .value=${this.date}
 							@input=${(e: Event) => {
-								this.date = (e.target as HTMLInputElement).value;
+								this.date = (e.target as HTMLInputElement).value
 							}} /></label>
 					<label class="wide">${t("pay.noteLabel")}
 						<input name="note" .value=${this.note}
 							placeholder=${t("pay.notePlaceholder")}
 							@input=${(e: Event) => {
-								this.note = (e.target as HTMLInputElement).value;
+								this.note = (e.target as HTMLInputElement).value
 							}} /></label>
 				</div>
 				${
@@ -370,12 +363,12 @@ export class CcPayForm extends LitElement {
 				<button type="submit" ?disabled=${!ready || this.busy}>${submit}</button>
 				<p class="hint">${t("pay.dateHint")}</p>
 			</form>
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-pay-form": CcPayForm;
+		"cc-pay-form": CcPayForm
 	}
 }
