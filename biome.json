@@ -1,22 +1,7 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
-	"extends": ["@kcconfigs/biome/astro"],
+	"$schema": "https://biomejs.dev/schemas/2.6.5/schema.json",
+	"extends": ["@kcconfigs/biome/configs/astro"],
 	"files": {
-		"includes": ["!.claude", "!public", "!docs/superpowers", "!dist"]
-	},
-	"overrides": [
-		{
-			"includes": ["**/*.test.*"],
-			"linter": {
-				"rules": {
-					"complexity": {
-						"useLiteralKeys": { "level": "off", "fix": "none" }
-					},
-					"style": {
-						"noNonNullAssertion": { "level": "off", "fix": "none" }
-					}
-				}
-			}
-		}
-	]
+		"includes": ["!.claude", "!public", "!docs/superpowers"]
+	}
 }

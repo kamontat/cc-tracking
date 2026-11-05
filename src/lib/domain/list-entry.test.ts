@@ -81,9 +81,7 @@ describe("list entry", () => {
 			rooms,
 			ledgers,
 		);
-		expect(roomAfter(lines[0]!, lines)).toBe(20_000_00);
-		expect(roomAfter(lines[1]!, lines)).toBe(20_000_00);
-		expect(roomAfter(lines[2]!, lines)).toBe(35_000_00);
+		expect(lines.map((line) => roomAfter(line, lines))).toEqual([20_000_00, 20_000_00, 35_000_00]);
 	});
 
 	test("draft lines skip cards without a room", () => {
@@ -97,8 +95,8 @@ describe("list entry", () => {
 			]),
 		);
 		expect(lines.map((l) => l.card.id)).toEqual(["a"]);
-		expect(lines[0]!.planned).toEqual([]);
-		expect(lines[0]!.amount).toBe(100);
+		expect(lines[0]?.planned).toEqual([]);
+		expect(lines[0]?.amount).toBe(100);
 	});
 
 	test("blank lines are left off the list", () => {

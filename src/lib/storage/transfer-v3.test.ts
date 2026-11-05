@@ -103,7 +103,8 @@ describe("backup version 3", () => {
 		const out = await exportBackupV3(repo, NOW);
 		const byId = new Map(out.payments.map((p) => [p.id, p]));
 		expect(byId.get("n1")?.note).toBe("From savings");
-		expect(byId.get("n2") && "note" in byId.get("n2")!).toBe(false);
+		expect(byId.get("n2")).toBeDefined();
+		expect(byId.get("n2")).not.toHaveProperty("note");
 		const again = new InMemoryRepository();
 		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)));
 		expect(await exportBackupV3(again, NOW)).toEqual(out);

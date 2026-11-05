@@ -28,11 +28,12 @@ Default to using Bun instead of Node.js.
   `tests/setup.ts`, so components render in tests. They sit next to the code (`*.test.ts`),
   except the page and layout tests in `tests/` (a `.ts` under `src/pages/` would be a route).
   `bunfig.toml` runs every script on the Bun runtime, so tests may use `Bun.file`.
-- `bun run check` is `astro check` then Biome. `biome.json` extends `@kcconfigs/biome/astro`,
-  which reads an `.astro` file's template as well as its frontmatter, so an import used only
-  in the template counts as used. Keep that preset (or an equivalent override): without it,
-  `bun run format` deletes the `BaseLayout` import from every page. The preset leaves out
-  `dist/` and the test-file relaxations the default preset has, so `biome.json` adds both.
+- `bun run check` is `astro check` then Biome. `biome.json` extends
+  `@kcconfigs/biome/configs/astro`, which reads an `.astro` file's template as well as its
+  frontmatter, so an import used only in the template counts as used. Keep that preset:
+  without it, `bun run format` deletes the `BaseLayout` import from every page
+  (`tests/config/biome.test.ts` guards this). Its formatting has no semicolons and 120-column
+  lines.
 - Import through the aliases in `package.json` `imports`: `#lib/*`, `#components/*` and
   `#styles/*`, each mapping to a `.ts` file, and `#layouts/*` with the `.astro` extension.
 - Every piece of UI text is a catalog key with an entry in both `src/lib/i18n/en.ts` and
