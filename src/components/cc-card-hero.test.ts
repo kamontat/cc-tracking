@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-card-hero";
 import type { CcCardHero } from "#components/cc-card-hero";
 import type { GroupRoom } from "#lib/domain/room";

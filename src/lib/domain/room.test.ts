@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { groupRoom, heldBy } from "#lib/domain/room";
 import type {
 	Card,

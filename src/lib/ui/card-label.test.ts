@@ -1,5 +1,5 @@
-import { afterEach, expect, test } from "bun:test";
 import { render } from "lit";
+import { afterEach, expect, test } from "vitest";
 import type { Card, LimitGroup } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import {

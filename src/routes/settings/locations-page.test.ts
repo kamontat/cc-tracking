@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import type { LocationRecord } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
@@ -359,7 +359,7 @@ test("a failed add keeps the typed name; a failed rename keeps the field; a fail
 
 test("a place's line lays out as a row: the reset makes every div a column otherwise", async () => {
 	const css = (
-		await Bun.file(`${import.meta.dir}/../../styles/app.css`).text()
+		await Bun.file(`${import.meta.dirname}/../../styles/app.css`).text()
 	).replace(/\/\*[\s\S]*?\*\//g, "");
 	const rule =
 		/\.location-row__line,\s*\.location-add__control\s*\{([^}]*)\}/.exec(

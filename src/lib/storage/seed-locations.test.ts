@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
 

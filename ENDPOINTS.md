@@ -1,8 +1,8 @@
 # Endpoints
 
 Every address the app answers, as of the redesign (phases 1 to 7; no address changed in
-phase 7). The site is static: each page is `src/routes/<path>.html`, served at `/<path>`
-(`index.html` at `/`). The pages read their state from the query string only; no page reads
+phase 7). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
 Unknown query keys are ignored, and a value the page does not know reads as the default.

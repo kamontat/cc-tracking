@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import type { ReadyRow } from "#lib/domain/home";
 import {
 	DEFAULT_READY_FILTER,

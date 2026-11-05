@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-tx-ledger";
 import type { CcTxLedger } from "#components/cc-tx-ledger";
 import { cardLedger } from "#lib/domain/ledger";

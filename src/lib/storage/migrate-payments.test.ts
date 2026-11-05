@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { cardLedger } from "#lib/domain/ledger";
 import { buildStatement } from "#lib/domain/statement";
 import type { CardPayment, Period } from "#lib/domain/types";

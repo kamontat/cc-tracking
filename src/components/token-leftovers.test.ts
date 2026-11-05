@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import "#components/cc-card-hero";
 import "#components/cc-card-form";
 import "#components/cc-pay-form";
@@ -20,7 +20,7 @@ test("no component css carries a literal em or a border-width multiple", () => {
 
 test("the header height and the sub-header offset share one derivation", async () => {
 	const tokens = await Bun.file(
-		`${import.meta.dir}/../styles/tokens.css`,
+		`${import.meta.dirname}/../styles/tokens.css`,
 	).text();
 	expect(tokens).not.toMatch(/--cc-header-height:\s*3\.25rem/);
 	expect(tokens).toMatch(/--cc-header-height:\s*calc\(/);

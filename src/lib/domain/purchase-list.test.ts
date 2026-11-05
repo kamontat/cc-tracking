@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { allAnswered, listTotal, saveReply } from "#lib/domain/purchase-list";
 import type { PurchaseList } from "#lib/domain/types";
 

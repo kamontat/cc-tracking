@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-group-sheet";
 import { CcGroupSheet } from "#components/cc-group-sheet";
 import { GROUP_COLORS, type GroupColor } from "#lib/domain/group-color";

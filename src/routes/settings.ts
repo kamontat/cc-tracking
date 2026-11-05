@@ -1,6 +1,3 @@
-import "@kcstyles/reset.css";
-import "../styles/tokens.css";
-import "../styles/app.css";
 import "#components/cc-error-banner";
 import "#components/cc-about";
 import "#components/cc-display-settings";

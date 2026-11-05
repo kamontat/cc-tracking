@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import type { Card } from "#lib/domain/types";
 import { setLocale } from "#lib/i18n/index";
 import {

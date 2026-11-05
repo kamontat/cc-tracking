@@ -1,6 +1,6 @@
 process.env.TZ = "Asia/Bangkok";
 
-import { afterEach, expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { displayDate } from "#lib/domain/date";
 import {
 	buildInfo,
@@ -16,14 +16,6 @@ import {
 } from "#lib/ui/build-info";
 
 const SHA = "7ba698c1d4f0a2b3c4d5e6f708192a3b4c5d6e7f";
-
-afterEach(() => {
-	delete process.env.BUN_PUBLIC_COMMIT_SHA;
-	delete process.env.BUN_PUBLIC_BUILT_AT;
-	delete process.env.BUN_PUBLIC_PR_NUMBER;
-	delete process.env.BUN_PUBLIC_ENVIRONMENT;
-	delete process.env.BUN_PUBLIC_BRANCH;
-});
 
 test("shortens a commit sha to the seven characters GitHub shows", () => {
 	expect(shortCommit(SHA)).toBe("7ba698c");
@@ -48,14 +40,16 @@ test("reads no timestamp from an empty or unparsable value", () => {
 	expect(parseBuiltAt("last tuesday")).toBeNull();
 });
 
-test("carries the commit and build time the bundler inlined", () => {
-	process.env.BUN_PUBLIC_COMMIT_SHA = SHA;
-	process.env.BUN_PUBLIC_BUILT_AT = "2026-09-24T13:12:00Z";
-	process.env.BUN_PUBLIC_PR_NUMBER = "42";
-	process.env.BUN_PUBLIC_ENVIRONMENT = "preview";
-	process.env.BUN_PUBLIC_BRANCH = "feat/x";
-
-	expect(buildInfo()).toEqual({
+test("carries the commit and build time the build inlined", () => {
+	expect(
+		buildInfo({
+			PUBLIC_COMMIT_SHA: SHA,
+			PUBLIC_BUILT_AT: "2026-09-24T13:12:00Z",
+			PUBLIC_PR_NUMBER: "42",
+			PUBLIC_ENVIRONMENT: "preview",
+			PUBLIC_BRANCH: "feat/x",
+		}),
+	).toEqual({
 		commit: SHA,
 		builtAt: "2026-09-24T13:12:00Z",
 		pr: "42",
@@ -64,36 +58,36 @@ test("carries the commit and build time the bundler inlined", () => {
 	});
 });
 
-test("carries empty values when nothing was inlined, as in a dev server", () => {
-	expect(buildInfo().commit).toBe("");
-	expect(buildInfo().builtAt).toBe("");
-	expect(buildInfo().pr).toBe("");
+test("carries empty values when nothing was inlined", () => {
+	expect(buildInfo({}).commit).toBe("");
+	expect(buildInfo({}).builtAt).toBe("");
+	expect(buildInfo({}).pr).toBe("");
 });
 
-test("dev server reads as development", () => {
-	const real = globalThis.process;
-	// @ts-expect-error simulate the browser, where `process` does not exist
-	globalThis.process = undefined;
-	try {
-		expect(buildInfo()).toEqual({
-			commit: "",
-			builtAt: "",
-			pr: "",
-			environment: "development",
-			branch: "",
-		});
-	} finally {
-		globalThis.process = real;
-	}
+test("dev server reads as development, whatever the environment carries", () => {
+	expect(
+		buildInfo({
+			DEV: true,
+			PUBLIC_COMMIT_SHA: SHA,
+			PUBLIC_ENVIRONMENT: "local",
+		}),
+	).toEqual({
+		commit: "",
+		builtAt: "",
+		pr: "",
+		environment: "development",
+		branch: "",
+	});
 });
 
 test("unset environment reads as local", () => {
-	expect(buildInfo().environment).toBe("local");
+	expect(buildInfo({}).environment).toBe("local");
 });
 
 test("unknown environment reads as local", () => {
-	process.env.BUN_PUBLIC_ENVIRONMENT = "staging";
-	expect(buildInfo().environment).toBe("local");
+	expect(buildInfo({ PUBLIC_ENVIRONMENT: "staging" }).environment).toBe(
+		"local",
+	);
 });
 
 test("titleMark marks development", () => {

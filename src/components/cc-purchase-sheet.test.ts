@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-purchase-sheet";
 import type { CcPurchaseSheet } from "#components/cc-purchase-sheet";
 import type { Card, LimitGroup, Purchase } from "#lib/domain/types";

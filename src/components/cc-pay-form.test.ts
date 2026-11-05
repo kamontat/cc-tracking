@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import "#components/cc-pay-form";
 import type { PayDetail } from "#components/cc-pay-form";
 import type { Card } from "#lib/domain/types";

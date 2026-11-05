@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { afterExit, EXIT_TIMEOUT_MS } from "#lib/ui/motion";
 
 const animated = (finished: Promise<unknown>[]) =>

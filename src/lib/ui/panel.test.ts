@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { panelOpen, rememberPanel } from "#lib/ui/panel";
 
 function toggled(open: boolean): Event {

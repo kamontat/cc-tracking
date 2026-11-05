@@ -1,8 +1,9 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { GROUP_COLORS } from "#lib/domain/group-color";
 import { groupInk } from "#styles/shared";
 
-const read = (path: string) => Bun.file(new URL(path, import.meta.url)).text();
+const read = (path: string) =>
+	Bun.file(`${import.meta.dirname}/${path}`).text();
 
 test("groupInk has a rule for each of the twelve colours", () => {
 	for (const name of GROUP_COLORS) {
@@ -24,7 +25,7 @@ test("app.css carries the same rules for the light-DOM pages", async () => {
 
 test("no stylesheet still names the four old group colours or a numbered data-g", async () => {
 	const glob = new Bun.Glob("**/*.{ts,css}");
-	const root = new URL("../", import.meta.url).pathname;
+	const root = `${import.meta.dirname}/../`;
 	for await (const file of glob.scan(root)) {
 		if (file.endsWith(".test.ts")) continue;
 		const body = await Bun.file(`${root}${file}`).text();

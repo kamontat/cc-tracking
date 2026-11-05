@@ -231,7 +231,7 @@ const needs = `<div class="panel needs">
 	<div class="item"><span class="ico soon">◷</span><span><b>Waiting on list for 30 Oct 2026</b><span class="sm">KBank Visa (RI), KTC Titanium with a long name (KC)</span><span class="amt">฿2.00</span></span></div>
 	<div class="item"><span class="ico plain">⇄</span><span><b>Draft list for 02 Nov 2026</b><span class="sm">KBank Visa (RI), SCB Platinum (RI)</span><span class="amt">฿2.00</span></span></div>
 </div>`;
-const groupPanels = Object.values(groups).map((g) => `<div class="panel group-panel"><div class="top"><b>${g.name} (${g.owner})</b><span>${g.room} of ${g.limit}</span></div><span class="track"><i class="${g.level}" style="inline-size:${g.used}%"></i></span><span class="sm">${g.cards} · ${g.level === "bad" ? "over limit" : g.used + "% used"}</span></div>`).join("");
+const groupPanels = Object.values(groups).map((g) => `<div class="panel group-panel"><div class="top"><b>${g.name} (${g.owner})</b><span>${g.room} of ${g.limit}</span></div><span class="track"><i class="${g.level}" style="inline-size:${g.used}%"></i></span><span class="sm">${g.cards} · ${g.level === "bad" ? "over limit" : `${g.used}% used`}</span></div>`).join("");
 const listControls = `<div class="controls"><span class="search">Search card</span><span class="filter">Filter</span></div><span class="sortchip">Sort: Most room ▾</span>`;
 const listFooter = `<div class="footer-bar"><b>2 cards selected</b><span class="controls"><span class="btn quiet">Clear</span><span class="btn">Enter amounts ›</span></span></div>`;
 const listHead = `<div class="sub-head"><span class="back">‹</span><span><b>New purchase list</b><small>5 cards in Krabi</small></span></div>`;

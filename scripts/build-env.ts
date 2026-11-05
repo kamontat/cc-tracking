@@ -1,9 +1,9 @@
 export type BuildEnv = {
-	BUN_PUBLIC_COMMIT_SHA: string;
-	BUN_PUBLIC_BUILT_AT: string;
-	BUN_PUBLIC_PR_NUMBER: string;
-	BUN_PUBLIC_ENVIRONMENT: string;
-	BUN_PUBLIC_BRANCH: string;
+	PUBLIC_COMMIT_SHA: string;
+	PUBLIC_BUILT_AT: string;
+	PUBLIC_PR_NUMBER: string;
+	PUBLIC_ENVIRONMENT: string;
+	PUBLIC_BRANCH: string;
 };
 
 export type BuildEnvInput = {
@@ -12,11 +12,12 @@ export type BuildEnvInput = {
 	/** What `git rev-parse --abbrev-ref HEAD` printed; `""` (the default) when it could not answer. */
 	branch?: string;
 	now: Date;
-	env: Record<string, string | undefined>;
+	env: Partial<BuildEnv>;
 };
 
 /**
- * The values `bun-server build` inlines into the bundle (it bundles with `env: "BUN_PUBLIC_*"`).
+ * The build stamps `astro.config.ts` puts in the environment, which Vite inlines into the bundle
+ * as `import.meta.env.PUBLIC_*` (see `#lib/ui/build-info`).
  *
  * An value already in the environment wins over what git says: a CI job building from a
  * detached or shallow checkout knows the commit it was triggered for, and git there may not.
@@ -25,8 +26,7 @@ export type BuildEnvInput = {
  * checkout reads `HEAD` on a detached CI checkout, which is why the workflows set it explicitly.
  *
  * The PR number only ever comes from the preview deploy workflow, but it is always set, empty
- * elsewhere: the bundler only rewrites variables that exist, and an unset one would survive
- * into the browser as a `process.env` read that throws.
+ * elsewhere, so every build carries the same five stamps.
  */
 export function resolveBuildEnv({
 	sha,
@@ -35,10 +35,10 @@ export function resolveBuildEnv({
 	env,
 }: BuildEnvInput): BuildEnv {
 	return {
-		BUN_PUBLIC_COMMIT_SHA: env.BUN_PUBLIC_COMMIT_SHA ?? sha.trim(),
-		BUN_PUBLIC_BUILT_AT: env.BUN_PUBLIC_BUILT_AT ?? now.toISOString(),
-		BUN_PUBLIC_PR_NUMBER: env.BUN_PUBLIC_PR_NUMBER ?? "",
-		BUN_PUBLIC_ENVIRONMENT: env.BUN_PUBLIC_ENVIRONMENT ?? "local",
-		BUN_PUBLIC_BRANCH: env.BUN_PUBLIC_BRANCH ?? branch.trim(),
+		PUBLIC_COMMIT_SHA: env.PUBLIC_COMMIT_SHA ?? sha.trim(),
+		PUBLIC_BUILT_AT: env.PUBLIC_BUILT_AT ?? now.toISOString(),
+		PUBLIC_PR_NUMBER: env.PUBLIC_PR_NUMBER ?? "",
+		PUBLIC_ENVIRONMENT: env.PUBLIC_ENVIRONMENT ?? "local",
+		PUBLIC_BRANCH: env.PUBLIC_BRANCH ?? branch.trim(),
 	};
 }

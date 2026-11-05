@@ -38,27 +38,32 @@ const EMPTY: BuildInfo = {
 	branch: "",
 };
 
+/** The stamps `astro.config.ts` puts in the environment, as `import.meta.env` carries them. */
+export type BuildStamps = {
+	/** True on `astro dev` (and in tests), where the stamps say nothing about the page. */
+	DEV?: boolean;
+	PUBLIC_COMMIT_SHA?: string;
+	PUBLIC_BUILT_AT?: string;
+	PUBLIC_PR_NUMBER?: string;
+	PUBLIC_ENVIRONMENT?: string;
+	PUBLIC_BRANCH?: string;
+};
+
 /**
- * The commit and build time the bundler inlined, empty on a dev server.
+ * The commit and build time `astro build` inlined, empty on a dev server.
  *
- * `bun-server build` bundles with `env: "BUN_PUBLIC_*"`, which rewrites each of these
- * member expressions into a string literal, so `process` itself is never evaluated in a
- * built page. A page served without that rewrite -- the dev server -- evaluates it and
- * throws `ReferenceError` in the browser, which is what the catch is for: the caller then
- * gets the empty pair and shows the dev fallback rather than losing the whole About panel.
+ * Vite replaces each `import.meta.env.PUBLIC_*` with a string literal at build time; `DEV`
+ * marks the dev server, which shows the dev fallback whatever the environment carries.
  */
-export function buildInfo(): BuildInfo {
-	try {
-		return {
-			commit: process.env.BUN_PUBLIC_COMMIT_SHA ?? "",
-			builtAt: process.env.BUN_PUBLIC_BUILT_AT ?? "",
-			pr: process.env.BUN_PUBLIC_PR_NUMBER ?? "",
-			environment: toEnvironment(process.env.BUN_PUBLIC_ENVIRONMENT ?? ""),
-			branch: process.env.BUN_PUBLIC_BRANCH ?? "",
-		};
-	} catch {
-		return EMPTY;
-	}
+export function buildInfo(env: BuildStamps = import.meta.env): BuildInfo {
+	if (env.DEV) return EMPTY;
+	return {
+		commit: env.PUBLIC_COMMIT_SHA ?? "",
+		builtAt: env.PUBLIC_BUILT_AT ?? "",
+		pr: env.PUBLIC_PR_NUMBER ?? "",
+		environment: toEnvironment(env.PUBLIC_ENVIRONMENT ?? ""),
+		branch: env.PUBLIC_BRANCH ?? "",
+	};
 }
 
 /**

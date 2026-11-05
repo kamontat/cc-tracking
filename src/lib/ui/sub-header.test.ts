@@ -1,5 +1,5 @@
-import { afterEach, expect, test } from "bun:test";
 import { html, render } from "lit";
+import { afterEach, expect, test } from "vitest";
 import { setLocale } from "#lib/i18n/index";
 import { subHeader } from "#lib/ui/sub-header";
 

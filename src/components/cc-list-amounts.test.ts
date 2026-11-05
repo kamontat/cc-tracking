@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-list-amounts";
 import type { CcListAmounts } from "#components/cc-list-amounts";
 import type { GroupRoom } from "#lib/domain/room";

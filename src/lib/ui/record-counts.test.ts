@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { setLocale } from "#lib/i18n/index";
 import { countsText } from "./record-counts";
 

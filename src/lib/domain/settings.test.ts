@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { DEFAULT_SETTINGS, toSettings } from "#lib/domain/settings";
 
 test("reads stored settings back", () => {

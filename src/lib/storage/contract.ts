@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, test } from "vitest";
 import type { Location } from "#lib/domain/location";
 import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type {

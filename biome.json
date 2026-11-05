@@ -2,22 +2,20 @@
 	"$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
 	"extends": ["@kcconfigs/biome"],
 	"files": {
-		"includes": ["!.claude"]
+		"includes": ["!.claude", "!.astro", "!public"]
 	},
 	"overrides": [
 		{
-			"includes": ["src/routes/**/*.html"],
+			"includes": ["**/*.astro"],
 			"linter": {
 				"rules": {
-					"complexity": {
-						"useArrowFunction": "off",
-						"useDateNow": "off"
+					"correctness": {
+						"noUnusedImports": "off",
+						"noUnusedVariables": "off"
 					},
 					"style": {
-						"useTemplate": "off"
-					},
-					"suspicious": {
-						"noDoubleEquals": "off"
+						"useConst": "off",
+						"useImportType": "off"
 					}
 				}
 			}

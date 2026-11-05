@@ -1,37 +1,39 @@
 {
 	"name": "cc-tracking",
-	"module": "index.ts",
 	"type": "module",
 	"private": true,
 	"imports": {
 		"#lib/*": "./src/lib/*.ts",
 		"#components/*": "./src/components/*.ts",
-		"#styles/*": "./src/styles/*.ts"
+		"#styles/*": "./src/styles/*.ts",
+		"#layouts/*": "./src/layouts/*"
 	},
 	"scripts": {
-		"dev": "bun-server dev",
-		"build": "bun run scripts/build.ts --statics public:.",
-		"preview": "bun-server preview",
-		"test": "bun test",
-		"typecheck": "tsc --noEmit",
-		"check": "biome check",
-		"format": "biome check --unsafe --write"
+		"dev": "astro dev",
+		"build": "astro build",
+		"preview": "astro preview",
+		"test": "vitest run",
+		"check": "bun run check:type && bun run check:biome",
+		"check:type": "astro check",
+		"check:biome": "biome check",
+		"format": "biome check --unsafe --write",
+		"astro": "astro"
 	},
 	"dependencies": {
-		"@kcstyles/reset.css": "2.0.0",
-		"@kctools/bun-server": "0.4.0",
+		"@kcstyles/reset.css": "2.0.1",
+		"astro": "7.4.1",
 		"lit": "3.3.3"
 	},
 	"devDependencies": {
+		"@astrojs/check": "0.9.11",
 		"@biomejs/biome": "2.5.15",
-		"@happy-dom/global-registrator": "21.0.1",
 		"@kcconfigs/biome": "3.0.0",
-		"@kcconfigs/tsconfig": "2.0.0",
-		"@types/bun": "1.4.2",
+		"@kcconfigs/tsconfig": "2.1.0",
+		"@types/bun": "1.4.3",
+		"happy-dom": "21.0.1",
+		"typescript": "6.0.3",
 		"typescript-language-server": "6.0.2",
-		"wrangler": "4.149.0"
-	},
-	"peerDependencies": {
-		"typescript": "7.0.2"
+		"vitest": "4.1.12",
+		"wrangler": "4.151.3"
 	}
 }

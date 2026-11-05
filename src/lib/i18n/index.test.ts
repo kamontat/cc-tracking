@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "bun:test";
+import { beforeEach, expect, test } from "vitest";
 import { en } from "#lib/i18n/en";
 import type { MessageKey } from "#lib/i18n/index";
 import {

@@ -1,4 +1,4 @@
-import { expect, spyOn, test } from "bun:test";
+import { expect, test, vi } from "vitest";
 import type { CcErrorBanner } from "#components/cc-error-banner";
 import type { CcListAmounts } from "#components/cc-list-amounts";
 import type { ListLine, PurchaseList } from "#lib/domain/types";
@@ -321,10 +321,10 @@ test("a saved list replaces the page in history", async () => {
 	const root = mount();
 	const replaced: string[] = [];
 	const assigned: string[] = [];
-	const replace = spyOn(location, "replace").mockImplementation((url) => {
+	const replace = vi.spyOn(location, "replace").mockImplementation((url) => {
 		replaced.push(String(url));
 	});
-	const assign = spyOn(location, "assign").mockImplementation((url) => {
+	const assign = vi.spyOn(location, "assign").mockImplementation((url) => {
 		assigned.push(String(url));
 	});
 	try {

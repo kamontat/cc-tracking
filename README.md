@@ -7,24 +7,28 @@ closes and payment is due, and which statement a purchase lands on.
 
 ```bash
 bun install
-bun run dev        # http://127.0.0.1:3000
+bun run dev        # http://localhost:4321
 bun run build      # static pages into dist/
 bun run preview    # serve the build
-bun test           # the whole suite
-bun run typecheck  # tsc --noEmit
-bun run check      # biome check
+bun run test       # the whole suite (Vitest)
+bun run check      # astro check, then biome check
+bun run format     # biome fixes and formatting
 ```
 
-`bun run build` goes through `scripts/build.ts`, which stamps
-`BUN_PUBLIC_COMMIT_SHA`, `BUN_PUBLIC_BUILT_AT`, `BUN_PUBLIC_ENVIRONMENT`,
-`BUN_PUBLIC_BRANCH` and `BUN_PUBLIC_PR_NUMBER` into the environment before handing
-over to `bun-server build`; the bundler inlines them all. Settings > About shows the
+The site is built with [Astro](https://astro.build/) from
+[bun-astro-template](https://github.com/kamontat/bun-astro-template): each page is
+`src/pages/<path>.astro` over `src/layouts/BaseLayout.astro`, and its
+`src/routes/<path>.ts` module renders the Lit components in the browser.
+
+`astro.config.ts` stamps `PUBLIC_COMMIT_SHA`, `PUBLIC_BUILT_AT`,
+`PUBLIC_ENVIRONMENT`, `PUBLIC_BRANCH` and `PUBLIC_PR_NUMBER` into the environment
+before the build starts; Vite inlines them all. Settings > About shows the
 commit, build time and branch alongside a link to the repository and to the commit.
 The environment (`local` unless a deploy workflow sets `preview` or `production`)
 tints the header and marks the tab title and brand — `(local)`, `(pr-<n>)` on a
 preview — so no build is mistaken for production, which carries no mark. Set any
-of these variables yourself to override what git reports. A dev server inlines
-nothing, so About there reads as a development build with no build time, marked
+of these variables yourself to override what git reports. A dev server ignores
+them, so About there reads as a development build with no build time, marked
 `(dev)`.
 
 ## Deploy
@@ -33,6 +37,7 @@ The site is static assets on Cloudflare (`wrangler.jsonc` serves `dist/`). A pus
 to `main` deploys production at https://cc-tracking.kc.in.th, and each pull request
 gets a preview at `https://pr-<n>-cc-tracking.kcinth.workers.dev`.
 `public/_redirects` sends the old `/backup` address to `/settings` with a 301.
+Google Tag Manager loads only on production, where the deploy sets `PUBLIC_GTM_ID`.
 
 ## Pages
 

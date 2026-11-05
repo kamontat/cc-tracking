@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcNeedsYou } from "#components/cc-needs-you";
 import type { CcReadyPanel } from "#components/cc-ready-panel";
 import type { Card } from "#lib/domain/types";

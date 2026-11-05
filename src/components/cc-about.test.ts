@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "bun:test";
+import { beforeEach, expect, test } from "vitest";
 import "#components/cc-about";
 import { resetLocale, setLocale } from "#lib/i18n/index";
 import {

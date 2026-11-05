@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { MessageError } from "#lib/i18n/error";
 import {
 	sampleCard,

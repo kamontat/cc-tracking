@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-owed-list";
 import { CcOwedList } from "#components/cc-owed-list";
 import type { PayChoice } from "#lib/domain/pay";

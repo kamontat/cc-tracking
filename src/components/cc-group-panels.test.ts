@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import { CcGroupPanels } from "#components/cc-group-panels";
 import type { GroupPanel } from "#lib/domain/cards-view";
 import type { Owner } from "#lib/domain/owner";

@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-ready-picker";
 import type { CcReadyPicker } from "#components/cc-ready-picker";
 import { setLocale } from "#lib/i18n/index";

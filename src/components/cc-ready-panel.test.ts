@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-ready-panel";
 import type { CcReadyPanel } from "#components/cc-ready-panel";
 import { setLocale } from "#lib/i18n/index";

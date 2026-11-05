@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { GROUP_COLORS } from "#lib/domain/group-color";
 
-const css = await Bun.file(new URL("./tokens.css", import.meta.url)).text();
+const css = await Bun.file(`${import.meta.dirname}/tokens.css`).text();
 
 /** The body of the first rule whose selector line is exactly `selector`. */
 function block(selector: string): string {

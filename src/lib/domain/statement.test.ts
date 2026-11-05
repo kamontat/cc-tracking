@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { buildStatement, recentPeriods } from "#lib/domain/statement";
 import type { Card, Purchase, StatementPayment } from "#lib/domain/types";
 

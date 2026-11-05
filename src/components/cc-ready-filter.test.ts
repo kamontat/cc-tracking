@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-ready-filter";
 import type { CcReadyFilter } from "#components/cc-ready-filter";
 import {

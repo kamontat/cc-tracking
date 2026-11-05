@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { defaultLocations } from "#lib/domain/locations";
 import { DEFAULT_SETTINGS } from "#lib/domain/settings";
 import type { Card } from "#lib/domain/types";

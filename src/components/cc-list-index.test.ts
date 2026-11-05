@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-list-index";
 import type { CcListIndex } from "#components/cc-list-index";
 import type { Card, PurchaseList } from "#lib/domain/types";

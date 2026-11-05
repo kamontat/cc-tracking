@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { sampleCard } from "#lib/storage/contract";
 import { createRepository, StorageUnavailableError } from "#lib/storage/index";
 

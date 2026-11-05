@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { canPurchase } from "#lib/domain/card";
 import type { Card, LocationRecord } from "#lib/domain/types";
 

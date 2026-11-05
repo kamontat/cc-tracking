@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcListAmounts } from "#components/cc-list-amounts";
 import type { CcListReply } from "#components/cc-list-reply";
 import { setLocale } from "#lib/i18n/index";

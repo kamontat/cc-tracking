@@ -1,5 +1,4 @@
-import { expect, test } from "bun:test";
-import { Glob } from "bun";
+import { expect, test } from "vitest";
 
 /**
  * Every page shows one person's own data from their browser, so none belongs in a search
@@ -9,17 +8,9 @@ import { Glob } from "bun";
  *
  * There is deliberately no `robots.txt` with `Disallow: /`: a crawler barred from a page never
  * reads its `noindex`, and can still index the bare address from a link elsewhere.
+ *
+ * The meta is in `BaseLayout`; tests/pages/pages.test.ts checks every rendered page carries it.
  */
-const NOINDEX = '<meta name="robots" content="noindex, nofollow" />';
-
-test("every page asks not to be indexed", async () => {
-	const missing: string[] = [];
-	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
-		const source = await Bun.file(path).text();
-		if (!source.includes(NOINDEX)) missing.push(path);
-	}
-	expect(missing).toEqual([]);
-});
 
 test("every response carries the noindex header", async () => {
 	const headers = await Bun.file("public/_headers").text();

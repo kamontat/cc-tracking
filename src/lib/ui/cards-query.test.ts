@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view";
 import { setLocale } from "#lib/i18n/index";
 import {

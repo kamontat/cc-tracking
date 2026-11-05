@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-card-statements";
 import type { CcCardStatements } from "#components/cc-card-statements";
 import type { LedgerStatement, Purchase } from "#lib/domain/types";

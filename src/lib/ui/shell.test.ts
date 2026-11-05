@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcFabMenu } from "#components/cc-fab-menu";
 import { setLocale } from "#lib/i18n/index";
 import type { Environment } from "#lib/ui/build-info";

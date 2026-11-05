@@ -1,5 +1,4 @@
-import { expect, test } from "bun:test";
-import { Glob } from "bun";
+import { expect, test } from "vitest";
 import { en } from "#lib/i18n/en";
 
 /**
@@ -24,7 +23,7 @@ test("no component or route renders a hard-coded English sentence", async () => 
 	const values = new Set<string>(Object.values(en));
 	const offenders: string[] = [];
 
-	for await (const path of new Glob("src/{components,routes}/**/*.ts").scan(
+	for await (const path of new Bun.Glob("src/{components,routes}/**/*.ts").scan(
 		".",
 	)) {
 		if (path.endsWith(".test.ts")) continue;

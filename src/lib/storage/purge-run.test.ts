@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import { cardLedger } from "#lib/domain/ledger";
 import type { Card, PurchaseList } from "#lib/domain/types";
 import { applyPurge, previewPurge } from "#lib/storage/purge-run";

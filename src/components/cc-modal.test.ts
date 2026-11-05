@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcModal } from "#components/cc-modal";
 import "#components/cc-modal";
 import { setLocale, t } from "#lib/i18n/index";

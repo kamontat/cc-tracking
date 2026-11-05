@@ -1,12 +1,13 @@
-import { expect, test } from "bun:test";
-import { Glob } from "bun";
+import { expect, test } from "vitest";
 import { GROUP_COLORS } from "#lib/domain/group-color";
 
 /** Build details live in Settings > About, so no page carries a footer of its own. */
 test("no route page carries a footer", async () => {
 	const offenders: string[] = [];
 
-	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
+	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(
+		".",
+	)) {
 		const source = await Bun.file(path).text();
 		if (source.includes("<cc-site-footer")) offenders.push(path);
 	}
@@ -14,28 +15,27 @@ test("no route page carries a footer", async () => {
 	expect(offenders).toEqual([]);
 });
 
-/** The shell renders into these three slots, so every route page must carry all of them. */
-test("every route page carries the shell slots", async () => {
-	const problems: string[] = [];
+/** The shell's slots are checked on every rendered page in tests/pages/pages.test.ts. */
+test("no route page carries the old header nav", async () => {
+	const offenders: string[] = [];
 
-	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
+	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(
+		".",
+	)) {
 		const source = await Bun.file(path).text();
-		for (const id of ["site-header", "page", "tabbar"]) {
-			if (!source.includes(`id="${id}"`)) problems.push(`${path}: no #${id}`);
-		}
-		if (source.includes("site-header__nav")) {
-			problems.push(`${path}: old site-header__nav`);
-		}
+		if (source.includes("site-header__nav")) offenders.push(path);
 	}
 
-	expect(problems).toEqual([]);
+	expect(offenders).toEqual([]);
 });
 
 /** Language and theme are picked on the settings page, not in every page's header. */
 test("no route page carries a language picker in its header", async () => {
 	const offenders: string[] = [];
 
-	for await (const path of new Glob("src/routes/**/*.html").scan(".")) {
+	for await (const path of new Bun.Glob("src/{pages,layouts}/**/*.astro").scan(
+		".",
+	)) {
 		const source = await Bun.file(path).text();
 		if (source.includes("<cc-lang-switch>")) offenders.push(path);
 	}

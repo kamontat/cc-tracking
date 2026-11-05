@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { setLocale } from "#lib/i18n/index";
 import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments";
 import { InMemoryRepository } from "#lib/storage/repository";

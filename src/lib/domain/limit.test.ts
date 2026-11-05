@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { unassignedCards, usageLevel, usageShare } from "#lib/domain/limit";
 import type { Card, LimitGroup } from "#lib/domain/types";
 

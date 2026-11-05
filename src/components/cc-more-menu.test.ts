@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-more-menu";
 import type { CcMoreMenu, MoreItem } from "#components/cc-more-menu";
 import { setLocale } from "#lib/i18n/index";

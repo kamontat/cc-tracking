@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import "#components/cc-needs-you";
 import "#components/cc-pay-picker";
 import "#components/cc-tx-ledger";

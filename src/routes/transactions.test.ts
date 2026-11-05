@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcListIndex } from "#components/cc-list-index";
 import type { CcOwedList } from "#components/cc-owed-list";
 import type { CcTxFilter } from "#components/cc-tx-filter";

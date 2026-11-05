@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcReadyFilter } from "#components/cc-ready-filter";
 import type { CcReadyPicker } from "#components/cc-ready-picker";
 import type { Card } from "#lib/domain/types";

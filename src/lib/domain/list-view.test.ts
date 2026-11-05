@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { byGroupName } from "#lib/domain/list-view";
 import type { LimitGroup } from "#lib/domain/types";
 

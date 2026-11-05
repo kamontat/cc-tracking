@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import "#components/cc-card-form";
 import type { CcCardForm } from "#components/cc-card-form";
 import type { Card, LimitGroup, LocationRecord } from "#lib/domain/types";

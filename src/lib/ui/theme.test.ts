@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from "bun:test";
+import { beforeEach, expect, test } from "vitest";
 import { applyTheme, getTheme, setTheme } from "#lib/ui/theme";
 
 beforeEach(() => {

@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import type { CcErrorBanner } from "#components/cc-error-banner";
 import type { CcMoreMenu } from "#components/cc-more-menu";
 import type { CcPurchaseSheet } from "#components/cc-purchase-sheet";
@@ -415,8 +415,8 @@ test("a card kept at a place of its own that takes no purchases names that place
 
 	const actions = root.querySelector(".card-actions");
 	expect(actions?.querySelector('[data-action="use-on-list"]')).toBeNull();
-	expect(text(actions?.querySelector(".note"))).toStartWith(
-		"Chiang Mai takes no new purchases",
+	expect(text(actions?.querySelector(".note"))).toMatch(
+		/^Chiang Mai takes no new purchases/,
 	);
 	expect(text(root.querySelector("h1 small"))).toBe(
 		`${card.id} · Kept in Chiang Mai`,

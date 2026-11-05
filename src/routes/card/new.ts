@@ -1,6 +1,3 @@
-import "@kcstyles/reset.css";
-import "../../styles/tokens.css";
-import "../../styles/app.css";
 import { bootstrap } from "#lib/ui/page";
 import { renderCardEditPage } from "./edit-page";
 

@@ -1,5 +1,5 @@
-import { afterEach, expect, test } from "bun:test";
 import { html, nothing, type ReactiveController, render } from "lit";
+import { afterEach, expect, test } from "vitest";
 import {
 	type ActionRowText,
 	actionRow,

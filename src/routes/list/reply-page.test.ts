@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcListReply } from "#components/cc-list-reply";
 import type { ListLine, PurchaseList } from "#lib/domain/types";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import "#components/cc-pay-picker";
 import { CcPayPicker, type PickDetail } from "#components/cc-pay-picker";
 import type { PayChoice } from "#lib/domain/pay";

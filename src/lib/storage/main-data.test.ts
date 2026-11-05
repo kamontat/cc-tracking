@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { toGroupColor } from "#lib/domain/group-color";
 import { cardLedger } from "#lib/domain/ledger";
 import type { Card, LimitGroup, Purchase } from "#lib/domain/types";

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { DEFAULT_LOCATION, LOCATIONS, toLocation } from "#lib/domain/location";
 
 test("accepts each known location", () => {

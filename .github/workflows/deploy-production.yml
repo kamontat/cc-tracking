@@ -28,9 +28,11 @@ jobs:
       - uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         id: deploy
         env:
-          ## Inlined by the bundler for the header tint and tab title
-          BUN_PUBLIC_ENVIRONMENT: production
-          BUN_PUBLIC_BRANCH: main
+          ## Inlined by `astro build` (which wrangler runs) for the header tint and tab title
+          PUBLIC_ENVIRONMENT: production
+          PUBLIC_BRANCH: main
+          ## Google Tag Manager container; only production sets it, so previews send no data
+          PUBLIC_GTM_ID: GTM-5TMJN4ZX
         with:
           command: deploy
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

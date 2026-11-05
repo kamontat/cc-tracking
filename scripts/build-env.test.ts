@@ -1,58 +1,56 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { resolveBuildEnv } from "./build-env";
 
 const now = new Date(Date.UTC(2026, 8, 24, 13, 12));
 
 test("stamps the commit git reports and the moment of the build", () => {
 	expect(resolveBuildEnv({ sha: "7ba698c\n", now, env: {} })).toEqual({
-		BUN_PUBLIC_COMMIT_SHA: "7ba698c",
-		BUN_PUBLIC_BUILT_AT: "2026-09-24T13:12:00.000Z",
-		BUN_PUBLIC_PR_NUMBER: "",
-		BUN_PUBLIC_ENVIRONMENT: "local",
-		BUN_PUBLIC_BRANCH: "",
+		PUBLIC_COMMIT_SHA: "7ba698c",
+		PUBLIC_BUILT_AT: "2026-09-24T13:12:00.000Z",
+		PUBLIC_PR_NUMBER: "",
+		PUBLIC_ENVIRONMENT: "local",
+		PUBLIC_BRANCH: "",
 	});
 });
 
 test("keeps the pull request number a preview deploy carries", () => {
-	const env = { BUN_PUBLIC_PR_NUMBER: "42" };
+	const env = { PUBLIC_PR_NUMBER: "42" };
 
-	expect(
-		resolveBuildEnv({ sha: "7ba698c", now, env }).BUN_PUBLIC_PR_NUMBER,
-	).toBe("42");
-});
-
-test("keeps a commit the environment already carries, as CI may know better than git", () => {
-	const env = { BUN_PUBLIC_COMMIT_SHA: "deadbee" };
-
-	expect(
-		resolveBuildEnv({ sha: "7ba698c", now, env }).BUN_PUBLIC_COMMIT_SHA,
-	).toBe("deadbee");
-});
-
-test("keeps a build time the environment already carries", () => {
-	const env = { BUN_PUBLIC_BUILT_AT: "2020-01-01T00:00:00.000Z" };
-
-	expect(
-		resolveBuildEnv({ sha: "7ba698c", now, env }).BUN_PUBLIC_BUILT_AT,
-	).toBe("2020-01-01T00:00:00.000Z");
-});
-
-test("stamps an empty commit when git had nothing to say, so the page reads dev", () => {
-	expect(resolveBuildEnv({ sha: "", now, env: {} }).BUN_PUBLIC_COMMIT_SHA).toBe(
-		"",
+	expect(resolveBuildEnv({ sha: "7ba698c", now, env }).PUBLIC_PR_NUMBER).toBe(
+		"42",
 	);
 });
 
+test("keeps a commit the environment already carries, as CI may know better than git", () => {
+	const env = { PUBLIC_COMMIT_SHA: "deadbee" };
+
+	expect(resolveBuildEnv({ sha: "7ba698c", now, env }).PUBLIC_COMMIT_SHA).toBe(
+		"deadbee",
+	);
+});
+
+test("keeps a build time the environment already carries", () => {
+	const env = { PUBLIC_BUILT_AT: "2020-01-01T00:00:00.000Z" };
+
+	expect(resolveBuildEnv({ sha: "7ba698c", now, env }).PUBLIC_BUILT_AT).toBe(
+		"2020-01-01T00:00:00.000Z",
+	);
+});
+
+test("stamps an empty commit when git had nothing to say, so the page reads dev", () => {
+	expect(resolveBuildEnv({ sha: "", now, env: {} }).PUBLIC_COMMIT_SHA).toBe("");
+});
+
 test("environment defaults to local", () => {
-	expect(
-		resolveBuildEnv({ sha: "", now, env: {} }).BUN_PUBLIC_ENVIRONMENT,
-	).toBe("local");
+	expect(resolveBuildEnv({ sha: "", now, env: {} }).PUBLIC_ENVIRONMENT).toBe(
+		"local",
+	);
 });
 
 test("keeps the environment a deploy workflow carries", () => {
-	const env = { BUN_PUBLIC_ENVIRONMENT: "preview" };
+	const env = { PUBLIC_ENVIRONMENT: "preview" };
 
-	expect(resolveBuildEnv({ sha: "", now, env }).BUN_PUBLIC_ENVIRONMENT).toBe(
+	expect(resolveBuildEnv({ sha: "", now, env }).PUBLIC_ENVIRONMENT).toBe(
 		"preview",
 	);
 });
@@ -60,14 +58,14 @@ test("keeps the environment a deploy workflow carries", () => {
 test("branch comes from the checkout when the environment has none", () => {
 	expect(
 		resolveBuildEnv({ sha: "", branch: "feat/x\n", now, env: {} })
-			.BUN_PUBLIC_BRANCH,
+			.PUBLIC_BRANCH,
 	).toBe("feat/x");
 });
 
 test("branch comes from the environment when set", () => {
-	const env = { BUN_PUBLIC_BRANCH: "main" };
+	const env = { PUBLIC_BRANCH: "main" };
 
 	expect(
-		resolveBuildEnv({ sha: "", branch: "HEAD", now, env }).BUN_PUBLIC_BRANCH,
+		resolveBuildEnv({ sha: "", branch: "HEAD", now, env }).PUBLIC_BRANCH,
 	).toBe("main");
 });

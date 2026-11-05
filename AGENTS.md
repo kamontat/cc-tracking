@@ -2,8 +2,6 @@
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
 - Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
 - Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
 - Use `bunx <package> <command>` instead of `npx <package> <command>`
@@ -11,18 +9,30 @@ Default to using Bun instead of Node.js.
 
 ## Stack
 
-- Static pages, no server code. Each page is `src/routes/<path>.html` with a module that
-  renders Lit components (`lit`, decorators) from `src/components/`; domain rules live in
-  `src/lib/domain/`, storage (browser `localStorage`) in `src/lib/storage/`.
-- `@kctools/bun-server` builds and serves the pages: `bun run dev` (dev server, `--port` to
-  change it from 3000), `bun run build` (through `scripts/build.ts`, which stamps the
-  `BUN_PUBLIC_*` build info, into `dist/`) and `bun run preview` (serves the build).
+- Static pages, no server code, built with [Astro](https://astro.build/) (from
+  `kamontat/bun-astro-template`). Each page is `src/pages/<path>.astro`: the shared
+  `BaseLayout` (`src/layouts/`) with a title, a `mainClass` and a `<script>` importing the
+  route module `src/routes/<path>.ts`, which renders Lit components (`lit`, decorators) from
+  `src/components/` in the browser. Domain rules live in `src/lib/domain/`, storage (browser
+  `localStorage`) in `src/lib/storage/`. `tests/pages/pages.test.ts` holds every page to
+  that shape.
+- `BaseLayout` owns the `<head>` (noindex, the inline theme boot, the global CSS: reset,
+  `tokens.css`, `app.css`) and Google Tag Manager, which loads only when `PUBLIC_GTM_ID` is
+  set at build time (the production deploy sets it).
+- `bun run dev` (dev server on 4321, `--port` to change it), `bun run build` (`astro build`
+  into `dist/`) and `bun run preview` (serves the build). `astro.config.ts` stamps the
+  `PUBLIC_*` build info (`scripts/build-env.ts`) before Vite inlines it.
 - Deployed as Cloudflare static assets: `wrangler.jsonc` serves `dist/`, and
   `public/_redirects` holds the redirects.
-- Tests are `bun test` with happy-dom preloaded (`bunfig.toml`, `tests/setup-happydom.ts`),
-  so components render in tests. `bun run check` is Biome, `bun run typecheck` is `tsc`.
+- Tests are Vitest (`bun run test`, `vitest.config.ts`) in a happy-dom environment with
+  `tests/setup.ts`, so components render in tests. They sit next to the code (`*.test.ts`),
+  except the page and layout tests in `tests/` (a `.ts` under `src/pages/` would be a route).
+  `bunfig.toml` runs every script on the Bun runtime, so tests may use `Bun.file`.
+- `bun run check` is `astro check` then Biome. Biome sees only an `.astro` file's
+  frontmatter, so `biome.json` turns the unused-import rules off there; without that,
+  `bun run format` deletes the `BaseLayout` import from every page.
 - Import through the aliases in `package.json` `imports`: `#lib/*`, `#components/*` and
-  `#styles/*`, each mapping to a `.ts` file.
+  `#styles/*`, each mapping to a `.ts` file, and `#layouts/*` with the `.astro` extension.
 - Every piece of UI text is a catalog key with an entry in both `src/lib/i18n/en.ts` and
   `src/lib/i18n/th.ts`.
 - An address or query key change must update `ENDPOINTS.md` in the same change.

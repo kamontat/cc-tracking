@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { InMemoryRepository, type Repository } from "#lib/storage/repository";
 import { renderEntryPage } from "./entry";
 import { renderPickerPage } from "./picker-page";
@@ -9,23 +9,15 @@ import { renderSavedPage } from "./view-page";
 /** The four list pages: one static page per case, each a thin entry over the shared flows. */
 const PAGES = ["new", "draft", "reply", "view"] as const;
 
-const page = (name: string) =>
-	Bun.file(`${import.meta.dir}/${name}.html`).text();
+const page = (name: string) => Bun.file(`src/pages/list/${name}.astro`).text();
 
 test("each list case has its own page, and the old single page is gone", async () => {
 	for (const name of PAGES) {
 		const source = await page(name);
-		expect(source, name).toContain(
-			`<script type="module" src="./${name}.ts"></script>`,
-		);
-		expect(source, name).toContain('<link rel="icon" href="../favicon.svg"');
-		expect(source, name).toContain(
-			'<main class="page page--narrow" id="page">',
-		);
+		expect(source, name).toContain(`import "../../routes/list/${name}";`);
+		expect(source, name).toContain('mainClass="page--narrow"');
 	}
-	expect(await Bun.file(`${import.meta.dir}/../list.html`).exists()).toBe(
-		false,
-	);
+	expect(await Bun.file("src/pages/list.astro").exists()).toBe(false);
 });
 
 /** The body of the first rule in `css` whose selector is exactly `selector`. */

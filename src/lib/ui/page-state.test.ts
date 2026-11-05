@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { MessageError } from "#lib/i18n/error";
 import { setLocale } from "#lib/i18n/index";
 import { StorageError } from "#lib/storage/repository";

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { PurchaseList } from "#lib/domain/types";
 import { listPageAddress, newListAddress } from "./list-address";
 

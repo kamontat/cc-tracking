@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcCardsFilter } from "#components/cc-cards-filter";
 import type { CcCardsList } from "#components/cc-cards-list";
 import type { CcGroupPanels } from "#components/cc-group-panels";

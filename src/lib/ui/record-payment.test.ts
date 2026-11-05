@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { Card, CardPayment, Purchase } from "#lib/domain/types";
 import { InMemoryRepository } from "#lib/storage/repository";
 import { loadMoneyData } from "#lib/ui/money-data";

@@ -57,7 +57,8 @@
   4. The payment sheet: `/payments/<cardId>` over the picker (suggested), or
      `/cards/<id>/pay` over the card page. `?amount=` stays a query either way.
   5. Trailing slash: `/cards/abc/` is a 404 on Workers; add `/:id/` rules or never write one.
-  6. Local dev: `@kctools/bun-server` (dev and preview) ignores `_redirects`, so the deeper
-     paths 404 locally. Teach it `_redirects`, or develop with `wrangler dev`.
+  6. Local dev: `astro dev` and `astro preview` ignore `public/_redirects`, so the deeper
+     paths 404 locally. Use Astro's `redirects` config or dynamic routes, or develop with
+     `wrangler dev`.
 
   Then update `ENDPOINTS.md`, `PRD.md` and `PRD_TH.md` together, and build it test-first.

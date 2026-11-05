@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { payAddress, readPayAddress } from "#lib/ui/pay-address";
 
 test("the payment page address carries the card and the amount, encoded", () => {

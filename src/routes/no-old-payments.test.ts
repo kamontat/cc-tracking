@@ -1,5 +1,4 @@
-import { expect, test } from "bun:test";
-import { Glob } from "bun";
+import { expect, test } from "vitest";
 
 /**
  * Payments are card payments now. The per-statement records are read only (to convert them),
@@ -9,11 +8,11 @@ import { Glob } from "bun";
 test("no route or component writes an old statement payment", async () => {
 	const offenders: string[] = [];
 	for (const pattern of ["routes/**/*.ts", "components/**/*.ts"]) {
-		for await (const path of new Glob(pattern).scan({
-			cwd: `${import.meta.dir}/..`,
+		for await (const path of new Bun.Glob(pattern).scan({
+			cwd: `${import.meta.dirname}/..`,
 		})) {
 			if (path.endsWith(".test.ts")) continue;
-			const text = await Bun.file(`${import.meta.dir}/../${path}`).text();
+			const text = await Bun.file(`${import.meta.dirname}/../${path}`).text();
 			if (/\.(savePayment|deletePayment)\(/.test(text)) offenders.push(path);
 		}
 	}

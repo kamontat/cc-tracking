@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcModal } from "#components/cc-modal";
 import type { CcPayForm } from "#components/cc-pay-form";
 import type { CcPayPicker } from "#components/cc-pay-picker";

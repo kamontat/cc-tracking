@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { CcCardForm } from "#components/cc-card-form";
 import type { CcErrorBanner } from "#components/cc-error-banner";
 import type { Card } from "#lib/domain/types";

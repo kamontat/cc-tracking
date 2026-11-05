@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import "#components/cc-error-banner";
 import { setLocale } from "#lib/i18n/index";
 

@@ -1,6 +1,3 @@
-import "@kcstyles/reset.css";
-import "../styles/tokens.css";
-import "../styles/app.css";
 import "#components/cc-cards-filter";
 import "#components/cc-cards-list";
 import "#components/cc-error-banner";

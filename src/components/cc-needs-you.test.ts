@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, test } from "vitest";
 import "#components/cc-needs-you";
 import type { CcNeedsYou } from "#components/cc-needs-you";
 import type { NeedsItem } from "#lib/domain/home";

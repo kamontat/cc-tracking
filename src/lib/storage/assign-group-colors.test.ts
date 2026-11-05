@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import {
 	assignGroupColors,
 	GROUP_COLORS_MIGRATION_KEY,
