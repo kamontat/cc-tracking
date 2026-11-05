@@ -64,6 +64,8 @@ test.each(pages)(
 	"%s carries the shell the route module renders into",
 	async (page) => {
 		const html = await render(page);
+		// English until the bundle runs; chrome.ts then sets the reader's locale.
+		expect(html).toContain('<html lang="en"');
 		expect(html).toContain('<meta name="robots" content="noindex, nofollow">');
 		for (const id of ["site-header", "page", "tabbar"])
 			expect(html).toContain(`id="${id}"`);

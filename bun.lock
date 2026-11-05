@@ -12,7 +12,7 @@
       "devDependencies": {
         "@astrojs/check": "0.9.11",
         "@biomejs/biome": "2.5.15",
-        "@kcconfigs/biome": "3.0.0",
+        "@kcconfigs/biome": "3.1.0",
         "@kcconfigs/tsconfig": "2.1.0",
         "@types/bun": "1.4.3",
         "happy-dom": "21.0.1",
@@ -262,7 +262,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.9", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.0.3", "@jridgewell/sourcemap-codec": "^1.4.10" } }, "sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ=="],
 
-    "@kcconfigs/biome": ["@kcconfigs/biome@3.0.0", "", { "peerDependencies": { "@biomejs/biome": "^2.0.0" } }, "sha512-pVgyJxNMWarfPegh7kz0nU4D09pBb+oIR+O5apyj0zfSuG1Vew9PtHIIab05++cAxHpttVUZs95g+iTIy/kkuw=="],
+    "@kcconfigs/biome": ["@kcconfigs/biome@3.1.0", "", { "peerDependencies": { "@biomejs/biome": "^2.0.0" } }, "sha512-BeR4GkUUbhsvOqhdZWGQIjuesUdSk0BCItXzZjb1pfe4qHNPiP1HTm8FzsWc1PECNKlR9UCMZhiZbhBKZmuIIw=="],
 
     "@kcconfigs/tsconfig": ["@kcconfigs/tsconfig@2.1.0", "", { "dependencies": { "@kctypes/generic": "3.0.0", "@types/bun": "^1.4.2", "@types/node": "^24.19.0" }, "peerDependencies": { "typescript": "^6.0.0" } }, "sha512-/1R5VpfeNETqTgy4Xf8RQAsF/XznKJ5p8jD+T/TcyA72/PE7xab/Tby8zTJ6hIQE4OyfTFmMlBPqRCHgogHKqQ=="],
 
