@@ -28,23 +28,23 @@
 
   Draft:
 
-  | Address | Was | Tab |
-  | ------- | --- | --- |
-  | `/` | `/` | Home |
-  | `/transactions` | `/transactions` | Transactions |
-  | `/transactions/owed` | `/transactions?view=owed` | Transactions |
-  | `/transactions/lists` | `/transactions?view=lists` | Transactions |
-  | `/payments/new` | `/pay` | Transactions |
-  | `/purchases/new?type=list` | `/list/new` | Home |
-  | `/purchases/<id>` | `/list/draft`, `/list/reply`, `/list/view` | Home |
-  | `/cards` | `/cards` | Cards |
-  | `/cards/groups` | `/cards?view=groups` | Cards |
-  | `/cards/groups/<id>`, `/cards/groups/new` (sheets) | `/cards?group=`, `?newGroup=1` | Cards |
-  | `/cards/new` | `/card/new` | Cards |
-  | `/cards/<id>` | `/card?id=` | Cards |
-  | `/cards/<id>/edit` | `/card/edit?id=` | Cards |
-  | `/cards/<id>/purchase` (sheet) | not in the address | Cards |
-  | `/settings`, `/settings/locations` | same | Settings |
+  | Address                                            | Was                                        | Tab          |
+  | -------------------------------------------------- | ------------------------------------------ | ------------ |
+  | `/`                                                | `/`                                        | Home         |
+  | `/transactions`                                    | `/transactions`                            | Transactions |
+  | `/transactions/owed`                               | `/transactions?view=owed`                  | Transactions |
+  | `/transactions/lists`                              | `/transactions?view=lists`                 | Transactions |
+  | `/payments/new`                                    | `/pay`                                     | Transactions |
+  | `/purchases/new?type=list`                         | `/list/new`                                | Home         |
+  | `/purchases/<id>`                                  | `/list/draft`, `/list/reply`, `/list/view` | Home         |
+  | `/cards`                                           | `/cards`                                   | Cards        |
+  | `/cards/groups`                                    | `/cards?view=groups`                       | Cards        |
+  | `/cards/groups/<id>`, `/cards/groups/new` (sheets) | `/cards?group=`, `?newGroup=1`             | Cards        |
+  | `/cards/new`                                       | `/card/new`                                | Cards        |
+  | `/cards/<id>`                                      | `/card?id=`                                | Cards        |
+  | `/cards/<id>/edit`                                 | `/card/edit?id=`                           | Cards        |
+  | `/cards/<id>/purchase` (sheet)                     | not in the address                         | Cards        |
+  | `/settings`, `/settings/locations`                 | same                                       | Settings     |
 
   `/purchases/<id>` keeps one address while a list goes from draft to sent to saved; the
   page picks its step by status.

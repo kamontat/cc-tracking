@@ -23,7 +23,7 @@ reasons don't show up in the code.
     ids `m:<cardId>:<period>:<index>`), marked done by `cc:migration:payments`. Every
     statement keeps its left amount; an old overpayment is capped at the statement's total,
     so a statement that showed 1,500 paid on 1,000 now shows 1,000 paid. If the step fails
-    the page shows an error with *Reload* instead of numbers, and the reload retries.
+    the page shows an error with _Reload_ instead of numbers, and the reload retries.
   - Purchase places become location records (`cc:location:<id>`), seeded once from
     `settings.purchaseLocations` and marked by `cc:migration:location-records`. The app no
     longer writes `cc:settings`, and a card at a location with no record is moved, with a
@@ -34,7 +34,7 @@ reasons don't show up in the code.
     no longer read; the Cards page's archived fold uses `cc:panel:cards-archive`.
 - Payments belong to a card, not a statement. Money settles the oldest statement first and any
   extra stays as credit, so an overpaid card now shows credit and more room than its limit.
-  *Mark paid* and per-part *Unmark* are gone from the card page; pay from `/pay`, and delete a
+  _Mark paid_ and per-part _Unmark_ are gone from the card page; pay from `/pay`, and delete a
   wrong payment from Transactions.
 - A statement keeps its close and due dates only once it is fully paid. One that still owes
   money, part paid included, follows the card's current cycle, so its dates can move after a
@@ -49,74 +49,74 @@ reasons don't show up in the code.
     `/card/edit?id=<id>`
   - `/backup` still redirects to `/settings`
 - Removed from the interface: the page footer (now Settings › About), the dashboard's purchase
-  form, *This sitting* and *Start new batch*, *Can spend now*, the dashboard's *Due next* and
-  *Purchases by date* (now in Transactions), the card page's Add purchase dialog
+  form, _This sitting_ and _Start new batch_, _Can spend now_, the dashboard's _Due next_ and
+  _Purchases by date_ (now in Transactions), the card page's Add purchase dialog
   (`cc-quick-add`), the registry's card and group tables and dialogs, the payment dialog
-  (`cc-payment-form`), and Settings' *Purchases* section and side-by-side backup boxes.
+  (`cc-payment-form`), and Settings' _Purchases_ section and side-by-side backup boxes.
 - 148 message keys are gone, among them every `footer.`, `dashboard.`, `due.`, `range.`,
   `sitting.` and `payment.` key, with the components that used them (`cc-site-footer`,
   `cc-due-list`, `cc-purchase-range`, `cc-sitting-list`, `cc-spendable`, `cc-card-table`,
   `cc-limit-group-table`, `cc-limit-group-form`, `cc-statement-list`, `cc-card-summary`,
   `cc-settings`).
 - Things to re-learn:
-  - Purchases are planned as lists: pick cards with *+ New › New purchase list*, enter amounts,
+  - Purchases are planned as lists: pick cards with _+ New › New purchase list_, enter amounts,
     send the list, then record the spender's reply. A single purchase is added from the card
-    page's *Add purchase*.
-  - Tapping a row in *Needs you*, *Upcoming*, the ledger or *Lists* opens it in place instead
-    of going to another page; the page it led to is a button inside (*Open card*, *Open list*,
-    *Pay*, *Record reply*).
+    page's _Add purchase_.
+  - Tapping a row in _Needs you_, _Upcoming_, the ledger or _Lists_ opens it in place instead
+    of going to another page; the page it led to is a button inside (_Open card_, _Open list_,
+    _Pay_, _Record reply_).
   - Places that take purchases are ticked per location at Settings › Locations.
   - Archive and Delete for a card are in the card page's More menu (`⋯`), not the edit form.
   - Restoring opens a sheet that reads the clipboard first.
-  - A ledger row no longer says *Purchase* or *Payment*: the sign (− or +) says it, backed by
+  - A ledger row no longer says _Purchase_ or _Payment_: the sign (− or +) says it, backed by
     red or green.
 
 ### Features
 
 - Four pages, Home, Transactions, Cards and Settings: a bottom bar on a phone, tabs on the right
-  of the header from 900px, and a floating *+ New* menu with *New purchase list* and *Make a
-  payment* on every page but the list, form and payment pages. Sub-pages share a slim
+  of the header from 900px, and a floating _+ New_ menu with _New purchase list_ and _Make a
+  payment_ on every page but the list, form and payment pages. Sub-pages share a slim
   sub-header with a back arrow.
-- Purchase lists: the new-list picker `/list/new` (search, *Kept in* and *Account holder*
+- Purchase lists: the new-list picker `/list/new` (search, _Kept in_ and _Account holder_
   filters, three sorts), entering amounts with a note per line, a review table copied as plain
-  lines or saved as an image for the chat, *Mark sent*, and the spender's reply (*Made* or *Not
-  made* with the real amount), which saves the purchases and can move not-made lines to the next
+  lines or saved as an image for the chat, _Mark sent_, and the spender's reply (_Made_ or _Not
+  made_ with the real amount), which saves the purchases and can move not-made lines to the next
   day's draft. Each state has its own page: `/list/new`, `/list/draft`, `/list/reply`,
   `/list/view`. A waiting list holds its amounts against its group's room.
-- Warnings while entering amounts, none blocking: over the room (with *Lower to*, and room a
+- Warnings while entering amounts, none blocking: over the room (with _Lower to_, and room a
   waiting list holds or a planned payment would make), a shared limit, an overdue bill, the
-  close date, and a date that has passed (with *Change to today*).
-- Home: *Needs you*, money at risk first (overdue bills, late plans, waiting lists, plans in the
-  next three days, drafts), beside *Ready to use* from 900px, which shows the four cards with
+  close date, and a date that has passed (with _Change to today_).
+- Home: _Needs you_, money at risk first (overdue bills, late plans, waiting lists, plans in the
+  next three days, drafts), beside _Ready to use_ from 900px, which shows the four cards with
   the most room and opens the rest in place.
-- Payments on any day at `/pay`: a card picker, most pressing first, then a sheet with *Next
-  bill* and *Everything owed*, the date, an optional note, and a button that names the amount
-  and card. A later date makes a planned payment, which counts only once marked *Paid*.
+- Payments on any day at `/pay`: a card picker, most pressing first, then a sheet with _Next
+  bill_ and _Everything owed_, the date, an optional note, and a button that names the amount
+  and card. A later date makes a planned payment, which counts only once marked _Paid_.
 - Transactions: one ledger of purchases (−) and payments (+) by day, a month summary,
-  *Upcoming* (waiting lists with a two-step *Confirm*, planned payments with *Paid* and
-  *Delete*), search, filters as removable chips, four sorts, 50 rows at a time, a *Lists* view
-  and *Owed on each card*, the view kept in the address.
-- Rows that open in place in *Needs you*, *Upcoming*, the ledger and *Lists*: one open at a
+  _Upcoming_ (waiting lists with a two-step _Confirm_, planned payments with _Paid_ and
+  _Delete_), search, filters as removable chips, four sorts, 50 rows at a time, a _Lists_ view
+  and _Owed on each card_, the view kept in the address.
+- Rows that open in place in _Needs you_, _Upcoming_, the ledger and _Lists_: one open at a
   time, with a sentence and the actions there, and a billing cycle line that shows where a
-  purchase or bill sits between its start, close and due dates, and today. Home gains *Paid*,
-  *Delete* and *Confirm*.
-- Cards page: by place or one flat list, search, a filter sheet (place, holder, *Not in a
-  group*, sort), archived cards folded at the end, and limit group panels (a *Cards · Limit
-  groups* switch on a phone) whose sheet adds and edits a group at `?group=<id>` or
+  purchase or bill sits between its start, close and due dates, and today. Home gains _Paid_,
+  _Delete_ and _Confirm_.
+- Cards page: by place or one flat list, search, a filter sheet (place, holder, _Not in a
+  group_, sort), archived cards folded at the end, and limit group panels (a _Cards · Limit
+  groups_ switch on a phone) whose sheet adds and edits a group at `?group=<id>` or
   `?newGroup=1`.
-- One wallet tile for every list of cards (*Ready to use*, the new-list picker, Cards, the
-  payment picker and *Owed on each card*), in its limit group's colour, with a rail for the
+- One wallet tile for every list of cards (_Ready to use_, the new-list picker, Cards, the
+  payment picker and _Owed on each card_), in its limit group's colour, with a rail for the
   group's used share: grey, amber from 80%, red past the limit.
 - Each limit group keeps one of twelve colours, chosen in the group sheet from swatches or with
-  *Random*; tiles, chips, the card hero and the group panels wear it.
-- The card page: room, owed, next bill and credit up front, *Use on a list*, *Add purchase*
-  and *Make a payment*, and statements that unfold to their purchases (with *Edit* and a
-  two-step *Delete*) and the payment parts that settled them. Cards are added and edited on a
+  _Random_; tiles, chips, the card hero and the group panels wear it.
+- The card page: room, owed, next bill and credit up front, _Use on a list_, _Add purchase_
+  and _Make a payment_, and statements that unfold to their purchases (with _Edit_ and a
+  two-step _Delete_) and the payment parts that settled them. Cards are added and edited on a
   full screen, `/card/new` and `/card/edit?id=`, in four sections.
 - Locations at `/settings/locations`: add, rename, delete one no card uses (never the last),
-  and tick *Takes purchases*. Default names show in the reader's language, and every list of
+  and tick _Takes purchases_. Default names show in the reader's language, and every list of
   places sorts A to Z.
-- Settings › Reset › *Delete old purchases*: older than 6 months, 1 year, 3 years or all, with a
+- Settings › Reset › _Delete old purchases_: older than 6 months, 1 year, 3 years or all, with a
   count, a line for what stays and a second ask. Only purchases on fully paid statements go,
   with the payments that settled them, so no owed, credit or room figure moves.
 - Settings › About lists the environment, build time, source and commit. Builds other than
@@ -131,12 +131,12 @@ reasons don't show up in the code.
 - A calm new look: sage neutrals, a green accent, rounded panels and generous spacing in both
   themes, with amber and rose for warnings, always with words. Light-theme text colours were
   darkened where the prototype's fell short of AA contrast.
-- One rule for naming a card (*panel*, *line* and *name* forms from `card-label.ts`), and cards
+- One rule for naming a card (_panel_, _line_ and _name_ forms from `card-label.ts`), and cards
   titled `name · holder (last4)` on their own page and edit form.
 - Every repeated list is a row list (one panel, a line between rows) or a card list (a panel
   per item), each drawn from one shared style (UI-22).
 - Negative amounts read with the minus sign, `−฿21,065.00`, as signed amounts do.
-- Sheets and the *+ New* menu animate out as well as in, and not at all under reduced motion.
+- Sheets and the _+ New_ menu animate out as well as in, and not at all under reduced motion.
 - Keyboard: when an action takes an open row away, focus moves to the next row, the previous
   one, or the nearest heading; the group sheet's holder and colour choices are radio groups
   with arrow keys.
@@ -146,7 +146,7 @@ reasons don't show up in the code.
 - A page no longer flashes the wrong theme on load: the saved theme is applied before the first
   paint.
 - A part-paid statement no longer keeps due dates from an old cycle: Kbank Passion's October
-  statement read *due 04 Nov* after its cycle changed to due 15 days after the 25th (09 Nov).
+  statement read _due 04 Nov_ after its cycle changed to due 15 days after the 25th (09 Nov).
 
 ### Decisions
 
@@ -164,7 +164,7 @@ reasons don't show up in the code.
   because the old export wrote `cc:payment:` records that never convert once the marker is set.
   Rejected: staying at version 2 with optional fields.
 - A Merge of a version 3 file is purely additive and keeps local location records, so an old
-  backup can't undo a rename or a *Takes purchases* tick. Rejected: saying in the help that
+  backup can't undo a rename or a _Takes purchases_ tick. Rejected: saying in the help that
   Merge can delete; overwriting locations as other records are.
 - Location records are seeded once behind a marker, and become the one truth for where purchases
   happen. Rejected: keeping `settings.purchaseLocations` beside them; seeding whenever none is
@@ -176,9 +176,9 @@ reasons don't show up in the code.
   choosing by status; a page per step.
 - The copied list is plain lines and the image a table always drawn on white, because a chat
   breaks any text table and other people see paper, not this reader's dark mode. Rejected:
-  tab-separated text; a ` | ` table; an image that follows the theme.
+  tab-separated text; a `|` table; an image that follows the theme.
 - Delete draft and Cancel list act at once, since both only remove a list nothing was bought
-  from (the user's call). A payment's *Delete* and a list's *Confirm* stay two-step everywhere
+  from (the user's call). A payment's _Delete_ and a list's _Confirm_ stay two-step everywhere
   they appear.
 - Statement dates freeze when a statement is fully paid, not at the first payment: settled
   history must not move, but a statement that still owes money is not settled. Rejected:
@@ -260,10 +260,10 @@ reasons don't show up in the code.
 
 - Purchase lists replace receipt entry (RD-09 replaces RD-01 and RD-02). Buying starts with
   choosing cards and amounts, not with receipts after the fact.
-- Going over a card's room offers one action, *Lower to* the room. *Pay first* and moving the
+- Going over a card's room offers one action, _Lower to_ the room. _Pay first_ and moving the
   extra onto another card were tried in the prototype and dropped as too complicated.
 - Transactions is one ledger rather than separate list and payment tabs. The + opens the
-  payment form, so a separate *+ Plan* button was dropped.
+  payment form, so a separate _+ Plan_ button was dropped.
 - Deleting old purchases removes only what is fully paid, with its payments and lists, so no
   card's balance moves.
 - Locations become editable, which reverses DD-11 and an out-of-scope item. They need a stored
@@ -306,7 +306,7 @@ reasons don't show up in the code.
   deleted, so links from other documents and pull requests keep pointing at the right thing.
 - Decided with the user for the redesign:
   - entering receipts gets its own screen
-  - a recent entries list, newest added first, replaces *This sitting*
+  - a recent entries list, newest added first, replaces _This sitting_
   - a new visual direction on the same stack (Bun, TypeScript, Lit)
   - no theme flash on load
   - restore checks ranges
@@ -320,24 +320,24 @@ reasons don't show up in the code.
 
 ### Features
 
-- A statement can be paid in parts. *Mark paid*, on the card page and in the dashboard's due
+- A statement can be paid in parts. _Mark paid_, on the card page and in the dashboard's due
   list, opens a dialog for the amount and the date paid, starting at what is left and today,
   so paying in full is still one click.
 - `StatementPayment` gains an optional `parts` list of `{ paidAt, amount }`, oldest first, and
   `Statement` gains `paidAmount` and `remaining`. A statement counts as paid once its parts add
   up to its total.
 - On the card page each payment is a row in the statement's table, under its purchases and in
-  the same columns, shown as an amount off the total with its own *Unmark*. A *Left to pay* row
+  the same columns, shown as an amount off the total with its own _Unmark_. A _Left to pay_ row
   closes the table, and what is left sits under the month's total on its summary line.
 - Backup import checks `parts`: a non-empty list of valid dates and positive whole-satang
   amounts.
 
 ### Improvements
 
-- The due list's *Total* column, its sort, the card page's *Next due* tile, *Owed on this card*
+- The due list's _Total_ column, its sort, the card page's _Next due_ tile, _Owed on this card_
   and limit-group usage all count only what is left on a partly paid statement, so each payment
   returns its own share of the credit.
-- The Thai label for *Unmark* is now ยกเลิกชำระ.
+- The Thai label for _Unmark_ is now ยกเลิกชำระ.
 - `TODO.md` plans a settings-page bar showing how much of the browser's `localStorage` (about
   5 MB per site) the app's `cc:` data uses, split by cards, purchases, payments, limit groups
   and settings, so a full store shows up before a save fails.
@@ -356,16 +356,16 @@ reasons don't show up in the code.
 ### BREAKING CHANGES
 
 - The language picker is no longer in the page header; change the language from the new
-  *Display* panel on the settings page. The `cc-lang-switch` element is removed.
+  _Display_ panel on the settings page. The `cc-lang-switch` element is removed.
 - A reader who never picked a language and whose browser lists Thai before English now gets
   Thai rather than English. Pick English on the settings page to keep it.
 
 ### Features
 
-- *Can spend now* shows a bar under each card's available amount, with "N% of the limit used"
+- _Can spend now_ shows a bar under each card's available amount, with "N% of the limit used"
   in words beside it. The bar tints amber from 80% and red once the group is over its limit.
 - `--cc-radius-pill`, `--cc-accent-surface` and `--cc-panel-padding` tokens.
-- A *Display* panel at the top of the settings page holds the language picker and a new theme
+- A _Display_ panel at the top of the settings page holds the language picker and a new theme
   picker: Match device, Light or Dark. The theme is saved in this browser under `cc:theme` and
   stamped on `<html data-theme>` on every page.
 
@@ -378,7 +378,7 @@ reasons don't show up in the code.
 
 ### Bug fixes
 
-- *Purchases by date*'s tiles wrap on a phone instead of clipping a six-figure total.
+- _Purchases by date_'s tiles wrap on a phone instead of clipping a six-figure total.
 - With no saved language, the app follows the first of the browser's languages it speaks, in
   the browser's own order, and falls back to Thai. Before, any English entry in the list won.
 
@@ -394,7 +394,7 @@ reasons don't show up in the code.
 
 - Teal, because it stays clearly apart from the danger red and warning amber that sit beside
   it in the due list and the usage bars.
-- The bar measures everything still unpaid against the limit, the figure *Can spend now*
+- The bar measures everything still unpaid against the limit, the figure _Can spend now_
   already uses, so it says "of the limit used" rather than "used this cycle".
 - The flows were left alone: redesigning them needs the reader's own walk-throughs, so they
   stay in `TODO.md`.
@@ -410,11 +410,11 @@ reasons don't show up in the code.
 
 - The dashboard's purchase form is always open. After each add it keeps the card and date and
   clears amount and note, ready for the next receipt from the same card or day.
-- *This sitting* lists the purchases entered since *Start new batch* was last pressed, latest
+- _This sitting_ lists the purchases entered since _Start new batch_ was last pressed, latest
   first, with how long ago each was entered, the card (id then name, as other panels name it),
   the purchase date and the amount. It survives reloads, closing the tab and the next day, and
-  is read-only. *Start new batch* asks for a second click before it clears the list.
-- *Purchases by date* counts purchases, their total and the cards used across every card for
+  is read-only. _Start new batch_ asks for a second click before it clears the list.
+- _Purchases by date_ counts purchases, their total and the cards used across every card for
   Today, This week (Monday to Sunday), This month, Last month or a custom range of purchase
   dates, with a card filter. Archived cards count and are tagged. The list stays folded until
   opened, grouped by day, each card linked to its page.
@@ -428,8 +428,8 @@ reasons don't show up in the code.
 
 ### Improvements
 
-- On desktop the dashboard is two columns: the form and *This sitting* on the narrower left,
-  *Purchases by date*, *Due next* and *Spendable* on the right. On a phone they stack in that
+- On desktop the dashboard is two columns: the form and _This sitting_ on the narrower left,
+  _Purchases by date_, _Due next_ and _Spendable_ on the right. On a phone they stack in that
   order.
 - A failed add shows its error beside the form, with the typing left in place to retry.
 - The dashboard re-reads the clock each minute, so a tab left open past midnight moves its
@@ -442,10 +442,10 @@ reasons don't show up in the code.
   purpose.
 - The range filters on the purchase date, not the entry time: it answers "what was bought
   then", and archiving a card later must not change that answer.
-- Purchases saved before entry times existed are not backfilled and never appear in *This
-  sitting*; guessing an entry time would put them in the wrong batch.
+- Purchases saved before entry times existed are not backfilled and never appear in _This
+  sitting_; guessing an entry time would put them in the wrong batch.
 - The batch start is working state for one browser, not a record, so it stays out of backups.
-- A friendlier visual redesign, including a "used this cycle" bar in *Spendable*, was mocked
+- A friendlier visual redesign, including a "used this cycle" bar in _Spendable_, was mocked
   up and deliberately deferred to `TODO.md`.
 
 ## 2026-10-17: Clearer names for card and limit group owners
@@ -528,9 +528,9 @@ reasons don't show up in the code.
   `backup.question.pasted`, `backup.here`, `backup.incoming`, `backup.counts`,
   `backup.merge`, `backup.mergeHint`, `backup.replace`, `backup.replaceHint`,
   `backup.importedText`, `backup.error.clipboard`, `backup.error.copy`.
-- The dashboard's *Can spend now* and *Due next* panels sort from their column headings, and
-  from a sort chip on the narrow layout, the same way the cards page does. *Can spend now*
-  sorts by card, available, closes or due; *Due next* by card, where, closes, due or total.
+- The dashboard's _Can spend now_ and _Due next_ panels sort from their column headings, and
+  from a sort chip on the narrow layout, the same way the cards page does. _Can spend now_
+  sorts by card, available, closes or due; _Due next_ by card, where, closes, due or total.
 - `applySpendView`, `applyDueView` and `nextPanelSort` in `list-view.ts`; `sortChip` takes an
   optional fallback view and `sortHeader` an optional next-sort function.
 - A preview deploy suffixes the page title and the header brand with `(pr-<n>)`, so it can't
@@ -539,19 +539,19 @@ reasons don't show up in the code.
 
 ### Improvements
 
-- The Backup panel is split into two outlined halves, *Save a copy* (`Download file`,
-  `Copy text`) and *Restore a copy* (`Choose file…`, `Paste text…`), side by side from
+- The Backup panel is split into two outlined halves, _Save a copy_ (`Download file`,
+  `Copy text`) and _Restore a copy_ (`Choose file…`, `Paste text…`), side by side from
   640px and stacked on a phone. Restore runs one step at a time inside its own half, and
   cancelling a pasted restore returns to the text so it can be fixed.
-- One verb, *restore*, runs from the button to the confirmation ("Restored …") and the error
+- One verb, _restore_, runs from the button to the confirmation ("Restored …") and the error
   ("Could not restore that copy."). `backup.unreadable` no longer says "file".
 - The file picker is styled as a quiet button instead of the browser's default control.
 - `Merge` in the restore question is the filled primary button. As a quiet button its
   sunken grey matched the counts panel above it, so it read as a panel, not a button.
 - Upgraded `@kcstyles/reset.css` 1.0.13, `@kctools/bun-server` 0.3.4, `@biomejs/biome`
   2.5.15, `typescript-language-server` 6.0.1 and `wrangler` 4.147.0.
-- Both dashboard panels start soonest close date first. Before, *Can spend now* listed the
-  most room first and *Due next* the soonest due date.
+- Both dashboard panels start soonest close date first. Before, _Can spend now_ listed the
+  most room first and _Due next_ the soonest due date.
 
 ### Bug fixes
 

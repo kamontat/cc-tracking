@@ -1,4 +1,3 @@
-
 Default to using Bun instead of Node.js.
 
 - Use `bun <file>` instead of `node <file>` or `ts-node <file>`
@@ -68,7 +67,7 @@ Default to using Bun instead of Node.js.
   and nothing interactive inside; the buttons go in `action` as bare buttons (a page is an
   `a.btn`) and show in the details region, `hidden` when closed. One row is open per component:
   use `useOpenRow` (which also resets a `useTwoStep` swap when its row closes). The two-step
-  *Delete* and *Confirm* are `useTwoStep` (`two-step.ts`). Namespace a row's id by kind and card
+  _Delete_ and _Confirm_ are `useTwoStep` (`two-step.ts`). Namespace a row's id by kind and card
   (`plan:<card>:<id>`, `list:<id>`), since a payment's id repeats across cards.
 - `#styles/*` maps to `.ts` only, so the route modules import `tokens.css` and `app.css` by
   relative path, not through the alias.

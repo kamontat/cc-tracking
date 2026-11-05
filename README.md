@@ -43,77 +43,77 @@ Google Tag Manager loads only on production, where the deploy sets `PUBLIC_GTM_I
 
 Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
 
-- `/` — Home. *Needs you* comes first: overdue bills, planned payments that are
+- `/` — Home. _Needs you_ comes first: overdue bills, planned payments that are
   late, purchase lists waiting for the spender's reply, planned payments due in
-  the next three days, and draft lists, or *All caught up* when there are none.
-  Each row opens in place with what it needs: *Pay* and *Open card* on an overdue
-  bill, *Paid* and *Delete* on a planned payment, *Record reply* and a two-step
-  *Confirm* on a waiting list, *Continue* and *Delete* on a draft. Under it,
-  *Ready to use* shows the four cards with the most room (see *Which cards can
-  take a purchase* below), sorted by room, each opening its card page, then *See
-  more* for the rest.
+  the next three days, and draft lists, or _All caught up_ when there are none.
+  Each row opens in place with what it needs: _Pay_ and _Open card_ on an overdue
+  bill, _Paid_ and _Delete_ on a planned payment, _Record reply_ and a two-step
+  _Confirm_ on a waiting list, _Continue_ and _Delete_ on a draft. Under it,
+  _Ready to use_ shows the four cards with the most room (see _Which cards can
+  take a purchase_ below), sorted by room, each opening its card page, then _See
+  more_ for the rest.
 - `/list/new` — the picker for a new purchase list: search, a Filter sheet (where
   a card is kept, its owner) and a sort (most room, longest to close, latest
   due), all kept in the address as `q`, `loc`, `owner` and `sort`. Ticking cards
-  shows a bar with how many are selected, *Clear*, and *Enter amounts*, which goes
+  shows a bar with how many are selected, _Clear_, and _Enter amounts_, which goes
   on to the next step for those cards in the order they were ticked.
 - `/list/new?card=<id>` (once per card) — a new purchase list for those cards.
   Enter an amount per card and the purchase date, with warnings that never block
-  (over the group's room, with *Lower to* the room left; room held by lists
+  (over the group's room, with _Lower to_ the room left; room held by lists
   waiting for the spender; a shared limit; an overdue bill; the close date; a date
-  that has passed). *Review* shows the dated table with *Copy text* and *Save
-  image* (on a phone that can share files, the image goes to the share sheet;
-  elsewhere it downloads), then *Mark as sent* or *Save as draft instead*.
+  that has passed). _Review_ shows the dated table with _Copy text_ and _Save
+  image_ (on a phone that can share files, the image goes to the share sheet;
+  elsewhere it downloads), then _Mark as sent_ or _Save as draft instead_.
 - `/list/draft?id=<list id>` — the same two steps for a stored draft, which names
-  any card that can no longer take purchases and leaves it out, plus *Delete
-  draft*, which deletes it at once.
+  any card that can no longer take purchases and leaves it out, plus _Delete
+  draft_, which deletes it at once.
 - `/list/reply?id=<list id>` — the spender's reply to a waiting list: mark each
-  line *Made* or *Not made*, correct the real amount, optionally move the
-  not-made lines to a draft for the next day, and save. *Cancel list* deletes the
+  line _Made_ or _Not made_, correct the real amount, optionally move the
+  not-made lines to a draft for the next day, and save. _Cancel list_ deletes the
   waiting list at once, so it stops holding room; nothing is bought.
 - `/list/view?id=<list id>` — a saved list, read-only: what was bought.
   Each list page opened on a list in another state links to that list's own
   page.
-- `/transactions` — the ledger of purchases and payments, with an *Upcoming*
-  section above it for planned payments and waiting lists, plus the *Lists* and
-  *Owed* views. The *+ New* menu in the header offers *New purchase list* and
-  *Make a payment*.
-- `/pay` — *Make a payment*: pick a card, then a sheet takes the amount, the date
+- `/transactions` — the ledger of purchases and payments, with an _Upcoming_
+  section above it for planned payments and waiting lists, plus the _Lists_ and
+  _Owed_ views. The _+ New_ menu in the header offers _New purchase list_ and
+  _Make a payment_.
+- `/pay` — _Make a payment_: pick a card, then a sheet takes the amount, the date
   and a note. A date after today saves it as a planned payment.
 - `/cards` — the card list and the limit groups, side by side from 900px and
-  switched between *Cards* and *Limit groups* on a phone. Each is searchable,
-  filterable (including *Not in a group*, `/cards?ungrouped=1`) and sortable.
+  switched between _Cards_ and _Limit groups_ on a phone. Each is searchable,
+  filterable (including _Not in a group_, `/cards?ungrouped=1`) and sortable.
   Limit groups are added and edited in a sheet (`?group=<id>`, or `?newGroup=1`
-  for a new one); each group has a colour, one of 12 swatches or *Random*.
+  for a new one); each group has a colour, one of 12 swatches or _Random_.
 - `/card/new` and `/card/edit?id=<cardId>` — the full-page card form: name, id,
   last 4, cycle, limit group, where it is kept (one of the stored locations), and whether
   it is a supplementary card (บัตรเสริม) with its own cardholder.
 - `/card?id=<cardId>` — one card. A hero gives the room left in its group, what
   it owes, the next bill and any credit. Its statements open to the purchases on
   them and the payment parts that paid them; each purchase can be edited in place
-  (date, amount and note; the card stays fixed) or deleted. *Add purchase* opens a
-  sheet. *Edit* leads to `/card/edit`, and the ⋯ menu holds *Archive card* (or
-  *Unarchive card*) and, while the card has no purchases and is on no open list,
-  *Delete card*.
-- `/settings` — sections for *Display* (language and theme), *Locations*,
-  *Backup*, *Reset* (*Delete old purchases* and *Delete all data*) and *About*.
+  (date, amount and note; the card stays fixed) or deleted. _Add purchase_ opens a
+  sheet. _Edit_ leads to `/card/edit`, and the ⋯ menu holds _Archive card_ (or
+  _Unarchive card_) and, while the card has no purchases and is on no open list,
+  _Delete card_.
+- `/settings` — sections for _Display_ (language and theme), _Locations_,
+  _Backup_, _Reset_ (_Delete old purchases_ and _Delete all data_) and _About_.
   The old `/backup` address redirects here.
 - `/settings/locations` — the stored locations: add, rename, delete (only one no
-  card is kept at), and tick *Takes purchases*.
+  card is kept at), and tick _Takes purchases_.
 
 ## Which cards can take a purchase
 
 The answer belongs to where a card is kept, not to the card. Each location on
-`/settings/locations` has a *Takes purchases* tick; only unarchived cards kept in
-a ticked place, in a limit group, appear in Home's *Ready to use* and on the
+`/settings/locations` has a _Takes purchases_ tick; only unarchived cards kept in
+a ticked place, in a limit group, appear in Home's _Ready to use_ and on the
 `/list/new` picker. Every card still appears everywhere else, including the
-overdue bills in *Needs you*.
+overdue bills in _Needs you_.
 
 The first load stores Bangkok, Phichit and Krabi as location records, taking their
 ticks from the old `cc:settings` record when there is one, and otherwise ticking
 only Krabi, which reproduces the rule that was in force before: purchases were only
 ever entered against the Krabi cards. That is the only time `cc:settings` is read.
-Unticking every place is kept as a real answer, and *Ready to use* then says that
+Unticking every place is kept as a real answer, and _Ready to use_ then says that
 no card can be used and points at Locations.
 
 Every load also checks each card's location against the stored records. A card
@@ -134,19 +134,19 @@ they hold, counting the open period — the cycle still being spent on right now
 Money spent this cycle leaves the limit the moment it is spent. Payments belong to
 a card, not to a statement: they settle the card's oldest unpaid statement first,
 the open period included, and whatever is left over stays as credit. Pay at
-`/pay`, from a card's page, or from an overdue bill in *Needs you*; a payment dated
+`/pay`, from a card's page, or from an overdue bill in _Needs you_; a payment dated
 after today is a planned payment, which counts only once it is marked paid.
 
 An archived card still weighs on the group it shares. Archiving a card retires
 it from new purchases and from Home, not from what it already owes, so its
 unpaid statements keep counting against the pool even though the card itself no
-longer appears in *Ready to use*. A purchase list already sent to the spender
+longer appears in _Ready to use_. A purchase list already sent to the spender
 holds its amounts against the room too, until its reply is recorded.
 
-Home's *Ready to use* lists only the cards that can take a purchase (see above),
+Home's _Ready to use_ lists only the cards that can take a purchase (see above),
 each showing the close and due dates of the statement a purchase made today would
 land on. Those are deliberately not the dates of the bill an overdue card shows
-under *Needs you*: that answers what has to be paid, this answers what happens if
+under _Needs you_: that answers what has to be paid, this answers what happens if
 you spend today, and on a card with an overdue statement the two disagree — both
 are correct for the question they answer.
 
@@ -154,18 +154,18 @@ A purchase entered for more than a group's remaining room is still saved.
 The app is a record of what happened, not a gate on what is allowed, and a
 stored limit can itself be stale or wrong; refusing the entry would just mean
 a real purchase goes unrecorded. While amounts are entered on a list, going over
-is a warning with *Lower to* the room left; a purchase added on the card page
+is a warning with _Lower to_ the room left; a purchase added on the card page
 that goes over says by how much, once, under the card's hero.
 
 A card stored before limit groups existed has no group at all. It shows under
-the *Not in a group* filter (`/cards?ungrouped=1`) and is left out of *Ready to
-use* until it is edited once and a group is chosen — the card form will not save
+the _Not in a group_ filter (`/cards?ungrouped=1`) and is left out of _Ready to
+use_ until it is edited once and a group is chosen — the card form will not save
 a card without one.
 
 ## How statements work
 
-Each card carries a billing cycle rule: either *closes on day N, due M days
-later* or *closes on day N, due on day M*. Statements are never stored — they
+Each card carries a billing cycle rule: either _closes on day N, due M days
+later_ or _closes on day N, due on day M_. Statements are never stored — they
 are computed from that rule, so a period's close date, due date, purchases, and
 total are always derived from the card as it is now. Payments are stored per card
 as `cc:cardpayment:<cardId>:<id>`. Once a statement is fully paid, its close and
@@ -204,19 +204,19 @@ three starting places have the ids `bangkok`, `phichit` and `krabi`; a location
 added later takes a slug of its name. A card stores the id, so renaming a location
 changes nothing on its cards.
 
-The *Backup* section on `/settings` is how you keep a copy: *Download a copy*
-saves indented JSON, and *Copy as text* puts the same backup on the clipboard as
-compact JSON. *Restore…* opens a sheet that offers the clipboard first, then a
+The _Backup_ section on `/settings` is how you keep a copy: _Download a copy_
+saves indented JSON, and _Copy as text_ puts the same backup on the clipboard as
+compact JSON. _Restore…_ opens a sheet that offers the clipboard first, then a
 file or text pasted by hand. If this browser already holds records, it shows what
-is here next to what is in the copy and asks: *Merge* keeps what is here and adds
-the copy's records, updating any it shares, while *Replace* deletes everything
+is here next to what is in the copy and asks: _Merge_ keeps what is here and adds
+the copy's records, updating any it shares, while _Replace_ deletes everything
 here first. An empty browser restores straight away.
 
-The *Reset* section has two actions. *Delete old purchases* removes purchases
+The _Reset_ section has two actions. _Delete old purchases_ removes purchases
 older than 6 months, 1 year, 3 years or all of them, but only those on statements
 that are fully paid, with the payments that settled them and the saved lists from
 the same time, so what each card owes, its credit and its room stay the same.
-*Delete all data* deletes every record after showing how many of each will go;
+_Delete all data_ deletes every record after showing how many of each will go;
 language and theme stay.
 
 Backups are version 3 and carry limit groups (with their colours), cards,
@@ -237,7 +237,7 @@ others not.
 
 ## Language
 
-The interface is available in English and Thai. The picker is in the *Display*
+The interface is available in English and Thai. The picker is in the _Display_
 section on `/settings`, next to the theme picker (Device, Light or Dark);
 switching language re-renders the page in place — no reload, and nothing typed
 into an open form is lost. Both choices are remembered in this browser's
@@ -258,14 +258,14 @@ Text a user typed in — a card's name, its comment, a purchase's note — is ne
 translated. Only the application's own wording comes from the catalog.
 
 One consequence of avoiding `Intl` is worth knowing: card ids, where Home breaks a tie
-between cards in *Ready to use* and *Needs you*, sort by plain UTF-16 code-unit order,
+between cards in _Ready to use_ and _Needs you_, sort by plain UTF-16 code-unit order,
 not Thai collation, and the two can disagree. (Card, group and location names are
 compared with `localeCompare(…, locale)` instead, so this applies to ids only.)
 A Thai dictionary treats a leading vowel like เ as following the consonant it is
 pronounced with, not preceding it, so `เกา` ("to scratch") collates as if it
-were spelled starting with ก and sorts *before* `ขาว` ("white") — confirmed with
+were spelled starting with ก and sorts _before_ `ขาว` ("white") — confirmed with
 `Intl.Collator("th")`. Plain code-unit order gets this backwards: เ's code point
-(`U+0E40`) is higher than every consonant's, so `เกา` sorts *after* `ขาว` instead.
+(`U+0E40`) is higher than every consonant's, so `เกา` sorts _after_ `ขาว` instead.
 As it happens, card ids are short Latin codes (`KB-F`, `UOB-K`), which land in the
 same order under both code-unit comparison and real Thai collation, so this gap is
 latent rather than visible in the UI today; it would only surface for an id written
