@@ -43,14 +43,14 @@ test("src/pages has every page", () => {
 
 test.each(pages)("%s renders inside BaseLayout, which loads Google Tag Manager", async (page) => {
 	const text = await source(page)
-	expect(text).toMatch(/^import BaseLayout from "#layouts\/BaseLayout\.astro";$/m)
+	expect(text).toMatch(/^import BaseLayout from "#layouts\/BaseLayout\.astro"$/m)
 	expect(text).toMatch(/<BaseLayout\b/)
 })
 
 test.each(pages)("%s runs the route module of the same name", async (page) => {
 	const route = page.replace(/\.astro$/, "")
 	const depth = route.split("/").length
-	expect(await source(page)).toContain(`import "${"../".repeat(depth)}routes/${route}";`)
+	expect(await source(page)).toContain(`import "${"../".repeat(depth)}routes/${route}"\n`)
 })
 
 test.each(pages)("%s carries the shell the route module renders into", async (page) => {

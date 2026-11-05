@@ -15,7 +15,7 @@ const page = (name: string) => Bun.file(`src/pages/list/${name}.astro`).text()
 test("each list case has its own page, and the old single page is gone", async () => {
 	for (const name of PAGES) {
 		const source = await page(name)
-		expect(source, name).toContain(`import "../../routes/list/${name}";`)
+		expect(source, name).toContain(`import "../../routes/list/${name}"\n`)
 		expect(source, name).toContain('mainClass="page--narrow"')
 	}
 	expect(await Bun.file("src/pages/list.astro").exists()).toBe(false)

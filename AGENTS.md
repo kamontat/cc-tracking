@@ -32,7 +32,8 @@ Default to using Bun instead of Node.js.
   frontmatter, so an import used only in the template counts as used. Keep that preset:
   without it, `bun run format` deletes the `BaseLayout` import from every page
   (`tests/config/biome.test.ts` guards this). Its formatting has no semicolons and 120-column
-  lines.
+  lines. `biome.json` turns on Biome's HTML formatter, which is off by default and without
+  which `format` skips `.astro` files entirely, so their frontmatter would keep semicolons.
 - Import through the aliases in `package.json` `imports`: `#lib/*`, `#components/*` and
   `#styles/*`, each mapping to a `.ts` file, and `#layouts/*` with the `.astro` extension.
 - Every piece of UI text is a catalog key with an entry in both `src/lib/i18n/en.ts` and

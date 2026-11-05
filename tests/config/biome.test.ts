@@ -9,11 +9,12 @@ const dir = mkdtempSync(join(import.meta.dirname, "fixture-"))
 
 afterAll(() => rmSync(dir, { recursive: true, force: true }))
 
-// Lints a temporary .astro file with the project's biome.json.
-const lint = (source: string) => {
+// Runs `biome <command>` on a temporary .astro file with the project's biome.json.
+const biome = (command: "lint" | "format", source: string, ...flags: string[]) => {
 	const file = join(dir, "Fixture.astro")
 	writeFileSync(file, source)
-	return spawnSync("bunx", ["biome", "lint", file], { cwd: root, encoding: "utf8" })
+	const result = spawnSync("bunx", ["biome", command, ...flags, file], { cwd: root, encoding: "utf8" })
+	return { ...result, output: result.stdout + result.stderr }
 }
 
 describe("biome.json", () => {
@@ -24,7 +25,8 @@ describe("biome.json", () => {
 
 	// Every page imports BaseLayout only to use it in the template; `bun run format` must keep it.
 	it("does not flag frontmatter imports and variables used only in the template", () => {
-		const result = lint(
+		const result = biome(
+			"lint",
 			[
 				"---",
 				'import BaseLayout from "#layouts/BaseLayout.astro"',
@@ -35,7 +37,16 @@ describe("biome.json", () => {
 				"",
 			].join("\n"),
 		)
-		expect(result.stdout + result.stderr).not.toMatch(/noUnused|useConst|useImportType/)
+		expect(result.output).toMatch(/Checked 1 file/)
+		expect(result.output).not.toMatch(/noUnused|useConst|useImportType/)
 		expect(result.status).toBe(0)
+	})
+
+	// The frontmatter follows the same style as every .ts file: no semicolons. Biome skips
+	// `.astro` files when formatting unless its HTML formatter is on.
+	it("formats .astro frontmatter like the TypeScript", () => {
+		const { output } = biome("format", '---\nconst title = "Home";\n---\n\n<h1>{title}</h1>\n', "--write")
+		expect(output).toMatch(/Formatted 1 file/)
+		expect(readFileSync(join(dir, "Fixture.astro"), "utf8")).toContain('const title = "Home"\n')
 	})
 })

@@ -3,5 +3,11 @@
 	"extends": ["@kcconfigs/biome/configs/astro"],
 	"files": {
 		"includes": ["!.claude", "!public", "!docs/superpowers"]
+	},
+	"html": {
+		"formatter": {
+			"enabled": true,
+			"indentScriptAndStyle": true
+		}
 	}
 }
