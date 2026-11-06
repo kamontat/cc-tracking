@@ -75,8 +75,7 @@ test.each(layouts)("layout %s wraps BaseLayout", async (layout) => {
 
 test.each(pages)("%s runs the route module of the same name", async (page) => {
 	const route = page.replace(/\.astro$/, "")
-	const depth = route.split("/").length
-	expect(await source(page)).toContain(`import "${"../".repeat(depth)}routes/${route}"\n`)
+	expect(await source(page)).toContain(`import "#legacy/routes/${route}"\n`)
 })
 
 test.each(pages)("%s carries the shell the route module renders into", async (page) => {

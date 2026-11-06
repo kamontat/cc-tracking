@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 
-import { rowPanel, setRows } from "#styles/shared"
+import { rowPanel, setRows } from "#legacy/styles/shared"
 
 const app = await Bun.file("src/styles/app.css").text()
 
