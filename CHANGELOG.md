@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro from bun-astro-template
+## 2026-11-06: Built with Astro from bun-astro-template, and its conventions adopted
 
 ### BREAKING CHANGES
 
@@ -17,6 +17,18 @@ reasons don't show up in the code.
   `PUBLIC_ENVIRONMENT` and `PUBLIC_BRANCH`, no longer `BUN_PUBLIC_*`.
 - Google Tag Manager loads only on production. Pull request previews and local builds send no
   data, and the `<noscript>` iframe is gone.
+- Tests live in `tests/`, mirroring `src/`; a `*.test.ts` under `src/` or `scripts/` no longer
+  runs.
+- The skills are `project-shipping`, `project-landing` and `project-changelog`; the old
+  `shipping-a-change`, `landing-a-change` and `changelog` names are gone.
+
+### Features
+
+- New skills from the template, adapted to cc-tracking: `project-components`,
+  `project-layouts`, `project-pages`, `project-scripts` and `project-deploy`.
+- `src/components/` has the atomic tiers `atoms/`, `molecules/` and `organisms/`;
+  `tests/components/atomic.test.ts` fails on a component outside a tier or importing one it
+  may not, and `#components/<tier>/*` imports `.astro` files as written.
 
 ### Improvements
 
@@ -28,6 +40,10 @@ reasons don't show up in the code.
   files as well. The whole repo now follows its base formatting: no semicolons, 120-column
   lines, padded Markdown tables; `tests/config/biome.test.ts` checks the `.astro` rules.
 - Dependencies match the template: Astro 7.4.5, Vitest 5.1.0, Biome 2.6.5, Wrangler 4.158.0.
+- A page may reach `BaseLayout` through another layout, and every layout must wrap it, ready
+  for an app-shell layout. `<div row>` and `<div block>` type-check in `.astro` markup.
+- Landing runs `bun install` on `main` after a merge: a stale root install broke every
+  worktree's build and tests with `Tsconfig not found astro/tsconfigs/strictest`.
 
 ### Decisions
 
@@ -37,6 +53,13 @@ reasons don't show up in the code.
 - GTM follows the template: the container id is set only by the production deploy, so previews
   stop counting visits. Keeping the inline snippet on every build was the alternative.
 - TypeScript stays on 6.0.3: `@astrojs/check` and `@kcconfigs/tsconfig` do not accept 7 yet.
+- Translated copy (DD-171): static markup carries English plus its catalog key in
+  `data-i18n`, swapped to the reader's locale by one shared pass. Per-locale pages (`/th/...`)
+  were rejected: the address would fight the language setting with a redirect on every load.
+- Static first, Svelte islands for what the browser renders (DD-172): a component is static
+  `.astro` unless it is built from the reader's data or reacts to input, and then it is a
+  small Svelte island, never a raw `<script>` building markup. Lit for the client parts and
+  hand-written DOM updates were the alternatives.
 
 ## 2026-11-04: The redesign ships, and no page is indexed
 
