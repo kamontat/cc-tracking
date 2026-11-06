@@ -11,7 +11,7 @@ import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository } from "#lib/storage/repository"
 import { seedLocations } from "#lib/storage/seed-locations"
 import { payAddress } from "#lib/ui/pay-address"
-import { renderCardPage } from "./card"
+import { renderCardPage } from "../../src/routes/card"
 import { draft, saved, sent } from "./list/test-support"
 
 afterEach(() => setLocale("en"))

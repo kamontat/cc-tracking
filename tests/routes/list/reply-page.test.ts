@@ -4,7 +4,7 @@ import type { ListLine, PurchaseList } from "#lib/domain/types"
 import { expect, test } from "vitest"
 
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { renderReplyPage } from "./reply-page"
+import { renderReplyPage } from "../../../src/routes/list/reply-page"
 import {
 	bannerText,
 	card,

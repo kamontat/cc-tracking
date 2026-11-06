@@ -18,7 +18,7 @@ test("no component css carries a literal em or a border-width multiple", () => {
 })
 
 test("the header height and the sub-header offset share one derivation", async () => {
-	const tokens = await Bun.file(`${import.meta.dirname}/../styles/tokens.css`).text()
+	const tokens = await Bun.file("src/styles/tokens.css").text()
 	expect(tokens).not.toMatch(/--cc-header-height:\s*3\.25rem/)
 	expect(tokens).toMatch(/--cc-header-height:\s*calc\(/)
 })

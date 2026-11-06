@@ -8,7 +8,7 @@ import { MessageError } from "#lib/i18n/error"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { type ShareApi, type ShareTable, shareTable, shareText } from "#lib/ui/list-share"
-import { type EntryMode, renderEntryPage } from "./entry"
+import { type EntryMode, renderEntryPage } from "../../../src/routes/list/entry"
 import {
 	bannerText,
 	CLOCK,

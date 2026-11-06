@@ -8,8 +8,8 @@ import { expect, test } from "vitest"
 
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository } from "#lib/storage/repository"
+import { renderTransactionsPage } from "../../src/routes/transactions"
 import { CLOCK, draft, flatText, mount, seed, sent, settle } from "./list/test-support"
-import { renderTransactionsPage } from "./transactions"
 
 const data = async (repo: Repository) => {
 	await repo.savePurchase({

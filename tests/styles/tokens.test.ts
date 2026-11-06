@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest"
 
 import { GROUP_COLORS } from "#lib/domain/group-color"
 
-const css = await Bun.file(`${import.meta.dirname}/tokens.css`).text()
+const css = await Bun.file("src/styles/tokens.css").text()
 
 /** The body of the first rule whose selector line is exactly `selector`. */
 function block(selector: string): string {

@@ -10,7 +10,7 @@ import { LocalStorageRepository } from "#lib/storage/local"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { SEED_KEY } from "#lib/storage/seed-locations"
 import { exportBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
-import { prepareBackupFile, renderSettingsPage } from "./settings"
+import { prepareBackupFile, renderSettingsPage } from "../../src/routes/settings"
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0))

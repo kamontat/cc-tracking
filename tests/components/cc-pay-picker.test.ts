@@ -4,10 +4,10 @@ import type { PayChoice } from "#lib/domain/pay"
 import type { GroupRoom } from "#lib/domain/room"
 import type { Card } from "#lib/domain/types"
 
+import { cardTileStyles } from "#components/card-tile"
 import { CcPayPicker, type PickDetail } from "#components/cc-pay-picker"
 import { setLocale } from "#lib/i18n/index"
 import { rowPanel } from "#styles/shared"
-import { cardTileStyles } from "./card-tile"
 
 const card = (id: string, name: string, last4 = "1234"): Card => ({
 	id,

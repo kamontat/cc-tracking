@@ -4,8 +4,8 @@ import { afterEach, expect, test } from "vitest"
 
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
+import { renderLocationsPage } from "../../../src/routes/settings/locations-page"
 import { bannerText, flatText, mount, seed, settle } from "../list/test-support"
-import { renderLocationsPage } from "./locations-page"
 
 /** Seeds Bangkok, Phichit and Krabi (Krabi ticked, with cards A, B and archived Z), runs
  * `before`, then renders the page in `locale`. */
@@ -291,7 +291,7 @@ test("a failed add keeps the typed name; a failed rename keeps the field; a fail
 })
 
 test("a place's line lays out as a row: the reset makes every div a column otherwise", async () => {
-	const css = (await Bun.file(`${import.meta.dirname}/../../styles/app.css`).text()).replace(/\/\*[\s\S]*?\*\//g, "")
+	const css = (await Bun.file("src/styles/app.css").text()).replace(/\/\*[\s\S]*?\*\//g, "")
 	const rule = /\.location-row__line,\s*\.location-add__control\s*\{([^}]*)\}/.exec(css)?.[1]
 	expect(rule).toMatch(/display:\s*flex/)
 	expect(rule).toMatch(/flex-direction:\s*row/)

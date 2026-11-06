@@ -1,6 +1,6 @@
 import type { CcErrorBanner } from "#components/cc-error-banner"
 import type { Card, PurchaseList } from "#lib/domain/types"
-import type { ListPageOptions } from "./common"
+import type { ListPageOptions } from "../../../src/routes/list/common"
 
 import { defaultLocations } from "#lib/domain/locations"
 import { DEFAULT_SETTINGS } from "#lib/domain/settings"

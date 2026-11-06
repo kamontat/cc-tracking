@@ -9,8 +9,8 @@ import { DEFAULT_TX_FILTER, filterEntries, ledgerEntries } from "#lib/domain/tra
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
+import { type PayAddressBar, renderPayPage } from "../../src/routes/pay-page"
 import { CLOCK, flatText, mount, seed, settle } from "./list/test-support"
-import { type PayAddressBar, renderPayPage } from "./pay-page"
 
 /** An address bar that records what the page did to it, and can play Back. */
 const fakeBar = (start: string) => {

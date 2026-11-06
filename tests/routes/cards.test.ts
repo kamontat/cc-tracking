@@ -12,7 +12,7 @@ import { setLocale } from "#lib/i18n/index"
 import { memoryStorage } from "#lib/storage/contract"
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { type CardsAddressBar, renderCardsPage } from "./cards"
+import { type CardsAddressBar, renderCardsPage } from "../../src/routes/cards"
 import { CLOCK, flatText, mount, saveLocations, settle } from "./list/test-support"
 
 /** An address bar that records what the page did to it, and can play Back and Forward. */

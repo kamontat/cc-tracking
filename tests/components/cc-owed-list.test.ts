@@ -3,10 +3,10 @@ import "#components/cc-owed-list"
 import type { PayChoice } from "#lib/domain/pay"
 import type { Card } from "#lib/domain/types"
 
+import { cardTileStyles } from "#components/card-tile"
 import { CcOwedList } from "#components/cc-owed-list"
 import { setLocale } from "#lib/i18n/index"
 import { rowPanel } from "#styles/shared"
-import { cardTileStyles } from "./card-tile"
 
 afterEach(() => setLocale("en"))
 

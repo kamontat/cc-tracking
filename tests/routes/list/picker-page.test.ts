@@ -6,7 +6,7 @@ import { expect, test } from "vitest"
 
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { renderPickerPage } from "./picker-page"
+import { renderPickerPage } from "../../../src/routes/list/picker-page"
 import { CLOCK, card, mount, saveLocations, settle } from "./test-support"
 
 /** Four ready cards over two groups and two places, one archived and one in no place. */

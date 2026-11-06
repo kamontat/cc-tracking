@@ -3,7 +3,7 @@ import { getViteConfig } from "astro/config"
 
 export default getViteConfig({
 	test: {
-		include: ["src/**/*.test.ts", "scripts/**/*.test.ts", "tests/**/*.test.ts"],
+		include: ["tests/**/*.test.ts"],
 		// The components render into a DOM in every test, so every file gets one.
 		environment: "happy-dom",
 		environmentOptions: {

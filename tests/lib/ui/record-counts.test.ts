@@ -1,7 +1,7 @@
 import { expect, test } from "vitest"
 
 import { setLocale } from "#lib/i18n/index"
-import { countsText } from "./record-counts"
+import { countsText } from "#lib/ui/record-counts"
 
 const each = (count: number) => ({
 	cards: count,

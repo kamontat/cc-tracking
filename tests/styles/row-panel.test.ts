@@ -2,7 +2,7 @@ import { expect, test } from "vitest"
 
 import { rowPanel, setRows } from "#styles/shared"
 
-const app = await Bun.file(`${import.meta.dirname}/app.css`).text()
+const app = await Bun.file("src/styles/app.css").text()
 
 /** The declarations of the first rule whose selector list holds `selector` exactly. */
 const rule = (css: string, selector: string): Map<string, string> => {

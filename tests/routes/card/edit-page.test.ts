@@ -6,8 +6,8 @@ import { expect, test } from "vitest"
 
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
+import { renderCardEditPage } from "../../../src/routes/card/edit-page"
 import { bannerText, flatText, mount, seed, settle } from "../list/test-support"
-import { renderCardEditPage } from "./edit-page"
 
 const setup = async (
 	mode: "new" | "edit",

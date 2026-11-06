@@ -1,11 +1,11 @@
 import { expect, test } from "vitest"
 
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { renderEntryPage } from "./entry"
-import { renderPickerPage } from "./picker-page"
-import { renderReplyPage } from "./reply-page"
+import { renderEntryPage } from "../../../src/routes/list/entry"
+import { renderPickerPage } from "../../../src/routes/list/picker-page"
+import { renderReplyPage } from "../../../src/routes/list/reply-page"
+import { renderSavedPage } from "../../../src/routes/list/view-page"
 import { mount, settle } from "./test-support"
-import { renderSavedPage } from "./view-page"
 
 /** The four list pages: one static page per case, each a thin entry over the shared flows. */
 const PAGES = ["new", "draft", "reply", "view"] as const

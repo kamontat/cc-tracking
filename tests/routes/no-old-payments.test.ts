@@ -9,10 +9,10 @@ test("no route or component writes an old statement payment", async () => {
 	const offenders: string[] = []
 	for (const pattern of ["routes/**/*.ts", "components/**/*.ts"]) {
 		for await (const path of new Bun.Glob(pattern).scan({
-			cwd: `${import.meta.dirname}/..`,
+			cwd: "src",
 		})) {
 			if (path.endsWith(".test.ts")) continue
-			const text = await Bun.file(`${import.meta.dirname}/../${path}`).text()
+			const text = await Bun.file(`src/${path}`).text()
 			if (/\.(savePayment|deletePayment)\(/.test(text)) offenders.push(path)
 		}
 	}

@@ -2,8 +2,8 @@ import type { Repository } from "#lib/storage/repository"
 
 import { expect, test } from "vitest"
 
+import { renderSavedPage } from "../../../src/routes/list/view-page"
 import { draft, elsewhereLink, flatText, sent, setupPage, titleOf } from "./test-support"
-import { renderSavedPage } from "./view-page"
 
 const setup = (search: string, before: (repo: Repository) => Promise<void>) =>
 	setupPage(renderSavedPage, { search, before })

@@ -6,10 +6,10 @@ import { expect, test } from "vitest"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
-import { renderEntryPage } from "./entry"
-import { renderReplyPage } from "./reply-page"
+import { renderEntryPage } from "../../../src/routes/list/entry"
+import { renderReplyPage } from "../../../src/routes/list/reply-page"
+import { renderSavedPage } from "../../../src/routes/list/view-page"
 import { click, settle, setupPage, stored } from "./test-support"
-import { renderSavedPage } from "./view-page"
 
 /** Types into a field inside a list element's shadow root, by line and field. */
 const typeInto = async (element: CcListAmounts | CcListReply, cardId: string, field: string, text: string) => {

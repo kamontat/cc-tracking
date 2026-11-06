@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 
-import { resolveBuildEnv } from "./build-env"
+import { resolveBuildEnv } from "../../scripts/build-env"
 
 const now = new Date(Date.UTC(2026, 8, 24, 13, 12))
 

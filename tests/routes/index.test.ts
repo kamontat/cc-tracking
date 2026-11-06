@@ -7,7 +7,7 @@ import { expect, test } from "vitest"
 import { setLocale } from "#lib/i18n/index"
 import { LocalStorageRepository } from "#lib/storage/local"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { renderHomePage } from "./index"
+import { renderHomePage } from "../../src/routes/index"
 import { saveLocations } from "./list/test-support"
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */

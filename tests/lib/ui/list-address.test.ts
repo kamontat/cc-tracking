@@ -2,7 +2,7 @@ import type { PurchaseList } from "#lib/domain/types"
 
 import { expect, test } from "vitest"
 
-import { listPageAddress, newListAddress } from "./list-address"
+import { listPageAddress, newListAddress } from "#lib/ui/list-address"
 
 const list = (id: string, status: PurchaseList["status"]): PurchaseList => ({
 	id,
