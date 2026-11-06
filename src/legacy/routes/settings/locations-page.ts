@@ -12,6 +12,7 @@ import { locationName, sortLocations } from "#lib/i18n/format"
 import { subscribe, t } from "#lib/i18n/index"
 import { th } from "#lib/i18n/th"
 import { createPageState } from "#lib/ui/page-state"
+import { pageSignal } from "#lib/ui/spa"
 
 /** Why a typed name is refused: none at all, or one another location already shows or stores. */
 type NameProblem = { kind: "empty" } | { kind: "duplicate"; name: string }
@@ -270,6 +271,6 @@ export function renderLocationsPage(repo: Repository, root: HTMLElement): void {
 		)
 	}
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }

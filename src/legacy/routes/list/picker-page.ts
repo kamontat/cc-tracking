@@ -18,6 +18,7 @@ import { newListAddress } from "#lib/ui/list-address"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { type ReadyView, readReadyView, readyViewAddress } from "#lib/ui/ready-query"
+import { pageSignal } from "#lib/ui/spa"
 import { banner } from "./common"
 
 export type PickerPageOptions = {
@@ -214,6 +215,6 @@ export function renderPickerPage(repo: Repository, root: HTMLElement, options: P
 		)
 	}
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }

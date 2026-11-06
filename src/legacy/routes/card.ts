@@ -26,6 +26,7 @@ import { newListAddress } from "#lib/ui/list-address"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { payAddress } from "#lib/ui/pay-address"
+import { pageSignal } from "#lib/ui/spa"
 
 const PAGE_SIZE = 12
 
@@ -381,13 +382,14 @@ export function renderCardPage(
 			root,
 		)
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }
 
-bootstrap("title.card", (repo) => {
-	const root = document.querySelector<HTMLElement>("#page")
-	if (!root) return
-	const cardId = new URLSearchParams(location.search).get("id")
-	renderCardPage(repo, cardId, root)
-})
+export const start = () =>
+	bootstrap("title.card", (repo) => {
+		const root = document.querySelector<HTMLElement>("#page")
+		if (!root) return
+		const cardId = new URLSearchParams(location.search).get("id")
+		renderCardPage(repo, cardId, root)
+	})

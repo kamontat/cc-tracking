@@ -12,6 +12,7 @@ import { getLocale, subscribe, t } from "#lib/i18n/index"
 import { listPageAddress } from "#lib/ui/list-address"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
+import { pageSignal } from "#lib/ui/spa"
 import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults } from "./common"
 
 /**
@@ -101,6 +102,6 @@ export function renderSavedPage(repo: Repository, root: HTMLElement, options: Li
 		render(body, root)
 	}
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }

@@ -19,6 +19,7 @@ import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { payAddress, readPayAddress } from "#lib/ui/pay-address"
 import { savePayment } from "#lib/ui/record-payment"
+import { pageSignal } from "#lib/ui/spa"
 import { banner } from "./list/common"
 
 /** The address bar as the payment page uses it; the browser's own unless a test passes one. */
@@ -41,8 +42,8 @@ export type PayAddressBar = {
 export const browserBar = (): PayAddressBar => ({
 	search: () => location.search,
 	push: (url) => history.pushState(null, "", url),
-	replace: (url) => history.replaceState(null, "", url),
-	onPop: (listener) => addEventListener("popstate", listener),
+	replace: (url) => history.replaceState(history.state, "", url),
+	onPop: (listener) => addEventListener("popstate", listener, { signal: pageSignal() }),
 	length: () => history.length,
 	back: () => history.back(),
 })
@@ -249,6 +250,6 @@ export function renderPayPage(repo: Repository, root: HTMLElement, options: PayP
 		pushed = pickedOnce && readPayAddress(address.search()).cardId !== undefined
 		paint()
 	})
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }
