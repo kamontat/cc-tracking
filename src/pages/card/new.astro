@@ -1,12 +1,11 @@
 ---
+import CardEditPage from "#components/organisms/CardEditPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="New card" route="card/new" tab="cards" fab={false} mainClass="page--form">
-	<script>
-		import { start } from "#legacy/routes/card/new"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("card/new", start)
-	</script>
+<!-- Add a card: the card form, empty, under a sub-header to Cards. The form is an island. -->
+<AppLayout title="New card" titleKey="title.cardNew" tab="cards" fab={false} mainClass="page--form">
+	<Fragment slot="main">
+		<CardEditPage mode="new" client:load />
+	</Fragment>
 </AppLayout>

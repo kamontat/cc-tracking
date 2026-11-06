@@ -95,7 +95,10 @@ converted, PRD DD-175):
   and the page's title), `Sheet.svelte` (molecule; the bottom sheet, `leave(then)` to slide
   it away first), `SvgIcon.svelte` (atom; the `Icon` atom for islands, since a `.svelte` file
   can't import an `.astro` one), and `#lib/ui/address-bar` (the `AddressBar` seam for a
-  page whose sheet lives in the address, DD-102).
+  page whose sheet lives in the address, DD-102), `SubHeaderBar.svelte` (molecule; the
+  sub-header with a title from the reader's data, a `detail` line and an `actions` snippet;
+  the static `SubHeader.astro` takes a catalog key instead), and `#lib/ui/card-label` (a
+  card's name in its text forms; the Lit pages' `card-label` re-exports it, so never copy it).
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.

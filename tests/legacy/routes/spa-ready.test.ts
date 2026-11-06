@@ -25,7 +25,7 @@ const entries = async () => {
 describe("legacy routes under the ClientRouter", () => {
 	test("every page's route module exports start, and none starts itself on import", async () => {
 		const modules = await entries()
-		expect(modules).toHaveLength(10)
+		expect(modules).toHaveLength(7)
 		for (const path of modules) {
 			const source = await Bun.file(path).text()
 			expect(source, path).toMatch(/^export (const|function) start\b/m)
