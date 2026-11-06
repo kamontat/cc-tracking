@@ -74,6 +74,31 @@ describe("applyCopy on an aria-label", () => {
 	})
 })
 
+describe("startCopy across a ClientRouter swap", () => {
+	// A swap brings the next page's English markup and resets <html>'s attributes to the shipped
+	// ones (lang="en", no data-i18n-ready), so the pass runs again after the swap (PRD DD-174).
+	test("translates the swapped-in page and marks it ready again", () => {
+		setLocale("th")
+		const stop = startCopy(document)
+		document.body.innerHTML = `<h2 data-i18n="nav.settings">Settings</h2>`
+		document.documentElement.lang = "en"
+		document.documentElement.removeAttribute("data-i18n-ready")
+		document.dispatchEvent(new Event("astro:after-swap"))
+		expect(text("h2")).toBe(th["nav.settings"])
+		expect(document.documentElement.lang).toBe("th")
+		expect(document.documentElement.hasAttribute("data-i18n-ready")).toBe(true)
+		stop()
+	})
+
+	test("stops following swaps once stopped", () => {
+		setLocale("th")
+		startCopy(document)()
+		document.body.innerHTML = `<h2 data-i18n="nav.settings">Settings</h2>`
+		document.dispatchEvent(new Event("astro:after-swap"))
+		expect(text("h2")).toBe("Settings")
+	})
+})
+
 describe("startCopy", () => {
 	test("applies the copy, sets the page language and marks the page ready", () => {
 		setLocale("th")

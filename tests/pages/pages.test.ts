@@ -75,9 +75,19 @@ test.each(layouts)("layout %s wraps BaseLayout", async (layout) => {
 	expect(await reachesBase(layout)).toBe(true)
 })
 
-test.each(pages)("%s runs the route module of the same name", async (page) => {
+// Under the ClientRouter a page's script runs once, so it registers its route with onPage,
+// which starts it on every visit to a page whose <main> names the same route (PRD DD-174).
+test.each(pages)("%s starts the route module of the same name on every visit", async (page) => {
 	const route = page.replace(/\.astro$/, "")
-	expect(await source(page)).toContain(`import "#legacy/routes/${route}"\n`)
+	const text = await source(page)
+	expect(text).toContain(`import { start } from "#legacy/routes/${route}"\n`)
+	expect(text).toContain(`import { onPage } from "#lib/ui/spa"\n`)
+	expect(text).toContain(`onPage("${route}", start)\n`)
+	expect(
+		parseHtml(await render(page))
+			.querySelector("main#page")
+			?.getAttribute("data-route"),
+	).toBe(route)
 })
 
 test.each(pages)("%s carries the shell the route module renders into", async (page) => {
@@ -92,7 +102,7 @@ test.each(pages)("%s carries the shell the route module renders into", async (pa
 
 test("the theme boots before anything paints", async () => {
 	const html = await render("index.astro")
-	const boot = html.indexOf("<script data-theme-boot>")
+	const boot = html.indexOf("<script data-astro-rerun data-theme-boot>")
 	expect(boot).toBeGreaterThan(-1)
 	expect(boot).toBeLessThan(html.indexOf("<link"))
 	expect(html.match(/data-theme-boot/g)).toHaveLength(1)

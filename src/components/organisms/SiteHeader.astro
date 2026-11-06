@@ -18,7 +18,7 @@ const { current, build = buildInfo() } = Astro.props
 const mark = envMark(build.environment, build.pr)
 ---
 
-<header class="site-header" id="site-header">
+<header class="site-header" id="site-header" transition:animate="none">
 	<div class="site-header__bar">
 		<div class="site-header__id">
 			<a class="site-header__brand" href="/" aria-label={en["nav.brand"]} data-i18n-aria-label="nav.brand"
@@ -28,7 +28,7 @@ const mark = envMark(build.environment, build.pr)
 					{mark}
 				</span>
 			)}<span class="site-header__sep" aria-hidden="true">·</span
-			><span class="site-header__date" data-testid="today"><HeaderDate client:load /></span>
+			><span class="site-header__date" data-testid="today"><HeaderDate client:load transition:persist /></span>
 		</div>
 		<Tabs variant="header" current={current} />
 	</div>

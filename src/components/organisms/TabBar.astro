@@ -18,4 +18,4 @@ const { current, fab = true } = Astro.props
 ---
 
 <!-- The bottom bar on a phone; + New floats over every page, so it sits outside the bar. -->
-<div id="tabbar"><Tabs variant="bar" current={current} />{fab && <FabMenu />}</div>
+<div id="tabbar" transition:animate="none"><Tabs variant="bar" current={current} />{fab && <FabMenu />}</div>

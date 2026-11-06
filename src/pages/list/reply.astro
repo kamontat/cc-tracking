@@ -2,8 +2,11 @@
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Spender's reply" tab="home" fab={false} mainClass="page--narrow">
+<AppLayout title="Spender's reply" route="list/reply" tab="home" fab={false} mainClass="page--narrow">
 	<script>
-		import "#legacy/routes/list/reply"
+		import { start } from "#legacy/routes/list/reply"
+		import { onPage } from "#lib/ui/spa"
+
+		onPage("list/reply", start)
 	</script>
 </AppLayout>
