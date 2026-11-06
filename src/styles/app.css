@@ -26,6 +26,12 @@ html[lang="th"]:not([data-i18n-ready]) [data-i18n] {
 	visibility: hidden;
 }
 
+/* An island's built frame is English too; Astro drops `ssr` once the island runs, in the
+   reader's language. */
+html[lang="th"] astro-island[ssr] {
+	visibility: hidden;
+}
+
 a:any-link {
 	color: var(--cc-link);
 }
