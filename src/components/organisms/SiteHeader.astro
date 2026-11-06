@@ -1,0 +1,35 @@
+---
+import type { Tab } from "#lib/ui/tabs"
+
+import HeaderDate from "#components/atoms/HeaderDate.svelte"
+import Tabs from "#components/molecules/Tabs.astro"
+import { en } from "#lib/i18n/en"
+import { type BuildInfo, buildInfo, envMark } from "#lib/ui/build-info"
+
+interface Props {
+	/** The page's place, marked in the header tabs; none for a page outside the four. */
+	current?: Tab | undefined
+	/** The build the page came from; the stamps the build inlined, unless a test passes one. */
+	build?: Pick<BuildInfo, "environment" | "pr">
+}
+
+const { current, build = buildInfo() } = Astro.props
+// Known at build time, so it is static: `(dev)`, `(local)`, `(pr-42)`, or nothing on production.
+const mark = envMark(build.environment, build.pr)
+---
+
+<header class="site-header" id="site-header">
+	<div class="site-header__bar">
+		<div class="site-header__id">
+			<a class="site-header__brand" href="/" aria-label={en["nav.brand"]} data-i18n-aria-label="nav.brand"
+				><span class="site-header__mark">cc</span>tracking</a
+			>{mark === null ? null : (
+				<span class="site-header__env" data-testid="env-mark">
+					{mark}
+				</span>
+			)}<span class="site-header__sep" aria-hidden="true">·</span
+			><span class="site-header__date" data-testid="today"><HeaderDate client:load /></span>
+		</div>
+		<Tabs variant="header" current={current} />
+	</div>
+</header>

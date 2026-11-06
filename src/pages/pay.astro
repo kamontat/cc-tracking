@@ -1,9 +1,9 @@
 ---
-import BaseLayout from "#layouts/BaseLayout.astro"
+import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<BaseLayout title="Make a payment" mainClass="page--narrow">
+<AppLayout title="Make a payment" tab="transactions" fab={false} mainClass="page--narrow">
 	<script>
 		import "#legacy/routes/pay"
 	</script>
-</BaseLayout>
+</AppLayout>

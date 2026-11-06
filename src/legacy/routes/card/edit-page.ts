@@ -37,8 +37,6 @@ export function renderCardEditPage(
 ): void {
 	const search = options.search ?? location.search
 	const navigate = options.navigate ?? ((url: string) => location.replace(url))
-	// The form is the page: the floating + New menu would sit over its buttons on a phone.
-	root.ownerDocument.documentElement.setAttribute("data-form-page", "")
 	const cardId = mode === "edit" ? new URLSearchParams(search).get("id") : null
 
 	let card: Card | null = null

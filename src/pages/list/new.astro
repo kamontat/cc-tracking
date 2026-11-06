@@ -1,9 +1,9 @@
 ---
-import BaseLayout from "#layouts/BaseLayout.astro"
+import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<BaseLayout title="New purchase list" mainClass="page--narrow">
+<AppLayout title="New purchase list" tab="home" fab={false} mainClass="page--narrow">
 	<script>
 		import "#legacy/routes/list/new"
 	</script>
-</BaseLayout>
+</AppLayout>

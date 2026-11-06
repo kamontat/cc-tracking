@@ -21,7 +21,7 @@ import { newListAddress } from "#lib/ui/list-address"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { deleteDraftList, storedDraft } from "#lib/ui/row-actions"
-import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults, markListPage } from "./common"
+import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults } from "./common"
 
 /** A new list from the cards picked on Home (`/list/new`), or a stored draft (`/list/draft`). */
 export type EntryMode = "new" | "draft"
@@ -62,7 +62,6 @@ export function renderEntryPage(
 	options: EntryPageOptions = {},
 ): void {
 	const { clock, search, navigate } = listPageDefaults(options)
-	markListPage(root)
 	const share = options.share ?? browserShare()
 	const newId = options.newId ?? (() => crypto.randomUUID())
 	const replaceAddress = options.replaceAddress ?? ((url: string) => history.replaceState(history.state, "", url))

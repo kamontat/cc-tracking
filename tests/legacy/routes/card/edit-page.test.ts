@@ -73,8 +73,6 @@ test("/card/new: a compact sub-header to Cards, New card with no subtitle, over 
 	expect(root.querySelector('.sub-header [data-action="back"]')?.getAttribute("href")).toBe("/cards")
 	expect(form(root)?.card).toBeNull()
 	expect(form(root)?.groups.map((group) => group.id)).toEqual(["g1"])
-	// The floating + New menu stays off the form page.
-	expect(document.documentElement.hasAttribute("data-form-page")).toBe(true)
 })
 
 test("/card/new: a save stores the card and replaces the address with its page", async () => {

@@ -3,13 +3,15 @@
 
 import type { AstroComponentFactory } from "astro/runtime/server/index.js"
 
-import { experimental_AstroContainer as AstroContainer } from "astro/container"
 import { expect, test } from "vitest"
 
+import { createContainer, parseHtml } from "../container"
+
 /**
- * Every page is the same shell -- `BaseLayout` -- with its own title, `<main>` width and route
- * module. These read each page's source and render it, so a page that skips the layout, or a
- * layout that drops a piece every page needs, fails here rather than on the preview.
+ * Every page is the same shell -- `AppLayout` over `BaseLayout` -- with its own title, tab,
+ * `<main>` width and route module. These read each page's source and render it, so a page that
+ * skips the layout, or a layout that drops a piece every page needs, fails here rather than on
+ * the preview.
  */
 const pages = Array.from(new Bun.Glob("**/*.astro").scanSync({ cwd: "src/pages" })).sort()
 
@@ -19,7 +21,7 @@ const render = async (page: string) => {
 	const module = (await import(`../../src/pages/${page}`)) as {
 		default: AstroComponentFactory
 	}
-	const container = await AstroContainer.create()
+	const container = await createContainer()
 	return container.renderToString(module.default)
 }
 
@@ -115,5 +117,34 @@ test("each page keeps the width it asks for", async () => {
 		"settings.astro": "page",
 		"settings/locations.astro": "page page--form",
 		"transactions.astro": "page page--tx",
+	})
+})
+
+test("each page marks its place in both navs, and steps + New aside when mid-task", async () => {
+	const shell: Record<string, string> = {}
+	for (const page of pages) {
+		const doc = parseHtml(await render(page))
+		const header = doc.querySelector('.site-header__tabs [aria-current="page"]')?.getAttribute("data-tab")
+		const bar = doc.querySelector('.tabbar [aria-current="page"]')?.getAttribute("data-tab")
+		expect(bar, page).toBe(header)
+		shell[page] = `${header ?? "none"}${doc.querySelector(".fab-menu") ? " +new" : ""}`
+	}
+	// The payment page sits under Transactions; a card's pages under Cards; Locations under
+	// Settings; every purchase list page under Home. + New steps aside on the payment page, the
+	// list pages and the card form (PRD DD-104).
+	expect(shell).toEqual({
+		"card.astro": "cards +new",
+		"card/edit.astro": "cards",
+		"card/new.astro": "cards",
+		"cards.astro": "cards +new",
+		"index.astro": "home +new",
+		"list/draft.astro": "home",
+		"list/new.astro": "home",
+		"list/reply.astro": "home",
+		"list/view.astro": "home",
+		"pay.astro": "transactions",
+		"settings.astro": "settings +new",
+		"settings/locations.astro": "settings +new",
+		"transactions.astro": "transactions +new",
 	})
 })

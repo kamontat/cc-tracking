@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process"
+import svelte from "@astrojs/svelte"
 import { defineConfig } from "astro/config"
 
 import { type BuildEnv, resolveBuildEnv } from "./scripts/build-env"
@@ -33,4 +34,6 @@ export default defineConfig({
 	// "file" writes about.astro to dist/about.html, served at /about by Cloudflare static assets.
 	build: { format: "file" },
 	trailingSlash: "never",
+	// Svelte renders the islands: the parts of a page built from the reader's data (PRD DD-172).
+	integrations: [svelte()],
 })

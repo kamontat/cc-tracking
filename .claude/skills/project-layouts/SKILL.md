@@ -31,11 +31,29 @@ It:
   `<script>`; without the id at build time the bundler drops it (see `project-deploy`);
 - runs `startCopy(document)` from `#lib/i18n/copy` in the same script, putting every page's
   `data-i18n` copy in the reader's locale (PRD DD-171, see `project-components`);
-- renders the shell the legacy route modules draw into: `#site-header`, `<main id="page">`
-  with `page` plus the page's `mainClass` (`page--narrow`, `page--form`, `page--tx`,
-  `card-page`) and `#tabbar`, then the default `<slot />`.
+- renders the page into `<body>` through its default `<slot />`.
 
-Something every page needs in `<head>` goes here, not into pages.
+Something every page needs in `<head>` goes here, not into pages. The shell every page shows
+is `AppLayout`'s.
+
+## AppLayout is the app shell
+
+`src/layouts/AppLayout.astro` wraps `BaseLayout` and is what every page renders (PRD DD-173).
+It lays out, in `<body>`:
+
+- the `SiteHeader` organism (`#site-header`): the brand, the build mark (static, from the
+  build stamps), today's date (the `HeaderDate` island) and the header tabs;
+- `<main id="page">` with `page` plus the page's `mainClass` (`page--narrow`, `page--form`,
+  `page--tx`, `card-page`), which the legacy route module renders into;
+- the `TabBar` organism (`#tabbar`): the bottom tabs and, unless `fab={false}`, the floating
+  *+ New* menu (`FabMenu`);
+- the default `<slot />`, where a page puts its route script.
+
+Props: `title` (forwarded to `BaseLayout`), `tab` (the page's place, marked in both navs),
+`mainClass`, and `fab` (default `true`; `false` where the reader is mid-task: the list pages,
+`/pay`, the card form). `tests/layouts/AppLayout.test.ts` covers it, and
+`tests/pages/pages.test.ts` holds every page to its tab and *+ New*. The legacy `chrome.ts`
+keeps only the document title, the theme and the build tint.
 
 ## Rules
 
@@ -49,26 +67,18 @@ Something every page needs in `<head>` goes here, not into pages.
   props or slots.
 - Use named slots for regions a page fills; the default slot is the main content.
 
-## Where the shell is going
-
-Today the legacy `chrome.ts` (`src/legacy/lib/ui/`) draws the header, brand, build mark and tab bar into the empty
-`#site-header` and `#tabbar` at runtime. The planned step is an `AppLayout` that wraps
-`BaseLayout` and renders `SiteHeader` and `TabBar` organisms at build time, taking the
-current tab from the page. When it lands, the slots move out of `BaseLayout` into it, and
-`chrome.ts` keeps only what needs the browser (the locale, the build mark from
-`#lib/ui/build-info`).
-
 ## Testing
 
-Render a layout with the Container API under `// @vitest-environment node`, passing props
-and slots:
+Render a layout under `// @vitest-environment node` with `createContainer` from
+`tests/container.ts` (it carries the Svelte renderer the shell's island needs), and query
+the result with `parseHtml`:
 
 ```ts
-const html = await container.renderToString(BaseLayout, {
-	props: { title: "Cards", mainClass: "page--narrow" },
+const html = await (await createContainer()).renderToString(AppLayout, {
+	props: { title: "Cards", tab: "cards", mainClass: "page--narrow" },
 	slots: { default: "<p>Body</p>" },
 })
-expect(html).toMatch(/<main class="page page--narrow"/)
+expect(parseHtml(html).querySelector("main#page")?.className).toBe("page page--narrow")
 ```
 
 The Container does not run processed scripts, so `tests/layouts/BaseLayout.test.ts` checks

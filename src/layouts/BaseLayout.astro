@@ -6,11 +6,9 @@ import "../styles/app.css"
 interface Props {
 	/** The tab title before the bundle runs; `bootstrap` sets the translated one after. */
 	title: string
-	/** Classes on `<main>` after `page`, the width a page asks for (`page--narrow`, ...). */
-	mainClass?: string
 }
 
-const { title, mainClass } = Astro.props
+const { title } = Astro.props
 ---
 
 <!doctype html>
@@ -80,9 +78,6 @@ const { title, mainClass } = Astro.props
 		</script>
 	</head>
 	<body>
-		<header class="site-header" id="site-header"></header>
-		<main class:list={["page", mainClass]} id="page"></main>
-		<div id="tabbar"></div>
 		<slot />
 	</body>
 </html>

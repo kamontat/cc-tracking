@@ -56,6 +56,24 @@ describe("applyCopy", () => {
 	})
 })
 
+describe("applyCopy on an aria-label", () => {
+	test("swaps a keyed aria-label and leaves the element's own text", () => {
+		document.body.innerHTML = `<nav data-i18n-aria-label="nav.pages" aria-label="Pages">Links</nav>`
+		setLocale("th")
+		applyCopy(document)
+		const nav = document.querySelector("nav")
+		expect(nav?.getAttribute("aria-label")).toBe(th["nav.pages"])
+		expect(nav?.textContent).toBe("Links")
+	})
+
+	test("keeps the English aria-label for a key the catalog lacks", () => {
+		document.body.innerHTML = `<nav data-i18n-aria-label="no.such.key" aria-label="Pages"></nav>`
+		setLocale("th")
+		applyCopy(document)
+		expect(document.querySelector("nav")?.getAttribute("aria-label")).toBe("Pages")
+	})
+})
+
 describe("startCopy", () => {
 	test("applies the copy, sets the page language and marks the page ready", () => {
 		setLocale("th")

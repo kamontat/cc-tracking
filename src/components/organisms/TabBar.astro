@@ -1,0 +1,21 @@
+---
+import type { Tab } from "#lib/ui/tabs"
+
+import FabMenu from "#components/molecules/FabMenu.astro"
+import Tabs from "#components/molecules/Tabs.astro"
+
+interface Props {
+	/** The page's place, marked in the bar; none for a page outside the four. */
+	current?: Tab | undefined
+	/**
+	 * Whether the floating *+ New* menu shows. Off on the payment page, the purchase list pages
+	 * and the card form, where the reader is mid-task (PRD DD-104).
+	 */
+	fab?: boolean
+}
+
+const { current, fab = true } = Astro.props
+---
+
+<!-- The bottom bar on a phone; + New floats over every page, so it sits outside the bar. -->
+<div id="tabbar"><Tabs variant="bar" current={current} />{fab && <FabMenu />}</div>

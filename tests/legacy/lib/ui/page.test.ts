@@ -14,9 +14,6 @@ const mountNav = () => {
 		<div id="tabbar"></div>`
 }
 
-const tabTexts = (tab: string) =>
-	[...document.querySelectorAll(`[data-tab="${tab}"]`)].map((link) => link.textContent?.trim())
-
 test("falls back to document.body when the page has no <main>", () => {
 	document.body.innerHTML = ""
 	const original = globalThis.localStorage
@@ -53,15 +50,13 @@ test("applies chrome in the current language even when storage is unavailable an
 			called = true
 		})
 
-		// The renderer never ran -- storage was unavailable -- yet the chrome that lives in
-		// this page's static HTML is translated anyway, not left in whatever the markup
-		// happened to be hard-coded to.
+		// The renderer never ran -- storage was unavailable -- yet the title is translated
+		// anyway. (The header and tab bar are static markup that startCopy translates, with or
+		// without storage; tests/lib/i18n/copy.test.ts covers that.)
 		expect(called).toBe(false)
 		// The test run has no inlined build, so the title carries whatever mark that reads as.
 		const { environment, pr } = buildInfo()
 		expect(document.title).toBe(`บัตร — cc-tracking${titleMark(environment, pr)}`)
-		expect(tabTexts("home")).toEqual(["หน้าหลัก", "หน้าหลัก"])
-		expect(tabTexts("cards")).toEqual(["บัตร", "บัตร"])
 		expect(document.documentElement.lang).toBe("th")
 	} finally {
 		globalThis.localStorage = original

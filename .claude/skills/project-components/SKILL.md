@@ -69,9 +69,16 @@ values (ids, flags, labels), not repositories or functions. Put the logic in `sr
 plain functions taking their inputs (a repository, a clock), so it is tested without
 rendering; the island wires those functions to its state.
 
-The Svelte integration (`@astrojs/svelte`, Svelte 5 with runes) is added with the first
-island, together with the atomic test reading `.svelte` imports and the test setup for
-rendering islands.
+Svelte 5 (runes) comes through `@astrojs/svelte` in `astro.config.ts`. The first island is
+`src/components/atoms/HeaderDate.svelte`: `$props()` with a `clock` for tests, `$state` for
+what it shows, `onMount` to read the browser and `subscribe` to follow the locale. A `.svelte`
+component sits in an atomic tier like any other; the tier test reads its `<script>` imports.
+
+Before reaching for an island, check whether the platform already does it with no script:
+*+ New*'s menu is an HTML `popover` (`FabMenu`, PRD DD-173) — the browser opens and closes
+it, on Escape and a tap outside, and hands focus back. `@kcstyles/reset.css` makes every
+`div` `display: flex`, which outranks the browser's hiding of a closed popover, so a popover
+`div` needs `:not(:popover-open) { display: none }` of its own.
 
 ### Translated copy (PRD DD-171)
 
@@ -84,6 +91,9 @@ reader's locale is only known in the browser, so:
   locale and again whenever it changes. Never hardcode copy without its `data-i18n` key.
   - The key replaces the element's whole text, so put it on the innermost element holding
     only that copy (`<span data-i18n="…">`), never on one with child elements or data.
+  - A translated name goes the same way: `aria-label="Pages" data-i18n-aria-label="nav.pages"`.
+  - Write the English from the catalog (`{en["nav.cards"]}`), not by hand, so the markup and
+    the key can't drift apart.
   - `tests/lib/i18n/markup-keys.test.ts` fails on a key missing from `en.ts` or `th.ts`; at
     runtime an unknown key leaves the English.
   - Thai copy stays hidden (`visibility: hidden`, so the layout doesn't shift) until the pass
@@ -159,8 +169,15 @@ test("renders the label", async () => {
 
 - Match `<span[^>]*>`, not `<span>`: scoped styles add `data-astro-cid-*`.
 - Slots go in `{ slots: { default: "<b>child</b>" } }`.
-- An island's logic is tested in `tests/lib/` against happy-dom (the default environment,
-  with `tests/setup.ts` clearing `localStorage` and the locale before every test); how the
-  island itself is rendered in tests is set up with the first one.
+- Anything that renders an island through the Container needs the Svelte renderer: use
+  `createContainer()` from `tests/container.ts` (with `parseHtml` to query the result) under
+  `// @vitest-environment node`. That proves the build-time frame
+  (`tests/components/atoms/HeaderDate.server.test.ts`).
+- What the island does in the browser is tested by mounting it in happy-dom (the default
+  environment): `mount` and `flushSync` from `svelte` (`HeaderDate.test.ts`).
+  `vitest.config.ts` resolves the `browser` condition so `mount` gets Svelte's client build;
+  node-environment files still render on the server.
+- Logic worth testing on its own goes in `src/lib/` and `tests/lib/`; `tests/setup.ts` clears
+  `localStorage` and the locale before every test.
 - No test renders colour, spacing or layout; list those as preview checks in the PR and
   screenshot at 390 and 1280px, light and dark, English and Thai.

@@ -205,12 +205,16 @@ a:any-link:hover {
 
 /* + New floats at the bottom right of every page (DD-104): a round + over the bar on a phone, a
    pill with its label from 900px. The primary button's colours, as `.page button` draws them.
-   Tapping it opens a small menu above it -- a new purchase list, or a payment. */
+   Tapping it opens a small menu above it -- a new purchase list, or a payment. `--fab-right`
+   and `--fab-bottom` place the button, and the menu above it, which as a popover sits in the
+   top layer and is placed against the viewport rather than the button (DD-173). */
 .fab-menu {
+	--fab-right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
+	--fab-bottom: calc(var(--cc-tabbar-height) + var(--cc-space-4) + env(safe-area-inset-bottom, 0px));
 	position: fixed;
 	z-index: 11;
-	right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
-	bottom: calc(var(--cc-tabbar-height) + var(--cc-space-4) + env(safe-area-inset-bottom, 0px));
+	right: var(--fab-right);
+	bottom: var(--fab-bottom);
 }
 
 .fab-menu__wrap {
@@ -262,7 +266,7 @@ a:any-link:hover {
 }
 
 /* The + turns to a × while the menu is open: its shape says it closes, not only its state. */
-.fab[aria-expanded="true"] .fab__plus {
+.fab-menu:has(.fab-menu__list:popover-open) .fab__plus {
 	transform: rotate(45deg);
 }
 
@@ -270,41 +274,50 @@ a:any-link:hover {
 	display: none;
 }
 
-/* The menu sits above the button, its right edge on the button's. */
+/* The menu sits above the button, its right edge on the button's. A popover lives in the top
+   layer, placed against the viewport, so it takes the button's place from `--fab-right` and
+   `--fab-bottom` and clears the button's height; `inset` and `margin` undo the browser's
+   centring. It slides in from `@starting-style` and back out as `display` and `overlay` hand
+   over. */
 .fab-menu__list {
-	position: absolute;
-	right: 0;
-	bottom: calc(100% + var(--cc-space-2));
-	display: flex;
+	position: fixed;
+	inset: auto;
+	right: var(--fab-right);
+	bottom: calc(var(--fab-bottom) + var(--cc-bar-height) + var(--cc-space-2));
+	margin: 0;
 	flex-direction: column;
 	min-inline-size: max-content;
 	padding: var(--cc-space-1);
+	color: var(--cc-text);
 	background: var(--cc-surface);
 	border: var(--cc-border-width) solid var(--cc-border);
 	border-radius: var(--cc-radius-md);
 	box-shadow: var(--cc-shadow-lg);
 	transform-origin: bottom right;
-	animation: fab-menu-in var(--cc-sheet-motion) var(--cc-sheet-ease);
+	opacity: 0;
+	transform: translateY(var(--cc-space-2)) scale(var(--cc-sheet-scale-from));
+	transition:
+		opacity var(--cc-sheet-motion) var(--cc-sheet-ease),
+		transform var(--cc-sheet-motion) var(--cc-sheet-ease),
+		overlay var(--cc-sheet-motion) allow-discrete,
+		display var(--cc-sheet-motion) allow-discrete;
 }
 
-/* `display: flex` above outranks the reset's `[hidden]`, so the closed menu says so itself. */
-.fab-menu__list[hidden] {
+/* The browser hides a closed popover, but the reset's `div { display: flex }` is an author rule
+   and outranks it, so the closed menu says so itself; else it sits there transparent, catching
+   taps above the button. */
+.fab-menu__list:not(:popover-open) {
 	display: none;
 }
 
-.fab-menu__list[data-state="closing"] {
-	animation: fab-menu-out var(--cc-sheet-motion) var(--cc-sheet-ease) forwards;
+.fab-menu__list:popover-open {
+	display: flex;
+	opacity: 1;
+	transform: none;
 }
 
-@keyframes fab-menu-in {
-	from {
-		opacity: 0;
-		transform: translateY(var(--cc-space-2)) scale(var(--cc-sheet-scale-from));
-	}
-}
-
-@keyframes fab-menu-out {
-	to {
+@starting-style {
+	.fab-menu__list:popover-open {
 		opacity: 0;
 		transform: translateY(var(--cc-space-2)) scale(var(--cc-sheet-scale-from));
 	}
@@ -336,23 +349,10 @@ a:any-link:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.fab__plus {
+	.fab__plus,
+	.fab-menu__list {
 		transition: none;
 	}
-
-	.fab-menu__list,
-	.fab-menu__list[data-state="closing"] {
-		animation: none;
-	}
-}
-
-/* + New steps aside on the payment page and on the purchase list pages (the new-list picker
-   among them), where the reader is mid-task and a bottom bar needs the full width, and on the
-   card form, where it would sit over the form's buttons on a phone. */
-:root[data-pay-page] .fab-menu,
-:root[data-list-page] .fab-menu,
-:root[data-form-page] .fab-menu {
-	display: none;
 }
 
 @media (min-width: 900px) {
@@ -423,8 +423,8 @@ a:any-link:hover {
 	}
 
 	.fab-menu {
-		right: calc(var(--cc-space-5) + env(safe-area-inset-right, 0px));
-		bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+		--fab-right: calc(var(--cc-space-5) + env(safe-area-inset-right, 0px));
+		--fab-bottom: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
 	}
 
 	.fab {

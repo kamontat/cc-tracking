@@ -22,14 +22,6 @@ export type ListPageOptions = {
 	navigate?: (url: string) => void
 }
 
-/**
- * Marks `<html data-list-page>`, so the shell hides the floating + New menu on every list
- * page: the reader is mid-list, and the bottom bars need the full width.
- */
-export const markListPage = (root: HTMLElement): void => {
-	root.ownerDocument.documentElement.setAttribute("data-list-page", "")
-}
-
 /** The defaults behind `ListPageOptions`. */
 export const listPageDefaults = (options: ListPageOptions) => ({
 	clock: options.clock ?? (() => new Date()),

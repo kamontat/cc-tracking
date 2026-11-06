@@ -1,0 +1,22 @@
+---
+import { ICON_PATHS, type IconName } from "#lib/ui/icon-paths"
+
+interface Props {
+	name: IconName
+}
+
+const { name } = Astro.props
+---
+
+<!-- Decorative only: the link or button around it names it, so it is hidden from assistive technology. -->
+<svg
+	class="icon"
+	viewBox="0 0 24 24"
+	fill="none"
+	stroke="currentColor"
+	stroke-width="1.9"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	aria-hidden="true"
+	focusable="false"
+	set:html={ICON_PATHS[name]} />
