@@ -27,7 +27,7 @@
 	"devDependencies": {
 		"@astrojs/check": "0.9.12",
 		"@biomejs/biome": "2.6.5",
-		"@kcconfigs/biome": "4.2.1",
+		"@kcconfigs/biome": "4.2.2",
 		"@kcconfigs/tsconfig": "2.1.3",
 		"@types/bun": "1.4.4",
 		"happy-dom": "21.0.4",
