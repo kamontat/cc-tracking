@@ -111,6 +111,10 @@ reasons don't show up in the code.
   hold-still marker sat on their `#tabbar` slot, which has no height because both are
   `position: fixed`, so they faded out with the page; the bar and _+ New_ now carry it
   themselves.
+- An English reader no longer sees Thai inside Settings and Locations before they load. The
+  build wrote every island in Thai, the fallback for a reader with no language, while the
+  static copy beside it was English; the build now writes English, and a Thai page hides an
+  island (`astro-island[ssr]`) until it runs in Thai (DD-171).
 
 ### Decisions
 
