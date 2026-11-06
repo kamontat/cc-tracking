@@ -6,7 +6,6 @@
 		"#lib/*": "./src/lib/*.ts",
 		"#components/*": "./src/components/*",
 		"#legacy/*": "./src/legacy/*.ts",
-		"#styles/*": "./src/styles/*.ts",
 		"#layouts/*": "./src/layouts/*"
 	},
 	"scripts": {
