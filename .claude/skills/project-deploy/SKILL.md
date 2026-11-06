@@ -43,7 +43,13 @@ reports `development` with no stamps on `astro dev`. Every `PUBLIC_*` is declare
 ### public/
 
 - `_headers` sends `X-Robots-Tag: noindex, nofollow` on every response (PRD DD-169). There
-  is deliberately no `robots.txt`.
+  is deliberately no `robots.txt`. It also caches `/_astro/*` for a year, `immutable` (PRD
+  DD-178): those files are named by a hash of their content. Pages keep Cloudflare's default
+  (`max-age=0, must-revalidate`), so a deploy shows on the next page; never give HTML a long
+  cache, since an old page would ask for hashed files the new deploy no longer has.
+- `astro.config.ts` prefetches every link as it comes into view (`prefetch`, DD-178), so the
+  ClientRouter swaps in HTML already fetched; the browser keeps a prefetch for a few minutes
+  even at `max-age=0`.
 - `_redirects` holds the 301s for old addresses (`/backup` → `/settings`). Neither file does
   anything on `astro dev` or `astro preview`; check them on the preview deploy.
 
