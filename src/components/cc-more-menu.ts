@@ -1,18 +1,19 @@
-import { css, html, LitElement } from "lit";
-import { customElement, property, query, state } from "lit/decorators.js";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { base, controls } from "#styles/shared";
+import { css, html, LitElement } from "lit"
+import { customElement, property, query, state } from "lit/decorators.js"
+
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { base, controls } from "#styles/shared"
 
 /** One button in the menu. `ask` makes it ask twice: the question, then *Delete* and *Keep*. */
 export type MoreItem = {
-	action: string;
-	label: string;
-	variant?: "danger";
-	ask?: string;
-};
+	action: string
+	label: string
+	variant?: "danger"
+	ask?: string
+}
 
-const MENU_ID = "more-menu";
+const MENU_ID = "more-menu"
 
 /**
  * A *More* (`⋯`) button that opens a small list of buttons under it (prototype `subHead`'s
@@ -79,54 +80,52 @@ export class CcMoreMenu extends LitElement {
 				text-align: center;
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) items: MoreItem[] = [];
+	@property({ attribute: false }) items: MoreItem[] = []
 	/** Greys every button while the page writes. */
-	@property({ type: Boolean }) busy = false;
+	@property({ type: Boolean }) busy = false
 
-	@state() private open = false;
+	@state() private open = false
 	/** The item whose question is showing, by action. */
-	@state() private asking: string | null = null;
+	@state() private asking: string | null = null
 
-	@query("button.more") private toggleButton!: HTMLButtonElement;
+	@query("button.more") private toggleButton!: HTMLButtonElement
 
 	/** The button to focus once the next render lands. */
-	private refocus: string | null = null;
+	private refocus: string | null = null
 
 	private readonly onDocumentClick = (event: Event) => {
-		if (this.open && !event.composedPath().includes(this)) this.close(false);
-	};
+		if (this.open && !event.composedPath().includes(this)) this.close(false)
+	}
 
 	constructor() {
-		super();
-		new LocaleController(this);
-		this.addEventListener("keydown", (event) => this.onKeydown(event));
+		super()
+		new LocaleController(this)
+		this.addEventListener("keydown", (event) => this.onKeydown(event))
 	}
 
 	override connectedCallback() {
-		super.connectedCallback();
-		this.ownerDocument.addEventListener("click", this.onDocumentClick);
+		super.connectedCallback()
+		this.ownerDocument.addEventListener("click", this.onDocumentClick)
 	}
 
 	override disconnectedCallback() {
-		super.disconnectedCallback();
-		this.ownerDocument.removeEventListener("click", this.onDocumentClick);
+		super.disconnectedCallback()
+		this.ownerDocument.removeEventListener("click", this.onDocumentClick)
 	}
 
 	protected override updated() {
-		const want = this.refocus;
-		if (!want) return;
-		this.refocus = null;
-		this.renderRoot
-			.querySelector<HTMLElement>(`[data-action="${CSS.escape(want)}"]`)
-			?.focus();
+		const want = this.refocus
+		if (!want) return
+		this.refocus = null
+		this.renderRoot.querySelector<HTMLElement>(`[data-action="${CSS.escape(want)}"]`)?.focus()
 	}
 
 	private show() {
-		this.asking = null;
-		this.open = true;
-		this.refocus = this.items[0]?.action ?? null;
+		this.asking = null
+		this.open = true
+		this.refocus = this.items[0]?.action ?? null
 	}
 
 	/**
@@ -134,34 +133,34 @@ export class CcMoreMenu extends LitElement {
 	 * choice); a click outside leaves it with whatever was clicked.
 	 */
 	private close(refocus = true) {
-		this.open = false;
-		this.asking = null;
-		if (refocus) this.toggleButton?.focus();
+		this.open = false
+		this.asking = null
+		if (refocus) this.toggleButton?.focus()
 	}
 
 	private pick(item: MoreItem) {
 		if (item.ask) {
-			this.asking = item.action;
-			this.refocus = "confirm";
-			return;
+			this.asking = item.action
+			this.refocus = "confirm"
+			return
 		}
-		this.select(item.action);
+		this.select(item.action)
 	}
 
 	private select(action: string) {
-		this.close();
-		this.dispatchEvent(new CustomEvent("menu-select", { detail: { action } }));
+		this.close()
+		this.dispatchEvent(new CustomEvent("menu-select", { detail: { action } }))
 	}
 
 	private onKeydown(event: KeyboardEvent) {
-		if (!this.open || event.key !== "Escape") return;
-		event.preventDefault();
-		event.stopPropagation();
-		this.close();
+		if (!this.open || event.key !== "Escape") return
+		event.preventDefault()
+		event.stopPropagation()
+		this.close()
 	}
 
 	private body() {
-		const asking = this.items.find((item) => item.action === this.asking);
+		const asking = this.items.find((item) => item.action === this.asking)
 		if (asking)
 			return html`<span class="ask">${asking.ask}</span>
 				<span class="answers">
@@ -170,15 +169,15 @@ export class CcMoreMenu extends LitElement {
 						@click=${() => this.select(asking.action)}>${t("common.delete")}</button>
 					<button type="button" data-variant="quiet" data-action="keep"
 						@click=${() => {
-							this.asking = null;
-							this.refocus = asking.action;
+							this.asking = null
+							this.refocus = asking.action
 						}}>${t("form.keep")}</button>
-				</span>`;
+				</span>`
 		return this.items.map(
 			(item) => html`<button type="button" data-action=${item.action}
 				data-variant=${item.variant ?? "quiet"} ?disabled=${this.busy}
 				@click=${() => this.pick(item)}>${item.label}</button>`,
-		);
+		)
 	}
 
 	override render() {
@@ -187,12 +186,12 @@ export class CcMoreMenu extends LitElement {
 				aria-expanded=${this.open ? "true" : "false"}
 				@click=${() => (this.open ? this.close() : this.show())}>⋯</button>
 			<div class="more-menu" id=${MENU_ID} role="group" aria-label=${t("common.more")}
-				?hidden=${!this.open}>${this.body()}</div>`;
+				?hidden=${!this.open}>${this.body()}</div>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-more-menu": CcMoreMenu;
+		"cc-more-menu": CcMoreMenu
 	}
 }

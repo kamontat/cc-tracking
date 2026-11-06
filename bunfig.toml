@@ -1,8 +1,7 @@
 [install]
 exact = true
 
-[test]
-preload = ["./tests/setup-happydom.ts"]
-
-[serve.static]
-plugins = ["./scripts/routes-root.ts"]
+[run]
+# Run package binaries (astro, vitest) on the Bun runtime instead of Node.js,
+# like `bunx --bun astro dev` in https://bun.com/guides/ecosystem/astro
+bun = true

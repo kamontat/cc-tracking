@@ -1,6 +1,6 @@
-import type { ReadyRow } from "#lib/domain/home";
-import type { Owner } from "#lib/domain/owner";
-import type { Card, LimitGroup } from "#lib/domain/types";
+import type { ReadyRow } from "#lib/domain/home"
+import type { Owner } from "#lib/domain/owner"
+import type { Card, LimitGroup } from "#lib/domain/types"
 
 /** Shared by the Ready to use components' tests: three rows with different room and dates. */
 
@@ -12,14 +12,14 @@ export const testCard = (id: string): Card => ({
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
 	limitGroupId: "g",
-});
+})
 
 export const testGroup: LimitGroup = {
 	id: "g",
 	name: "G",
 	limit: 100_000_00,
 	color: "teal",
-};
+}
 
 export const testRow = (
 	id: string,
@@ -27,27 +27,23 @@ export const testRow = (
 	closeDate: string,
 	dueDate: string,
 	extra: {
-		sharedWith?: number;
-		overdue?: boolean;
+		sharedWith?: number
+		overdue?: boolean
 		/** The group's owner, the account holder; the shared test group has none. */
-		groupOwner?: Owner;
+		groupOwner?: Owner
 		/** Makes the card supplementary, held by this person. */
-		holder?: Owner;
+		holder?: Owner
 		/** What the group has used, in satang; 40% of the limit by default. */
-		used?: number;
+		used?: number
 		/** The credit the card holds, in satang; none by default. */
-		credit?: number;
+		credit?: number
 		/** A closed bill's due date still ahead; none by default. */
-		billDue?: string;
+		billDue?: string
 	} = {},
 ): ReadyRow => ({
-	card: extra.holder
-		? { ...testCard(id), supplementary: true, owner: extra.holder }
-		: testCard(id),
+	card: extra.holder ? { ...testCard(id), supplementary: true, owner: extra.holder } : testCard(id),
 	room: {
-		group: extra.groupOwner
-			? { ...testGroup, owner: extra.groupOwner }
-			: testGroup,
+		group: extra.groupOwner ? { ...testGroup, owner: extra.groupOwner } : testGroup,
 		used: extra.used ?? 40_000_00,
 		available: room,
 		held: 0,
@@ -60,13 +56,12 @@ export const testRow = (
 	overdue: extra.overdue ?? false,
 	billDue: extra.billDue ?? null,
 	credit: extra.credit ?? 0,
-});
+})
 
 export const testRows = (): ReadyRow[] => [
 	testRow("A", 60_000_00, "2026-11-10", "2026-11-25", { overdue: true }),
 	testRow("B", 80_000_00, "2026-11-25", "2026-12-15", { sharedWith: 1 }),
 	testRow("C", 20_000_00, "2026-11-18", "2026-12-03"),
-];
+]
 
-export const flat = (el: Element | ParentNode | null | undefined) =>
-	el?.textContent?.replace(/\s+/g, " ").trim();
+export const flat = (el: Element | ParentNode | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim()

@@ -1,6 +1,7 @@
-import { html, nothing, type TemplateResult } from "lit";
-import { t } from "#lib/i18n/index";
-import "#components/cc-modal";
+import { html, nothing, type TemplateResult } from "lit"
+
+import { t } from "#lib/i18n/index"
+import "#components/cc-modal"
 
 /**
  * The parts a filter sheet shares (`cc-tx-filter`, `cc-ready-filter`): the choice chips, and the
@@ -10,20 +11,10 @@ import "#components/cc-modal";
 
 /** `values` with `value` added, or taken out when it is there. */
 export const toggle = <T>(values: T[], value: T): T[] =>
-	values.includes(value)
-		? values.filter((v) => v !== value)
-		: [...values, value];
+	values.includes(value) ? values.filter((v) => v !== value) : [...values, value]
 
 /** What a choice chip names, as its one `data-*` attribute: `data-card="A"`, `data-sort="new"`. */
-export type ChipKind =
-	| "type"
-	| "card"
-	| "range"
-	| "sort"
-	| "location"
-	| "owner"
-	| "ungrouped"
-	| "age";
+export type ChipKind = "type" | "card" | "range" | "sort" | "location" | "owner" | "ungrouped" | "age"
 
 /** One choice in a sheet: a quiet pill that reads pressed while chosen. */
 export function sheetChip(
@@ -33,28 +24,28 @@ export function sheetChip(
 	pressed: boolean,
 	onClick: () => void,
 ): TemplateResult {
-	const on = (k: ChipKind) => (kind === k ? value : nothing);
+	const on = (k: ChipKind) => (kind === k ? value : nothing)
 	return html`<button type="button" data-variant="quiet"
 		data-type=${on("type")} data-card=${on("card")} data-range=${on("range")}
 		data-sort=${on("sort")} data-location=${on("location")} data-owner=${on("owner")}
 		data-ungrouped=${kind === "ungrouped" ? "" : nothing}
 		data-age=${on("age")}
-		aria-pressed=${pressed} @click=${onClick}>${label}</button>`;
+		aria-pressed=${pressed} @click=${onClick}>${label}</button>`
 }
 
 export type SheetFrame = {
 	/** The element drawing the sheet: it re-emits `close`, and emits `apply` with `detail()`. */
-	host: HTMLElement;
+	host: HTMLElement
 	/** How many rows the draft would show; none disables the apply button. */
-	shown: number;
+	shown: number
 	/** The apply button's words while `shown` is above zero. */
-	showLabel: string;
-	onClear: () => void;
+	showLabel: string
+	onClear: () => void
 	/** The draft to hand back on apply. */
-	detail: () => unknown;
+	detail: () => unknown
 	/** The sheet's heading; *Filter and sort* when left out. */
-	title?: string;
-};
+	title?: string
+}
 
 /**
  * The filter sheet around `body`: Escape, the backdrop and Close re-emit `close` from the host;
@@ -67,8 +58,8 @@ export function filterSheetFrame(
 ): TemplateResult {
 	return html`<cc-modal sheet heading=${title ?? t("tx.filter.title")}
 		@close=${(event: Event) => {
-			event.stopPropagation();
-			host.dispatchEvent(new CustomEvent("close"));
+			event.stopPropagation()
+			host.dispatchEvent(new CustomEvent("close"))
 		}}>
 		${body}
 		<div class="footer">
@@ -76,15 +67,12 @@ export function filterSheetFrame(
 				@click=${onClear}>${t("tx.filter.clear")}</button>
 			<button type="button" data-action="apply" ?disabled=${shown === 0}
 				@click=${(event: Event) => {
-					const value = detail();
-					const sheet = (event.currentTarget as HTMLElement).closest(
-						"cc-modal",
-					);
-					const apply = () =>
-						host.dispatchEvent(new CustomEvent("apply", { detail: value }));
-					if (sheet) sheet.leave(apply);
-					else apply();
+					const value = detail()
+					const sheet = (event.currentTarget as HTMLElement).closest("cc-modal")
+					const apply = () => host.dispatchEvent(new CustomEvent("apply", { detail: value }))
+					if (sheet) sheet.leave(apply)
+					else apply()
 				}}>${shown === 0 ? t("tx.filter.nothing") : showLabel}</button>
 		</div>
-	</cc-modal>`;
+	</cc-modal>`
 }

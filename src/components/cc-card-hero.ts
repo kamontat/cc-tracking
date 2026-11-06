@@ -1,26 +1,22 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { cardUsePct } from "#lib/domain/cards-view";
-import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
-import { displayDate } from "#lib/domain/date";
-import { ledgerUrgency } from "#lib/domain/ledger";
-import { usageLevel } from "#lib/domain/limit";
-import { formatAmount } from "#lib/domain/money";
-import { cardOwnerOf } from "#lib/domain/owner";
-import type { GroupRoom } from "#lib/domain/room";
-import { openPeriod } from "#lib/domain/statement";
-import type {
-	Card,
-	LedgerStatement,
-	LimitGroup,
-	LocationRecord,
-	PlainDate,
-} from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { nameOfLocation } from "#lib/i18n/format";
-import { getLocale, t } from "#lib/i18n/index";
-import { groupColor } from "#lib/ui/card-label";
-import { base, groupInk } from "#styles/shared";
+import type { GroupRoom } from "#lib/domain/room"
+import type { Card, LedgerStatement, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
+
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property } from "lit/decorators.js"
+
+import { cardUsePct } from "#lib/domain/cards-view"
+import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
+import { displayDate } from "#lib/domain/date"
+import { ledgerUrgency } from "#lib/domain/ledger"
+import { usageLevel } from "#lib/domain/limit"
+import { formatAmount } from "#lib/domain/money"
+import { cardOwnerOf } from "#lib/domain/owner"
+import { openPeriod } from "#lib/domain/statement"
+import { LocaleController } from "#lib/i18n/controller"
+import { nameOfLocation } from "#lib/i18n/format"
+import { getLocale, t } from "#lib/i18n/index"
+import { groupColor } from "#lib/ui/card-label"
+import { base, groupInk } from "#styles/shared"
 
 /**
  * The top of a card's page (prototype `vCard`): the hero on the group's pastel -- the group and
@@ -170,58 +166,49 @@ export class CcCardHero extends LitElement {
 				}
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) card: Card | null = null;
+	@property({ attribute: false }) card: Card | null = null
 	/** Every stored card, to name the others on this card's group. */
-	@property({ attribute: false }) cards: Card[] = [];
+	@property({ attribute: false }) cards: Card[] = []
 	/** Every stored group, in order, for the group's pastel. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** The card's group room, from `roomFor`; null when it draws on no group. */
-	@property({ attribute: false }) room: GroupRoom | null = null;
+	@property({ attribute: false }) room: GroupRoom | null = null
 	/** What this card alone still owes, from its ledger. */
-	@property({ attribute: false }) owed = 0;
+	@property({ attribute: false }) owed = 0
 	/** Paid money the card's statements could not spend, from its ledger. */
-	@property({ attribute: false }) credit = 0;
+	@property({ attribute: false }) credit = 0
 	/** The oldest closed statement still owing, from `nextBill`. */
-	@property({ attribute: false }) next: LedgerStatement | null = null;
-	@property() today: PlainDate = "";
+	@property({ attribute: false }) next: LedgerStatement | null = null
+	@property() today: PlainDate = ""
 	/** The stored locations, which name the place the card is kept at. */
-	@property({ attribute: false }) locations: LocationRecord[] = [];
+	@property({ attribute: false }) locations: LocationRecord[] = []
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override render() {
-		const card = this.card;
-		if (!card) return nothing;
-		return html`${this.hero(card)}${this.stats(card)}`;
+		const card = this.card
+		if (!card) return nothing
+		return html`${this.hero(card)}${this.stats(card)}`
 	}
 
 	private hero(card: Card) {
-		const room = this.room;
-		const tone = groupColor(card, this.groups);
-		if (!room)
-			return html`<section class="hero"><p>${t("card.hero.noGroup")}</p></section>`;
-		const { group } = room;
-		const holder = cardOwnerOf(card, group);
-		const others = this.cards
-			.filter((c) => c.limitGroupId === group.id && c.id !== card.id)
-			.map((c) => c.id);
-		const who = [
-			group.name,
-			holder,
-			others.length > 0
-				? t("card.hero.shared", { cards: others.join(", ") })
-				: "",
-		]
+		const room = this.room
+		const tone = groupColor(card, this.groups)
+		if (!room) return html`<section class="hero"><p>${t("card.hero.noGroup")}</p></section>`
+		const { group } = room
+		const holder = cardOwnerOf(card, group)
+		const others = this.cards.filter((c) => c.limitGroupId === group.id && c.id !== card.id).map((c) => c.id)
+		const who = [group.name, holder, others.length > 0 ? t("card.hero.shared", { cards: others.join(", ") }) : ""]
 			.filter(Boolean)
-			.join(" · ");
-		const pct = cardUsePct(room) ?? 0;
-		const period = openPeriod(card, this.today);
-		const locale = getLocale();
+			.join(" · ")
+		const pct = cardUsePct(room) ?? 0
+		const period = openPeriod(card, this.today)
+		const locale = getLocale()
 		return html`<section class="hero" data-g=${tone ?? nothing}>
 			<span class="who">${who}</span>
 			<div class="figure">
@@ -236,13 +223,12 @@ export class CcCardHero extends LitElement {
 				close: displayDate(closeDateOf(card.cycle, period), locale),
 				due: displayDate(dueDateOf(card.cycle, period), locale),
 			})}</span>
-		</section>`;
+		</section>`
 	}
 
 	private stats(card: Card) {
-		const next = this.next;
-		const overdue =
-			next !== null && ledgerUrgency(next, this.today) === "overdue";
+		const next = this.next
+		const overdue = next !== null && ledgerUrgency(next, this.today) === "overdue"
 		return html`<div class="stats">
 			<div class="stat">
 				<small>${t("card.stat.owed")}</small>
@@ -263,12 +249,12 @@ export class CcCardHero extends LitElement {
 						<b>${nameOfLocation(this.locations, card.location)}</b>
 					</div>`
 			}
-		</div>`;
+		</div>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-card-hero": CcCardHero;
+		"cc-card-hero": CcCardHero
 	}
 }

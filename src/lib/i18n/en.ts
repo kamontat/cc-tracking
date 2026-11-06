@@ -29,8 +29,7 @@ export const en = {
 	"title.listView": "Saved list — cc-tracking",
 	"title.pay": "Make a payment — cc-tracking",
 	"pay.title": "Make a payment",
-	"pay.pickHint":
-		"Which card is it for? Overdue and soon-due cards come first.",
+	"pay.pickHint": "Which card is it for? Overdue and soon-due cards come first.",
 	"pay.missing": "That card isn't here any more.",
 	"pay.searchPlaceholder": "Search card",
 	"pay.noMatch": "No card matches. Clear the search.",
@@ -56,10 +55,8 @@ export const en = {
 	"pay.date": "Date",
 	"pay.noteLabel": "Note (optional)",
 	"pay.notePlaceholder": "paid from KBank savings",
-	"pay.note.extra":
-		"{extra} more than owed. It stays on {card} as credit for its next purchases.",
-	"pay.note.plan":
-		"Planned for {date}. It shows under Upcoming and counts once you mark it paid.",
+	"pay.note.extra": "{extra} more than owed. It stays on {card} as credit for its next purchases.",
+	"pay.note.plan": "Planned for {date}. It shows under Upcoming and counts once you mark it paid.",
 	"pay.submit.record": "Record {amount} to {card}",
 	"pay.submit.plan": "Plan {amount} to {card} on {date}",
 	"pay.submit.empty": "Enter an amount",
@@ -68,8 +65,7 @@ export const en = {
 	"tx.error.delete": "Could not delete the payment.",
 	"tx.error.markPaid": "Could not mark the payment paid.",
 	"pay.noCards": "No cards yet. Add one on the Cards page.",
-	"pay.noneToPay":
-		"No card to pay. Archived cards with nothing owed are hidden.",
+	"pay.noneToPay": "No card to pay. Archived cards with nothing owed are hidden.",
 	"tx.type.purchase": "Purchase",
 	"tx.type.payment": "Payment",
 	"tx.today": "Today · {date}",
@@ -174,8 +170,7 @@ export const en = {
 		"This date is in the future. The purchase will count against your limit now, on the statement it falls in.",
 	"quickAdd.closeDateWarning":
 		"This is the day the statement closes. The bank may put this purchase on this statement or the next one -- check it against your statement.",
-	"quickAdd.noEligible":
-		"No card here can take a purchase. Tick the place you spend from under Settings › Locations.",
+	"quickAdd.noEligible": "No card here can take a purchase. Tick the place you spend from under Settings › Locations.",
 	"quickAdd.error.badDate": "That date does not exist. Use YYYY-MM-DD.",
 	"quickAdd.error.badAmount": "Enter the amount in baht, like 1234.56.",
 
@@ -224,8 +219,7 @@ export const en = {
 	"cards.error.archive": "Could not archive the card.",
 	"cards.error.saveGroup": "Could not save that limit group.",
 	"cards.error.deleteGroup": "Could not delete that limit group.",
-	"cards.error.duplicateId":
-		'A card with id "{id}" already exists. Card ids must be unique.',
+	"cards.error.duplicateId": 'A card with id "{id}" already exists. Card ids must be unique.',
 
 	"form.section.card": "Card",
 	"form.section.where": "Where and who",
@@ -284,8 +278,7 @@ export const en = {
 	"card.stat.keptIn": "Kept in",
 	"card.useOnList": "Use on a list",
 	"card.pay": "Make a payment",
-	"card.noGroupNote":
-		"Give this card a limit group (Edit) to use it on a list.",
+	"card.noGroupNote": "Give this card a limit group (Edit) to use it on a list.",
 	"card.archivedNote": "This card is archived, so it isn't offered on lists.",
 	"card.statements": "Statements",
 	"card.subtitle": "{id} · Kept in {location}",
@@ -299,8 +292,7 @@ export const en = {
 	"card.purchase.deleteAsk": "Delete {amount}?",
 	"card.purchase.keep": "Keep",
 
-	"statements.empty":
-		"No statements yet. Purchases come from purchase lists on Home.",
+	"statements.empty": "No statements yet. Purchases come from purchase lists on Home.",
 	"statements.header": "closes {close} · due {due}",
 	"statements.paid": "paid in full",
 	"statements.paidTag": "Paid",
@@ -317,12 +309,10 @@ export const en = {
 	"storage.unavailable":
 		"This browser is not letting the page store data. Private windows and blocked site data both cause this.",
 	"startup.failed": "Something went wrong starting the page.",
-	"startup.paymentsFailed":
-		"Could not update your saved payments. Nothing was lost. Reload to try again.",
+	"startup.paymentsFailed": "Could not update your saved payments. Nothing was lost. Reload to try again.",
 
 	"backup.title": "Backup",
-	"backup.warning":
-		"Your data lives only in this browser. Download a copy to keep it safe.",
+	"backup.warning": "Your data lives only in this browser. Download a copy to keep it safe.",
 	"backup.copy": "Copy text",
 	"backup.restore.title": "Restore a copy",
 	"backup.import": "Choose a file",
@@ -330,8 +320,7 @@ export const en = {
 	"backup.pasteLabel": "Copied backup text",
 	"backup.fromClipboard": "Paste from clipboard",
 	"backup.importText": "Restore",
-	"backup.clipboardRefused":
-		"The browser would not read the clipboard. Paste the text here instead.",
+	"backup.clipboardRefused": "The browser would not read the clipboard. Paste the text here instead.",
 	"backup.question.file": "Restore {file}?",
 	"backup.question.pasted": "Restore pasted text?",
 	"backup.here": "Here",
@@ -347,11 +336,9 @@ export const en = {
 	"counts.lists.one": "1 list",
 	"counts.lists.many": "{count} lists",
 	"backup.merge": "Merge",
-	"backup.mergeHint":
-		"Keep what is here, add the copy's records, and update any it shares.",
+	"backup.mergeHint": "Keep what is here, add the copy's records, and update any it shares.",
 	"backup.replace": "Replace",
-	"backup.replaceHint":
-		"Delete what is here first, so only the copy's records remain.",
+	"backup.replaceHint": "Delete what is here first, so only the copy's records remain.",
 	"backup.imported": "Restored {file}: {counts}.",
 	"backup.importedText": "Restored pasted text: {counts}.",
 	"backup.error.export": "Could not download a copy.",
@@ -373,10 +360,8 @@ export const en = {
 	"locations.takes": "Takes purchases",
 	"locations.takesHint": "· its cards show under Ready to use",
 	"locations.deleteAsk": "Delete {name}?",
-	"locations.noneTake":
-		"No place takes purchases, so Ready to use on Home is empty.",
-	"locations.deleteNote":
-		"A location with cards can't be deleted. Move its cards first (Cards › a card › Edit).",
+	"locations.noneTake": "No place takes purchases, so Ready to use on Home is empty.",
+	"locations.deleteNote": "A location with cards can't be deleted. Move its cards first (Cards › a card › Edit).",
 	"locations.add": "Add a location",
 	"locations.addAction": "Add",
 	"locations.addPlaceholder": "e.g. Chiang Mai",
@@ -391,18 +376,15 @@ export const en = {
 	"settings.backup.copyHint": "To paste into another browser",
 	"settings.backup.copyAction": "Copy",
 	"settings.backup.copied": "Copied",
-	"settings.backup.restoreHint":
-		"From pasted text or a file; asks Merge or Replace",
+	"settings.backup.restoreHint": "From pasted text or a file; asks Merge or Replace",
 	"settings.backup.restoreAction": "Restore…",
 	"settings.reset.purge": "Delete old purchases",
-	"settings.reset.purgeHint":
-		"Free space by removing purchases on paid statements",
+	"settings.reset.purgeHint": "Free space by removing purchases on paid statements",
 	"settings.reset.purgeAction": "Choose…",
 	"settings.reset.all": "Delete all data",
 	"settings.reset.allHint": "Cards, lists, purchases and payments",
 	"settings.reset.allAction": "Delete…",
-	"reset.ask":
-		"This deletes {counts}. Language and theme stay. It can't be undone.",
+	"reset.ask": "This deletes {counts}. Language and theme stay. It can't be undone.",
 	"reset.keep": "Keep my data",
 	"reset.deleteEverything": "Delete everything",
 	"reset.done": "All data deleted.",
@@ -420,8 +402,7 @@ export const en = {
 	"purge.note.many": "{count} purchases bought before {date} will be deleted.",
 	"purge.none": "Nothing is older than {age}.",
 	"purge.stay.one": "1 older purchase stays: its statement isn't fully paid.",
-	"purge.stay.many":
-		"{count} older purchases stay: their statements aren't fully paid.",
+	"purge.stay.many": "{count} older purchases stay: their statements aren't fully paid.",
 	"purge.explain":
 		"Only purchases on statements that are fully paid are deleted, with the payments that settled them and the saved lists from the same time, so what each card owes, its credit and its room stay the same. Cards stay. Download a copy first if you may need them.",
 	"purge.ask.one": "Delete 1 purchase…",
@@ -437,8 +418,7 @@ export const en = {
 	"purge.error": "Could not delete the old purchases.",
 
 	"backup.unreadable": "That is not a readable backup.",
-	"backup.version":
-		"That backup is version {found}, and this app reads version {expected}.",
+	"backup.version": "That backup is version {found}, and this app reads version {expected}.",
 	"backup.card": "That backup's card #{index} {problem}.",
 	"backup.purchase": "That backup's purchase #{index} {problem}.",
 	"backup.payment": "That backup's payment #{index} {problem}.",
@@ -451,52 +431,37 @@ export const en = {
 	"backup.problem.missingId": "is missing an id",
 	"backup.problem.missingName": "is missing a name",
 	"backup.problem.missingLast4": "is missing last4",
-	"backup.problem.badLocation":
-		"has a location that is not bangkok, phichit, or krabi",
-	"backup.problem.unknownLocation":
-		"has a location that is not among the backup's locations",
+	"backup.problem.badLocation": "has a location that is not bangkok, phichit, or krabi",
+	"backup.problem.unknownLocation": "has a location that is not among the backup's locations",
 	"backup.problem.badOwner": "has an owner that is not KC, NT, or RI",
 	"backup.problem.noCycle": "has no cycle",
-	"backup.problem.badOffsetCycle":
-		"has an offset cycle with a non-integer day field",
-	"backup.problem.badFixedCycle":
-		"has a fixed cycle with a non-integer day field",
-	"backup.problem.badCycleKind":
-		'has a cycle whose kind is neither "offset" nor "fixed"',
+	"backup.problem.badOffsetCycle": "has an offset cycle with a non-integer day field",
+	"backup.problem.badFixedCycle": "has a fixed cycle with a non-integer day field",
+	"backup.problem.badCycleKind": 'has a cycle whose kind is neither "offset" nor "fixed"',
 	"backup.problem.missingCardId": "is missing a cardId",
 	"backup.problem.badDate": "has an invalid date",
 	"backup.problem.badAmount": "has a non-integer amount",
-	"backup.problem.badAddedAt":
-		"has an entry time that is not a valid date and time",
+	"backup.problem.badAddedAt": "has an entry time that is not a valid date and time",
 	"backup.problem.missingPeriod": "is missing a period",
 	"backup.problem.badPaidAt": "has an invalid paidAt date",
 	"backup.problem.badCloseDate": "has an invalid closeDate",
 	"backup.problem.badDueDate": "has an invalid dueDate",
-	"backup.problem.badParts":
-		"has partial payments that are not a list of dated, positive whole-satang amounts",
+	"backup.problem.badParts": "has partial payments that are not a list of dated, positive whole-satang amounts",
 	"backup.problem.badLimit": "has a limit that is not a whole number of satang",
-	"backup.problem.badLimitRange":
-		"has a limit that is not a whole number of satang above zero",
-	"backup.problem.badAmountRange":
-		"has an amount that is not a whole number of satang above zero",
-	"backup.problem.badLineAmount":
-		"has a line whose amount is not a whole number of satang above zero",
-	"backup.problem.badLineActual":
-		"has a line whose amount actually spent is not a whole number of satang above zero",
-	"backup.problem.badLineMade":
-		"has a line whose made answer is not true or false",
-	"backup.problem.badLines":
-		"has lines that are not a list of cards and amounts",
+	"backup.problem.badLimitRange": "has a limit that is not a whole number of satang above zero",
+	"backup.problem.badAmountRange": "has an amount that is not a whole number of satang above zero",
+	"backup.problem.badLineAmount": "has a line whose amount is not a whole number of satang above zero",
+	"backup.problem.badLineActual": "has a line whose amount actually spent is not a whole number of satang above zero",
+	"backup.problem.badLineMade": "has a line whose made answer is not true or false",
+	"backup.problem.badLines": "has lines that are not a list of cards and amounts",
 	"backup.problem.badLast4": "has a last4 that is not exactly four digits",
 	"backup.problem.badCloseDay": "has a close day outside 1 to 31",
 	"backup.problem.badDueDay": "has a due day outside 1 to 31",
 	"backup.problem.badDueOffset": "has days until due outside 1 to 60",
 	"backup.problem.badPaymentStatus": "has a status that is not planned or paid",
 	"backup.problem.badNote": "has a note that is not text",
-	"backup.problem.badListStatus":
-		"has a status that is not draft, sent, or saved",
-	"backup.problem.badTakesPurchases":
-		"has a takesPurchases that is not true or false",
+	"backup.problem.badListStatus": "has a status that is not draft, sent, or saved",
+	"backup.problem.badTakesPurchases": "has a takesPurchases that is not true or false",
 
 	"limits.title": "Limit groups",
 	"limits.add": "Add limit group",
@@ -538,14 +503,11 @@ export const en = {
 	"spendable.unassigned.many": "{count} cards have no limit group yet.",
 	"spendable.unassignedAction": "Assign them",
 
-	"guard.cardHasPurchases":
-		"This card has purchases, so it can't be deleted. Archive it instead.",
+	"guard.cardHasPurchases": "This card has purchases, so it can't be deleted. Archive it instead.",
 	"guard.cardOnList":
 		"This card is on a list that isn't saved yet, so it can't be deleted. Remove it from the list first.",
-	"guard.groupInUse":
-		"Cards still use this limit group. Move them to another group first.",
-	"guard.locationInUse":
-		"Cards are still kept here. Move them to another location first.",
+	"guard.groupInUse": "Cards still use this limit group. Move them to another group first.",
+	"guard.locationInUse": "Cards are still kept here. Move them to another location first.",
 	"home.needs.one": "1 thing needs you",
 	"home.needs.many": "{count} things need you",
 	"home.caughtUp": "All caught up",
@@ -601,8 +563,7 @@ export const en = {
 	"row.cycle.join": ", ",
 	"row.open": "Open",
 	"row.saved": "Saved list for {date}",
-	"reply.error.notWaitingSave":
-		"This list is no longer waiting for a reply, so nothing was saved.",
+	"reply.error.notWaitingSave": "This list is no longer waiting for a reply, so nothing was saved.",
 	"tx.error.confirmList": "Could not save the list.",
 	"home.error.read": "Could not read your cards.",
 	"ready.title": "Ready to use",
@@ -642,25 +603,20 @@ export const en = {
 	"purchaseList.column.card": "Card",
 	"purchaseList.column.name": "Name (last 4)",
 	"purchaseList.column.amount": "Amount",
-	"purchaseList.error.image":
-		"Could not save the image. Use Copy text instead.",
+	"purchaseList.error.image": "Could not save the image. Use Copy text instead.",
 	"purchaseList.review": "Review",
 	"purchaseList.warn.lines.one": "1 line has warnings",
 	"purchaseList.warn.lines.many": "{count} lines have warnings",
 	"purchaseList.warn.datePassedShort": "date has passed",
-	"purchaseList.warn.overRoom":
-		"Over the room by {over}. The bank may decline it.",
-	"purchaseList.warn.held":
-		"Room is {room} because {held} is held by lists waiting for the spender.",
+	"purchaseList.warn.overRoom": "Over the room by {over}. The bank may decline it.",
+	"purchaseList.warn.held": "Room is {room} because {held} is held by lists waiting for the spender.",
 	"purchaseList.warn.planned": "{amount} planned to be paid by then",
 	"purchaseList.warn.lowerTo": "Lower to {room}",
-	"purchaseList.warn.shared":
-		"Shared limit. {cards} share {group}; together they are {over} over its room of {room}.",
+	"purchaseList.warn.shared": "Shared limit. {cards} share {group}; together they are {over} over its room of {room}.",
 	"purchaseList.warn.overdue":
 		"Overdue bill. {card}'s bill was due {date}, with {remaining} left. The bank may decline the card.",
 	"purchaseList.warn.seeCard": "See the card",
-	"purchaseList.warn.closeDate":
-		"Close date. {card} closes on {date}; the bank may put this on either statement.",
+	"purchaseList.warn.closeDate": "Close date. {card} closes on {date}; the bank may put this on either statement.",
 	"purchaseList.warn.datePassed":
 		"This date has passed. Lists are for purchases still to make; keep it only if you are recording something already bought.",
 	"purchaseList.warn.toToday": "Change to today",
@@ -671,21 +627,16 @@ export const en = {
 	"purchaseList.subtitle.many": "{date} · {count} cards",
 	"purchaseList.saveImage": "Save image",
 	"purchaseList.copied": "Copied. Paste it into the chat with the spender.",
-	"purchaseList.imageSaved":
-		"Image saved. Send it in the chat with the spender.",
+	"purchaseList.imageSaved": "Image saved. Send it in the chat with the spender.",
 	"purchaseList.imageShared": "Image shared. Check it reached the spender.",
-	"purchaseList.sendHint":
-		"Sent it in the chat? Mark it sent. It waits on Home until the spender replies.",
+	"purchaseList.sendHint": "Sent it in the chat? Mark it sent. It waits on Home until the spender replies.",
 	"purchaseList.markSent": "Mark as sent",
 	"purchaseList.saveDraft": "Save as draft instead",
 	"purchaseList.error.save": "Could not save the list.",
 	"purchaseList.error.read": "Could not read the list.",
-	"purchaseList.dropped.one":
-		"{cards} can no longer take purchases and was left out.",
-	"purchaseList.dropped.many":
-		"{cards} can no longer take purchases and were left out.",
-	"purchaseList.error.notDraft":
-		"This list was sent or saved elsewhere, so it was not changed.",
+	"purchaseList.dropped.one": "{cards} can no longer take purchases and was left out.",
+	"purchaseList.dropped.many": "{cards} can no longer take purchases and were left out.",
+	"purchaseList.error.notDraft": "This list was sent or saved elsewhere, so it was not changed.",
 	"purchaseList.missing": "This list no longer exists.",
 	"purchaseList.toHome": "Go to Home",
 	"purchaseList.isDraft": "This list is a draft.",
@@ -698,8 +649,7 @@ export const en = {
 	"purchaseList.error.delete": "Could not delete the draft.",
 	"reply.title": "Spender's reply",
 	"reply.listFor": "List for {date}",
-	"reply.hint":
-		"Record the spender's reply for each line. Change the amount if the real one differs.",
+	"reply.hint": "Record the spender's reply for each line. Change the amount if the real one differs.",
 	"reply.planned": "planned {amount}",
 	"reply.wasMade": "Was it made?",
 	"reply.made": "Made",
@@ -711,18 +661,14 @@ export const en = {
 	"reply.save.many": "Save {count} purchases · {total}",
 	"reply.answerAll": "Answer every line ({answered} of {count})",
 	"reply.error.save": "Could not save the reply.",
-	"reply.error.alreadySaved":
-		"This list was already saved, so nothing was added again.",
+	"reply.error.alreadySaved": "This list was already saved, so nothing was added again.",
 	"reply.error.unanswered": "Answer every line before saving.",
 	"reply.cancel": "Cancel list",
 	"reply.error.cancel": "Could not cancel the list.",
-	"reply.error.notWaiting":
-		"This list is no longer waiting for a reply, so it was not cancelled.",
+	"reply.error.notWaiting": "This list is no longer waiting for a reply, so it was not cancelled.",
 	"saved.detail": "Purchase list · saved",
-	"saved.summary.one":
-		"Saved 1 purchase, {total}. It counts against the card's room now.",
-	"saved.summary.many":
-		"Saved {count} purchases, {total}. They count against each card's room now.",
+	"saved.summary.one": "Saved 1 purchase, {total}. It counts against the card's room now.",
+	"saved.summary.many": "Saved {count} purchases, {total}. They count against each card's room now.",
 	"saved.moved": "{cards} moved to a draft for {date}",
 	"saved.openDraft": "Open it when you're ready to send",
-} as const;
+} as const

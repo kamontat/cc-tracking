@@ -1,18 +1,20 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { today } from "#lib/domain/date";
-import type { PayChoice } from "#lib/domain/pay";
-import type { GroupRoom } from "#lib/domain/room";
-import type { OwedSort } from "#lib/domain/transactions";
-import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { payAddress } from "#lib/ui/pay-address";
-import { base, controls, listControls } from "#styles/shared";
-import { cardTileStyles, tileTone } from "./card-tile";
-import { payTileBody, payTileName } from "./pay-tile";
+import type { PayChoice } from "#lib/domain/pay"
+import type { GroupRoom } from "#lib/domain/room"
+import type { OwedSort } from "#lib/domain/transactions"
+import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
-const SORTS: OwedSort[] = ["urgency", "card", "due", "left"];
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property } from "lit/decorators.js"
+
+import { today } from "#lib/domain/date"
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { payAddress } from "#lib/ui/pay-address"
+import { base, controls, listControls } from "#styles/shared"
+import { cardTileStyles, tileTone } from "./card-tile"
+import { payTileBody, payTileName } from "./pay-tile"
+
+const SORTS: OwedSort[] = ["urgency", "card", "due", "left"]
 
 /**
  * "Owed on each card": a heading with its sort chip, then a card list of payment tiles, one for
@@ -61,22 +63,22 @@ export class CcOwedList extends LitElement {
 				border-radius: var(--cc-radius-md);
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) rows: PayChoice[] = [];
+	@property({ attribute: false }) rows: PayChoice[] = []
 	/** The stored limit groups, in order: a tile takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** Each group's room, by group id: a tile's rail shows its group's used share. */
-	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map();
+	@property({ attribute: false }) rooms: Map<string, GroupRoom> = new Map()
 	/** Each card's ledger, by card id: its open statement holds the dates line 3 shows. */
-	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
+	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map()
 	/** Today, which picks a card's open period when its ledger has no open statement. */
-	@property() today: PlainDate = today(new Date());
-	@property() sort: OwedSort = "urgency";
+	@property() today: PlainDate = today(new Date())
+	@property() sort: OwedSort = "urgency"
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override render() {
@@ -100,9 +102,8 @@ export class CcOwedList extends LitElement {
 					</label>`
 					: nothing
 			}
-		</div>`;
-		if (this.rows.length === 0)
-			return html`${head}<p class="empty">${t("tx.owed.empty")}</p>`;
+		</div>`
+		if (this.rows.length === 0) return html`${head}<p class="empty">${t("tx.owed.empty")}</p>`
 		return html`
 			${head}
 			<div class="tiles">${this.rows.map(
@@ -110,12 +111,12 @@ export class CcOwedList extends LitElement {
 					data-card=${row.card.id} aria-label=${payTileName(row)}
 					href=${payAddress({ cardId: row.card.id })}>${payTileBody(row, this)}</a>`,
 			)}</div>
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-owed-list": CcOwedList;
+		"cc-owed-list": CcOwedList
 	}
 }

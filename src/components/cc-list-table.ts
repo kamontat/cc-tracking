@@ -1,9 +1,11 @@
-import { css, html, LitElement } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import type { Card, ListStatus, PurchaseList } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { shareTable } from "#lib/ui/list-share";
-import { base, dataTable, rowPanel } from "#styles/shared";
+import type { Card, ListStatus, PurchaseList } from "#lib/domain/types"
+
+import { css, html, LitElement } from "lit"
+import { customElement, property } from "lit/decorators.js"
+
+import { LocaleController } from "#lib/i18n/controller"
+import { shareTable } from "#lib/ui/list-share"
+import { base, dataTable, rowPanel } from "#styles/shared"
 
 /** The purchase list as a document: what Copy text and Save image also say. */
 @customElement("cc-list-table")
@@ -75,24 +77,24 @@ export class CcListTable extends LitElement {
 				}
 			}
 		`,
-	];
+	]
 
 	@property({ attribute: false }) list: Pick<PurchaseList, "date" | "lines"> & {
-		status?: ListStatus;
+		status?: ListStatus
 	} = {
 		date: "",
 		lines: [],
-	};
-	@property({ attribute: false }) cards: Card[] = [];
+	}
+	@property({ attribute: false }) cards: Card[] = []
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	override render() {
-		const table = shareTable(this.list, this.cards);
-		const [cardHead, nameHead, amountHead] = table.headers;
+		const table = shareTable(this.list, this.cards)
+		const [cardHead, nameHead, amountHead] = table.headers
 		return html`
 			<div class="doc">
 				<div>
@@ -126,12 +128,12 @@ export class CcListTable extends LitElement {
 					</tfoot>
 				</table></div>
 			</div>
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-list-table": CcListTable;
+		"cc-list-table": CcListTable
 	}
 }

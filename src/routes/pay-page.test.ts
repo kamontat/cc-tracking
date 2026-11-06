@@ -1,61 +1,55 @@
-import { expect, test } from "bun:test";
-import type { CcModal } from "#components/cc-modal";
-import type { CcPayForm } from "#components/cc-pay-form";
-import type { CcPayPicker } from "#components/cc-pay-picker";
-import {
-	DEFAULT_TX_FILTER,
-	filterEntries,
-	ledgerEntries,
-} from "#lib/domain/transactions";
-import type { CardPayment } from "#lib/domain/types";
-import { setLocale } from "#lib/i18n/index";
-import { InMemoryRepository, type Repository } from "#lib/storage/repository";
-import {
-	exportBackupV3,
-	importBackupV3,
-	parseAnyBackup,
-} from "#lib/storage/transfer-v3";
-import { CLOCK, flatText, mount, seed, settle } from "./list/test-support";
-import { type PayAddressBar, renderPayPage } from "./pay-page";
+import type { CcModal } from "#components/cc-modal"
+import type { CcPayForm } from "#components/cc-pay-form"
+import type { CcPayPicker } from "#components/cc-pay-picker"
+import type { CardPayment } from "#lib/domain/types"
+
+import { expect, test } from "vitest"
+
+import { DEFAULT_TX_FILTER, filterEntries, ledgerEntries } from "#lib/domain/transactions"
+import { setLocale } from "#lib/i18n/index"
+import { InMemoryRepository, type Repository } from "#lib/storage/repository"
+import { exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
+import { CLOCK, flatText, mount, seed, settle } from "./list/test-support"
+import { type PayAddressBar, renderPayPage } from "./pay-page"
 
 /** An address bar that records what the page did to it, and can play Back. */
 const fakeBar = (start: string) => {
-	const entries = [start];
-	let at = 0;
-	const calls: string[] = [];
-	let pop = () => {};
+	const entries = [start]
+	let at = 0
+	const calls: string[] = []
+	let pop = () => {}
 	const bar: PayAddressBar = {
 		search: () => {
-			const entry = entries[at] ?? "";
-			const q = entry.indexOf("?");
-			return q === -1 ? "" : entry.slice(q);
+			const entry = entries[at] ?? ""
+			const q = entry.indexOf("?")
+			return q === -1 ? "" : entry.slice(q)
 		},
 		push: (url) => {
-			calls.push(`push ${url}`);
-			entries.splice(at + 1, entries.length, url);
-			at++;
+			calls.push(`push ${url}`)
+			entries.splice(at + 1, entries.length, url)
+			at++
 		},
 		replace: (url) => {
-			calls.push(`replace ${url}`);
-			entries[at] = url;
+			calls.push(`replace ${url}`)
+			entries[at] = url
 		},
 		onPop: (listener) => {
-			pop = listener;
+			pop = listener
 		},
 		length: () => entries.length,
 		back: () => {
-			calls.push("back");
-			at = Math.max(0, at - 1);
-			pop();
+			calls.push("back")
+			at = Math.max(0, at - 1)
+			pop()
 		},
-	};
+	}
 	/** The browser's Forward. */
 	const forward = () => {
-		at = Math.min(entries.length - 1, at + 1);
-		pop();
-	};
-	return { bar, calls, entries, forward, now: () => entries[at] };
-};
+		at = Math.min(entries.length - 1, at + 1)
+		pop()
+	}
+	return { bar, calls, entries, forward, now: () => entries[at] }
+}
 
 const withStatement = async (repo: Repository) => {
 	await repo.savePurchase({
@@ -64,425 +58,377 @@ const withStatement = async (repo: Repository) => {
 		date: "2026-09-10",
 		amount: 10_000_00,
 		note: "fuel",
-	});
-};
+	})
+}
 
 const setup = async (
 	start: string,
 	before?: (repo: Repository) => Promise<void>,
 	repo: Repository = new InMemoryRepository(),
 ) => {
-	setLocale("en");
-	document.documentElement.removeAttribute("data-pay-page");
-	await seed(repo);
-	await before?.(repo);
-	const root = mount();
-	const address = fakeBar(start);
-	const visited: string[] = [];
+	setLocale("en")
+	document.documentElement.removeAttribute("data-pay-page")
+	await seed(repo)
+	await before?.(repo)
+	const root = mount()
+	const address = fakeBar(start)
+	const visited: string[] = []
 	renderPayPage(repo, root, {
 		clock: CLOCK,
 		address: address.bar,
 		navigate: (url) => {
-			visited.push(url);
+			visited.push(url)
 		},
-	});
-	await settle(5);
-	return { repo, root, address, visited };
-};
+	})
+	await settle(5)
+	return { repo, root, address, visited }
+}
 
-const modal = () => document.querySelector<CcModal>("cc-modal[sheet]");
-const picker = () => document.querySelector<CcPayPicker>("cc-pay-picker");
-const form = () => document.querySelector<CcPayForm>("cc-pay-form");
+const modal = () => document.querySelector<CcModal>("cc-modal[sheet]")
+const picker = () => document.querySelector<CcPayPicker>("cc-pay-picker")
+const form = () => document.querySelector<CcPayForm>("cc-pay-form")
 const inner = <T extends Element>(el: Element | null, selector: string) =>
-	el?.shadowRoot?.querySelector<T>(selector) ?? null;
+	el?.shadowRoot?.querySelector<T>(selector) ?? null
 
 const pickerRows = async () => {
-	await picker()?.updateComplete;
-	return [
-		...(picker()?.shadowRoot?.querySelectorAll<HTMLButtonElement>(
-			"button[data-card]",
-		) ?? []),
-	];
-};
+	await picker()?.updateComplete
+	return [...(picker()?.shadowRoot?.querySelectorAll<HTMLButtonElement>("button[data-card]") ?? [])]
+}
 
 const fill = async (name: string, value: string) => {
-	const el = form();
-	await el?.updateComplete;
-	const input = inner<HTMLInputElement>(el, `[name="${name}"]`);
-	if (!el || !input) throw new Error(`no ${name}`);
-	input.value = value;
-	input.dispatchEvent(new Event("input"));
-	await el.updateComplete;
-};
+	const el = form()
+	await el?.updateComplete
+	const input = inner<HTMLInputElement>(el, `[name="${name}"]`)
+	if (!el || !input) throw new Error(`no ${name}`)
+	input.value = value
+	input.dispatchEvent(new Event("input"))
+	await el.updateComplete
+}
 
 const submit = async () => {
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(
-		new Event("submit", { cancelable: true }),
-	);
-	await settle(10);
-};
+	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
+	await settle(10)
+}
 
 const amountValue = async () => {
-	await form()?.updateComplete;
-	return inner<HTMLInputElement>(form(), '[name="amount"]')?.value;
-};
+	await form()?.updateComplete
+	return inner<HTMLInputElement>(form(), '[name="amount"]')?.value
+}
 
-const submitText = () => flatText(inner(form(), 'button[type="submit"]')) ?? "";
+const submitText = () => flatText(inner(form(), 'button[type="submit"]')) ?? ""
 
 test("/pay is the card picker under a sub-header, with no sheet, and hides the Payment button", async () => {
-	const { root } = await setup("/pay");
-	expect(flatText(root.querySelector(".sub-header h1"))).toBe("Make a payment");
-	expect((await pickerRows()).map((r) => r.dataset["card"])).toEqual([
-		"A",
-		"B",
-	]);
-	expect(modal()).toBeNull();
-	expect(document.documentElement.hasAttribute("data-pay-page")).toBe(true);
-	const css = await Bun.file("src/styles/app.css").text();
-	expect(css).toMatch(/:root\[data-pay-page\] \.fab-menu,/);
-});
+	const { root } = await setup("/pay")
+	expect(flatText(root.querySelector(".sub-header h1"))).toBe("Make a payment")
+	expect((await pickerRows()).map((r) => r.dataset["card"])).toEqual(["A", "B"])
+	expect(modal()).toBeNull()
+	expect(document.documentElement.hasAttribute("data-pay-page")).toBe(true)
+	const css = await Bun.file("src/styles/app.css").text()
+	expect(css).toMatch(/:root\[data-pay-page\] \.fab-menu,/)
+})
 
 test("the picker's tiles get each group's room, so a tile's rail shows its used share", async () => {
-	await setup("/pay", withStatement);
-	const rooms = picker()?.rooms;
-	expect(rooms?.get("g1")?.used).toBe(10_000_00);
-	expect(rooms?.get("g1")?.room).toBe(90_000_00);
-	const [first, second] = await pickerRows();
-	expect(first?.classList.contains("tile")).toBe(true);
-	expect(first?.querySelector(".rail")?.getAttribute("aria-label")).toBe(
-		"10% of the limit used",
-	);
-	expect(flatText(first?.querySelector(".facts") ?? null)).toMatch(
-		/^Bill closed 25 Sep 2026 · ฿10,000.00 left$/,
-	);
+	await setup("/pay", withStatement)
+	const rooms = picker()?.rooms
+	expect(rooms?.get("g1")?.used).toBe(10_000_00)
+	expect(rooms?.get("g1")?.room).toBe(90_000_00)
+	const [first, second] = await pickerRows()
+	expect(first?.classList.contains("tile")).toBe(true)
+	expect(first?.querySelector(".rail")?.getAttribute("aria-label")).toBe("10% of the limit used")
+	expect(flatText(first?.querySelector(".facts") ?? null)).toMatch(/^Bill closed 25 Sep 2026 · ฿10,000.00 left$/)
 	// B has no bill: its last line says when the open statement closes and is due.
-	expect(picker()?.today).toBe("2026-10-31");
-	expect(picker()?.ledgers.get("A")?.owed).toBe(10_000_00);
-	expect(flatText(second?.querySelector(".facts") ?? null)).toBe(
-		"closes 25 Nov 2026 · due 15 Dec 2026",
-	);
-});
+	expect(picker()?.today).toBe("2026-10-31")
+	expect(picker()?.ledgers.get("A")?.owed).toBe(10_000_00)
+	expect(flatText(second?.querySelector(".facts") ?? null)).toBe("closes 25 Nov 2026 · due 15 Dec 2026")
+})
 
 test("/pay?card= opens the sheet over the picker, the amount prefilled from the address", async () => {
-	await setup("/pay?card=A&amount=12050", withStatement);
-	expect(picker()).not.toBeNull();
-	expect(modal()?.heading).toBe("Make a payment");
-	expect(form()?.card?.id).toBe("A");
-	expect(await amountValue()).toBe("120.50");
-	expect(submitText()).toBe("Record ฿120.50 to A card");
-});
+	await setup("/pay?card=A&amount=12050", withStatement)
+	expect(picker()).not.toBeNull()
+	expect(modal()?.heading).toBe("Make a payment")
+	expect(form()?.card?.id).toBe("A")
+	expect(await amountValue()).toBe("120.50")
+	expect(submitText()).toBe("Record ฿120.50 to A card")
+})
 
 test("without an amount the sheet starts at the next bill, or empty with none", async () => {
-	await setup("/pay?card=A", withStatement);
-	expect(await amountValue()).toBe("10000");
-	await setup("/pay?card=B", withStatement);
-	expect(await amountValue()).toBe("");
-	expect(submitText()).toBe("Enter an amount");
-});
+	await setup("/pay?card=A", withStatement)
+	expect(await amountValue()).toBe("10000")
+	await setup("/pay?card=B", withStatement)
+	expect(await amountValue()).toBe("")
+	expect(submitText()).toBe("Enter an amount")
+})
 
 test("picking a card pushes its address and opens its sheet; Back closes it", async () => {
-	const { address } = await setup("/pay", withStatement);
-	(await pickerRows())[0]?.click();
-	await settle();
-	expect(address.calls).toEqual(["push /pay?card=A"]);
-	expect(modal()).not.toBeNull();
-	expect(form()?.card?.id).toBe("A");
+	const { address } = await setup("/pay", withStatement)
+	;(await pickerRows())[0]?.click()
+	await settle()
+	expect(address.calls).toEqual(["push /pay?card=A"])
+	expect(modal()).not.toBeNull()
+	expect(form()?.card?.id).toBe("A")
 	// The browser's Back pops the entry the pick pushed, and the sheet goes with it.
-	address.bar.back();
-	await settle();
-	expect(modal()).toBeNull();
-	expect(picker()).not.toBeNull();
-});
+	address.bar.back()
+	await settle()
+	expect(modal()).toBeNull()
+	expect(picker()).not.toBeNull()
+})
 
 test("Close, Escape and Change take the card out of the address and leave the picker", async () => {
-	const { address } = await setup("/pay?card=A&amount=500", withStatement);
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
-	await settle();
-	expect(modal()).toBeNull();
-	expect(address.calls).toEqual(["replace /pay"]);
-	expect(address.now()).toBe("/pay");
-	expect(picker()).not.toBeNull();
+	const { address } = await setup("/pay?card=A&amount=500", withStatement)
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
+	await settle()
+	expect(modal()).toBeNull()
+	expect(address.calls).toEqual(["replace /pay"])
+	expect(address.now()).toBe("/pay")
+	expect(picker()).not.toBeNull()
 
-	(await pickerRows())[1]?.click();
-	await settle();
-	inner(modal(), "dialog")?.dispatchEvent(
-		new Event("cancel", { cancelable: true }),
-	);
-	await settle();
-	expect(modal()).toBeNull();
-	expect(address.now()).toBe("/pay");
+	;(await pickerRows())[1]?.click()
+	await settle()
+	inner(modal(), "dialog")?.dispatchEvent(new Event("cancel", { cancelable: true }))
+	await settle()
+	expect(modal()).toBeNull()
+	expect(address.now()).toBe("/pay")
 
-	(await pickerRows())[0]?.click();
-	await settle();
-	await form()?.updateComplete;
-	inner<HTMLButtonElement>(form(), '[data-action="change"]')?.click();
-	await settle();
-	expect(modal()).toBeNull();
+	;(await pickerRows())[0]?.click()
+	await settle()
+	await form()?.updateComplete
+	inner<HTMLButtonElement>(form(), '[data-action="change"]')?.click()
+	await settle()
+	expect(modal()).toBeNull()
 	// The sheets after the first came from picks, so closing them steps back over the pick.
-	expect(address.calls.slice(-1)).toEqual(["back"]);
-	expect(address.now()).toBe("/pay");
-});
+	expect(address.calls.slice(-1)).toEqual(["back"])
+	expect(address.now()).toBe("/pay")
+})
 
 test("closing a sheet the page pushed steps back, so the picker is in history once", async () => {
-	const { address } = await setup("/pay", withStatement);
-	(await pickerRows())[0]?.click();
-	await settle();
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
-	await settle();
-	expect(address.calls).toEqual(["push /pay?card=A", "back"]);
-	expect(modal()).toBeNull();
-	expect(address.now()).toBe("/pay");
+	const { address } = await setup("/pay", withStatement)
+	;(await pickerRows())[0]?.click()
+	await settle()
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
+	await settle()
+	expect(address.calls).toEqual(["push /pay?card=A", "back"])
+	expect(modal()).toBeNull()
+	expect(address.now()).toBe("/pay")
 	// Forward onto the pushed entry reopens it, and closing it steps back again.
-	address.forward();
-	await settle();
-	expect(form()?.card?.id).toBe("A");
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
-	await settle();
-	expect(address.calls).toEqual(["push /pay?card=A", "back", "back"]);
-	expect(address.entries).toEqual(["/pay", "/pay?card=A"]);
-	expect(address.now()).toBe("/pay");
-	expect(modal()).toBeNull();
-});
+	address.forward()
+	await settle()
+	expect(form()?.card?.id).toBe("A")
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
+	await settle()
+	expect(address.calls).toEqual(["push /pay?card=A", "back", "back"])
+	expect(address.entries).toEqual(["/pay", "/pay?card=A"])
+	expect(address.now()).toBe("/pay")
+	expect(modal()).toBeNull()
+})
 
 test("closing a sheet opened from a link at ?card= rewrites the address", async () => {
-	const { address } = await setup("/pay?card=A", withStatement);
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
-	await settle();
-	expect(address.calls).toEqual(["replace /pay"]);
-	expect(address.entries).toEqual(["/pay"]);
-	expect(modal()).toBeNull();
-});
+	const { address } = await setup("/pay?card=A", withStatement)
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
+	await settle()
+	expect(address.calls).toEqual(["replace /pay"])
+	expect(address.entries).toEqual(["/pay"])
+	expect(modal()).toBeNull()
+})
 
 test("an unknown card says so above the picker and opens no sheet", async () => {
-	await setup("/pay?card=nope");
-	expect(flatText(document.querySelector("[data-missing]"))).toBe(
-		"That card isn't here any more.",
-	);
-	expect(modal()).toBeNull();
-	expect(picker()).not.toBeNull();
-});
+	await setup("/pay?card=nope")
+	expect(flatText(document.querySelector("[data-missing]"))).toBe("That card isn't here any more.")
+	expect(modal()).toBeNull()
+	expect(picker()).not.toBeNull()
+})
 
 test("a paid payment is stored with its note, the settled statement's dates kept, then Transactions replaces the page", async () => {
-	const { repo, visited } = await setup("/pay?card=A", withStatement);
-	await fill("amount", "10000");
-	await fill("note", "  From savings  ");
-	expect(submitText()).toBe("Record ฿10,000.00 to A card");
-	await submit();
-	expect((await repo.listStatementDates("A")).map((d) => d.period)).toEqual([
-		"2026-09",
-	]);
-	const stored = await repo.listCardPayments("A");
-	expect(stored).toHaveLength(1);
+	const { repo, visited } = await setup("/pay?card=A", withStatement)
+	await fill("amount", "10000")
+	await fill("note", "  From savings  ")
+	expect(submitText()).toBe("Record ฿10,000.00 to A card")
+	await submit()
+	expect((await repo.listStatementDates("A")).map((d) => d.period)).toEqual(["2026-09"])
+	const stored = await repo.listCardPayments("A")
+	expect(stored).toHaveLength(1)
 	expect(stored[0]).toMatchObject({
 		cardId: "A",
 		amount: 10_000_00,
 		date: "2026-10-31",
 		status: "paid",
 		note: "From savings",
-	} satisfies Partial<CardPayment>);
-	expect(visited).toEqual(["/transactions"]);
-});
+	} satisfies Partial<CardPayment>)
+	expect(visited).toEqual(["/transactions"])
+})
 
 test("a blank note stores no note", async () => {
-	const { repo } = await setup("/pay?card=A", withStatement);
-	await fill("amount", "100");
-	await fill("note", "   ");
-	await submit();
-	const [payment] = await repo.listCardPayments("A");
-	expect(payment && "note" in payment).toBe(false);
-});
+	const { repo } = await setup("/pay?card=A", withStatement)
+	await fill("amount", "100")
+	await fill("note", "   ")
+	await submit()
+	const [payment] = await repo.listCardPayments("A")
+	expect(payment && "note" in payment).toBe(false)
+})
 
 test("a later date stores a planned payment and freezes nothing", async () => {
-	const { repo, visited } = await setup("/pay?card=A", withStatement);
-	await fill("amount", "100");
-	await fill("date", "2026-11-05");
-	expect(submitText()).toBe("Plan ฿100.00 to A card on 05 Nov 2026");
-	await submit();
-	expect(await repo.listStatementDates("A")).toEqual([]);
-	const [payment] = await repo.listCardPayments("A");
-	expect(payment).toMatchObject({ status: "planned", date: "2026-11-05" });
-	expect(visited).toEqual(["/transactions"]);
-});
+	const { repo, visited } = await setup("/pay?card=A", withStatement)
+	await fill("amount", "100")
+	await fill("date", "2026-11-05")
+	expect(submitText()).toBe("Plan ฿100.00 to A card on 05 Nov 2026")
+	await submit()
+	expect(await repo.listStatementDates("A")).toEqual([])
+	const [payment] = await repo.listCardPayments("A")
+	expect(payment).toMatchObject({ status: "planned", date: "2026-11-05" })
+	expect(visited).toEqual(["/transactions"])
+})
 
 test("two quick submits save one payment", async () => {
-	const { repo, visited } = await setup("/pay?card=A", withStatement);
-	await fill("amount", "100");
-	const element = inner<HTMLFormElement>(form(), "form");
-	element?.dispatchEvent(new Event("submit", { cancelable: true }));
-	element?.dispatchEvent(new Event("submit", { cancelable: true }));
-	await settle(10);
-	expect(await repo.listCardPayments("A")).toHaveLength(1);
-	expect(visited).toEqual(["/transactions"]);
-});
+	const { repo, visited } = await setup("/pay?card=A", withStatement)
+	await fill("amount", "100")
+	const element = inner<HTMLFormElement>(form(), "form")
+	element?.dispatchEvent(new Event("submit", { cancelable: true }))
+	element?.dispatchEvent(new Event("submit", { cancelable: true }))
+	await settle(10)
+	expect(await repo.listCardPayments("A")).toHaveLength(1)
+	expect(visited).toEqual(["/transactions"])
+})
 
 test("a failed save keeps the sheet and the typing, says why, and frees the button", async () => {
 	const { repo, visited } = await setup("/pay?card=A", async (repo) => {
-		repo.saveCardPayment = () => Promise.reject(new Error("disk full"));
-	});
-	await fill("amount", "100");
-	await fill("note", "From savings");
-	await submit();
-	await form()?.updateComplete;
-	expect(modal()).not.toBeNull();
-	expect(visited).toEqual([]);
-	expect(await amountValue()).toBe("100");
-	expect(inner<HTMLInputElement>(form(), '[name="note"]')?.value).toBe(
-		"From savings",
-	);
-	expect(form()?.error).toContain("Could not save the payment.");
-	expect(
-		inner<HTMLButtonElement>(form(), 'button[type="submit"]')?.disabled,
-	).toBe(false);
-	expect(await repo.listCardPayments("A")).toHaveLength(0);
-});
+		repo.saveCardPayment = () => Promise.reject(new Error("disk full"))
+	})
+	await fill("amount", "100")
+	await fill("note", "From savings")
+	await submit()
+	await form()?.updateComplete
+	expect(modal()).not.toBeNull()
+	expect(visited).toEqual([])
+	expect(await amountValue()).toBe("100")
+	expect(inner<HTMLInputElement>(form(), '[name="note"]')?.value).toBe("From savings")
+	expect(form()?.error).toContain("Could not save the payment.")
+	expect(inner<HTMLButtonElement>(form(), 'button[type="submit"]')?.disabled).toBe(false)
+	expect(await repo.listCardPayments("A")).toHaveLength(0)
+})
 
 test("a read failure shows on the page", async () => {
-	const repo = new InMemoryRepository();
+	const repo = new InMemoryRepository()
 	await setup(
 		"/pay",
 		async (r) => {
-			r.listCards = () => Promise.reject(new Error("boom"));
+			r.listCards = () => Promise.reject(new Error("boom"))
 		},
 		repo,
-	);
-	expect(
-		document.querySelector<HTMLElement & { message: string }>("cc-error-banner")
-			?.message,
-	).toContain("Could not read your cards.");
-});
+	)
+	expect(document.querySelector<HTMLElement & { message: string }>("cc-error-banner")?.message).toContain(
+		"Could not read your cards.",
+	)
+})
 
 test("a payment's note goes from the sheet to the ledger's search and through a backup", async () => {
-	const { repo } = await setup("/pay?card=A", withStatement);
-	await fill("amount", "100");
-	await fill("note", "From savings");
-	await submit();
+	const { repo } = await setup("/pay?card=A", withStatement)
+	await fill("amount", "100")
+	await fill("note", "From savings")
+	await submit()
 
 	const search = async (from: Repository) =>
 		filterEntries(
-			ledgerEntries(
-				await from.listCards(),
-				[],
-				await from.listCardPayments("A"),
-			),
+			ledgerEntries(await from.listCards(), [], await from.listCardPayments("A")),
 			{ ...DEFAULT_TX_FILTER, q: "savings" },
 			"2026-10-31",
-		).map((entry) =>
-			entry.kind === "payment" ? entry.payment.note : undefined,
-		);
-	expect(await search(repo)).toEqual(["From savings"]);
+		).map((entry) => (entry.kind === "payment" ? entry.payment.note : undefined))
+	expect(await search(repo)).toEqual(["From savings"])
 
-	const restored = new InMemoryRepository();
-	await importBackupV3(
-		restored,
-		parseAnyBackup(JSON.stringify(await exportBackupV3(repo, new Date()))),
-	);
-	expect(await search(restored)).toEqual(["From savings"]);
-});
+	const restored = new InMemoryRepository()
+	await importBackupV3(restored, parseAnyBackup(JSON.stringify(await exportBackupV3(repo, new Date()))))
+	expect(await search(restored)).toEqual(["From savings"])
+})
 
 test("while a save is in flight the sheet is held, so Escape cannot slide it away", async () => {
-	let release!: () => void;
+	let release!: () => void
 	const { address } = await setup("/pay?card=A", async (repo) => {
-		const save = repo.saveCardPayment.bind(repo);
+		const save = repo.saveCardPayment.bind(repo)
 		repo.saveCardPayment = (payment) =>
 			new Promise((resolve) => {
-				release = () => resolve(save(payment));
-			});
-	});
-	await fill("amount", "100");
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(
-		new Event("submit", { cancelable: true }),
-	);
-	await settle(5);
-	expect(modal()?.held).toBe(true);
-	inner(modal(), "dialog")?.dispatchEvent(
-		new Event("cancel", { cancelable: true }),
-	);
-	expect(modal()?.hasAttribute("closing")).toBe(false);
-	expect(address.bar.search()).toContain("card=A");
-	release();
-	await settle(10);
-});
+				release = () => resolve(save(payment))
+			})
+	})
+	await fill("amount", "100")
+	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
+	await settle(5)
+	expect(modal()?.held).toBe(true)
+	inner(modal(), "dialog")?.dispatchEvent(new Event("cancel", { cancelable: true }))
+	expect(modal()?.hasAttribute("closing")).toBe(false)
+	expect(address.bar.search()).toContain("card=A")
+	release()
+	await settle(10)
+})
 
 /** A repository whose payment save waits for `settle(ok)`: true saves, false fails. */
 const heldSave = () => {
-	const held: { settle: (ok: boolean) => void } = { settle: () => {} };
+	const held: { settle: (ok: boolean) => void } = { settle: () => {} }
 	const before = async (repo: Repository) => {
-		const save = repo.saveCardPayment.bind(repo);
+		const save = repo.saveCardPayment.bind(repo)
 		repo.saveCardPayment = (payment) =>
 			new Promise((resolve, reject) => {
-				held.settle = (ok) =>
-					ok ? resolve(save(payment)) : reject(new Error("disk full"));
-			});
-	};
-	return { held, before };
-};
+				held.settle = (ok) => (ok ? resolve(save(payment)) : reject(new Error("disk full")))
+			})
+	}
+	return { held, before }
+}
 
 const pageBanner = (root: HTMLElement) =>
-	root.querySelector<HTMLElement & { message: string; retryLabel: string }>(
-		"cc-error-banner",
-	);
+	root.querySelector<HTMLElement & { message: string; retryLabel: string }>("cc-error-banner")
 
 test("Back during a save that then fails says why on the page, and Try again reopens the sheet with the typing", async () => {
-	const { held, before } = heldSave();
+	const { held, before } = heldSave()
 	const { root, address, visited } = await setup("/pay", async (repo) => {
-		await withStatement(repo);
-		await before(repo);
-	});
-	(await pickerRows())[0]?.click();
-	await settle();
-	await fill("amount", "100");
-	await fill("note", "From savings");
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(
-		new Event("submit", { cancelable: true }),
-	);
-	await settle(5);
+		await withStatement(repo)
+		await before(repo)
+	})
+	;(await pickerRows())[0]?.click()
+	await settle()
+	await fill("amount", "100")
+	await fill("note", "From savings")
+	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
+	await settle(5)
 	// The browser's Back while the save is held: the address drops the card.
-	address.bar.back();
-	await settle();
-	expect(address.now()).toBe("/pay");
-	held.settle(false);
-	await settle(10);
-	expect(visited).toEqual([]);
-	expect(modal()).toBeNull();
-	const shown = pageBanner(root);
-	expect(shown?.message).toContain("Could not save the payment.");
-	expect(shown?.message).toContain("disk full");
-	await (shown as unknown as { updateComplete: Promise<void> })?.updateComplete;
-	const retry = shown?.shadowRoot?.querySelector<HTMLButtonElement>("button");
-	expect(flatText(retry)).toBe("Try again");
-	retry?.click();
-	await settle();
-	expect(address.calls.slice(-1)).toEqual(["push /pay?card=A"]);
-	expect(form()?.card?.id).toBe("A");
-	expect(await amountValue()).toBe("100");
-	expect(inner<HTMLInputElement>(form(), '[name="note"]')?.value).toBe(
-		"From savings",
-	);
-	expect(pageBanner(root)?.message ?? "").toBe("");
+	address.bar.back()
+	await settle()
+	expect(address.now()).toBe("/pay")
+	held.settle(false)
+	await settle(10)
+	expect(visited).toEqual([])
+	expect(modal()).toBeNull()
+	const shown = pageBanner(root)
+	expect(shown?.message).toContain("Could not save the payment.")
+	expect(shown?.message).toContain("disk full")
+	await (shown as unknown as { updateComplete: Promise<void> })?.updateComplete
+	const retry = shown?.shadowRoot?.querySelector<HTMLButtonElement>("button")
+	expect(flatText(retry)).toBe("Try again")
+	retry?.click()
+	await settle()
+	expect(address.calls.slice(-1)).toEqual(["push /pay?card=A"])
+	expect(form()?.card?.id).toBe("A")
+	expect(await amountValue()).toBe("100")
+	expect(inner<HTMLInputElement>(form(), '[name="note"]')?.value).toBe("From savings")
+	expect(pageBanner(root)?.message ?? "").toBe("")
 	// Closing the reopened sheet steps back over the entry Try again pushed.
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click();
-	await settle();
-	expect(address.calls.slice(-1)).toEqual(["back"]);
-	expect(address.now()).toBe("/pay");
-});
+	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
+	await settle()
+	expect(address.calls.slice(-1)).toEqual(["back"])
+	expect(address.now()).toBe("/pay")
+})
 
 test("Back during a save that then succeeds leaves for Transactions once, with no extra history step", async () => {
-	const { held, before } = heldSave();
+	const { held, before } = heldSave()
 	const { address, visited } = await setup("/pay", async (repo) => {
-		await withStatement(repo);
-		await before(repo);
-	});
-	(await pickerRows())[0]?.click();
-	await settle();
-	await fill("amount", "100");
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(
-		new Event("submit", { cancelable: true }),
-	);
-	await settle(5);
-	address.bar.back();
-	await settle();
-	held.settle(true);
-	await settle(10);
-	expect(visited).toEqual(["/transactions"]);
-	expect(address.calls).toEqual(["push /pay?card=A", "back"]);
-});
+		await withStatement(repo)
+		await before(repo)
+	})
+	;(await pickerRows())[0]?.click()
+	await settle()
+	await fill("amount", "100")
+	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
+	await settle(5)
+	address.bar.back()
+	await settle()
+	held.settle(true)
+	await settle(10)
+	expect(visited).toEqual(["/transactions"])
+	expect(address.calls).toEqual(["push /pay?card=A", "back"])
+})

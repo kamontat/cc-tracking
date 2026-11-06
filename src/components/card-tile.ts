@@ -1,51 +1,51 @@
-import { css, html, nothing, type TemplateResult } from "lit";
-import { formatAmount } from "#lib/domain/money";
-import type { GroupRoom } from "#lib/domain/room";
-import type { Card, LimitGroup } from "#lib/domain/types";
-import { t } from "#lib/i18n/index";
-import { groupColor } from "#lib/ui/card-label";
-import { roomLevel, roomNote, roomShare } from "#lib/ui/room-note";
-import { groupInk } from "#styles/shared";
+import type { GroupRoom } from "#lib/domain/room"
+import type { Card, LimitGroup } from "#lib/domain/types"
+
+import { css, html, nothing, type TemplateResult } from "lit"
+
+import { formatAmount } from "#lib/domain/money"
+import { t } from "#lib/i18n/index"
+import { groupColor } from "#lib/ui/card-label"
+import { roomLevel, roomNote, roomShare } from "#lib/ui/room-note"
+import { groupInk } from "#styles/shared"
 
 /**
  * What one card tile shows (DD-151): every list of cards -- Home's *Ready to use*, the new-list
  * picker and the Cards page -- draws the same tile and fills its lines for the page.
  */
 export type TileContent = {
-	card: Card;
+	card: Card
 	/** The group's room; null for a card with no group, which says so in place of the room. */
-	room: GroupRoom | null;
+	room: GroupRoom | null
 	/** The credit the card holds, in satang, for the word under the room. */
-	credit: number;
+	credit: number
 	/** Line 1, before `id) name`: the picker's tick. */
-	lead?: TemplateResult;
+	lead?: TemplateResult
 	/** Line 1, at the right: the last 4 (`mono`) or who holds the card. */
-	corner: string;
-	mono?: boolean;
+	corner: string
+	mono?: boolean
 	/** Line 2, at the right. Left out, the room has the line to itself. */
-	aside?: string;
+	aside?: string
 	/** The aside's colour: `bad` red, `warn` amber; left out, muted. */
-	asideTone?: "bad" | "warn";
+	asideTone?: "bad" | "warn"
 	/**
 	 * The payment picker: line 2's own figure and word (what is owed) in place of the room, with
 	 * or without a group; the rail still comes from `room`.
 	 */
-	figure?: { amount?: string; word?: string };
+	figure?: { amount?: string; word?: string }
 	/** Line 3, muted: `closes … · due …`. Left out on Home. */
-	facts?: string;
+	facts?: string
 	/** Home and the picker: plain room needs no word; credit, `N% used` and *over limit* still show. */
-	plainRoom?: boolean;
+	plainRoom?: boolean
 	/** Home: past the limit the amount turns red and has no word under it. */
-	quietOver?: boolean;
-};
+	quietOver?: boolean
+}
 
 /** The tile's colour: its limit group's colour name, or nothing for a card with no group. */
-export const tileTone = (card: Card, groups: LimitGroup[]) =>
-	groupColor(card, groups) ?? nothing;
+export const tileTone = (card: Card, groups: LimitGroup[]) => groupColor(card, groups) ?? nothing
 
 /** Line 1's corner on Home and Cards: `•••• 4821`, or nothing when no last 4 is stored. */
-export const lastFour = (card: Card): string =>
-	card.last4 ? `•••• ${card.last4}` : "";
+export const lastFour = (card: Card): string => (card.last4 ? `•••• ${card.last4}` : "")
 
 /**
  * The inside of a card tile; the caller wraps it in an `a.tile` (opens the card) or a
@@ -55,38 +55,36 @@ export const lastFour = (card: Card): string =>
  * red past the limit, the same on every page.
  */
 export function tileBody(content: TileContent): TemplateResult {
-	const { card, room } = content;
+	const { card, room } = content
 	return html`<span class="name">${content.lead ?? nothing}<span class="label"><span class="id">${card.id})</span> ${card.name}</span></span>
 		<span class="corner" ?data-mono=${content.mono}>${content.corner}</span>
 		${content.figure ? figureLine(content.figure) : room ? roomLine(content, room) : html`<span class="room"><small>${t("cards.page.noGroup")}</small></span>`}
 		${content.aside === undefined ? nothing : html`<span class="aside" data-tone=${content.asideTone ?? nothing}>${content.aside}</span>`}
 		${content.facts === undefined ? nothing : html`<span class="facts">${content.facts}</span>`}
-		${room ? rail(room) : nothing}`;
+		${room ? rail(room) : nothing}`
 }
 
 function roomLine(content: TileContent, room: GroupRoom): TemplateResult {
-	const note = roomNote(room, content.credit);
-	const over = content.quietOver === true && note.tone === "bad";
-	const word = over || (content.plainRoom === true && note.plain) ? null : note;
+	const note = roomNote(room, content.credit)
+	const over = content.quietOver === true && note.tone === "bad"
+	const word = over || (content.plainRoom === true && note.plain) ? null : note
 	return html`<span class="room" data-tone=${over ? "bad" : nothing}>
 		<b data-numeric>${formatAmount(room.room)}</b>
 		${word ? html`<small data-tone=${word.tone ?? nothing}>${word.text}</small>` : nothing}
-	</span>`;
+	</span>`
 }
 
-function figureLine(
-	figure: NonNullable<TileContent["figure"]>,
-): TemplateResult {
+function figureLine(figure: NonNullable<TileContent["figure"]>): TemplateResult {
 	return html`<span class="room">
 		${figure.amount === undefined ? nothing : html`<b data-numeric>${figure.amount}</b>`}
 		${figure.word === undefined ? nothing : html`<small>${figure.word}</small>`}
-	</span>`;
+	</span>`
 }
 
 function rail(room: GroupRoom): TemplateResult {
-	const share = roomShare(room);
+	const share = roomShare(room)
 	return html`<span class="rail" data-level=${roomLevel(room)} role="img"
-		aria-label=${t("limits.usage", { share })}><span style=${`inline-size: ${share}%`}></span></span>`;
+		aria-label=${t("limits.usage", { share })}><span style=${`inline-size: ${share}%`}></span></span>`
 }
 
 /** The tiles' grid and the tile: one column on a phone, as many as fit from 900px. */
@@ -305,4 +303,4 @@ export const cardTileStyles = css`
 			background: CanvasText;
 		}
 	}
-`;
+`

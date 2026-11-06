@@ -1,5 +1,6 @@
-import { takesPurchases } from "#lib/domain/locations";
-import type { Card, LocationRecord } from "#lib/domain/types";
+import type { Card, LocationRecord } from "#lib/domain/types"
+
+import { takesPurchases } from "#lib/domain/locations"
 
 /**
  * Whether a new purchase may be entered against this card.
@@ -11,5 +12,5 @@ import type { Card, LocationRecord } from "#lib/domain/types";
  * behind it.
  */
 export function canPurchase(card: Card, locations: LocationRecord[]): boolean {
-	return takesPurchases(locations, card.location);
+	return takesPurchases(locations, card.location)
 }

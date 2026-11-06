@@ -1,8 +1,10 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { LocaleController } from "#lib/i18n/controller";
-import type { MessageKey } from "#lib/i18n/index";
-import { getLocale, t } from "#lib/i18n/index";
+import type { MessageKey } from "#lib/i18n/index"
+
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property } from "lit/decorators.js"
+
+import { LocaleController } from "#lib/i18n/controller"
+import { getLocale, t } from "#lib/i18n/index"
 import {
 	type BuildInfo,
 	buildInfo,
@@ -15,15 +17,15 @@ import {
 	shortCommit,
 	sourceLabel,
 	viewerTimeZone,
-} from "#lib/ui/build-info";
-import { base, setRows } from "#styles/shared";
+} from "#lib/ui/build-info"
+import { base, setRows } from "#styles/shared"
 
 const ENV_KEYS: Record<Environment, MessageKey> = {
 	development: "about.env.development",
 	local: "about.env.local",
 	preview: "about.env.preview",
 	production: "about.env.production",
-};
+}
 
 /**
  * Names the build the page is served from: where it runs, when it was built, and links to
@@ -63,68 +65,55 @@ export class CcAbout extends LitElement {
 				font-family: var(--cc-font-mono);
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) build: BuildInfo = buildInfo();
-	@property({ attribute: "time-zone" }) timeZone: string = viewerTimeZone();
+	@property({ attribute: false }) build: BuildInfo = buildInfo()
+	@property({ attribute: "time-zone" }) timeZone: string = viewerTimeZone()
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	private row(name: string, label: MessageKey, value: unknown) {
-		return html`<div class="set-row" data-row=${name}><dt>${t(label)}</dt><dd>${value}</dd></div>`;
+		return html`<div class="set-row" data-row=${name}><dt>${t(label)}</dt><dd>${value}</dd></div>`
 	}
 
 	private link(href: string, text: string, className?: string) {
-		return html`<a class=${className ?? nothing} href=${href} target="_blank" rel="noreferrer">${text}</a>`;
+		return html`<a class=${className ?? nothing} href=${href} target="_blank" rel="noreferrer">${text}</a>`
 	}
 
 	override render() {
-		const { environment, commit, builtAt } = this.build;
-		const builtOn = parseBuiltAt(builtAt);
-		const showCommit =
-			(environment === "preview" || environment === "production") && commit;
+		const { environment, commit, builtAt } = this.build
+		const builtOn = parseBuiltAt(builtAt)
+		const showCommit = (environment === "preview" || environment === "production") && commit
 
 		return html`
 			<dl>
 				${this.row("environment", "about.environment", t(ENV_KEYS[environment]))}
 				${
 					environment !== "development" && builtOn
-						? this.row(
-								"built",
-								"about.built",
-								formatBuiltLocal(builtOn, getLocale(), this.timeZone),
-							)
+						? this.row("built", "about.built", formatBuiltLocal(builtOn, getLocale(), this.timeZone))
 						: nothing
 				}
 				${this.row("source", "about.source", this.link(REPO_URL, sourceLabel(this.build)))}
 				${
 					showCommit
-						? this.row(
-								"commit",
-								"about.commit",
-								this.link(commitUrl(commit), shortCommit(commit), "mono"),
-							)
+						? this.row("commit", "about.commit", this.link(commitUrl(commit), shortCommit(commit), "mono"))
 						: nothing
 				}
 				${
 					environment === "production"
-						? this.row(
-								"changelog",
-								"about.changelog",
-								this.link(CHANGELOG_URL, t("about.whatsNew")),
-							)
+						? this.row("changelog", "about.changelog", this.link(CHANGELOG_URL, t("about.whatsNew")))
 						: nothing
 				}
 			</dl>
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-about": CcAbout;
+		"cc-about": CcAbout
 	}
 }

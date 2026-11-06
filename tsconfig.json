@@ -1,9 +1,10 @@
 {
-	"extends": "@kcconfigs/tsconfig/bun",
+	"extends": ["@kcconfigs/tsconfig/bun", "astro/tsconfigs/strictest"],
 	"compilerOptions": {
-		// FIXME: https://github.com/oven-sh/bun/issues/43097
+		// Lit's decorators: the legacy form, with class fields left to the decorators.
 		"experimentalDecorators": true,
-		"useDefineForClassFields": false,
-		"noEmit": true
-	}
+		"useDefineForClassFields": false
+	},
+	"include": ["${configDir}/.astro/types.d.ts", "${configDir}/**/*"],
+	"exclude": ["${configDir}/**/node_modules/**", "${configDir}/dist/**"]
 }

@@ -132,20 +132,14 @@ a:any-link:hover {
 /* A non-production build tints the header and rules both bars in its own colour, so nobody
    takes it for the real thing. The tint tokens live with the build in tokens.css. */
 :root[data-env]:not([data-env="production"]) .site-header {
-	background: color-mix(
-		in oklab,
-		var(--cc-env) var(--cc-env-tint),
-		var(--cc-bg)
-	);
+	background: color-mix(in oklab, var(--cc-env) var(--cc-env-tint), var(--cc-bg));
 	border-bottom-color: var(--cc-env);
 }
 
 /* Muted text is 4.2:1 on the tint in the light theme, short of AA; use full text colour. */
 :root[data-env]:not([data-env="production"]) .site-header__sep,
 :root[data-env]:not([data-env="production"]) .site-header__date,
-:root[data-env]:not([data-env="production"])
-	.site-header__tabs
-	a:any-link:not([aria-current="page"]) {
+:root[data-env]:not([data-env="production"]) .site-header__tabs a:any-link:not([aria-current="page"]) {
 	color: var(--cc-text);
 }
 
@@ -158,10 +152,8 @@ a:any-link:hover {
 	display: grid;
 	grid-template-columns: repeat(4, minmax(0, 1fr));
 	align-items: end;
-	padding: var(--cc-space-2)
-		max(var(--cc-space-2), env(safe-area-inset-right, 0px))
-		calc(var(--cc-space-2) + env(safe-area-inset-bottom, 0px))
-		max(var(--cc-space-2), env(safe-area-inset-left, 0px));
+	padding: var(--cc-space-2) max(var(--cc-space-2), env(safe-area-inset-right, 0px))
+		calc(var(--cc-space-2) + env(safe-area-inset-bottom, 0px)) max(var(--cc-space-2), env(safe-area-inset-left, 0px));
 	background: var(--cc-surface);
 	border-top: var(--cc-border-width) solid var(--cc-border);
 }
@@ -208,11 +200,7 @@ a:any-link:hover {
 	position: fixed;
 	z-index: 11;
 	right: calc(var(--cc-space-4) + env(safe-area-inset-right, 0px));
-	bottom: calc(
-		var(--cc-tabbar-height) +
-		var(--cc-space-4) +
-		env(safe-area-inset-bottom, 0px)
-	);
+	bottom: calc(var(--cc-tabbar-height) + var(--cc-space-4) + env(safe-area-inset-bottom, 0px));
 }
 
 .fab-menu__wrap {
@@ -317,8 +305,7 @@ a:any-link:hover {
 	flex-direction: row;
 	align-items: center;
 	gap: var(--cc-space-3);
-	padding: var(--cc-space-3) var(--cc-space-4) var(--cc-space-3)
-		var(--cc-space-3);
+	padding: var(--cc-space-3) var(--cc-space-4) var(--cc-space-3) var(--cc-space-3);
 	font-weight: 600;
 	color: var(--cc-text);
 	white-space: nowrap;
@@ -392,8 +379,7 @@ a:any-link:hover {
 		/* Reach up through the bar's padding and down through it and the rule, so a tab's
 		   underline sits on the rule and its label shares the bar's centre line with the brand
 		   and the date (each tab pads its top by what its underline outweighs the rule). */
-		margin-block: calc(var(--cc-space-3) * -1)
-			calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
+		margin-block: calc(var(--cc-space-3) * -1) calc((var(--cc-space-3) + var(--cc-rule-width)) * -1);
 	}
 
 	.site-header__tabs a:any-link {
@@ -450,8 +436,7 @@ a:any-link:hover {
 	width: 100%;
 	max-width: var(--cc-page-width);
 	margin-inline: auto;
-	padding: var(--cc-space-5)
-		max(var(--cc-space-4), env(safe-area-inset-left, 0px))
+	padding: var(--cc-space-5) max(var(--cc-space-4), env(safe-area-inset-left, 0px))
 		calc(
 			var(--cc-tabbar-height) +
 			var(--cc-space-4) +
@@ -1018,8 +1003,7 @@ a:any-link:hover {
 .page .tx-search input {
 	inline-size: 100%;
 	padding-block: var(--cc-space-2);
-	padding-inline: calc(var(--cc-space-3) * 2 + var(--cc-icon-size-sm))
-		var(--cc-space-3);
+	padding-inline: calc(var(--cc-space-3) * 2 + var(--cc-icon-size-sm)) var(--cc-space-3);
 	font-size: var(--cc-text-md);
 	color: var(--cc-text);
 	background: var(--cc-surface);
@@ -1101,12 +1085,7 @@ a:any-link:hover {
 
 .mini[data-big] {
 	inline-size: calc(var(--cc-space-7) + var(--cc-space-1));
-	block-size: calc(
-		var(--cc-space-5) +
-		var(--cc-space-3) -
-		var(--cc-space-1) /
-		2
-	);
+	block-size: calc(var(--cc-space-5) + var(--cc-space-3) - var(--cc-space-1) / 2);
 	font-size: calc(var(--cc-text-xs) * 0.88);
 }
 
@@ -1315,11 +1294,7 @@ a:any-link:hover {
  */
 .action-bar {
 	position: sticky;
-	bottom: calc(
-		var(--cc-tabbar-height) +
-		var(--cc-space-3) +
-		env(safe-area-inset-bottom, 0px)
-	);
+	bottom: calc(var(--cc-tabbar-height) + var(--cc-space-3) + env(safe-area-inset-bottom, 0px));
 	z-index: 5;
 	display: flex;
 	flex-direction: row;
@@ -1363,11 +1338,7 @@ a:any-link:hover {
  */
 .sub-header {
 	position: sticky;
-	top: calc(
-		var(--cc-header-height) -
-		var(--cc-rule-width) +
-		env(safe-area-inset-top, 0px)
-	);
+	top: calc(var(--cc-header-height) - var(--cc-rule-width) + env(safe-area-inset-top, 0px));
 	z-index: 5;
 	display: flex;
 	flex-direction: row;
@@ -1376,13 +1347,7 @@ a:any-link:hover {
 	min-block-size: var(--cc-sub-header-height);
 	margin-block-start: calc(var(--cc-space-5) * -1);
 	padding-block: var(--cc-space-2);
-	border-image:
-		linear-gradient(
-			to top,
-			var(--cc-border) var(--cc-border-width),
-			var(--cc-bg) 0
-		)
-		fill 0 / 0 / 0 100vmax;
+	border-image: linear-gradient(to top, var(--cc-border) var(--cc-border-width), var(--cc-bg) 0) fill 0 / 0 / 0 100vmax;
 }
 
 .sub-header > [data-action="back"] {
@@ -1492,11 +1457,7 @@ a:any-link:hover {
 
 	.list-layout__side {
 		position: sticky;
-		top: calc(
-			var(--cc-header-height) +
-			var(--cc-sub-header-height) +
-			var(--cc-space-4)
-		);
+		top: calc(var(--cc-header-height) + var(--cc-sub-header-height) + var(--cc-space-4));
 		display: flex;
 		flex-direction: column;
 		gap: var(--cc-space-3);

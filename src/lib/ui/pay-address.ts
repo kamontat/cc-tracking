@@ -2,7 +2,7 @@
  * What the payment page opens on: a card opens its sheet over the picker, and `amount`
  * (satang) prefills that sheet; without one the sheet starts at the card's next bill.
  */
-export type PayRequest = { cardId?: string; amount?: number };
+export type PayRequest = { cardId?: string; amount?: number }
 
 /**
  * The address of the payment page: `/pay` alone shows the card picker, `/pay?card=<id>` opens
@@ -11,12 +11,11 @@ export type PayRequest = { cardId?: string; amount?: number };
  * row, the card page's *Make a payment*.
  */
 export function payAddress(request: PayRequest = {}): string {
-	const params = new URLSearchParams();
-	if (request.cardId) params.set("card", request.cardId);
-	if (request.cardId && request.amount !== undefined && request.amount > 0)
-		params.set("amount", String(request.amount));
-	const query = params.toString();
-	return query ? `/pay?${query}` : "/pay";
+	const params = new URLSearchParams()
+	if (request.cardId) params.set("card", request.cardId)
+	if (request.cardId && request.amount !== undefined && request.amount > 0) params.set("amount", String(request.amount))
+	const query = params.toString()
+	return query ? `/pay?${query}` : "/pay"
 }
 
 /**
@@ -24,11 +23,9 @@ export function payAddress(request: PayRequest = {}): string {
  * positive number of satang (anything else is dropped, so the sheet falls back to the bill).
  */
 export function readPayAddress(search: string): PayRequest {
-	const params = new URLSearchParams(search);
-	const cardId = params.get("card");
-	if (!cardId) return {};
-	const amount = params.get("amount");
-	return amount && /^\d+$/.test(amount) && Number(amount) > 0
-		? { cardId, amount: Number(amount) }
-		: { cardId };
+	const params = new URLSearchParams(search)
+	const cardId = params.get("card")
+	if (!cardId) return {}
+	const amount = params.get("amount")
+	return amount && /^\d+$/.test(amount) && Number(amount) > 0 ? { cardId, amount: Number(amount) } : { cardId }
 }

@@ -1,12 +1,9 @@
-import {
-	css,
-	html,
-	LitElement,
-	nothing,
-	type PropertyValues,
-	type TemplateResult,
-} from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import type { NeedsItem } from "#lib/domain/home"
+import type { Card, LimitGroup, PlainDate } from "#lib/domain/types"
+
+import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
 import {
 	type ActionRowText,
 	actionRow,
@@ -24,21 +21,19 @@ import {
 	useCycleFit,
 	useOpenRow,
 	waitingText,
-} from "#components/action-row";
-import { useTwoStep } from "#components/two-step";
-import { addDays } from "#lib/domain/date";
-import type { NeedsItem } from "#lib/domain/home";
-import { formatAmount, MINUS } from "#lib/domain/money";
-import { listTotal } from "#lib/domain/purchase-list";
-import type { Card, LimitGroup, PlainDate } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { listPageAddress } from "#lib/ui/list-address";
-import { payAddress } from "#lib/ui/pay-address";
-import { base, controls, rowPanel } from "#styles/shared";
+} from "#components/action-row"
+import { useTwoStep } from "#components/two-step"
+import { addDays } from "#lib/domain/date"
+import { formatAmount, MINUS } from "#lib/domain/money"
+import { listTotal } from "#lib/domain/purchase-list"
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { listPageAddress } from "#lib/ui/list-address"
+import { payAddress } from "#lib/ui/pay-address"
+import { base, controls, rowPanel } from "#styles/shared"
 
 /** How many things show before *See more*. */
-const SHOWN = 5;
+const SHOWN = 5
 
 /**
  * What needs doing on Home, money at risk first (DD-62): bills past due, late plans, replies
@@ -88,37 +83,37 @@ export class CcNeedsYou extends LitElement {
 				background: var(--cc-accent-surface);
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) items: NeedsItem[] = [];
+	@property({ attribute: false }) items: NeedsItem[] = []
 	/** Every stored card, to name a draft's cards. */
-	@property({ attribute: false }) cards: Card[] = [];
+	@property({ attribute: false }) cards: Card[] = []
 	/** Every stored limit group, to say whose card it is (DR-13). */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** Today, to say how far off a planned payment is. */
-	@property() today: PlainDate = "";
+	@property() today: PlainDate = ""
 
 	/** Whether the things past the first `SHOWN` are open (DD-106). */
-	@state() private expanded = false;
+	@state() private expanded = false
 
 	/** The two-step *Delete* and *Confirm* swaps, shared with the ledger. */
-	private readonly steps = useTwoStep(this);
+	private readonly steps = useTwoStep(this)
 	/** The one open row, by `rowId`; a swap ends when its row closes. */
-	private readonly rows = useOpenRow(this, () => this.steps.reset());
+	private readonly rows = useOpenRow(this, () => this.steps.reset())
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 		// Cycle line labels make room by measuring (DD-165).
-		useCycleFit(this);
+		useCycleFit(this)
 	}
 
 	protected override willUpdate(changed: PropertyValues<this>) {
-		if (changed.has("items")) this.rows.prune(this.items.map(rowId));
+		if (changed.has("items")) this.rows.prune(this.items.map(rowId))
 	}
 
 	private emit(name: string, detail: object) {
-		this.dispatchEvent(new CustomEvent(name, { detail }));
+		this.dispatchEvent(new CustomEvent(name, { detail }))
 	}
 
 	/** Draws `item` as a row that opens in place: `above` and the sentence `words`, then `action`. */
@@ -130,7 +125,7 @@ export class CcNeedsYou extends LitElement {
 		words: string | TemplateResult,
 		action: TemplateResult,
 	) {
-		const id = rowId(item);
+		const id = rowId(item)
 		return actionRow(text, {
 			id,
 			amount,
@@ -142,7 +137,7 @@ export class CcNeedsYou extends LitElement {
 				above,
 				say: words,
 			},
-		});
+		})
 	}
 
 	private row(item: NeedsItem) {
@@ -161,7 +156,7 @@ export class CcNeedsYou extends LitElement {
 						item.list,
 						() => this.emit("confirm-list", { list: item.list }),
 					)}`,
-				);
+				)
 			case "overdue":
 				return this.opening(
 					item,
@@ -182,19 +177,16 @@ export class CcNeedsYou extends LitElement {
 					say("row.say.left", {
 						left: money(formatAmount(item.remaining)),
 						total: money(formatAmount(item.billed)),
-						when:
-							item.days === 1
-								? t("row.say.late.one")
-								: t("row.say.late.many", { days: item.days }),
+						when: item.days === 1 ? t("row.say.late.one") : t("row.say.late.many", { days: item.days }),
 					}),
 					html`<a class="btn" data-action="pay" href=${payAddress({
 						cardId: item.card.id,
 						amount: item.remaining,
 					})}>${t("row.payAmount", { amount: formatAmount(item.remaining) })}</a><a class="btn" data-variant="quiet" data-action="open-card"
 						href=${`/card?id=${encodeURIComponent(item.card.id)}`}>${t("row.openCard")}</a>`,
-				);
+				)
 			case "planned": {
-				const { payment } = item;
+				const { payment } = item
 				return this.opening(
 					item,
 					plannedText(payment, item.card, this.groups, this.today),
@@ -206,7 +198,7 @@ export class CcNeedsYou extends LitElement {
 						paid: () => this.emit("mark-paid", { payment }),
 						remove: () => this.emit("delete-payment", { payment }),
 					}),
-				);
+				)
 			}
 			case "draft":
 				return this.opening(
@@ -221,7 +213,7 @@ export class CcNeedsYou extends LitElement {
 					html`<a class="btn" data-action="continue" href=${listPageAddress(item.list)}>${t("row.continue")}</a><button type="button"
 						data-variant="danger" data-action="delete-draft"
 						@click=${() => this.emit("delete-draft", { list: item.list })}>${t("common.delete")}</button>`,
-				);
+				)
 		}
 	}
 
@@ -230,30 +222,24 @@ export class CcNeedsYou extends LitElement {
 			return html`
 				<h1 tabindex="-1" data-refocus="needs">${t("home.caughtUp")}</h1>
 				<p class="note" data-tone="ok">${t("home.caughtUpDetail")}</p>
-			`;
+			`
 		}
-		const count = this.items.length;
+		const count = this.items.length
 		return html`
 			<h1 tabindex="-1" data-refocus="needs">${count === 1 ? t("home.needs.one") : t("home.needs.many", { count })}</h1>
 			<div class="panel" id="needs-list">
-				${(this.expanded ? this.items : this.items.slice(0, SHOWN)).map(
-					(item) => this.row(item),
-				)}
+				${(this.expanded ? this.items : this.items.slice(0, SHOWN)).map((item) => this.row(item))}
 			</div>
 			${
 				count > SHOWN
 					? html`<button type="button" class="more" data-variant="quiet" data-action="more"
 							aria-controls="needs-list" aria-expanded=${this.expanded ? "true" : "false"}
 							@click=${() => {
-								this.expanded = !this.expanded;
-							}}>${
-								this.expanded
-									? t("common.showLess")
-									: t("common.seeMore", { count: count - SHOWN })
-							}</button>`
+								this.expanded = !this.expanded
+							}}>${this.expanded ? t("common.showLess") : t("common.seeMore", { count: count - SHOWN })}</button>`
 					: nothing
 			}
-		`;
+		`
 	}
 }
 
@@ -261,16 +247,16 @@ export class CcNeedsYou extends LitElement {
 function rowId(item: NeedsItem): string {
 	switch (item.kind) {
 		case "overdue":
-			return `due:${item.card.id}`;
+			return `due:${item.card.id}`
 		case "planned":
-			return `plan:${item.payment.cardId}:${item.payment.id}`;
+			return `plan:${item.payment.cardId}:${item.payment.id}`
 		default:
-			return `list:${item.list.id}`;
+			return `list:${item.list.id}`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-needs-you": CcNeedsYou;
+		"cc-needs-you": CcNeedsYou
 	}
 }

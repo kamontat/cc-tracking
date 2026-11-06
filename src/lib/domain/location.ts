@@ -1,9 +1,9 @@
 /** The three places a company card is physically kept. Stored as these lowercase keys. */
-export const LOCATIONS = ["bangkok", "phichit", "krabi"] as const;
+export const LOCATIONS = ["bangkok", "phichit", "krabi"] as const
 
-export type Location = (typeof LOCATIONS)[number];
+export type Location = (typeof LOCATIONS)[number]
 
-export const DEFAULT_LOCATION: Location = "bangkok";
+export const DEFAULT_LOCATION: Location = "bangkok"
 
 /**
  * Narrows untrusted data to a `Location`, or `null` when it is not one.
@@ -13,8 +13,6 @@ export const DEFAULT_LOCATION: Location = "bangkok";
  * type system can vouch for.
  */
 export function toLocation(value: unknown): Location | null {
-	const known: readonly string[] = LOCATIONS;
-	return typeof value === "string" && known.includes(value)
-		? (value as Location)
-		: null;
+	const known: readonly string[] = LOCATIONS
+	return typeof value === "string" && known.includes(value) ? (value as Location) : null
 }

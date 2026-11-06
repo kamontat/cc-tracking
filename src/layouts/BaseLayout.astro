@@ -1,0 +1,60 @@
+---
+import "@kcstyles/reset.css"
+import "../styles/tokens.css"
+import "../styles/app.css"
+
+interface Props {
+	/** The tab title before the bundle runs; `bootstrap` sets the translated one after. */
+	title: string
+	/** Classes on `<main>` after `page`, the width a page asks for (`page--narrow`, ...). */
+	mainClass?: string
+}
+
+const { title, mainClass } = Astro.props
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="robots" content="noindex, nofollow">
+		<script is:inline data-theme-boot>
+			try {
+				const theme = localStorage.getItem("cc:theme")
+				if (theme === "light" || theme === "dark") document.documentElement.setAttribute("data-theme", theme)
+			} catch {
+				// Storage blocked: leave the theme to the device, as getTheme() does.
+			}
+			try {
+				// The build's tint before first paint; chrome.ts stamps the build's own value after.
+				const host = location.hostname
+				document.documentElement.setAttribute(
+					"data-env",
+					host === "localhost" || host === "127.0.0.1"
+						? "local"
+						: /^pr-\d+-.*workers\.dev$/.test(host)
+							? "preview"
+							: "production",
+				)
+			} catch {
+				// No location: chrome.ts sets the tint once the bundle runs.
+			}
+		</script>
+		<title>{title} — cc-tracking</title>
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+		<meta name="generator" content={Astro.generator}>
+		<script>
+			import { loadGtm } from "#lib/gtm"
+
+			// Inlined at build time; unset (dev, previews, local builds) leaves GTM off.
+			loadGtm(import.meta.env.PUBLIC_GTM_ID, document)
+		</script>
+	</head>
+	<body>
+		<header class="site-header" id="site-header"></header>
+		<main class:list={["page", mainClass]} id="page"></main>
+		<div id="tabbar"></div>
+		<slot />
+	</body>
+</html>

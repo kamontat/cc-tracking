@@ -1,6 +1,7 @@
-import { expect, test } from "bun:test";
-import { sampleCard } from "#lib/storage/contract";
-import { createRepository, StorageUnavailableError } from "#lib/storage/index";
+import { expect, test } from "vitest"
+
+import { sampleCard } from "#lib/storage/contract"
+import { createRepository, StorageUnavailableError } from "#lib/storage/index"
 
 test("createRepository throws StorageUnavailableError if storage probe fails", () => {
 	const failing = {
@@ -10,42 +11,42 @@ test("createRepository throws StorageUnavailableError if storage probe fails", (
 		removeItem: () => {},
 		clear: () => {},
 		setItem: () => {
-			throw new DOMException("quota", "QuotaExceededError");
+			throw new DOMException("quota", "QuotaExceededError")
 		},
-	} as unknown as Storage;
+	} as unknown as Storage
 
-	expect(() => createRepository(failing)).toThrow(StorageUnavailableError);
-});
+	expect(() => createRepository(failing)).toThrow(StorageUnavailableError)
+})
 
 test("createRepository returns a working repository", async () => {
-	localStorage.clear();
-	const repo = createRepository(localStorage);
-	const card = sampleCard();
+	localStorage.clear()
+	const repo = createRepository(localStorage)
+	const card = sampleCard()
 
-	await repo.saveCard(card);
-	const retrieved = await repo.getCard(card.id);
+	await repo.saveCard(card)
+	const retrieved = await repo.getCard(card.id)
 
-	expect(retrieved).toEqual(card);
-});
+	expect(retrieved).toEqual(card)
+})
 
 test("createRepository uses globalThis.localStorage by default", async () => {
-	localStorage.clear();
-	const repo = createRepository();
-	const card = sampleCard({ id: "test-card" });
+	localStorage.clear()
+	const repo = createRepository()
+	const card = sampleCard({ id: "test-card" })
 
-	await repo.saveCard(card);
-	const retrieved = await repo.getCard("test-card");
+	await repo.saveCard(card)
+	const retrieved = await repo.getCard("test-card")
 
-	expect(retrieved).toEqual(card);
-});
+	expect(retrieved).toEqual(card)
+})
 
 test("createRepository throws StorageUnavailableError when localStorage is unavailable", () => {
-	const original = globalThis.localStorage;
+	const original = globalThis.localStorage
 	try {
 		// @ts-expect-error Intentionally breaking the global for this test
-		delete globalThis.localStorage;
-		expect(() => createRepository()).toThrow(StorageUnavailableError);
+		delete globalThis.localStorage
+		expect(() => createRepository()).toThrow(StorageUnavailableError)
 	} finally {
-		globalThis.localStorage = original;
+		globalThis.localStorage = original
 	}
-});
+})

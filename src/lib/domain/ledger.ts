@@ -1,13 +1,3 @@
-import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle";
-import {
-	addDays,
-	addPeriods,
-	compareDates,
-	comparePeriods,
-	daysBetween,
-} from "#lib/domain/date";
-import { sumAmounts } from "#lib/domain/money";
-import { openPeriod } from "#lib/domain/statement";
 import type {
 	Card,
 	CardLedger,
@@ -17,7 +7,12 @@ import type {
 	PlainDate,
 	Purchase,
 	StatementDates,
-} from "#lib/domain/types";
+} from "#lib/domain/types"
+
+import { closeDateOf, dueDateOf, periodOfPurchase } from "#lib/domain/cycle"
+import { addDays, addPeriods, compareDates, comparePeriods, daysBetween } from "#lib/domain/date"
+import { sumAmounts } from "#lib/domain/money"
+import { openPeriod } from "#lib/domain/statement"
 
 /**
  * Settle a card's statements from its paid money.
@@ -35,70 +30,67 @@ export function cardLedger(
 	frozen: StatementDates[],
 	today: PlainDate,
 ): CardLedger {
-	const open = openPeriod(card, today);
-	const mine = purchases.filter((p) => p.cardId === card.id);
+	const open = openPeriod(card, today)
+	const mine = purchases.filter((p) => p.cardId === card.id)
 
-	const periods = new Set<Period>([open]);
-	for (const p of mine) periods.add(periodOfPurchase(card.cycle, p.date));
-	const ascending = [...periods].sort(comparePeriods);
+	const periods = new Set<Period>([open])
+	for (const p of mine) periods.add(periodOfPurchase(card.cycle, p.date))
+	const ascending = [...periods].sort(comparePeriods)
 
 	// Date then id, so which payment a part came from never depends on the stored order.
 	const paidPayments = payments
 		.filter((p) => p.cardId === card.id && p.status === "paid")
-		.sort((a, b) => compareDates(a.date, b.date) || (a.id < b.id ? -1 : 1));
+		.sort((a, b) => compareDates(a.date, b.date) || (a.id < b.id ? -1 : 1))
 
 	const frozenFor = (period: Period): StatementDates | undefined =>
-		frozen.find((f) => f.cardId === card.id && f.period === period);
+		frozen.find((f) => f.cardId === card.id && f.period === period)
 
 	const rows = ascending.map((period) => {
 		const own = mine
 			.filter((p) => periodOfPurchase(card.cycle, p.date) === period)
-			.sort((a, b) => compareDates(a.date, b.date) || (a.id < b.id ? -1 : 1));
+			.sort((a, b) => compareDates(a.date, b.date) || (a.id < b.id ? -1 : 1))
 		return {
 			period,
 			own,
 			total: sumAmounts(own.map((p) => p.amount)),
 			paid: 0,
 			parts: [] as { payment: CardPayment; amount: number }[],
-		};
-	});
+		}
+	})
 
 	// Payments naming a period go to that statement first, capped at its total.
-	const pool: { payment: CardPayment; amount: number }[] = [];
+	const pool: { payment: CardPayment; amount: number }[] = []
 	for (const payment of paidPayments) {
-		const row = payment.period
-			? rows.find((r) => r.period === payment.period)
-			: undefined;
+		const row = payment.period ? rows.find((r) => r.period === payment.period) : undefined
 		if (!row) {
-			pool.push({ payment, amount: payment.amount });
-			continue;
+			pool.push({ payment, amount: payment.amount })
+			continue
 		}
-		const applied = Math.min(payment.amount, row.total - row.paid);
-		row.paid += applied;
-		if (applied > 0) row.parts.push({ payment, amount: applied });
-		if (payment.amount > applied)
-			pool.push({ payment, amount: payment.amount - applied });
+		const applied = Math.min(payment.amount, row.total - row.paid)
+		row.paid += applied
+		if (applied > 0) row.parts.push({ payment, amount: applied })
+		if (payment.amount > applied) pool.push({ payment, amount: payment.amount - applied })
 	}
 
 	// The pool settles statements oldest first, spending payments in order.
 	for (const row of rows) {
 		for (const part of pool) {
-			const applied = Math.min(part.amount, row.total - row.paid);
-			if (applied <= 0) continue;
-			row.paid += applied;
-			part.amount -= applied;
-			row.parts.push({ payment: part.payment, amount: applied });
+			const applied = Math.min(part.amount, row.total - row.paid)
+			if (applied <= 0) continue
+			row.paid += applied
+			part.amount -= applied
+			row.parts.push({ payment: part.payment, amount: applied })
 		}
 	}
-	const credit = sumAmounts(pool.map((part) => part.amount));
+	const credit = sumAmounts(pool.map((part) => part.amount))
 
 	const statements: LedgerStatement[] = rows
 		.map((row): LedgerStatement => {
-			const remaining = row.total - row.paid;
-			const paid = row.paid > 0 && remaining === 0;
+			const remaining = row.total - row.paid
+			const paid = row.paid > 0 && remaining === 0
 			// Kept dates hold only while the statement is fully paid (DD-167): one that still
 			// owes money follows the card's cycle, so editing the cycle moves its due date.
-			const dates = paid ? frozenFor(row.period) : undefined;
+			const dates = paid ? frozenFor(row.period) : undefined
 			return {
 				cardId: card.id,
 				period: row.period,
@@ -111,15 +103,15 @@ export function cardLedger(
 				remaining,
 				paid,
 				open: row.period === open,
-			};
+			}
 		})
-		.reverse();
+		.reverse()
 
 	return {
 		statements,
 		owed: sumAmounts(statements.map((s) => s.remaining)),
 		credit,
-	};
+	}
 }
 
 /** A ledger for every card, archived included: they still weigh on a group's room. */
@@ -130,9 +122,7 @@ export function ledgersFor(
 	dates: StatementDates[],
 	today: PlainDate,
 ): Map<string, CardLedger> {
-	return new Map(
-		cards.map((c) => [c.id, cardLedger(c, purchases, payments, dates, today)]),
-	);
+	return new Map(cards.map((c) => [c.id, cardLedger(c, purchases, payments, dates, today)]))
 }
 
 /**
@@ -140,47 +130,35 @@ export function ledgersFor(
  * it had in `before`, from the card's cycle, so a paid statement stays steady if the cycle is
  * edited later. They replace any dates stored while the statement still owed money (DD-167).
  */
-export function newlyFrozen(
-	card: Card,
-	before: CardLedger,
-	after: CardLedger,
-): StatementDates[] {
+export function newlyFrozen(card: Card, before: CardLedger, after: CardLedger): StatementDates[] {
 	return after.statements
-		.filter(
-			(s) =>
-				s.paid &&
-				!before.statements.some((b) => b.period === s.period && b.paid),
-		)
+		.filter((s) => s.paid && !before.statements.some((b) => b.period === s.period && b.paid))
 		.map((s) => {
-			const was = before.statements.find((b) => b.period === s.period);
+			const was = before.statements.find((b) => b.period === s.period)
 			return {
 				cardId: card.id,
 				period: s.period,
 				closeDate: was?.closeDate ?? closeDateOf(card.cycle, s.period),
 				dueDate: was?.dueDate ?? dueDateOf(card.cycle, s.period),
-			};
-		});
+			}
+		})
 }
 
-export type LedgerUrgency = "overdue" | "soon" | "due" | "open" | "paid";
+export type LedgerUrgency = "overdue" | "soon" | "due" | "open" | "paid"
 
-const SOON_DAYS = 7;
+const SOON_DAYS = 7
 
 /**
  * How pressing a statement is. The open period, and any statement not yet closed, is
  * `open`. A statement with nothing left to pay (including an empty one) is `paid`, so it is
  * never overdue.
  */
-export function ledgerUrgency(
-	statement: LedgerStatement,
-	today: PlainDate,
-): LedgerUrgency {
-	if (statement.open || compareDates(statement.closeDate, today) >= 0)
-		return "open";
-	if (statement.remaining === 0) return "paid";
-	const daysLeft = daysBetween(today, statement.dueDate);
-	if (daysLeft < 0) return "overdue";
-	return daysLeft <= SOON_DAYS ? "soon" : "due";
+export function ledgerUrgency(statement: LedgerStatement, today: PlainDate): LedgerUrgency {
+	if (statement.open || compareDates(statement.closeDate, today) >= 0) return "open"
+	if (statement.remaining === 0) return "paid"
+	const daysLeft = daysBetween(today, statement.dueDate)
+	if (daysLeft < 0) return "overdue"
+	return daysLeft <= SOON_DAYS ? "soon" : "due"
 }
 
 /**
@@ -188,16 +166,12 @@ export function ledgerUrgency(
  * period and its close date already past: a later period that has not closed yet is not a
  * bill, whatever it holds.
  */
-export function nextBill(
-	ledger: CardLedger,
-	today: PlainDate,
-): LedgerStatement | null {
+export function nextBill(ledger: CardLedger, today: PlainDate): LedgerStatement | null {
 	for (let i = ledger.statements.length - 1; i >= 0; i--) {
-		const s = ledger.statements[i];
-		if (s && !s.open && compareDates(s.closeDate, today) < 0 && s.remaining > 0)
-			return s;
+		const s = ledger.statements[i]
+		if (s && !s.open && compareDates(s.closeDate, today) < 0 && s.remaining > 0) return s
 	}
-	return null;
+	return null
 }
 
 /**
@@ -205,12 +179,8 @@ export function nextBill(
  * ledger's own statement before it wins (its dates may be frozen); without one, the card's
  * cycle says when that statement closed.
  */
-export function statementStart(
-	card: Card,
-	statements: LedgerStatement[],
-	period: Period,
-): PlainDate {
-	const before = addPeriods(period, -1);
-	const kept = statements.find((s) => s.period === before);
-	return addDays(kept?.closeDate ?? closeDateOf(card.cycle, before), 1);
+export function statementStart(card: Card, statements: LedgerStatement[], period: Period): PlainDate {
+	const before = addPeriods(period, -1)
+	const kept = statements.find((s) => s.period === before)
+	return addDays(kept?.closeDate ?? closeDateOf(card.cycle, before), 1)
 }

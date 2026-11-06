@@ -1,104 +1,70 @@
-import type { DateParts, Period, PlainDate } from "#lib/domain/types";
-import type { Catalog, Locale, MessageKey } from "#lib/i18n/catalog";
-import { en } from "#lib/i18n/en";
-import { th } from "#lib/i18n/th";
+import type { DateParts, Period, PlainDate } from "#lib/domain/types"
+import type { Catalog, Locale, MessageKey } from "#lib/i18n/catalog"
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const PERIOD_PATTERN = /^\d{4}-\d{2}$/;
+import { en } from "#lib/i18n/en"
+import { th } from "#lib/i18n/th"
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+const PERIOD_PATTERN = /^\d{4}-\d{2}$/
 const MONTH_NAMES: Record<Locale, readonly string[]> = {
-	en: [
-		"Jan",
-		"Feb",
-		"Mar",
-		"Apr",
-		"May",
-		"Jun",
-		"Jul",
-		"Aug",
-		"Sep",
-		"Oct",
-		"Nov",
-		"Dec",
-	],
-	th: [
-		"ม.ค.",
-		"ก.พ.",
-		"มี.ค.",
-		"เม.ย.",
-		"พ.ค.",
-		"มิ.ย.",
-		"ก.ค.",
-		"ส.ค.",
-		"ก.ย.",
-		"ต.ค.",
-		"พ.ย.",
-		"ธ.ค.",
-	],
-};
-const MILLIS_PER_DAY = 86_400_000;
+	en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+	th: ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."],
+}
+const MILLIS_PER_DAY = 86_400_000
 
-const pad = (value: number, width: number): string =>
-	String(value).padStart(width, "0");
+const pad = (value: number, width: number): string => String(value).padStart(width, "0")
 
 export function parseDate(value: PlainDate): DateParts {
-	if (!DATE_PATTERN.test(value)) throw new RangeError(`Not a date: ${value}`);
+	if (!DATE_PATTERN.test(value)) throw new RangeError(`Not a date: ${value}`)
 	return {
 		year: Number(value.slice(0, 4)),
 		month: Number(value.slice(5, 7)),
 		day: Number(value.slice(8, 10)),
-	};
+	}
 }
 
-export function formatDate(
-	year: number,
-	month: number,
-	day: number,
-): PlainDate {
-	return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`;
+export function formatDate(year: number, month: number, day: number): PlainDate {
+	return `${pad(year, 4)}-${pad(month, 2)}-${pad(day, 2)}`
 }
 
 export function daysInMonth(year: number, month: number): number {
 	// Day 0 of the next month is the last day of this one.
-	return new Date(Date.UTC(year, month, 0)).getUTCDate();
+	return new Date(Date.UTC(year, month, 0)).getUTCDate()
 }
 
 export function isValidDate(value: string): boolean {
-	if (!DATE_PATTERN.test(value)) return false;
-	const year = Number(value.slice(0, 4));
-	const month = Number(value.slice(5, 7));
-	const day = Number(value.slice(8, 10));
-	if (month < 1 || month > 12) return false;
-	return day >= 1 && day <= daysInMonth(year, month);
+	if (!DATE_PATTERN.test(value)) return false
+	const year = Number(value.slice(0, 4))
+	const month = Number(value.slice(5, 7))
+	const day = Number(value.slice(8, 10))
+	if (month < 1 || month > 12) return false
+	return day >= 1 && day <= daysInMonth(year, month)
 }
 
 export function clampDay(year: number, month: number, day: number): PlainDate {
-	return formatDate(year, month, Math.min(day, daysInMonth(year, month)));
+	return formatDate(year, month, Math.min(day, daysInMonth(year, month)))
 }
 
 const toUtc = (date: PlainDate): number => {
-	const { year, month, day } = parseDate(date);
-	return Date.UTC(year, month - 1, day);
-};
+	const { year, month, day } = parseDate(date)
+	return Date.UTC(year, month - 1, day)
+}
 
 const fromUtc = (millis: number): PlainDate => {
-	const value = new Date(millis);
-	return formatDate(
-		value.getUTCFullYear(),
-		value.getUTCMonth() + 1,
-		value.getUTCDate(),
-	);
-};
+	const value = new Date(millis)
+	return formatDate(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate())
+}
 
 export function addDays(date: PlainDate, days: number): PlainDate {
-	return fromUtc(toUtc(date) + days * MILLIS_PER_DAY);
+	return fromUtc(toUtc(date) + days * MILLIS_PER_DAY)
 }
 
 export function daysBetween(from: PlainDate, to: PlainDate): number {
-	return Math.round((toUtc(to) - toUtc(from)) / MILLIS_PER_DAY);
+	return Math.round((toUtc(to) - toUtc(from)) / MILLIS_PER_DAY)
 }
 
 export function compareDates(a: PlainDate, b: PlainDate): number {
-	return a < b ? -1 : a > b ? 1 : 0;
+	return a < b ? -1 : a > b ? 1 : 0
 }
 
 /** The current date in Asia/Bangkok. `now` is the only clock reading in the domain. */
@@ -109,7 +75,7 @@ export function today(now: Date = new Date()): PlainDate {
 		year: "numeric",
 		month: "2-digit",
 		day: "2-digit",
-	}).format(now);
+	}).format(now)
 }
 
 /**
@@ -120,20 +86,20 @@ export function today(now: Date = new Date()): PlainDate {
  * that says 2026.
  */
 export function displayDate(date: PlainDate, locale: Locale): string {
-	const { year, month, day } = parseDate(date);
-	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`;
+	const { year, month, day } = parseDate(date)
+	return `${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]} ${year}`
 }
 
 /** Day and short month, unpadded and without the year ("3 Nov", "15 ธ.ค."): a date inside a sentence or on a billing cycle line, where the year goes without saying. */
 export function dayMonth(date: PlainDate, locale: Locale): string {
-	const { month, day } = parseDate(date);
-	return `${day} ${MONTH_NAMES[locale][month - 1]}`;
+	const { month, day } = parseDate(date)
+	return `${day} ${MONTH_NAMES[locale][month - 1]}`
 }
 
 /** A statement's month as `Mon YYYY` ("Nov 2026", "พ.ย. 2026"), the year Gregorian as in `displayDate`. */
 export function periodLabel(period: Period, locale: Locale): string {
-	const { year, month } = periodParts(period);
-	return `${MONTH_NAMES[locale][month - 1]} ${year}`;
+	const { year, month } = periodParts(period)
+	return `${MONTH_NAMES[locale][month - 1]} ${year}`
 }
 
 const LONG_MONTH_NAMES: Record<Locale, readonly string[]> = {
@@ -165,14 +131,14 @@ const LONG_MONTH_NAMES: Record<Locale, readonly string[]> = {
 		"พฤศจิกายน",
 		"ธันวาคม",
 	],
-};
+}
 
 /** The date's month in full ("October", "ตุลาคม"), for a heading like "October so far". */
 export function monthName(date: PlainDate, locale: Locale): string {
-	return LONG_MONTH_NAMES[locale][parseDate(date).month - 1] ?? "";
+	return LONG_MONTH_NAMES[locale][parseDate(date).month - 1] ?? ""
 }
 
-const WEEKDAY_CATALOGS: Record<Locale, Catalog> = { en, th };
+const WEEKDAY_CATALOGS: Record<Locale, Catalog> = { en, th }
 /** Sunday first, as `Date#getUTCDay` counts. */
 const WEEKDAY_KEYS: readonly MessageKey[] = [
 	"date.weekday.0",
@@ -182,45 +148,39 @@ const WEEKDAY_KEYS: readonly MessageKey[] = [
 	"date.weekday.4",
 	"date.weekday.5",
 	"date.weekday.6",
-];
+]
 
 /**
  * The header's date: `<day>, dd MMM` on a phone, with ` yyyy` added on a desktop. The weekday
  * names live in the catalogs (`date.weekday.0` is Sunday); the day is padded and the year
  * Gregorian, without `Intl`, for the same reasons as `displayDate`.
  */
-export function headerDate(
-	date: PlainDate,
-	locale: Locale,
-	withYear: boolean,
-): string {
-	const { year, month, day } = parseDate(date);
-	const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
-	const name =
-		WEEKDAY_CATALOGS[locale][WEEKDAY_KEYS[weekday] ?? "date.weekday.0"];
-	const short = `${name}, ${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]}`;
-	return withYear ? `${short} ${year}` : short;
+export function headerDate(date: PlainDate, locale: Locale, withYear: boolean): string {
+	const { year, month, day } = parseDate(date)
+	const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+	const name = WEEKDAY_CATALOGS[locale][WEEKDAY_KEYS[weekday] ?? "date.weekday.0"]
+	const short = `${name}, ${pad(day, 2)} ${MONTH_NAMES[locale][month - 1]}`
+	return withYear ? `${short} ${year}` : short
 }
 
 export function periodOf(date: PlainDate): Period {
-	return date.slice(0, 7);
+	return date.slice(0, 7)
 }
 
 export function periodParts(period: Period): { year: number; month: number } {
-	if (!PERIOD_PATTERN.test(period))
-		throw new RangeError(`Not a period: ${period}`);
+	if (!PERIOD_PATTERN.test(period)) throw new RangeError(`Not a period: ${period}`)
 	return {
 		year: Number(period.slice(0, 4)),
 		month: Number(period.slice(5, 7)),
-	};
+	}
 }
 
 export function addPeriods(period: Period, delta: number): Period {
-	const { year, month } = periodParts(period);
-	const total = year * 12 + (month - 1) + delta;
-	return `${pad(Math.floor(total / 12), 4)}-${pad((total % 12) + 1, 2)}`;
+	const { year, month } = periodParts(period)
+	const total = year * 12 + (month - 1) + delta
+	return `${pad(Math.floor(total / 12), 4)}-${pad((total % 12) + 1, 2)}`
 }
 
 export function comparePeriods(a: Period, b: Period): number {
-	return a < b ? -1 : a > b ? 1 : 0;
+	return a < b ? -1 : a > b ? 1 : 0
 }

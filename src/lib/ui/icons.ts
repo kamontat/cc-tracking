@@ -1,4 +1,4 @@
-import { type SVGTemplateResult, svg } from "lit";
+import { type SVGTemplateResult, svg } from "lit"
 
 /**
  * Every icon draws on the same 24-unit grid with a 1.9 stroke in the current text colour, so
@@ -10,7 +10,7 @@ import { type SVGTemplateResult, svg } from "lit";
  * as an ordinary inline icon wherever an `html` template places it.
  */
 const icon = (body: SVGTemplateResult): SVGTemplateResult =>
-	svg`<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+	svg`<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`
 
 export const icons: Record<
 	| "home"
@@ -33,15 +33,9 @@ export const icons: Record<
 	| "bookmark",
 	SVGTemplateResult
 > = {
-	home: icon(
-		svg`<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>`,
-	),
-	transactions: icon(
-		svg`<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>`,
-	),
-	cards: icon(
-		svg`<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/>`,
-	),
+	home: icon(svg`<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>`),
+	transactions: icon(svg`<path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>`),
+	cards: icon(svg`<rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/>`),
 	// Lucide's `settings` cog.
 	settings: icon(
 		svg`<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>`,
@@ -65,15 +59,11 @@ export const icons: Record<
 	search: icon(svg`<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>`),
 	filter: icon(svg`<path d="M3 6h18M7 12h10M10 18h4"/>`),
 	// Lucide's `list-plus`: a new purchase list.
-	list: icon(
-		svg`<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/>`,
-	),
+	list: icon(svg`<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/>`),
 	// Lucide's `wallet`: making a payment.
 	wallet: icon(
 		svg`<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>`,
 	),
 	// Lucide's `bookmark`: a saved purchase list.
-	bookmark: icon(
-		svg`<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>`,
-	),
-};
+	bookmark: icon(svg`<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>`),
+}

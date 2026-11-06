@@ -1,15 +1,17 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { displayDate } from "#lib/domain/date";
-import { type ReadyRow, sortReady } from "#lib/domain/home";
-import type { LimitGroup, PlainDate } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { getLocale, t } from "#lib/i18n/index";
-import { base, controls } from "#styles/shared";
-import { cardTileStyles, lastFour, tileBody, tileTone } from "./card-tile";
+import type { LimitGroup, PlainDate } from "#lib/domain/types"
+
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { displayDate } from "#lib/domain/date"
+import { type ReadyRow, sortReady } from "#lib/domain/home"
+import { LocaleController } from "#lib/i18n/controller"
+import { getLocale, t } from "#lib/i18n/index"
+import { base, controls } from "#styles/shared"
+import { cardTileStyles, lastFour, tileBody, tileTone } from "./card-tile"
 
 /** How many cards Home shows before *See more*. */
-export const READY_TOP = 4;
+export const READY_TOP = 4
 
 /**
  * Home's short *Ready to use* (DD-103): the count, the four cards with the most room as card
@@ -59,37 +61,32 @@ export class CcReadyPanel extends LitElement {
 				background: var(--cc-surface-sunken);
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) rows: ReadyRow[] = [];
+	@property({ attribute: false }) rows: ReadyRow[] = []
 	/** The shown names of the places that take purchases, already in order. */
-	@property({ attribute: false }) places: string[] = [];
+	@property({ attribute: false }) places: string[] = []
 	/** The stored limit groups, in order: a card's chip takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** Kept for the page's clock; the tiles' dates come with the rows. */
-	@property() today: PlainDate = "";
+	@property() today: PlainDate = ""
 	/** How many unarchived cards that could take a purchase point at no limit group. */
-	@property({ type: Number }) unassigned = 0;
+	@property({ type: Number }) unassigned = 0
 
 	/** Whether the cards past the first `READY_TOP` are open. */
-	@state() private expanded = false;
+	@state() private expanded = false
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	private notice() {
-		if (this.unassigned === 0) return nothing;
+		if (this.unassigned === 0) return nothing
 		return html`<p class="sub" data-testid="unassigned">
-			${t(
-				this.unassigned === 1
-					? "spendable.unassigned.one"
-					: "spendable.unassigned.many",
-				{ count: this.unassigned },
-			)}
+			${t(this.unassigned === 1 ? "spendable.unassigned.one" : "spendable.unassigned.many", { count: this.unassigned })}
 			<a href="/cards?ungrouped=1">${t("spendable.unassignedAction")}</a>
-		</p>`;
+		</p>`
 	}
 
 	/**
@@ -99,10 +96,10 @@ export class CcReadyPanel extends LitElement {
 	 * when that bill is due.
 	 */
 	private tile(row: ReadyRow) {
-		const locale = getLocale();
+		const locale = getLocale()
 		const facts = row.billDue
 			? t("tile.due", { date: displayDate(row.billDue, locale) })
-			: t("tile.closes", { date: displayDate(row.closeDate, locale) });
+			: t("tile.closes", { date: displayDate(row.closeDate, locale) })
 		return html`<a class="tile" data-g=${tileTone(row.card, this.groups)} data-card=${row.card.id}
 			href=${`/card?id=${encodeURIComponent(row.card.id)}`}>${tileBody({
 				card: row.card,
@@ -113,16 +110,16 @@ export class CcReadyPanel extends LitElement {
 				facts,
 				plainRoom: true,
 				quietOver: true,
-			})}</a>`;
+			})}</a>`
 	}
 
 	override render() {
-		const count = this.rows.length;
-		const places = this.places.join(", ");
+		const count = this.rows.length
+		const places = this.places.join(", ")
 		const head = html`<div class="head">
 			<h2>${t("ready.title")}</h2>
 			<small>${t(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places })}</small>
-		</div>`;
+		</div>`
 		if (count === 0) {
 			return html`${head}
 				<div class="note">
@@ -130,10 +127,10 @@ export class CcReadyPanel extends LitElement {
 					<p>${t("quickAdd.noEligible")}</p>
 					<a data-action="settings" href="/settings/locations">${t("ready.toSettings")}</a>
 				</div>
-				${this.notice()}`;
+				${this.notice()}`
 		}
-		const sorted = sortReady(this.rows, "room");
-		const top = this.expanded ? sorted : sorted.slice(0, READY_TOP);
+		const sorted = sortReady(this.rows, "room")
+		const top = this.expanded ? sorted : sorted.slice(0, READY_TOP)
 		return html`${head}
 			<div class="tiles" id="ready-list">${top.map((row) => this.tile(row))}</div>
 			${
@@ -141,20 +138,16 @@ export class CcReadyPanel extends LitElement {
 					? html`<button type="button" class="more" data-variant="quiet" data-action="more"
 							aria-controls="ready-list" aria-expanded=${this.expanded ? "true" : "false"}
 							@click=${() => {
-								this.expanded = !this.expanded;
-							}}>${
-								this.expanded
-									? t("common.showLess")
-									: t("common.seeMore", { count: count - READY_TOP })
-							}</button>`
+								this.expanded = !this.expanded
+							}}>${this.expanded ? t("common.showLess") : t("common.seeMore", { count: count - READY_TOP })}</button>`
 					: nothing
 			}
-			${this.notice()}`;
+			${this.notice()}`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-ready-panel": CcReadyPanel;
+		"cc-ready-panel": CcReadyPanel
 	}
 }

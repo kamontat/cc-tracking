@@ -1,10 +1,10 @@
-import { type Location, toLocation } from "#lib/domain/location";
+import { type Location, toLocation } from "#lib/domain/location"
 
 /** Everything the app remembers that is not a card, a purchase, or a payment. */
 export type Settings = {
 	/** The places whose cards a new purchase may be entered against. */
-	purchaseLocations: Location[];
-};
+	purchaseLocations: Location[]
+}
 
 /**
  * Krabi only.
@@ -12,7 +12,7 @@ export type Settings = {
  * This reproduces the rule that was in force when the answer lived on each card: the Krabi
  * cards were the ones purchases were ever entered against.
  */
-export const DEFAULT_SETTINGS: Settings = { purchaseLocations: ["krabi"] };
+export const DEFAULT_SETTINGS: Settings = { purchaseLocations: ["krabi"] }
 
 /**
  * A fresh copy of the default. Anything handed out to a caller that might mutate it goes
@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Settings = { purchaseLocations: ["krabi"] };
  */
 export const defaultSettings = (): Settings => ({
 	purchaseLocations: [...DEFAULT_SETTINGS.purchaseLocations],
-});
+})
 
 /**
  * Narrows untrusted data to `Settings`, falling back to the default.
@@ -30,12 +30,10 @@ export const defaultSettings = (): Settings => ({
  * treating it as "nothing stored" would silently switch Krabi back on.
  */
 export function toSettings(value: unknown): Settings {
-	if (typeof value !== "object" || value === null) return defaultSettings();
-	const stored = (value as { purchaseLocations?: unknown }).purchaseLocations;
-	if (!Array.isArray(stored)) return defaultSettings();
+	if (typeof value !== "object" || value === null) return defaultSettings()
+	const stored = (value as { purchaseLocations?: unknown }).purchaseLocations
+	if (!Array.isArray(stored)) return defaultSettings()
 	return {
-		purchaseLocations: stored
-			.map(toLocation)
-			.filter((location): location is Location => location !== null),
-	};
+		purchaseLocations: stored.map(toLocation).filter((location): location is Location => location !== null),
+	}
 }

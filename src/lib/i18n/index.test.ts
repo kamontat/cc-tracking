@@ -1,33 +1,28 @@
-import { beforeEach, expect, test } from "bun:test";
-import { en } from "#lib/i18n/en";
-import type { MessageKey } from "#lib/i18n/index";
-import {
-	detectLocale,
-	getLocale,
-	resetLocale,
-	setLocale,
-	subscribe,
-	t,
-} from "#lib/i18n/index";
-import { th } from "#lib/i18n/th";
+import type { MessageKey } from "#lib/i18n/index"
+
+import { beforeEach, expect, test } from "vitest"
+
+import { en } from "#lib/i18n/en"
+import { detectLocale, getLocale, resetLocale, setLocale, subscribe, t } from "#lib/i18n/index"
+import { th } from "#lib/i18n/th"
 
 beforeEach(() => {
-	globalThis.localStorage.clear();
-	resetLocale();
-});
+	globalThis.localStorage.clear()
+	resetLocale()
+})
 
 test("the Thai catalog covers exactly the English key set", () => {
-	expect(Object.keys(th).sort()).toEqual(Object.keys(en).sort());
-});
+	expect(Object.keys(th).sort()).toEqual(Object.keys(en).sort())
+})
 
 test("no catalog entry is left empty", () => {
 	for (const [key, value] of Object.entries(th)) {
-		expect(value.length, `th.${key} is empty`).toBeGreaterThan(0);
+		expect(value.length, `th.${key} is empty`).toBeGreaterThan(0)
 	}
 	for (const [key, value] of Object.entries(en)) {
-		expect(value.length, `en.${key} is empty`).toBeGreaterThan(0);
+		expect(value.length, `en.${key} is empty`).toBeGreaterThan(0)
 	}
-});
+})
 
 test("every Thai entry substitutes the same placeholders as its English counterpart", () => {
 	// The key-set test above guarantees the keys line up; it says nothing about a Thai
@@ -38,88 +33,86 @@ test("every Thai entry substitutes the same placeholders as its English counterp
 		[...s.matchAll(/\{(\w+)\}/g)]
 			.map((m) => m[1])
 			.sort()
-			.join(",");
+			.join(",")
 	for (const key of Object.keys(en) as MessageKey[]) {
-		expect(params(th[key]), key).toBe(params(en[key]));
+		expect(params(th[key]), key).toBe(params(en[key]))
 	}
-});
+})
 
 test("a saved choice wins over the browser's languages", () => {
-	expect(detectLocale("en", ["th-TH"])).toBe("en");
-	expect(detectLocale("th", ["en-GB"])).toBe("th");
-});
+	expect(detectLocale("en", ["th-TH"])).toBe("en")
+	expect(detectLocale("th", ["en-GB"])).toBe("th")
+})
 
 test("follows the browser's first supported language when nothing is saved", () => {
-	expect(detectLocale(null, ["en-GB", "th-TH"])).toBe("en");
-	expect(detectLocale(null, ["th-TH", "en-US"])).toBe("th");
-	expect(detectLocale(null, ["ja-JP", "EN"])).toBe("en");
-});
+	expect(detectLocale(null, ["en-GB", "th-TH"])).toBe("en")
+	expect(detectLocale(null, ["th-TH", "en-US"])).toBe("th")
+	expect(detectLocale(null, ["ja-JP", "EN"])).toBe("en")
+})
 
 test("falls back to Thai when the browser names no supported language", () => {
-	expect(detectLocale(null, ["ja-JP"])).toBe("th");
-	expect(detectLocale(null, [])).toBe("th");
-	expect(detectLocale("de", ["ja-JP"])).toBe("th");
-});
+	expect(detectLocale(null, ["ja-JP"])).toBe("th")
+	expect(detectLocale(null, [])).toBe("th")
+	expect(detectLocale("de", ["ja-JP"])).toBe("th")
+})
 
 test("setting a locale persists it and notifies subscribers", () => {
-	let notified = 0;
+	let notified = 0
 	const unsubscribe = subscribe(() => {
-		notified += 1;
-	});
+		notified += 1
+	})
 
-	setLocale("en");
-	expect(getLocale()).toBe("en");
-	expect(globalThis.localStorage.getItem("cc:lang")).toBe("en");
-	expect(notified).toBe(1);
+	setLocale("en")
+	expect(getLocale()).toBe("en")
+	expect(globalThis.localStorage.getItem("cc:lang")).toBe("en")
+	expect(notified).toBe(1)
 
-	unsubscribe();
-	setLocale("th");
-	expect(notified).toBe(1);
-});
+	unsubscribe()
+	setLocale("th")
+	expect(notified).toBe(1)
+})
 
 test("the resolved locale survives a storage that throws", () => {
-	const original = globalThis.localStorage.getItem;
-	const originalLanguages = globalThis.navigator.languages;
+	const original = globalThis.localStorage.getItem
+	const originalLanguages = globalThis.navigator.languages
 	try {
 		globalThis.localStorage.getItem = () => {
-			throw new Error("blocked");
-		};
+			throw new Error("blocked")
+		}
 		// Isolate the behaviour under test (a blocked store must not throw or crash
 		// resolution) from browser-language detection, which is covered separately above.
 		Object.defineProperty(globalThis.navigator, "languages", {
 			value: [],
 			configurable: true,
-		});
-		expect(getLocale()).toBe("th");
+		})
+		expect(getLocale()).toBe("th")
 	} finally {
-		globalThis.localStorage.getItem = original;
+		globalThis.localStorage.getItem = original
 		Object.defineProperty(globalThis.navigator, "languages", {
 			value: originalLanguages,
 			configurable: true,
-		});
+		})
 	}
-});
+})
 
 test("translates a key", () => {
-	setLocale("en");
-	expect(t("cards.title")).toBe("Cards");
-	setLocale("th");
-	expect(t("cards.title")).toBe("บัตร");
-});
+	setLocale("en")
+	expect(t("cards.title")).toBe("Cards")
+	setLocale("th")
+	expect(t("cards.title")).toBe("บัตร")
+})
 
 test("substitutes named parameters", () => {
-	setLocale("en");
-	expect(t("cards.archivedList", { count: 3 })).toBe("Archived (3)");
-	expect(t("form.deleteAsk", { name: "KBank Visa" })).toBe(
-		"Delete KBank Visa?",
-	);
-});
+	setLocale("en")
+	expect(t("cards.archivedList", { count: 3 })).toBe("Archived (3)")
+	expect(t("form.deleteAsk", { name: "KBank Visa" })).toBe("Delete KBank Visa?")
+})
 
 test("leaves an unsupplied placeholder alone rather than printing undefined", () => {
-	setLocale("en");
-	expect(t("form.deleteAsk")).toBe("Delete {name}?");
-});
+	setLocale("en")
+	expect(t("form.deleteAsk")).toBe("Delete {name}?")
+})
 
 test("the Thai card title differs from the Cards title", () => {
-	expect(th["title.card"]).not.toBe(th["title.cards"]);
-});
+	expect(th["title.card"]).not.toBe(th["title.cards"])
+})

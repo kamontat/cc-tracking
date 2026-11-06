@@ -1,12 +1,13 @@
-import { html, LitElement } from "lit";
-import { customElement, query, state } from "lit/decorators.js";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { icons } from "#lib/ui/icons";
-import { afterExit } from "#lib/ui/motion";
-import { payAddress } from "#lib/ui/pay-address";
+import { html, LitElement } from "lit"
+import { customElement, query, state } from "lit/decorators.js"
 
-const MENU_ID = "fab-menu";
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { icons } from "#lib/ui/icons"
+import { afterExit } from "#lib/ui/motion"
+import { payAddress } from "#lib/ui/pay-address"
+
+const MENU_ID = "fab-menu"
 
 /**
  * The floating *+ New* button (DD-104): a speed dial over every page but the list pages and
@@ -19,82 +20,80 @@ const MENU_ID = "fab-menu";
  */
 @customElement("cc-fab-menu")
 export class CcFabMenu extends LitElement {
-	@state() private open = false;
+	@state() private open = false
 
-	@query("button.fab") private button!: HTMLButtonElement;
-	@query(".fab-menu__list") private menu!: HTMLElement;
+	@query("button.fab") private button!: HTMLButtonElement
+	@query(".fab-menu__list") private menu!: HTMLElement
 
 	private readonly onDocumentClick = (event: Event) => {
-		if (this.open && !event.composedPath().includes(this)) this.close(false);
-	};
+		if (this.open && !event.composedPath().includes(this)) this.close(false)
+	}
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	protected override createRenderRoot() {
-		return this;
+		return this
 	}
 
 	override connectedCallback() {
-		super.connectedCallback();
-		this.ownerDocument.addEventListener("click", this.onDocumentClick);
+		super.connectedCallback()
+		this.ownerDocument.addEventListener("click", this.onDocumentClick)
 	}
 
 	override disconnectedCallback() {
-		super.disconnectedCallback();
-		this.ownerDocument.removeEventListener("click", this.onDocumentClick);
+		super.disconnectedCallback()
+		this.ownerDocument.removeEventListener("click", this.onDocumentClick)
 	}
 
 	private items(): HTMLElement[] {
-		return [...this.menu.querySelectorAll<HTMLElement>(".fab-menu__item")];
+		return [...this.menu.querySelectorAll<HTMLElement>(".fab-menu__item")]
 	}
 
 	private async show() {
-		this.menu.removeAttribute("data-state");
-		this.open = true;
-		await this.updateComplete;
-		this.items()[0]?.focus();
+		this.menu.removeAttribute("data-state")
+		this.open = true
+		await this.updateComplete
+		this.items()[0]?.focus()
 	}
 
 	/** Plays the menu's exit, then hides it; `refocus` hands focus back to the button. */
 	private close(refocus: boolean) {
-		if (!this.open || this.menu.getAttribute("data-state") === "closing")
-			return;
-		this.menu.setAttribute("data-state", "closing");
-		this.button.setAttribute("aria-expanded", "false");
+		if (!this.open || this.menu.getAttribute("data-state") === "closing") return
+		this.menu.setAttribute("data-state", "closing")
+		this.button.setAttribute("aria-expanded", "false")
 		afterExit(this.menu, () => {
-			this.menu.removeAttribute("data-state");
-			this.open = false;
-			if (refocus) this.button.focus();
-		});
+			this.menu.removeAttribute("data-state")
+			this.open = false
+			if (refocus) this.button.focus()
+		})
 	}
 
 	private onKeydown(event: KeyboardEvent) {
-		if (!this.open) return;
+		if (!this.open) return
 		if (event.key === "Escape") {
-			event.preventDefault();
-			this.close(true);
-			return;
+			event.preventDefault()
+			this.close(true)
+			return
 		}
-		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-		const items = this.items();
-		if (items.length === 0) return;
-		event.preventDefault();
-		const at = items.indexOf(document.activeElement as HTMLElement);
-		const step = event.key === "ArrowDown" ? 1 : -1;
-		const next = at < 0 ? 0 : (at + step + items.length) % items.length;
-		items[next]?.focus();
+		if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return
+		const items = this.items()
+		if (items.length === 0) return
+		event.preventDefault()
+		const at = items.indexOf(document.activeElement as HTMLElement)
+		const step = event.key === "ArrowDown" ? 1 : -1
+		const next = at < 0 ? 0 : (at + step + items.length) % items.length
+		items[next]?.focus()
 	}
 
 	override render() {
-		const expanded =
-			this.open && this.menu?.getAttribute("data-state") !== "closing";
+		const expanded = this.open && this.menu?.getAttribute("data-state") !== "closing"
 		return html`<div class="fab-menu__wrap" @keydown=${(e: KeyboardEvent) => this.onKeydown(e)}
 			@focusout=${(e: FocusEvent) => {
-				const next = e.relatedTarget as Node | null;
-				if (next && !this.contains(next)) this.close(false);
+				const next = e.relatedTarget as Node | null
+				if (next && !this.contains(next)) this.close(false)
 			}}>
 			<div class="fab-menu__list" id=${MENU_ID} ?hidden=${!this.open}>
 				<a class="fab-menu__item" data-action="new-list" href="/list/new"
@@ -109,12 +108,12 @@ export class CcFabMenu extends LitElement {
 				@click=${() => (this.open ? this.close(true) : void this.show())}
 				><span class="fab__plus">${icons.plus}</span><span class="fab__label">${t("fab.new")}</span></button
 			>
-		</div>`;
+		</div>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-fab-menu": CcFabMenu;
+		"cc-fab-menu": CcFabMenu
 	}
 }

@@ -25,7 +25,7 @@ size or "just" are not permission. When they do skip one, say which in the PR te
    request's base may then be that branch rather than `main`. Then run `bun install` — a new
    worktree has no `node_modules`.
 2. **Test first.** REQUIRED SUB-SKILL: superpowers:test-driven-development. Write the
-   failing test next to the code (`*.test.ts`), run `bun test <file>` and watch it fail for
+   failing test next to the code (`*.test.ts`), run `bun run test <file>` and watch it fail for
    the right reason.
 3. **Code.** Write the smallest code that passes. Follow the design system rules in
    `AGENTS.md` (tokens only through `var(--cc-*)`, the three button variants, no selectors
@@ -36,8 +36,7 @@ size or "just" are not permission. When they do skip one, say which in the PR te
 5. **Check, format, test.** All must pass before committing:
    ```sh
    bun run format      # biome check --unsafe --write
-   bun run check       # biome check
-   bun run typecheck
+   bun run check       # astro check, then biome check
    bun run test
    bun run build
    ```

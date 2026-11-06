@@ -28,23 +28,23 @@
 
   Draft:
 
-  | Address | Was | Tab |
-  | ------- | --- | --- |
-  | `/` | `/` | Home |
-  | `/transactions` | `/transactions` | Transactions |
-  | `/transactions/owed` | `/transactions?view=owed` | Transactions |
-  | `/transactions/lists` | `/transactions?view=lists` | Transactions |
-  | `/payments/new` | `/pay` | Transactions |
-  | `/purchases/new?type=list` | `/list/new` | Home |
-  | `/purchases/<id>` | `/list/draft`, `/list/reply`, `/list/view` | Home |
-  | `/cards` | `/cards` | Cards |
-  | `/cards/groups` | `/cards?view=groups` | Cards |
-  | `/cards/groups/<id>`, `/cards/groups/new` (sheets) | `/cards?group=`, `?newGroup=1` | Cards |
-  | `/cards/new` | `/card/new` | Cards |
-  | `/cards/<id>` | `/card?id=` | Cards |
-  | `/cards/<id>/edit` | `/card/edit?id=` | Cards |
-  | `/cards/<id>/purchase` (sheet) | not in the address | Cards |
-  | `/settings`, `/settings/locations` | same | Settings |
+  | Address                                            | Was                                        | Tab          |
+  | -------------------------------------------------- | ------------------------------------------ | ------------ |
+  | `/`                                                | `/`                                        | Home         |
+  | `/transactions`                                    | `/transactions`                            | Transactions |
+  | `/transactions/owed`                               | `/transactions?view=owed`                  | Transactions |
+  | `/transactions/lists`                              | `/transactions?view=lists`                 | Transactions |
+  | `/payments/new`                                    | `/pay`                                     | Transactions |
+  | `/purchases/new?type=list`                         | `/list/new`                                | Home         |
+  | `/purchases/<id>`                                  | `/list/draft`, `/list/reply`, `/list/view` | Home         |
+  | `/cards`                                           | `/cards`                                   | Cards        |
+  | `/cards/groups`                                    | `/cards?view=groups`                       | Cards        |
+  | `/cards/groups/<id>`, `/cards/groups/new` (sheets) | `/cards?group=`, `?newGroup=1`             | Cards        |
+  | `/cards/new`                                       | `/card/new`                                | Cards        |
+  | `/cards/<id>`                                      | `/card?id=`                                | Cards        |
+  | `/cards/<id>/edit`                                 | `/card/edit?id=`                           | Cards        |
+  | `/cards/<id>/purchase` (sheet)                     | not in the address                         | Cards        |
+  | `/settings`, `/settings/locations`                 | same                                       | Settings     |
 
   `/purchases/<id>` keeps one address while a list goes from draft to sent to saved; the
   page picks its step by status.
@@ -57,7 +57,8 @@
   4. The payment sheet: `/payments/<cardId>` over the picker (suggested), or
      `/cards/<id>/pay` over the card page. `?amount=` stays a query either way.
   5. Trailing slash: `/cards/abc/` is a 404 on Workers; add `/:id/` rules or never write one.
-  6. Local dev: `@kctools/bun-server` (dev and preview) ignores `_redirects`, so the deeper
-     paths 404 locally. Teach it `_redirects`, or develop with `wrangler dev`.
+  6. Local dev: `astro dev` and `astro preview` ignore `public/_redirects`, so the deeper
+     paths 404 locally. Use Astro's `redirects` config or dynamic routes, or develop with
+     `wrangler dev`.
 
   Then update `ENDPOINTS.md`, `PRD.md` and `PRD_TH.md` together, and build it test-first.

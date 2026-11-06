@@ -1,102 +1,85 @@
-import { describe, expect, test } from "bun:test";
-import {
-	repositoryContract,
-	sampleCard,
-	samplePurchase,
-} from "#lib/storage/contract";
-import { LocalStorageRepository } from "#lib/storage/local";
-import { StorageError } from "#lib/storage/repository";
-import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations";
+import { describe, expect, test } from "vitest"
+
+import { repositoryContract, sampleCard, samplePurchase } from "#lib/storage/contract"
+import { LocalStorageRepository } from "#lib/storage/local"
+import { StorageError } from "#lib/storage/repository"
+import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
 
 const freshStorage = (): Storage => {
-	localStorage.clear();
-	return localStorage;
-};
+	localStorage.clear()
+	return localStorage
+}
 
-repositoryContract(
-	"localStorage",
-	() => new LocalStorageRepository(freshStorage()),
-);
+repositoryContract("localStorage", () => new LocalStorageRepository(freshStorage()))
 
 describe("LocalStorageRepository key layout", () => {
 	test("writes the documented key shapes", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
-		await repo.saveCard(sampleCard());
-		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }));
+		const repo = new LocalStorageRepository(freshStorage())
+		await repo.saveCard(sampleCard())
+		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }))
 
-		expect(localStorage.getItem("cc:card:kbank")).not.toBeNull();
-		expect(
-			localStorage.getItem("cc:purchase:kbank:2026-09-05:p1"),
-		).not.toBeNull();
-	});
+		expect(localStorage.getItem("cc:card:kbank")).not.toBeNull()
+		expect(localStorage.getItem("cc:purchase:kbank:2026-09-05:p1")).not.toBeNull()
+	})
 
 	test("reset still removes a leftover batch start", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
-		localStorage.setItem(
-			"cc:batch-start",
-			JSON.stringify("2026-10-27T03:00:00.000Z"),
-		);
+		const repo = new LocalStorageRepository(freshStorage())
+		localStorage.setItem("cc:batch-start", JSON.stringify("2026-10-27T03:00:00.000Z"))
 
-		await repo.clearAll();
+		await repo.clearAll()
 
-		expect(localStorage.getItem("cc:batch-start")).toBeNull();
-	});
+		expect(localStorage.getItem("cc:batch-start")).toBeNull()
+	})
 
 	test("reset removes the location seed marker, so the defaults can be seeded again", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
-		await seedLocations(repo, localStorage);
-		expect(localStorage.getItem(SEED_KEY)).toBe("done");
+		const repo = new LocalStorageRepository(freshStorage())
+		await seedLocations(repo, localStorage)
+		expect(localStorage.getItem(SEED_KEY)).toBe("done")
 
-		await repo.clearAll();
+		await repo.clearAll()
 
-		expect(localStorage.getItem(SEED_KEY)).toBeNull();
-		await seedLocations(repo, localStorage);
-		expect((await repo.listLocations()).map((record) => record.id)).toEqual([
-			"bangkok",
-			"krabi",
-			"phichit",
-		]);
-	});
+		expect(localStorage.getItem(SEED_KEY)).toBeNull()
+		await seedLocations(repo, localStorage)
+		expect((await repo.listLocations()).map((record) => record.id)).toEqual(["bangkok", "krabi", "phichit"])
+	})
 
 	test("ignores unrelated keys in the same origin", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
-		localStorage.setItem("some-other-app", "hello");
-		expect(await repo.listCards()).toEqual([]);
-	});
+		const repo = new LocalStorageRepository(freshStorage())
+		localStorage.setItem("some-other-app", "hello")
+		expect(await repo.listCards()).toEqual([])
+	})
 
 	test("clearing leaves the language choice and other apps' keys alone", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
-		await repo.saveCard(sampleCard());
-		await repo.savePurchase(samplePurchase());
-		await repo.saveSettings({ purchaseLocations: [] });
-		localStorage.setItem("cc:migration:location", '["Old card"]');
-		localStorage.setItem("cc:lang", "th");
-		localStorage.setItem("some-other-app", "hello");
+		const repo = new LocalStorageRepository(freshStorage())
+		await repo.saveCard(sampleCard())
+		await repo.savePurchase(samplePurchase())
+		await repo.saveSettings({ purchaseLocations: [] })
+		localStorage.setItem("cc:migration:location", '["Old card"]')
+		localStorage.setItem("cc:lang", "th")
+		localStorage.setItem("some-other-app", "hello")
 
-		await repo.clearAll();
+		await repo.clearAll()
 
-		const left = Array.from({ length: localStorage.length }, (_, index) =>
-			localStorage.key(index),
-		).sort();
-		expect(left).toEqual(["cc:lang", "some-other-app"]);
-	});
+		const left = Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).sort()
+		expect(left).toEqual(["cc:lang", "some-other-app"])
+	})
 
 	test("moves the key when a purchase date is edited", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
-		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }));
-		await repo.deletePurchase("kbank", "p1");
-		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-25" }));
+		const repo = new LocalStorageRepository(freshStorage())
+		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }))
+		await repo.deletePurchase("kbank", "p1")
+		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-25" }))
 
-		const purchases = await repo.listPurchases("kbank");
-		expect(purchases).toHaveLength(1);
-		expect(purchases[0]?.date).toBe("2026-09-25");
-	});
+		const purchases = await repo.listPurchases("kbank")
+		expect(purchases).toHaveLength(1)
+		expect(purchases[0]?.date).toBe("2026-09-25")
+	})
 
 	test("reports corrupt JSON as a StorageError naming the key", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
-		localStorage.setItem("cc:card:broken", "{not json");
-		await expect(repo.listCards()).rejects.toThrow(StorageError);
-	});
+		const repo = new LocalStorageRepository(freshStorage())
+		localStorage.setItem("cc:card:broken", "{not json")
+		await expect(repo.listCards()).rejects.toThrow(StorageError)
+	})
 
 	test("reports a failing write as a StorageError", async () => {
 		const failing = {
@@ -106,36 +89,32 @@ describe("LocalStorageRepository key layout", () => {
 			removeItem: () => {},
 			clear: () => {},
 			setItem: () => {
-				throw new DOMException("quota", "QuotaExceededError");
+				throw new DOMException("quota", "QuotaExceededError")
 			},
-		} as unknown as Storage;
+		} as unknown as Storage
 
-		const repo = new LocalStorageRepository(failing);
-		await expect(repo.saveCard(sampleCard())).rejects.toThrow(StorageError);
-	});
+		const repo = new LocalStorageRepository(failing)
+		await expect(repo.saveCard(sampleCard())).rejects.toThrow(StorageError)
+	})
 
 	test("isolates card data when card ids contain colons", async () => {
-		const repo = new LocalStorageRepository(freshStorage());
+		const repo = new LocalStorageRepository(freshStorage())
 		// Save two cards where one id is a prefix of the other
-		await repo.saveCard(sampleCard({ id: "abc" }));
-		await repo.saveCard(sampleCard({ id: "abc:def" }));
+		await repo.saveCard(sampleCard({ id: "abc" }))
+		await repo.saveCard(sampleCard({ id: "abc:def" }))
 
 		// Save purchases for both cards
-		await repo.savePurchase(
-			samplePurchase({ id: "p1", cardId: "abc", date: "2026-09-05" }),
-		);
-		await repo.savePurchase(
-			samplePurchase({ id: "p2", cardId: "abc:def", date: "2026-09-10" }),
-		);
+		await repo.savePurchase(samplePurchase({ id: "p1", cardId: "abc", date: "2026-09-05" }))
+		await repo.savePurchase(samplePurchase({ id: "p2", cardId: "abc:def", date: "2026-09-10" }))
 
 		// Verify each card only sees its own purchases
-		const abcPurchases = await repo.listPurchases("abc");
-		const abcDefPurchases = await repo.listPurchases("abc:def");
+		const abcPurchases = await repo.listPurchases("abc")
+		const abcDefPurchases = await repo.listPurchases("abc:def")
 
-		expect(abcPurchases).toHaveLength(1);
-		expect(abcPurchases[0]?.id).toBe("p1");
+		expect(abcPurchases).toHaveLength(1)
+		expect(abcPurchases[0]?.id).toBe("p1")
 
-		expect(abcDefPurchases).toHaveLength(1);
-		expect(abcDefPurchases[0]?.id).toBe("p2");
-	});
-});
+		expect(abcDefPurchases).toHaveLength(1)
+		expect(abcDefPurchases[0]?.id).toBe("p2")
+	})
+})

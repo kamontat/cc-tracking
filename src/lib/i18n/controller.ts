@@ -1,5 +1,6 @@
-import type { ReactiveController, ReactiveControllerHost } from "lit";
-import { subscribe } from "#lib/i18n/index";
+import type { ReactiveController, ReactiveControllerHost } from "lit"
+
+import { subscribe } from "#lib/i18n/index"
 
 /**
  * Re-renders its host when the language changes.
@@ -9,18 +10,18 @@ import { subscribe } from "#lib/i18n/index";
  * reloading the page, which would discard a half-filled form.
  */
 export class LocaleController implements ReactiveController {
-	private unsubscribe: (() => void) | null = null;
+	private unsubscribe: (() => void) | null = null
 
 	constructor(private readonly host: ReactiveControllerHost) {
-		host.addController(this);
+		host.addController(this)
 	}
 
 	hostConnected(): void {
-		this.unsubscribe = subscribe(() => this.host.requestUpdate());
+		this.unsubscribe = subscribe(() => this.host.requestUpdate())
 	}
 
 	hostDisconnected(): void {
-		this.unsubscribe?.();
-		this.unsubscribe = null;
+		this.unsubscribe?.()
+		this.unsubscribe = null
 	}
 }

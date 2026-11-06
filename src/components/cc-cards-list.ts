@@ -1,31 +1,24 @@
-import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import type { CardsResults, CardsRooms } from "#lib/domain/cards-view";
-import { closeDateOf, dueDateOf } from "#lib/domain/cycle";
-import { displayDate, today } from "#lib/domain/date";
-import { takesPurchases } from "#lib/domain/locations";
-import { cardOwnerOf } from "#lib/domain/owner";
-import { openPeriod } from "#lib/domain/statement";
-import type {
-	Card,
-	CardLedger,
-	LimitGroup,
-	LocationRecord,
-	PlainDate,
-} from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { nameOfLocation } from "#lib/i18n/format";
-import { getLocale, t } from "#lib/i18n/index";
-import { panelOpen, rememberPanel } from "#lib/ui/panel";
-import { base, controls } from "#styles/shared";
-import { cardTileStyles, lastFour, tileBody, tileTone } from "./card-tile";
+import type { CardsResults, CardsRooms } from "#lib/domain/cards-view"
+import type { Card, CardLedger, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
 
-const ARCHIVE_PANEL = "cards-archive";
+import { css, html, LitElement, nothing } from "lit"
+import { customElement, property } from "lit/decorators.js"
 
-const cardsCount = (count: number) =>
-	count === 1
-		? t("cards.page.count.one")
-		: t("cards.page.count.many", { count });
+import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
+import { displayDate, today } from "#lib/domain/date"
+import { takesPurchases } from "#lib/domain/locations"
+import { cardOwnerOf } from "#lib/domain/owner"
+import { openPeriod } from "#lib/domain/statement"
+import { LocaleController } from "#lib/i18n/controller"
+import { nameOfLocation } from "#lib/i18n/format"
+import { getLocale, t } from "#lib/i18n/index"
+import { panelOpen, rememberPanel } from "#lib/ui/panel"
+import { base, controls } from "#styles/shared"
+import { cardTileStyles, lastFour, tileBody, tileTone } from "./card-tile"
+
+const ARCHIVE_PANEL = "cards-archive"
+
+const cardsCount = (count: number) => (count === 1 ? t("cards.page.count.one") : t("cards.page.count.many", { count }))
 
 /**
  * The Cards page's results (DD prototype `cardResults`): by place, a section per location
@@ -99,59 +92,54 @@ export class CcCardsList extends LitElement {
 				border-radius: var(--cc-radius-md);
 			}
 		`,
-	];
+	]
 
 	@property({ attribute: false }) results: CardsResults = {
 		sections: [],
 		flat: null,
 		archived: [],
 		count: 0,
-	};
+	}
 	/** The stored limit groups, in order: a row's chip takes its group's colour. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
-	@property({ attribute: false }) rooms: CardsRooms = new Map();
+	@property({ attribute: false }) groups: LimitGroup[] = []
+	@property({ attribute: false }) rooms: CardsRooms = new Map()
 	/** The credit each card holds, in satang, keyed by card id; none when absent. */
-	@property({ attribute: false }) credits: Map<string, number> = new Map();
+	@property({ attribute: false }) credits: Map<string, number> = new Map()
 	/** The stored locations: each section's name, and whether it takes purchases. */
-	@property({ attribute: false }) locations: LocationRecord[] = [];
+	@property({ attribute: false }) locations: LocationRecord[] = []
 	/** How many cards are stored at all, to tell "none yet" from "none match". */
-	@property({ type: Number }) total = 0;
+	@property({ type: Number }) total = 0
 	/** Each card's ledger, keyed by card id: its open statement holds the dates to show. */
-	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map();
+	@property({ attribute: false }) ledgers: Map<string, CardLedger> = new Map()
 	/** Today, which picks each card's open period for the row's close and due dates. */
-	@property() today: PlainDate = today(new Date());
+	@property() today: PlainDate = today(new Date())
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	private dates(card: Card): string {
-		const period = openPeriod(card, this.today);
+		const period = openPeriod(card, this.today)
 		// The ledger's open statement honours kept dates; the cycle only fills in without one.
-		const kept = this.ledgers.get(card.id)?.statements.find((s) => s.open);
-		const locale = getLocale();
+		const kept = this.ledgers.get(card.id)?.statements.find((s) => s.open)
+		const locale = getLocale()
 		return t("cards.page.dates", {
-			close: displayDate(
-				kept?.closeDate ?? closeDateOf(card.cycle, period),
-				locale,
-			),
+			close: displayDate(kept?.closeDate ?? closeDateOf(card.cycle, period), locale),
 			due: displayDate(kept?.dueDate ?? dueDateOf(card.cycle, period), locale),
-		});
+		})
 	}
 
 	/** Line 2's aside: the cardholder, then `· Sub` for a supplementary card. */
 	private holder(card: Card): string {
-		const group = this.groups.find((g) => g.id === card.limitGroupId) ?? null;
-		const owner = cardOwnerOf(card, group) ?? "";
-		return card.supplementary
-			? [owner, t("tile.sub")].filter(Boolean).join(" · ")
-			: owner;
+		const group = this.groups.find((g) => g.id === card.limitGroupId) ?? null
+		const owner = cardOwnerOf(card, group) ?? ""
+		return card.supplementary ? [owner, t("tile.sub")].filter(Boolean).join(" · ") : owner
 	}
 
 	private tile(card: Card, flat: boolean) {
-		const place = flat ? nameOfLocation(this.locations, card.location) : "";
-		const room = card.limitGroupId ? this.rooms.get(card.limitGroupId) : null;
+		const place = flat ? nameOfLocation(this.locations, card.location) : ""
+		const room = card.limitGroupId ? this.rooms.get(card.limitGroupId) : null
 		return html`<a class="tile" data-g=${tileTone(card, this.groups)} data-card=${card.id}
 			href=${`/card?id=${encodeURIComponent(card.id)}`}>${tileBody({
 				card,
@@ -161,38 +149,34 @@ export class CcCardsList extends LitElement {
 				mono: true,
 				aside: this.holder(card),
 				facts: place ? `${this.dates(card)} · ${place}` : this.dates(card),
-			})}</a>`;
+			})}</a>`
 	}
 
 	private tiles(cards: Card[], flat: boolean) {
-		return html`<div class="tiles">${cards.map((c) => this.tile(c, flat))}</div>`;
+		return html`<div class="tiles">${cards.map((c) => this.tile(c, flat))}</div>`
 	}
 
 	private archive() {
-		const { archived } = this.results;
-		if (archived.length === 0) return nothing;
+		const { archived } = this.results
+		if (archived.length === 0) return nothing
 		return html`<details class="archive" ?open=${panelOpen(ARCHIVE_PANEL, false)}
 			@toggle=${rememberPanel(ARCHIVE_PANEL)}>
 			<summary>${t("cards.archivedList", { count: archived.length })}</summary>
 			${this.tiles(archived, true)}
-		</details>`;
+		</details>`
 	}
 
 	override render() {
-		const { sections, flat, count } = this.results;
+		const { sections, flat, count } = this.results
 		const none =
 			count === 0
-				? html`<p class="empty">${
-						this.total === 0 ? t("cards.page.empty") : t("cards.page.noMatch")
-					}</p>`
-				: nothing;
+				? html`<p class="empty">${this.total === 0 ? t("cards.page.empty") : t("cards.page.noMatch")}</p>`
+				: nothing
 		return html`${none}
 			${(sections ?? []).map(
 				({ location, cards }) => html`<section data-location=${location}>
 					<h2 class="place"><b>${nameOfLocation(this.locations, location)}</b> <small>${cardsCount(cards.length)}${
-						takesPurchases(this.locations, location)
-							? ` · ${t("cards.page.takesPurchases")}`
-							: ""
+						takesPurchases(this.locations, location) ? ` · ${t("cards.page.takesPurchases")}` : ""
 					}</small></h2>
 					${this.tiles(cards, false)}
 				</section>`,
@@ -206,12 +190,12 @@ export class CcCardsList extends LitElement {
 					: nothing
 			}
 			${this.archive()}
-		`;
+		`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-cards-list": CcCardsList;
+		"cc-cards-list": CcCardsList
 	}
 }

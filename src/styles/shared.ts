@@ -1,5 +1,6 @@
-import { css, unsafeCSS } from "lit";
-import { GROUP_COLORS } from "#lib/domain/group-color";
+import { css, unsafeCSS } from "lit"
+
+import { GROUP_COLORS } from "#lib/domain/group-color"
 
 /**
  * The shadow-root counterpart to the document reset. `@kcstyles/reset.css` is a
@@ -70,7 +71,7 @@ export const base = css`
 	[hidden] {
 		display: none !important;
 	}
-`;
+`
 
 /** Buttons, inputs and labels. Three button variants, keyed off `data-variant`. */
 export const controls = css`
@@ -204,7 +205,7 @@ export const controls = css`
 			outline: 2px solid;
 		}
 	}
-`;
+`
 
 /** A bordered, padded surface. `data-tone="danger"` tints it for error states. */
 export const panel = css`
@@ -240,7 +241,7 @@ export const panel = css`
 		text-align: right;
 		font-variant-numeric: tabular-nums;
 	}
-`;
+`
 
 /**
  * Table typography, plus the stacked-row transformation below 640px. A cell
@@ -335,7 +336,7 @@ export const dataTable = css`
 			letter-spacing: var(--cc-tracking-label);
 		}
 	}
-`;
+`
 
 /**
  * A one-token label beside a name: archived, supplementary. Held on one line, since a badge
@@ -354,7 +355,7 @@ export const badge = css`
 		border: var(--cc-border-width) solid var(--cc-border);
 		border-radius: var(--cc-radius-sm);
 	}
-`;
+`
 
 /**
  * How much of a limit is spent, as a thin bar. The fill's width is the share itself, set
@@ -396,7 +397,7 @@ export const usageBar = css`
 			background: CanvasText;
 		}
 	}
-`;
+`
 
 /**
  * A list's own controls, from `#components/list-controls`: one row above the table holding
@@ -507,7 +508,7 @@ export const listControls = css`
 	th[aria-sort="descending"] .sort-arrow {
 		color: inherit;
 	}
-`;
+`
 
 /**
  * The purchase list's two columns, for the steps drawn in a shadow root (amounts, reply); the
@@ -596,7 +597,7 @@ export const listLayout = css`
 			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
-`;
+`
 
 /**
  * The sticky bar at the foot of a list page: a summary on the left, its actions on the right.
@@ -628,7 +629,7 @@ export const actionBarStyles = css`
 	.action-bar button {
 		align-self: center;
 	}
-`;
+`
 
 /**
  * One rule per group colour, setting the three properties coloured elements read: `--g-bg` (the
@@ -643,7 +644,7 @@ export const groupInk = unsafeCSS(
 	--g-soft: var(--cc-group-${name}-soft);
 }`,
 	).join("\n"),
-);
+)
 
 /**
  * The pieces a card's name is drawn from (card-label.ts, UI-14): `.mini`, the last-4 chip in the
@@ -733,7 +734,7 @@ export const cardBits = css`
 		color: var(--cc-success);
 		background: var(--cc-accent-surface);
 	}
-`;
+`
 
 /**
  * Phase 4's row panels (the ledger, Upcoming, owed, lists): one `.panel` holding `.crow` rows
@@ -906,7 +907,7 @@ export const rowPanel = css`
 		padding: var(--cc-space-4);
 		color: var(--cc-text-muted);
 	}
-`;
+`
 
 /**
  * A filter sheet's body (`cc-tx-filter`, `cc-ready-filter`): fieldsets of pill choices under a
@@ -990,7 +991,7 @@ export const filterSheet = css`
 	.footer [data-action="apply"] {
 		flex: 1 1 auto;
 	}
-`;
+`
 
 /**
  * Rows a component draws inside a settings `.set` panel (prototype `setRow`): a label, with an
@@ -1052,7 +1053,7 @@ export const setRows = css`
 		background: var(--cc-surface);
 		box-shadow: var(--cc-shadow-sm);
 	}
-`;
+`
 
 /** The card-list section of a list page: each line its own panel (the amounts and the reply). */
 export const lineCards = css`
@@ -1064,4 +1065,4 @@ export const lineCards = css`
 		border: var(--cc-border-width) solid var(--cc-border);
 		border-radius: var(--cc-radius-md);
 	}
-`;
+`

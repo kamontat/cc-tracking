@@ -1,25 +1,23 @@
-import { html, nothing, render } from "lit";
-import { headerDate } from "#lib/domain/date";
-import type { PlainDate } from "#lib/domain/types";
-import type { MessageKey } from "#lib/i18n/catalog";
-import { getLocale, t } from "#lib/i18n/index";
-import { type Environment, envMark } from "#lib/ui/build-info";
-import { icons } from "#lib/ui/icons";
-import "#components/cc-fab-menu";
+import type { PlainDate } from "#lib/domain/types"
+import type { MessageKey } from "#lib/i18n/catalog"
 
-export type Tab = "home" | "transactions" | "cards" | "settings";
+import { html, nothing, render } from "lit"
+
+import { headerDate } from "#lib/domain/date"
+import { getLocale, t } from "#lib/i18n/index"
+import { type Environment, envMark } from "#lib/ui/build-info"
+import { icons } from "#lib/ui/icons"
+import "#components/cc-fab-menu"
+
+export type Tab = "home" | "transactions" | "cards" | "settings"
 
 /** The four places, in the order both navs show them. */
-export const TABS: readonly (readonly [
-	tab: Tab,
-	path: string,
-	label: MessageKey,
-])[] = [
+export const TABS: readonly (readonly [tab: Tab, path: string, label: MessageKey])[] = [
 	["home", "/", "nav.home"],
 	["transactions", "/transactions", "nav.transactions"],
 	["cards", "/cards", "nav.cards"],
 	["settings", "/settings", "nav.settings"],
-];
+]
 
 /**
  * The tab a path belongs to. The payment page (`/pay`) sits under Transactions, where payments
@@ -29,34 +27,28 @@ export const TABS: readonly (readonly [
  * so `/cards/` is still Cards.
  */
 export function currentTab(path: string): Tab | null {
-	const bare = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
-	if (bare === "/card" || bare === "/card/new" || bare === "/card/edit")
-		return "cards";
-	if (bare === "/pay") return "transactions";
-	if (bare === "/settings/locations") return "settings";
-	if (bare.startsWith("/list/")) return "home";
-	return TABS.find(([, tabPath]) => tabPath === bare)?.[0] ?? null;
+	const bare = path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path
+	if (bare === "/card" || bare === "/card/new" || bare === "/card/edit") return "cards"
+	if (bare === "/pay") return "transactions"
+	if (bare === "/settings/locations") return "settings"
+	if (bare.startsWith("/list/")) return "home"
+	return TABS.find(([, tabPath]) => tabPath === bare)?.[0] ?? null
 }
 
 export type ShellView = {
-	path: string;
-	today: PlainDate;
-	environment: Environment;
-	pr: string;
-};
+	path: string
+	today: PlainDate
+	environment: Environment
+	pr: string
+}
 
-const tabLink = (
-	tab: Tab,
-	path: string,
-	label: MessageKey,
-	current: Tab | null,
-) =>
+const tabLink = (tab: Tab, path: string, label: MessageKey, current: Tab | null) =>
 	html`<a
 		data-tab=${tab}
 		href=${path}
 		aria-current=${current === tab ? "page" : nothing}
 		>${icons[tab]}<span>${t(label)}</span></a
-	>`;
+	>`
 
 /**
  * Renders the header into `#site-header`, and the bottom tab bar and the floating *+ New*
@@ -64,17 +56,13 @@ const tabLink = (
  * bar on a phone and the header tabs from 900px, so the current page is marked in both. The
  * header date carries both of its forms, and the stylesheet shows one per screen size.
  */
-export function renderShell(
-	view: ShellView,
-	root: ParentNode = document,
-): void {
-	const current = currentTab(view.path);
-	const mark = envMark(view.environment, view.pr);
-	const locale = getLocale();
-	const tab = ([name, path, label]: (typeof TABS)[number]) =>
-		tabLink(name, path, label, current);
+export function renderShell(view: ShellView, root: ParentNode = document): void {
+	const current = currentTab(view.path)
+	const mark = envMark(view.environment, view.pr)
+	const locale = getLocale()
+	const tab = ([name, path, label]: (typeof TABS)[number]) => tabLink(name, path, label, current)
 
-	const header = root.querySelector<HTMLElement>("#site-header");
+	const header = root.querySelector<HTMLElement>("#site-header")
 	if (header) {
 		render(
 			html`<div class="site-header__bar">
@@ -101,10 +89,10 @@ export function renderShell(
 				</nav>
 			</div>`,
 			header,
-		);
+		)
 	}
 
-	const tabbar = root.querySelector<HTMLElement>("#tabbar");
+	const tabbar = root.querySelector<HTMLElement>("#tabbar")
 	if (tabbar) {
 		// + New floats over every page, so it lives outside the bar, which a desktop hides.
 		render(
@@ -113,6 +101,6 @@ export function renderShell(
 				</nav>
 				<cc-fab-menu class="fab-menu"></cc-fab-menu>`,
 			tabbar,
-		);
+		)
 	}
 }

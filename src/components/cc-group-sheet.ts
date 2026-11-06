@@ -1,27 +1,23 @@
-import "#components/cc-error-banner";
-import "#components/cc-modal";
-import { css, html, LitElement, nothing, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import {
-	GROUP_COLORS,
-	type GroupColor,
-	pickColor,
-	toGroupColor,
-} from "#lib/domain/group-color";
-import { amountOf, formatAmountInput } from "#lib/domain/money";
-import { OWNERS, type Owner, ownerOf } from "#lib/domain/owner";
-import type { LimitGroup } from "#lib/domain/types";
-import type { MessageKey } from "#lib/i18n/catalog";
-import { LocaleController } from "#lib/i18n/controller";
-import { t } from "#lib/i18n/index";
-import { icons } from "#lib/ui/icons";
-import { base, controls, groupInk } from "#styles/shared";
+import "#components/cc-error-banner"
+import "#components/cc-modal"
+import type { LimitGroup } from "#lib/domain/types"
+import type { MessageKey } from "#lib/i18n/catalog"
+
+import { css, html, LitElement, nothing, type PropertyValues } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { GROUP_COLORS, type GroupColor, pickColor, toGroupColor } from "#lib/domain/group-color"
+import { amountOf, formatAmountInput } from "#lib/domain/money"
+import { OWNERS, type Owner, ownerOf } from "#lib/domain/owner"
+import { LocaleController } from "#lib/i18n/controller"
+import { t } from "#lib/i18n/index"
+import { icons } from "#lib/ui/icons"
+import { base, controls, groupInk } from "#styles/shared"
 
 /** A radio's tab stop: the checked one, else the first when none is checked (roving tabindex). */
 function tabStop<T>(values: readonly T[], current: T | null, value: T) {
-	const stop =
-		current !== null && values.includes(current) ? current : values[0];
-	return value === stop ? "0" : "-1";
+	const stop = current !== null && values.includes(current) ? current : values[0]
+	return value === stop ? "0" : "-1"
 }
 
 /** Where a key moves a radio group's choice: the index it lands on, or null for other keys. */
@@ -29,16 +25,16 @@ function radioStep(key: string, at: number, length: number): number | null {
 	switch (key) {
 		case "ArrowRight":
 		case "ArrowDown":
-			return (at + 1) % length;
+			return (at + 1) % length
 		case "ArrowLeft":
 		case "ArrowUp":
-			return at < 0 ? length - 1 : (at - 1 + length) % length;
+			return at < 0 ? length - 1 : (at - 1 + length) % length
 		case "Home":
-			return 0;
+			return 0
 		case "End":
-			return length - 1;
+			return length - 1
 		default:
-			return null;
+			return null
 	}
 }
 
@@ -162,36 +158,36 @@ export class CcGroupSheet extends LitElement {
 				font-weight: 600;
 			}
 		`,
-	];
+	]
 
 	/** The group to edit; null for a new one. */
-	@property({ attribute: false }) group: LimitGroup | null = null;
+	@property({ attribute: false }) group: LimitGroup | null = null
 	/** A card uses the group, so it cannot be deleted. */
-	@property({ type: Boolean }) inUse = false;
+	@property({ type: Boolean }) inUse = false
 	/** Every stored group; the sheet leaves its own out when judging which colours are free. */
-	@property({ attribute: false }) groups: LimitGroup[] = [];
+	@property({ attribute: false }) groups: LimitGroup[] = []
 	/** The draw behind a random colour; tests inject it. */
-	@property({ attribute: false }) random: () => number = Math.random;
+	@property({ attribute: false }) random: () => number = Math.random
 	/** Why the last save or delete failed; typing is kept. */
-	@property() error = "";
+	@property() error = ""
 	/** A save is under way: the button waits and the sheet holds open. */
-	@property({ type: Boolean }) busy = false;
+	@property({ type: Boolean }) busy = false
 
-	@state() private name = "";
-	@state() private limit = "";
-	@state() private owner: Owner | null = null;
-	@state() private color: GroupColor = GROUP_COLORS[0];
-	@state() private asking = false;
+	@state() private name = ""
+	@state() private limit = ""
+	@state() private owner: Owner | null = null
+	@state() private color: GroupColor = GROUP_COLORS[0]
+	@state() private asking = false
 	// The catalog key, so a language switch re-renders the message in place.
-	@state() private errorKey: MessageKey | "" = "";
+	@state() private errorKey: MessageKey | "" = ""
 	/** The id the fields were last filled from (`null` for a new group); unset before the first fill. */
-	private filledFor: string | null | undefined = undefined;
+	private filledFor: string | null | undefined = undefined
 	/** The button to focus once the delete swap has rendered. */
-	private refocus: string | null = null;
+	private refocus: string | null = null
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	/**
@@ -200,17 +196,17 @@ export class CcGroupSheet extends LitElement {
 	 * keeps what was typed (UI-11).
 	 */
 	protected override willUpdate(changed: PropertyValues<this>) {
-		if (!changed.has("group")) return;
-		const group = this.group;
-		const id = group?.id ?? null;
-		if (id === this.filledFor) return;
-		this.filledFor = id;
-		this.name = group?.name ?? "";
-		this.limit = group ? formatAmountInput(group.limit) : "";
-		this.owner = group ? ownerOf(group) : null;
-		this.color = toGroupColor(group?.color) ?? this.freeColor();
-		this.asking = false;
-		this.errorKey = "";
+		if (!changed.has("group")) return
+		const group = this.group
+		const id = group?.id ?? null
+		if (id === this.filledFor) return
+		this.filledFor = id
+		this.name = group?.name ?? ""
+		this.limit = group ? formatAmountInput(group.limit) : ""
+		this.owner = group ? ownerOf(group) : null
+		this.color = toGroupColor(group?.color) ?? this.freeColor()
+		this.asking = false
+		this.errorKey = ""
 	}
 
 	/**
@@ -219,50 +215,48 @@ export class CcGroupSheet extends LitElement {
 	 * nothing else is free.
 	 */
 	private freeColor(avoid?: GroupColor): GroupColor {
-		const id = this.group?.id;
-		const others = this.groups.filter((g) => g.id !== id);
-		const picked = pickColor(others, this.random);
-		if (!avoid || picked !== avoid) return picked;
+		const id = this.group?.id
+		const others = this.groups.filter((g) => g.id !== id)
+		const picked = pickColor(others, this.random)
+		if (!avoid || picked !== avoid) return picked
 		// Drew the chosen colour: draw again with it counted as taken. When it was the only
 		// free colour that draw falls back to the whole palette, so keep the first draw then.
-		const used = new Set(others.map((g) => g.color));
-		const free = GROUP_COLORS.filter((c) => !used.has(c));
-		if (free.length < 2) return picked;
-		return pickColor([...others, { color: avoid } as LimitGroup], this.random);
+		const used = new Set(others.map((g) => g.color))
+		const free = GROUP_COLORS.filter((c) => !used.has(c))
+		if (free.length < 2) return picked
+		return pickColor([...others, { color: avoid } as LimitGroup], this.random)
 	}
 
 	protected override updated() {
-		const want = this.refocus;
-		if (!want) return;
-		this.refocus = null;
-		this.renderRoot
-			.querySelector<HTMLElement>(`[data-action="${want}"]`)
-			?.focus();
+		const want = this.refocus
+		if (!want) return
+		this.refocus = null
+		this.renderRoot.querySelector<HTMLElement>(`[data-action="${want}"]`)?.focus()
 	}
 
 	private swap(asking: boolean, focus: string) {
-		this.refocus = focus;
-		this.asking = asking;
+		this.refocus = focus
+		this.asking = asking
 	}
 
 	private onSubmit(event: Event) {
-		event.preventDefault();
-		if (this.busy) return;
-		const name = this.name.trim();
+		event.preventDefault()
+		if (this.busy) return
+		const name = this.name.trim()
 		if (!name) {
-			this.errorKey = "limits.error.name";
-			return;
+			this.errorKey = "limits.error.name"
+			return
 		}
-		const limit = amountOf(this.limit.trim());
+		const limit = amountOf(this.limit.trim())
 		if (limit === null || limit <= 0) {
-			this.errorKey = "limits.error.limit";
-			return;
+			this.errorKey = "limits.error.limit"
+			return
 		}
 		if (!this.owner) {
-			this.errorKey = "limits.error.owner";
-			return;
+			this.errorKey = "limits.error.owner"
+			return
 		}
-		this.errorKey = "";
+		this.errorKey = ""
 		this.dispatchEvent(
 			new CustomEvent<LimitGroup>("save-group", {
 				detail: {
@@ -273,7 +267,7 @@ export class CcGroupSheet extends LitElement {
 					color: this.color,
 				},
 			}),
-		);
+		)
 	}
 
 	private deleteRow(group: LimitGroup) {
@@ -282,20 +276,18 @@ export class CcGroupSheet extends LitElement {
 				<button type="button" data-variant="danger" data-action="delete-group"
 					?disabled=${this.busy}
 					@click=${() => this.swap(true, "confirm-delete")}>${t("cards.group.delete")}</button>
-			</div>`;
+			</div>`
 		return html`<div class="danger">
 			<span class="ask">${t("cards.group.deleteAsk", { name: group.name })}</span>
 			<button type="button" data-variant="danger" data-action="confirm-delete"
 				?disabled=${this.busy}
 				@click=${() => {
 					// The question stays until the write lands: a failed delete still shows it.
-					this.dispatchEvent(
-						new CustomEvent("delete-group", { detail: { group } }),
-					);
+					this.dispatchEvent(new CustomEvent("delete-group", { detail: { group } }))
 				}}>${t("common.delete")}</button>
 			<button type="button" data-variant="quiet" data-action="keep"
 				@click=${() => this.swap(false, "delete-group")}>${t("cards.group.keep")}</button>
-		</div>`;
+		</div>`
 	}
 
 	/**
@@ -311,30 +303,23 @@ export class CcGroupSheet extends LitElement {
 		choose: (value: T) => void,
 	) {
 		// Step from the focused radio, which is the checked one unless none is checked yet.
-		const from =
-			(event.target as Element | null)
-				?.closest(`[${attr}]`)
-				?.getAttribute(attr) ?? current;
-		const next = radioStep(
-			event.key,
-			from === null ? -1 : values.indexOf(from as T),
-			values.length,
-		);
-		const value = next === null ? undefined : values[next];
-		if (value === undefined) return;
-		event.preventDefault();
-		choose(value);
-		await this.updateComplete;
-		this.renderRoot.querySelector<HTMLElement>(`[${attr}="${value}"]`)?.focus();
+		const from = (event.target as Element | null)?.closest(`[${attr}]`)?.getAttribute(attr) ?? current
+		const next = radioStep(event.key, from === null ? -1 : values.indexOf(from as T), values.length)
+		const value = next === null ? undefined : values[next]
+		if (value === undefined) return
+		event.preventDefault()
+		choose(value)
+		await this.updateComplete
+		this.renderRoot.querySelector<HTMLElement>(`[${attr}="${value}"]`)?.focus()
 	}
 
 	override render() {
-		const group = this.group;
+		const group = this.group
 		return html`<cc-modal sheet .held=${this.busy}
 			heading=${group ? t("limits.edit", { name: group.name }) : t("limits.add")}
 			@close=${(event: Event) => {
-				event.stopPropagation();
-				this.dispatchEvent(new CustomEvent("close"));
+				event.stopPropagation()
+				this.dispatchEvent(new CustomEvent("close"))
 			}}>
 			<cc-error-banner .message=${this.error} no-retry></cc-error-banner>
 			<form @submit=${this.onSubmit} novalidate>
@@ -343,28 +328,26 @@ export class CcGroupSheet extends LitElement {
 					<input name="name" .value=${this.name} autocomplete="off"
 						placeholder=${t("limits.namePlaceholder")}
 						@input=${(e: Event) => {
-							this.name = (e.target as HTMLInputElement).value;
+							this.name = (e.target as HTMLInputElement).value
 						}} /></label>
 				<label>${t("limits.limit")}
 					<input name="limit" inputmode="decimal" .value=${this.limit}
 						placeholder=${t("limits.limitPlaceholder")}
 						@input=${(e: Event) => {
-							this.limit = (e.target as HTMLInputElement).value;
+							this.limit = (e.target as HTMLInputElement).value
 						}} /></label>
 				<fieldset>
 					<legend id="owner-legend">${t("limits.owner")}</legend>
 					<div class="seg" role="radiogroup" aria-labelledby="owner-legend"
 						@keydown=${(e: KeyboardEvent) =>
 							this.arrow(e, OWNERS, this.owner, "data-owner", (owner) => {
-								this.owner = owner;
+								this.owner = owner
 							})}>${OWNERS.map(
-							(
-								owner,
-							) => html`<button type="button" role="radio" data-owner=${owner}
+							(owner) => html`<button type="button" role="radio" data-owner=${owner}
 									aria-checked=${this.owner === owner ? "true" : "false"}
 									tabindex=${tabStop(OWNERS, this.owner, owner)}
 									@click=${() => {
-										this.owner = owner;
+										this.owner = owner
 									}}>${owner}</button>`,
 						)}</div>
 				</fieldset>
@@ -373,42 +356,32 @@ export class CcGroupSheet extends LitElement {
 					<div class="swatch-row">
 						<div class="swatches" role="radiogroup" aria-labelledby="color-legend"
 							@keydown=${(e: KeyboardEvent) =>
-								this.arrow(
-									e,
-									GROUP_COLORS,
-									this.color,
-									"data-color",
-									(color) => {
-										this.color = color;
-									},
-								)}>${GROUP_COLORS.map(
-								(
-									color,
-								) => html`<button type="button" role="radio" data-color=${color} data-g=${color}
+								this.arrow(e, GROUP_COLORS, this.color, "data-color", (color) => {
+									this.color = color
+								})}>${GROUP_COLORS.map(
+								(color) => html`<button type="button" role="radio" data-color=${color} data-g=${color}
 										aria-label=${t(`color.${color}`)}
 										aria-checked=${this.color === color ? "true" : "false"}
 										tabindex=${tabStop(GROUP_COLORS, this.color, color)}
 										@click=${() => {
-											this.color = color;
+											this.color = color
 										}}>${this.color === color ? icons.check : nothing}</button>`,
 							)}</div>
 						<button type="button" data-variant="quiet" data-action="random-color"
 							@click=${() => {
-								this.color = this.freeColor(this.color);
+								this.color = this.freeColor(this.color)
 							}}>${t("limits.color.random")}</button>
 					</div>
 				</fieldset>
-				<button type="submit" ?disabled=${this.busy}>${
-					group ? t("limits.save") : t("limits.add")
-				}</button>
+				<button type="submit" ?disabled=${this.busy}>${group ? t("limits.save") : t("limits.add")}</button>
 				${group && !this.inUse ? this.deleteRow(group) : nothing}
 			</form>
-		</cc-modal>`;
+		</cc-modal>`
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-group-sheet": CcGroupSheet;
+		"cc-group-sheet": CcGroupSheet
 	}
 }

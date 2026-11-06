@@ -1,17 +1,16 @@
-import { html, LitElement, nothing, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { READY_SORTS, type ReadySort } from "#lib/domain/home";
-import type { Owner } from "#lib/domain/owner";
-import {
-	DEFAULT_READY_FILTER,
-	type ReadyFilter,
-} from "#lib/domain/ready-filter";
-import type { LocationRecord } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { nameOfLocation } from "#lib/i18n/format";
-import { t } from "#lib/i18n/index";
-import { base, controls, filterSheet } from "#styles/shared";
-import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet";
+import type { Owner } from "#lib/domain/owner"
+import type { LocationRecord } from "#lib/domain/types"
+
+import { html, LitElement, nothing, type PropertyValues } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { READY_SORTS, type ReadySort } from "#lib/domain/home"
+import { DEFAULT_READY_FILTER, type ReadyFilter } from "#lib/domain/ready-filter"
+import { LocaleController } from "#lib/i18n/controller"
+import { nameOfLocation } from "#lib/i18n/format"
+import { t } from "#lib/i18n/index"
+import { base, controls, filterSheet } from "#styles/shared"
+import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet"
 
 /**
  * The new-list picker's filter sheet (DD-103), drawn like Transactions' (`filterSheet`): *Kept
@@ -20,45 +19,41 @@ import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet";
  */
 @customElement("cc-ready-filter")
 export class CcReadyFilter extends LitElement {
-	static override styles = [base, controls, filterSheet];
+	static override styles = [base, controls, filterSheet]
 
 	/** The ids of the places to offer, in order: those the ready cards are kept in. */
-	@property({ attribute: false }) locations: string[] = [];
+	@property({ attribute: false }) locations: string[] = []
 	/** The stored locations, which name the places offered. */
-	@property({ attribute: false }) records: LocationRecord[] = [];
+	@property({ attribute: false }) records: LocationRecord[] = []
 	/** The account holders to offer: those of the ready cards. */
-	@property({ attribute: false }) owners: Owner[] = [];
-	@property({ attribute: false }) filter: ReadyFilter = DEFAULT_READY_FILTER;
-	@property() sort: ReadySort = "room";
-	@property({ attribute: false }) count: (filter: ReadyFilter) => number = () =>
-		0;
-	@state() private draft: ReadyFilter = DEFAULT_READY_FILTER;
-	@state() private draftSort: ReadySort = "room";
+	@property({ attribute: false }) owners: Owner[] = []
+	@property({ attribute: false }) filter: ReadyFilter = DEFAULT_READY_FILTER
+	@property() sort: ReadySort = "room"
+	@property({ attribute: false }) count: (filter: ReadyFilter) => number = () => 0
+	@state() private draft: ReadyFilter = DEFAULT_READY_FILTER
+	@state() private draftSort: ReadySort = "room"
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	protected override willUpdate(changed: PropertyValues<this>) {
-		if (changed.has("filter")) this.draft = { ...this.filter };
-		if (changed.has("sort")) this.draftSort = this.sort;
+		if (changed.has("filter")) this.draft = { ...this.filter }
+		if (changed.has("sort")) this.draftSort = this.sort
 	}
 
 	override render() {
-		const shown = this.count(this.draft);
-		const { draft } = this;
+		const shown = this.count(this.draft)
+		const { draft } = this
 		return filterSheetFrame(
 			{
 				host: this,
 				shown,
-				showLabel: t(
-					shown === 1 ? "ready.filter.show.one" : "ready.filter.show.many",
-					{ count: shown },
-				),
+				showLabel: t(shown === 1 ? "ready.filter.show.one" : "ready.filter.show.many", { count: shown }),
 				onClear: () => {
-					this.draft = { ...DEFAULT_READY_FILTER, q: draft.q };
-					this.draftSort = "room";
+					this.draft = { ...DEFAULT_READY_FILTER, q: draft.q }
+					this.draftSort = "room"
 				},
 				detail: () => ({ filter: this.draft, sort: this.draftSort }),
 			},
@@ -77,7 +72,7 @@ export class CcReadyFilter extends LitElement {
 									this.draft = {
 										...draft,
 										locations: toggle(draft.locations, location),
-									};
+									}
 								},
 							),
 						)}</div>
@@ -89,18 +84,12 @@ export class CcReadyFilter extends LitElement {
 					? html`<fieldset>
 						<legend>${t("ready.filter.owner")}</legend>
 						<div class="choices">${this.owners.map((owner) =>
-							sheetChip(
-								"owner",
-								owner,
-								owner,
-								draft.owners.includes(owner),
-								() => {
-									this.draft = {
-										...draft,
-										owners: toggle(draft.owners, owner),
-									};
-								},
-							),
+							sheetChip("owner", owner, owner, draft.owners.includes(owner), () => {
+								this.draft = {
+									...draft,
+									owners: toggle(draft.owners, owner),
+								}
+							}),
 						)}</div>
 					</fieldset>`
 					: nothing
@@ -108,24 +97,18 @@ export class CcReadyFilter extends LitElement {
 			<fieldset>
 				<legend>${t("tx.filter.sort")}</legend>
 				<div class="choices">${READY_SORTS.map((sort) =>
-					sheetChip(
-						"sort",
-						sort,
-						t(`ready.sort.${sort}`),
-						this.draftSort === sort,
-						() => {
-							this.draftSort = sort;
-						},
-					),
+					sheetChip("sort", sort, t(`ready.sort.${sort}`), this.draftSort === sort, () => {
+						this.draftSort = sort
+					}),
 				)}</div>
 			</fieldset>
 			`,
-		);
+		)
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-ready-filter": CcReadyFilter;
+		"cc-ready-filter": CcReadyFilter
 	}
 }

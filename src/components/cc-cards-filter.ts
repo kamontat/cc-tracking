@@ -1,28 +1,25 @@
-import { css, html, LitElement, type PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import {
-	CARDS_SORTS,
-	type CardsSort,
-	type CardsView,
-	DEFAULT_CARDS_VIEW,
-} from "#lib/domain/cards-view";
-import { OWNERS } from "#lib/domain/owner";
-import type { LocationRecord } from "#lib/domain/types";
-import { LocaleController } from "#lib/i18n/controller";
-import { locationName, sortLocations } from "#lib/i18n/format";
-import { t } from "#lib/i18n/index";
-import { base, controls, filterSheet } from "#styles/shared";
-import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet";
+import type { LocationRecord } from "#lib/domain/types"
+
+import { css, html, LitElement, type PropertyValues } from "lit"
+import { customElement, property, state } from "lit/decorators.js"
+
+import { CARDS_SORTS, type CardsSort, type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
+import { OWNERS } from "#lib/domain/owner"
+import { LocaleController } from "#lib/i18n/controller"
+import { locationName, sortLocations } from "#lib/i18n/format"
+import { t } from "#lib/i18n/index"
+import { base, controls, filterSheet } from "#styles/shared"
+import { filterSheetFrame, sheetChip, toggle } from "./filter-sheet"
 
 const SORT_KEYS = {
 	place: "cards.sort.place",
 	room: "cards.sort.room",
 	name: "cards.sort.name",
 	close: "cards.sort.closeDay",
-} as const satisfies Record<CardsSort, string>;
+} as const satisfies Record<CardsSort, string>
 
 /** A Cards sort's own words, for the sheet and the page's sort chip. */
-export const cardsSortLabel = (sort: CardsSort): string => t(SORT_KEYS[sort]);
+export const cardsSortLabel = (sort: CardsSort): string => t(SORT_KEYS[sort])
 
 /**
  * The Cards page's filter sheet, drawn like Transactions' (`filterSheet`): *Kept in*, *Account
@@ -85,40 +82,37 @@ export class CcCardsFilter extends LitElement {
 				}
 			}
 		`,
-	];
+	]
 
-	@property({ attribute: false }) view: CardsView = DEFAULT_CARDS_VIEW;
+	@property({ attribute: false }) view: CardsView = DEFAULT_CARDS_VIEW
 	/** The stored locations, every one offered, A to Z by shown name. */
-	@property({ attribute: false }) locations: LocationRecord[] = [];
-	@property({ attribute: false }) count: (view: CardsView) => number = () => 0;
-	@state() private draft: CardsView = DEFAULT_CARDS_VIEW;
+	@property({ attribute: false }) locations: LocationRecord[] = []
+	@property({ attribute: false }) count: (view: CardsView) => number = () => 0
+	@state() private draft: CardsView = DEFAULT_CARDS_VIEW
 
 	constructor() {
-		super();
-		new LocaleController(this);
+		super()
+		new LocaleController(this)
 	}
 
 	protected override willUpdate(changed: PropertyValues<this>) {
-		if (changed.has("view")) this.draft = { ...this.view };
+		if (changed.has("view")) this.draft = { ...this.view }
 	}
 
 	private set(patch: Partial<CardsView>) {
-		this.draft = { ...this.draft, ...patch };
+		this.draft = { ...this.draft, ...patch }
 	}
 
 	override render() {
-		const { draft } = this;
-		const shown = this.count(draft);
+		const { draft } = this
+		const shown = this.count(draft)
 		return filterSheetFrame(
 			{
 				host: this,
 				shown,
-				showLabel: t(
-					shown === 1 ? "ready.filter.show.one" : "ready.filter.show.many",
-					{ count: shown },
-				),
+				showLabel: t(shown === 1 ? "ready.filter.show.one" : "ready.filter.show.many", { count: shown }),
 				onClear: () => {
-					this.draft = { ...DEFAULT_CARDS_VIEW, q: draft.q };
+					this.draft = { ...DEFAULT_CARDS_VIEW, q: draft.q }
 				},
 				detail: () => ({ ...this.draft }),
 				title: t("cards.filter.title"),
@@ -127,12 +121,8 @@ export class CcCardsFilter extends LitElement {
 			<fieldset>
 				<legend>${t("ready.filter.location")}</legend>
 				<div class="choices">${sortLocations(this.locations).map((record) =>
-					sheetChip(
-						"location",
-						record.id,
-						locationName(record),
-						draft.locations.includes(record.id),
-						() => this.set({ locations: toggle(draft.locations, record.id) }),
+					sheetChip("location", record.id, locationName(record), draft.locations.includes(record.id), () =>
+						this.set({ locations: toggle(draft.locations, record.id) }),
 					),
 				)}</div>
 			</fieldset>
@@ -142,12 +132,8 @@ export class CcCardsFilter extends LitElement {
 					sheetChip("owner", owner, owner, draft.owners.includes(owner), () =>
 						this.set({ owners: toggle(draft.owners, owner) }),
 					),
-				)}${sheetChip(
-					"ungrouped",
-					"",
-					t("cards.filter.ungrouped"),
-					draft.ungrouped,
-					() => this.set({ ungrouped: !draft.ungrouped }),
+				)}${sheetChip("ungrouped", "", t("cards.filter.ungrouped"), draft.ungrouped, () =>
+					this.set({ ungrouped: !draft.ungrouped }),
 				)}</div>
 			</fieldset>
 			<fieldset>
@@ -159,12 +145,12 @@ export class CcCardsFilter extends LitElement {
 				)}</div>
 			</fieldset>
 			`,
-		);
+		)
 	}
 }
 
 declare global {
 	interface HTMLElementTagNameMap {
-		"cc-cards-filter": CcCardsFilter;
+		"cc-cards-filter": CcCardsFilter
 	}
 }

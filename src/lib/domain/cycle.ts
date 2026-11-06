@@ -1,29 +1,22 @@
-import {
-	addDays,
-	addPeriods,
-	clampDay,
-	compareDates,
-	periodOf,
-	periodParts,
-} from "#lib/domain/date";
-import type { CycleRule, Period, PlainDate } from "#lib/domain/types";
+import type { CycleRule, Period, PlainDate } from "#lib/domain/types"
+
+import { addDays, addPeriods, clampDay, compareDates, periodOf, periodParts } from "#lib/domain/date"
 
 /** The date the statement for `period` closes. */
 export function closeDateOf(rule: CycleRule, period: Period): PlainDate {
-	const { year, month } = periodParts(period);
-	return clampDay(year, month, rule.closeDay);
+	const { year, month } = periodParts(period)
+	return clampDay(year, month, rule.closeDay)
 }
 
 /** The date payment for `period` is due. */
 export function dueDateOf(rule: CycleRule, period: Period): PlainDate {
-	const closeDate = closeDateOf(rule, period);
-	if (rule.kind === "offset") return addDays(closeDate, rule.dueOffsetDays);
+	const closeDate = closeDateOf(rule, period)
+	if (rule.kind === "offset") return addDays(closeDate, rule.dueOffsetDays)
 
 	// A due day at or before the close day belongs to the following month.
-	const duePeriod =
-		rule.dueDay <= rule.closeDay ? addPeriods(period, 1) : period;
-	const { year, month } = periodParts(duePeriod);
-	return clampDay(year, month, rule.dueDay);
+	const duePeriod = rule.dueDay <= rule.closeDay ? addPeriods(period, 1) : period
+	const { year, month } = periodParts(duePeriod)
+	return clampDay(year, month, rule.dueDay)
 }
 
 /**
@@ -31,10 +24,8 @@ export function dueDateOf(rule: CycleRule, period: Period): PlainDate {
  * `(previousClose, thisClose]`, so a purchase on the close date belongs to that statement.
  */
 export function periodOfPurchase(rule: CycleRule, date: PlainDate): Period {
-	const candidate = periodOf(date);
-	return compareDates(date, closeDateOf(rule, candidate)) <= 0
-		? candidate
-		: addPeriods(candidate, 1);
+	const candidate = periodOf(date)
+	return compareDates(date, closeDateOf(rule, candidate)) <= 0 ? candidate : addPeriods(candidate, 1)
 }
 
 /**
@@ -42,12 +33,12 @@ export function periodOfPurchase(rule: CycleRule, date: PlainDate): Period {
  * either side of the close, depending on when the bank clears it, so the form warns about it.
  */
 export function isCloseDate(rule: CycleRule, date: PlainDate): boolean {
-	return date === closeDateOf(rule, periodOf(date));
+	return date === closeDateOf(rule, periodOf(date))
 }
 
 export type CycleDescription =
 	| { key: "cycle.offset"; params: { closeDay: number; days: number } }
-	| { key: "cycle.fixed"; params: { closeDay: number; dueDay: number } };
+	| { key: "cycle.fixed"; params: { closeDay: number; dueDay: number } }
 
 /** The rule as a catalog key and its parameters. Wording is the i18n layer's business. */
 export function describeCycle(rule: CycleRule): CycleDescription {
@@ -59,5 +50,5 @@ export function describeCycle(rule: CycleRule): CycleDescription {
 		: {
 				key: "cycle.fixed",
 				params: { closeDay: rule.closeDay, dueDay: rule.dueDay },
-			};
+			}
 }
