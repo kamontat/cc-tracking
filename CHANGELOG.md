@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, Lit fenced into src/legacy, static copy translated, the shell made static, and pages swapped in place
+## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, and Locations converted
 
 ### BREAKING CHANGES
 
@@ -85,6 +85,13 @@ reasons don't show up in the code.
 - The hard-coded English check and the old statement payment check scan the legacy and every
   Astro UI folder, and fail when they find nothing, so an emptied folder can't pass them
   silently.
+- Settings > Locations is the first page converted (DD-175): a static `SubHeader` and the
+  `LocationsEditor` Svelte island replace its legacy Lit route. It looks and works as before.
+- `openRepository` (`#lib/ui/startup`) opens the store and runs the startup migrations for
+  islands and legacy pages alike; `AppLayout`'s `titleKey` translates the page title with the
+  build's mark; `ErrorBanner` and `SubHeader` are shared molecules for the pages still to come.
+- `biome.json` allows files up to 2 MiB: `PRD_TH.md`'s padded tables had passed 1 MiB, and
+  Biome had quietly stopped checking it.
 
 ### Bug fixes
 
@@ -117,6 +124,9 @@ reasons don't show up in the code.
 - Navigation through Astro's ClientRouter, not a single-page app (DD-174): every address stays
   a static page, so nothing about addresses or the deploy changes. The language stays a reader
   setting (DD-171) rather than Astro's i18n routing, which would put it in the address.
+- The conversion starts with the smallest page (DD-175), Settings > Locations, to set the
+  pattern every later page follows; each conversion keeps the legacy markup, so it is checked
+  against production screenshots rather than redesigned along the way.
 
 ## 2026-11-04: The redesign ships, and no page is indexed
 
