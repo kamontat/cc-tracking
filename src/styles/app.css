@@ -1340,6 +1340,32 @@ a:any-link:hover {
 }
 
 /*
+ * A page's error with a way to try again (the `ErrorBanner` molecule): the danger panel the Lit
+ * `cc-error-banner` draws in its shadow root, for light-DOM pages. Its quiet button takes
+ * `.page button`'s look.
+ */
+.error-banner {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-3);
+	padding: var(--cc-space-4) var(--cc-panel-padding) var(--cc-panel-padding);
+	background: var(--cc-danger-surface);
+	border: var(--cc-border-width) solid var(--cc-danger);
+	border-color: var(--cc-danger);
+	border-left-width: var(--cc-space-1);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-sm);
+}
+
+.error-banner > p {
+	margin: 0;
+}
+
+.error-banner > button {
+	align-self: flex-start;
+}
+
+/*
  * A sub page's compact heading (prototype `subHead`): a slim bar that sticks under the app
  * header as the page scrolls -- back, the title over its muted line, actions at the end. It sits
  * in the page's top padding, flush under the header, and tucks a rule's width under the header

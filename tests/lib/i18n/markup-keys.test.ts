@@ -13,7 +13,7 @@ test("every data-i18n key in the markup is in both catalogs", async () => {
 	const problems: string[] = []
 	for await (const path of new Bun.Glob("src/**/*.astro").scan(".")) {
 		const source = await Bun.file(path).text()
-		for (const [, key = ""] of source.matchAll(/data-i18n(?:-aria-label)?="([^"]*)"/g)) {
+		for (const [, key = ""] of source.matchAll(/data-i18n(?:-aria-label|-title)?="([^"]*)"/g)) {
 			if (!(key in en)) problems.push(`${path}: ${key} is not in en.ts`)
 			if (!(key in th)) problems.push(`${path}: ${key} is not in th.ts`)
 		}

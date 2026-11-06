@@ -4,6 +4,7 @@ import { applyCopy, startCopy } from "#lib/i18n/copy"
 import { en } from "#lib/i18n/en"
 import { setLocale } from "#lib/i18n/index"
 import { th } from "#lib/i18n/th"
+import { buildInfo, titleMark } from "#lib/ui/build-info"
 
 /**
  * Static `.astro` markup ships English with its catalog key (PRD DD-171); this pass swaps it
@@ -53,6 +54,27 @@ describe("applyCopy", () => {
 		applyCopy(section)
 		expect(text("b")).toBe(th["nav.home"])
 		expect(text("h2")).toBe("Cards")
+	})
+})
+
+describe("applyCopy on the document title", () => {
+	// An Astro page names its title's key; the pass translates it and adds the build's mark,
+	// as the legacy applyChrome does for Lit pages.
+	test("translates a keyed <title> and keeps the build mark", () => {
+		document.head.innerHTML = `<title data-i18n-title="title.locations">Locations — cc-tracking</title>`
+		setLocale("th")
+		applyCopy(document)
+		const { environment, pr } = buildInfo()
+		expect(document.title).toBe(`${th["title.locations"]}${titleMark(environment, pr)}`)
+		document.head.innerHTML = ""
+	})
+
+	test("leaves a title without a key alone", () => {
+		document.head.innerHTML = `<title>Plain</title>`
+		setLocale("th")
+		applyCopy(document)
+		expect(document.title).toBe("Plain")
+		document.head.innerHTML = ""
 	})
 })
 

@@ -1,11 +1,15 @@
 import { en } from "#lib/i18n/en"
 import { getLocale, type MessageKey, subscribe, t } from "#lib/i18n/index"
+import { buildInfo, titleMark } from "#lib/ui/build-info"
 
 /** The attribute static `.astro` markup carries its catalog key in (PRD DD-171). */
 export const COPY_ATTRIBUTE = "data-i18n"
 
 /** The attribute carrying the catalog key of an element's `aria-label`. */
 export const LABEL_ATTRIBUTE = "data-i18n-aria-label"
+
+/** The attribute on `<title>` carrying its catalog key; the build's mark is added after it. */
+export const TITLE_ATTRIBUTE = "data-i18n-title"
 
 /** Set on `<html>` once the copy is in the reader's locale; the CSS hides Thai copy until then. */
 export const READY_ATTRIBUTE = "data-i18n-ready"
@@ -25,6 +29,13 @@ export function applyCopy(root: ParentNode): void {
 	for (const element of root.querySelectorAll<HTMLElement>(`[${LABEL_ATTRIBUTE}]`)) {
 		const key = element.getAttribute(LABEL_ATTRIBUTE) ?? ""
 		if (isKey(key)) element.setAttribute("aria-label", t(key))
+	}
+	// The document title, with the build's mark after it, as the legacy applyChrome writes it.
+	const title = root.querySelector<HTMLTitleElement>(`title[${TITLE_ATTRIBUTE}]`)
+	const titleKey = title?.getAttribute(TITLE_ATTRIBUTE) ?? ""
+	if (title && isKey(titleKey)) {
+		const { environment, pr } = buildInfo()
+		title.textContent = t(titleKey) + titleMark(environment, pr)
 	}
 }
 

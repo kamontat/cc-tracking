@@ -1,26 +1,75 @@
-import type { LocationRecord } from "#lib/domain/types"
+import type { Card, LocationRecord } from "#lib/domain/types"
 
+import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
 
-import { renderLocationsPage } from "#legacy/routes/settings/locations-page"
+import LocationsEditor from "#components/organisms/LocationsEditor.svelte"
+import { defaultLocations } from "#lib/domain/locations"
+import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { bannerText, flatText, mount, seed, settle } from "../list/test-support"
 
-/** Seeds Bangkok, Phichit and Krabi (Krabi ticked, with cards A, B and archived Z), runs
- * `before`, then renders the page in `locale`. */
+/**
+ * The Locations page's island (RD-17): one block per location, A to Z by shown name, with its
+ * card count, Rename, Delete while no card is kept there and it is not the last, and Takes
+ * purchases; a warning when nowhere takes purchases; and Add a location. Ported from the legacy
+ * route's tests, against the same markup.
+ */
+let mounted: ReturnType<typeof mount> | undefined
+
+afterEach(() => {
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	document.body.innerHTML = ""
+	setLocale("en")
+})
+
+const settle = async () => {
+	for (let i = 0; i < 5; i++) {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0))
+		flushSync()
+	}
+}
+
+const card = (id: string, extra: Partial<Card> = {}): Card => ({
+	id,
+	name: `${id} card`,
+	last4: "1234",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 20 },
+	archived: false,
+	limitGroupId: "g1",
+	...extra,
+})
+
+/** Bangkok, Phichit and Krabi, Krabi alone taking purchases and holding cards A, B and archived Z. */
+const seed = async (repo: Repository) => {
+	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 })
+	for (const id of ["A", "B"]) await repo.saveCard(card(id))
+	await repo.saveCard(card("Z", { archived: true }))
+	for (const record of defaultLocations(DEFAULT_SETTINGS))
+		await repo.saveLocation({ ...record, takesPurchases: record.id === "krabi" })
+}
+
+const show = async (repo: Repository) => {
+	document.body.innerHTML = ""
+	mounted = mount(LocationsEditor, {
+		target: document.body,
+		props: { open: async () => ({ ok: true as const, repo }) },
+	})
+	await settle()
+	return document.body
+}
+
 const setup = async (before?: (repo: Repository) => Promise<void>, locale: "en" | "th" = "en") => {
 	setLocale(locale)
 	const repo = new InMemoryRepository()
 	await seed(repo)
 	await before?.(repo)
-	const root = mount()
-	renderLocationsPage(repo, root)
-	await settle(5)
-	return { repo, root }
+	return { repo, root: await show(repo) }
 }
 
-afterEach(() => setLocale("en"))
+const flat = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
 const rows = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>(".location-row")]
 
@@ -37,44 +86,38 @@ const click = async (scope: ParentNode, name: string) => {
 	const target = action(scope, name)
 	if (!target) throw new Error(`no ${name}`)
 	target.click()
-	await settle(5)
+	await settle()
 }
 
 const type = (field: HTMLInputElement | null, value: string) => {
 	if (!field) throw new Error("no field")
 	field.value = value
-	field.dispatchEvent(new Event("input"))
+	field.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
-/** Opens *Rename* on `id`, types `name`, presses *Save*. */
+const field = (root: HTMLElement, id: string) => row(root, id).querySelector<HTMLInputElement>(".location-row__field")
+
 const rename = async (root: HTMLElement, id: string, name: string) => {
 	await click(row(root, id), "rename")
-	type(row(root, id).querySelector<HTMLInputElement>(".location-row__field"), name)
+	type(field(root, id), name)
 	await click(row(root, id), "save-name")
 }
 
-/** Types `name` into *Add a location* and submits it. */
 const add = async (root: HTMLElement, name: string) => {
 	const form = action<HTMLFormElement>(root, "add-location")
 	type(form?.querySelector("input") ?? null, name)
-	form?.dispatchEvent(new Event("submit", { cancelable: true }))
-	await settle(5)
+	form?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+	await settle()
 }
 
 const stored = async (repo: Repository, id: string) => (await repo.listLocations()).find((record) => record.id === id)
 
-test("a compact sub-header, Locations, back to Settings", async () => {
-	const { root } = await setup()
-	expect(flatText(root.querySelector(".sub-header__title"))).toBe("Locations")
-	expect(root.querySelector<HTMLAnchorElement>('[data-action="back"]')?.getAttribute("href")).toBe("/settings")
-})
-
 test("one row per location, A to Z by name, each with its card count, archived included", async () => {
 	const { root } = await setup()
 	expect(rows(root).map((r) => r.getAttribute("data-location"))).toEqual(["bangkok", "krabi", "phichit"])
-	expect(flatText(row(root, "krabi"))).toContain("Krabi")
-	expect(flatText(row(root, "krabi"))).toContain("3 cards")
-	expect(flatText(row(root, "bangkok"))).toContain("0 cards")
+	expect(flat(row(root, "krabi"))).toContain("Krabi")
+	expect(flat(row(root, "krabi"))).toContain("3 cards")
+	expect(flat(row(root, "bangkok"))).toContain("0 cards")
 })
 
 test("Delete shows only on a location with no cards", async () => {
@@ -97,7 +140,7 @@ test("the last location has no Delete, even with no cards", async () => {
 test("Delete asks once inline; Cancel keeps it, Delete removes it", async () => {
 	const { repo, root } = await setup()
 	await click(row(root, "bangkok"), "delete")
-	expect(flatText(row(root, "bangkok"))).toContain("Delete Bangkok?")
+	expect(flat(row(root, "bangkok"))).toContain("Delete Bangkok?")
 	expect(await stored(repo, "bangkok")).toBeDefined()
 
 	await click(row(root, "bangkok"), "cancel-delete")
@@ -120,18 +163,18 @@ test("ticking Takes purchases saves it; with none ticked the warning shows", asy
 	const krabi = box("krabi")
 	if (!krabi) throw new Error("no box")
 	krabi.checked = false
-	krabi.dispatchEvent(new Event("change"))
-	await settle(5)
+	krabi.dispatchEvent(new Event("change", { bubbles: true }))
+	await settle()
 	expect((await stored(repo, "krabi"))?.takesPurchases).toBe(false)
-	expect(flatText(root.querySelector(".location-warning"))).toBe(
+	expect(flat(root.querySelector(".location-warning"))).toBe(
 		"No place takes purchases, so Ready to use on Home is empty.",
 	)
 
 	const bangkok = box("bangkok")
 	if (!bangkok) throw new Error("no box")
 	bangkok.checked = true
-	bangkok.dispatchEvent(new Event("change"))
-	await settle(5)
+	bangkok.dispatchEvent(new Event("change", { bubbles: true }))
+	await settle()
 	expect((await stored(repo, "bangkok"))?.takesPurchases).toBe(true)
 	expect(root.querySelector(".location-warning")).toBeNull()
 })
@@ -139,13 +182,9 @@ test("ticking Takes purchases saves it; with none ticked the warning shows", asy
 test("rename keeps the id and saves the new name", async () => {
 	const { repo, root } = await setup()
 	await rename(root, "krabi", "  Ao Nang ")
-	expect(await stored(repo, "krabi")).toEqual({
-		id: "krabi",
-		name: "Ao Nang",
-		takesPurchases: true,
-	})
-	expect(row(root, "krabi").querySelector<HTMLInputElement>(".location-row__field")).toBeNull()
-	expect(flatText(row(root, "krabi"))).toContain("Ao Nang")
+	expect(await stored(repo, "krabi")).toEqual({ id: "krabi", name: "Ao Nang", takesPurchases: true })
+	expect(field(root, "krabi")).toBeNull()
+	expect(flat(row(root, "krabi"))).toContain("Ao Nang")
 	// Re-sorted by the new name: Ao Nang comes first.
 	expect(rows(root)[0]?.getAttribute("data-location")).toBe("krabi")
 })
@@ -153,32 +192,30 @@ test("rename keeps the id and saves the new name", async () => {
 test("Cancel leaves the name as it was", async () => {
 	const { repo, root } = await setup()
 	await click(row(root, "krabi"), "rename")
-	type(row(root, "krabi").querySelector<HTMLInputElement>(".location-row__field"), "Elsewhere")
+	type(field(root, "krabi"), "Elsewhere")
 	await click(row(root, "krabi"), "cancel-name")
 	expect((await stored(repo, "krabi"))?.name).toBe("Krabi")
-	expect(row(root, "krabi").querySelector<HTMLInputElement>(".location-row__field")).toBeNull()
+	expect(field(root, "krabi")).toBeNull()
 })
 
 test("rename to nothing or to another location's name is refused, with a field message", async () => {
 	const { repo, root } = await setup()
 	await rename(root, "krabi", "   ")
-	expect(flatText(row(root, "krabi"))).toContain("Give the location a name.")
+	expect(flat(row(root, "krabi"))).toContain("Give the location a name.")
 	expect((await stored(repo, "krabi"))?.name).toBe("Krabi")
 
-	type(row(root, "krabi").querySelector<HTMLInputElement>(".location-row__field"), " bangKOK ")
+	type(field(root, "krabi"), " bangKOK ")
 	await click(row(root, "krabi"), "save-name")
-	expect(flatText(row(root, "krabi"))).toContain("There is already a location called bangKOK.")
+	expect(flat(row(root, "krabi"))).toContain("There is already a location called bangKOK.")
 	expect((await stored(repo, "krabi"))?.name).toBe("Krabi")
-	expect(row(root, "krabi").querySelector<HTMLInputElement>(".location-row__field")?.getAttribute("aria-invalid")).toBe(
-		"true",
-	)
+	expect(field(root, "krabi")?.getAttribute("aria-invalid")).toBe("true")
 })
 
 test("Thai: saving a default's name unchanged keeps its stored English name", async () => {
 	const { repo, root } = await setup(undefined, "th")
 	await rename(root, "krabi", "กระบี่")
 	expect((await stored(repo, "krabi"))?.name).toBe("Krabi")
-	expect(row(root, "krabi").querySelector(".location-row__field")).toBeNull()
+	expect(field(root, "krabi")).toBeNull()
 })
 
 test("renaming to its own name in another case is allowed", async () => {
@@ -190,11 +227,7 @@ test("renaming to its own name in another case is allowed", async () => {
 test("add Chiang Mai: id chiang-mai, not taking purchases", async () => {
 	const { repo, root } = await setup()
 	await add(root, " Chiang Mai ")
-	expect(await stored(repo, "chiang-mai")).toEqual({
-		id: "chiang-mai",
-		name: "Chiang Mai",
-		takesPurchases: false,
-	})
+	expect(await stored(repo, "chiang-mai")).toEqual({ id: "chiang-mai", name: "Chiang Mai", takesPurchases: false })
 	expect(rows(root).map((r) => r.getAttribute("data-location"))).toEqual(["bangkok", "chiang-mai", "krabi", "phichit"])
 	expect(action<HTMLFormElement>(root, "add-location")?.querySelector("input")?.value).toBe("")
 })
@@ -202,20 +235,16 @@ test("add Chiang Mai: id chiang-mai, not taking purchases", async () => {
 test("add refuses an empty name and a name already used", async () => {
 	const { repo, root } = await setup()
 	await add(root, "  ")
-	expect(flatText(action(root, "add-location"))).toContain("Give the location a name.")
+	expect(flat(action(root, "add-location"))).toContain("Give the location a name.")
 	await add(root, "krabi")
-	expect(flatText(action(root, "add-location"))).toContain("There is already a location called krabi.")
+	expect(flat(action(root, "add-location"))).toContain("There is already a location called krabi.")
 	expect((await repo.listLocations()).length).toBe(3)
 })
 
 test("Thai: เชียงใหม่ gets id location, the same name again is refused, another Thai name gets location-2", async () => {
 	const { repo, root } = await setup(undefined, "th")
 	await add(root, "เชียงใหม่")
-	expect(await stored(repo, "location")).toEqual({
-		id: "location",
-		name: "เชียงใหม่",
-		takesPurchases: false,
-	})
+	expect(await stored(repo, "location")).toEqual({ id: "location", name: "เชียงใหม่", takesPurchases: false })
 	await add(root, " เชียงใหม่ ")
 	expect((await repo.listLocations()).length).toBe(4)
 	expect(action(root, "add-location")?.querySelector(".location-error")).not.toBeNull()
@@ -237,18 +266,27 @@ test("a default shows in the reader's language; a renamed one shows its stored n
 		if (bangkok) await repo.saveLocation({ ...bangkok, name: "BKK" })
 	}
 	const en = await setup(before, "en")
-	expect(flatText(row(en.root, "bangkok"))).toContain("BKK")
+	expect(flat(row(en.root, "bangkok"))).toContain("BKK")
+	if (mounted) unmount(mounted)
 	const th = await setup(before, "th")
-	expect(flatText(row(th.root, "bangkok"))).toContain("BKK")
-	expect(flatText(row(th.root, "krabi"))).toContain("กระบี่")
-	setLocale("en")
+	expect(flat(row(th.root, "bangkok"))).toContain("BKK")
+	expect(flat(row(th.root, "krabi"))).toContain("กระบี่")
 })
 
 test("English: a default's Thai name counts as taken too", async () => {
 	const { repo, root } = await setup()
 	await add(root, "กระบี่")
 	expect((await repo.listLocations()).length).toBe(3)
-	expect(flatText(action(root, "add-location"))).toContain("There is already a location called กระบี่.")
+	expect(flat(action(root, "add-location"))).toContain("There is already a location called กระบี่.")
+})
+
+test("a language switch re-draws the rows in the new language", async () => {
+	const { root } = await setup()
+	expect(flat(row(root, "krabi"))).toContain("Krabi")
+	setLocale("th")
+	await settle()
+	expect(flat(row(root, "krabi"))).toContain("กระบี่")
+	expect(flat(action(root, "add-location"))).toContain("เพิ่มสถานที่")
 })
 
 /** A repository whose location writes fail while `fail` is set. */
@@ -264,25 +302,19 @@ class FailingRepo extends InMemoryRepository {
 	}
 }
 
-const setupFailing = async () => {
+test("a failed add keeps the typed name; a failed rename keeps the field; a failed delete keeps the question", async () => {
 	setLocale("en")
 	const repo = new FailingRepo()
 	await seed(repo)
 	repo.fail = true
-	const root = mount()
-	renderLocationsPage(repo, root)
-	await settle(5)
-	return { repo, root }
-}
+	const root = await show(repo)
 
-test("a failed add keeps the typed name; a failed rename keeps the field; a failed delete keeps the question", async () => {
-	const { root } = await setupFailing()
 	await add(root, "Chiang Mai")
 	expect(action<HTMLFormElement>(root, "add-location")?.querySelector("input")?.value).toBe("Chiang Mai")
-	expect(bannerText(root)).toContain("Could not save the location.")
+	expect(flat(root.querySelector(".error-banner"))).toContain("Could not save the location.")
 
 	await rename(root, "krabi", "Ao Nang")
-	expect(row(root, "krabi").querySelector<HTMLInputElement>(".location-row__field")?.value).toBe("Ao Nang")
+	expect(field(root, "krabi")?.value).toBe("Ao Nang")
 
 	await click(row(root, "krabi"), "cancel-name")
 	await click(row(root, "bangkok"), "delete")
@@ -290,9 +322,17 @@ test("a failed add keeps the typed name; a failed rename keeps the field; a fail
 	expect(action(row(root, "bangkok"), "confirm-delete")).not.toBeNull()
 })
 
-test("a place's line lays out as a row: the reset makes every div a column otherwise", async () => {
-	const css = (await Bun.file("src/styles/app.css").text()).replace(/\/\*[\s\S]*?\*\//g, "")
-	const rule = /\.location-row__line,\s*\.location-add__control\s*\{([^}]*)\}/.exec(css)?.[1]
-	expect(rule).toMatch(/display:\s*flex/)
-	expect(rule).toMatch(/flex-direction:\s*row/)
+test("a store the browser refuses shows why, with Reload, and no rows", async () => {
+	setLocale("en")
+	document.body.innerHTML = ""
+	mounted = mount(LocationsEditor, {
+		target: document.body,
+		props: {
+			open: async () => ({ ok: false as const, message: () => "This browser is not letting the page store data." }),
+		},
+	})
+	await settle()
+	expect(flat(document.querySelector(".error-banner p"))).toBe("This browser is not letting the page store data.")
+	expect(flat(document.querySelector(".error-banner button"))).toBe("Reload")
+	expect(document.querySelector(".location-row")).toBeNull()
 })

@@ -32,6 +32,24 @@ test("shows + New unless the page says it is mid-task", async () => {
 	expect((await render({ tab: "home", fab: false })).querySelector(".fab-menu")).toBeNull()
 })
 
+// A converted page renders into <main> itself; a legacy page's route module does it in the
+// browser instead.
+test("puts the page's main content inside <main>", async () => {
+	const doc = parseHtml(
+		await (await createContainer()).renderToString(AppLayout, {
+			props: { title: "Locations", titleKey: "title.locations" },
+			slots: { main: `<p id="mine">mine</p>` },
+		}),
+	)
+	expect(doc.querySelector("main#page #mine")?.textContent).toBe("mine")
+})
+
+// The title is translated in the browser like the rest of the static copy.
+test("names the title's key, for the copy pass to translate", async () => {
+	const doc = await render({ titleKey: "title.locations" })
+	expect(doc.querySelector("title")?.getAttribute("data-i18n-title")).toBe("title.locations")
+})
+
 test("passes the page's own content through after the shell", async () => {
 	const doc = await render({ tab: "home" }, `<p id="own">mine</p>`)
 	expect(doc.querySelector("#own")?.textContent).toBe("mine")

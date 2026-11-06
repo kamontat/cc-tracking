@@ -79,6 +79,20 @@ Svelte 5 (runes) comes through `@astrojs/svelte` in `astro.config.ts`. The first
 what it shows, `onMount` to read the browser and `subscribe` to follow the locale. A `.svelte`
 component sits in an atomic tier like any other; the tier test reads its `<script>` imports.
 
+An island that reads the reader's data follows `LocationsEditor.svelte` (the first page
+converted, PRD DD-175):
+
+- It opens the store in `onMount` through an `open` prop defaulting to `openRepository()`
+  (`#lib/ui/startup`); tests pass `open: async () => ({ ok: true, repo })` over an
+  `InMemoryRepository`. When the store won't open it shows `opened.message()` in an
+  `ErrorBanner` with Reload, and nothing else.
+- `createPageState` (`#lib/ui/page-state`) runs its load and guarded writes, as in the legacy
+  pages; its `paint` bumps a `$state` counter that the banner's `$derived` message reads.
+- `t()` isn't reactive: keep a `lang` `$state` updated from `subscribe`, and read it in a
+  small helper (`tr(key)`, `why(problem)`) so every translated string follows a switch.
+- Shared pieces so far: `ErrorBanner.svelte` (molecule; light DOM, drawn by `.error-banner`
+  in app.css) and `SubHeader.astro` (molecule; the back link and the page's title).
+
 Before reaching for an island, check whether the platform already does it with no script:
 *+ New*'s menu is an HTML `popover` (`FabMenu`, PRD DD-173) — the browser opens and closes
 it, on Escape and a tap outside, and hands focus back. `@kcstyles/reset.css` makes every
@@ -181,7 +195,9 @@ test("renders the label", async () => {
 - What the island does in the browser is tested by mounting it in happy-dom (the default
   environment): `mount` and `flushSync` from `svelte` (`HeaderDate.test.ts`).
   `vitest.config.ts` resolves the `browser` condition so `mount` gets Svelte's client build;
-  node-environment files still render on the server.
+  node-environment files still render on the server. Svelte 5 listens for `click`, `input`,
+  `change` and `submit` once at its root, so a test must dispatch them as a browser does —
+  `new Event("change", { bubbles: true })` — or the handler never runs.
 - Logic worth testing on its own goes in `src/lib/` and `tests/lib/`; `tests/setup.ts` clears
   `localStorage` and the locale before every test.
 - No test renders colour, spacing or layout; list those as preview checks in the PR and

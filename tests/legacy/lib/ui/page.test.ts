@@ -14,7 +14,7 @@ const mountNav = () => {
 		<div id="tabbar"></div>`
 }
 
-test("falls back to document.body when the page has no <main>", () => {
+test("falls back to document.body when the page has no <main>", async () => {
 	document.body.innerHTML = ""
 	const original = globalThis.localStorage
 	try {
@@ -22,7 +22,7 @@ test("falls back to document.body when the page has no <main>", () => {
 		delete globalThis.localStorage
 
 		let called = false
-		bootstrap("title.cards", () => {
+		await bootstrap("title.cards", () => {
 			called = true
 		})
 
@@ -35,7 +35,7 @@ test("falls back to document.body when the page has no <main>", () => {
 	}
 })
 
-test("applies chrome in the current language even when storage is unavailable and the renderer never runs", () => {
+test("applies chrome in the current language even when storage is unavailable and the renderer never runs", async () => {
 	mountNav()
 	// Set while storage is still available, so this doesn't also exercise the "blocked
 	// store" path of setLocale's own try/catch -- that's covered elsewhere.
@@ -46,7 +46,7 @@ test("applies chrome in the current language even when storage is unavailable an
 		delete globalThis.localStorage
 
 		let called = false
-		bootstrap("title.cards", () => {
+		await bootstrap("title.cards", () => {
 			called = true
 		})
 
@@ -63,7 +63,7 @@ test("applies chrome in the current language even when storage is unavailable an
 	}
 })
 
-test("the storage-unavailable banner follows a locale switch instead of freezing in the language it failed in", () => {
+test("the storage-unavailable banner follows a locale switch instead of freezing in the language it failed in", async () => {
 	mountNav()
 	setLocale("en")
 	const original = globalThis.localStorage
@@ -71,7 +71,7 @@ test("the storage-unavailable banner follows a locale switch instead of freezing
 		// @ts-expect-error Intentionally breaking the global for this test
 		delete globalThis.localStorage
 
-		bootstrap("title.cards", () => {})
+		await bootstrap("title.cards", () => {})
 
 		// createRepository() throws StorageUnavailableError, a MessageError keyed to
 		// "storage.unavailable" -- that key, not the "startup.failed" fallback, is what
