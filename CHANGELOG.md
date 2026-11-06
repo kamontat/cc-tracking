@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro from bun-astro-template, and its conventions adopted
+## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, and Lit fenced into src/legacy
 
 ### BREAKING CHANGES
 
@@ -21,6 +21,10 @@ reasons don't show up in the code.
   runs.
 - The skills are `project-shipping`, `project-landing` and `project-changelog`; the old
   `shipping-a-change`, `landing-a-change` and `changelog` names are gone.
+- Everything Lit is in `src/legacy/`, imported as `#legacy/*`: the components (was
+  `src/components/*.ts`), the route modules (was `src/routes/`), and `lib/ui/{chrome,shell,
+  page,icons,card-label,list-share,sub-header}.ts`, `lib/i18n/controller.ts` and
+  `styles/shared.ts`. Imports of the old paths, and the `#styles/*` alias, no longer resolve.
 
 ### Features
 
@@ -28,7 +32,10 @@ reasons don't show up in the code.
   `project-layouts`, `project-pages`, `project-scripts` and `project-deploy`.
 - `src/components/` has the atomic tiers `atoms/`, `molecules/` and `organisms/`;
   `tests/components/atomic.test.ts` fails on a component outside a tier or importing one it
-  may not, and `#components/<tier>/*` imports `.astro` files as written.
+  may not, and `#components/*` imports `.astro` files as written.
+- `tests/legacy/boundary.test.ts` keeps the legacy fenced: no `lit` import outside
+  `src/legacy/`, and nothing outside it imports `#legacy/*` except a page's route script, so
+  each conversion can delete its legacy file without breaking new code.
 
 ### Improvements
 
@@ -44,6 +51,9 @@ reasons don't show up in the code.
   for an app-shell layout. `<div row>` and `<div block>` type-check in `.astro` markup.
 - Landing runs `bun install` on `main` after a merge: a stale root install broke every
   worktree's build and tests with `Tsconfig not found astro/tsconfigs/strictest`.
+- The hard-coded English check and the old statement payment check scan the legacy and every
+  Astro UI folder, and fail when they find nothing, so an emptied folder can't pass them
+  silently.
 
 ### Decisions
 
@@ -60,6 +70,9 @@ reasons don't show up in the code.
   `.astro` unless it is built from the reader's data or reacts to input, and then it is a
   small Svelte island, never a raw `<script>` building markup. Lit for the client parts and
   hand-written DOM updates were the alternatives.
+- The Lit code waits in one `src/legacy/` folder rather than being sorted into the atomic
+  tiers as Lit files, so `src/components/` only ever holds converted Astro and the legacy
+  folder only shrinks.
 
 ## 2026-11-04: The redesign ships, and no page is indexed
 
