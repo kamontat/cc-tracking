@@ -23,10 +23,17 @@ Default to using Bun instead of Node.js.
   `PUBLIC_*` build info (`scripts/build-env.ts`) before Vite inlines it.
 - Deployed as Cloudflare static assets: `wrangler.jsonc` serves `dist/`, and
   `public/_redirects` holds the redirects.
-- Tests are Vitest (`bun run test`, `vitest.config.ts`) in a happy-dom environment with
-  `tests/setup.ts`, so components render in tests. They sit next to the code (`*.test.ts`),
-  except the page and layout tests in `tests/` (a `.ts` under `src/pages/` would be a route).
-  `bunfig.toml` runs every script on the Bun runtime, so tests may use `Bun.file`.
+- Components follow Atomic Design (bun-astro-template): new UI is `.astro` in
+  `src/components/{atoms,molecules,organisms}/`, static wherever possible, with a Svelte
+  island (not a raw `<script>`) only for what the browser must render (PRD DD-172). Layouts
+  are templates, pages are pages;
+  `tests/components/atomic.test.ts` enforces the tiers. The Lit components
+  (`src/components/*.ts`) and the route modules are legacy, converted one at a time.
+  `project-components`, `project-layouts` and `project-pages` hold the rules.
+- Tests are Vitest (`bun run test`, `vitest.config.ts`) in `tests/`, mirroring `src/`
+  (`src/lib/gtm.ts` → `tests/lib/gtm.test.ts`), in a happy-dom environment with
+  `tests/setup.ts`, so components render in tests. `bunfig.toml` runs every script on the
+  Bun runtime, so tests may use `Bun.file`. `project-scripts` covers the scripts and checks.
 - `bun run check` is `astro check` then Biome. `biome.json` extends
   `@kcconfigs/biome/configs/astro`, which reads an `.astro` file's template as well as its
   frontmatter, so an import used only in the template counts as used. Keep that preset:
@@ -35,18 +42,21 @@ Default to using Bun instead of Node.js.
   lines. The preset (4.2.2 on) turns on Biome's HTML formatter, which is off by default
   and without which `format` skips `.astro` files entirely, and indents `<script>` bodies
   under their tags.
-- Import through the aliases in `package.json` `imports`: `#lib/*`, `#components/*` and
-  `#styles/*`, each mapping to a `.ts` file, and `#layouts/*` with the `.astro` extension.
+- Import through the aliases in `package.json` `imports`: `#lib/*` and `#styles/*` map to a
+  `.ts` file; `#components/{atoms,molecules,organisms}/*` and `#layouts/*` take the `.astro`
+  extension; the bare `#components/*` maps to a Lit `.ts` file.
 - Every piece of UI text is a catalog key with an entry in both `src/lib/i18n/en.ts` and
   `src/lib/i18n/th.ts`.
 - An address or query key change must update `ENDPOINTS.md` in the same change.
 
 ## Change workflow
 
-- Every change: follow `.claude/skills/shipping-a-change` (worktree and branch, test first,
+- Every change: follow `.claude/skills/project-shipping` (worktree and branch, test first,
   check/format/test, commit, push, pull request, preview URL).
-- After the user approves: follow `.claude/skills/landing-a-change` (dated changelog entry,
+- After the user approves: follow `.claude/skills/project-landing` (dated changelog entry,
   merge to main, delete the worktree, back on main).
+- Every skill is named `project-*` (`tests/skills.test.ts`). Build and deploy details are
+  `project-deploy`; the changelog format is `project-changelog`.
 
 ## Design system conventions
 

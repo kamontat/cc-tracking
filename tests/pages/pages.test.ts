@@ -41,10 +41,36 @@ test("src/pages has every page", () => {
 	])
 })
 
+const layouts = Array.from(new Bun.Glob("*.astro").scanSync({ cwd: "src/layouts" })).map((file) =>
+	file.replace(/\.astro$/, ""),
+)
+
+// Layouts a source file imports through #layouts/* and renders as a tag.
+const usedLayouts = (text: string) =>
+	[...text.matchAll(/^import (\w+) from "#layouts\/(\w+)\.astro";?$/gm)]
+		.filter(([, local]) => new RegExp(`<${local}\\b`).test(text))
+		.map(([, , layout]) => layout as string)
+
+// True when the layout is BaseLayout or renders one that reaches it.
+const reachesBase = async (layout: string, seen = new Set<string>()): Promise<boolean> => {
+	if (layout === "BaseLayout") return true
+	if (seen.has(layout)) return false
+	seen.add(layout)
+	const text = await Bun.file(`src/layouts/${layout}.astro`).text()
+	for (const inner of usedLayouts(text)) {
+		if (await reachesBase(inner, seen)) return true
+	}
+	return false
+}
+
 test.each(pages)("%s renders inside BaseLayout, which loads Google Tag Manager", async (page) => {
-	const text = await source(page)
-	expect(text).toMatch(/^import BaseLayout from "#layouts\/BaseLayout\.astro"$/m)
-	expect(text).toMatch(/<BaseLayout\b/)
+	const used = usedLayouts(await source(page))
+	expect(used.length).toBeGreaterThan(0)
+	for (const layout of used) expect(await reachesBase(layout)).toBe(true)
+})
+
+test.each(layouts)("layout %s wraps BaseLayout", async (layout) => {
+	expect(await reachesBase(layout)).toBe(true)
 })
 
 test.each(pages)("%s runs the route module of the same name", async (page) => {
