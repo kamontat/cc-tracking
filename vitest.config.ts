@@ -2,6 +2,7 @@
 import { getViteConfig } from "astro/config"
 
 export default getViteConfig({
+	resolve: { conditions: ["browser"] },
 	test: {
 		include: ["tests/**/*.test.ts"],
 		// The components render into a DOM in every test, so every file gets one.

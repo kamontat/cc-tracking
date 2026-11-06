@@ -66,16 +66,20 @@ describe("checkAtomic", () => {
 	})
 })
 
-// Lists every .astro file under src/components with the component imports in
-// its frontmatter, as paths relative to src/components.
+// Lists every .astro and .svelte component under src/components with the component imports
+// in its frontmatter (or a Svelte island's <script>), as paths relative to src/components.
 const scan = () => {
-	const files = readdirSync(componentsDir, { recursive: true, encoding: "utf8" }).filter((path) =>
-		path.endsWith(".astro"),
+	const files = readdirSync(componentsDir, { recursive: true, encoding: "utf8" }).filter(
+		(path) => path.endsWith(".astro") || path.endsWith(".svelte"),
 	)
 	return files.map((path) => {
 		const source = readFileSync(join(componentsDir, path), "utf8")
-		const frontmatter = source.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ""
-		const specifiers = [...frontmatter.matchAll(/from\s+["']([^"']+\.astro)["']/g)].map((match) => match[1] as string)
+		const code = path.endsWith(".svelte")
+			? [...source.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1]).join("\n")
+			: (source.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "")
+		const specifiers = [...code.matchAll(/from\s+["']([^"']+\.(?:astro|svelte))["']/g)].map(
+			(match) => match[1] as string,
+		)
 		const imports = specifiers
 			.map((specifier) => {
 				if (specifier.startsWith("#components/")) return specifier.slice("#components/".length)
