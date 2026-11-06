@@ -4,6 +4,40 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-06: Built with Astro from bun-astro-template
+
+### BREAKING CHANGES
+
+- `@kctools/bun-server`, `scripts/build.ts` and the `src/routes/*.html` pages are gone. Pages
+  are `src/pages/<path>.astro` over `src/layouts/BaseLayout.astro`, built by `astro build`; the
+  dev server is `bun run dev` on port 4321.
+- Tests run on Vitest (`bun run test`), not `bun test`; `bun:test` imports no longer work.
+  `bun run typecheck` is gone: `bun run check` runs `astro check` and then Biome.
+- The build stamps are `PUBLIC_COMMIT_SHA`, `PUBLIC_BUILT_AT`, `PUBLIC_PR_NUMBER`,
+  `PUBLIC_ENVIRONMENT` and `PUBLIC_BRANCH`, no longer `BUN_PUBLIC_*`.
+- Google Tag Manager loads only on production. Pull request previews and local builds send no
+  data, and the `<noscript>` iframe is gone.
+
+### Improvements
+
+- The thirteen copied HTML shells are one `BaseLayout` carrying the noindex meta, the theme
+  boot, the global CSS and the shell slots; each page passes only its title and width, and
+  imports its route module. `tests/pages/pages.test.ts` renders every page to keep that true.
+- Every page now ships `<html lang="en">`, until `chrome.ts` sets the reader's locale.
+- Biome extends `@kcconfigs/biome/configs/astro` (4.2.2), which lints and formats `.astro`
+  files as well. The whole repo now follows its base formatting: no semicolons, 120-column
+  lines, padded Markdown tables; `tests/config/biome.test.ts` checks the `.astro` rules.
+- Dependencies match the template: Astro 7.4.5, Vitest 5.1.0, Biome 2.6.5, Wrangler 4.158.0.
+
+### Decisions
+
+- The components stay Lit for now (DD-170). All data lives in the browser, so nothing renders
+  at build time; the move to Astro components comes page by page after this. A rewrite of
+  every component in one go was rejected as weeks of work with no visible gain.
+- GTM follows the template: the container id is set only by the production deploy, so previews
+  stop counting visits. Keeping the inline snippet on every build was the alternative.
+- TypeScript stays on 6.0.3: `@astrojs/check` and `@kcconfigs/tsconfig` do not accept 7 yet.
+
 ## 2026-11-04: The redesign ships, and no page is indexed
 
 ### BREAKING CHANGES
