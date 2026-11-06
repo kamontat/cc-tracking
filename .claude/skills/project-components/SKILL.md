@@ -79,13 +79,18 @@ Every string is a catalog key with an entry in both `src/lib/i18n/en.ts` and `th
 reader's locale is only known in the browser, so:
 
 - **Static copy** in `.astro` markup is the English text plus its key:
-  `<h2 data-i18n="home.needsYou">Needs you</h2>`. One shared pass in `src/lib/i18n/` swaps
-  every `[data-i18n]` to the reader's locale and runs again when it changes. Never hardcode
-  copy without its `data-i18n` key.
+  `<h2 data-i18n="nav.cards">Cards</h2>`. `startCopy` (`#lib/i18n/copy`), run by
+  `BaseLayout` on every page, swaps every `[data-i18n]` element's text to the reader's
+  locale and again whenever it changes. Never hardcode copy without its `data-i18n` key.
+  - The key replaces the element's whole text, so put it on the innermost element holding
+    only that copy (`<span data-i18n="…">`), never on one with child elements or data.
+  - `tests/lib/i18n/markup-keys.test.ts` fails on a key missing from `en.ts` or `th.ts`; at
+    runtime an unknown key leaves the English.
+  - Thai copy stays hidden (`visibility: hidden`, so the layout doesn't shift) until the pass
+    has run: the boot script sets `<html lang>` before first paint and `startCopy` marks
+    `<html data-i18n-ready>`.
 - **Copy inside a Svelte island** comes from `t()`, re-read when the locale changes
   (`subscribe` from `#lib/i18n/index`), like the data it sits beside.
-- Until that pass lands (the PR after the legacy move), don't convert a component that shows
-  text.
 
 ## Styles and the design system
 

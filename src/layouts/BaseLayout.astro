@@ -40,15 +40,43 @@ const { title, mainClass } = Astro.props
 			} catch {
 				// No location: chrome.ts sets the tint once the bundle runs.
 			}
+			// The reader's language before first paint, by detectLocale's rule: a saved pick, else
+			// the first browser language the app speaks, else Thai. The CSS hides Thai pages'
+			// static copy until the copy pass has translated it. A block, so an inline script's
+			// bindings stay out of the page's global scope.
+			{
+				let saved = null
+				try {
+					saved = localStorage.getItem("cc:lang")
+				} catch {
+					// Storage blocked: decide from the browser's languages, as detectLocale does.
+				}
+				let lang = saved === "en" || saved === "th" ? saved : null
+				try {
+					for (const language of lang ? [] : (navigator?.languages ?? [])) {
+						const primary = language.toLowerCase().split("-")[0]
+						if (primary === "en" || primary === "th") {
+							lang = primary
+							break
+						}
+					}
+				} catch {
+					// No navigator: fall through to Thai, as detectLocale does with no languages.
+				}
+				document.documentElement.setAttribute("lang", lang ?? "th")
+			}
 		</script>
 		<title>{title} — cc-tracking</title>
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 		<meta name="generator" content={Astro.generator}>
 		<script>
 			import { loadGtm } from "#lib/gtm"
+			import { startCopy } from "#lib/i18n/copy"
 
 			// Inlined at build time; unset (dev, previews, local builds) leaves GTM off.
 			loadGtm(import.meta.env.PUBLIC_GTM_ID, document)
+			// Static copy ships in English with its key; this puts it in the reader's locale.
+			startCopy(document)
 		</script>
 	</head>
 	<body>
