@@ -13,7 +13,9 @@ interface Props {
 const { variant, current } = Astro.props
 ---
 
+<!-- Fixed in place, so it holds still while the page cross-fades (PRD DD-174). -->
 <nav
+	transition:animate="none"
 	class={variant === "header" ? "site-header__tabs" : "tabbar"}
 	aria-label={en["nav.pages"]}
 	data-i18n-aria-label="nav.pages">

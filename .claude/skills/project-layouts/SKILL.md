@@ -55,8 +55,10 @@ It lays out, in `<body>`:
   *+ New* menu (`FabMenu`);
 - the default `<slot />`, where a page puts its route script.
 
-The header and the tab bar carry `transition:animate="none"`: on a navigation the page's
-content cross-fades while the shell holds still.
+The header, the bottom bar's `nav` (`Tabs`) and `FabMenu` carry `transition:animate="none"`: on
+a navigation the page's content cross-fades while the shell holds still. Put it on the box that
+paints, not on a wrapper: `#tabbar` holds only `position: fixed` children, so it has no height,
+and naming it let the bar and *+ New* fade out with the page.
 
 Props: `title` (forwarded to `BaseLayout`), `route` (the name the page's script registers
 with `onPage`, PRD DD-174), `tab` (the page's place, marked in both navs),

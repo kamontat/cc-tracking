@@ -11,7 +11,8 @@ import { payAddress } from "#lib/ui/pay-address"
 const MENU_ID = "fab-menu"
 ---
 
-<div class="fab-menu">
+<!-- Fixed in place, so it holds still while the page cross-fades (PRD DD-174). -->
+<div class="fab-menu" transition:animate="none">
 	<div class="fab-menu__wrap">
 		<div class="fab-menu__list" id={MENU_ID} popover>
 			<a class="fab-menu__item" data-action="new-list" href="/list/new">
