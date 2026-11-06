@@ -16,6 +16,16 @@ body {
 	font-size: var(--cc-text-md);
 }
 
+/*
+ * Static copy ships in English with its catalog key (PRD DD-171). The boot script sets
+ * `lang="th"` before first paint for a Thai reader, and `startCopy` marks the page ready once
+ * the copy is translated, so a Thai reader never sees the English first. Keyed on `lang`, not
+ * on the text, so it holds in either language.
+ */
+html[lang="th"]:not([data-i18n-ready]) [data-i18n] {
+	visibility: hidden;
+}
+
 a:any-link {
 	color: var(--cc-link);
 }

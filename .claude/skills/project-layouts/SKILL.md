@@ -14,19 +14,23 @@ the `project-pages` skill.
 `src/layouts/BaseLayout.astro` is the only file that writes `<html>`, `<head>` and `<body>`.
 It:
 
-- ships `<html lang="en">`; the legacy `chrome.ts` sets the reader's locale once the bundle runs;
+- ships `<html lang="en">`, which the boot script corrects before first paint;
 - sets `charset`, `viewport`, `<meta name="robots" content="noindex, nofollow">` (PRD
   DD-169) and the favicon;
-- runs the **theme boot** first in `<head>`: an `is:inline` script that applies the saved
-  theme (`cc:theme`) and the build tint (`data-env`) before anything paints.
-  `tests/routes/theme-boot.test.ts` runs it and must agree with `src/lib/ui/theme.ts`;
-  `tests/pages/pages.test.ts` checks it comes before the first `<link>`;
+- runs the **boot** first in `<head>`: an `is:inline` script that applies the saved theme
+  (`cc:theme`), the build tint (`data-env`) and the reader's language (`<html lang>`, by
+  `detectLocale`'s rule) before anything paints. `tests/legacy/routes/theme-boot.test.ts`
+  holds the theme to `src/lib/ui/theme.ts`, `tests/layouts/locale-boot.test.ts` holds the
+  language to `detectLocale`, and `tests/pages/pages.test.ts` checks the boot comes before
+  the first `<link>`;
 - writes `<title>{title} — cc-tracking</title>` from its required `title` prop;
   `bootstrap` replaces it with the translated title in the browser;
 - imports the global sheets in order: `@kcstyles/reset.css`, `../styles/tokens.css`,
   `../styles/app.css`;
 - runs `loadGtm(import.meta.env.PUBLIC_GTM_ID, document)` from `#lib/gtm` in a processed
   `<script>`; without the id at build time the bundler drops it (see `project-deploy`);
+- runs `startCopy(document)` from `#lib/i18n/copy` in the same script, putting every page's
+  `data-i18n` copy in the reader's locale (PRD DD-171, see `project-components`);
 - renders the shell the legacy route modules draw into: `#site-header`, `<main id="page">`
   with `page` plus the page's `mainClass` (`page--narrow`, `page--form`, `page--tx`,
   `card-page`) and `#tabbar`, then the default `<slot />`.
