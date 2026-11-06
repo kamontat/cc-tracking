@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, and Locations converted
+## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations converted, and a steady tab bar
 
 ### BREAKING CHANGES
 
@@ -98,6 +98,10 @@ reasons don't show up in the code.
 - Cards, Pay and Transactions rewrote the address with `history.replaceState(null, …)`, which
   wiped the router's history state, so a later Back could land on a page it didn't show; they
   keep `history.state` now, guarded by `tests/legacy/routes/spa-ready.test.ts`.
+- _+ New_ and, on a phone, the bottom tab bar no longer flash on a page change. The
+  hold-still marker sat on their `#tabbar` slot, which has no height because both are
+  `position: fixed`, so they faded out with the page; the bar and _+ New_ now carry it
+  themselves.
 
 ### Decisions
 
