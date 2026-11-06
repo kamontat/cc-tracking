@@ -24,7 +24,9 @@ Default to using Bun instead of Node.js.
 - Deployed as Cloudflare static assets: `wrangler.jsonc` serves `dist/`, and
   `public/_redirects` holds the redirects.
 - Components follow Atomic Design (bun-astro-template): new UI is `.astro` in
-  `src/components/{atoms,molecules,organisms}/`, layouts are templates, pages are pages;
+  `src/components/{atoms,molecules,organisms}/`, static wherever possible, with a Svelte
+  island (not a raw `<script>`) only for what the browser must render (PRD DD-172). Layouts
+  are templates, pages are pages;
   `tests/components/atomic.test.ts` enforces the tiers. The Lit components
   (`src/components/*.ts`) and the route modules are legacy, converted one at a time.
   `project-components`, `project-layouts` and `project-pages` hold the rules.

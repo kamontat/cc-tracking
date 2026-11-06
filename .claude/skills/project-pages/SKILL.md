@@ -81,6 +81,10 @@ import AppLayout from "#layouts/AppLayout.astro"
 </AppLayout>
 ```
 
+The page itself stays static. An organism like `NeedsYou` is a static `.astro` frame (heading,
+empty state) holding a Svelte island for the rows built from the reader's data (PRD DD-172),
+so a page holds no `<script>` once its route module is gone.
+
 A page is never imported by anything and gets no directory under `src/components/`. When its
 last Lit piece is gone, its route module is deleted and the "runs the route module" check
 drops that page.

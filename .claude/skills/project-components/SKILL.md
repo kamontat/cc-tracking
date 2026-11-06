@@ -1,6 +1,6 @@
 ---
 name: project-components
-description: Use when writing, editing or moving a component in src/components/ (atoms, molecules, organisms), converting a Lit component to Astro, deciding which atomic tier a component belongs to, adding client-side script, styling with the cc tokens, writing a component test, or debugging a component that renders nothing, loses its styles or ships no JavaScript.
+description: Use when writing, editing or moving a component in src/components/ (atoms, molecules, organisms), converting a Lit component to Astro, deciding which atomic tier a component belongs to, deciding between static markup and a Svelte island, rendering the reader's data in the browser, styling with the cc tokens, writing a component test, or debugging a component that renders nothing, loses its styles or ships no JavaScript.
 ---
 
 # Components
@@ -10,7 +10,8 @@ Layouts are the `project-layouts` skill; routes are the `project-pages` skill.
 ## Astro now, Lit is legacy
 
 cc-tracking is moving from Lit to Astro (PRD DD-170). Every **new** component is an `.astro`
-file in an atomic tier. The Lit components (`src/components/cc-*.ts`, `action-row.ts`,
+file in an atomic tier, or a `.svelte` island when the browser must render it (see below).
+The Lit components (`src/components/cc-*.ts`, `action-row.ts`,
 `card-tile.ts` and the rest) are legacy: don't add one, and don't grow one when the change
 can be the conversion instead. Converting one means writing its Astro replacement in a tier,
 moving its callers over, and deleting the Lit file and its test in the same change.
@@ -42,34 +43,45 @@ importing a molecule included.
 - `src/components/` may import from `src/lib/` and `src/styles/`, never from `src/layouts/`
   or `src/pages/`.
 
-## Build time and the browser
+## Static first, Svelte for what the browser renders (PRD DD-172)
 
 The frontmatter runs **once, at build time**. Nothing the reader owns exists then: every
 card, purchase and payment is in the browser's `localStorage` (PRD DD-03), and the locale is
-read in the browser too. So a component splits in two:
+read in the browser too. Choose the lightest thing that works, in this order:
 
-- **The `.astro` markup** is what is the same for every reader: structure, empty states that
-  need no data, `id`s and `data-*` hooks.
-- **A `<script>`** in the component reads the repository and fills the markup in the browser.
-  Astro bundles it (TypeScript and `#lib/*` imports work), dedupes it across instances and
-  ships it as a module. Frontmatter values don't reach it: pass them through `data-*`
-  attributes, read with `dataset["name"]` (`noPropertyAccessFromIndexSignature`).
+1. **Static `.astro`** — anything the same for every reader: structure, headings, labels,
+   links, empty states that need no data. Ships no JavaScript. Prefer it: a section that only
+   *looks* dynamic often splits into a static frame plus a small island.
+2. **A Svelte island** — anything built from the reader's data or that reacts to input: a
+   list of cards, a form, a sheet, a filter. A `.svelte` component in the same atomic tier,
+   placed in an `.astro` parent with a hydration directive (`client:load` for what is on
+   screen at once, `client:visible` for what is further down). Its build-time render is the
+   empty frame; it reads the repository in the browser only (`onMount` or an `$effect`),
+   never in the component's top-level code, which also runs at build time.
+3. **A raw `<script>`** — only for page plumbing with no UI of its own, such as the inline
+   theme boot and the GTM loader in `BaseLayout`. Never to build or update markup.
 
-Put the script's logic in `src/lib/` as plain functions taking their inputs (a repository,
-an element, a clock), and keep the `<script>` itself a few lines of wiring. The Container API
-does not run scripts, so logic left inside one is untested.
+Keep an island small: the static parts stay in the `.astro` parent and only the part that
+changes is Svelte. Props passed to an island are serialized into the page, so pass plain
+values (ids, flags, labels), not repositories or functions. Put the logic in `src/lib/` as
+plain functions taking their inputs (a repository, a clock), so it is tested without
+rendering; the island wires those functions to its state.
+
+The Svelte integration (`@astrojs/svelte`, Svelte 5 with runes) is added with the first
+island, together with the atomic test reading `.svelte` imports and the test setup for
+rendering islands.
 
 ### Translated copy (PRD DD-171)
 
 Every string is a catalog key with an entry in both `src/lib/i18n/en.ts` and `th.ts`. The
 reader's locale is only known in the browser, so:
 
-- **Fixed copy** in `.astro` markup is the English text plus its key:
+- **Static copy** in `.astro` markup is the English text plus its key:
   `<h2 data-i18n="home.needsYou">Needs you</h2>`. One shared pass in `src/lib/i18n/` swaps
   every `[data-i18n]` to the reader's locale and runs again when it changes. Never hardcode
   copy without its `data-i18n` key.
-- **Copy built from data** (amounts, dates, card names) is rendered by the component's
-  script, which calls `t()` there as the Lit code does.
+- **Copy inside a Svelte island** comes from `t()`, re-read when the locale changes
+  (`subscribe` from `#lib/i18n/index`), like the data it sits beside.
 - Until that pass lands (the PR after the legacy move), don't convert a component that shows
   text.
 
@@ -140,7 +152,8 @@ test("renders the label", async () => {
 
 - Match `<span[^>]*>`, not `<span>`: scoped styles add `data-astro-cid-*`.
 - Slots go in `{ slots: { default: "<b>child</b>" } }`.
-- Script logic is tested in `tests/lib/` against happy-dom (the default environment, with
-  `tests/setup.ts` clearing `localStorage` and the locale before every test).
+- An island's logic is tested in `tests/lib/` against happy-dom (the default environment,
+  with `tests/setup.ts` clearing `localStorage` and the locale before every test); how the
+  island itself is rendered in tests is set up with the first one.
 - No test renders colour, spacing or layout; list those as preview checks in the PR and
   screenshot at 390 and 1280px, light and dark, English and Thai.
