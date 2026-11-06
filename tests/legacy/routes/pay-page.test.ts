@@ -67,7 +67,6 @@ const setup = async (
 	repo: Repository = new InMemoryRepository(),
 ) => {
 	setLocale("en")
-	document.documentElement.removeAttribute("data-pay-page")
 	await seed(repo)
 	await before?.(repo)
 	const root = mount()
@@ -117,14 +116,11 @@ const amountValue = async () => {
 
 const submitText = () => flatText(inner(form(), 'button[type="submit"]')) ?? ""
 
-test("/pay is the card picker under a sub-header, with no sheet, and hides the Payment button", async () => {
+test("/pay is the card picker under a sub-header, with no sheet", async () => {
 	const { root } = await setup("/pay")
 	expect(flatText(root.querySelector(".sub-header h1"))).toBe("Make a payment")
 	expect((await pickerRows()).map((r) => r.dataset["card"])).toEqual(["A", "B"])
 	expect(modal()).toBeNull()
-	expect(document.documentElement.hasAttribute("data-pay-page")).toBe(true)
-	const css = await Bun.file("src/styles/app.css").text()
-	expect(css).toMatch(/:root\[data-pay-page\] \.fab-menu,/)
 })
 
 test("the picker's tiles get each group's room, so a tile's rail shows its used share", async () => {

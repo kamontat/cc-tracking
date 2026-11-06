@@ -96,7 +96,6 @@ const inSheet = async (root: HTMLElement, selector: string) => {
 
 test("a list page under a sub-header to Home, with the ready cards by most room", async () => {
 	const { root } = await setup()
-	expect(document.documentElement.hasAttribute("data-list-page")).toBe(true)
 	expect(flat(root.querySelector(".sub-header h1"))).toBe("New purchase list4 cards in Bangkok, Krabi")
 	expect(root.querySelector('.sub-header [data-action="back"]')?.getAttribute("href")).toBe("/")
 	expect(await order(root)).toEqual(["A", "C", "B", "D"])

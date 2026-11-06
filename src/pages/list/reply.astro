@@ -1,9 +1,9 @@
 ---
-import BaseLayout from "#layouts/BaseLayout.astro"
+import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<BaseLayout title="Spender's reply" mainClass="page--narrow">
+<AppLayout title="Spender's reply" tab="home" fab={false} mainClass="page--narrow">
 	<script>
 		import "#legacy/routes/list/reply"
 	</script>
-</BaseLayout>
+</AppLayout>

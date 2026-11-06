@@ -1,0 +1,31 @@
+---
+import Icon from "#components/atoms/Icon.astro"
+import { en } from "#lib/i18n/en"
+import { payAddress } from "#lib/ui/pay-address"
+
+/**
+ * The floating *+ New* button (PRD DD-104): a new purchase list or a payment. The menu is an
+ * HTML popover (PRD DD-173), so the browser opens and closes it, closes it on a tap outside or
+ * on Escape, and hands focus back, with no script. Light DOM: app.css draws it over the bars.
+ */
+const MENU_ID = "fab-menu"
+---
+
+<div class="fab-menu">
+	<div class="fab-menu__wrap">
+		<div class="fab-menu__list" id={MENU_ID} popover>
+			<a class="fab-menu__item" data-action="new-list" href="/list/new">
+				<Icon name="list" />
+				<span data-i18n="fab.newList">{en["fab.newList"]}</span>
+			</a>
+			<a class="fab-menu__item" data-action="pay" href={payAddress()}>
+				<Icon name="wallet" />
+				<span data-i18n="fab.pay">{en["fab.pay"]}</span>
+			</a>
+		</div>
+		<button type="button" class="fab" popovertarget={MENU_ID} aria-label={en["fab.new"]} data-i18n-aria-label="fab.new">
+			<span class="fab__plus"><Icon name="plus" /></span
+			><span class="fab__label" data-i18n="fab.new">{en["fab.new"]}</span>
+		</button>
+	</div>
+</div>

@@ -1,0 +1,26 @@
+---
+import Icon from "#components/atoms/Icon.astro"
+import { en } from "#lib/i18n/en"
+import { TABS, type Tab } from "#lib/ui/tabs"
+
+interface Props {
+	/** `header` is the row of tabs in the header from 900px; `bar` is the bottom bar on a phone. */
+	variant: "header" | "bar"
+	/** The page's place, marked in both navs; none for a page outside the four. */
+	current?: Tab | undefined
+}
+
+const { variant, current } = Astro.props
+---
+
+<nav
+	class={variant === "header" ? "site-header__tabs" : "tabbar"}
+	aria-label={en["nav.pages"]}
+	data-i18n-aria-label="nav.pages">
+	{TABS.map(({ tab, href, label, icon }) => (
+		<a data-tab={tab} href={href} aria-current={tab === current ? "page" : undefined}>
+			<Icon name={icon} />
+			<span data-i18n={label}>{en[label]}</span>
+		</a>
+	))}
+</nav>

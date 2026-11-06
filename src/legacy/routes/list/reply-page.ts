@@ -12,7 +12,7 @@ import { listPageAddress } from "#lib/ui/list-address"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { writeListReply } from "#lib/ui/save-list-reply"
-import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults, markListPage } from "./common"
+import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults } from "./common"
 
 /**
  * Renders the spender's reply to the waiting list named by the address's `id` into `root`.
@@ -21,7 +21,6 @@ import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults, 
  */
 export function renderReplyPage(repo: Repository, root: HTMLElement, options: ListPageOptions = {}): void {
 	const { clock, search, navigate } = listPageDefaults(options)
-	markListPage(root)
 	const now = today(clock())
 	const id = listId(search)
 	let data: MoneyData | null = null

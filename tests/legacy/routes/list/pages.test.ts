@@ -1,12 +1,5 @@
 import { expect, test } from "vitest"
 
-import { renderEntryPage } from "#legacy/routes/list/entry"
-import { renderPickerPage } from "#legacy/routes/list/picker-page"
-import { renderReplyPage } from "#legacy/routes/list/reply-page"
-import { renderSavedPage } from "#legacy/routes/list/view-page"
-import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { mount, settle } from "./test-support"
-
 /** The four list pages: one static page per case, each a thin entry over the shared flows. */
 const PAGES = ["new", "draft", "reply", "view"] as const
 
@@ -26,26 +19,6 @@ const ruleBody = (css: string, selector: string) => {
 	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 	return css.match(new RegExp(`(?:^|\\n)${escaped}\\s*\\{([^}]*)\\}`))?.[1]
 }
-
-test("every list page hides the floating Payment button", async () => {
-	const renders = [
-		(repo: Repository, root: HTMLElement) => renderPickerPage(repo, root, { search: "" }),
-		(repo: Repository, root: HTMLElement) => renderEntryPage(repo, root, "new", { search: "?card=A", share: {} }),
-		(repo: Repository, root: HTMLElement) => renderEntryPage(repo, root, "draft", { search: "", share: {} }),
-		(repo: Repository, root: HTMLElement) => renderReplyPage(repo, root, { search: "" }),
-		(repo: Repository, root: HTMLElement) => renderSavedPage(repo, root, { search: "" }),
-	]
-	for (const render of renders) {
-		document.documentElement.removeAttribute("data-list-page")
-		render(new InMemoryRepository(), mount())
-		expect(document.documentElement.hasAttribute("data-list-page")).toBe(true)
-	}
-	await settle()
-	const css = await Bun.file("src/styles/app.css").text()
-	expect(css).toMatch(
-		/:root\[data-pay-page\] \.fab-menu,\s*:root\[data-list-page\] \.fab-menu,\s*:root\[data-form-page\] \.fab-menu\s*\{\s*display: none;/,
-	)
-})
 
 test("the empty status stays in the page for screen readers", async () => {
 	const css = await Bun.file("src/styles/app.css").text()

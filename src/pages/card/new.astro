@@ -1,9 +1,9 @@
 ---
-import BaseLayout from "#layouts/BaseLayout.astro"
+import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<BaseLayout title="New card" mainClass="page--form">
+<AppLayout title="New card" tab="cards" fab={false} mainClass="page--form">
 	<script>
 		import "#legacy/routes/card/new"
 	</script>
-</BaseLayout>
+</AppLayout>

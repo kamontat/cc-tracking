@@ -56,14 +56,6 @@ export type PayPageOptions = {
 }
 
 /**
- * Marks `<html data-pay-page>`, so the shell hides the floating + New menu here: the page
- * is where its *Make a payment* leads.
- */
-const markPayPage = (root: HTMLElement): void => {
-	root.ownerDocument.documentElement.setAttribute("data-pay-page", "")
-}
-
-/**
  * The payment page (DD-76). `/pay` is the card picker, a full page under a sub-header.
  * `/pay?card=<id>` shows the picker with the payment sheet risen over it, the amount
  * prefilled from `&amount=<satang>` or else the card's next bill. Picking a card pushes its
@@ -78,7 +70,6 @@ export function renderPayPage(repo: Repository, root: HTMLElement, options: PayP
 	const now = today((options.clock ?? (() => new Date()))())
 	const address = options.address ?? browserBar()
 	const navigate = options.navigate ?? ((url: string) => location.replace(url))
-	markPayPage(root)
 
 	let data: MoneyData | null = null
 	// Each group's room, by group id, for the picker's rails: as Cards counts it.

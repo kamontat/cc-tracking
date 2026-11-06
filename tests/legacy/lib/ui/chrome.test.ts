@@ -10,8 +10,6 @@ const mount = () => {
 		<div id="tabbar"></div>`
 }
 
-const clock = () => new Date("2026-10-30T03:00:00Z")
-
 test("title carries the build mark", () => {
 	mount()
 	const cases = [
@@ -21,11 +19,7 @@ test("title carries the build mark", () => {
 		["preview", "", "Cards — cc-tracking (preview)"],
 	] as const
 	for (const [environment, pr, title] of cases) {
-		applyChrome("title.cards", {
-			build: { environment, pr },
-			clock,
-			path: "/cards",
-		})
+		applyChrome("title.cards", { build: { environment, pr } })
 		expect(document.title).toBe(title)
 	}
 })
@@ -33,30 +27,22 @@ test("title carries the build mark", () => {
 test("stamps the build on the root", () => {
 	mount()
 	for (const environment of ["development", "local", "preview", "production"] as const) {
-		applyChrome("title.cards", {
-			build: { environment, pr: "" },
-			clock,
-			path: "/cards",
-		})
+		applyChrome("title.cards", { build: { environment, pr: "" } })
 		expect(document.documentElement.getAttribute("data-env")).toBe(environment)
 	}
 })
 
-test("a language switch re-renders the shell and keeps the current tab", () => {
+test("a language switch re-titles the page", () => {
 	mount()
-	applyChrome("title.settings", {
-		build: { environment: "production", pr: "" },
-		clock,
-		path: "/settings",
-	})
+	applyChrome("title.settings", { build: { environment: "production", pr: "" } })
 	setLocale("th")
-
-	const links = [...document.querySelectorAll('[data-tab="settings"]')]
-	expect(links).toHaveLength(2)
-	for (const link of links) {
-		expect(link.textContent?.trim()).toBe("ตั้งค่า")
-		expect(link.getAttribute("aria-current")).toBe("page")
-	}
 	expect(document.title).toBe("ตั้งค่า — cc-tracking")
 	expect(document.documentElement.lang).toBe("th")
+})
+
+test("leaves the header and the tab bar to the Astro shell (AppLayout)", () => {
+	mount()
+	applyChrome("title.settings", { build: { environment: "production", pr: "" } })
+	expect(document.querySelector("#site-header")?.innerHTML).toBe("")
+	expect(document.querySelector("#tabbar")?.innerHTML).toBe("")
 })

@@ -18,7 +18,7 @@ import { newListAddress } from "#lib/ui/list-address"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { type ReadyView, readReadyView, readyViewAddress } from "#lib/ui/ready-query"
-import { banner, markListPage } from "./common"
+import { banner } from "./common"
 
 export type PickerPageOptions = {
 	/** The page's only clock reading: today's date. */
@@ -43,7 +43,6 @@ export function renderPickerPage(repo: Repository, root: HTMLElement, options: P
 	const now = today((options.clock ?? (() => new Date()))())
 	const replaceAddress = options.replaceAddress ?? ((url: string) => history.replaceState(history.state, "", url))
 	const navigate = options.navigate ?? ((url: string) => location.assign(url))
-	markListPage(root)
 
 	const search = options.search ?? location.search
 	// No location is known before the first load, so the address is read again once one lands.

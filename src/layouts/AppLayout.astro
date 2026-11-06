@@ -1,0 +1,28 @@
+---
+import type { Tab } from "#lib/ui/tabs"
+
+import SiteHeader from "#components/organisms/SiteHeader.astro"
+import TabBar from "#components/organisms/TabBar.astro"
+import BaseLayout from "#layouts/BaseLayout.astro"
+
+interface Props {
+	/** The tab title before the bundle runs; `bootstrap` sets the translated one after. */
+	title: string
+	/** The page's place, marked in the header tabs and the bottom bar. */
+	tab?: Tab
+	/** Classes on `<main>` after `page`, the width a page asks for (`page--narrow`, ...). */
+	mainClass?: string
+	/** Whether the floating *+ New* menu shows; off where the reader is mid-task (PRD DD-104). */
+	fab?: boolean
+}
+
+const { title, tab, mainClass, fab = true } = Astro.props
+---
+
+<!-- The app shell every page shares: the header, the page's own main, and the tab bar. -->
+<BaseLayout title={title}>
+	<SiteHeader current={tab} />
+	<main class:list={["page", mainClass]} id="page"></main>
+	<TabBar current={tab} fab={fab} />
+	<slot />
+</BaseLayout>
