@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, Lit fenced into src/legacy, static copy translated, and the shell made static
+## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, Lit fenced into src/legacy, static copy translated, the shell made static, and pages swapped in place
 
 ### BREAKING CHANGES
 
@@ -31,6 +31,11 @@ reasons don't show up in the code.
   `data-list-page` and `data-form-page` attributes are gone.
 - _+ New_'s menu no longer moves focus to its first action when it opens, and the arrow keys
   no longer move between its actions; Tab reaches them next (DD-104).
+- A legacy route module no longer starts on import: it exports `start()`, and its page
+  registers it with `onPage("<route>", start)` and names the route on `AppLayout`. Every page's
+  language listener and `popstate` handler takes `{ signal: pageSignal() }`.
+- Google Tag Manager now sees only the first page of a visit. Counting every page needs a
+  History Change trigger in the container.
 
 ### Features
 
@@ -50,6 +55,11 @@ reasons don't show up in the code.
 - Svelte islands (`@astrojs/svelte`, Svelte 5) render what the browser has to; the first is
   the header's date (`HeaderDate`). `tests/container.ts` renders islands in tests, and happy-dom
   tests mount them with Svelte's client build.
+- Moving between pages swaps the next page in with a view transition instead of reloading
+  (Astro's `<ClientRouter />`, DD-174), for links and Back/Forward alike. The header and tab
+  bar hold still, the date carries over, and theme, tint and language never flash.
+- `#lib/ui/spa`: `onPage` starts a page's route on every visit, and `pageSignal()` lets what
+  a page set up go when the reader leaves; `subscribe` takes a `signal`.
 
 ### Improvements
 
@@ -76,6 +86,12 @@ reasons don't show up in the code.
   Astro UI folder, and fail when they find nothing, so an emptied folder can't pass them
   silently.
 
+### Bug fixes
+
+- Cards, Pay and Transactions rewrote the address with `history.replaceState(null, …)`, which
+  wiped the router's history state, so a later Back could land on a page it didn't show; they
+  keep `history.state` now, guarded by `tests/legacy/routes/spa-ready.test.ts`.
+
 ### Decisions
 
 - The components stay Lit for now (DD-170). All data lives in the browser, so nothing renders
@@ -98,6 +114,9 @@ reasons don't show up in the code.
   _+ New_'s menu as an HTML popover rather than an island, so a two-link menu ships no
   JavaScript. A closed popover `div` hides itself, since the reset's `div { display: flex }`
   outranks the browser's own hiding and left the closed menu catching taps.
+- Navigation through Astro's ClientRouter, not a single-page app (DD-174): every address stays
+  a static page, so nothing about addresses or the deploy changes. The language stays a reader
+  setting (DD-171) rather than Astro's i18n routing, which would put it in the address.
 
 ## 2026-11-04: The redesign ships, and no page is indexed
 
