@@ -59,10 +59,19 @@ Put the script's logic in `src/lib/` as plain functions taking their inputs (a r
 an element, a clock), and keep the `<script>` itself a few lines of wiring. The Container API
 does not run scripts, so logic left inside one is untested.
 
-**Open question, settle with the user before converting a component that shows text:** how
-build-time markup gets translated copy. Today every string is a catalog key rendered by Lit
-in the browser (`t()` from `#lib/i18n/index`, entries in both `en.ts` and `th.ts`). Until it
-is decided, don't hardcode English in `.astro` markup.
+### Translated copy (PRD DD-171)
+
+Every string is a catalog key with an entry in both `src/lib/i18n/en.ts` and `th.ts`. The
+reader's locale is only known in the browser, so:
+
+- **Fixed copy** in `.astro` markup is the English text plus its key:
+  `<h2 data-i18n="home.needsYou">Needs you</h2>`. One shared pass in `src/lib/i18n/` swaps
+  every `[data-i18n]` to the reader's locale and runs again when it changes. Never hardcode
+  copy without its `data-i18n` key.
+- **Copy built from data** (amounts, dates, card names) is rendered by the component's
+  script, which calls `t()` there as the Lit code does.
+- Until that pass lands (the PR after the legacy move), don't convert a component that shows
+  text.
 
 ## Styles and the design system
 
