@@ -1,8 +1,10 @@
-import { afterEach, expect, test } from "vitest"
-import "#legacy/components/cc-restore-sheet"
-import type { CcRestoreSheet } from "#legacy/components/cc-restore-sheet"
 import type { Card } from "#lib/domain/types"
+import type { RestoredDetail } from "#lib/ui/restore"
 
+import { flushSync, mount, unmount } from "svelte"
+import { afterEach, expect, test } from "vitest"
+
+import RestoreSheet from "#components/organisms/RestoreSheet.svelte"
 import { defaultLocations } from "#lib/domain/locations"
 import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { setLocale } from "#lib/i18n/index"
@@ -11,10 +13,27 @@ import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
 import { exportBackupV3, type V3Counts } from "#lib/storage/transfer-v3"
 
-/** Flushes Lit's update chain and the sheet's awaited reads and writes. */
-const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+/**
+ * *Restore a copy*, clipboard first, in a sheet: an empty browser takes the copy at once, one
+ * with records asks Merge or Replace with both counts. Ported from the legacy
+ * `cc-restore-sheet` tests, against the same markup.
+ */
+let mounted: ReturnType<typeof mount> | undefined
 
-afterEach(() => setLocale("en"))
+afterEach(() => {
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	document.body.innerHTML = ""
+	setLocale("en")
+})
+
+/** Flushes the sheet's awaited reads and writes and Svelte's updates. */
+const settle = async () => {
+	for (let i = 0; i < 20; i++) {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0))
+		flushSync()
+	}
+}
 
 const sampleCard: Card = {
 	id: "kbank",
@@ -37,13 +56,7 @@ const populated = async (): Promise<InMemoryRepository> => {
 	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" })
 	for (const id of ["p1", "p2"])
-		await repo.savePurchase({
-			id,
-			cardId: "kbank",
-			date: "2026-09-05",
-			amount: 100,
-			note: "",
-		})
+		await repo.savePurchase({ id, cardId: "kbank", date: "2026-09-05", amount: 100, note: "" })
 	return repo
 }
 
@@ -51,23 +64,14 @@ const populated = async (): Promise<InMemoryRepository> => {
 const oneCardBackup = async (): Promise<string> => {
 	const source = await seeded(new InMemoryRepository())
 	await source.saveCard({ ...sampleCard, id: "scb", name: "SCB" })
-	await source.savePurchase({
-		id: "s1",
-		cardId: "scb",
-		date: "2026-09-05",
-		amount: 10_000,
-		note: "fuel",
-	})
+	await source.savePurchase({ id: "s1", cardId: "scb", date: "2026-09-05", amount: 10_000, note: "fuel" })
 	return JSON.stringify(await exportBackupV3(source, new Date()))
 }
 
 /** Swaps in a stub `navigator.clipboard` (or none) for the length of `run`. */
 const withClipboard = async (clipboard: Partial<Pick<Clipboard, "readText">> | undefined, run: () => Promise<void>) => {
 	const original = Object.getOwnPropertyDescriptor(navigator, "clipboard")
-	Object.defineProperty(navigator, "clipboard", {
-		configurable: true,
-		value: clipboard,
-	})
+	Object.defineProperty(navigator, "clipboard", { configurable: true, value: clipboard })
 	try {
 		await run()
 	} finally {
@@ -76,26 +80,27 @@ const withClipboard = async (clipboard: Partial<Pick<Clipboard, "readText">> | u
 	}
 }
 
-const mount = async (repo: Repository, storage: Storage = memoryStorage()) => {
+const show = async (repo: Repository, storage: Storage = memoryStorage()) => {
 	document.body.innerHTML = ""
-	const element = document.createElement("cc-restore-sheet") as CcRestoreSheet
-	element.repo = repo
-	// A private store, so no marker the sheet writes leaks into another test.
-	element.storage = storage
-	const restored: ({ file?: string } & V3Counts)[] = []
+	const restored: RestoredDetail[] = []
 	let closed = 0
-	element.addEventListener("restored", (event) =>
-		restored.push((event as CustomEvent<{ file?: string } & V3Counts>).detail),
-	)
-	element.addEventListener("close", () => {
-		closed += 1
+	mounted = mount(RestoreSheet, {
+		target: document.body,
+		props: {
+			repo,
+			// A private store, so no marker the sheet writes leaks into another test.
+			storage,
+			onrestored: (detail: RestoredDetail) => restored.push(detail),
+			onclose: () => {
+				closed += 1
+			},
+		},
 	})
-	document.body.append(element)
-	await element.updateComplete
-	const root = element.shadowRoot as ShadowRoot
+	await settle()
+	const root = document.body
 	return {
-		element,
 		root,
+		storage,
 		restored,
 		closed: () => closed,
 		action: (name: string) => root.querySelector<HTMLElement>(`[data-action="${name}"]`),
@@ -104,27 +109,32 @@ const mount = async (repo: Repository, storage: Storage = memoryStorage()) => {
 			if (!button) throw new Error(`no ${name} button`)
 			button.click()
 			await settle()
-			await element.updateComplete
 		},
 		text: () => root.textContent?.replace(/\s+/g, " ") ?? "",
 		step: () => root.querySelector("[data-step]")?.getAttribute("data-step"),
 	}
 }
 
-const oneCardCounts: V3Counts = {
-	cards: 1,
-	purchases: 1,
-	payments: 0,
-	limitGroups: 0,
-	lists: 0,
+const typeText = (root: HTMLElement, value: string) => {
+	const area = root.querySelector("textarea") as HTMLTextAreaElement
+	area.value = value
+	area.dispatchEvent(new Event("input", { bubbles: true }))
 }
+
+const chooseFile = async (root: HTMLElement, file: File) => {
+	const input = root.querySelector('[data-action="choose-file"]') as HTMLInputElement
+	input.files = [file] as unknown as FileList
+	input.dispatchEvent(new Event("change", { bubbles: true }))
+	await settle()
+}
+
+const oneCardCounts: V3Counts = { cards: 1, purchases: 1, payments: 0, limitGroups: 0, lists: 0 }
 
 test("sits in a sheet headed Restore a copy, opening on the clipboard, a file and paste by hand", async () => {
 	await withClipboard({ readText: async () => "" }, async () => {
-		const { root, step, action } = await mount(new InMemoryRepository())
-		const modal = root.querySelector("cc-modal")
-		expect(modal?.hasAttribute("sheet")).toBe(true)
-		expect(modal?.getAttribute("heading")).toBe("Restore a copy")
+		const { root, step, action } = await show(new InMemoryRepository())
+		expect(root.querySelector("dialog")?.open).toBe(true)
+		expect(root.querySelector("dialog h2")?.textContent?.trim()).toBe("Restore a copy")
 		expect(step()).toBe("start")
 		// The clipboard is the primary choice; the file and paste by hand are quiet.
 		expect(action("paste-clipboard")?.hasAttribute("data-variant")).toBe(false)
@@ -145,7 +155,7 @@ test("paste from clipboard restores into an empty browser in one click", async (
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
 		const { repo, storage } = await freshBrowser()
-		const sheet = await mount(repo, storage)
+		const sheet = await show(repo, storage)
 		await sheet.click("paste-clipboard")
 
 		expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"])
@@ -155,21 +165,13 @@ test("paste from clipboard restores into an empty browser in one click", async (
 
 test("into a new browser, the copy's renames and ticks replace the seeded starting places", async () => {
 	const source = new InMemoryRepository()
-	await source.saveLocation({
-		id: "krabi",
-		name: "Ao Nang",
-		takesPurchases: false,
-	})
-	await source.saveLocation({
-		id: "phichit",
-		name: "Phichit",
-		takesPurchases: true,
-	})
+	await source.saveLocation({ id: "krabi", name: "Ao Nang", takesPurchases: false })
+	await source.saveLocation({ id: "phichit", name: "Phichit", takesPurchases: true })
 	await source.saveCard({ ...sampleCard, location: "krabi" })
 	const text = JSON.stringify(await exportBackupV3(source, new Date()))
 	await withClipboard({ readText: async () => text }, async () => {
 		const { repo, storage } = await freshBrowser()
-		const sheet = await mount(repo, storage)
+		const sheet = await show(repo, storage)
 		await sheet.click("paste-clipboard")
 
 		expect(sheet.step()).not.toBe("question")
@@ -187,12 +189,8 @@ test("with no cards but a renamed location here, the sheet asks merge or replace
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
 		const { repo, storage } = await freshBrowser()
-		await repo.saveLocation({
-			id: "krabi",
-			name: "Ao Nang",
-			takesPurchases: true,
-		})
-		const sheet = await mount(repo, storage)
+		await repo.saveLocation({ id: "krabi", name: "Ao Nang", takesPurchases: true })
+		const sheet = await show(repo, storage)
 		await sheet.click("paste-clipboard")
 
 		expect(sheet.step()).toBe("question")
@@ -206,7 +204,7 @@ test("with data here, the clipboard asks first, counting here and in the copy", 
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
 		const repo = await populated()
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-clipboard")
 
 		expect(sheet.step()).toBe("question")
@@ -229,7 +227,7 @@ test("merge keeps what is here and adds the copy", async () => {
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
 		const repo = await populated()
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-clipboard")
 		await sheet.click("merge-import")
 
@@ -243,14 +241,14 @@ test("replace leaves only what the copy carries", async () => {
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
 		const repo = await populated()
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-clipboard")
 		await sheet.click("replace-import")
 
 		expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"])
 		expect(await repo.listLimitGroups()).toEqual([])
 		expect(sheet.restored).toEqual([oneCardCounts])
-		expect(sheet.element.storage.getItem("cc:migration:payments")).toBe("done")
+		expect(sheet.storage.getItem("cc:migration:payments")).toBe("done")
 	})
 })
 
@@ -258,7 +256,7 @@ test("cancel on the question writes nothing and closes the sheet", async () => {
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
 		const repo = await populated()
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-clipboard")
 		await sheet.click("cancel")
 
@@ -269,9 +267,8 @@ test("cancel on the question writes nothing and closes the sheet", async () => {
 })
 
 test("a clipboard the browser will not read falls back to the text area with a hint", async () => {
-	setLocale("en")
 	await withClipboard({ readText: () => Promise.reject(new Error("denied")) }, async () => {
-		const sheet = await mount(new InMemoryRepository())
+		const sheet = await show(new InMemoryRepository())
 		await sheet.click("paste-clipboard")
 
 		expect(sheet.step()).toBe("paste")
@@ -283,15 +280,12 @@ test("a clipboard the browser will not read falls back to the text area with a h
 
 test("without a readable clipboard it opens on the text area, offering no clipboard button", async () => {
 	await withClipboard(undefined, async () => {
-		const repo = new InMemoryRepository()
-		const sheet = await mount(repo)
+		const sheet = await show(new InMemoryRepository())
 
 		expect(sheet.step()).toBe("paste")
 		expect(sheet.action("paste-clipboard")).toBeNull()
 
-		const area = sheet.root.querySelector("textarea") as HTMLTextAreaElement
-		area.value = await oneCardBackup()
-		area.dispatchEvent(new Event("input"))
+		typeText(sheet.root, await oneCardBackup())
 		await sheet.click("import-text")
 
 		expect(sheet.restored).toEqual([oneCardCounts])
@@ -299,16 +293,13 @@ test("without a readable clipboard it opens on the text area, offering no clipbo
 })
 
 test("paste by hand shows the text area, and text that is not a copy shows why and writes nothing", async () => {
-	setLocale("en")
 	await withClipboard({ readText: async () => "" }, async () => {
 		const repo = await populated()
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-by-hand")
 		expect(sheet.step()).toBe("paste")
 
-		const area = sheet.root.querySelector("textarea") as HTMLTextAreaElement
-		area.value = "{ not json"
-		area.dispatchEvent(new Event("input"))
+		typeText(sheet.root, "{ not json")
 		await sheet.click("import-text")
 
 		expect(sheet.step()).toBe("paste")
@@ -320,10 +311,9 @@ test("paste by hand shows the text area, and text that is not a copy shows why a
 })
 
 test("a clipboard holding something else shows why and stays on the start", async () => {
-	setLocale("en")
 	await withClipboard({ readText: async () => "hello" }, async () => {
 		const repo = new InMemoryRepository()
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-clipboard")
 
 		expect(sheet.step()).toBe("start")
@@ -335,32 +325,18 @@ test("a clipboard holding something else shows why and stays on the start", asyn
 test("choosing a file restores it at once and names it", async () => {
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => "" }, async () => {
-		const sheet = await mount(new InMemoryRepository())
-		const input = sheet.action("choose-file") as HTMLInputElement
-		input.files = [
-			new File([text], "cc-tracking-2026-09-21.json", {
-				type: "application/json",
-			}),
-		] as unknown as FileList
-		input.dispatchEvent(new Event("change"))
-		await settle()
-		await settle()
+		const sheet = await show(new InMemoryRepository())
+		await chooseFile(sheet.root, new File([text], "cc-tracking-2026-09-21.json", { type: "application/json" }))
 
 		expect(sheet.restored).toEqual([{ file: "cc-tracking-2026-09-21.json", ...oneCardCounts }])
 	})
 })
 
 test("a file with data here asks about the file by name", async () => {
-	setLocale("en")
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => "" }, async () => {
-		const sheet = await mount(await populated())
-		const input = sheet.action("choose-file") as HTMLInputElement
-		input.files = [new File([text], "b.json", { type: "application/json" })] as unknown as FileList
-		input.dispatchEvent(new Event("change"))
-		await settle()
-		await settle()
-		await sheet.element.updateComplete
+		const sheet = await show(await populated())
+		await chooseFile(sheet.root, new File([text], "b.json", { type: "application/json" }))
 
 		expect(sheet.step()).toBe("question")
 		expect(sheet.text()).toContain("Restore b.json?")
@@ -368,15 +344,14 @@ test("a file with data here asks about the file by name", async () => {
 })
 
 test("a language switch on the question keeps the question", async () => {
-	setLocale("en")
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
-		const sheet = await mount(await populated())
+		const sheet = await show(await populated())
 		await sheet.click("paste-clipboard")
 		expect(sheet.text()).toContain("In the copy")
 
 		setLocale("th")
-		await sheet.element.updateComplete
+		await settle()
 		expect(sheet.step()).toBe("question")
 		expect(sheet.text()).not.toContain("In the copy")
 		expect(sheet.action("merge-import")).not.toBeNull()
@@ -398,7 +373,7 @@ test("after a restore, a card on a missing location gets its place back", async 
 	})
 	await withClipboard({ readText: async () => old }, async () => {
 		const repo = new InMemoryRepository()
-		const sheet = await mount(repo, storage)
+		const sheet = await show(repo, storage)
 		await sheet.click("paste-clipboard")
 
 		expect(sheet.restored).toHaveLength(1)
@@ -418,7 +393,7 @@ test("after a restore into a browser never seeded, the starting places are store
 	})
 	await withClipboard({ readText: async () => old }, async () => {
 		const repo = new InMemoryRepository()
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-clipboard")
 
 		expect(sheet.restored).toHaveLength(1)
@@ -426,12 +401,10 @@ test("after a restore into a browser never seeded, the starting places are store
 	})
 })
 
-test("Close re-emits close", async () => {
+test("Close asks the page to close it", async () => {
 	await withClipboard({ readText: async () => "" }, async () => {
-		const sheet = await mount(new InMemoryRepository())
-		const modal = sheet.root.querySelector("cc-modal")
-		modal?.shadowRoot?.querySelector<HTMLElement>('[data-action="close"]')?.click()
-		await settle()
+		const sheet = await show(new InMemoryRepository())
+		await sheet.click("close")
 		expect(sheet.closed()).toBe(1)
 	})
 })
@@ -446,28 +419,31 @@ test("after a restore, the sheet stays busy while it slides away, so nothing wri
 			writes += 1
 			await saveCard(card)
 		}
-		const sheet = await mount(repo, storage)
+		const sheet = await show(repo, storage)
 		// Hold the exit animation open: the sheet is leaving but not yet gone.
-		const modal = sheet.root.querySelector("cc-modal")
-		if (!modal) throw new Error("no modal")
-		modal.leave = () => {}
+		const dialog = sheet.root.querySelector("dialog")
+		if (!dialog) throw new Error("no dialog")
+		dialog.getAnimations = () => [{ finished: new Promise<void>(() => {}) } as unknown as Animation]
 		await sheet.click("paste-clipboard")
 
 		expect(writes).toBe(1)
+		expect(sheet.restored).toEqual([])
 		expect(sheet.action("paste-clipboard")?.hasAttribute("disabled")).toBe(true)
 		expect(sheet.action("paste-by-hand")?.hasAttribute("disabled")).toBe(true)
 		await sheet.click("paste-clipboard")
 		expect(writes).toBe(1)
+		// The held sheet ignores Close while it leaves.
+		await sheet.click("close")
+		expect(sheet.closed()).toBe(0)
 	})
 })
 
 test("a failure with no message of its own says so once, not twice", async () => {
-	setLocale("en")
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {
 		const repo = new InMemoryRepository()
 		repo.listLimitGroups = () => Promise.reject("not an error")
-		const sheet = await mount(repo)
+		const sheet = await show(repo)
 		await sheet.click("paste-clipboard")
 
 		const alert = sheet.root.querySelector('[role="alert"]')?.textContent ?? ""

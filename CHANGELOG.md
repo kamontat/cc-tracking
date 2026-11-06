@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations converted, and a steady tab bar
+## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations and Settings converted, and a steady tab bar
 
 ### BREAKING CHANGES
 
@@ -87,6 +87,11 @@ reasons don't show up in the code.
   silently.
 - Settings > Locations is the first page converted (DD-175): a static `SubHeader` and the
   `LocationsEditor` Svelte island replace its legacy Lit route. It looks and works as before.
+- Settings is converted too (DD-176): the `SettingsPanels` island draws its sections, with
+  Display (`DisplaySettings`, an island) and About (static, apart from the `BuiltTime` island)
+  passed in as slots. _Restore a copy_ and _Delete old purchases_ are Svelte sheets over a new
+  `Sheet` molecule. It looks and works as before; the purge sheet's age chips now line up with
+  the note under them.
 - `openRepository` (`#lib/ui/startup`) opens the store and runs the startup migrations for
   islands and legacy pages alike; `AppLayout`'s `titleKey` translates the page title with the
   build's mark; `ErrorBanner` and `SubHeader` are shared molecules for the pages still to come.
@@ -131,6 +136,9 @@ reasons don't show up in the code.
 - The conversion starts with the smallest page (DD-175), Settings > Locations, to set the
   pattern every later page follows; each conversion keeps the legacy markup, so it is checked
   against production screenshots rather than redesigned along the way.
+- Settings is one island for the sections that share state (a restore re-reads the Locations
+  summary and clears the reset message), with the static sections passed in as slots (DD-176).
+  Rejected: an island per section with a shared store, and keeping the Lit sheets inside it.
 
 ## 2026-11-04: The redesign ships, and no page is indexed
 

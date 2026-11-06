@@ -1,12 +1,22 @@
 ---
+import About from "#components/molecules/About.astro"
+import DisplaySettings from "#components/molecules/DisplaySettings.svelte"
+import SettingsPanels from "#components/organisms/SettingsPanels.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
+import { en } from "#lib/i18n/en"
 ---
 
-<AppLayout title="Settings" route="settings" tab="settings">
-	<script>
-		import { start } from "#legacy/routes/settings"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("settings", start)
-	</script>
+<!--
+	Settings (RD-19): a static title, and the sections as an island. Display and About need none
+	of the reader's data, so they go in as slots: the language and theme switches are an island of
+	their own, and About is static apart from the build time.
+-->
+<AppLayout title="Settings" titleKey="title.settings" tab="settings">
+	<Fragment slot="main">
+		<h1 data-i18n="settings.title">{en["settings.title"]}</h1>
+		<SettingsPanels client:load>
+			<DisplaySettings slot="display" client:load />
+			<About slot="about" />
+		</SettingsPanels>
+	</Fragment>
 </AppLayout>

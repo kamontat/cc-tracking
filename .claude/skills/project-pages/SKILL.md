@@ -123,6 +123,21 @@ import AppLayout from "#layouts/AppLayout.astro"
 - Keep the legacy markup and classes when converting, so `app.css` draws the page unchanged,
   and compare screenshots against production before handing over.
 
+When sections share state but static ones sit between them, as on Settings (DD-176), one
+island draws the shared sections and the page passes the rest in as named slots:
+
+```astro
+<SettingsPanels client:load>
+	<DisplaySettings slot="display" client:load />
+	<About slot="about" />
+</SettingsPanels>
+```
+
+The Svelte 5 island receives each slot as a snippet prop of the same name
+(`display?: Snippet`, rendered with `{@render display?.()}`); a test passes one with
+`createRawSnippet`. A slot arrives wrapped in `<astro-slot>`, so a parent rule like
+`.set > * + *` no longer reaches the slotted rows: they draw their own dividers.
+
 Converting a page means: add it to `CONVERTED` in `tests/pages/pages.test.ts`, lower the
 legacy route count in `tests/legacy/routes/spa-ready.test.ts`, port its route tests to the
 new components' tests, and delete the legacy route, its test and any legacy piece no page
