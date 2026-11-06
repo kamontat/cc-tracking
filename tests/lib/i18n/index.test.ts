@@ -116,3 +116,22 @@ test("leaves an unsupplied placeholder alone rather than printing undefined", ()
 test("the Thai card title differs from the Cards title", () => {
 	expect(th["title.card"]).not.toBe(th["title.cards"])
 })
+
+test("a listener given a signal is dropped once the signal aborts", () => {
+	const controller = new AbortController()
+	let calls = 0
+	subscribe(() => calls++, { signal: controller.signal })
+	setLocale("th")
+	controller.abort()
+	setLocale("en")
+	expect(calls).toBe(1)
+})
+
+test("a listener given an already-aborted signal never runs", () => {
+	const controller = new AbortController()
+	controller.abort()
+	let calls = 0
+	subscribe(() => calls++, { signal: controller.signal })
+	setLocale("th")
+	expect(calls).toBe(0)
+})
