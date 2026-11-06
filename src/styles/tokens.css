@@ -227,7 +227,7 @@
 /* The dark palette is written twice: once for a device in dark mode with no explicit pick,
    once for an explicit dark pick (`cc-display-settings` stamps `data-theme` on `<html>`). CSS
    cannot share one declaration block between a media query and a plain selector, so
-   src/routes/chrome.test.ts fails if the two copies drift apart. */
+   tests/legacy/routes/chrome.test.ts fails if the two copies drift apart. */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
 		color-scheme: dark;

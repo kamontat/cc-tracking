@@ -1,7 +1,7 @@
 import { expect, test } from "vitest"
 
+import { groupInk } from "#legacy/styles/shared"
 import { GROUP_COLORS } from "#lib/domain/group-color"
-import { groupInk } from "#styles/shared"
 
 const read = (path: string) => Bun.file(`src/styles/${path}`).text()
 

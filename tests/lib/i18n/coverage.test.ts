@@ -23,14 +23,17 @@ test("no component or route renders a hard-coded English sentence", async () => 
 	// `string` captured from the regex before this ever runs.
 	const values = new Set<string>(Object.values(en))
 	const offenders: string[] = []
+	let scanned = 0
 
-	for await (const path of new Bun.Glob("src/{components,routes}/**/*.ts").scan(".")) {
-		if (path.endsWith(".test.ts")) continue
+	// Every UI folder: the Lit legacy and the Astro tiers, layouts and pages that replace it.
+	for await (const path of new Bun.Glob("src/{legacy,components,layouts,pages}/**/*.{ts,astro,svelte}").scan(".")) {
+		scanned++
 		const source = await Bun.file(path).text()
 		for (const [, text] of source.matchAll(/>\s*([A-Z][A-Za-z]+(?: [a-z]+){2,}[.?!]?)\s*</g)) {
 			if (text && !values.has(text)) offenders.push(`${path}: ${text}`)
 		}
 	}
 
+	expect(scanned).toBeGreaterThan(0)
 	expect(offenders).toEqual([])
 })

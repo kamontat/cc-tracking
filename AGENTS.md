@@ -11,8 +11,8 @@ Default to using Bun instead of Node.js.
 - Static pages, no server code, built with [Astro](https://astro.build/) (from
   `kamontat/bun-astro-template`). Each page is `src/pages/<path>.astro`: the shared
   `BaseLayout` (`src/layouts/`) with a title, a `mainClass` and a `<script>` importing the
-  route module `src/routes/<path>.ts`, which renders Lit components (`lit`, decorators) from
-  `src/components/` in the browser. Domain rules live in `src/lib/domain/`, storage (browser
+  legacy route module `src/legacy/routes/<path>.ts`, which renders Lit components (`lit`,
+  decorators) from `src/legacy/components/` in the browser. Domain rules live in `src/lib/domain/`, storage (browser
   `localStorage`) in `src/lib/storage/`. `tests/pages/pages.test.ts` holds every page to
   that shape.
 - `BaseLayout` owns the `<head>` (noindex, the inline theme boot, the global CSS: reset,
@@ -27,9 +27,12 @@ Default to using Bun instead of Node.js.
   `src/components/{atoms,molecules,organisms}/`, static wherever possible, with a Svelte
   island (not a raw `<script>`) only for what the browser must render (PRD DD-172). Layouts
   are templates, pages are pages;
-  `tests/components/atomic.test.ts` enforces the tiers. The Lit components
-  (`src/components/*.ts`) and the route modules are legacy, converted one at a time.
-  `project-components`, `project-layouts` and `project-pages` hold the rules.
+  `tests/components/atomic.test.ts` enforces the tiers. Everything Lit — components, route
+  modules and the `lib`/`styles` files they need — is in `src/legacy/` (imported as
+  `#legacy/*`), converted one piece at a time and deleted as it goes; no new code goes there,
+  and nothing outside it imports it except a page's route script
+  (`tests/legacy/boundary.test.ts`). `project-components`, `project-layouts` and
+  `project-pages` hold the rules.
 - Tests are Vitest (`bun run test`, `vitest.config.ts`) in `tests/`, mirroring `src/`
   (`src/lib/gtm.ts` → `tests/lib/gtm.test.ts`), in a happy-dom environment with
   `tests/setup.ts`, so components render in tests. `bunfig.toml` runs every script on the
@@ -42,9 +45,9 @@ Default to using Bun instead of Node.js.
   lines. The preset (4.2.2 on) turns on Biome's HTML formatter, which is off by default
   and without which `format` skips `.astro` files entirely, and indents `<script>` bodies
   under their tags.
-- Import through the aliases in `package.json` `imports`: `#lib/*` and `#styles/*` map to a
-  `.ts` file; `#components/{atoms,molecules,organisms}/*` and `#layouts/*` take the `.astro`
-  extension; the bare `#components/*` maps to a Lit `.ts` file.
+- Import through the aliases in `package.json` `imports`: `#lib/*` and `#legacy/*` map to a
+  `.ts` file; `#components/*` and `#layouts/*` take the path as written, with its extension
+  (`#components/atoms/Chip.astro`).
 - Every piece of UI text is a catalog key with an entry in both `src/lib/i18n/en.ts` and
   `src/lib/i18n/th.ts`.
 - An address or query key change must update `ENDPOINTS.md` in the same change.
@@ -60,29 +63,31 @@ Default to using Bun instead of Node.js.
 
 ## Design system conventions
 
-- Values live once, in `src/styles/tokens.css`. Shadow CSS (`src/styles/shared.ts`, and any
-  component's local `css`) references them only through `var(--cc-*)`, never a literal hex,
-  `rem`/`px`, or colour. Only part of this is machine-checked
-  (`src/components/token-leftovers.test.ts`, `src/styles/tokens.test.ts`,
-  `src/styles/row-panel.test.ts`), so review the rest by eye.
+- Values live once, in `src/styles/tokens.css`. Component styles (an `.astro` `<style>`, and
+  in the legacy the shadow CSS in `src/legacy/styles/shared.ts` and each component's `css`)
+  reference them only through `var(--cc-*)`, never a literal hex, `rem`/`px`, or colour. Only
+  part of this is machine-checked (`tests/legacy/components/token-leftovers.test.ts`,
+  `tests/styles/tokens.test.ts`, `tests/styles/row-panel.test.ts`), so review the rest by eye.
 - Buttons take `data-variant="quiet"` or `data-variant="danger"`; no attribute means the primary
   variant. Don't invent a fourth.
 - Never key a CSS selector off translated text -- the interface ships in English and Thai. Use
   classes or locale-invariant attributes instead.
 - Every list is one of two kinds, and a list that is neither is a bug. A **row list** is one
-  panel with a line between the rows: `rowPanel` (`src/styles/shared.ts`) in a shadow component,
+  panel with a line between the rows: `rowPanel` (`src/legacy/styles/shared.ts`) in a shadow component,
   the light-DOM `.row-panel` (`app.css`) elsewhere. A **card list** is one standalone panel per
   item: `card-tile.ts`, the limit group panels (`.gpanel`), the purchase list's per-card sections
   (`lineCards`). Don't write a local copy of either look.
-- A row that opens in place is `actionRow` with `open` (`src/components/action-row.ts`); never
+- A row that opens in place is `actionRow` with `open` (`src/legacy/components/action-row.ts`); never
   build another. Its head is one `<button type="button">` with `aria-expanded` and `aria-controls`
   and nothing interactive inside; the buttons go in `action` as bare buttons (a page is an
   `a.btn`) and show in the details region, `hidden` when closed. One row is open per component:
   use `useOpenRow` (which also resets a `useTwoStep` swap when its row closes). The two-step
   _Delete_ and _Confirm_ are `useTwoStep` (`two-step.ts`). Namespace a row's id by kind and card
-  (`plan:<card>:<id>`, `list:<id>`), since a payment's id repeats across cards.
-- `#styles/*` maps to `.ts` only, so the route modules import `tokens.css` and `app.css` by
-  relative path, not through the alias.
+  (`plan:<card>:<id>`, `list:<id>`), since a payment's id repeats across cards. These
+  list and row rules name the legacy pieces; their Astro replacements carry the same looks
+  and behaviour.
+- The global sheets (`@kcstyles/reset.css`, `tokens.css`, `app.css`) are imported once, by
+  `BaseLayout`.
 
 ## Product requirements
 

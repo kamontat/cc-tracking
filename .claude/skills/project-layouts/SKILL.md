@@ -14,7 +14,7 @@ the `project-pages` skill.
 `src/layouts/BaseLayout.astro` is the only file that writes `<html>`, `<head>` and `<body>`.
 It:
 
-- ships `<html lang="en">`; `chrome.ts` sets the reader's locale once the bundle runs;
+- ships `<html lang="en">`; the legacy `chrome.ts` sets the reader's locale once the bundle runs;
 - sets `charset`, `viewport`, `<meta name="robots" content="noindex, nofollow">` (PRD
   DD-169) and the favicon;
 - runs the **theme boot** first in `<head>`: an `is:inline` script that applies the saved
@@ -47,7 +47,7 @@ Something every page needs in `<head>` goes here, not into pages.
 
 ## Where the shell is going
 
-Today `chrome.ts` draws the header, brand, build mark and tab bar into the empty
+Today the legacy `chrome.ts` (`src/legacy/lib/ui/`) draws the header, brand, build mark and tab bar into the empty
 `#site-header` and `#tabbar` at runtime. The planned step is an `AppLayout` that wraps
 `BaseLayout` and renders `SiteHeader` and `TabBar` organisms at build time, taking the
 current tab from the page. When it lands, the slots move out of `BaseLayout` into it, and

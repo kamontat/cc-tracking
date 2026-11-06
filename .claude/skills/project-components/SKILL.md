@@ -11,10 +11,14 @@ Layouts are the `project-layouts` skill; routes are the `project-pages` skill.
 
 cc-tracking is moving from Lit to Astro (PRD DD-170). Every **new** component is an `.astro`
 file in an atomic tier, or a `.svelte` island when the browser must render it (see below).
-The Lit components (`src/components/cc-*.ts`, `action-row.ts`,
-`card-tile.ts` and the rest) are legacy: don't add one, and don't grow one when the change
-can be the conversion instead. Converting one means writing its Astro replacement in a tier,
-moving its callers over, and deleting the Lit file and its test in the same change.
+Everything Lit is in `src/legacy/` (`#legacy/*`): the components
+(`src/legacy/components/cc-*.ts`, `action-row.ts`, `card-tile.ts` and the rest), the route
+modules, and the `lib`/`styles` files they need. Don't add to it, and don't grow a legacy
+file when the change can be the conversion instead. Converting a piece means writing its
+replacement in a tier, moving its callers over, and deleting the legacy file and its test
+(`tests/legacy/…`) in the same change. New code never imports `#legacy/*`;
+`tests/legacy/boundary.test.ts` fails if it does (a page's route script is the one
+exception, until the page is converted).
 
 ## Atomic tiers
 
@@ -38,10 +42,8 @@ importing a molecule included.
 - Moving a component between tiers moves its test (`tests/components/<tier>/`) and every
   import of it.
 - Import with the alias, tier and extension: `import Chip from "#components/atoms/Chip.astro"`.
-  (`#components/<tier>/*` maps the path as written; the bare `#components/*` still adds
-  `.ts` for the Lit legacy.)
-- `src/components/` may import from `src/lib/` and `src/styles/`, never from `src/layouts/`
-  or `src/pages/`.
+- `src/components/` may import from `src/lib/` and `src/styles/`, never from `src/layouts/`,
+  `src/pages/` or `src/legacy/`.
 
 ## Static first, Svelte for what the browser renders (PRD DD-172)
 

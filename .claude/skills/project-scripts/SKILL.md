@@ -36,17 +36,17 @@ A *program* (generates or migrates something) is a file under `scripts/`.
 |---|---|
 | Routes | `src/pages/` (`project-pages`) |
 | Layouts | `src/layouts/` (`project-layouts`) |
-| Components | `src/components/{atoms,molecules,organisms}/` (`project-components`); Lit legacy at `src/components/*.ts` |
-| Legacy route modules | `src/routes/<path>.ts`, one per page, rendering Lit into `#page` |
+| Components | `src/components/{atoms,molecules,organisms}/` (`project-components`) |
 | Domain, storage, i18n, UI helpers | `src/lib/{domain,storage,i18n,ui}/` |
-| Styles | `src/styles/` (`tokens.css`, `app.css`, `shared.ts` for Lit) |
+| Styles | `src/styles/` (`tokens.css`, `app.css`) |
+| Lit legacy, shrinking | `src/legacy/`, mirroring its old paths: `components/` (Lit), `routes/<path>.ts` (one per page, rendering Lit into `#page`), and the `lib/` and `styles/shared.ts` files that need Lit |
 | Static files | `public/` (`_headers`, `_redirects`, favicon) |
 | Tests | `tests/`, mirroring `src/` (`src/lib/gtm.ts` → `tests/lib/gtm.test.ts`); `scripts/` → `tests/scripts/` |
 
-Aliases (`package.json` `imports`): `#lib/*` and `#styles/*` add `.ts`;
-`#components/{atoms,molecules,organisms}/*` and `#layouts/*` map the path as written (so
-`.astro` imports carry `.astro`); the bare `#components/*` adds `.ts` for the Lit legacy. No
-TypeScript import carries `.ts`.
+Aliases (`package.json` `imports`): `#lib/*` and `#legacy/*` add `.ts`; `#components/*`
+and `#layouts/*` map the path as written, so `.astro` imports carry `.astro`. No TypeScript
+import carries `.ts`. Only the legacy and a page's route script use `#legacy/*`
+(`tests/legacy/boundary.test.ts`).
 
 ## Tests
 
