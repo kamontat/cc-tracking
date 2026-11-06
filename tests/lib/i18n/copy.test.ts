@@ -10,6 +10,22 @@ import { buildInfo, titleMark } from "#lib/ui/build-info"
  * Static `.astro` markup ships English with its catalog key (PRD DD-171); this pass swaps it
  * to the reader's locale in the browser.
  */
+/** The declarations app.css gives `selector`, comments dropped. */
+const appRule = async (selector: string) => {
+	const css = (await Bun.file("src/styles/app.css").text()).replace(/\/\*[\s\S]*?\*\//g, "")
+	return css.match(new RegExp(`${selector.replace(/[[\]()*.^$|?+]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1] ?? ""
+}
+
+test("a Thai page hides its static copy until the pass has run", async () => {
+	expect(await appRule('html[lang="th"]:not([data-i18n-ready]) [data-i18n]')).toContain("visibility: hidden")
+})
+
+// An island's built frame is English (PRD DD-171); Astro drops `ssr` once the island runs in
+// the reader's language, so a Thai reader never sees that English either.
+test("a Thai page hides an island's built frame until the island runs", async () => {
+	expect(await appRule('html[lang="th"] astro-island[ssr]')).toContain("visibility: hidden")
+})
+
 const markup = () => {
 	document.body.innerHTML = `
 		<h2 data-i18n="nav.cards">Cards</h2>

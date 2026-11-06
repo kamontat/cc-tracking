@@ -126,7 +126,10 @@ reader's locale is only known in the browser, so:
     has run: the boot script sets `<html lang>` before first paint and `startCopy` marks
     `<html data-i18n-ready>`.
 - **Copy inside a Svelte island** comes from `t()`, re-read when the locale changes
-  (`subscribe` from `#lib/i18n/index`), like the data it sits beside.
+  (`subscribe` from `#lib/i18n/index`), like the data it sits beside. Its built frame is English
+  (with no reader, `getLocale()` answers English at build time), and on a Thai page
+  `html[lang="th"] astro-island[ssr]` keeps it hidden until the island runs and Astro drops
+  `ssr`; `tests/lib/i18n/build-locale.test.ts` holds both.
 
 ## Styles and the design system
 

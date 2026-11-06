@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations and Settings converted, and a steady tab bar
+## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations and Settings converted, a steady tab bar, and faster page changes
 
 ### BREAKING CHANGES
 
@@ -97,6 +97,10 @@ reasons don't show up in the code.
   build's mark; `ErrorBanner` and `SubHeader` are shared molecules for the pages still to come.
 - `biome.json` allows files up to 2 MiB: `PRD_TH.md`'s padded tables had passed 1 MiB, and
   Biome had quietly stopped checking it.
+- Pages change in about 0.3 to 0.4 s instead of 2 to 3 s with two years of purchases
+  (DD-178). The hashed build files under `/_astro/` are cached for a year as `immutable`
+  rather than re-checked with the server one by one on every page, and links are prefetched
+  as they come into view.
 
 ### Bug fixes
 
@@ -107,9 +111,17 @@ reasons don't show up in the code.
   hold-still marker sat on their `#tabbar` slot, which has no height because both are
   `position: fixed`, so they faded out with the page; the bar and _+ New_ now carry it
   themselves.
+- An English reader no longer sees Thai inside Settings and Locations before they load. The
+  build wrote every island in Thai, the fallback for a reader with no language, while the
+  static copy beside it was English; the build now writes English, and a Thai page hides an
+  island (`astro-island[ssr]`) until it runs in Thai (DD-171).
 
 ### Decisions
 
+- Slow page changes were fixed at the cause rather than covered with a loading indicator
+  (DD-178): measured, the wait was network round trips, not work on the data. Pages keep a
+  revalidate-every-time cache, since an old cached page would ask for hashed files a new
+  deploy no longer has; with the scripts cached, no indicator is needed.
 - The components stay Lit for now (DD-170). All data lives in the browser, so nothing renders
   at build time; the move to Astro components comes page by page after this. A rewrite of
   every component in one go was rejected as weeks of work with no visible gain.
