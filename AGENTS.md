@@ -23,6 +23,9 @@ Default to using Bun instead of Node.js.
   `PUBLIC_*` build info (`scripts/build-env.ts`) before Vite inlines it.
 - Deployed as Cloudflare static assets: `wrangler.jsonc` serves `dist/`, and
   `public/_redirects` holds the redirects.
+- Navigation is client-side through Astro's `<ClientRouter />` (PRD DD-174): every address is
+  still a static page, but a page's script runs once, so it registers with `onPage` and
+  cleans up with `pageSignal()` (`#lib/ui/spa`; `project-pages` has the rules).
 - Components follow Atomic Design (bun-astro-template): new UI is `.astro` in
   `src/components/{atoms,molecules,organisms}/`, static wherever possible, with a Svelte
   island (not a raw `<script>`) only for what the browser must render (PRD DD-172). Layouts
