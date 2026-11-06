@@ -647,8 +647,8 @@ a:any-link:hover {
 
 /* The one row panel of the light DOM, the twin of `rowPanel`'s `.panel` in shared.ts: rows
    inside a rounded surface, a rule between each, no padding above the first or below the last.
-   Settings (`.set`) and a list's saved lines take it; a component's rows (cc-display-settings,
-   cc-about) draw their own rules in their shadow root (`setRows`). */
+   Settings (`.set`) and a list's saved lines take it; Display and About (`DisplaySettings`,
+   `About`) draw their own rules, since an island or slot sits between the panel and them. */
 .row-panel,
 .set,
 .saved-lines {

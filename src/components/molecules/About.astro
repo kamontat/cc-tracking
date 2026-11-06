@@ -1,0 +1,122 @@
+---
+import type { MessageKey } from "#lib/i18n/catalog"
+
+import BuiltTime from "#components/atoms/BuiltTime.svelte"
+import { en } from "#lib/i18n/en"
+import {
+	type BuildInfo,
+	buildInfo,
+	CHANGELOG_URL,
+	commitUrl,
+	type Environment,
+	parseBuiltAt,
+	REPO_URL,
+	shortCommit,
+	sourceLabel,
+} from "#lib/ui/build-info"
+
+/**
+ * Names the build the page is served from: where it runs, when it was built, and links to the
+ * source, the commit and the changelog. Each row shows only when it has something true to say
+ * for this environment. All of it is known when the page is built, so it is static, except the
+ * build time, which reads in the viewer's zone (`BuiltTime`). Drawn as settings rows; the page
+ * supplies the section's heading and its `.set` panel.
+ */
+interface Props {
+	/** The build the page came from; the stamps the build inlined, unless a test passes one. */
+	build?: BuildInfo
+}
+
+const { build = buildInfo() } = Astro.props
+const { environment, commit, builtAt } = build
+
+const ENV_KEYS: Record<Environment, MessageKey> = {
+	development: "about.env.development",
+	local: "about.env.local",
+	preview: "about.env.preview",
+	production: "about.env.production",
+}
+
+const showBuilt = environment !== "development" && parseBuiltAt(builtAt) !== null
+const showCommit = (environment === "preview" || environment === "production") && commit !== ""
+const envKey = ENV_KEYS[environment]
+---
+
+<dl>
+	<div class="set-row" data-row="environment">
+		<dt data-i18n="about.environment">{en["about.environment"]}</dt>
+		<dd><span data-i18n={envKey}>{en[envKey]}</span></dd>
+	</div>
+	{showBuilt && (
+		<div class="set-row" data-row="built">
+			<dt data-i18n="about.built">{en["about.built"]}</dt>
+			<dd>
+				<BuiltTime client:load builtAt={builtAt} />
+			</dd>
+		</div>
+	)}
+	<div class="set-row" data-row="source">
+		<dt data-i18n="about.source">{en["about.source"]}</dt>
+		<dd><a href={REPO_URL} target="_blank" rel="noreferrer">{sourceLabel(build)}</a></dd>
+	</div>
+	{showCommit && (
+		<div class="set-row" data-row="commit">
+			<dt data-i18n="about.commit">{en["about.commit"]}</dt>
+			<dd>
+				<a class="mono" href={commitUrl(commit)} target="_blank" rel="noreferrer">
+					{shortCommit(commit)}
+				</a>
+			</dd>
+		</div>
+	)}
+	{environment === "production" && (
+		<div class="set-row" data-row="changelog">
+			<dt data-i18n="about.changelog">{en["about.changelog"]}</dt>
+			<dd>
+				<a href={CHANGELOG_URL} target="_blank" rel="noreferrer" data-i18n="about.whatsNew">
+					{en["about.whatsNew"]}
+				</a>
+			</dd>
+		</div>
+	)}
+</dl>
+
+<style>
+	dl {
+		margin: 0;
+	}
+
+	/* The slot sits between the panel and these rows, so the rule between them is drawn here. */
+	.set-row + .set-row {
+		border-top: var(--cc-border-width) solid var(--cc-border);
+	}
+
+	/* A row of facts, not one that is itself an action. */
+	:global(.page) .set-row {
+		flex-wrap: wrap;
+		gap: var(--cc-space-1) var(--cc-space-3);
+		cursor: default;
+	}
+
+	dt {
+		color: var(--cc-text-muted);
+	}
+
+	dd {
+		margin: 0;
+	}
+
+	a {
+		font-weight: 600;
+		color: var(--cc-link);
+		text-decoration: none;
+	}
+
+	a:hover {
+		text-decoration: underline;
+	}
+
+	.mono {
+		font-family: var(--cc-font-mono);
+	}
+</style>

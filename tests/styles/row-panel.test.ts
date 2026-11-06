@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 
-import { rowPanel, setRows } from "#legacy/styles/shared"
+import { rowPanel } from "#legacy/styles/shared"
 
 const app = await Bun.file("src/styles/app.css").text()
 
@@ -47,7 +47,12 @@ test(".set and .saved-lines take the panel from .row-panel", () => {
 	expect(() => rule(app, ".saved-lines li + li")).toThrow()
 })
 
-test("setRows draws the same divider as rowPanel", () => {
-	const shadow = rule(rowPanel.cssText, ".panel > * + *").get("border-top")
-	expect(rule(setRows.cssText, ".set-row + .set-row").get("border-top")).toBe(shadow)
-})
+// An island or slot sits between the `.set` panel and these rows, so they draw the rule themselves.
+test.each(["src/components/molecules/DisplaySettings.svelte", "src/components/molecules/About.astro"])(
+	"%s draws the same divider as rowPanel",
+	async (path) => {
+		const shadow = rule(rowPanel.cssText, ".panel > * + *").get("border-top")
+		const style = (await Bun.file(path).text()).split("<style>")[1] ?? ""
+		expect(rule(style, ".set-row + .set-row").get("border-top")).toBe(shadow)
+	},
+)
