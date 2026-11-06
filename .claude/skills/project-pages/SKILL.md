@@ -93,32 +93,42 @@ own static page, so this changes nothing in `ENDPOINTS.md`. What follows from it
   page's own `popstate`.
 - A full reload (`location.assign`/`replace`) still works and is fine after a save.
 
-## The shape a page is moving to
+## A converted page (PRD DD-175)
 
-As components convert (see `project-components`), a page composes organisms inside its
-layout and keeps the page-level decisions — which sections, in which order, and the data
-that is the same for every reader (tab, title):
+A converted page composes components inside `AppLayout`'s `main` slot and keeps the
+page-level decisions — which sections, in which order, and what is the same for every reader
+(tab, title, width). Settings > Locations is the first:
 
 ```astro
 ---
-import NeedsYou from "#components/organisms/NeedsYou.astro"
-import ReadyToUse from "#components/organisms/ReadyToUse.astro"
+import SubHeader from "#components/molecules/SubHeader.astro"
+import LocationsEditor from "#components/organisms/LocationsEditor.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Home" tab="home">
-	<NeedsYou />
-	<ReadyToUse />
+<AppLayout title="Locations" titleKey="title.locations" tab="settings" mainClass="page--form">
+	<Fragment slot="main">
+		<SubHeader titleKey="settings.locations.title" back="/settings" />
+		<LocationsEditor client:load />
+	</Fragment>
 </AppLayout>
 ```
 
-The page itself stays static. An organism like `NeedsYou` is a static `.astro` frame (heading,
-empty state) holding a Svelte island for the rows built from the reader's data (PRD DD-172),
-so a page holds no `<script>` once its route module is gone.
+- `titleKey` replaces what the legacy `bootstrap` did for the title: the copy pass translates
+  `<title>` and adds the build's mark.
+- No `route` and no `<script>`: the page itself stays static. The static parts (the
+  sub-header) are `.astro`; what shows the reader's data is a Svelte island (PRD DD-172),
+  which opens the store itself with `openRepository()` (`#lib/ui/startup`, the same startup
+  and migrations the legacy pages run).
+- Keep the legacy markup and classes when converting, so `app.css` draws the page unchanged,
+  and compare screenshots against production before handing over.
 
-A page is never imported by anything and gets no directory under `src/components/`. When its
-last Lit piece is gone, its route module is deleted and the "runs the route module" check
-drops that page.
+Converting a page means: add it to `CONVERTED` in `tests/pages/pages.test.ts`, lower the
+legacy route count in `tests/legacy/routes/spa-ready.test.ts`, port its route tests to the
+new components' tests, and delete the legacy route, its test and any legacy piece no page
+uses any more.
+
+A page is never imported by anything and gets no directory under `src/components/`.
 
 ## Adding a page
 
