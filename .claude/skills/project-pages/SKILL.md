@@ -43,24 +43,29 @@ ids is the record-paths plan in `TODO.md`, an open design.
 
 ## The shape of a page today
 
-Every page is `BaseLayout` with the page's title and width, and one script running its
-legacy route module, which renders the Lit components into `#page`:
+Every page is `AppLayout` (the static shell, PRD DD-173) with the page's title, tab, width
+and *+ New* choice, and one script running its legacy route module, which renders the Lit
+components into `#page`:
 
 ```astro
 ---
-import BaseLayout from "#layouts/BaseLayout.astro"
+import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<BaseLayout title="Edit card" mainClass="page--form">
+<AppLayout title="Edit card" tab="cards" fab={false} mainClass="page--form">
 	<script>
 		import "#legacy/routes/card/edit"
 	</script>
-</BaseLayout>
+</AppLayout>
 ```
 
-`tests/pages/pages.test.ts` lists every page and the width each asks for, checks each runs
-the route module of the same name and renders the shell, and fails on a page that does not
-reach `BaseLayout`. Add a new page to both lists.
+`tab` is the place the page belongs to (the card pages under Cards, `/pay` under
+Transactions, Locations under Settings, the list pages under Home). `fab={false}` is for a
+page where the reader is mid-task.
+
+`tests/pages/pages.test.ts` lists every page with the width, tab and *+ New* each asks for,
+checks each runs the route module of the same name and renders the shell, and fails on a
+page that does not reach `BaseLayout`. Add a new page to every list.
 
 ## The shape a page is moving to
 
