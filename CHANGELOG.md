@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, and Lit fenced into src/legacy
+## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, Lit fenced into src/legacy, and static copy translated
 
 ### BREAKING CHANGES
 
@@ -36,8 +36,16 @@ reasons don't show up in the code.
 - `tests/legacy/boundary.test.ts` keeps the legacy fenced: no `lit` import outside
   `src/legacy/`, and nothing outside it imports `#legacy/*` except a page's route script, so
   each conversion can delete its legacy file without breaking new code.
+- Static `.astro` copy can be translated: an element written as
+  `<span data-i18n="nav.cards">Cards</span>` is put in the reader's language by `startCopy`
+  (`#lib/i18n/copy`), which every page runs and which follows a later change of language. A
+  key either catalog lacks fails `tests/lib/i18n/markup-keys.test.ts`.
 
 ### Improvements
+
+- The page's language is set on `<html lang>` before first paint, by the same rule as the app
+  (a saved pick, then the browser's languages, then Thai), and a Thai page keeps its
+  `data-i18n` copy hidden until it is translated, so a Thai reader never sees English first.
 
 - The thirteen copied HTML shells are one `BaseLayout` carrying the noindex meta, the theme
   boot, the global CSS and the shell slots; each page passes only its title and width, and
