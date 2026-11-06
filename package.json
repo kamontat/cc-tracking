@@ -4,6 +4,9 @@
 	"private": true,
 	"imports": {
 		"#lib/*": "./src/lib/*.ts",
+		"#components/atoms/*": "./src/components/atoms/*",
+		"#components/molecules/*": "./src/components/molecules/*",
+		"#components/organisms/*": "./src/components/organisms/*",
 		"#components/*": "./src/components/*.ts",
 		"#styles/*": "./src/styles/*.ts",
 		"#layouts/*": "./src/layouts/*"
