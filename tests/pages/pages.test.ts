@@ -75,9 +75,27 @@ test.each(layouts)("layout %s wraps BaseLayout", async (layout) => {
 	expect(await reachesBase(layout)).toBe(true)
 })
 
+/**
+ * Pages converted to Astro: they render into <main> through AppLayout's `main` slot, with
+ * their own title key, and have no legacy route. Every other page is still legacy.
+ */
+const CONVERTED = ["settings/locations.astro"]
+const legacy = pages.filter((page) => !CONVERTED.includes(page))
+
+test.each(CONVERTED)("%s is converted: no route script, its content in <main>, its title translated", async (page) => {
+	const text = await source(page)
+	expect(text).not.toContain("#legacy/")
+	expect(text).not.toContain("onPage(")
+	const doc = parseHtml(await render(page))
+	const main = doc.querySelector("main#page")
+	expect(main?.hasAttribute("data-route")).toBe(false)
+	expect(main?.children.length).toBeGreaterThan(0)
+	expect(doc.querySelector("title")?.getAttribute("data-i18n-title")).toMatch(/^title\./)
+})
+
 // Under the ClientRouter a page's script runs once, so it registers its route with onPage,
 // which starts it on every visit to a page whose <main> names the same route (PRD DD-174).
-test.each(pages)("%s starts the route module of the same name on every visit", async (page) => {
+test.each(legacy)("%s starts the route module of the same name on every visit", async (page) => {
 	const route = page.replace(/\.astro$/, "")
 	const text = await source(page)
 	expect(text).toContain(`import { start } from "#legacy/routes/${route}"\n`)
@@ -97,7 +115,7 @@ test.each(pages)("%s carries the shell the route module renders into", async (pa
 	expect(html).toContain('<meta name="robots" content="noindex, nofollow">')
 	for (const id of ["site-header", "page", "tabbar"]) expect(html).toContain(`id="${id}"`)
 	expect(html).toMatch(/<main class="page[ "]/)
-	expect(html).toMatch(/<title>.+ — cc-tracking<\/title>/)
+	expect(html).toMatch(/<title[^>]*>.+ — cc-tracking<\/title>/)
 })
 
 test("the theme boots before anything paints", async () => {
