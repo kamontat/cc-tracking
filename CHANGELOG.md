@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, Lit fenced into src/legacy, and static copy translated
+## 2026-11-06: Built with Astro from bun-astro-template, its conventions adopted, Lit fenced into src/legacy, static copy translated, and the shell made static
 
 ### BREAKING CHANGES
 
@@ -25,6 +25,12 @@ reasons don't show up in the code.
   `src/components/*.ts`), the route modules (was `src/routes/`), and `lib/ui/{chrome,shell,
   page,icons,card-label,list-share,sub-header}.ts`, `lib/i18n/controller.ts` and
   `styles/shared.ts`. Imports of the old paths, and the `#styles/*` alias, no longer resolve.
+- Pages render `AppLayout` (with a `tab` and, where needed, `fab={false}`), not `BaseLayout`,
+  which now writes only the document. The legacy `shell.ts` and `cc-fab-menu` are gone,
+  `chrome.ts` no longer draws the header or tab bar, and the `data-pay-page`,
+  `data-list-page` and `data-form-page` attributes are gone.
+- _+ New_'s menu no longer moves focus to its first action when it opens, and the arrow keys
+  no longer move between its actions; Tab reaches them next (DD-104).
 
 ### Features
 
@@ -40,13 +46,20 @@ reasons don't show up in the code.
   `<span data-i18n="nav.cards">Cards</span>` is put in the reader's language by `startCopy`
   (`#lib/i18n/copy`), which every page runs and which follows a later change of language. A
   key either catalog lacks fails `tests/lib/i18n/markup-keys.test.ts`.
+- A static element's `aria-label` is translated the same way, through `data-i18n-aria-label`.
+- Svelte islands (`@astrojs/svelte`, Svelte 5) render what the browser has to; the first is
+  the header's date (`HeaderDate`). `tests/container.ts` renders islands in tests, and happy-dom
+  tests mount them with Svelte's client build.
 
 ### Improvements
 
+- The header and the bottom tab bar are static Astro, built once rather than drawn by script
+  on every load (DD-173): `AppLayout` with the `SiteHeader` and `TabBar` organisms, the `Tabs`
+  and `FabMenu` molecules and the `Icon` atom. Each page names its own tab, and _+ New_ is an
+  HTML popover that opens and closes with no JavaScript.
 - The page's language is set on `<html lang>` before first paint, by the same rule as the app
   (a saved pick, then the browser's languages, then Thai), and a Thai page keeps its
   `data-i18n` copy hidden until it is translated, so a Thai reader never sees English first.
-
 - The thirteen copied HTML shells are one `BaseLayout` carrying the noindex meta, the theme
   boot, the global CSS and the shell slots; each page passes only its title and width, and
   imports its route module. `tests/pages/pages.test.ts` renders every page to keep that true.
@@ -81,6 +94,10 @@ reasons don't show up in the code.
 - The Lit code waits in one `src/legacy/` folder rather than being sorted into the atomic
   tiers as Lit files, so `src/components/` only ever holds converted Astro and the legacy
   folder only shrinks.
+- The shell is static Astro with two browser parts (DD-173): the date as a Svelte island, and
+  _+ New_'s menu as an HTML popover rather than an island, so a two-link menu ships no
+  JavaScript. A closed popover `div` hides itself, since the reset's `div { display: flex }`
+  outranks the browser's own hiding and left the closed menu catching taps.
 
 ## 2026-11-04: The redesign ships, and no page is indexed
 
