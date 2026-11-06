@@ -53,7 +53,7 @@ import BaseLayout from "#layouts/BaseLayout.astro"
 
 <BaseLayout title="Edit card" mainClass="page--form">
 	<script>
-		import "../../routes/card/edit"
+		import "#legacy/routes/card/edit"
 	</script>
 </BaseLayout>
 ```
