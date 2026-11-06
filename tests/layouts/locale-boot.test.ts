@@ -7,7 +7,7 @@ import { detectLocale } from "#lib/i18n/index"
  * Thai pages' static copy until the copy pass has run (PRD DD-171). It can't import
  * `detectLocale`, so it repeats the rule; these hold the two to the same answer.
  */
-const BOOT = /<script is:inline data-theme-boot>([\s\S]*?)<\/script>/
+const BOOT = /<script is:inline data-astro-rerun data-theme-boot>([\s\S]*?)<\/script>/
 
 const bootText = async () => {
 	const source = await Bun.file("src/layouts/BaseLayout.astro").text()

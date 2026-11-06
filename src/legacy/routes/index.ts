@@ -17,6 +17,7 @@ import { subscribe, t } from "#lib/i18n/index"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { confirmWaitingList, deleteDraftList, deletePlannedPayment, markPlanPaid } from "#lib/ui/row-actions"
+import { pageSignal } from "#lib/ui/spa"
 
 export type HomeOptions = {
 	/** The page's only clock reading: today's date. */
@@ -102,11 +103,12 @@ export function renderHomePage(
 		void state.load()
 	}, tickMs)
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }
 
-bootstrap("title.home", (repo) => {
-	const root = document.querySelector<HTMLElement>("#page")
-	if (root) renderHomePage(repo, root)
-})
+export const start = () =>
+	bootstrap("title.home", (repo) => {
+		const root = document.querySelector<HTMLElement>("#page")
+		if (root) renderHomePage(repo, root)
+	})

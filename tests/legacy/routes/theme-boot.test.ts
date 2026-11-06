@@ -7,7 +7,7 @@ import { expect, test } from "vitest"
  */
 const LAYOUT = "src/layouts/BaseLayout.astro"
 
-const BOOT = /<script is:inline data-theme-boot>([\s\S]*?)<\/script>/g
+const BOOT = /<script is:inline data-astro-rerun data-theme-boot>([\s\S]*?)<\/script>/g
 
 const bootsOf = (html: string) => [...html.matchAll(BOOT)].map((m) => m[1] ?? "")
 

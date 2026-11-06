@@ -2,8 +2,11 @@
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Settings" tab="settings">
+<AppLayout title="Settings" route="settings" tab="settings">
 	<script>
-		import "#legacy/routes/settings"
+		import { start } from "#legacy/routes/settings"
+		import { onPage } from "#lib/ui/spa"
+
+		onPage("settings", start)
 	</script>
 </AppLayout>

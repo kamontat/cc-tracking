@@ -69,6 +69,11 @@ values (ids, flags, labels), not repositories or functions. Put the logic in `sr
 plain functions taking their inputs (a repository, a clock), so it is tested without
 rendering; the island wires those functions to its state.
 
+Navigation swaps pages without a reload (PRD DD-174). An island on one page is torn down with
+it, so it cleans up in `onMount`'s return (as `HeaderDate` returns its `subscribe`'s
+remover). An island in the shell that should outlive navigation takes `transition:persist`
+(`<HeaderDate client:load transition:persist />`), so it isn't hydrated afresh on every page.
+
 Svelte 5 (runes) comes through `@astrojs/svelte` in `astro.config.ts`. The first island is
 `src/components/atoms/HeaderDate.svelte`: `$props()` with a `clock` for tests, `$state` for
 what it shows, `onMount` to read the browser and `subscribe` to follow the locale. A `.svelte`

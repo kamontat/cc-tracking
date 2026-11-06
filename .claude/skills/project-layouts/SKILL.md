@@ -22,7 +22,10 @@ It:
   `detectLocale`'s rule) before anything paints. `tests/legacy/routes/theme-boot.test.ts`
   holds the theme to `src/lib/ui/theme.ts`, `tests/layouts/locale-boot.test.ts` holds the
   language to `detectLocale`, and `tests/pages/pages.test.ts` checks the boot comes before
-  the first `<link>`;
+  the first `<link>`. It carries `data-astro-rerun`, so it runs again after every
+  ClientRouter swap, which takes the next page's `<html>` attributes;
+- renders Astro's `<ClientRouter />` (PRD DD-174): navigation swaps the next page in without
+  a reload (see `project-pages` for what a page must do about it);
 - writes `<title>{title} — cc-tracking</title>` from its required `title` prop;
   `bootstrap` replaces it with the translated title in the browser;
 - imports the global sheets in order: `@kcstyles/reset.css`, `../styles/tokens.css`,
@@ -30,7 +33,9 @@ It:
 - runs `loadGtm(import.meta.env.PUBLIC_GTM_ID, document)` from `#lib/gtm` in a processed
   `<script>`; without the id at build time the bundler drops it (see `project-deploy`);
 - runs `startCopy(document)` from `#lib/i18n/copy` in the same script, putting every page's
-  `data-i18n` copy in the reader's locale (PRD DD-171, see `project-components`);
+  `data-i18n` copy in the reader's locale (PRD DD-171, see `project-components`), and again
+  after every swap (`astro:after-swap`). That script runs once per visit to the site, not
+  once per page;
 - renders the page into `<body>` through its default `<slot />`.
 
 Something every page needs in `<head>` goes here, not into pages. The shell every page shows
@@ -42,14 +47,19 @@ is `AppLayout`'s.
 It lays out, in `<body>`:
 
 - the `SiteHeader` organism (`#site-header`): the brand, the build mark (static, from the
-  build stamps), today's date (the `HeaderDate` island) and the header tabs;
-- `<main id="page">` with `page` plus the page's `mainClass` (`page--narrow`, `page--form`,
-  `page--tx`, `card-page`), which the legacy route module renders into;
+  build stamps), today's date (the `HeaderDate` island, `transition:persist` so it survives
+  navigation) and the header tabs;
+- `<main id="page" data-route>` with `page` plus the page's `mainClass` (`page--narrow`,
+  `page--form`, `page--tx`, `card-page`), which the legacy route module renders into;
 - the `TabBar` organism (`#tabbar`): the bottom tabs and, unless `fab={false}`, the floating
   *+ New* menu (`FabMenu`);
 - the default `<slot />`, where a page puts its route script.
 
-Props: `title` (forwarded to `BaseLayout`), `tab` (the page's place, marked in both navs),
+The header and the tab bar carry `transition:animate="none"`: on a navigation the page's
+content cross-fades while the shell holds still.
+
+Props: `title` (forwarded to `BaseLayout`), `route` (the name the page's script registers
+with `onPage`, PRD DD-174), `tab` (the page's place, marked in both navs),
 `mainClass`, and `fab` (default `true`; `false` where the reader is mid-task: the list pages,
 `/pay`, the card form). `tests/layouts/AppLayout.test.ts` covers it, and
 `tests/pages/pages.test.ts` holds every page to its tab and *+ New*. The legacy `chrome.ts`

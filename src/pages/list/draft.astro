@@ -2,8 +2,11 @@
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Draft list" tab="home" fab={false} mainClass="page--narrow">
+<AppLayout title="Draft list" route="list/draft" tab="home" fab={false} mainClass="page--narrow">
 	<script>
-		import "#legacy/routes/list/draft"
+		import { start } from "#legacy/routes/list/draft"
+		import { onPage } from "#lib/ui/spa"
+
+		onPage("list/draft", start)
 	</script>
 </AppLayout>

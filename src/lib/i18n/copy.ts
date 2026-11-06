@@ -30,7 +30,9 @@ export function applyCopy(root: ParentNode): void {
 
 /**
  * Puts a page's static copy in the reader's locale, sets `<html lang>`, marks the page ready,
- * and does it again whenever the locale changes. Returns the function that stops following.
+ * and does it again whenever the locale changes and after every ClientRouter swap, which brings
+ * the next page's English markup and resets `<html>`'s attributes (PRD DD-174). Returns the
+ * function that stops following.
  */
 export function startCopy(doc: Document): () => void {
 	const apply = () => {
@@ -39,5 +41,10 @@ export function startCopy(doc: Document): () => void {
 		doc.documentElement.setAttribute(READY_ATTRIBUTE, "")
 	}
 	apply()
-	return subscribe(apply)
+	const unsubscribe = subscribe(apply)
+	doc.addEventListener("astro:after-swap", apply)
+	return () => {
+		unsubscribe()
+		doc.removeEventListener("astro:after-swap", apply)
+	}
 }

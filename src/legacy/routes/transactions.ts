@@ -29,6 +29,7 @@ import { getLocale, subscribe, t } from "#lib/i18n/index"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { confirmWaitingList, deleteDraftList, deletePlannedPayment, markPlanPaid } from "#lib/ui/row-actions"
+import { pageSignal } from "#lib/ui/spa"
 import { readTxView, type TxView, writeTxView } from "#lib/ui/tx-query"
 
 export type TransactionsOptions = {
@@ -53,7 +54,7 @@ export function renderTransactionsPage(
 	{
 		clock = () => new Date(),
 		search = location.search,
-		replace = (query) => history.replaceState(null, "", `${location.pathname}${query}`),
+		replace = (query) => history.replaceState(history.state, "", `${location.pathname}${query}`),
 	}: TransactionsOptions = {},
 ): void {
 	const now = today(clock())
@@ -290,11 +291,12 @@ export function renderTransactionsPage(
 		)
 	}
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }
 
-bootstrap("title.transactions", (repo) => {
-	const root = document.querySelector<HTMLElement>("#page")
-	if (root) renderTransactionsPage(repo, root)
-})
+export const start = () =>
+	bootstrap("title.transactions", (repo) => {
+		const root = document.querySelector<HTMLElement>("#page")
+		if (root) renderTransactionsPage(repo, root)
+	})

@@ -83,8 +83,10 @@ Pushing a change under `.github/workflows/` needs a token with the `workflow` sc
 `BaseLayout` calls `loadGtm(import.meta.env.PUBLIC_GTM_ID, document)`. Only
 `deploy-production.yml` sets the id (`GTM-5TMJN4ZX`, written in the workflow), so previews
 and local builds carry no GTM code at all — the bundler drops a call it can prove does
-nothing — and send no data. To confirm production has it, grep the page:
-`curl -s https://cc-tracking.kc.in.th/ | grep -o GTM-5TMJN4ZX`. To try it locally:
+nothing — and send no data. The loader is bundled into `BaseLayout`'s script file
+(`/_astro/BaseLayout.astro_astro_type_script_index_0_lang.*.js`), not inlined in the HTML, so
+to confirm production has it, read the page's script tags and grep that file for
+`GTM-5TMJN4ZX`. To try it locally:
 `PUBLIC_GTM_ID=GTM-5TMJN4ZX bun run build && bun run preview`.
 
 ## Debugging a failed deploy

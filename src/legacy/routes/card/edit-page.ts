@@ -10,6 +10,7 @@ import { subHeader } from "#legacy/lib/ui/sub-header"
 import { MessageError } from "#lib/i18n/error"
 import { subscribe, t } from "#lib/i18n/index"
 import { createPageState } from "#lib/ui/page-state"
+import { pageSignal } from "#lib/ui/spa"
 
 export type CardEditOptions = {
 	/** The address's query; `location.search` unless a test passes its own. */
@@ -129,6 +130,6 @@ export function renderCardEditPage(
 		)
 	}
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }

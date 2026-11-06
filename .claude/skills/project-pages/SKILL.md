@@ -43,29 +43,55 @@ ids is the record-paths plan in `TODO.md`, an open design.
 
 ## The shape of a page today
 
-Every page is `AppLayout` (the static shell, PRD DD-173) with the page's title, tab, width
-and *+ New* choice, and one script running its legacy route module, which renders the Lit
-components into `#page`:
+Every page is `AppLayout` (the static shell, PRD DD-173) with the page's title, route, tab,
+width and *+ New* choice, and one script registering its legacy route module, which renders
+the Lit components into `#page`:
 
 ```astro
 ---
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Edit card" tab="cards" fab={false} mainClass="page--form">
+<AppLayout title="Edit card" route="card/edit" tab="cards" fab={false} mainClass="page--form">
 	<script>
-		import "#legacy/routes/card/edit"
+		import { start } from "#legacy/routes/card/edit"
+		import { onPage } from "#lib/ui/spa"
+
+		onPage("card/edit", start)
 	</script>
 </AppLayout>
 ```
 
-`tab` is the place the page belongs to (the card pages under Cards, `/pay` under
-Transactions, Locations under Settings, the list pages under Home). `fab={false}` is for a
-page where the reader is mid-task.
+- `route` is the page's path under `src/pages/` without `.astro` (`index` for Home); the
+  script registers the same name.
+- `tab` is the place the page belongs to (the card pages under Cards, `/pay` under
+  Transactions, Locations under Settings, the list pages under Home).
+- `fab={false}` is for a page where the reader is mid-task.
 
 `tests/pages/pages.test.ts` lists every page with the width, tab and *+ New* each asks for,
-checks each runs the route module of the same name and renders the shell, and fails on a
-page that does not reach `BaseLayout`. Add a new page to every list.
+checks each registers the route of the same name and renders the shell, and fails on a page
+that does not reach `BaseLayout`. Add a new page to every list.
+
+## Navigation is client-side (PRD DD-174)
+
+`BaseLayout` turns on Astro's `<ClientRouter />`: a link, or Back and Forward, fetches the
+next page and swaps it in with a view transition, with no reload. Every address is still its
+own static page, so this changes nothing in `ENDPOINTS.md`. What follows from it:
+
+- **A page's script runs once**, the first time the page is visited. Never start a page's
+  work at the top of a module: register it with `onPage(route, start)` (`#lib/ui/spa`),
+  which runs `start` on every visit to a page whose `<main data-route>` names that route.
+  `tests/legacy/routes/spa-ready.test.ts` fails on a route that starts itself on import.
+- **Clean up on leaving.** Anything a page sets up beyond its own DOM — a language
+  listener (`subscribe(fn, { signal: pageSignal() })`), a `popstate` or document listener,
+  a timer — passes `pageSignal()` or stops itself, since the next page swaps in without a
+  reload. Components clean up when their elements disconnect.
+- **History.** Rewrite the address in place with `history.replaceState(history.state, …)`,
+  never `null`: the router keeps its own state on each page's entry and skips entries
+  without it, so Back would land on a page it doesn't show. An in-page entry pushed for an
+  open sheet (`pushState(null, …)`) carries no state on purpose, so its Back stays the
+  page's own `popstate`.
+- A full reload (`location.assign`/`replace`) still works and is fine after a save.
 
 ## The shape a page is moving to
 

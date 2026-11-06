@@ -10,6 +10,7 @@ import { createRepository } from "#lib/storage/index"
 import { migrateLocations } from "#lib/storage/migrate-locations"
 import { migratePayments } from "#lib/storage/migrate-payments"
 import { seedLocations } from "#lib/storage/seed-locations"
+import { pageSignal } from "#lib/ui/spa"
 
 /**
  * Creates the repository once per page, reconciles any stored location the closed set no
@@ -51,7 +52,7 @@ export async function bootstrap(
 			banner.retryLabel = t("common.reload")
 		}
 		paintBanner()
-		subscribe(paintBanner)
+		subscribe(paintBanner, { signal: pageSignal() })
 		banner.addEventListener("retry", () => location.reload())
 		const target = document.querySelector("main") ?? document.body
 		target.prepend(banner)
@@ -82,7 +83,7 @@ export async function bootstrap(
 			banner.retryLabel = t("common.reload")
 		}
 		paint()
-		subscribe(paint)
+		subscribe(paint, { signal: pageSignal() })
 		banner.addEventListener("retry", () => location.reload())
 		;(document.querySelector("main") ?? document.body).prepend(banner)
 		return

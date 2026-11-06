@@ -8,6 +8,11 @@ import BaseLayout from "#layouts/BaseLayout.astro"
 interface Props {
 	/** The tab title before the bundle runs; `bootstrap` sets the translated one after. */
 	title: string
+	/**
+	 * The route `onPage` starts on this page (`#lib/ui/spa`): the page's path under `src/pages/`
+	 * without `.astro` (`cards`, `card/edit`, `index`), the same name its script registers.
+	 */
+	route: string
 	/** The page's place, marked in the header tabs and the bottom bar. */
 	tab?: Tab
 	/** Classes on `<main>` after `page`, the width a page asks for (`page--narrow`, ...). */
@@ -16,13 +21,13 @@ interface Props {
 	fab?: boolean
 }
 
-const { title, tab, mainClass, fab = true } = Astro.props
+const { title, route, tab, mainClass, fab = true } = Astro.props
 ---
 
 <!-- The app shell every page shares: the header, the page's own main, and the tab bar. -->
 <BaseLayout title={title}>
 	<SiteHeader current={tab} />
-	<main class:list={["page", mainClass]} id="page"></main>
+	<main class:list={["page", mainClass]} id="page" data-route={route}></main>
 	<TabBar current={tab} fab={fab} />
 	<slot />
 </BaseLayout>

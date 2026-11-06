@@ -2,8 +2,11 @@
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Transactions" tab="transactions" mainClass="page--tx">
+<AppLayout title="Transactions" route="transactions" tab="transactions" mainClass="page--tx">
 	<script>
-		import "#legacy/routes/transactions"
+		import { start } from "#legacy/routes/transactions"
+		import { onPage } from "#lib/ui/spa"
+
+		onPage("transactions", start)
 	</script>
 </AppLayout>

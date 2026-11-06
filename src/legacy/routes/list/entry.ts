@@ -21,6 +21,7 @@ import { newListAddress } from "#lib/ui/list-address"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
 import { deleteDraftList, storedDraft } from "#lib/ui/row-actions"
+import { pageSignal } from "#lib/ui/spa"
 import { banner, elsewhereView, type ListPageOptions, listId, listPageDefaults } from "./common"
 
 /** A new list from the cards picked on Home (`/list/new`), or a stored draft (`/list/draft`). */
@@ -365,6 +366,6 @@ export function renderEntryPage(
 		render(body, root)
 	}
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }

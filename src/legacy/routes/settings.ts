@@ -18,6 +18,7 @@ import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
 import { countRecordsV3, exportBackupV3, type V3Counts } from "#lib/storage/transfer-v3"
 import { createPageState } from "#lib/ui/page-state"
 import { countsText } from "#lib/ui/record-counts"
+import { pageSignal } from "#lib/ui/spa"
 
 /** The name a backup file saved at `now` gets: the UTC date it was exported on. */
 const backupFilename = (now: Date): string => `cc-tracking-${now.toISOString().slice(0, 10)}.json`
@@ -306,11 +307,12 @@ export function renderSettingsPage(
 			root,
 		)
 
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }
 
-bootstrap("title.settings", (repo) => {
-	const root = document.querySelector<HTMLElement>("#page")
-	if (root) renderSettingsPage(repo, root)
-})
+export const start = () =>
+	bootstrap("title.settings", (repo) => {
+		const root = document.querySelector<HTMLElement>("#page")
+		if (root) renderSettingsPage(repo, root)
+	})

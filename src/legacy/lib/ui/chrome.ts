@@ -2,6 +2,7 @@ import type { MessageKey } from "#lib/i18n/catalog"
 
 import { getLocale, subscribe, t } from "#lib/i18n/index"
 import { type BuildInfo, buildInfo, titleMark } from "#lib/ui/build-info"
+import { pageSignal } from "#lib/ui/spa"
 import { applyTheme } from "#lib/ui/theme"
 
 export type ChromeOptions = {
@@ -24,5 +25,5 @@ export function applyChrome(titleKey: MessageKey, options: ChromeOptions = {}): 
 	}
 	applyTheme()
 	apply()
-	subscribe(apply)
+	subscribe(apply, { signal: pageSignal() })
 }

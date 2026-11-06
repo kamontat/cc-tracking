@@ -2,8 +2,11 @@
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Make a payment" tab="transactions" fab={false} mainClass="page--narrow">
+<AppLayout title="Make a payment" route="pay" tab="transactions" fab={false} mainClass="page--narrow">
 	<script>
-		import "#legacy/routes/pay"
+		import { start } from "#legacy/routes/pay"
+		import { onPage } from "#lib/ui/spa"
+
+		onPage("pay", start)
 	</script>
 </AppLayout>

@@ -17,6 +17,20 @@ test("Thai static copy stays hidden until the copy pass has run", async () => {
 	expect(css).toMatch(/html\[lang="th"\]:not\(\[data-i18n-ready\]\) \[data-i18n\]\s*\{\s*visibility:\s*hidden;?\s*\}/)
 })
 
+// Navigation between pages swaps the next page in without a reload (PRD DD-174).
+test("BaseLayout turns on Astro's ClientRouter", async () => {
+	const source = await Bun.file("src/layouts/BaseLayout.astro").text()
+	expect(source).toContain('import { ClientRouter } from "astro:transitions"\n')
+	expect(source).toMatch(/<ClientRouter\s*\/>/)
+})
+
+// A swap takes the next page's <html> attributes, so theme, tint and language would reset: the
+// boot runs again after every swap, before the new page shows.
+test("the boot runs again after every swap", async () => {
+	const source = await Bun.file("src/layouts/BaseLayout.astro").text()
+	expect(source).toMatch(/<script is:inline data-astro-rerun data-theme-boot>/)
+})
+
 test("BaseLayout carries the global styles, reset first", async () => {
 	const source = await Bun.file("src/layouts/BaseLayout.astro").text()
 	expect(source).toContain('import "@kcstyles/reset.css"\nimport "../styles/tokens.css"\nimport "../styles/app.css"\n')

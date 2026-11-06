@@ -30,6 +30,7 @@ import {
 } from "#lib/ui/cards-query"
 import { loadMoneyData, type MoneyData } from "#lib/ui/money-data"
 import { createPageState } from "#lib/ui/page-state"
+import { pageSignal } from "#lib/ui/spa"
 
 /** The address bar as the Cards page uses it, the same seam as `/pay`'s. */
 export type CardsAddressBar = PayAddressBar
@@ -37,8 +38,8 @@ export type CardsAddressBar = PayAddressBar
 const browserBar = (): CardsAddressBar => ({
 	search: () => location.search,
 	push: (url) => history.pushState(null, "", url),
-	replace: (url) => history.replaceState(null, "", url),
-	onPop: (listener) => addEventListener("popstate", listener),
+	replace: (url) => history.replaceState(history.state, "", url),
+	onPop: (listener) => addEventListener("popstate", listener, { signal: pageSignal() }),
 	length: () => history.length,
 	back: () => history.back(),
 })
@@ -364,11 +365,12 @@ export function renderCardsPage(repo: Repository, root: HTMLElement, options: Ca
 		if (busy) return
 		paint()
 	})
-	subscribe(() => paint())
+	subscribe(() => paint(), { signal: pageSignal() })
 	void state.load()
 }
 
-bootstrap("title.cards", (repo) => {
-	const root = document.querySelector<HTMLElement>("#page")
-	if (root) renderCardsPage(repo, root)
-})
+export const start = () =>
+	bootstrap("title.cards", (repo) => {
+		const root = document.querySelector<HTMLElement>("#page")
+		if (root) renderCardsPage(repo, root)
+	})

@@ -2,8 +2,11 @@
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Card" tab="cards" mainClass="card-page">
+<AppLayout title="Card" route="card" tab="cards" mainClass="card-page">
 	<script>
-		import "#legacy/routes/card"
+		import { start } from "#legacy/routes/card"
+		import { onPage } from "#lib/ui/spa"
+
+		onPage("card", start)
 	</script>
 </AppLayout>
