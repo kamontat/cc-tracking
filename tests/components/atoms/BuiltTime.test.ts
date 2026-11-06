@@ -4,6 +4,9 @@ import { afterEach, expect, test } from "vitest"
 import BuiltTime from "#components/atoms/BuiltTime.svelte"
 import { setLocale } from "#lib/i18n/index"
 
+// The time is read on the viewer's own clock, which the zone only names, so pin the clock's zone.
+process.env.TZ = "Asia/Bangkok"
+
 /** When the page was built, in the viewer's own zone and language, following a switch. */
 let mounted: ReturnType<typeof mount> | undefined
 
