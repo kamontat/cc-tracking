@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations and Settings converted, a steady tab bar, and faster page changes
+## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations, Settings and Cards converted, a steady tab bar, and faster page changes
 
 ### BREAKING CHANGES
 
@@ -92,6 +92,12 @@ reasons don't show up in the code.
   passed in as slots. _Restore a copy_ and _Delete old purchases_ are Svelte sheets over a new
   `Sheet` molecule. It looks and works as before; the purge sheet's age chips now line up with
   the note under them.
+- Cards is converted (DD-177): the `CardsPage` island draws the heading, the search, filter
+  and sort, the card tiles and the limit groups, with the filter and a group in Svelte sheets.
+  The view and an open group stay in the address as before (DD-102), through a new
+  `AddressBar` seam. `SvgIcon` is the icon atom for islands, and `ErrorBanner`'s Retry is
+  optional for a sheet. It looks and works as before; the filter sheet's chips line up with
+  their headings.
 - `openRepository` (`#lib/ui/startup`) opens the store and runs the startup migrations for
   islands and legacy pages alike; `AppLayout`'s `titleKey` translates the page title with the
   build's mark; `ErrorBanner` and `SubHeader` are shared molecules for the pages still to come.
@@ -151,6 +157,9 @@ reasons don't show up in the code.
 - Settings is one island for the sections that share state (a restore re-reads the Locations
   summary and clears the reset message), with the static sections passed in as slots (DD-176).
   Rejected: an island per section with a shared store, and keeping the Lit sheets inside it.
+- Cards is one island down to its heading, whose add button follows the switch (DD-177). The
+  card tile, the filter controls and the filter sheet's frame are ported, but their Lit
+  versions stay until Home, Pay and Transactions convert.
 
 ## 2026-11-04: The redesign ships, and no page is indexed
 

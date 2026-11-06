@@ -1,12 +1,11 @@
 ---
+import CardsPage from "#components/organisms/CardsPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Cards" route="cards" tab="cards">
-	<script>
-		import { start } from "#legacy/routes/cards"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("cards", start)
-	</script>
+<!-- Cards (prototype `vCards`): every card and limit group is the reader's data, so the page is an island. -->
+<AppLayout title="Cards" titleKey="title.cards" tab="cards">
+	<Fragment slot="main">
+		<CardsPage client:load />
+	</Fragment>
 </AppLayout>

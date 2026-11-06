@@ -1692,7 +1692,7 @@ a:any-link:hover {
 .cards-grid[data-show="cards"] > .cards-groups,
 .cards-grid[data-show="groups"] .cards-body,
 .cards-grid[data-show="groups"] .cards-head a.cards-add,
-.cards-groups cc-group-panels::part(head) {
+.cards-groups .group-panels .sec-head {
 	display: none;
 }
 
@@ -1720,7 +1720,7 @@ a:any-link:hover {
 		display: inline-flex;
 	}
 
-	.cards-groups cc-group-panels::part(head) {
+	.cards-groups .group-panels .sec-head {
 		display: flex;
 		min-block-size: var(--cc-page-head-height);
 	}

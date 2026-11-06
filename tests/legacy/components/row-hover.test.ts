@@ -6,7 +6,6 @@ import "#legacy/components/cc-owed-list"
 import "#legacy/components/cc-list-index"
 import "#legacy/components/cc-ready-picker"
 import "#legacy/components/cc-ready-panel"
-import "#legacy/components/cc-cards-list"
 import { rowPanel } from "#legacy/styles/shared"
 
 // DD-105: a row that is a link or a button shows a quiet ground on hover, never an underline,
@@ -97,7 +96,7 @@ test("every row list's hover reaches the panel's edges and keeps its badge", () 
 // DD-151, DD-166: a card tile (the payment picker's and Owed's too) hovers by deepening its edge in its own colour, never an underline, and
 // keeps its focus ring.
 test("card tiles hover without an underline and keep a focus ring", () => {
-	for (const tag of ["cc-ready-panel", "cc-ready-picker", "cc-cards-list", "cc-pay-picker", "cc-owed-list"]) {
+	for (const tag of ["cc-ready-panel", "cc-ready-picker", "cc-pay-picker", "cc-owed-list"]) {
 		const text = stylesOf(tag)
 		const rules = hoverRules(text).filter(({ selector }) => selector?.includes(".tile"))
 		expect(rules.length).toBeGreaterThan(0)

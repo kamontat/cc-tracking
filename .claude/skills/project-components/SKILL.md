@@ -91,7 +91,14 @@ converted, PRD DD-175):
 - `t()` isn't reactive: keep a `lang` `$state` updated from `subscribe`, and read it in a
   small helper (`tr(key)`, `why(problem)`) so every translated string follows a switch.
 - Shared pieces so far: `ErrorBanner.svelte` (molecule; light DOM, drawn by `.error-banner`
-  in app.css) and `SubHeader.astro` (molecule; the back link and the page's title).
+  in app.css; leave out `onretry` inside a sheet), `SubHeader.astro` (molecule; the back link
+  and the page's title), `Sheet.svelte` (molecule; the bottom sheet, `leave(then)` to slide
+  it away first), `SvgIcon.svelte` (atom; the `Icon` atom for islands, since a `.svelte` file
+  can't import an `.astro` one), and `#lib/ui/address-bar` (the `AddressBar` seam for a
+  page whose sheet lives in the address, DD-102).
+- An island's top-level code also runs at build time, where there is no `location`,
+  `history` or `localStorage`: read them in `onMount`, or through a seam that has a
+  build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.
 
 Before reaching for an island, check whether the platform already does it with no script:
 *+ New*'s menu is an HTML `popover` (`FabMenu`, PRD DD-173) — the browser opens and closes

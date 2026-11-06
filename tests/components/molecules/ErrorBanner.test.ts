@@ -12,7 +12,7 @@ afterEach(() => {
 	document.body.innerHTML = ""
 })
 
-const show = (props: { message: string; retryLabel: string; onretry: () => void }) => {
+const show = (props: { message: string; retryLabel?: string; onretry?: () => void }) => {
 	mounted = mount(ErrorBanner, { target: document.body, props })
 	flushSync()
 	return document.querySelector<HTMLElement>(".error-banner")
@@ -39,6 +39,12 @@ describe("ErrorBanner", () => {
 		show({ message: "Failed", retryLabel: "Reload", onretry })
 		document.querySelector<HTMLButtonElement>(".error-banner button")?.click()
 		expect(onretry).toHaveBeenCalledTimes(1)
+	})
+
+	test("without a retry it only says what went wrong", () => {
+		show({ message: "Failed" })
+		expect(document.querySelector(".error-banner p")?.textContent).toBe("Failed")
+		expect(document.querySelector(".error-banner button")).toBeNull()
 	})
 })
 
