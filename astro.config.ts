@@ -34,6 +34,9 @@ export default defineConfig({
 	// "file" writes about.astro to dist/about.html, served at /about by Cloudflare static assets.
 	build: { format: "file" },
 	trailingSlash: "never",
+	// Fetch a page as its link comes into view (the tab bar on every page), so a tap swaps in HTML
+	// already in hand. On a phone there is no hover to wait for.
+	prefetch: { prefetchAll: true, defaultStrategy: "viewport" },
 	// Svelte renders the islands: the parts of a page built from the reader's data (PRD DD-172).
 	integrations: [svelte()],
 })
