@@ -14,7 +14,7 @@ export const toggle = <T>(values: T[], value: T): T[] =>
 	values.includes(value) ? values.filter((v) => v !== value) : [...values, value]
 
 /** What a choice chip names, as its one `data-*` attribute: `data-card="A"`, `data-sort="new"`. */
-export type ChipKind = "type" | "card" | "range" | "sort" | "location" | "owner" | "ungrouped"
+export type ChipKind = "type" | "card" | "range" | "sort" | "location" | "owner"
 
 /** One choice in a sheet: a quiet pill that reads pressed while chosen. */
 export function sheetChip(
@@ -28,7 +28,6 @@ export function sheetChip(
 	return html`<button type="button" data-variant="quiet"
 		data-type=${on("type")} data-card=${on("card")} data-range=${on("range")}
 		data-sort=${on("sort")} data-location=${on("location")} data-owner=${on("owner")}
-		data-ungrouped=${kind === "ungrouped" ? "" : nothing}
 		aria-pressed=${pressed} @click=${onClick}>${label}</button>`
 }
 

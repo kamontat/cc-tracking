@@ -79,7 +79,7 @@ test.each(layouts)("layout %s wraps BaseLayout", async (layout) => {
  * Pages converted to Astro: they render into <main> through AppLayout's `main` slot, with
  * their own title key, and have no legacy route. Every other page is still legacy.
  */
-const CONVERTED = ["settings.astro", "settings/locations.astro"]
+const CONVERTED = ["cards.astro", "settings.astro", "settings/locations.astro"]
 const legacy = pages.filter((page) => !CONVERTED.includes(page))
 
 test.each(CONVERTED)("%s is converted: no route script, its content in <main>, its title translated", async (page) => {
