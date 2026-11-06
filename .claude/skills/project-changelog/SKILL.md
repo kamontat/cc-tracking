@@ -1,5 +1,5 @@
 ---
-name: changelog
+name: project-changelog
 description: Create or update CHANGELOG.md entries for this project in its fixed format (`## YYYY-MM-DD: <summary>` with BREAKING CHANGES, Features, Improvements, Bug fixes and Decisions sections). Use this whenever the user asks to add, write, update, fix up or reformat a changelog entry, record what shipped, summarise recent commits or a merged PR into the changelog, or says things like "log this change", "add release notes", or "update the changelog" -- even if they don't name the file.
 ---
 

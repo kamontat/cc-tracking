@@ -1,5 +1,5 @@
 ---
-name: landing-a-change
+name: project-landing
 description: Use when the user approves a cc-tracking change that has an open pull request and preview URL — "ok", "looks good", "ship it", "merge it", "LGTM" — or asks to merge, finish or clean up a worktree branch.
 ---
 
@@ -7,7 +7,7 @@ description: Use when the user approves a cc-tracking change that has an open pu
 
 ## Overview
 
-Landing turns an approved pull request (opened by `shipping-a-change`) into a `main`
+Landing turns an approved pull request (opened by `project-shipping`) into a `main`
 commit: changelog entry first, then merge, then cleanup, ending back on an up-to-date
 `main`. Only start after the user has approved this specific change.
 
@@ -18,7 +18,7 @@ commit: changelog entry first, then merge, then cleanup, ending back on an up-to
    conflicts, rerun `bun run check` and `bun run test`. Check that `PRD.md` and
    `PRD_TH.md` were updated together for any behaviour the change ships.
 2. **Changelog entry, on the PR branch.** Edit `CHANGELOG.md` following
-   `.claude/skills/changelog`, which owns the entry format (`## YYYY-MM-DD: <title>` with
+   the `project-changelog` skill, which owns the entry format (`## YYYY-MM-DD: <title>` with
    BREAKING CHANGES, Features, Improvements, Bug fixes and Decisions). The date is today's.
 3. **Commit and push.** `docs(changelog): <title>`, then `git push`. Wait for checks:
    `GH_TOKEN=$(gh auth token --user kamontat) gh pr checks <number> --watch`. A failing
@@ -38,12 +38,17 @@ commit: changelog entry first, then merge, then cleanup, ending back on an up-to
    ```sh
    git checkout main
    git pull --ff-only
+   bun install
    git worktree remove <worktree path>
    git branch -d <branch>
    git fetch --prune
    ```
    Use the worktree's real path and branch, as `git worktree list` shows them; don't assume
-   `.claude/worktrees/<name>` on `worktree-<name>`.
+   `.claude/worktrees/<name>` on `worktree-<name>`. `bun install` keeps the root's
+   `node_modules` in step with the merged lockfile: every worktree sits inside the root, so
+   Astro resolves the root `tsconfig.json`'s presets too, and a stale root install fails
+   every worktree's `astro build` and `vitest` with `Tsconfig not found
+   astro/tsconfigs/strictest`.
    `branch -d` (not `-D`) succeeds only when the branch is merged — if it refuses, the
    merge didn't reach `main`; find out why before forcing anything. Confirm with
    `git status` (on `main`, clean, up to date with `origin/main`) and `git worktree list`

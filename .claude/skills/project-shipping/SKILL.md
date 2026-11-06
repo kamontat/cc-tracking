@@ -1,5 +1,5 @@
 ---
-name: shipping-a-change
+name: project-shipping
 description: Use when starting any code, style, config, docs or CI change in cc-tracking — a feature, bugfix, refactor or tweak — before editing a file, including one-line fixes and changes the user calls small.
 ---
 
@@ -9,7 +9,7 @@ description: Use when starting any code, style, config, docs or CI change in cc-
 
 Every change in this repo lives in its own worktree and branch, is built test-first, and
 ends with a pull request whose preview deployment URL goes back to the user. Nothing is
-edited on `main`, and nothing is merged here — merging is `landing-a-change`, and only after
+edited on `main`, and nothing is merged here — merging is `project-landing`, and only after
 the user approves.
 
 **Violating the letter of these steps is violating their spirit.** The user set this
@@ -25,11 +25,13 @@ size or "just" are not permission. When they do skip one, say which in the PR te
    request's base may then be that branch rather than `main`. Then run `bun install` — a new
    worktree has no `node_modules`.
 2. **Test first.** REQUIRED SUB-SKILL: superpowers:test-driven-development. Write the
-   failing test next to the code (`*.test.ts`), run `bun run test <file>` and watch it fail for
-   the right reason.
-3. **Code.** Write the smallest code that passes. Follow the design system rules in
-   `AGENTS.md` (tokens only through `var(--cc-*)`, the three button variants, no selectors
-   on translated text). User-facing text lives in `src/lib/i18n/en.ts` and `th.ts`;
+   failing test under `tests/`, mirroring the `src/` path
+   (`src/components/atoms/Foo.astro` → `tests/components/atoms/Foo.test.ts`), run
+   `bun run test <file>` and watch it fail for the right reason.
+3. **Code.** Write the smallest code that passes. New UI is Astro: a component in its atomic
+   tier (`project-components`), a layout (`project-layouts`), a page (`project-pages`).
+   Follow the design system rules in `AGENTS.md` (tokens only through `var(--cc-*)`, the
+   three button variants, no selectors on translated text). User-facing text lives in `src/lib/i18n/en.ts` and `th.ts`;
    change both.
 4. **Docs.** When behaviour changes, update `PRD.md` and `PRD_TH.md` together, keeping
    their IDs in step. When an address or query key changes, update `ENDPOINTS.md`.
@@ -65,7 +67,7 @@ size or "just" are not permission. When they do skip one, say which in the PR te
    the `deploy` check passes; if it fails, say so with the failing line.
 
 Then stop and hand the user the PR link and preview URL. Wait for their approval before
-using `landing-a-change`.
+using `project-landing`.
 
 ## Red flags — stop
 
