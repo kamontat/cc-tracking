@@ -37,6 +37,9 @@ function readSaved(): string | null {
 }
 
 export function getLocale(): Locale {
+	// The build has no reader to ask, so it writes English, as the static copy does (PRD
+	// DD-171); an island's built frame then agrees with the copy around it until it runs.
+	if (typeof document === "undefined") return current ?? "en"
 	if (current === null) {
 		current = detectLocale(readSaved(), globalThis.navigator?.languages ?? [])
 	}
