@@ -84,6 +84,7 @@ const CONVERTED = [
 	"card/edit.astro",
 	"card/new.astro",
 	"cards.astro",
+	"index.astro",
 	"list/draft.astro",
 	"list/new.astro",
 	"list/reply.astro",

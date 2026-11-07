@@ -1,12 +1,11 @@
 ---
+import HomePage from "#components/organisms/HomePage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Home" route="index" tab="home">
-	<script>
-		import { start } from "#legacy/routes/index"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("index", start)
-	</script>
+<!-- Home: Needs you and Ready to use are the reader's data, so the page is an island. -->
+<AppLayout title="Home" titleKey="title.home" tab="home">
+	<Fragment slot="main">
+		<HomePage client:load />
+	</Fragment>
 </AppLayout>

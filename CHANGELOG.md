@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-07: The card page, the card form, Make a payment, Transactions and the list pages converted, and offline use
+## 2026-11-07: The card page, the card form, Make a payment, Transactions, the list pages and Home converted, and offline use
 
 ### Features
 
@@ -49,6 +49,13 @@ reasons don't show up in the code.
 - The list's table and image text (`list-share`) moved back to `#lib/ui`, and a list's `id` is
   read by `listId` in `#lib/ui/list-address`.
 
+- Home is converted (DD-184): the `HomePage` island draws _Needs you_ (the opening row, five then
+  _See more_) and _Ready to use_ (the four cards with the most room, then _See more_), side by
+  side from 900px. The writes, their errors, focus after a row goes and the clock past midnight
+  work as before. No page loads Lit any more.
+- app.css places Home's two panels by their wrappers (`.home-needs`, `.home-ready`), not by the
+  Lit element names.
+
 ### Bug fixes
 
 - On a phone in Thai, a long over-the-room warning no longer widens an amount card past the
@@ -70,6 +77,8 @@ reasons don't show up in the code.
   the same row; Home takes it as is (DD-182).
 - An opened row's sentence is a list of pieces (words, a strong amount, a red late phrase), not
   markup in a string, so a card name or note can never inject markup through `{@html}`.
+- Home converts last, because _Needs you_ needed the opening row built for Transactions; Lit
+  comes out in a change of its own, so this one is only Home (DD-184).
 - The four list pages convert together: new and draft share the entry steps, and all four share
   the view of a list that is elsewhere. Converting one page at a time would have kept the entry
   steps in both Lit and Svelte (DD-183).
