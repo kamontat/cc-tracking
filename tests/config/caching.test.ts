@@ -20,6 +20,12 @@ test("a page's HTML is not cached for long, so a deploy shows on the next page",
 	expect(rules.map((rule) => rule.split("\n")[0])).toEqual(["/_astro/*"])
 })
 
+test("the build writes the service worker that keeps the site working offline (PRD DD-181)", () => {
+	expect(config.integrations?.flat().map((integration) => (integration ? integration.name : undefined))).toContain(
+		"cc-service-worker",
+	)
+})
+
 test("links are fetched as they come into view, so a tap swaps a page already in hand", () => {
 	expect(config.prefetch).toEqual({ prefetchAll: true, defaultStrategy: "viewport" })
 })

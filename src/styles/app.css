@@ -560,7 +560,9 @@ a:any-link:hover {
  * `:disabled`. `controls` is the full contract -- check there before assuming a variant is
  * unsupported.
  */
-.page button {
+/* The update bar sits outside `.page`, so it names its primary button here. */
+.page button,
+.update-bar button {
 	align-self: flex-start;
 	padding: var(--cc-space-2) var(--cc-space-3);
 	font: inherit;
@@ -573,7 +575,8 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
-.page button:hover {
+.page button:hover,
+.update-bar button:hover {
 	background: var(--cc-accent-hover);
 }
 
@@ -1369,6 +1372,41 @@ a:any-link:hover {
 
 .error-banner > button {
 	align-self: flex-start;
+}
+
+/*
+ * A new version of the site has downloaded (DD-181): a slim panel floating under the header,
+ * the message and the primary _Reload_. Fixed, so it shows wherever the reader has scrolled, and
+ * clear of the floating + New at the bottom.
+ */
+.update-bar {
+	position: fixed;
+	z-index: 12;
+	top: calc(var(--cc-header-height) + var(--cc-space-2) + env(safe-area-inset-top, 0px));
+	inset-inline: var(--cc-space-4);
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-3);
+	max-inline-size: var(--cc-update-bar-width);
+	margin-inline: auto;
+	padding: var(--cc-space-2) var(--cc-space-2) var(--cc-space-2) var(--cc-panel-padding);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-left: var(--cc-space-1) solid var(--cc-accent);
+	border-radius: var(--cc-radius-md);
+	box-shadow: var(--cc-shadow-lg);
+}
+
+.update-bar > p {
+	flex: 1;
+	margin: 0;
+	font-size: var(--cc-text-sm);
+}
+
+.update-bar > button {
+	align-self: center;
+	white-space: nowrap;
 }
 
 /*

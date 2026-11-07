@@ -1,8 +1,10 @@
 import { execFileSync } from "node:child_process"
+import { fileURLToPath } from "node:url"
 import svelte from "@astrojs/svelte"
 import { defineConfig } from "astro/config"
 
 import { type BuildEnv, resolveBuildEnv } from "./scripts/build-env"
+import { writeServiceWorker } from "./scripts/service-worker"
 
 /** What `git <args>` prints, or `""` in a tree without git (a source tarball, a sandbox). */
 const git = (...args: string[]): string => {
@@ -38,5 +40,18 @@ export default defineConfig({
 	// already in hand. On a phone there is no hover to wait for.
 	prefetch: { prefetchAll: true, defaultStrategy: "viewport" },
 	// Svelte renders the islands: the parts of a page built from the reader's data (PRD DD-172).
-	integrations: [svelte()],
+	// The service worker goes in last, once every other file is in dist/: it caches them all, so
+	// the site works offline after one visit (PRD DD-181).
+	integrations: [
+		svelte(),
+		{
+			name: "cc-service-worker",
+			hooks: {
+				"astro:build:done": async ({ dir, logger }) => {
+					const { version, urls } = await writeServiceWorker(fileURLToPath(dir))
+					logger.info(`sw.js caches ${urls.length} files as version ${version}`)
+				},
+			},
+		},
+	],
 })
