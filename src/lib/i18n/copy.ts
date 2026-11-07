@@ -30,7 +30,7 @@ export function applyCopy(root: ParentNode): void {
 		const key = element.getAttribute(LABEL_ATTRIBUTE) ?? ""
 		if (isKey(key)) element.setAttribute("aria-label", t(key))
 	}
-	// The document title, with the build's mark after it, as the legacy applyChrome writes it.
+	// The document title, with the build's mark after it.
 	const title = root.querySelector<HTMLTitleElement>(`title[${TITLE_ATTRIBUTE}]`)
 	const titleKey = title?.getAttribute(TITLE_ATTRIBUTE) ?? ""
 	if (title && isKey(titleKey)) {

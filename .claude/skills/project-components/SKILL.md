@@ -1,24 +1,16 @@
 ---
 name: project-components
-description: Use when writing, editing or moving a component in src/components/ (atoms, molecules, organisms), converting a Lit component to Astro, deciding which atomic tier a component belongs to, deciding between static markup and a Svelte island, rendering the reader's data in the browser, styling with the cc tokens, writing a component test, or debugging a component that renders nothing, loses its styles or ships no JavaScript.
+description: Use when writing, editing or moving a component in src/components/ (atoms, molecules, organisms), deciding which atomic tier a component belongs to, deciding between static markup and a Svelte island, rendering the reader's data in the browser, styling with the cc tokens, writing a component test, or debugging a component that renders nothing, loses its styles or ships no JavaScript.
 ---
 
 # Components
 
 Layouts are the `project-layouts` skill; routes are the `project-pages` skill.
 
-## Astro now, Lit is legacy
+## Astro and Svelte
 
-cc-tracking is moving from Lit to Astro (PRD DD-170). Every **new** component is an `.astro`
-file in an atomic tier, or a `.svelte` island when the browser must render it (see below).
-Everything Lit is in `src/legacy/` (`#legacy/*`): the components
-(`src/legacy/components/cc-*.ts`, `action-row.ts`, `card-tile.ts` and the rest), the route
-modules, and the `lib`/`styles` files they need. Don't add to it, and don't grow a legacy
-file when the change can be the conversion instead. Converting a piece means writing its
-replacement in a tier, moving its callers over, and deleting the legacy file and its test
-(`tests/legacy/…`) in the same change. New code never imports `#legacy/*`;
-`tests/legacy/boundary.test.ts` fails if it does (a page's route script is the one
-exception, until the page is converted).
+Every component is an `.astro` file in an atomic tier, or a `.svelte` island when the browser
+must render it (see below). The Lit components these replaced were removed (PRD DD-185).
 
 ## Atomic tiers
 
@@ -43,7 +35,7 @@ importing a molecule included.
   import of it.
 - Import with the alias, tier and extension: `import Chip from "#components/atoms/Chip.astro"`.
 - `src/components/` may import from `src/lib/` and `src/styles/`, never from `src/layouts/`,
-  `src/pages/` or `src/legacy/`.
+  `src/pages/`.
 
 ## Static first, Svelte for what the browser renders (PRD DD-172)
 
@@ -79,17 +71,19 @@ Svelte 5 (runes) comes through `@astrojs/svelte` in `astro.config.ts`. The first
 what it shows, `onMount` to read the browser and `subscribe` to follow the locale. A `.svelte`
 component sits in an atomic tier like any other; the tier test reads its `<script>` imports.
 
-An island that reads the reader's data follows `LocationsEditor.svelte` (the first page
-converted, PRD DD-175):
+An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-175):
 
 - It opens the store in `onMount` through an `open` prop defaulting to `openRepository()`
   (`#lib/ui/startup`); tests pass `open: async () => ({ ok: true, repo })` over an
   `InMemoryRepository`. When the store won't open it shows `opened.message()` in an
   `ErrorBanner` with Reload, and nothing else.
-- `createPageState` (`#lib/ui/page-state`) runs its load and guarded writes, as in the legacy
-  pages; its `paint` bumps a `$state` counter that the banner's `$derived` message reads.
-- `t()` isn't reactive: keep a `lang` `$state` updated from `subscribe`, and read it in a
-  small helper (`tr(key)`, `why(problem)`) so every translated string follows a switch.
+- `createPageState` (`#lib/ui/page-state`) runs its load and guarded writes; its `paint` bumps a `$state` counter that the banner's `$derived` message reads.
+- `t()` isn't reactive: keep `let lang = $state(getLocale())`, updated from `subscribe` in
+  `onMount`, and read it in a small helper (`tr(key)`, `why(problem)`) so every translated
+  string follows a switch. Return `subscribe`'s remover (and clear any timer or listener)
+  from `onMount`.
+- Rune state shared between components lives in a `*.svelte.ts` module under `src/lib/ui/`,
+  imported without the `.ts` (`#lib/ui/open-row.svelte`, `#lib/ui/two-step.svelte`).
 - Shared pieces so far: `ErrorBanner.svelte` (molecule; light DOM, drawn by `.error-banner`
   in app.css; leave out `onretry` inside a sheet), `SubHeader.astro` (molecule; the back link
   and the page's title), `Sheet.svelte` (molecule; the bottom sheet, `leave(then)` to slide
@@ -98,7 +92,8 @@ converted, PRD DD-175):
   page whose sheet lives in the address, DD-102), `SubHeaderBar.svelte` (molecule; the
   sub-header with a title from the reader's data, a `detail` line and an `actions` snippet;
   the static `SubHeader.astro` takes a catalog key instead), and `#lib/ui/card-label` (a
-  card's name in its text forms; the Lit pages' `card-label` re-exports it, so never copy it).
+  card's name in its text forms; never copy it), and `ActionRow.svelte` (molecule; the row that
+  opens in place, with `TwoStepButtons` for a two-step _Delete_ or _Confirm_).
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.
@@ -136,7 +131,7 @@ reader's locale is only known in the browser, so:
 
 ## Styles and the design system
 
-`AGENTS.md`'s design-system rules hold for Astro exactly as for Lit:
+`AGENTS.md`'s design-system rules hold for every `.astro` and `.svelte` component:
 
 - Every value comes from `src/styles/tokens.css`, read only through `var(--cc-*)`: no
   literal hex, `rem`/`px` or colour in a component `<style>`.

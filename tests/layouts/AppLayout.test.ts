@@ -32,8 +32,7 @@ test("shows + New unless the page says it is mid-task", async () => {
 	expect((await render({ tab: "home", fab: false })).querySelector(".fab-menu")).toBeNull()
 })
 
-// A converted page renders into <main> itself; a legacy page's route module does it in the
-// browser instead.
+// A page renders into <main> itself, through the `main` slot.
 test("puts the page's main content inside <main>", async () => {
 	const doc = parseHtml(
 		await (await createContainer()).renderToString(AppLayout, {

@@ -19,15 +19,16 @@ It:
   DD-169) and the favicon;
 - runs the **boot** first in `<head>`: an `is:inline` script that applies the saved theme
   (`cc:theme`), the build tint (`data-env`) and the reader's language (`<html lang>`, by
-  `detectLocale`'s rule) before anything paints. `tests/legacy/routes/theme-boot.test.ts`
+  `detectLocale`'s rule) before anything paints. `tests/layouts/theme-boot.test.ts`
   holds the theme to `src/lib/ui/theme.ts`, `tests/layouts/locale-boot.test.ts` holds the
   language to `detectLocale`, and `tests/pages/pages.test.ts` checks the boot comes before
   the first `<link>`. It carries `data-astro-rerun`, so it runs again after every
   ClientRouter swap, which takes the next page's `<html>` attributes;
 - renders Astro's `<ClientRouter />` (PRD DD-174): navigation swaps the next page in without
   a reload (see `project-pages` for what a page must do about it);
-- writes `<title>{title} — cc-tracking</title>` from its required `title` prop;
-  `bootstrap` replaces it with the translated title in the browser;
+- writes `<title>{title} — cc-tracking</title>` from its required `title` prop, with
+  `data-i18n-title` from the optional `titleKey`, which the copy pass replaces with the
+  translated title (and the build's mark) in the browser;
 - imports the global sheets in order: `@kcstyles/reset.css`, `../styles/tokens.css`,
   `../styles/app.css`;
 - runs `loadGtm(import.meta.env.PUBLIC_GTM_ID, document)` from `#lib/gtm` in a processed
@@ -49,23 +50,21 @@ It lays out, in `<body>`:
 - the `SiteHeader` organism (`#site-header`): the brand, the build mark (static, from the
   build stamps), today's date (the `HeaderDate` island, `transition:persist` so it survives
   navigation) and the header tabs;
-- `<main id="page" data-route>` with `page` plus the page's `mainClass` (`page--narrow`,
-  `page--form`, `page--tx`, `card-page`), which the legacy route module renders into;
+- `<main id="page">` with `page` plus the page's `mainClass` (`page--narrow`,
+  `page--form`, `page--tx`, `card-page`), holding the page's `main` slot (its island);
 - the `TabBar` organism (`#tabbar`): the bottom tabs and, unless `fab={false}`, the floating
   *+ New* menu (`FabMenu`);
-- the default `<slot />`, where a page puts its route script.
+- the default `<slot />`, after the tab bar, for anything a page needs outside `<main>`.
 
 The header, the bottom bar's `nav` (`Tabs`) and `FabMenu` carry `transition:animate="none"`: on
 a navigation the page's content cross-fades while the shell holds still. Put it on the box that
 paints, not on a wrapper: `#tabbar` holds only `position: fixed` children, so it has no height,
 and naming it let the bar and *+ New* fade out with the page.
 
-Props: `title` (forwarded to `BaseLayout`), `route` (the name the page's script registers
-with `onPage`, PRD DD-174), `tab` (the page's place, marked in both navs),
-`mainClass`, and `fab` (default `true`; `false` where the reader is mid-task: the list pages,
+Props: `title` and `titleKey` (forwarded to `BaseLayout`), `tab` (the page's place, marked
+in both navs), `mainClass`, and `fab` (default `true`; `false` where the reader is mid-task: the list pages,
 `/pay`, the card form). `tests/layouts/AppLayout.test.ts` covers it, and
-`tests/pages/pages.test.ts` holds every page to its tab and *+ New*. The legacy `chrome.ts`
-keeps only the document title, the theme and the build tint.
+`tests/pages/pages.test.ts` holds every page to its tab and *+ New*.
 
 ## Rules
 
@@ -77,7 +76,7 @@ keeps only the document title, the theme and the build tint.
   `tests/pages/pages.test.ts` fails on a layout or page that does not reach `BaseLayout`.
 - A layout arranges; it holds no page copy. Text, links and data come from the page through
   props or slots.
-- Use named slots for regions a page fills; the default slot is the main content.
+- Use named slots for regions a page fills, as `AppLayout`'s `main`.
 
 ## Testing
 
@@ -88,7 +87,7 @@ the result with `parseHtml`:
 ```ts
 const html = await (await createContainer()).renderToString(AppLayout, {
 	props: { title: "Cards", tab: "cards", mainClass: "page--narrow" },
-	slots: { default: "<p>Body</p>" },
+	slots: { main: "<p>Body</p>" },
 })
 expect(parseHtml(html).querySelector("main#page")?.className).toBe("page page--narrow")
 ```

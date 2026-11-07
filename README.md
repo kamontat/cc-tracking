@@ -17,10 +17,10 @@ bun run format     # biome fixes and formatting
 
 The site is built with [Astro](https://astro.build/) from
 [bun-astro-template](https://github.com/kamontat/bun-astro-template): each page is
-`src/pages/<path>.astro` over `src/layouts/BaseLayout.astro`. New UI is Astro
-components in `src/components/{atoms,molecules,organisms}/`; the Lit code still
-being converted lives in `src/legacy/`, where each page's
-`src/legacy/routes/<path>.ts` module renders it in the browser.
+`src/pages/<path>.astro`: `src/layouts/AppLayout.astro` (over
+`src/layouts/BaseLayout.astro`) holding one Svelte island, which renders the
+reader's data in the browser. Components are Astro and Svelte in
+`src/components/{atoms,molecules,organisms}/`.
 
 `astro.config.ts` stamps `PUBLIC_COMMIT_SHA`, `PUBLIC_BUILT_AT`,
 `PUBLIC_ENVIRONMENT`, `PUBLIC_BRANCH` and `PUBLIC_PR_NUMBER` into the environment
