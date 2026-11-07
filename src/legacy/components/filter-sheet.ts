@@ -4,7 +4,7 @@ import { t } from "#lib/i18n/index"
 import "#legacy/components/cc-modal"
 
 /**
- * The parts a filter sheet shares (`cc-tx-filter`, `cc-ready-filter`): the choice chips, and the
+ * The parts a filter sheet shares (`cc-ready-filter`): the choice chips, and the
  * sheet around them with its *Clear all* and *Show N* footer. Plain template functions, drawn
  * inside each element's own shadow root, where `filterSheet` from `#legacy/styles/shared` styles them.
  */

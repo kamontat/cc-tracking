@@ -20,6 +20,9 @@ export const DEFAULT_TX_VIEW: TxView = {
 	status: [],
 }
 
+/** How many ledger rows show at first, and how many more each *Show more* adds. */
+export const LEDGER_PAGE = 50
+
 const VIEWS = ["ledger", "lists", "owed"] as const
 const SORTS = ["new", "old", "big", "small"] as const
 const OWED_SORTS = ["urgency", "card", "due", "left"] as const

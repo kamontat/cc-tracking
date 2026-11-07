@@ -1,8 +1,5 @@
 import { expect, test } from "vitest"
 import "#legacy/components/cc-needs-you"
-import "#legacy/components/cc-tx-ledger"
-import "#legacy/components/cc-owed-list"
-import "#legacy/components/cc-list-index"
 import "#legacy/components/cc-ready-picker"
 import "#legacy/components/cc-ready-panel"
 import { rowPanel } from "#legacy/styles/shared"
@@ -35,7 +32,7 @@ test("the row panel's rows hover with a ground and keep a focus ring", () => {
 })
 
 test("Needs you and the ledger never underline a row on hover", () => {
-	for (const tag of ["cc-needs-you", "cc-tx-ledger"]) {
+	for (const tag of ["cc-needs-you"]) {
 		const rows = hoverRules(stylesOf(tag)).filter(
 			({ selector }) =>
 				selector?.includes(".item") ||
@@ -54,7 +51,7 @@ test("Needs you and the ledger never underline a row on hover", () => {
 // An opening row's head is a `button.a-hit` (Needs you, the ledger): it hovers with the ground
 // out to the panel's edges, never an underline, and keeps its focus ring.
 test("an opening row's button head hovers with a ground and keeps a focus ring", () => {
-	for (const tag of ["cc-needs-you", "cc-tx-ledger"]) {
+	for (const tag of ["cc-needs-you"]) {
 		const text = stylesOf(tag)
 		const heads = hoverRules(text).filter(({ selector }) => selector?.includes("button") && selector.includes(".a-hit"))
 		expect(heads.length).toBeGreaterThan(0)
@@ -78,7 +75,7 @@ const BLEED =
 	/calc\(var\(--cc-space-4\) \* -1\) 0 0 var\(--cc-surface-sunken\),\s*var\(--cc-space-4\) 0 0 var\(--cc-surface-sunken\)/
 
 test("every row list's hover reaches the panel's edges and keeps its badge", () => {
-	for (const tag of ["cc-needs-you", "cc-tx-ledger", "cc-list-index"]) {
+	for (const tag of ["cc-needs-you"]) {
 		const text = stylesOf(tag)
 		const grounds = hoverRules(text).filter(({ body }) => body.includes("background: var(--cc-surface-sunken)"))
 		expect(grounds.length).toBeGreaterThan(0)
@@ -95,7 +92,7 @@ test("every row list's hover reaches the panel's edges and keeps its badge", () 
 // DD-151, DD-166: a card tile (the payment picker's and Owed's too) hovers by deepening its edge in its own colour, never an underline, and
 // keeps its focus ring.
 test("card tiles hover without an underline and keep a focus ring", () => {
-	for (const tag of ["cc-ready-panel", "cc-ready-picker", "cc-owed-list"]) {
+	for (const tag of ["cc-ready-panel", "cc-ready-picker"]) {
 		const text = stylesOf(tag)
 		const rules = hoverRules(text).filter(({ selector }) => selector?.includes(".tile"))
 		expect(rules.length).toBeGreaterThan(0)
@@ -105,20 +102,6 @@ test("card tiles hover without an underline and keep a focus ring", () => {
 		}
 		expect(text).toMatch(/\.tile:focus-visible\s*\{[^}]*box-shadow: var\(--cc-focus-ring\)/)
 	}
-})
-
-test("the ledger's rows are the opening row: the foot wraps by its own width, with no row of their own", () => {
-	const text = stylesOf("cc-tx-ledger")
-	// The row is one column at every width: the head button is its only child.
-	expect(text).toMatch(/\.a-row\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/)
-	expect(text).not.toContain(".a-right")
-	expect(text).toMatch(/\.a-foot\s*\{[^}]*flex-wrap: wrap;/)
-	expect(text).not.toMatch(/\.crow\[data-kind\]/)
-	expect(text).not.toContain(".pay-right")
-	// The details line up with the text past the card chip: the chip's width and the gap.
-	expect(text).toMatch(
-		/\.a-wrap\s*\{[^}]*--a-lead-inline: calc\(var\(--cc-space-5\) \+ var\(--cc-space-3\) \+ var\(--cc-space-3\)\)/,
-	)
 })
 
 // Every row kind keeps its dividing line: the divider rule comes after `.crow`'s `border: 0`

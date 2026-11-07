@@ -87,6 +87,7 @@ const CONVERTED = [
 	"pay.astro",
 	"settings.astro",
 	"settings/locations.astro",
+	"transactions.astro",
 ]
 const legacy = pages.filter((page) => !CONVERTED.includes(page))
 
