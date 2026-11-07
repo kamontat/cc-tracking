@@ -493,11 +493,11 @@ a:any-link:hover {
 		grid-template-areas: "ready needs";
 	}
 
-	.home-grid > cc-needs-you {
+	.home-grid > .home-needs {
 		grid-area: needs;
 	}
 
-	.home-grid > cc-ready-panel {
+	.home-grid > .home-ready {
 		grid-area: ready;
 	}
 }
