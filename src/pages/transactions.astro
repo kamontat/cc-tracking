@@ -1,12 +1,11 @@
 ---
+import TransactionsPage from "#components/organisms/TransactionsPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Transactions" route="transactions" tab="transactions" mainClass="page--tx">
-	<script>
-		import { start } from "#legacy/routes/transactions"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("transactions", start)
-	</script>
+<!-- Transactions: the ledger, the purchase lists and what is owed are all the reader's data, so the page is an island. -->
+<AppLayout title="Transactions" titleKey="title.transactions" tab="transactions" mainClass="page--tx">
+	<Fragment slot="main">
+		<TransactionsPage client:load />
+	</Fragment>
 </AppLayout>

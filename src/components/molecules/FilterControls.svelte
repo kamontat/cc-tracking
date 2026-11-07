@@ -21,8 +21,11 @@
 		count: number
 		/** The sort's own words, for the sort chip. */
 		sort: string
-		/** One removable chip per filter in use: `label` is drawn and read out by its remove label. */
-		chips: { key: string; label: string; clear: () => void }[]
+		/**
+		 * One removable chip per filter in use: `label` is drawn and read out by its remove label. A
+		 * card's chip also passes its `short` form, which app.css shows in its place on a phone (UI-14).
+		 */
+		chips: { key: string; label: string; short?: string; clear: () => void }[]
 	}
 
 	const { q, placeholder, onsearch, onopen, count, sort, chips }: Props = $props()
@@ -85,7 +88,14 @@
 				data-chip={chip.key}
 				aria-label={tr("tx.chip.remove", { filter: chip.label })}
 				onclick={chip.clear}>
-				{chip.label}
+				{#if chip.short}
+					<span class="cl"
+						><span class="cl-full">{chip.label}</span
+						><span class="cl-short" aria-hidden="true">{chip.short}</span></span
+					>
+				{:else}
+					{chip.label}
+				{/if}
 				×
 			</button>
 		{/each}

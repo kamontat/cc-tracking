@@ -18,7 +18,7 @@ afterEach(() => {
 	setLocale("en")
 })
 
-type Chip = { key: string; label: string; clear: () => void }
+type Chip = { key: string; label: string; short?: string; clear: () => void }
 
 const show = (props: { q?: string; count?: number; sort?: string; chips?: Chip[] } = {}) => {
 	if (mounted) unmount(mounted)
@@ -109,6 +109,17 @@ test("each filter is a removable chip that clears it", () => {
 	chip.click()
 	find<HTMLButtonElement>('[data-chip="owner:KC"]')?.click()
 	expect(cleared).toEqual(["krabi", "KC"])
+})
+
+test("a chip with a short form draws both, the short one hidden from a screen reader (UI-14)", () => {
+	const { find } = show({
+		chips: [{ key: "card:A", label: "A) A card (1234)", short: "A) A card", clear: () => {} }],
+	})
+	const chip = find('[data-chip="card:A"]')
+	expect(chip?.querySelector(".cl .cl-full")?.textContent).toBe("A) A card (1234)")
+	expect(chip?.querySelector(".cl .cl-short")?.textContent).toBe("A) A card")
+	expect(chip?.querySelector(".cl-short")?.getAttribute("aria-hidden")).toBe("true")
+	expect(chip?.getAttribute("aria-label")).toBe("Remove A) A card (1234)")
 })
 
 test("its words follow a language switch", () => {

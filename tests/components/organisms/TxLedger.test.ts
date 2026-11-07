@@ -1,13 +1,37 @@
-import { afterEach, expect, test } from "vitest"
-import "#legacy/components/cc-tx-ledger"
-import type { CcTxLedger } from "#legacy/components/cc-tx-ledger"
-import type { Card, CardPayment, PurchaseList } from "#lib/domain/types"
+import type { Card, CardLedger, CardPayment, LimitGroup, PurchaseList } from "#lib/domain/types"
+import type { Upcoming } from "#lib/ui/ledger-drawer"
 
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
+import { flushSync, mount, unmount } from "svelte"
+import { SvelteMap } from "svelte/reactivity"
+import { afterEach, expect, test } from "vitest"
+
+import TxLedger from "#components/organisms/TxLedger.svelte"
 import { cardLedger } from "#lib/domain/ledger"
 import { byDay, type TxEntry } from "#lib/domain/transactions"
 import { setLocale } from "#lib/i18n/index"
 
-afterEach(() => setLocale("en"))
+/**
+ * The Transactions ledger: Upcoming, then day-grouped or flat rows that open in place, one at a
+ * time, and Show more. Ported from the legacy `cc-tx-ledger` tests, against the same markup.
+ */
+let mounted: ReturnType<typeof mount> | undefined
+
+afterEach(() => {
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	document.body.innerHTML = ""
+	setLocale("en")
+})
+
+/** Flushes Svelte's updates and anything they await. */
+const settle = async () => {
+	for (let i = 0; i < 5; i++) {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0))
+		flushSync()
+	}
+}
 
 const card = (id: string, archived = false): Card => ({
 	id,
@@ -25,18 +49,12 @@ const purchase = (id: string, amount: number, note = "", c = card("A")) =>
 		card: c,
 	}) as TxEntry
 
-const payment = (
-	id: string,
-	amount: number,
-	status: CardPayment["status"] = "paid",
-	c = card("A"),
-): CardPayment & { _card: Card } => ({
+const payment = (id: string, amount: number, status: CardPayment["status"] = "paid", c = card("A")): CardPayment => ({
 	id,
 	cardId: c.id,
 	date: "2026-10-31",
 	amount,
 	status,
-	_card: c,
 })
 
 const payEntry = (id: string, amount: number, c = card("A")): TxEntry => ({
@@ -52,14 +70,64 @@ const list = (id: string): PurchaseList => ({
 	lines: [],
 })
 
-const mount = async (props: Partial<CcTxLedger> = {}) => {
+interface Shown {
+	groups?: { date: string; entries: TxEntry[] }[] | null
+	entries?: TxEntry[]
+	lists?: PurchaseList[]
+	ledgers?: Map<string, CardLedger>
+	limitGroups?: LimitGroup[]
+	upcoming?: Upcoming | null
+	today?: string
+	filtered?: boolean
+	limit?: number
+}
+
+const DEFAULTS: Required<Shown> = {
+	groups: null,
+	entries: [],
+	lists: [],
+	ledgers: new Map(),
+	limitGroups: [],
+	upcoming: null,
+	today: "2026-10-31",
+	filtered: false,
+	limit: 50,
+}
+
+/**
+ * Mounts the ledger; `set` changes props afterwards, as the page would on a reload. The props
+ * read through a `SvelteMap`, so a change reaches the mounted component. `calls` records each
+ * callback's argument.
+ */
+const show = async (initial: Shown = {}) => {
+	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
-	const element = document.createElement("cc-tx-ledger") as CcTxLedger
-	element.today = "2026-10-31"
-	Object.assign(element, props)
-	document.body.append(element)
-	await element.updateComplete
-	return { element, root: element.shadowRoot as ShadowRoot }
+	const values = new SvelteMap<string, unknown>(Object.entries({ ...DEFAULTS, ...initial }))
+	const calls = {
+		marked: [] as CardPayment[],
+		deleted: [] as CardPayment[],
+		confirmed: [] as PurchaseList[],
+		more: 0,
+	}
+	const props: Record<string, unknown> = {
+		onmarkpaid: (p: CardPayment) => calls.marked.push(p),
+		ondeletepayment: (p: CardPayment) => calls.deleted.push(p),
+		onconfirmlist: (l: PurchaseList) => calls.confirmed.push(l),
+		onshowmore: () => {
+			calls.more++
+		},
+	}
+	for (const key of Object.keys(DEFAULTS)) Object.defineProperty(props, key, { get: () => values.get(key) })
+	mounted = mount(TxLedger, { target: document.body, props: props as never })
+	await settle()
+	return {
+		root: document.body as ParentNode,
+		calls,
+		set: async (changes: Shown) => {
+			for (const [key, value] of Object.entries(changes)) values.set(key, value)
+			await settle()
+		},
+	}
 }
 
 const text = (root: ParentNode, selector: string) =>
@@ -69,9 +137,9 @@ const text = (root: ParentNode, selector: string) =>
 const head = (root: ParentNode, id: string) => root.querySelector<HTMLElement>(`[data-row="${id}"] button.a-hit`)
 
 /** Taps a row's head and waits for the repaint. */
-const tap = async (element: CcTxLedger, id: string) => {
-	head(element.shadowRoot as ShadowRoot, id)?.click()
-	await element.updateComplete
+const tap = async (id: string) => {
+	head(document.body, id)?.click()
+	await settle()
 }
 
 /** The one opened details region. */
@@ -93,14 +161,7 @@ const marks = (root: ParentNode) =>
 		m.hasAttribute("data-late"),
 	])
 
-const ledgerCss = () =>
-	(
-		customElements.get("cc-tx-ledger") as unknown as {
-			elementStyles: { cssText: string }[]
-		}
-	).elementStyles
-		.map((s) => s.cssText)
-		.join("\n")
+const source = (path: string) => readFileSync(join(import.meta.dirname, "../../../src/components", path), "utf8")
 
 /** Card A's ledger: `old` on the October statement, `x` on November's; `p1` pays both. */
 const ledgers = () => {
@@ -128,7 +189,7 @@ const ledgers = () => {
 
 test("ledger rows are buttons that open in place, never links", async () => {
 	const entries = [purchase("L1-1", 1_000_00), purchase("zz", 50_00, "coffee"), payEntry("p1", 700_00)]
-	const { root } = await mount({ entries, lists: [list("L1")] })
+	const { root } = await show({ entries, lists: [list("L1")] })
 	expect(root.querySelector("a.crow, .crow")).toBeNull()
 	const heads = [...root.querySelectorAll(".a-hit")]
 	expect(heads.map((h) => h.getAttribute("data-item"))).toEqual(["purchase", "purchase", "payment"])
@@ -156,12 +217,12 @@ test("an opened purchase on an open statement draws its billing cycle and says t
 	const fromList = { ...list("L1"), date: "2026-10-29" as const }
 	const listed = purchase("L1-0", 300_00, "gift")
 	if (listed.kind === "purchase") listed.purchase.date = "2026-10-29"
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [...entries, listed],
 		lists: [fromList],
 		ledgers: books,
 	})
-	await tap(element, "buy:A:x")
+	await tap("buy:A:x")
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("true")
 	// November's statement: 19 Oct = 0, bought and today 31 Oct = 12, closes 18 Nov = 30,
 	// due 3 Dec = 45.
@@ -183,7 +244,7 @@ test("an opened purchase on an open statement draws its billing cycle and says t
 	expect(plain[0]?.getAttribute("href")).toBe("/card?id=A")
 	expect(plain[0]?.textContent?.trim()).toBe("Open card")
 
-	await tap(element, "buy:A:L1-0")
+	await tap("buy:A:L1-0")
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("false")
 	const row = root.querySelector('[data-row="buy:A:L1-0"]')
 	expect(row?.textContent?.split("From list").length).toBe(2)
@@ -199,12 +260,12 @@ test("a purchase on a statement that closes today says so", async () => {
 	const x = purchase("x", 100_00)
 	if (x.kind === "purchase") x.purchase.date = "2026-10-20"
 	const books = new Map([["A", cardLedger(c, [(x as TxEntry & { kind: "purchase" }).purchase], [], [], "2026-11-18")]])
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [x],
 		ledgers: books,
 		today: "2026-11-18",
 	})
-	await tap(element, "buy:A:x")
+	await tap("buy:A:x")
 	expect(sentence(root)).toBe("On the November statement: ฿100.00 so far, closes today.")
 })
 
@@ -213,12 +274,12 @@ test("a purchase made the day before its statement closes shows Closes, and Boug
 	const x = purchase("x", 100_00)
 	if (x.kind === "purchase") x.purchase.date = "2026-11-17"
 	const books = new Map([["A", cardLedger(c, [(x as TxEntry & { kind: "purchase" }).purchase], [], [], "2026-11-17")]])
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [x],
 		ledgers: books,
 		today: "2026-11-17",
 	})
-	await tap(element, "buy:A:x")
+	await tap("buy:A:x")
 	expect(
 		[...(shown(root)?.querySelectorAll<HTMLElement>(".a-mk") ?? [])].map((m) => [
 			m.dataset["mark"],
@@ -235,8 +296,8 @@ test("a purchase made the day before its statement closes shows Closes, and Boug
 
 test("an opened purchase on a paid statement draws Bought, Closed and Due and says it was paid", async () => {
 	const { entries, ledgers: books } = ledgers()
-	const { element, root } = await mount({ entries, ledgers: books })
-	await tap(element, "buy:A:old")
+	const { root } = await show({ entries, ledgers: books })
+	await tap("buy:A:old")
 	// October's statement: 19 Sep = 0, bought 20 Sep = 1, closed 18 Oct = 29, due 2 Nov = 44.
 	expect(marks(root)).toEqual([
 		["buy", "Bought 20 Sep", "2.27%", false],
@@ -245,7 +306,7 @@ test("an opened purchase on a paid statement draws Bought, Closed and Due and sa
 	])
 	expect(sentence(root)).toBe("Statement ฿500.00 paid.")
 	setLocale("th")
-	await element.updateComplete
+	await settle()
 	expect(sentence(root)).toBe("ยอดรอบบิล ฿500.00 ชำระแล้ว")
 	setLocale("en")
 })
@@ -264,8 +325,8 @@ const owing = (today: string) => {
 }
 
 test("an opened purchase on a closed statement with money left says what is left and when it is due", async () => {
-	const { element, root } = await mount(owing("2026-10-31"))
-	await tap(element, "buy:A:old")
+	const { root } = await show(owing("2026-10-31"))
+	await tap("buy:A:old")
 	expect(marks(root)).toEqual([
 		["buy", "Bought 20 Sep", "2.27%", false],
 		["closed", "Closed 18 Oct", "65.91%", false],
@@ -281,8 +342,8 @@ test("an opened purchase on a closed statement with money left says what is left
 })
 
 test("a closed statement past its due date draws the overdue bill's line and says how late in red", async () => {
-	const { element, root } = await mount(owing("2026-11-05"))
-	await tap(element, "buy:A:old")
+	const { root } = await show(owing("2026-11-05"))
+	await tap("buy:A:old")
 	// 19 Sep = 0 .. 8 Nov (today + 3) = 50: bought 20 Sep = 1, closed 18 Oct = 29,
 	// due 2 Nov = 44, today 5 Nov = 47.
 	expect(marks(root)).toEqual([
@@ -296,11 +357,11 @@ test("a closed statement past its due date draws the overdue bill's line and say
 	expect(line?.getAttribute("aria-label")).toBe("Bought 20 Sep, closed 18 Oct, due 2 Nov (3 days late), today 5 Nov")
 	expect(sentence(root)).toBe("฿400.00 left of ฿500.00 billed, 3 days late")
 	expect(text(shown(root) as HTMLElement, ".a-say .a-late")).toBe("3 days late")
-	expect(ledgerCss()).toMatch(/\.a-late\s*\{[^}]*color: var\(--cc-danger\)/)
+	expect(source("molecules/ActionRow.svelte")).toMatch(/\.a-late\s*\{[^}]*color: var\(--cc-danger\)/)
 })
 
 test("an opened row is a drawer under the text: its cycle or parts, then the foot", () => {
-	const css = ledgerCss()
+	const css = source("molecules/ActionRow.svelte")
 	expect(css).toMatch(
 		/\.a-details\s*\{[^}]*display: grid;[^}]*padding-block: 0 var\(--cc-space-3\);[^}]*padding-inline-start: var\(--a-lead-inline\)/,
 	)
@@ -309,11 +370,11 @@ test("an opened row is a drawer under the text: its cycle or parts, then the foo
 })
 
 test("a purchase named like a list id opens to its card alone when no such list exists", async () => {
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [purchase("L9-1", 100_00, "", card("A/1"))],
 		lists: [],
 	})
-	await tap(element, "buy:A/1:L9-1")
+	await tap("buy:A/1:L9-1")
 	expect(root.querySelector("[data-action=open-list]")).toBeNull()
 	expect(shown(root)?.querySelector("[data-action=open-card]")?.getAttribute("href")).toBe("/card?id=A%2F1")
 	expect(root.querySelector("[data-action=delete]")).toBeNull()
@@ -321,8 +382,8 @@ test("a purchase named like a list id opens to its card alone when no such list 
 
 test("an opened payment says how much went to each statement, oldest first", async () => {
 	const { entries, ledgers: books } = ledgers()
-	const { element, root } = await mount({ entries, ledgers: books })
-	await tap(element, "pay:A:p1")
+	const { root } = await show({ entries, ledgers: books })
+	await tap("pay:A:p1")
 	expect(partsOf(root)).toEqual([
 		["October statement", "฿500.00"],
 		["November statement", "฿200.00"],
@@ -330,7 +391,7 @@ test("an opened payment says how much went to each statement, oldest first", asy
 	expect(sentence(root)).toBe("Paid 31 Oct.")
 	expect(shown(root)?.querySelector(".a-cycle")).toBeNull()
 	setLocale("th")
-	await element.updateComplete
+	await settle()
 	expect(partsOf(root)).toEqual([
 		["รอบบิลตุลาคม", "฿500.00"],
 		["รอบบิลพฤศจิกายน", "฿200.00"],
@@ -345,11 +406,11 @@ test("a payment that left credit says how much was kept and where it goes", asyn
 	const books = new Map([
 		["A", cardLedger(c, [(x as TxEntry & { kind: "purchase" }).purchase], [pay], [], "2026-10-31")],
 	])
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [payEntry("p1", 1_500_00)],
 		ledgers: books,
 	})
-	await tap(element, "pay:A:p1")
+	await tap("pay:A:p1")
 	expect(partsOf(root)).toEqual([
 		["November statement", "฿1,000.00"],
 		["Kept as credit", "฿500.00"],
@@ -361,7 +422,7 @@ test("at most one row is open across Upcoming and every day panel", async () => 
 	const c = card("A")
 	const other = purchase("y", 10_00)
 	if (other.kind === "purchase") other.purchase.date = "2026-10-30"
-	const { element, root } = await mount({
+	const { root } = await show({
 		groups: byDay([purchase("x", 100_00), other]),
 		upcoming: {
 			lists: [],
@@ -373,42 +434,37 @@ test("at most one row is open across Upcoming and every day panel", async () => 
 		[...root.querySelectorAll('.a-hit[aria-expanded="true"]')].map((h) =>
 			h.closest("[data-row]")?.getAttribute("data-row"),
 		)
-	await tap(element, "plan:A:pl1")
+	await tap("plan:A:pl1")
 	expect(expanded()).toEqual(["plan:A:pl1"])
-	await tap(element, "buy:A:x")
+	await tap("buy:A:x")
 	expect(expanded()).toEqual(["buy:A:x"])
-	await tap(element, "buy:A:y")
+	await tap("buy:A:y")
 	expect(expanded()).toEqual(["buy:A:y"])
-	await tap(element, "buy:A:y")
+	await tap("buy:A:y")
 	expect(expanded()).toEqual([])
 	expect(root.querySelectorAll("section.day .panel")).toHaveLength(2)
 })
 
 test("a half-done swap survives a repaint, ends when its row closes, and a row that goes is forgotten", async () => {
 	const entries = [payEntry("p1", 700_00), purchase("x", 10_00)]
-	const { element, root } = await mount({ entries })
-	await tap(element, "pay:A:p1")
+	const { root, set } = await show({ entries })
+	await tap("pay:A:p1")
 	;(root.querySelector(".a-details:not([hidden]) [data-action=delete]") as HTMLElement).click()
-	await element.updateComplete
-	element.requestUpdate()
-	await element.updateComplete
-	element.entries = [...entries]
-	await element.updateComplete
+	await settle()
+	await set({ entries: [...entries] })
 	expect(head(root, "pay:A:p1")?.getAttribute("aria-expanded")).toBe("true")
 	expect(root.querySelector("[data-action=confirm-delete]")).not.toBeNull()
-	await tap(element, "pay:A:p1")
-	await tap(element, "pay:A:p1")
+	await tap("pay:A:p1")
+	await tap("pay:A:p1")
 	expect(root.querySelector("[data-action=confirm-delete]")).toBeNull()
 	expect(shown(root)?.querySelector("[data-action=delete]")).not.toBeNull()
-	element.entries = [entries[1] as TxEntry]
-	await element.updateComplete
-	element.entries = entries
-	await element.updateComplete
+	await set({ entries: [entries[1] as TxEntry] })
+	await set({ entries })
 	expect(head(root, "pay:A:p1")?.getAttribute("aria-expanded")).toBe("false")
 })
 
 test("archived cards are tagged", async () => {
-	const { root } = await mount({
+	const { root } = await show({
 		entries: [purchase("x", 100_00, "", card("A", true))],
 	})
 	expect(root.querySelector(".archived")?.textContent).toContain("Archived")
@@ -418,24 +474,24 @@ test("day groups head with Today and a date", async () => {
 	const other = purchase("y", 10_00)
 	if (other.kind === "purchase") other.purchase.date = "2026-10-30"
 	const groups = byDay([purchase("x", 100_00), other])
-	const { root } = await mount({ groups })
+	const { root } = await show({ groups })
 	const heads = Array.from(root.querySelectorAll("h3")).map((h) => h.textContent?.trim())
 	expect(heads).toEqual(["Today · Sat, 31 Oct", "Fri, 30 Oct"])
 })
 
 test("a flat list shows the date on each row", async () => {
-	const { root } = await mount({ entries: [purchase("x", 100_00)] })
+	const { root } = await show({ entries: [purchase("x", 100_00)] })
 	expect(root.querySelector("h3")).toBeNull()
 	expect(root.querySelector("[data-item]")?.textContent).toContain("31 Oct 2026")
 })
 
 test("a filtered ledger heads with the count and the signed total", async () => {
-	const { root } = await mount({
+	const { root } = await show({
 		entries: [purchase("x", 100_00), payEntry("p", 30_00)],
 		filtered: true,
 	})
 	expect(text(root, ".result-head")).toBe("2 results · −฿70.00")
-	const net = await mount({
+	const net = await show({
 		entries: [payEntry("p", 30_00)],
 		filtered: true,
 	})
@@ -443,27 +499,26 @@ test("a filtered ledger heads with the count and the signed total", async () => 
 })
 
 test("an empty ledger names the way on", async () => {
-	const { root } = await mount({ entries: [] })
+	const { root } = await show({ entries: [] })
 	expect(text(root, ".empty")).toContain("Add a purchase from Home")
-	const filtered = await mount({ entries: [], filtered: true })
+	const filtered = await show({ entries: [], filtered: true })
 	expect(text(filtered.root, ".empty")).toContain("Clear the search")
 })
 
 test("a payment's Delete waits in its opened row and swaps in place for Delete and Cancel", async () => {
-	const { element, root } = await mount({
+	const { root, calls } = await show({
 		entries: [payEntry("p1", 700_00)],
 	})
-	const deleted: unknown[] = []
-	element.addEventListener("delete-payment", (e) => deleted.push((e as CustomEvent).detail))
+	const deleted = calls.deleted
 	const right = () => shown(root) as HTMLElement
 	expect(head(root, "pay:A:p1")?.querySelector(".amount")?.textContent).toBe("+฿700.00")
 	expect(right()).toBeNull()
-	await tap(element, "pay:A:p1")
+	await tap("pay:A:p1")
 	const del = right().querySelector("[data-action=delete]") as HTMLElement
 	expect(del.getAttribute("data-variant")).toBe("danger")
 	expect(del.textContent?.trim()).toBe("Delete")
 	del.click()
-	await element.updateComplete
+	await settle()
 	expect(deleted).toEqual([])
 	const confirm = right().querySelector("[data-action=confirm-delete]") as HTMLElement
 	expect(confirm.getAttribute("data-variant")).toBe("danger")
@@ -472,19 +527,19 @@ test("a payment's Delete waits in its opened row and swaps in place for Delete a
 	expect(cancel.hasAttribute("data-variant")).toBe(false)
 	expect(right().querySelector("[data-action=delete]")).toBeNull()
 	cancel.click()
-	await element.updateComplete
+	await settle()
 	expect(right().querySelector("[data-action=delete]")).not.toBeNull()
 	expect(deleted).toEqual([])
 	;(right().querySelector("[data-action=delete]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	;(right().querySelector("[data-action=confirm-delete]") as HTMLElement).click()
 	expect(deleted.length).toBe(1)
-	expect((deleted[0] as { payment: CardPayment }).payment.id).toBe("p1")
+	expect(deleted[0]?.id).toBe("p1")
 })
 
 test("a purchase row has no Delete", async () => {
-	const { element, root } = await mount({ entries: [purchase("x1", 100_00)] })
-	await tap(element, "buy:A:x1")
+	const { root } = await show({ entries: [purchase("x1", 100_00)] })
+	await tap("buy:A:x1")
 	expect(root.querySelector("[data-action=delete]")).toBeNull()
 })
 
@@ -503,7 +558,7 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 		...payment("pl1", 900_00, "planned", c),
 		date: "2026-11-02" as const,
 	}
-	const { element, root } = await mount({
+	const { root, calls } = await show({
 		entries: [],
 		limitGroups: [{ id: "g1", name: "G", limit: 1, owner: "KC" }],
 		upcoming: {
@@ -523,7 +578,7 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 	expect(waiting.querySelector(".tag")).toBeNull()
 	expect(text(waiting, ".a-hit [data-numeric]")).toBe("−฿150.00")
 	expect(shown(root)).toBeNull()
-	await tap(element, "list:w1")
+	await tap("list:w1")
 	expect(partsOf(root)).toEqual([
 		["A) Card A (1029)", "฿100.00"],
 		["B) —", "฿50.00"],
@@ -540,7 +595,7 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 	expect(row.querySelector(".tag")).toBeNull()
 	expect(row.querySelector(".a-hit .amount.in")?.textContent).toBe("+฿900.00")
 	expect(row.querySelector(".a-details")?.hasAttribute("hidden")).toBe(true)
-	await tap(element, "plan:A:pl1")
+	await tap("plan:A:pl1")
 	expect(sentence(root)).toBe("Planned for 2 Nov.")
 	expect(text(row, "[data-action=mark-paid]")).toBe("Paid")
 	// The buttons sit in the opened area, none in the head. Delete is a danger button after Paid.
@@ -548,16 +603,14 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 	const buttons = [...row.querySelectorAll(".a-details .a-btns button")]
 	expect(buttons.map((b) => b.getAttribute("data-action"))).toEqual(["mark-paid", "delete"])
 	expect(buttons[1]?.getAttribute("data-variant")).toBe("danger")
-	const marked: unknown[] = []
-	element.addEventListener("mark-paid", (e) => marked.push((e as CustomEvent).detail))
 	;(root.querySelector("[data-action=mark-paid]") as HTMLElement).click()
-	expect((marked[0] as { payment: CardPayment }).payment.id).toBe("pl1")
+	expect(calls.marked[0]?.id).toBe("pl1")
 })
 
 test("a planned payment's Delete swaps in place for Delete and Cancel; Cancel writes nothing", async () => {
 	const c = card("A")
 	const planned = payment("pl1", 900_00, "planned", c)
-	const { element, root } = await mount({
+	const { root, calls } = await show({
 		entries: [],
 		upcoming: {
 			lists: [],
@@ -565,11 +618,10 @@ test("a planned payment's Delete swaps in place for Delete and Cancel; Cancel wr
 			cards: [c],
 		},
 	})
-	const deleted: unknown[] = []
-	element.addEventListener("delete-payment", (e) => deleted.push((e as CustomEvent).detail))
-	await tap(element, "plan:A:pl1")
+	const deleted = calls.deleted
+	await tap("plan:A:pl1")
 	;(root.querySelector("[data-action=delete]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	// The same buttons swap in place.
 	expect(root.querySelector(".confirm")).toBeNull()
 	expect(root.querySelector('[data-row="plan:A:pl1"] .actions')).toBeNull()
@@ -579,14 +631,14 @@ test("a planned payment's Delete swaps in place for Delete and Cancel; Cancel wr
 	expect(buttons[1]?.getAttribute("data-variant")).toBeNull()
 	expect(buttons[0]?.getAttribute("aria-label")).toBe("Delete ฿900.00 to Card A?")
 	;(buttons[1] as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	expect(deleted).toEqual([])
 	expect(root.querySelector("[data-confirming]")).toBeNull()
 	expect(root.querySelector("[data-action=mark-paid]")).not.toBeNull()
 	;(root.querySelector("[data-action=delete]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	;(root.querySelector("[data-action=confirm-delete]") as HTMLElement).click()
-	expect((deleted[0] as { payment: CardPayment }).payment.id).toBe("pl1")
+	expect(deleted[0]?.id).toBe("pl1")
 })
 
 test("Confirm swaps in place for Save and Cancel, and Cancel writes nothing", async () => {
@@ -596,16 +648,15 @@ test("Confirm swaps in place for Save and Cancel, and Cancel writes nothing", as
 		status: "sent",
 		lines: ["A", "B", "C", "D"].map((cardId) => ({ cardId, amount: 10_00 })),
 	}
-	const { element, root } = await mount({
+	const { root, calls } = await show({
 		entries: [],
 		upcoming: { lists: [sent], planned: [], cards: [] },
 	})
 	expect(text(root, '[data-row="list:w1"] .a-sub')).toBe("4 cards")
-	const saved: unknown[] = []
-	element.addEventListener("confirm-list", (e) => saved.push((e as CustomEvent).detail))
-	await tap(element, "list:w1")
+	const saved = calls.confirmed
+	await tap("list:w1")
 	;(root.querySelector("[data-action=confirm-list]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	expect(saved).toEqual([])
 	expect(root.querySelector(".confirm")).toBeNull()
 	expect(root.querySelector("[data-confirming=w1] [data-action=save-list]")?.getAttribute("aria-label")).toBe(
@@ -613,14 +664,14 @@ test("Confirm swaps in place for Save and Cancel, and Cancel writes nothing", as
 	)
 	expect(root.querySelector("[data-action=confirm-list]")).toBeNull()
 	;(root.querySelector("[data-action=cancel-confirm]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	expect(saved).toEqual([])
 	expect(root.querySelector("[data-confirming]")).toBeNull()
 	;(root.querySelector("[data-action=confirm-list]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	;(root.querySelector("[data-action=save-list]") as HTMLElement).click()
-	await element.updateComplete
-	expect((saved[0] as { list: PurchaseList }).list.id).toBe("w1")
+	await settle()
+	expect(saved[0]?.id).toBe("w1")
 	expect(root.querySelector("[data-confirming]")).toBeNull()
 })
 
@@ -632,7 +683,7 @@ test("Upcoming reads in Thai", async () => {
 		status: "sent",
 		lines: [{ cardId: "A", amount: 10_00 }],
 	}
-	const { root } = await mount({
+	const { root } = await show({
 		entries: [],
 		upcoming: { lists: [sent], planned: [], cards: [card("A")] },
 	})
@@ -642,7 +693,7 @@ test("Upcoming reads in Thai", async () => {
 })
 
 test("no Upcoming section when nothing is upcoming", async () => {
-	const { root } = await mount({
+	const { root } = await show({
 		entries: [],
 		upcoming: { lists: [], planned: [], cards: [] },
 	})
@@ -650,18 +701,18 @@ test("no Upcoming section when nothing is upcoming", async () => {
 })
 
 test("Thai words after a language switch", async () => {
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [purchase("L1-1", 100_00)],
 		lists: [{ ...list("L1"), date: "2026-10-29" }],
 	})
 	setLocale("th")
-	await element.updateComplete
+	await settle()
 	expect(root.querySelector("[data-item]")?.textContent).toContain("จากใบรายการซื้อ")
 })
 
 test("rows name the card in the panel form and say which list a purchase came from", async () => {
 	const c = { ...card("A"), limitGroupId: "g2" }
-	const { root } = await mount({
+	const { root } = await show({
 		groups: byDay([purchase("L1-1", 100_00, "", c), purchase("zz", 10_00, "", c)]),
 		lists: [{ ...list("L1"), date: "2026-10-29" }],
 		limitGroups: [
@@ -680,7 +731,7 @@ test("rows name the card in the panel form and say which list a purchase came fr
 
 test("a card no longer stored keeps its id", async () => {
 	const entry = purchase("x", 10_00)
-	const { root } = await mount({ entries: [{ ...entry, card: undefined }] })
+	const { root } = await show({ entries: [{ ...entry, card: undefined }] })
 	expect(root.querySelector("[data-item] .card-label")?.textContent).toBe("A) —")
 })
 
@@ -695,7 +746,7 @@ test("a paid payment's note shows on its sub line; a plan's says when instead", 
 		...payment("pl1", 900_00, "planned", c),
 		note: "Salary day",
 	}
-	const { root } = await mount({
+	const { root } = await show({
 		entries: [paid, payEntry("p2", 100_00)],
 		upcoming: {
 			lists: [],
@@ -710,21 +761,21 @@ test("a paid payment's note shows on its sub line; a plan's says when instead", 
 })
 
 test("a paid payment's Delete moves focus to the asking Delete, and Cancel moves it back", async () => {
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [payEntry("p1", 700_00)],
 	})
-	await tap(element, "pay:A:p1")
+	await tap("pay:A:p1")
 	;(root.querySelector("[data-action=delete]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(root.querySelector("[data-action=confirm-delete]"))
+	await settle()
+	expect(document.activeElement).toBe(root.querySelector("[data-action=confirm-delete]"))
 	;(root.querySelector("[data-action=cancel-delete]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(root.querySelector("[data-action=delete]"))
+	await settle()
+	expect(document.activeElement).toBe(root.querySelector("[data-action=delete]"))
 })
 
 test("a planned payment's Delete moves focus to the asking Delete, and Cancel moves it back", async () => {
 	const c = card("A")
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [payEntry("p0", 100_00)],
 		upcoming: {
 			lists: [],
@@ -733,13 +784,13 @@ test("a planned payment's Delete moves focus to the asking Delete, and Cancel mo
 		},
 	})
 	const planned = () => root.querySelector('[data-row="plan:A:pl1"]') as HTMLElement
-	await tap(element, "plan:A:pl1")
+	await tap("plan:A:pl1")
 	;(planned().querySelector("[data-action=delete]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(planned().querySelector("[data-action=confirm-delete]"))
+	await settle()
+	expect(document.activeElement).toBe(planned().querySelector("[data-action=confirm-delete]"))
 	;(planned().querySelector("[data-action=cancel-delete]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(planned().querySelector("[data-action=delete]"))
+	await settle()
+	expect(document.activeElement).toBe(planned().querySelector("[data-action=delete]"))
 })
 
 test("Confirm moves focus to Save, and Cancel moves it back to Confirm", async () => {
@@ -749,17 +800,17 @@ test("Confirm moves focus to Save, and Cancel moves it back to Confirm", async (
 		status: "sent",
 		lines: [{ cardId: "A", amount: 10_00 }],
 	}
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [],
 		upcoming: { lists: [sent], planned: [], cards: [] },
 	})
-	await tap(element, "list:w1")
+	await tap("list:w1")
 	;(root.querySelector("[data-action=confirm-list]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(root.querySelector("[data-action=save-list]"))
+	await settle()
+	expect(document.activeElement).toBe(root.querySelector("[data-action=save-list]"))
 	;(root.querySelector("[data-action=cancel-confirm]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(root.querySelector("[data-action=confirm-list]"))
+	await settle()
+	expect(document.activeElement).toBe(root.querySelector("[data-action=confirm-list]"))
 })
 
 test("after a second step the host keeps the row: focus lands on the first-step button", async () => {
@@ -770,7 +821,7 @@ test("after a second step the host keeps the row: focus lands on the first-step 
 		lines: [{ cardId: "A", amount: 10_00 }],
 	}
 	const c = card("A")
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [payEntry("p0", 100_00)],
 		upcoming: {
 			lists: [sent],
@@ -778,19 +829,19 @@ test("after a second step the host keeps the row: focus lands on the first-step 
 			cards: [c],
 		},
 	})
-	await tap(element, "list:w1")
+	await tap("list:w1")
 	;(root.querySelector("[data-action=confirm-list]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	;(root.querySelector("[data-action=save-list]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(root.querySelector("[data-action=confirm-list]"))
-	await tap(element, "plan:A:pl1")
+	await settle()
+	expect(document.activeElement).toBe(root.querySelector("[data-action=confirm-list]"))
+	await tap("plan:A:pl1")
 	const planned = () => root.querySelector('[data-row="plan:A:pl1"]') as HTMLElement
 	;(planned().querySelector("[data-action=delete]") as HTMLElement).click()
-	await element.updateComplete
+	await settle()
 	;(planned().querySelector("[data-action=confirm-delete]") as HTMLElement).click()
-	await element.updateComplete
-	expect(root.activeElement).toBe(planned().querySelector("[data-action=delete]"))
+	await settle()
+	expect(document.activeElement).toBe(planned().querySelector("[data-action=delete]"))
 })
 
 test("a limit cuts the rows, keeps the day headings whole, and asks for more", async () => {
@@ -802,26 +853,20 @@ test("a limit cuts the rows, keeps the day headings whole, and asks for more", a
 			return { ...e, purchase: { ...e.purchase, date } }
 		})
 	const entries = [...day("2026-10-31", 3), ...day("2026-10-30", 4)]
-	const { element, root } = await mount({ groups: byDay(entries), limit: 5 })
+	const { root, calls, set } = await show({ groups: byDay(entries), limit: 5 })
 	expect(root.querySelectorAll("[data-row] > .a-row").length).toBe(5)
 	const days = [...root.querySelectorAll("section.day")]
 	expect(days.length).toBe(2)
 	expect(days[1]?.querySelectorAll(".a-wrap").length).toBe(2)
 	const more = root.querySelector('[data-action="show-more"]') as HTMLElement
 	expect(more.textContent?.trim()).toBe("Show 2 more")
-	let asked = 0
-	element.addEventListener("show-more", () => asked++)
 	more.click()
-	expect(asked).toBe(1)
-	element.limit = 50
-	await element.updateComplete
+	expect(calls.more).toBe(1)
+	await set({ limit: 50 })
 	expect(root.querySelectorAll("[data-row] > .a-row").length).toBe(7)
 	expect(root.querySelector('[data-action="show-more"]')).toBeNull()
 	setLocale("th")
-	element.limit = 1
-	element.entries = entries
-	element.groups = null
-	await element.updateComplete
+	await set({ limit: 1, entries, groups: null })
 	expect(root.querySelectorAll("[data-row] > .a-row").length).toBe(1)
 	expect(root.querySelector('[data-action="show-more"]')?.textContent?.trim()).toBe("แสดงเพิ่มอีก 6 รายการ")
 })
@@ -837,7 +882,7 @@ test("an opened row says its note once", async () => {
 		payment: { ...payment("p1", 700_00, "paid", c), note: "From savings" },
 		card: c,
 	}
-	const { element, root } = await mount({
+	const { root } = await show({
 		entries: [purchase("x", 100_00, "p3"), paid],
 		upcoming: {
 			lists: [],
@@ -853,11 +898,11 @@ test("an opened row says its note once", async () => {
 			cards: [c],
 		},
 	})
-	await tap(element, "buy:A:x")
+	await tap("buy:A:x")
 	expect(times(root, "buy:A:x", "p3")).toBe(1)
-	await tap(element, "pay:A:p1")
+	await tap("pay:A:p1")
 	expect(times(root, "pay:A:p1", "From savings")).toBe(1)
-	await tap(element, "plan:A:pl1")
+	await tap("plan:A:pl1")
 	expect(times(root, "plan:A:pl1", "Salary day")).toBe(1)
 	// Upcoming's plan, as Needs you's, says its note in the sentence, not on the sub line.
 	expect(sentence(root)).toBe("Planned for 31 Oct. Salary day")
@@ -865,12 +910,7 @@ test("an opened row says its note once", async () => {
 	expect(shown(root)?.querySelector(".a-parts, .a-cycle")).toBeNull()
 })
 
-/** The focused element, through every shadow root. */
-const deepActive = (): Element | null => {
-	let active: Element | null = document.activeElement
-	while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement
-	return active
-}
+const deepActive = () => document.activeElement
 
 test("when Paid takes an Upcoming plan away, focus moves to the next plan, then the one before, then the heading", async () => {
 	const c = card("A")
@@ -879,15 +919,14 @@ test("when Paid takes an Upcoming plan away, focus moves to the next plan, then 
 		card: c,
 	})
 	const all = [plan("p1", "2026-11-01"), plan("p2", "2026-11-02"), plan("p3", "2026-11-03")]
-	const { element, root } = await mount({
+	const { root, set } = await show({
 		entries: [],
 		upcoming: { lists: [], planned: all, cards: [c] },
 	})
 	const paid = async (id: string, left: typeof all) => {
-		await tap(element, `plan:A:${id}`)
+		await tap(`plan:A:${id}`)
 		root.querySelector<HTMLElement>(`[data-row="plan:A:${id}"] [data-action="mark-paid"]`)?.focus()
-		element.upcoming = { lists: [], planned: left, cards: [c] }
-		await element.updateComplete
+		await set({ upcoming: { lists: [], planned: left, cards: [c] } })
 	}
 	await paid("p2", [all[0], all[2]] as typeof all)
 	expect(deepActive()).toBe(head(root, "plan:A:p3"))
@@ -903,7 +942,7 @@ test("when Paid takes an Upcoming plan away, focus moves to the next plan, then 
 test("focus stays put when the open row goes but did not hold it", async () => {
 	const c = card("A")
 	const planned = payment("p1", 100_00, "planned", c)
-	const { element, root } = await mount({
+	const { set } = await show({
 		entries: [],
 		upcoming: {
 			lists: [],
@@ -911,11 +950,10 @@ test("focus stays put when the open row goes but did not hold it", async () => {
 			cards: [c],
 		},
 	})
-	await tap(element, "plan:A:p1")
+	await tap("plan:A:p1")
 	;(document.activeElement as HTMLElement | null)?.blur()
-	element.upcoming = { lists: [], planned: [], cards: [c] }
-	await element.updateComplete
-	expect(root.activeElement ?? null).toBeNull()
+	await set({ upcoming: { lists: [], planned: [], cards: [c] } })
+	expect(document.activeElement).toBe(document.body)
 })
 
 test("when a row alone on its day goes, focus moves to the next day's heading", async () => {
@@ -926,10 +964,9 @@ test("when a row alone on its day goes, focus moves to the next day's heading", 
 		card: c,
 	})
 	const days = [on("p1", "2026-10-31"), on("p2", "2026-10-30"), on("p3", "2026-10-29")]
-	const { element, root } = await mount({ groups: byDay(days) })
-	await tap(element, "pay:A:p2")
+	const { root, set } = await show({ groups: byDay(days) })
+	await tap("pay:A:p2")
 	root.querySelector<HTMLElement>('[data-row="pay:A:p2"] [data-action="delete"]')?.focus()
-	element.groups = byDay([days[0], days[2]] as TxEntry[])
-	await element.updateComplete
+	await set({ groups: byDay([days[0], days[2]] as TxEntry[]) })
 	expect(deepActive()).toBe(root.querySelector('[data-refocus="day:2026-10-29"]'))
 })

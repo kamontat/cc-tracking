@@ -910,7 +910,7 @@ export const rowPanel = css`
 `
 
 /**
- * A filter sheet's body (`cc-tx-filter`, `cc-ready-filter`): fieldsets of pill choices under a
+ * A filter sheet's body (`cc-ready-filter`): fieldsets of pill choices under a
  * muted legend (`.choices`, `aria-pressed` marks a pick), optional `.dates`, and a `.footer`
  * with a quiet *Clear all* and the full-width apply button (`data-action="apply"`).
  */
