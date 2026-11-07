@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-07: The card page, the card form, Make a payment and Transactions converted, and offline use
+## 2026-11-07: The card page, the card form, Make a payment, Transactions and the list pages converted, and offline use
 
 ### Features
 
@@ -42,8 +42,17 @@ reasons don't show up in the code.
 - On a phone a card's filter chip on Transactions shows its short name again, as the Lit page
   did (`FilterControls` chips take a `short` form).
 
+- The purchase list pages are converted (DD-183): `/list/new` is the card picker or, at
+  `?card=`, the amounts; `/list/draft` reopens a draft in the same steps; `/list/reply` and
+  `/list/view` draw the reply and the saved list. The addresses, the replace after a write, the
+  retry that adds nothing twice and every word work as before.
+- The list's table and image text (`list-share`) moved back to `#lib/ui`, and a list's `id` is
+  read by `listId` in `#lib/ui/list-address`.
+
 ### Bug fixes
 
+- On a phone in Thai, a long over-the-room warning no longer widens an amount card past the
+  screen's edge: the card's one column now shrinks to the card.
 - In the new payment form, a reload after a failed save no longer empties the amount and note
   you typed: a field refills only when its value really changes, as the Lit form did.
 
@@ -61,6 +70,9 @@ reasons don't show up in the code.
   the same row; Home takes it as is (DD-182).
 - An opened row's sentence is a list of pieces (words, a strong amount, a red late phrase), not
   markup in a string, so a card name or note can never inject markup through `{@html}`.
+- The four list pages convert together: new and draft share the entry steps, and all four share
+  the view of a list that is elsewhere. Converting one page at a time would have kept the entry
+  steps in both Lit and Svelte (DD-183).
 - The version is a hash of the built files, not the commit, so any changed build is a new
   version and an unchanged rebuild is not. About 60 lines of worker code, so no Workbox.
 

@@ -2,6 +2,7 @@ import type { Card } from "#lib/domain/types"
 
 import { afterEach, expect, test } from "vitest"
 
+import { setLocale } from "#lib/i18n/index"
 import {
 	type CanvasLike,
 	canDrawImage,
@@ -11,8 +12,7 @@ import {
 	imageName,
 	shareTable,
 	shareText,
-} from "#legacy/lib/ui/list-share"
-import { setLocale } from "#lib/i18n/index"
+} from "#lib/ui/list-share"
 
 const card = (id: string, name: string, last4: string): Card => ({
 	id,

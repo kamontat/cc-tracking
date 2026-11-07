@@ -1,12 +1,11 @@
 ---
+import ListEntryPage from "#components/organisms/ListEntryPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Draft list" route="list/draft" tab="home" fab={false} mainClass="page--narrow">
-	<script>
-		import { start } from "#legacy/routes/list/draft"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("list/draft", start)
-	</script>
+<!-- A stored draft to finish, send or delete (`?id=`); the list is the reader's data, so the page is an island. -->
+<AppLayout title="Draft list" titleKey="title.listDraft" tab="home" fab={false} mainClass="page--narrow">
+	<Fragment slot="main">
+		<ListEntryPage client:load mode="draft" />
+	</Fragment>
 </AppLayout>

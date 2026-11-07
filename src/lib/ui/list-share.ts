@@ -1,11 +1,11 @@
 import type { Card, ListStatus, PlainDate, PurchaseList } from "#lib/domain/types"
 
-import { cardLine } from "#legacy/lib/ui/card-label"
 import { headerDate } from "#lib/domain/date"
 import { formatAmount } from "#lib/domain/money"
 import { listTotal } from "#lib/domain/purchase-list"
 import { MessageError } from "#lib/i18n/error"
 import { getLocale, t } from "#lib/i18n/index"
+import { cardLine } from "#lib/ui/card-label"
 
 type Cells = [card: string, name: string, amount: string]
 

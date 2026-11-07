@@ -1,12 +1,16 @@
 import type { Repository } from "#lib/storage/repository"
 
-import { expect, test } from "vitest"
+import { afterEach, expect, test } from "vitest"
 
-import { renderSavedPage } from "#legacy/routes/list/view-page"
-import { draft, elsewhereLink, flatText, sent, setupPage, titleOf } from "./test-support"
+import ListViewPage from "#components/organisms/ListViewPage.svelte"
+import { setLocale } from "#lib/i18n/index"
+import { cleanup, draft, elsewhereLink, flatText, sent, settle, setupPage, titleOf } from "./list-support"
+
+/** A saved list, read-only (`/list/view?id=`). Ported from the legacy `view-page` tests. */
+afterEach(cleanup)
 
 const setup = (search: string, before: (repo: Repository) => Promise<void>) =>
-	setupPage(renderSavedPage, { search, before })
+	setupPage(ListViewPage, { search, before })
 
 const s9 = (repo: Repository) =>
 	repo.savePurchaseList({
@@ -39,7 +43,6 @@ test("a saved list shows what was bought", async () => {
 	expect(flatText(rowB?.querySelector(".tag"))).toBe("Not made")
 	expect(flatText(rowB)).not.toContain("฿")
 	expect(root.querySelector('[data-action="open-draft"]')).toBeNull()
-	expect(root.querySelector("cc-list-reply")).toBeNull()
 	expect(root.querySelector("button")).toBeNull()
 })
 
@@ -110,4 +113,12 @@ test("a saved list shows each line's note", async () => {
 	)
 	expect(flatText(root.querySelector('[data-card="A"] .line-note'))).toBe("van fuel")
 	expect(root.querySelector('[data-card="B"] .line-note')).toBeNull()
+})
+
+test("its words follow a language switch", async () => {
+	const { root } = await setup("?id=s9", s9)
+	setLocale("th")
+	await settle()
+	expect(flatText(root.querySelector('[data-card="B"] .tag'))).not.toBe("Not made")
+	expect(titleOf(root.querySelector("h1"))).not.toBe("Fri, 30 Oct 2026")
 })

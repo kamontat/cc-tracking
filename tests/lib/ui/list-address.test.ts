@@ -2,7 +2,13 @@ import type { PurchaseList } from "#lib/domain/types"
 
 import { expect, test } from "vitest"
 
-import { listPageAddress, newListAddress } from "#lib/ui/list-address"
+import { listId, listPageAddress, newListAddress } from "#lib/ui/list-address"
+
+test("listId reads the stored list's id from the address, or null when there is none", () => {
+	expect(listId("?id=w1")).toBe("w1")
+	expect(listId("?id=a%2Fb")).toBe("a/b")
+	expect(listId("")).toBeNull()
+})
 
 const list = (id: string, status: PurchaseList["status"]): PurchaseList => ({
 	id,
