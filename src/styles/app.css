@@ -1728,7 +1728,7 @@ a:any-link:hover {
 
 /*
  * The card page (prototype `vCard`): one narrow column -- the sub-header with *Edit*, badges,
- * the hero and stats (cc-card-hero), the comment, the two actions side by side, then the
+ * the hero and stats (CardHero), the comment, the two actions side by side, then the
  * statements and *Show older statements*.
  */
 .card-page {

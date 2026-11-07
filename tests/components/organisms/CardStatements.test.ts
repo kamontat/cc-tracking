@@ -1,11 +1,33 @@
-import { afterEach, expect, test } from "vitest"
-import "#legacy/components/cc-card-statements"
-import type { CcCardStatements } from "#legacy/components/cc-card-statements"
 import type { LedgerStatement, Purchase } from "#lib/domain/types"
 
+import { flushSync, mount, unmount } from "svelte"
+import { SvelteMap } from "svelte/reactivity"
+import { afterEach, expect, test } from "vitest"
+
+import CardStatements from "#components/organisms/CardStatements.svelte"
 import { setLocale } from "#lib/i18n/index"
 
-afterEach(() => setLocale("en"))
+/**
+ * A card's statements, newest first, each unfolding to its purchases and payments, with Edit and
+ * a two-step Delete on a purchase. Ported from the legacy `cc-card-statements` tests, against the
+ * same markup.
+ */
+let mounted: ReturnType<typeof mount> | undefined
+
+afterEach(() => {
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	document.body.innerHTML = ""
+	setLocale("en")
+})
+
+/** Flushes Svelte's updates and anything they await. */
+const settle = async () => {
+	for (let i = 0; i < 5; i++) {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0))
+		flushSync()
+	}
+}
 
 const TODAY = "2026-10-30"
 
@@ -74,30 +96,69 @@ const paid = statement({
 	paid: true,
 })
 
-const mount = async (props: Partial<CcCardStatements> = {}) => {
+interface Shown {
+	statements?: LedgerStatement[]
+	today?: string
+}
+
+/**
+ * Mounts the statements; `set` changes a prop afterwards, as the page would on a reload. The
+ * props read through a `SvelteMap`, so a change reaches the mounted component.
+ */
+const show = async (initial: Shown = {}) => {
 	document.body.innerHTML = ""
-	const element = document.createElement("cc-card-statements") as CcCardStatements
-	Object.assign(element, {
-		statements: [current, dueSoon, quietA, quietB, paid],
-		today: TODAY,
-		...props,
+	const values = new SvelteMap<string, unknown>(
+		Object.entries({ statements: [current, dueSoon, quietA, quietB, paid], today: TODAY, ...initial }),
+	)
+	const edited: string[] = []
+	const deleted: string[] = []
+	mounted = mount(CardStatements, {
+		target: document.body,
+		props: {
+			get statements() {
+				return values.get("statements") as LedgerStatement[]
+			},
+			get today() {
+				return values.get("today") as string
+			},
+			oneditpurchase: ({ purchase }: { purchase: Purchase }) => edited.push(purchase.id),
+			ondeletepurchase: ({ purchase }: { purchase: Purchase }) => deleted.push(purchase.id),
+		},
 	})
-	document.body.append(element)
-	await element.updateComplete
-	return { element, root: element.shadowRoot as ShadowRoot }
+	await settle()
+	return {
+		root: document.body,
+		edited,
+		deleted,
+		set: async (changes: Shown) => {
+			for (const [key, value] of Object.entries(changes)) values.set(key, value)
+			await settle()
+		},
+	}
 }
 
 const text = (el: Node | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
-const rows = (root: ShadowRoot) => [...root.querySelectorAll<HTMLElement>("[data-period]")]
-const row = (root: ShadowRoot, period: string) => root.querySelector<HTMLElement>(`[data-period="${period}"]`)
+const rows = (root: ParentNode) => [...root.querySelectorAll<HTMLElement>("[data-period]")]
+const row = (root: ParentNode, period: string) => root.querySelector<HTMLElement>(`[data-period="${period}"]`)
+
+const unfold = async (root: ParentNode, period: string) => {
+	row(root, period)?.querySelector<HTMLButtonElement>("button.head")?.click()
+	await settle()
+}
+
+const press = async (root: ParentNode, id: string, action: string) => {
+	root.querySelector<HTMLButtonElement>(`[data-purchase="${id}"] [data-action="${action}"]`)?.click()
+	await settle()
+}
 
 test("each statement reads Mon YYYY with its tag, its dates and what is left", async () => {
-	const { root } = await mount()
+	const { root } = await show()
 	expect(rows(root).map((r) => r.getAttribute("data-period"))).toEqual(["2026-11", "2026-10", "2026-07"])
 	const cur = row(root, "2026-11")
 	expect(text(cur?.querySelector(".name"))).toBe("Nov 2026")
 	expect(text(cur?.querySelector(".tag"))).toBe("Current")
+	expect(cur?.querySelector(".tag")?.getAttribute("data-tone")).toBe("ok")
 	expect(text(cur?.querySelector(".sub"))).toBe("closes 10 Nov 2026 · due 05 Dec 2026")
 	expect(text(cur?.querySelector(".left"))).toBe("฿500.00")
 	expect(cur?.querySelector(".left")?.hasAttribute("data-numeric")).toBe(true)
@@ -112,30 +173,34 @@ test("each statement reads Mon YYYY with its tag, its dates and what is left", a
 	expect(text(done?.querySelector(".tag"))).toBe("Paid")
 	expect(text(done?.querySelector(".sub"))).toBe("paid in full")
 	expect(text(done?.querySelector(".left"))).toBe("฿0.00")
+	expect(done?.querySelector(".left")?.hasAttribute("data-zero")).toBe(true)
+	expect(soon?.querySelector(".left")?.hasAttribute("data-zero")).toBe(false)
 })
 
 test("an overdue statement says by how many days; a later one names its due date", async () => {
-	let { root } = await mount({ today: "2026-11-07" })
+	let { root } = await show({ today: "2026-11-07" })
 	let tag = row(root, "2026-10")?.querySelector(".tag")
 	expect(text(tag)).toBe("Overdue 3 days")
 	expect(tag?.getAttribute("data-urgency")).toBe("overdue")
-	;({ root } = await mount({ today: "2026-10-12" }))
+	unmount(mounted as ReturnType<typeof mount>)
+	;({ root } = await show({ today: "2026-10-12" }))
 	tag = row(root, "2026-10")?.querySelector(".tag")
 	expect(text(tag)).toBe("Due 04 Nov 2026")
 })
 
 test("quiet months fold into one line", async () => {
-	const { root } = await mount()
+	const { root } = await show()
 	expect([...root.querySelectorAll(".quiet")].map(text)).toEqual(["Aug 2026 – Sep 2026 · no purchases"])
 })
 
 test("a statement with purchases is a button that unfolds them", async () => {
-	const { element, root } = await mount()
+	const { root } = await show()
 	const head = row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")
+	expect(head?.getAttribute("type")).toBe("button")
 	expect(head?.getAttribute("aria-expanded")).toBe("false")
 	expect(root.querySelector('[data-purchase="p1"]')).toBeNull()
 	head?.click()
-	await element.updateComplete
+	await settle()
 	expect(head?.getAttribute("aria-expanded")).toBe("true")
 	const line = root.querySelector('[data-purchase="p1"]')
 	expect(text(line?.querySelector(".pdate"))).toBe("02 Oct 2026")
@@ -143,103 +208,115 @@ test("a statement with purchases is a button that unfolds them", async () => {
 	expect(text(line?.querySelector(".pamount"))).toBe("฿1,200.00")
 	expect(head?.getAttribute("aria-controls")).toBe(row(root, "2026-10")?.querySelector(".purchases")?.id)
 	head?.click()
-	await element.updateComplete
+	await settle()
 	expect(root.querySelector('[data-purchase="p1"]')).toBeNull()
 })
 
 test("a folded statement points at no list, since none is rendered", async () => {
-	const { root } = await mount()
+	const { root } = await show()
 	const head = row(root, "2026-10")?.querySelector("button.head")
 	expect(head?.hasAttribute("aria-controls")).toBe(false)
 })
 
+test("the head holds nothing interactive", async () => {
+	const { root } = await show()
+	await unfold(root, "2026-10")
+	for (const head of root.querySelectorAll("button.head")) {
+		expect(head.querySelector("button, a, input, select, textarea")).toBeNull()
+	}
+})
+
 test("once a confirmed delete's row is gone, focus moves to the statement's button", async () => {
-	const { element, root } = await mount()
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
+	const { root, set } = await show()
+	await unfold(root, "2026-10")
 	const line = () => root.querySelector('[data-purchase="p1"]')
-	line()?.querySelector<HTMLButtonElement>('[data-action="delete-purchase"]')?.click()
-	await element.updateComplete
-	line()?.querySelector<HTMLButtonElement>('[data-action="confirm-delete"]')?.click()
-	await element.updateComplete
-	element.statements = [current, { ...dueSoon, purchases: dueSoon.purchases.slice(1) }, quietA, quietB, paid]
-	await element.updateComplete
+	await press(root, "p1", "delete-purchase")
+	await press(root, "p1", "confirm-delete")
+	await set({ statements: [current, { ...dueSoon, purchases: dueSoon.purchases.slice(1) }, quietA, quietB, paid] })
 	expect(line()).toBeNull()
-	expect(root.activeElement).toBe(row(root, "2026-10")?.querySelector("button.head") ?? null)
+	expect(document.activeElement).toBe(row(root, "2026-10")?.querySelector("button.head") ?? null)
+})
+
+test("a confirmed delete that empties its statement moves focus to another statement's button", async () => {
+	const lone = statement({ ...paid, purchases: [purchase({ id: "p3", date: "2026-07-01" })] })
+	const { root, set } = await show({ statements: [current, lone] })
+	await unfold(root, "2026-07")
+	await press(root, "p3", "delete-purchase")
+	await press(root, "p3", "confirm-delete")
+	await set({ statements: [current, { ...lone, purchases: [] }] })
+	expect(root.querySelector('[data-purchase="p3"]')).toBeNull()
+	expect(document.activeElement).toBe(root.querySelector("button.head"))
 })
 
 test("a delete that fails leaves focus where it was", async () => {
-	const { element, root } = await mount()
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
+	const { root, set } = await show()
+	await unfold(root, "2026-10")
 	const line = () => root.querySelector('[data-purchase="p1"]')
-	line()?.querySelector<HTMLButtonElement>('[data-action="delete-purchase"]')?.click()
-	await element.updateComplete
-	line()?.querySelector<HTMLButtonElement>('[data-action="confirm-delete"]')?.click()
-	await element.updateComplete
-	const before = root.activeElement
-	element.statements = [current, dueSoon, quietA, quietB, paid]
-	await element.updateComplete
+	await press(root, "p1", "delete-purchase")
+	await press(root, "p1", "confirm-delete")
+	const before = document.activeElement
+	await set({ statements: [current, dueSoon, quietA, quietB, paid] })
 	expect(line()).not.toBeNull()
-	expect(root.activeElement).toBe(before)
+	expect(document.activeElement).toBe(before)
 })
 
 test("a statement with nothing on it is not a button", async () => {
-	const { root } = await mount({
-		statements: [statement()],
-	})
+	const { root } = await show({ statements: [statement()] })
 	expect(row(root, "2026-11")?.querySelector("button")).toBeNull()
+	expect(row(root, "2026-11")?.querySelector("div.head")).not.toBeNull()
 })
 
 test("Edit asks the page to edit that purchase", async () => {
-	const { element, root } = await mount()
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
-	const got: string[] = []
-	element.addEventListener("edit-purchase", (e) =>
-		got.push((e as CustomEvent<{ purchase: Purchase }>).detail.purchase.id),
-	)
-	root.querySelector<HTMLButtonElement>('[data-purchase="p2"] [data-action="edit-purchase"]')?.click()
-	expect(got).toEqual(["p2"])
+	const { root, edited } = await show()
+	await unfold(root, "2026-10")
+	const edit = root.querySelector('[data-purchase="p2"] [data-action="edit-purchase"]')
+	expect(edit?.getAttribute("aria-label")).toBe("Edit the ฿300.00 purchase of 20 Sep 2026")
+	await press(root, "p2", "edit-purchase")
+	expect(edited).toEqual(["p2"])
 })
 
 test("Delete swaps to Delete ฿X? with Delete and Keep, and focus follows the swap", async () => {
-	const { element, root } = await mount()
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
-	const got: string[] = []
-	element.addEventListener("delete-purchase", (e) =>
-		got.push((e as CustomEvent<{ purchase: Purchase }>).detail.purchase.id),
-	)
+	const { root, deleted } = await show()
+	await unfold(root, "2026-10")
 	const line = () => root.querySelector('[data-purchase="p1"]')
-	line()?.querySelector<HTMLButtonElement>('[data-action="delete-purchase"]')?.click()
-	await element.updateComplete
+	await press(root, "p1", "delete-purchase")
 	expect(text(line()?.querySelector(".ask"))).toBe("Delete ฿1,200.00?")
 	const confirm = line()?.querySelector<HTMLButtonElement>('[data-action="confirm-delete"]')
 	expect(confirm?.getAttribute("data-variant")).toBe("danger")
-	expect(root.activeElement).toBe(confirm ?? null)
-	expect(got).toEqual([])
+	expect(document.activeElement).toBe(confirm ?? null)
+	expect(deleted).toEqual([])
 
-	line()?.querySelector<HTMLButtonElement>('[data-action="keep"]')?.click()
-	await element.updateComplete
+	await press(root, "p1", "keep")
 	expect(line()?.querySelector(".ask")).toBeNull()
-	expect(root.activeElement).toBe(line()?.querySelector('[data-action="delete-purchase"]') ?? null)
+	expect(document.activeElement).toBe(line()?.querySelector('[data-action="delete-purchase"]') ?? null)
 
-	line()?.querySelector<HTMLButtonElement>('[data-action="delete-purchase"]')?.click()
-	await element.updateComplete
-	line()?.querySelector<HTMLButtonElement>('[data-action="confirm-delete"]')?.click()
-	expect(got).toEqual(["p1"])
+	await press(root, "p1", "delete-purchase")
+	await press(root, "p1", "confirm-delete")
+	expect(deleted).toEqual(["p1"])
+})
+
+test("folding a statement drops its half-done delete", async () => {
+	const { root } = await show()
+	await unfold(root, "2026-10")
+	await press(root, "p1", "delete-purchase")
+	await unfold(root, "2026-10")
+	await unfold(root, "2026-10")
+	expect(root.querySelector('[data-purchase="p1"] .ask')).toBeNull()
+	expect(root.querySelector('[data-purchase="p1"] [data-action="delete-purchase"]')).not.toBeNull()
 })
 
 test("no statements says where purchases come from", async () => {
-	const { root } = await mount({ statements: [] })
+	const { root } = await show({ statements: [] })
 	expect(text(root)).toBe("No statements yet. Purchases come from purchase lists on Home.")
+	expect(root.querySelector("p.empty")).not.toBeNull()
 })
 
 test("a language switch re-renders in place", async () => {
-	const { element, root } = await mount()
+	const { root } = await show()
+	const before = row(root, "2026-11")
 	setLocale("th")
-	await element.updateComplete
+	flushSync()
+	expect(row(root, "2026-11")).toBe(before)
 	expect(text(row(root, "2026-11")?.querySelector(".tag"))).toBe("รอบปัจจุบัน")
 	expect(text(row(root, "2026-11")?.querySelector(".name"))).toBe("พ.ย. 2026")
 })
@@ -270,19 +347,19 @@ const withPayments = statement({
 	remaining: 800_00,
 })
 
-const lines = (root: ShadowRoot, period: string) => [
+const lines = (root: ParentNode, period: string) => [
 	...(row(root, period)?.querySelectorAll<HTMLElement>(".purchases > li") ?? []),
 ]
 
 test("an unfolded statement lists its payment parts among its purchases, by date", async () => {
-	const { element, root } = await mount({ statements: [withPayments] })
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
+	const { root } = await show({ statements: [withPayments] })
+	await unfold(root, "2026-10")
 	expect(
 		lines(root, "2026-10").map((li) => li.getAttribute("data-purchase") ?? li.getAttribute("data-payment")),
 	).toEqual(["p2", "y1", "p1", "y2"])
 
 	const whole = root.querySelector<HTMLElement>('[data-payment="y1"]')
+	expect(whole?.classList.contains("payment")).toBe(true)
 	expect(text(whole?.querySelector(".pdate"))).toBe("25 Sep 2026")
 	expect(text(whole?.querySelector(".pnote"))).toBe("Payment")
 	expect(text(whole?.querySelector(".pamount"))).toBe("+฿500.00")
@@ -295,9 +372,8 @@ test("an unfolded statement lists its payment parts among its purchases, by date
 })
 
 test("a payment part has no Edit or Delete", async () => {
-	const { element, root } = await mount({ statements: [withPayments] })
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
+	const { root } = await show({ statements: [withPayments] })
+	await unfold(root, "2026-10")
 	for (const id of ["y1", "y2"]) {
 		const line = root.querySelector(`[data-payment="${id}"]`)
 		expect(line).not.toBeNull()
@@ -307,7 +383,7 @@ test("a payment part has no Edit or Delete", async () => {
 
 test("two parts of one payment on one statement read as one line", async () => {
 	const y = payment("y1", "2026-09-25", 1_000_00)
-	const { element, root } = await mount({
+	const { root } = await show({
 		statements: [
 			statement({
 				...withPayments,
@@ -318,16 +394,15 @@ test("two parts of one payment on one statement read as one line", async () => {
 			}),
 		],
 	})
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
-	const lines = root.querySelectorAll('[data-payment="y1"]')
-	expect(lines.length).toBe(1)
-	expect(text(lines[0]?.querySelector(".pamount"))).toBe("+฿700.00")
-	expect(text(lines[0]?.querySelector(".ppart"))).toBe("(part of ฿1,000.00)")
+	await unfold(root, "2026-10")
+	const found = root.querySelectorAll('[data-payment="y1"]')
+	expect(found.length).toBe(1)
+	expect(text(found[0]?.querySelector(".pamount"))).toBe("+฿700.00")
+	expect(text(found[0]?.querySelector(".ppart"))).toBe("(part of ฿1,000.00)")
 })
 
 test("a statement with payments and no purchases still unfolds", async () => {
-	const { element, root } = await mount({
+	const { root } = await show({
 		statements: [
 			statement({
 				...withPayments,
@@ -339,15 +414,35 @@ test("a statement with payments and no purchases still unfolds", async () => {
 	const head = row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")
 	expect(head).not.toBeNull()
 	head?.click()
-	await element.updateComplete
+	await settle()
 	expect(root.querySelector('[data-payment="y1"]')).not.toBeNull()
 })
 
 test("a payment reads in Thai", async () => {
 	setLocale("th")
-	const { element, root } = await mount({ statements: [withPayments] })
-	row(root, "2026-10")?.querySelector<HTMLButtonElement>("button.head")?.click()
-	await element.updateComplete
+	const { root } = await show({ statements: [withPayments] })
+	await unfold(root, "2026-10")
 	const split = root.querySelector<HTMLElement>('[data-payment="y2"]')
 	expect(text(split?.querySelector(".pnote"))).toBe("การชำระ (ส่วนหนึ่งของ ฿900.00)")
+})
+
+const style = async () =>
+	(await Bun.file("src/components/organisms/CardStatements.svelte").text()).split("<style>")[1] ?? ""
+
+test("the look takes every value from the tokens", async () => {
+	const css = await style()
+	expect(css).not.toBe("")
+	// Media queries can't read a custom property, so a breakpoint is the one literal allowed.
+	const rules = css.replace(/@media[^{]*/g, "")
+	expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i)
+	expect(rules).not.toMatch(/\d(?:\.\d+)?(?:px|rem|em)\b/)
+	expect(rules).not.toContain("calc(var(--cc-border-width) *")
+})
+
+test("the phone layout gives the buttons their own line", async () => {
+	const css = await style()
+	expect(css).toMatch(
+		/@media \(max-width: 639px\)\s*{[^}]*\.purchases\s*{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto;/,
+	)
+	expect(css).toMatch(/@media \(max-width: 639px\)[\s\S]*\.pactions\s*{[^}]*grid-column: 1 \/ -1;/)
 })

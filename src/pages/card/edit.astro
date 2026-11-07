@@ -1,12 +1,11 @@
 ---
+import CardEditPage from "#components/organisms/CardEditPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Edit card" route="card/edit" tab="cards" fab={false} mainClass="page--form">
-	<script>
-		import { start } from "#legacy/routes/card/edit"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("card/edit", start)
-	</script>
+<!-- Edit a card: `/card/edit?id=<id>`, the card form on that card, under a sub-header to its page. -->
+<AppLayout title="Edit card" titleKey="title.cardEdit" tab="cards" fab={false} mainClass="page--form">
+	<Fragment slot="main">
+		<CardEditPage mode="edit" client:load />
+	</Fragment>
 </AppLayout>

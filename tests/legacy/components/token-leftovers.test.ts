@@ -1,10 +1,8 @@
 import { expect, test } from "vitest"
-import "#legacy/components/cc-card-hero"
-import "#legacy/components/cc-card-form"
 import "#legacy/components/cc-pay-form"
 
 /** UI-01: component CSS takes its values from tokens.css, not from literals. */
-const tags = ["cc-card-hero", "cc-card-form", "cc-pay-form"]
+const tags = ["cc-pay-form"]
 
 const cssOf = (tag: string) => String((customElements.get(tag) as unknown as { styles: unknown[] }).styles)
 
@@ -17,14 +15,15 @@ test("no component css carries a literal em or a border-width multiple", () => {
 })
 
 // The Svelte components converted from these take the same rule.
-test.each(["src/components/organisms/CardsFilter.svelte"])(
-	"%s carries no literal em or border-width multiple",
-	async (path) => {
-		const css = (await Bun.file(path).text()).split("<style>")[1] ?? ""
-		expect(css).not.toMatch(/\d(?:\.\d+)?em\b/)
-		expect(css).not.toContain("calc(var(--cc-border-width) *")
-	},
-)
+test.each([
+	"src/components/organisms/CardsFilter.svelte",
+	"src/components/organisms/CardForm.svelte",
+	"src/components/organisms/CardHero.svelte",
+])("%s carries no literal em or border-width multiple", async (path) => {
+	const css = (await Bun.file(path).text()).split("<style>")[1] ?? ""
+	expect(css).not.toMatch(/\d(?:\.\d+)?em\b/)
+	expect(css).not.toContain("calc(var(--cc-border-width) *")
+})
 
 test("the header height and the sub-header offset share one derivation", async () => {
 	const tokens = await Bun.file("src/styles/tokens.css").text()
