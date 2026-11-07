@@ -88,6 +88,9 @@
 	   a bottom sheet the screen's full width. */
 	--cc-sheet-max: 32.5rem;
 
+	/* The widest the new-version bar grows (DD-181): the message and its button on one line. */
+	--cc-update-bar-width: 28rem;
+
 	/* How the payment sheet arrives: it slides up from the bottom edge on a phone, and fades in
 	   from slightly smaller from 900px. None of it runs under prefers-reduced-motion. */
 	--cc-sheet-motion: 240ms;

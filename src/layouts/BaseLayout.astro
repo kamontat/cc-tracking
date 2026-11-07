@@ -7,6 +7,8 @@ import type { MessageKey } from "#lib/i18n/catalog"
 
 import { ClientRouter } from "astro:transitions"
 
+import UpdateBar from "#components/molecules/UpdateBar.svelte"
+
 interface Props {
 	/** The tab title before the bundle runs, in English. */
 	title: string
@@ -91,5 +93,7 @@ const { title, titleKey } = Astro.props
 	</head>
 	<body>
 		<slot />
+		<!-- Offline use: registers the service worker, and offers a downloaded new version (PRD DD-181). -->
+		<UpdateBar client:load transition:persist />
 	</body>
 </html>

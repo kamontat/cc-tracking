@@ -31,6 +31,14 @@ test("the boot runs again after every swap", async () => {
 	expect(source).toMatch(/<script is:inline data-astro-rerun data-theme-boot>/)
 })
 
+// Every page works offline once its files are cached, and offers a new version when one has
+// downloaded (PRD DD-181). The bar persists across swaps, so it registers the worker only once.
+test("BaseLayout carries the update bar on every page, kept across swaps", async () => {
+	const source = await Bun.file("src/layouts/BaseLayout.astro").text()
+	expect(source).toContain('import UpdateBar from "#components/molecules/UpdateBar.svelte"\n')
+	expect(source).toMatch(/<UpdateBar client:load transition:persist\s*\/>/)
+})
+
 test("BaseLayout carries the global styles, reset first", async () => {
 	const source = await Bun.file("src/layouts/BaseLayout.astro").text()
 	expect(source).toContain('import "@kcstyles/reset.css"\nimport "../styles/tokens.css"\nimport "../styles/app.css"\n')
