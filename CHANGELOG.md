@@ -4,7 +4,13 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-07: The card page, the card form, Make a payment, Transactions, the list pages and Home converted, and offline use
+## 2026-11-07: The card page, the card form, Make a payment, Transactions, the list pages and Home converted, Lit removed, and offline use
+
+### BREAKING CHANGES
+
+- `src/legacy/`, the `#legacy/*` alias, the `lit` dependency and `#lib/ui/spa` (`onPage`,
+  `pageSignal`) are gone, and AppLayout takes no `route`: a page is `AppLayout` with a Svelte
+  island in its `main` slot, which cleans up in `onMount` (DD-185).
 
 ### Features
 
@@ -56,6 +62,11 @@ reasons don't show up in the code.
 - app.css places Home's two panels by their wrappers (`.home-needs`, `.home-ready`), not by the
   Lit element names.
 
+- Lit is removed (DD-185): with every page an Astro page over Svelte islands, the Lit code, its
+  tests and its decorator settings go. The tests of today's pages, tokens and headers that sat
+  under `tests/legacy/` move beside the code they check, and `AGENTS.md`, the project skills
+  and the README describe the Astro and Svelte code as it is.
+
 ### Bug fixes
 
 - On a phone in Thai, a long over-the-room warning no longer widens an amount card past the
@@ -77,6 +88,8 @@ reasons don't show up in the code.
   the same row; Home takes it as is (DD-182).
 - An opened row's sentence is a list of pieces (words, a strong amount, a red late phrase), not
   markup in a string, so a card name or note can never inject markup through `{@html}`.
+- Lit comes out as soon as no page loads it: dead code and a dependency nothing uses cost a
+  reader more than they save. `onPage` goes too, since an island cleans up in `onMount` (DD-185).
 - Home converts last, because _Needs you_ needed the opening row built for Transactions; Lit
   comes out in a change of its own, so this one is only Home (DD-184).
 - The four list pages convert together: new and draft share the entry steps, and all four share

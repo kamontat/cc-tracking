@@ -61,8 +61,7 @@ export function setLocale(locale: Locale): void {
 
 /**
  * Returns the function that removes this listener again. With a `signal` the listener also goes
- * when the signal aborts: a page passes its `pageSignal()` (`#lib/ui/spa`), so what it set up
- * goes when the reader navigates away.
+ * when the signal aborts.
  */
 export function subscribe(listener: () => void, options: { signal?: AbortSignal } = {}): () => void {
 	const remove = () => {

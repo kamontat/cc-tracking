@@ -23,7 +23,7 @@ export type Opened = { ok: true; repo: Repository } | { ok: false; message: () =
  * What every page does before it reads anything: create the repository and bring stored data
  * up to date. A browser that refuses storage, or a payment conversion that fails, stops the
  * page; the other steps only log, since what they leave undone is cosmetic and runs again on
- * the next load. Shared by the legacy `bootstrap` and the Astro islands.
+ * the next load. Every island calls it.
  */
 export async function openRepository(options: StartupOptions = {}): Promise<Opened> {
 	let repo: Repository

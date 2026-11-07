@@ -5,7 +5,6 @@
 	"imports": {
 		"#lib/*": "./src/lib/*.ts",
 		"#components/*": "./src/components/*",
-		"#legacy/*": "./src/legacy/*.ts",
 		"#layouts/*": "./src/layouts/*"
 	},
 	"scripts": {
@@ -23,7 +22,6 @@
 		"@astrojs/svelte": "9.1.2",
 		"@kcstyles/reset.css": "2.1.0",
 		"astro": "7.4.5",
-		"lit": "3.3.3",
 		"svelte": "5.57.3"
 	},
 	"devDependencies": {

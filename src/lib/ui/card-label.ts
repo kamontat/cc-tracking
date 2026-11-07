@@ -12,7 +12,7 @@ import { t } from "#lib/i18n/index"
  * - name: the name -- buttons, notices and sentences; short `c-[id]`.
  * A short form is for a small space. The Cards rows, the card page and the edit page use
  * `cardTitle` instead. A card that is no longer stored keeps its id: `id) —`, and `c-[id]` for
- * its name. These are the text forms; the legacy `#legacy/lib/ui/card-label` adds the markup.
+ * its name. These are the text forms; a component draws the chip (`.mini`) and `.card-label` around them.
  */
 
 /** The name form's short form, and the name of a card no longer stored: `c-[5]`. */
