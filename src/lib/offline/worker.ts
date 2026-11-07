@@ -60,7 +60,10 @@ export function handles(request: Request, origin: string): boolean {
 
 /**
  * The version's copy of what is asked for, else the network. A page's query (`/card?id=`) is
- * read by its script, so the one cached page answers every query.
+ * read by its script, so the one cached page answers every query. Each cached file is the
+ * build's one copy at its address, so a `Vary` header on it is ignored: the browser loads a
+ * module script with headers (`Origin`) the install's fetch lacked, and honouring a server's
+ * `Vary: Origin` would miss the cache and break the page offline.
  */
 export async function respond(
 	{ caches, fetch }: { caches: Caches; fetch: Fetch },
@@ -68,5 +71,5 @@ export async function respond(
 	request: Request,
 ): Promise<Response> {
 	const cache = await caches.open(cacheName(version))
-	return (await cache.match(request, { ignoreSearch: true })) ?? fetch(request)
+	return (await cache.match(request, { ignoreSearch: true, ignoreVary: true })) ?? fetch(request)
 }
