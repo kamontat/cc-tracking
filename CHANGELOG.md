@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-07: The card page, the card form and Make a payment converted, and offline use
+## 2026-11-07: The card page, the card form, Make a payment and Transactions converted, and offline use
 
 ### Features
 
@@ -31,6 +31,17 @@ reasons don't show up in the code.
   `#lib/ui/pay-tile` and is drawn by the shared card tile; the Lit pay tile stays for Home's
   _Owed_ list.
 
+- Transactions is converted (DD-182): the `TransactionsPage` island draws the view switch, the
+  search, filter and sort, the month summary, the ledger with _Upcoming_, the Lists view, the
+  owed list beside them from 900px and the filter sheet. The address, the 50-row pages, the
+  two-step _Delete_ and _Confirm_ and focus after a row goes work as before.
+- The row that opens in place is in Svelte: `ActionRow` with `CycleLine` for the billing cycle
+  and `TwoStepButtons`, kept by the rune state `OpenRows` and `TwoStep`. Their words are pure
+  in `#lib/ui/row-text`, `#lib/ui/cycle-line` and `#lib/ui/ledger-drawer`. The Lit row stays
+  for Home's _Needs you_ until Home converts.
+- On a phone a card's filter chip on Transactions shows its short name again, as the Lit page
+  did (`FilterControls` chips take a `short` form).
+
 ### Bug fixes
 
 - In the new payment form, a reload after a failed save no longer empties the amount and note
@@ -46,6 +57,10 @@ reasons don't show up in the code.
   visited pages (DD-181).
 - A new version waits for the reader's tap rather than reloading straight away, which could lose
   a form being filled in, or switching quietly on the next open, which shows the update late.
+- The opening row is built once for Transactions and Home rather than per page, since both draw
+  the same row; Home takes it as is (DD-182).
+- An opened row's sentence is a list of pieces (words, a strong amount, a red late phrase), not
+  markup in a string, so a card name or note can never inject markup through `{@html}`.
 - The version is a hash of the built files, not the commit, so any changed build is a new
   version and an unchanged rebuild is not. About 60 lines of worker code, so no Workbox.
 
