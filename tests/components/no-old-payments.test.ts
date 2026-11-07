@@ -8,8 +8,8 @@ import { expect, test } from "vitest"
 test("no route or component writes an old statement payment", async () => {
 	const offenders: string[] = []
 	let scanned = 0
-	// Every UI folder: the Lit legacy and the Astro tiers, layouts and pages that replace it.
-	for await (const path of new Bun.Glob("{legacy,components,layouts,pages}/**/*.{ts,astro,svelte}").scan({
+	// Every UI folder: the atomic tiers, the layouts and the pages.
+	for await (const path of new Bun.Glob("{components,layouts,pages}/**/*.{ts,astro,svelte}").scan({
 		cwd: "src",
 	})) {
 		scanned++

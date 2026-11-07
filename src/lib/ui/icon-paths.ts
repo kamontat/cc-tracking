@@ -1,8 +1,7 @@
 /**
  * The drawing inside every icon, as SVG markup on a 24-unit grid with a 1.9 stroke in the
  * current text colour. One source for both renderers: the `Icon` atom
- * (`#components/atoms/Icon.astro`) and the legacy Lit `icons` (`#legacy/lib/ui/icons`). Mostly
- * Lucide's shapes.
+ * (`#components/atoms/Icon.astro`) and the islands' `SvgIcon`. Mostly Lucide's shapes.
  */
 export const ICON_PATHS = {
 	home: `<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>`,

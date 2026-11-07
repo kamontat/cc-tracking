@@ -1,10 +1,5 @@
 {
 	"extends": ["@kcconfigs/tsconfig/bun", "astro/tsconfigs/strictest"],
-	"compilerOptions": {
-		// Lit's decorators: the legacy form, with class fields left to the decorators.
-		"experimentalDecorators": true,
-		"useDefineForClassFields": false
-	},
 	"include": ["${configDir}/.astro/types.d.ts", "${configDir}/**/*"],
 	"exclude": ["${configDir}/**/node_modules/**", "${configDir}/dist/**"]
 }

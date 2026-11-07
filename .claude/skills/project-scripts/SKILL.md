@@ -39,19 +39,18 @@ A *program* (generates or migrates something) is a file under `scripts/`.
 | Components | `src/components/{atoms,molecules,organisms}/` (`project-components`) |
 | Domain, storage, i18n, UI helpers | `src/lib/{domain,storage,i18n,ui}/` |
 | Styles | `src/styles/` (`tokens.css`, `app.css`) |
-| Lit legacy, shrinking | `src/legacy/`, mirroring its old paths: `components/` (Lit), `routes/<path>.ts` (one per page, rendering Lit into `#page`), and the `lib/` and `styles/shared.ts` files that need Lit |
 | Static files | `public/` (`_headers`, `_redirects`, favicon) |
 | Tests | `tests/`, mirroring `src/` (`src/lib/gtm.ts` → `tests/lib/gtm.test.ts`); `scripts/` → `tests/scripts/` |
 
-Aliases (`package.json` `imports`): `#lib/*` and `#legacy/*` add `.ts`; `#components/*`
-and `#layouts/*` map the path as written, so `.astro` imports carry `.astro`. No TypeScript
-import carries `.ts`. Only the legacy and a page's route script use `#legacy/*`
-(`tests/legacy/boundary.test.ts`).
+Aliases (`package.json` `imports`): `#lib/*` adds `.ts`, so a rune module
+`src/lib/ui/open-row.svelte.ts` is `#lib/ui/open-row.svelte`; `#components/*` and
+`#layouts/*` map the path as written, so `.astro` and `.svelte` imports carry their extension.
+No TypeScript import carries `.ts`.
 
 ## Tests
 
 `vitest.config.ts` wraps Astro's `getViteConfig`, so `.astro` files and the aliases resolve.
-It runs `tests/**/*.test.ts` in a **happy-dom** environment (Lit components render into it)
+It runs `tests/**/*.test.ts` in a **happy-dom** environment (Svelte islands mount into it)
 with `tests/setup.ts`, which resets the locale and `localStorage` before every test and the
 seed/migration markers after. A file that renders `.astro` with the Container API starts
 with `// @vitest-environment node`: under happy-dom's globals Astro's renderer mistakes a
@@ -61,9 +60,7 @@ component for a framework one ("NoMatchingRenderer").
 
 `astro check` runs TypeScript over every `.astro` file and everything `tsconfig.json`
 includes — `src/`, `tests/` and `scripts/` alike. `tsconfig.json` extends
-`@kcconfigs/tsconfig/bun` then `astro/tsconfigs/strictest`, and turns on
-`experimentalDecorators` with `useDefineForClassFields: false` for Lit's decorators (drop
-both with the last Lit component). TypeScript stays on 6: `@astrojs/check` and
+`@kcconfigs/tsconfig/bun` then `astro/tsconfigs/strictest`. TypeScript stays on 6: `@astrojs/check` and
 `@kcconfigs/tsconfig` don't accept 7 yet.
 
 Worktrees sit inside the root checkout (`.claude/worktrees/*`), so Astro also resolves the

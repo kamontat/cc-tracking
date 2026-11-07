@@ -9,7 +9,7 @@ import { createContainer, parseHtml } from "../container"
 
 /**
  * Every page is the same shell -- `AppLayout` over `BaseLayout` -- with its own title, tab,
- * `<main>` width and route module. These read each page's source and render it, so a page that
+ * `<main>` width and island. These read each page's source and render it, so a page that
  * skips the layout, or a layout that drops a piece every page needs, fails here rather than on
  * the preview.
  */
@@ -75,28 +75,9 @@ test.each(layouts)("layout %s wraps BaseLayout", async (layout) => {
 	expect(await reachesBase(layout)).toBe(true)
 })
 
-/**
- * Pages converted to Astro: they render into <main> through AppLayout's `main` slot, with
- * their own title key, and have no legacy route. Every other page is still legacy.
- */
-const CONVERTED = [
-	"card.astro",
-	"card/edit.astro",
-	"card/new.astro",
-	"cards.astro",
-	"index.astro",
-	"list/draft.astro",
-	"list/new.astro",
-	"list/reply.astro",
-	"list/view.astro",
-	"pay.astro",
-	"settings.astro",
-	"settings/locations.astro",
-	"transactions.astro",
-]
-const legacy = pages.filter((page) => !CONVERTED.includes(page))
-
-test.each(CONVERTED)("%s is converted: no route script, its content in <main>, its title translated", async (page) => {
+// Every page renders into <main> through AppLayout's `main` slot, with its own title key; no page
+// has a route script any more (the Lit routes are gone, DD-185).
+test.each(pages)("%s renders its content in <main> and translates its title", async (page) => {
 	const text = await source(page)
 	expect(text).not.toContain("#legacy/")
 	expect(text).not.toContain("onPage(")
@@ -107,24 +88,15 @@ test.each(CONVERTED)("%s is converted: no route script, its content in <main>, i
 	expect(doc.querySelector("title")?.getAttribute("data-i18n-title")).toMatch(/^title\./)
 })
 
-// Under the ClientRouter a page's script runs once, so it registers its route with onPage,
-// which starts it on every visit to a page whose <main> names the same route (PRD DD-174).
-test.each(legacy)("%s starts the route module of the same name on every visit", async (page) => {
-	const route = page.replace(/\.astro$/, "")
-	const text = await source(page)
-	expect(text).toContain(`import { start } from "#legacy/routes/${route}"\n`)
-	expect(text).toContain(`import { onPage } from "#lib/ui/spa"\n`)
-	expect(text).toContain(`onPage("${route}", start)\n`)
-	expect(
-		parseHtml(await render(page))
-			.querySelector("main#page")
-			?.getAttribute("data-route"),
-	).toBe(route)
+test("AppLayout names no route on <main>", async () => {
+	const layout = await Bun.file("src/layouts/AppLayout.astro").text()
+	expect(layout).not.toContain("data-route")
+	expect(layout).not.toMatch(/\broute\?:/)
 })
 
-test.each(pages)("%s carries the shell the route module renders into", async (page) => {
+test.each(pages)("%s carries the shell its island renders into", async (page) => {
 	const html = await render(page)
-	// English until the bundle runs; chrome.ts then sets the reader's locale.
+	// English until the bundle runs; the locale boot then sets the reader's language.
 	expect(html).toContain('<html lang="en"')
 	expect(html).toContain('<meta name="robots" content="noindex, nofollow">')
 	for (const id of ["site-header", "page", "tabbar"]) expect(html).toContain(`id="${id}"`)
