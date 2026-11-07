@@ -69,6 +69,7 @@ const fakeBar = (start: string) => {
 				pop = () => {}
 			}
 		},
+		length: () => entries.length,
 		back: () => {
 			calls.push("back")
 			at = Math.max(0, at - 1)

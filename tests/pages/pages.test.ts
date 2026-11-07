@@ -84,6 +84,7 @@ const CONVERTED = [
 	"card/edit.astro",
 	"card/new.astro",
 	"cards.astro",
+	"pay.astro",
 	"settings.astro",
 	"settings/locations.astro",
 ]

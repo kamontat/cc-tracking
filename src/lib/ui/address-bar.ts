@@ -12,6 +12,8 @@ export type AddressBar = {
 	replace: (url: string) => void
 	/** Runs `listener` when Back or Forward moves between this page's entries; returns its remover. */
 	onPop: (listener: () => void) => () => void
+	/** How many entries the session holds: a back control steps back only when there is one. */
+	length: () => number
 	/** One entry back. */
 	back: () => void
 }
@@ -25,5 +27,6 @@ export const browserBar = (): AddressBar => ({
 		addEventListener("popstate", listener)
 		return () => removeEventListener("popstate", listener)
 	},
+	length: () => history.length,
 	back: () => history.back(),
 })

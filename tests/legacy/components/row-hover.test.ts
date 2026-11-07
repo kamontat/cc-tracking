@@ -1,6 +1,5 @@
 import { expect, test } from "vitest"
 import "#legacy/components/cc-needs-you"
-import "#legacy/components/cc-pay-picker"
 import "#legacy/components/cc-tx-ledger"
 import "#legacy/components/cc-owed-list"
 import "#legacy/components/cc-list-index"
@@ -96,7 +95,7 @@ test("every row list's hover reaches the panel's edges and keeps its badge", () 
 // DD-151, DD-166: a card tile (the payment picker's and Owed's too) hovers by deepening its edge in its own colour, never an underline, and
 // keeps its focus ring.
 test("card tiles hover without an underline and keep a focus ring", () => {
-	for (const tag of ["cc-ready-panel", "cc-ready-picker", "cc-pay-picker", "cc-owed-list"]) {
+	for (const tag of ["cc-ready-panel", "cc-ready-picker", "cc-owed-list"]) {
 		const text = stylesOf(tag)
 		const rules = hoverRules(text).filter(({ selector }) => selector?.includes(".tile"))
 		expect(rules.length).toBeGreaterThan(0)

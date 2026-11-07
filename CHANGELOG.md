@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-07: The card page and the card form converted
+## 2026-11-07: The card page, the card form and Make a payment converted
 
 ### Improvements
 
@@ -16,6 +16,16 @@ reasons don't show up in the code.
 - A card's name in its text forms (`cardTitle`, `cardLine`, `cardName`, …) lives in
   `#lib/ui/card-label`; the Lit pages' `card-label` re-exports it, so islands and Lit pages
   share one copy. `SubHeaderBar` is the sub-header for a title built from the reader's data.
+- Make a payment is converted (DD-180): the `PayPage` island draws the card picker and, at
+  `?card=`, the payment form in a sheet. Back, _Change_, the save that lands on Transactions and
+  _Try again_ after a failed save work as before. A pay tile's content comes from
+  `#lib/ui/pay-tile` and is drawn by the shared card tile; the Lit pay tile stays for Home's
+  _Owed_ list.
+
+### Bug fixes
+
+- In the new payment form, a reload after a failed save no longer empties the amount and note
+  you typed: a field refills only when its value really changes, as the Lit form did.
 
 ### Decisions
 

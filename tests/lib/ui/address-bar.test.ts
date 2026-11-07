@@ -15,8 +15,10 @@ test("reads, pushes and rewrites the browser's address, keeping the router's sta
 	expect(location.search).toBe("?q=b")
 	expect(history.state).toEqual({ index: 3 })
 
+	const before = bar.length()
 	bar.push("/cards?group=g1")
 	expect(location.search).toBe("?group=g1")
+	expect(bar.length()).toBe(before + 1)
 })
 
 test("a pop listener runs on popstate until it is removed", () => {

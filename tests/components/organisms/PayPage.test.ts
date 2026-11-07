@@ -1,24 +1,56 @@
-import type { CcModal } from "#legacy/components/cc-modal"
-import type { CcPayForm } from "#legacy/components/cc-pay-form"
-import type { CcPayPicker } from "#legacy/components/cc-pay-picker"
-import type { CardPayment } from "#lib/domain/types"
+import type { Card, CardPayment } from "#lib/domain/types"
+import type { AddressBar } from "#lib/ui/address-bar"
 
-import { expect, test } from "vitest"
+import { flushSync, mount, unmount } from "svelte"
+import { afterEach, expect, test } from "vitest"
 
-import { type PayAddressBar, renderPayPage } from "#legacy/routes/pay-page"
+import PayPage from "#components/organisms/PayPage.svelte"
+import { defaultLocations } from "#lib/domain/locations"
+import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { DEFAULT_TX_FILTER, filterEntries, ledgerEntries } from "#lib/domain/transactions"
-import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
-import { CLOCK, flatText, mount, seed, settle } from "./list/test-support"
 
-/** An address bar that records what the page did to it, and can play Back. */
+/**
+ * The payment page's island (DD-76). Ported from the legacy route's tests; where those read a
+ * child element's properties, these read what the child draws, and drive the real picker, form
+ * and sheet.
+ */
+let mounted: ReturnType<typeof mount> | undefined
+
+afterEach(() => {
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	document.body.innerHTML = ""
+})
+
+/** Flushes the page's awaited reads and writes and Svelte's updates. */
+const settle = async (rounds = 20) => {
+	for (let i = 0; i < rounds; i++) {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0))
+		flushSync()
+	}
+}
+
+/** Lets a sheet's exit play out; `afterExit` waits on the animation or a timer. */
+const exit = async () => {
+	await new Promise((resolve) => setTimeout(resolve, 450))
+	await settle()
+}
+
+const CLOCK = () => new Date("2026-10-31T03:00:00Z")
+
+const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
+
+const $ = <E extends Element = HTMLElement>(selector: string) => document.querySelector<E>(selector)
+
+/** An address bar that records what the page did to it, and can play Back and Forward. */
 const fakeBar = (start: string) => {
 	const entries = [start]
 	let at = 0
 	const calls: string[] = []
 	let pop = () => {}
-	const bar: PayAddressBar = {
+	const bar: AddressBar = {
 		search: () => {
 			const entry = entries[at] ?? ""
 			const q = entry.indexOf("?")
@@ -35,6 +67,9 @@ const fakeBar = (start: string) => {
 		},
 		onPop: (listener) => {
 			pop = listener
+			return () => {
+				pop = () => {}
+			}
 		},
 		length: () => entries.length,
 		back: () => {
@@ -43,7 +78,6 @@ const fakeBar = (start: string) => {
 			pop()
 		},
 	}
-	/** The browser's Forward. */
 	const forward = () => {
 		at = Math.min(entries.length - 1, at + 1)
 		pop()
@@ -51,14 +85,29 @@ const fakeBar = (start: string) => {
 	return { bar, calls, entries, forward, now: () => entries[at] }
 }
 
+const card = (id: string, extra: Partial<Card> = {}): Card => ({
+	id,
+	name: `${id} card`,
+	last4: "1234",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 20 },
+	archived: false,
+	limitGroupId: "g1",
+	...extra,
+})
+
+/** Group g1 of ฿100,000 holding cards A and B, and an archived Z; only Krabi takes purchases. */
+const seed = async (repo: Repository) => {
+	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 })
+	await repo.saveCard(card("A"))
+	await repo.saveCard(card("B"))
+	await repo.saveCard(card("Z", { archived: true }))
+	for (const record of defaultLocations(DEFAULT_SETTINGS))
+		await repo.saveLocation({ ...record, takesPurchases: record.id === "krabi" })
+}
+
 const withStatement = async (repo: Repository) => {
-	await repo.savePurchase({
-		id: "p1",
-		cardId: "A",
-		date: "2026-09-10",
-		amount: 10_000_00,
-		note: "fuel",
-	})
+	await repo.savePurchase({ id: "p1", cardId: "A", date: "2026-09-10", amount: 10_000_00, note: "fuel" })
 }
 
 const setup = async (
@@ -66,131 +115,124 @@ const setup = async (
 	before?: (repo: Repository) => Promise<void>,
 	repo: Repository = new InMemoryRepository(),
 ) => {
-	setLocale("en")
 	await seed(repo)
 	await before?.(repo)
-	const root = mount()
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
 	const address = fakeBar(start)
 	const visited: string[] = []
-	renderPayPage(repo, root, {
-		clock: CLOCK,
-		address: address.bar,
-		navigate: (url) => {
-			visited.push(url)
+	let ids = 0
+	mounted = mount(PayPage, {
+		target: document.body,
+		props: {
+			open: async () => ({ ok: true as const, repo }),
+			clock: CLOCK,
+			address: address.bar,
+			navigate: (url: string) => visited.push(url),
+			newId: () => `pay${++ids}`,
 		},
 	})
-	await settle(5)
-	return { repo, root, address, visited }
+	await settle()
+	return { repo, address, visited }
 }
 
-const modal = () => document.querySelector<CcModal>("cc-modal[sheet]")
-const picker = () => document.querySelector<CcPayPicker>("cc-pay-picker")
-const form = () => document.querySelector<CcPayForm>("cc-pay-form")
-const inner = <T extends Element>(el: Element | null, selector: string) =>
-	el?.shadowRoot?.querySelector<T>(selector) ?? null
+const sheet = () => $("dialog [name=amount]")?.closest("dialog") ?? null
 
-const pickerRows = async () => {
-	await picker()?.updateComplete
-	return [...(picker()?.shadowRoot?.querySelectorAll<HTMLButtonElement>("button[data-card]") ?? [])]
+const pickerRows = () => [...document.querySelectorAll<HTMLButtonElement>("button[data-card]")]
+
+const pick = async (index: number) => {
+	pickerRows()[index]?.click()
+	await settle()
 }
 
 const fill = async (name: string, value: string) => {
-	const el = form()
-	await el?.updateComplete
-	const input = inner<HTMLInputElement>(el, `[name="${name}"]`)
-	if (!el || !input) throw new Error(`no ${name}`)
+	const input = $<HTMLInputElement>(`dialog [name="${name}"]`)
+	if (!input) throw new Error(`no ${name}`)
 	input.value = value
-	input.dispatchEvent(new Event("input"))
-	await el.updateComplete
+	input.dispatchEvent(new Event("input", { bubbles: true }))
+	await settle()
 }
+
+const submitEvent = () => $("dialog form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
 
 const submit = async () => {
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
-	await settle(10)
+	submitEvent()
+	await settle()
 }
 
-const amountValue = async () => {
-	await form()?.updateComplete
-	return inner<HTMLInputElement>(form(), '[name="amount"]')?.value
+const amountValue = () => $<HTMLInputElement>('dialog [name="amount"]')?.value
+
+const submitText = () => text($('dialog button[type="submit"]'))
+
+const close = async () => {
+	$<HTMLButtonElement>("dialog [data-action=close]")?.click()
+	await exit()
 }
 
-const submitText = () => flatText(inner(form(), 'button[type="submit"]')) ?? ""
+const pageBanner = () => [...document.querySelectorAll(".error-banner")].find((b) => !b.closest("dialog")) ?? null
 
 test("/pay is the card picker under a sub-header, with no sheet", async () => {
-	const { root } = await setup("/pay")
-	expect(flatText(root.querySelector(".sub-header h1"))).toBe("Make a payment")
-	expect((await pickerRows()).map((r) => r.dataset["card"])).toEqual(["A", "B"])
-	expect(modal()).toBeNull()
+	await setup("/pay")
+	expect(text($(".sub-header h1"))).toBe("Make a payment")
+	expect(pickerRows().map((r) => r.dataset["card"])).toEqual(["A", "B"])
+	expect(sheet()).toBeNull()
 })
 
 test("the picker's tiles get each group's room, so a tile's rail shows its used share", async () => {
 	await setup("/pay", withStatement)
-	const rooms = picker()?.rooms
-	expect(rooms?.get("g1")?.used).toBe(10_000_00)
-	expect(rooms?.get("g1")?.room).toBe(90_000_00)
-	const [first, second] = await pickerRows()
+	const [first, second] = pickerRows()
 	expect(first?.classList.contains("tile")).toBe(true)
 	expect(first?.querySelector(".rail")?.getAttribute("aria-label")).toBe("10% of the limit used")
-	expect(flatText(first?.querySelector(".facts") ?? null)).toMatch(/^Bill closed 25 Sep 2026 · ฿10,000.00 left$/)
+	expect(text(first?.querySelector(".facts"))).toMatch(/^Bill closed 25 Sep 2026 · ฿10,000.00 left$/)
 	// B has no bill: its last line says when the open statement closes and is due.
-	expect(picker()?.today).toBe("2026-10-31")
-	expect(picker()?.ledgers.get("A")?.owed).toBe(10_000_00)
-	expect(flatText(second?.querySelector(".facts") ?? null)).toBe("closes 25 Nov 2026 · due 15 Dec 2026")
+	expect(text(second?.querySelector(".facts"))).toBe("closes 25 Nov 2026 · due 15 Dec 2026")
 })
 
 test("/pay?card= opens the sheet over the picker, the amount prefilled from the address", async () => {
 	await setup("/pay?card=A&amount=12050", withStatement)
-	expect(picker()).not.toBeNull()
-	expect(modal()?.heading).toBe("Make a payment")
-	expect(form()?.card?.id).toBe("A")
-	expect(await amountValue()).toBe("120.50")
+	expect(pickerRows()).toHaveLength(2)
+	expect(text(sheet()?.querySelector("h2"))).toBe("Make a payment")
+	expect(amountValue()).toBe("120.50")
 	expect(submitText()).toBe("Record ฿120.50 to A card")
 })
 
 test("without an amount the sheet starts at the next bill, or empty with none", async () => {
 	await setup("/pay?card=A", withStatement)
-	expect(await amountValue()).toBe("10000")
+	expect(amountValue()).toBe("10000")
 	await setup("/pay?card=B", withStatement)
-	expect(await amountValue()).toBe("")
+	expect(amountValue()).toBe("")
 	expect(submitText()).toBe("Enter an amount")
 })
 
 test("picking a card pushes its address and opens its sheet; Back closes it", async () => {
 	const { address } = await setup("/pay", withStatement)
-	;(await pickerRows())[0]?.click()
-	await settle()
+	await pick(0)
 	expect(address.calls).toEqual(["push /pay?card=A"])
-	expect(modal()).not.toBeNull()
-	expect(form()?.card?.id).toBe("A")
+	expect(submitText()).toContain("A card")
 	// The browser's Back pops the entry the pick pushed, and the sheet goes with it.
 	address.bar.back()
 	await settle()
-	expect(modal()).toBeNull()
-	expect(picker()).not.toBeNull()
+	expect(sheet()).toBeNull()
+	expect(pickerRows()).toHaveLength(2)
 })
 
 test("Close, Escape and Change take the card out of the address and leave the picker", async () => {
 	const { address } = await setup("/pay?card=A&amount=500", withStatement)
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
-	await settle()
-	expect(modal()).toBeNull()
+	await close()
+	expect(sheet()).toBeNull()
 	expect(address.calls).toEqual(["replace /pay"])
 	expect(address.now()).toBe("/pay")
-	expect(picker()).not.toBeNull()
 
-	;(await pickerRows())[1]?.click()
-	await settle()
-	inner(modal(), "dialog")?.dispatchEvent(new Event("cancel", { cancelable: true }))
-	await settle()
-	expect(modal()).toBeNull()
+	await pick(1)
+	sheet()?.dispatchEvent(new Event("cancel", { cancelable: true }))
+	await exit()
+	expect(sheet()).toBeNull()
 	expect(address.now()).toBe("/pay")
 
-	;(await pickerRows())[0]?.click()
-	await settle()
-	await form()?.updateComplete
-	inner<HTMLButtonElement>(form(), '[data-action="change"]')?.click()
-	await settle()
-	expect(modal()).toBeNull()
+	await pick(0)
+	$<HTMLButtonElement>('dialog [data-action="change"]')?.click()
+	await exit()
+	expect(sheet()).toBeNull()
 	// The sheets after the first came from picks, so closing them steps back over the pick.
 	expect(address.calls.slice(-1)).toEqual(["back"])
 	expect(address.now()).toBe("/pay")
@@ -198,39 +240,48 @@ test("Close, Escape and Change take the card out of the address and leave the pi
 
 test("closing a sheet the page pushed steps back, so the picker is in history once", async () => {
 	const { address } = await setup("/pay", withStatement)
-	;(await pickerRows())[0]?.click()
-	await settle()
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
-	await settle()
+	await pick(0)
+	await close()
 	expect(address.calls).toEqual(["push /pay?card=A", "back"])
-	expect(modal()).toBeNull()
+	expect(sheet()).toBeNull()
 	expect(address.now()).toBe("/pay")
 	// Forward onto the pushed entry reopens it, and closing it steps back again.
 	address.forward()
 	await settle()
-	expect(form()?.card?.id).toBe("A")
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
-	await settle()
+	expect(submitText()).toContain("A card")
+	await close()
 	expect(address.calls).toEqual(["push /pay?card=A", "back", "back"])
 	expect(address.entries).toEqual(["/pay", "/pay?card=A"])
 	expect(address.now()).toBe("/pay")
-	expect(modal()).toBeNull()
+	expect(sheet()).toBeNull()
 })
 
 test("closing a sheet opened from a link at ?card= rewrites the address", async () => {
 	const { address } = await setup("/pay?card=A", withStatement)
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
-	await settle()
+	await close()
 	expect(address.calls).toEqual(["replace /pay"])
 	expect(address.entries).toEqual(["/pay"])
-	expect(modal()).toBeNull()
+	expect(sheet()).toBeNull()
 })
 
 test("an unknown card says so above the picker and opens no sheet", async () => {
 	await setup("/pay?card=nope")
-	expect(flatText(document.querySelector("[data-missing]"))).toBe("That card isn't here any more.")
-	expect(modal()).toBeNull()
-	expect(picker()).not.toBeNull()
+	expect(text($("[data-missing]"))).toBe("That card isn't here any more.")
+	expect(sheet()).toBeNull()
+	expect(pickerRows()).toHaveLength(2)
+})
+
+test("the back control steps back when there is a page behind, else goes to Transactions", async () => {
+	const { address, visited } = await setup("/pay")
+	$<HTMLButtonElement>('.sub-header [data-action="back"]')?.click()
+	await settle()
+	expect(visited).toEqual(["/transactions"])
+	await pick(0)
+	await close()
+	address.bar.push("/pay?x=1")
+	$<HTMLButtonElement>('.sub-header [data-action="back"]')?.click()
+	await settle()
+	expect(address.calls.at(-1)).toBe("back")
 })
 
 test("a paid payment is stored with its note, the settled statement's dates kept, then Transactions replaces the page", async () => {
@@ -276,43 +327,35 @@ test("a later date stores a planned payment and freezes nothing", async () => {
 test("two quick submits save one payment", async () => {
 	const { repo, visited } = await setup("/pay?card=A", withStatement)
 	await fill("amount", "100")
-	const element = inner<HTMLFormElement>(form(), "form")
-	element?.dispatchEvent(new Event("submit", { cancelable: true }))
-	element?.dispatchEvent(new Event("submit", { cancelable: true }))
-	await settle(10)
+	submitEvent()
+	submitEvent()
+	await settle()
 	expect(await repo.listCardPayments("A")).toHaveLength(1)
 	expect(visited).toEqual(["/transactions"])
 })
 
 test("a failed save keeps the sheet and the typing, says why, and frees the button", async () => {
-	const { repo, visited } = await setup("/pay?card=A", async (repo) => {
-		repo.saveCardPayment = () => Promise.reject(new Error("disk full"))
+	const { repo, visited } = await setup("/pay?card=A", async (r) => {
+		r.saveCardPayment = () => Promise.reject(new Error("disk full"))
 	})
 	await fill("amount", "100")
 	await fill("note", "From savings")
 	await submit()
-	await form()?.updateComplete
-	expect(modal()).not.toBeNull()
+	expect(sheet()).not.toBeNull()
 	expect(visited).toEqual([])
-	expect(await amountValue()).toBe("100")
-	expect(inner<HTMLInputElement>(form(), '[name="note"]')?.value).toBe("From savings")
-	expect(form()?.error).toContain("Could not save the payment.")
-	expect(inner<HTMLButtonElement>(form(), 'button[type="submit"]')?.disabled).toBe(false)
+	expect(amountValue()).toBe("100")
+	expect($<HTMLInputElement>('dialog [name="note"]')?.value).toBe("From savings")
+	expect(text($("dialog .error-banner"))).toContain("Could not save the payment.")
+	expect($<HTMLButtonElement>('dialog button[type="submit"]')?.disabled).toBe(false)
+	expect(text(pageBanner())).toBe("")
 	expect(await repo.listCardPayments("A")).toHaveLength(0)
 })
 
 test("a read failure shows on the page", async () => {
-	const repo = new InMemoryRepository()
-	await setup(
-		"/pay",
-		async (r) => {
-			r.listCards = () => Promise.reject(new Error("boom"))
-		},
-		repo,
-	)
-	expect(document.querySelector<HTMLElement & { message: string }>("cc-error-banner")?.message).toContain(
-		"Could not read your cards.",
-	)
+	await setup("/pay", async (r) => {
+		r.listCards = () => Promise.reject(new Error("boom"))
+	})
+	expect(text(pageBanner())).toContain("Could not read your cards.")
 })
 
 test("a payment's note goes from the sheet to the ledger's search and through a backup", async () => {
@@ -336,22 +379,22 @@ test("a payment's note goes from the sheet to the ledger's search and through a 
 
 test("while a save is in flight the sheet is held, so Escape cannot slide it away", async () => {
 	let release!: () => void
-	const { address } = await setup("/pay?card=A", async (repo) => {
-		const save = repo.saveCardPayment.bind(repo)
-		repo.saveCardPayment = (payment) =>
+	const { address } = await setup("/pay?card=A", async (r) => {
+		const save = r.saveCardPayment.bind(r)
+		r.saveCardPayment = (payment) =>
 			new Promise((resolve) => {
 				release = () => resolve(save(payment))
 			})
 	})
 	await fill("amount", "100")
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
+	submitEvent()
 	await settle(5)
-	expect(modal()?.held).toBe(true)
-	inner(modal(), "dialog")?.dispatchEvent(new Event("cancel", { cancelable: true }))
-	expect(modal()?.hasAttribute("closing")).toBe(false)
+	sheet()?.dispatchEvent(new Event("cancel", { cancelable: true }))
+	await exit()
+	expect(sheet()).not.toBeNull()
 	expect(address.bar.search()).toContain("card=A")
 	release()
-	await settle(10)
+	await settle()
 })
 
 /** A repository whose payment save waits for `settle(ok)`: true saves, false fails. */
@@ -367,45 +410,39 @@ const heldSave = () => {
 	return { held, before }
 }
 
-const pageBanner = (root: HTMLElement) =>
-	root.querySelector<HTMLElement & { message: string; retryLabel: string }>("cc-error-banner")
-
 test("Back during a save that then fails says why on the page, and Try again reopens the sheet with the typing", async () => {
 	const { held, before } = heldSave()
-	const { root, address, visited } = await setup("/pay", async (repo) => {
+	const { address, visited } = await setup("/pay", async (repo) => {
 		await withStatement(repo)
 		await before(repo)
 	})
-	;(await pickerRows())[0]?.click()
-	await settle()
+	await pick(0)
 	await fill("amount", "100")
 	await fill("note", "From savings")
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
+	submitEvent()
 	await settle(5)
 	// The browser's Back while the save is held: the address drops the card.
 	address.bar.back()
 	await settle()
 	expect(address.now()).toBe("/pay")
 	held.settle(false)
-	await settle(10)
+	await settle()
 	expect(visited).toEqual([])
-	expect(modal()).toBeNull()
-	const shown = pageBanner(root)
-	expect(shown?.message).toContain("Could not save the payment.")
-	expect(shown?.message).toContain("disk full")
-	await (shown as unknown as { updateComplete: Promise<void> })?.updateComplete
-	const retry = shown?.shadowRoot?.querySelector<HTMLButtonElement>("button")
-	expect(flatText(retry)).toBe("Try again")
+	expect(sheet()).toBeNull()
+	const shown = pageBanner()
+	expect(text(shown)).toContain("Could not save the payment.")
+	expect(text(shown)).toContain("disk full")
+	const retry = shown?.querySelector<HTMLButtonElement>("button")
+	expect(text(retry)).toBe("Try again")
 	retry?.click()
 	await settle()
 	expect(address.calls.slice(-1)).toEqual(["push /pay?card=A"])
-	expect(form()?.card?.id).toBe("A")
-	expect(await amountValue()).toBe("100")
-	expect(inner<HTMLInputElement>(form(), '[name="note"]')?.value).toBe("From savings")
-	expect(pageBanner(root)?.message ?? "").toBe("")
+	expect(submitText()).toContain("A card")
+	expect(amountValue()).toBe("100")
+	expect($<HTMLInputElement>('dialog [name="note"]')?.value).toBe("From savings")
+	expect(text(pageBanner())).toBe("")
 	// Closing the reopened sheet steps back over the entry Try again pushed.
-	inner<HTMLButtonElement>(modal(), '[data-action="close"]')?.click()
-	await settle()
+	await close()
 	expect(address.calls.slice(-1)).toEqual(["back"])
 	expect(address.now()).toBe("/pay")
 })
@@ -416,15 +453,29 @@ test("Back during a save that then succeeds leaves for Transactions once, with n
 		await withStatement(repo)
 		await before(repo)
 	})
-	;(await pickerRows())[0]?.click()
-	await settle()
+	await pick(0)
 	await fill("amount", "100")
-	inner<HTMLFormElement>(form(), "form")?.dispatchEvent(new Event("submit", { cancelable: true }))
+	submitEvent()
 	await settle(5)
 	address.bar.back()
 	await settle()
 	held.settle(true)
-	await settle(10)
+	await settle()
 	expect(visited).toEqual(["/transactions"])
 	expect(address.calls).toEqual(["push /pay?card=A", "back"])
+})
+
+test("a store that won't open shows why, with Reload, and no picker", async () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	mounted = mount(PayPage, {
+		target: document.body,
+		props: {
+			open: async () => ({ ok: false as const, message: () => "Storage is off." }),
+			address: fakeBar("/pay").bar,
+		},
+	})
+	await settle()
+	expect(text(pageBanner())).toContain("Storage is off.")
+	expect(pickerRows()).toEqual([])
 })
