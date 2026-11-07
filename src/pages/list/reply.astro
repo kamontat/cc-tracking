@@ -1,12 +1,11 @@
 ---
+import ListReplyPage from "#components/organisms/ListReplyPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Spender's reply" route="list/reply" tab="home" fab={false} mainClass="page--narrow">
-	<script>
-		import { start } from "#legacy/routes/list/reply"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("list/reply", start)
-	</script>
+<!-- The spender's reply to a waiting list (`?id=`); the list is the reader's data, so the page is an island. -->
+<AppLayout title="Spender's reply" titleKey="title.listReply" tab="home" fab={false} mainClass="page--narrow">
+	<Fragment slot="main">
+		<ListReplyPage client:load />
+	</Fragment>
 </AppLayout>

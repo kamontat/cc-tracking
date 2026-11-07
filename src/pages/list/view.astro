@@ -1,12 +1,11 @@
 ---
+import ListViewPage from "#components/organisms/ListViewPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="Saved list" route="list/view" tab="home" fab={false} mainClass="page--narrow">
-	<script>
-		import { start } from "#legacy/routes/list/view"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("list/view", start)
-	</script>
+<!-- A saved list, read-only (`?id=`); the list is the reader's data, so the page is an island. -->
+<AppLayout title="Saved list" titleKey="title.listView" tab="home" fab={false} mainClass="page--narrow">
+	<Fragment slot="main">
+		<ListViewPage client:load />
+	</Fragment>
 </AppLayout>

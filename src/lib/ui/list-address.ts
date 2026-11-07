@@ -27,3 +27,6 @@ export function newListAddress(cardIds: string[], search = ""): string {
 export function listPageAddress(list: Pick<PurchaseList, "id" | "status">) {
 	return `${PAGE[list.status]}?id=${encodeURIComponent(list.id)}`
 }
+
+/** The `id` of the stored list a page opens, or null when the address has none. */
+export const listId = (search: string): string | null => new URLSearchParams(search).get("id")

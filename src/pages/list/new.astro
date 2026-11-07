@@ -1,12 +1,11 @@
 ---
+import ListNewPage from "#components/organisms/ListNewPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<AppLayout title="New purchase list" route="list/new" tab="home" fab={false} mainClass="page--narrow">
-	<script>
-		import { start } from "#legacy/routes/list/new"
-		import { onPage } from "#lib/ui/spa"
-
-		onPage("list/new", start)
-	</script>
+<!-- A new purchase list: the picker, or at `?card=` the amounts for the cards picked; the list is the reader's data, so the page is an island. -->
+<AppLayout title="New purchase list" titleKey="title.listNew" tab="home" fab={false} mainClass="page--narrow">
+	<Fragment slot="main">
+		<ListNewPage client:load />
+	</Fragment>
 </AppLayout>

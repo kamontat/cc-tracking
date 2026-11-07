@@ -8,7 +8,7 @@ import { renderHomePage } from "#legacy/routes/index"
 import { setLocale } from "#lib/i18n/index"
 import { LocalStorageRepository } from "#lib/storage/local"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { saveLocations } from "./list/test-support"
+import { saveLocations } from "../../components/organisms/list-support"
 
 /** Flushes Lit's microtask-based update chain (page state machine and nested components alike). */
 const settle = (ms = 0) => new Promise<void>((resolve) => setTimeout(resolve, ms))

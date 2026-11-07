@@ -1,16 +1,25 @@
 import { expect, test } from "vitest"
 
-/** The four list pages: one static page per case, each a thin entry over the shared flows. */
-const PAGES = ["new", "draft", "reply", "view"] as const
+/**
+ * The four list pages: one static page per case, each an island over the shared flows. Ported
+ * from the legacy `routes/list/pages` test.
+ */
+const PAGES = {
+	new: "ListNewPage",
+	draft: "ListEntryPage",
+	reply: "ListReplyPage",
+	view: "ListViewPage",
+} as const
 
 const page = (name: string) => Bun.file(`src/pages/list/${name}.astro`).text()
 
-test("each list case has its own page, and the old single page is gone", async () => {
-	for (const name of PAGES) {
+test("each list case has its own page with its island, and the old single page is gone", async () => {
+	for (const [name, island] of Object.entries(PAGES)) {
 		const source = await page(name)
-		expect(source, name).toContain(`onPage("list/${name}", start)\n`)
+		expect(source, name).toContain(`<${island} client:load`)
 		expect(source, name).toContain('mainClass="page--narrow"')
 	}
+	expect(await page("draft")).toContain('mode="draft"')
 	expect(await Bun.file("src/pages/list.astro").exists()).toBe(false)
 })
 
@@ -46,13 +55,31 @@ test("the side panel parks beside the lines from 900px", async () => {
 	expect(ruleBody(css, ".list-layout__side")).toContain("display: contents")
 })
 
+// On a phone the two steps keep the tighter gap they had in their shadow roots (`listLayout`'s
+// `--cc-space-4`); app.css's wider phone gap is the review's and the saved list's.
+test("the amounts and reply steps keep their tighter phone gap", async () => {
+	for (const island of ["ListAmounts", "ListReply"]) {
+		const source = await Bun.file(`src/components/organisms/${island}.svelte`).text()
+		expect(source, island).toMatch(
+			/@media \(max-width: 899px\)\s*\{\s*\.list-layout\s*\{\s*gap: var\(--cc-space-4\);\s*\}/,
+		)
+	}
+})
+
+// A Thai warning has long runs with no space; the line card's one track must still shrink to the
+// card, or the card grows past a phone's edge.
+test("a line card's track shrinks to the card", async () => {
+	for (const island of ["ListAmounts", "ListReply"]) {
+		const source = await Bun.file(`src/components/organisms/${island}.svelte`).text()
+		expect(source, island).toMatch(/\t\.line\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/)
+	}
+})
+
 test("the list bottom bars reserve no room for the Payment button", async () => {
-	const { CcListAmounts } = await import("#legacy/components/cc-list-amounts")
-	const { CcListReply } = await import("#legacy/components/cc-list-reply")
-	for (const element of [CcListAmounts, CcListReply]) {
-		const css = (element.styles as { cssText: string }[]).map((s) => s.cssText).join("\n")
+	for (const island of ["ListAmounts", "ListReply"]) {
+		const source = await Bun.file(`src/components/organisms/${island}.svelte`).text()
 		// The bar shares the Payment button's height token, but never sits above the button.
-		expect(css).not.toMatch(/bottom:[^;]*--cc-bar-height/)
+		expect(source, island).not.toMatch(/bottom:[^;]*--cc-bar-height/)
 	}
 })
 
@@ -62,6 +89,4 @@ test("the floating + New button and the selection bars share one height token", 
 	const css = await Bun.file("src/styles/app.css").text()
 	expect(ruleBody(css, ".fab")).toContain("block-size: var(--cc-bar-height)")
 	expect(ruleBody(css, ".action-bar")).toContain("min-block-size: var(--cc-bar-height)")
-	const { actionBarStyles } = await import("#legacy/styles/shared")
-	expect(actionBarStyles.cssText).toContain("min-block-size: var(--cc-bar-height)")
 })

@@ -1,13 +1,14 @@
-import type { CcListReply } from "#legacy/components/cc-list-reply"
 import type { ListLine, PurchaseList } from "#lib/domain/types"
 
-import { expect, test } from "vitest"
+import { afterEach, expect, test } from "vitest"
 
-import { renderReplyPage } from "#legacy/routes/list/reply-page"
+import ListReplyPage from "#components/organisms/ListReplyPage.svelte"
+import { formatAmountInput } from "#lib/domain/money"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import {
 	bannerText,
 	card,
+	cleanup,
 	click,
 	draft,
 	elsewhereLink,
@@ -16,7 +17,13 @@ import {
 	setupPage,
 	stored,
 	titleOf,
-} from "./test-support"
+} from "./list-support"
+
+/**
+ * The spender's reply to a waiting list (`/list/reply?id=`). Ported from the legacy `reply-page`
+ * tests; where those dispatched the reply element's event, these answer the real form.
+ */
+afterEach(cleanup)
 
 const w1: PurchaseList = {
 	id: "w1",
@@ -36,8 +43,8 @@ const withW1 = async (repo: Repository) => {
 }
 
 const setup = (options: { repo?: Repository; search?: string; before?: (repo: Repository) => Promise<void> } = {}) =>
-	setupPage(renderReplyPage, {
-		repo: options.repo,
+	setupPage(ListReplyPage, {
+		...(options.repo ? { repo: options.repo } : {}),
 		search: options.search ?? "?id=w1",
 		before: options.before ?? withW1,
 	})
@@ -48,22 +55,27 @@ const answers: ListLine[] = [
 	{ cardId: "C", amount: 2200000, made: true },
 ]
 
-const reply = async (root: HTMLElement): Promise<CcListReply> => {
-	const element = root.querySelector<CcListReply>("cc-list-reply")
-	if (!element) throw new Error("no cc-list-reply")
-	await element.updateComplete
-	return element
-}
-
-const sendReply = async (root: HTMLElement, moveUnmade: boolean, lines: ListLine[] = answers) => {
-	;(await reply(root)).dispatchEvent(
-		new CustomEvent("save-reply", {
-			detail: { lines, moveUnmade },
-			bubbles: true,
-			composed: true,
-		}),
-	)
-	await settle()
+/** Answers every line on the form as `lines` says, ticks or unticks the move, then saves. */
+const sendReply = async (root: ParentNode, moveUnmade: boolean, lines: ListLine[] = answers) => {
+	for (const line of lines) {
+		const section = root.querySelector(`.line[data-card="${line.cardId}"]`)
+		if (!section) throw new Error(`no line for ${line.cardId}`)
+		section.querySelector<HTMLElement>(`[data-answer="${line.made ? "made" : "not-made"}"]`)?.click()
+		await settle(2)
+		if (line.made) {
+			const input = section.querySelector<HTMLInputElement>('[data-field="actual"]')
+			if (!input) throw new Error(`no amount for ${line.cardId}`)
+			input.value = formatAmountInput(line.actual ?? line.amount)
+			input.dispatchEvent(new Event("input", { bubbles: true }))
+			await settle(2)
+		}
+	}
+	const move = root.querySelector<HTMLInputElement>('[data-field="move"]')
+	if (move && move.checked !== moveUnmade) {
+		move.click()
+		await settle(2)
+	}
+	await click(root, "save-reply")
 }
 
 const allPurchases = async (repo: Repository) =>
@@ -71,9 +83,12 @@ const allPurchases = async (repo: Repository) =>
 
 test("a sent list opens the reply", async () => {
 	const { root } = await setup()
-	const element = await reply(root)
-	expect(element.list.id).toBe("w1")
-	expect(element.cards.map((c) => c.id)).toContain("C")
+	expect([...root.querySelectorAll(".line[data-card]")].map((el) => el.getAttribute("data-card"))).toEqual([
+		"A",
+		"B",
+		"C",
+	])
+	expect(root.querySelector('.line[data-card="C"] .card-label')?.textContent).toBe("C) C card")
 	const h1 = root.querySelector("h1")
 	expect(titleOf(h1)).toBe("Spender's reply")
 	expect(h1?.querySelector("small")?.textContent).toBe("List for Fri, 30 Oct")
@@ -85,22 +100,8 @@ test("saving the reply stores purchases, the draft and the saved list, then show
 	await sendReply(root, true)
 	const purchases = await allPurchases(repo)
 	expect(purchases.sort((a, b) => a.id.localeCompare(b.id))).toEqual([
-		{
-			id: "w1-0",
-			cardId: "A",
-			date: "2026-10-30",
-			amount: 13_000_00,
-			note: "",
-			addedAt: "2026-10-31T03:00:00.000Z",
-		},
-		{
-			id: "w1-1",
-			cardId: "C",
-			date: "2026-10-30",
-			amount: 22_000_00,
-			note: "",
-			addedAt: "2026-10-31T03:00:00.000Z",
-		},
+		{ id: "w1-0", cardId: "A", date: "2026-10-30", amount: 13_000_00, note: "", addedAt: "2026-10-31T03:00:00.000Z" },
+		{ id: "w1-1", cardId: "C", date: "2026-10-30", amount: 22_000_00, note: "", addedAt: "2026-10-31T03:00:00.000Z" },
 	])
 	const lists = await stored(repo)
 	expect(lists.find((l) => l.id === "w1-2")).toEqual({
@@ -116,6 +117,8 @@ test("saving the reply stores purchases, the draft and the saved list, then show
 	expect(savedList?.lines).toEqual(answers)
 	expect(visited).toEqual(["/list/view?id=w1"])
 	expect(bannerText(root)).toBe("")
+	// On its way out, the page keeps the reply rather than flash the list's new state.
+	expect(root.querySelector('[data-action="save-reply"]')).not.toBeNull()
 })
 
 test("unticked, not-made lines are dropped", async () => {
@@ -130,7 +133,6 @@ test("unticked, not-made lines are dropped", async () => {
 
 test("a list already saved is refused", async () => {
 	const { root, repo, visited } = await setup()
-	await reply(root)
 	await repo.savePurchaseList({
 		...w1,
 		status: "saved",
@@ -148,22 +150,16 @@ test("an unknown list says so and leads home", async () => {
 	const { root } = await setup({ search: "?id=gone" })
 	expect(root.textContent).toContain("This list no longer exists.")
 	expect(root.querySelector('a[href="/"]:not([data-action])')).not.toBeNull()
-	expect(root.querySelector("cc-list-reply")).toBeNull()
+	expect(root.querySelector(".line[data-card]")).toBeNull()
 })
 
 test("a saved list or a draft leads to its own page", async () => {
-	const done = await setup({
-		search: "?id=s1",
-		before: (repo) => repo.savePurchaseList(saved("s1", ["A"])),
-	})
-	expect(done.root.querySelector("cc-list-reply")).toBeNull()
+	const done = await setup({ search: "?id=s1", before: (repo) => repo.savePurchaseList(saved("s1", ["A"])) })
+	expect(done.root.querySelector(".line[data-card]")).toBeNull()
 	expect(done.root.textContent).toContain("This list is already saved.")
 	expect(elsewhereLink(done.root)).toBe("/list/view?id=s1")
 
-	const notSent = await setup({
-		search: "?id=d1",
-		before: (repo) => repo.savePurchaseList(draft("d1", ["A"])),
-	})
+	const notSent = await setup({ search: "?id=d1", before: (repo) => repo.savePurchaseList(draft("d1", ["A"])) })
 	expect(notSent.root.textContent).toContain("This list is a draft.")
 	expect(elsewhereLink(notSent.root)).toBe("/list/draft?id=d1")
 })
@@ -183,6 +179,12 @@ class FlakyListRepository extends InMemoryRepository {
 	}
 }
 
+const changed: ListLine[] = [
+	{ cardId: "A", amount: 1250000, made: false },
+	{ cardId: "B", amount: 480000, made: false },
+	{ cardId: "C", amount: 2200000, made: true },
+]
+
 test("a retry with changed answers removes the draft a failed save moved", async () => {
 	const repo = new FlakyListRepository()
 	const { root } = await setup({ repo })
@@ -190,11 +192,7 @@ test("a retry with changed answers removes the draft a failed save moved", async
 	await sendReply(root, true)
 	expect((await stored(repo)).map((l) => l.id).sort()).toEqual(["w1", "w1-2"])
 
-	await sendReply(root, true, [
-		{ cardId: "A", amount: 1250000, made: false },
-		{ cardId: "B", amount: 480000, made: false },
-		{ cardId: "C", amount: 2200000, made: true },
-	])
+	await sendReply(root, true, changed)
 	const lists = await stored(repo)
 	expect(lists.map((l) => l.id).sort()).toEqual(["w1", "w1-1"])
 	expect(lists.find((l) => l.id === "w1-1")?.lines.map((l) => l.cardId)).toEqual(["A", "B"])
@@ -204,10 +202,10 @@ test("a retry without moving removes the draft a failed save moved", async () =>
 	const repo = new FlakyListRepository()
 	const { root } = await setup({
 		repo,
-		before: async (repo) => {
-			await withW1(repo)
+		before: async (r) => {
+			await withW1(r)
 			// Another list's draft, by a name that only looks like ours.
-			await repo.savePurchaseList({
+			await r.savePurchaseList({
 				id: "w1-2-0",
 				date: "2026-11-01",
 				status: "draft",
@@ -225,30 +223,17 @@ test("a retry leaves alone purchases that are not this reply's", async () => {
 	const repo = new FlakyListRepository()
 	const { root } = await setup({
 		repo,
-		before: async (repo) => {
-			await withW1(repo)
-			const base = {
-				cardId: "A",
-				date: "2026-10-29",
-				amount: 100,
-				note: "",
-				addedAt: "2026-10-29T03:00:00.000Z",
-			}
-			await repo.savePurchase({
-				...base,
-				id: "6f1c2a4e-2b9d-4c11-9a8e-0d3f5b7c9e21",
-			})
+		before: async (r) => {
+			await withW1(r)
+			const base = { cardId: "A", date: "2026-10-29", amount: 100, note: "", addedAt: "2026-10-29T03:00:00.000Z" }
+			await r.savePurchase({ ...base, id: "6f1c2a4e-2b9d-4c11-9a8e-0d3f5b7c9e21" })
 			// The purchase of a draft this list once moved (`w1-2`), saved since.
-			await repo.savePurchase({ ...base, id: "w1-2-0" })
+			await r.savePurchase({ ...base, id: "w1-2-0" })
 		},
 	})
 	repo.failNext = true
 	await sendReply(root, false)
-	await sendReply(root, false, [
-		{ cardId: "A", amount: 1250000, made: false },
-		{ cardId: "B", amount: 480000, made: false },
-		{ cardId: "C", amount: 2200000, made: true },
-	])
+	await sendReply(root, false, changed)
 	expect((await repo.listPurchases("A")).map((p) => p.id).sort()).toEqual([
 		"6f1c2a4e-2b9d-4c11-9a8e-0d3f5b7c9e21",
 		"w1-2-0",
@@ -262,12 +247,11 @@ test("a retry after a failed write adds nothing twice", async () => {
 	await sendReply(root, false)
 	expect(bannerText(root).startsWith("Could not save the reply.")).toBe(true)
 	expect((await stored(repo)).find((l) => l.id === "w1")?.status).toBe("sent")
-	expect(root.querySelector("cc-list-reply")).not.toBeNull()
+	expect(root.querySelector(".line[data-card]")).not.toBeNull()
 	expect(visited).toEqual([])
 
 	await sendReply(root, false)
-	const ids = (await allPurchases(repo)).map((p) => p.id).sort()
-	expect(ids).toEqual(["w1-0", "w1-1"])
+	expect((await allPurchases(repo)).map((p) => p.id).sort()).toEqual(["w1-0", "w1-1"])
 	expect((await stored(repo)).find((l) => l.id === "w1")?.status).toBe("saved")
 	expect(visited).toEqual(["/list/view?id=w1"])
 })
@@ -279,29 +263,23 @@ test("a retry with changed answers leaves no stale purchase", async () => {
 	await sendReply(root, false)
 	expect(await allPurchases(repo)).toHaveLength(2)
 
-	await sendReply(root, false, [
-		{ cardId: "A", amount: 1250000, made: false },
-		{ cardId: "B", amount: 480000, made: false },
-		{ cardId: "C", amount: 2200000, made: true },
-	])
-	const purchases = await allPurchases(repo)
-	expect(purchases.map((p) => [p.id, p.cardId])).toEqual([["w1-0", "C"]])
+	await sendReply(root, false, changed)
+	expect((await allPurchases(repo)).map((p) => [p.id, p.cardId])).toEqual([["w1-0", "C"]])
 })
 
-test("a waiting list offers Cancel list beside Save", async () => {
+test("a waiting list offers Cancel list in the reply's side panel", async () => {
 	const { root } = await setup()
 	const button = root.querySelector('[data-action="cancel-list"]')
 	expect(button?.getAttribute("data-variant")).toBe("danger")
-	expect(button?.getAttribute("slot")).toBe("side")
-	expect(button?.parentElement?.tagName).toBe("CC-LIST-REPLY")
+	expect(button?.closest(".list-layout__side")).not.toBeNull()
 	expect(button?.textContent?.trim()).toBe("Cancel list")
 })
 
 test("cancel list removes the waiting list at once, buys nothing and goes home", async () => {
 	const { root, repo, visited } = await setup({
-		before: async (repo) => {
-			await withW1(repo)
-			await repo.savePurchaseList(draft("d1", ["A"]))
+		before: async (r) => {
+			await withW1(r)
+			await r.savePurchaseList(draft("d1", ["A"]))
 		},
 	})
 	await click(root, "cancel-list")
