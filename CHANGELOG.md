@@ -4,6 +4,25 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-07: The card page and the card form converted
+
+### Improvements
+
+- The card page is converted (DD-179): the `CardPage` island draws the sub-header with _Edit_
+  and the _More_ menu, the hero and stats, the actions, the statements and the purchase sheet.
+  _New card_ and _Edit card_ are one `CardEditPage` island over the `CardForm`, whose checks
+  live in `#lib/ui/card-form`. They look and work as before, and the card stays `?id=` in the
+  address.
+- A card's name in its text forms (`cardTitle`, `cardLine`, `cardName`, …) lives in
+  `#lib/ui/card-label`; the Lit pages' `card-label` re-exports it, so islands and Lit pages
+  share one copy. `SubHeaderBar` is the sub-header for a title built from the reader's data.
+
+### Decisions
+
+- The card page and the two card form pages convert together (DD-179): they share the form
+  and the card's title, while the statements, the purchase sheet and the _More_ menu belong to
+  no other page. Converting `/card` alone and leaving the form in Lit was rejected.
+
 ## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations, Settings and Cards converted, a steady tab bar, and faster page changes
 
 ### BREAKING CHANGES
