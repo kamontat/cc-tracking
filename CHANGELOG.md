@@ -4,7 +4,16 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-07: The card page, the card form and Make a payment converted
+## 2026-11-07: The card page, the card form and Make a payment converted, and offline use
+
+### Features
+
+- The site works offline (DD-181). After one visit every page, script and style is cached by a
+  service worker (`dist/sw.js`, written after `astro build` by `scripts/service-worker.ts`), so
+  every page opens and works with no signal; the data was already in the browser.
+- After a deploy the new version downloads in the background, and a bar under the header says
+  _A new version is available._ with _Reload_. Nothing changes until it is tapped; then the new
+  version takes over, its old cache is dropped and the page reloads.
 
 ### Improvements
 
@@ -32,6 +41,13 @@ reasons don't show up in the code.
 - The card page and the two card form pages convert together (DD-179): they share the form
   and the card's title, while the statements, the purchase sheet and the _More_ menu belong to
   no other page. Converting `/card` alone and leaving the form in Lit was rejected.
+- Offline caches every file on install, not only pages already opened, and serves from the cache
+  first; network-first pages were rejected as slower on a weak signal and offline only for
+  visited pages (DD-181).
+- A new version waits for the reader's tap rather than reloading straight away, which could lose
+  a form being filled in, or switching quietly on the next open, which shows the update late.
+- The version is a hash of the built files, not the commit, so any changed build is a new
+  version and an unchanged rebuild is not. About 60 lines of worker code, so no Workbox.
 
 ## 2026-11-06: Built with Astro: template conventions, a static shell, client-side navigation, Locations, Settings and Cards converted, a steady tab bar, and faster page changes
 
