@@ -176,6 +176,29 @@ test("close sort follows upcoming tile dates rather than day numbers", async () 
 	expect(flat($('[data-action="sort"]'))).toContain("Soonest to close")
 })
 
+test("due sort can be applied from the filter and restored from the address", async () => {
+	const { address } = await setup("/cards?sort=close", {
+		skipSeed: true,
+		before: async (repo) => {
+			await repo.saveCard(card("a", { cycle: { kind: "offset", closeDay: 5, dueOffsetDays: 30 } }))
+			await repo.saveCard(card("b", { cycle: { kind: "offset", closeDay: 10, dueOffsetDays: 1 } }))
+		},
+	})
+	expect(shownTiles()).toEqual(["a", "b"])
+	await press('[data-action="sort"]')
+	const radio = $<HTMLInputElement>('input[name="sort"][value="due"]')
+	if (!radio) throw new Error("missing due sort")
+	radio.click()
+	await settle()
+	await press('[data-action="apply"]')
+	await exit()
+	expect(address.now()).toBe("/cards?sort=due")
+	expect(shownTiles()).toEqual(["b", "a"])
+	expect(flat($('[data-action="sort"]'))).toContain("Soonest due")
+	await setup("/cards?sort=due")
+	expect(flat($('[data-action="sort"]'))).toContain("Soonest due")
+})
+
 const groupSheet = () => $("dialog input[name=limit]")?.closest("dialog") ?? null
 
 const sheetHeading = () => flat(groupSheet()?.querySelector("h2"))

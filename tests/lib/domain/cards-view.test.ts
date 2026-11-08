@@ -160,6 +160,26 @@ describe("cardsResults", () => {
 		expect(
 			cardsResults(cs, [g], rooms, view({ sort: "close" }), order, "2026-11-01", ledgers).flat?.map((c) => c.id),
 		).toEqual(["b", "a"])
+		expect(
+			cardsResults(cs, [g], rooms, view({ sort: "due" }), order, "2026-11-01", ledgers).flat?.map((c) => c.id),
+		).toEqual(["b", "a"])
+	})
+	test("due: full upcoming dates, independent of closing order, ties by id and archived sorted too", () => {
+		const cs = [
+			card("a", { cycle: { kind: "offset", closeDay: 20, dueOffsetDays: 30 } }),
+			card("c", { cycle: { kind: "fixed", closeDay: 25, dueDay: 5 } }),
+			card("b", { cycle: { kind: "fixed", closeDay: 25, dueDay: 5 } }),
+		]
+		const r = cardsResults(
+			[...cs, ...cs.map((c) => ({ ...c, id: `${c.id}-archived`, archived: true }))],
+			[g],
+			rooms,
+			view({ sort: "due" }),
+			order,
+			"2026-12-15",
+		)
+		expect(r.flat?.map((c) => c.id)).toEqual(["b", "c", "a"])
+		expect(r.archived.map((c) => c.id)).toEqual(["b-archived", "c-archived", "a-archived"])
 	})
 	test("archived sorted like the rest and filtered too", () => {
 		const cs = [

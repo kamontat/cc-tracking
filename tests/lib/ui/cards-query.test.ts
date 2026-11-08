@@ -16,6 +16,12 @@ test("an empty address reads as the defaults and writes as nothing", () => {
 	expect(writeCardsView(DEFAULT_CARDS_VIEW)).toBe("")
 })
 
+test("due sort survives an address round trip", () => {
+	const view = { ...DEFAULT_CARDS_VIEW, sort: "due" as const }
+	expect(writeCardsView(view)).toBe("?sort=due")
+	expect(readCardsView("?sort=due", [])).toEqual(view)
+})
+
 test("round trip with repeated loc and owner", () => {
 	const view: CardsView = {
 		q: "kb x",

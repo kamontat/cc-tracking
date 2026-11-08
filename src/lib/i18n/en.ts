@@ -182,6 +182,7 @@ export const en = {
 	"cards.searchPlaceholder": "Name, ID, last 4 or comment",
 	"cards.sort.name": "Name",
 	"cards.sort.closeDay": "Soonest to close",
+	"cards.sort.due": "Soonest due",
 	"cards.filter.title": "Filter cards",
 	"cards.filter.sortBy": "Sort by",
 	"cards.sort.place": "By place",

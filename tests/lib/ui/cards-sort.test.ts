@@ -10,6 +10,7 @@ test("each sort has its words", () => {
 	expect(cardsSortLabel("room")).toBe("Most room")
 	expect(cardsSortLabel("name")).toBe("Name")
 	expect(cardsSortLabel("close")).toBe("Soonest to close")
+	expect(cardsSortLabel("due")).toBe("Soonest due")
 	setLocale("th")
 	expect(cardsSortLabel("room")).not.toBe("Most room")
 })

@@ -7,6 +7,7 @@ const SORT_KEYS = {
 	room: "cards.sort.room",
 	name: "cards.sort.name",
 	close: "cards.sort.closeDay",
+	due: "cards.sort.due",
 } as const satisfies Record<CardsSort, string>
 
 /** A Cards sort's own words, for the filter sheet and the page's sort chip, in the reader's language. */

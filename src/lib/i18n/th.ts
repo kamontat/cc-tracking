@@ -193,6 +193,7 @@ export const th: Catalog = {
 	"cards.searchPlaceholder": "ชื่อ รหัส เลขท้าย 4 หลัก หรือหมายเหตุ",
 	"cards.sort.name": "ชื่อ",
 	"cards.sort.closeDay": "สรุปยอดเร็วที่สุด",
+	"cards.sort.due": "ครบกำหนดเร็วที่สุด",
 	"cards.filter.title": "กรองบัตร",
 	"cards.filter.sortBy": "เรียงตาม",
 	"cards.sort.place": "ตามสถานที่",

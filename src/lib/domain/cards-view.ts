@@ -9,9 +9,9 @@ import { openPeriod } from "#lib/domain/statement"
 import { getLocale } from "#lib/i18n/index"
 
 /** How the Cards page orders its results; `place` is the default, grouped by location. */
-export type CardsSort = "place" | "room" | "name" | "close"
+export type CardsSort = "place" | "room" | "name" | "close" | "due"
 
-export const CARDS_SORTS: readonly CardsSort[] = ["place", "room", "name", "close"]
+export const CARDS_SORTS: readonly CardsSort[] = ["place", "room", "name", "close", "due"]
 
 /** What narrows the Cards page. An empty list means "any". */
 export type CardsFilter = {
@@ -103,11 +103,14 @@ function comparer(
 		case "name":
 			return (a, b) => a.name.localeCompare(b.name, getLocale()) || byId(a, b)
 		case "close":
+		case "due": {
+			const field = sort === "close" ? "closeDate" : "dueDate"
 			return (a, b) =>
 				compareDates(
-					cardOpenDates(a, today, ledgers.get(a.id)).closeDate,
-					cardOpenDates(b, today, ledgers.get(b.id)).closeDate,
+					cardOpenDates(a, today, ledgers.get(a.id))[field],
+					cardOpenDates(b, today, ledgers.get(b.id))[field],
 				) || byId(a, b)
+		}
 		default:
 			return byId
 	}
