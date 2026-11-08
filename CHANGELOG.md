@@ -4,9 +4,14 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-08: Offline scripts load whatever the server's Vary header
+## 2026-11-08: Offline scripts load whatever the server's Vary header, and the list image keeps its amounts on iPad
 
 ### Bug fixes
+
+- The saved purchase list image shows its amounts in full on iPad. Safari there drew the
+  amount column (its header, every amount and the total) starting at the right margin instead
+  of ending at it, so the amounts ran off the paper. Right-aligned text is now placed by its
+  measured width rather than by the canvas's `textAlign`.
 
 - The offline worker finds a cached file even when the server sent it with a `Vary` header. A
   page loads its scripts with an `Origin` header the worker's own fetch lacked, so a
