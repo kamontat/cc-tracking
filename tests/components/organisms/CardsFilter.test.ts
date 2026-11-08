@@ -88,7 +88,7 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 		"By place",
 		"Most room",
 		"Name",
-		"Close day",
+		"Soonest to close",
 	])
 	expect(
 		[...root.querySelectorAll<HTMLInputElement>("input[type=radio][name=sort]")].map((r) => [r.value, r.checked]),

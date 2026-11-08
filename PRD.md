@@ -9,6 +9,8 @@
 
 ## Summary
 
+**DD-116 clarification (2026-11-08):** The Cards `close` sort is _Soonest to close_, not day-of-month order. It compares the full upcoming closing dates shown on the tiles, using preserved open-statement ledger dates before cycle dates. Today comes first; month/year rollover and short-month clamping follow the cycle rules. Equal dates tie by card id. Archived cards use the same order in their separate section. The `sort=close` address stays unchanged. This supersedes the earlier _Close day_ wording in RD-16 and FR-06.
+
 cc-tracking tracks a small business's company credit cards: where each card is kept, when each
 statement closes and must be paid, how much credit is left on accounts that several cards
 share, and which statement a purchase lands on. It runs entirely in the browser, in Thai and

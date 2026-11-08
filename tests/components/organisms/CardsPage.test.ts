@@ -164,6 +164,18 @@ const shownTiles = () =>
 		.filter((a) => !a.closest("details.archive"))
 		.map((a) => a.getAttribute("data-card"))
 
+test("close sort follows upcoming tile dates rather than day numbers", async () => {
+	await setup("/cards?sort=close", {
+		skipSeed: true,
+		before: async (repo) => {
+			await repo.saveCard(card("early", { cycle: { kind: "offset", closeDay: 5, dueOffsetDays: 20 } }))
+			await repo.saveCard(card("today", { cycle: { kind: "offset", closeDay: 31, dueOffsetDays: 20 } }))
+		},
+	})
+	expect(shownTiles()).toEqual(["today", "early"])
+	expect(flat($('[data-action="sort"]'))).toContain("Soonest to close")
+})
+
 const groupSheet = () => $("dialog input[name=limit]")?.closest("dialog") ?? null
 
 const sheetHeading = () => flat(groupSheet()?.querySelector("h2"))

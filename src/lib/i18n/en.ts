@@ -181,7 +181,7 @@ export const en = {
 	"list.clear": "Clear",
 	"cards.searchPlaceholder": "Name, ID, last 4 or comment",
 	"cards.sort.name": "Name",
-	"cards.sort.closeDay": "Close day",
+	"cards.sort.closeDay": "Soonest to close",
 	"cards.filter.title": "Filter cards",
 	"cards.filter.sortBy": "Sort by",
 	"cards.sort.place": "By place",

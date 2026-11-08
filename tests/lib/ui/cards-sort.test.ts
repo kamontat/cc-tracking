@@ -9,7 +9,7 @@ test("each sort has its words", () => {
 	expect(cardsSortLabel("place")).toBe("By place")
 	expect(cardsSortLabel("room")).toBe("Most room")
 	expect(cardsSortLabel("name")).toBe("Name")
-	expect(cardsSortLabel("close")).toBe("Close day")
+	expect(cardsSortLabel("close")).toBe("Soonest to close")
 	setLocale("th")
 	expect(cardsSortLabel("room")).not.toBe("Most room")
 })
