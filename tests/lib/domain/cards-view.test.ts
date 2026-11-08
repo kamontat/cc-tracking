@@ -4,6 +4,7 @@ import type { Card, LimitGroup } from "#lib/domain/types"
 import { describe, expect, test } from "vitest"
 
 import { cardsResults, cardUsePct, DEFAULT_CARDS_VIEW, groupPanels, matchesCard } from "#lib/domain/cards-view"
+import { cardLedger } from "#lib/domain/ledger"
 import { setLocale } from "#lib/i18n/index"
 
 const card = (id: string, o: Partial<Card> = {}): Card => ({
@@ -112,8 +113,73 @@ describe("cardsResults", () => {
 	})
 	test("close: by close day, ties by id", () => {
 		const cs = [card("a", { cycle: { kind: "fixed", closeDay: 20, dueDay: 5 } }), card("c"), card("b")]
-		const r = cardsResults(cs, [g], rooms, view({ sort: "close" }), order)
+		const r = cardsResults(cs, [g], rooms, view({ sort: "close" }), order, "2026-11-01")
 		expect(r.flat?.map((c) => c.id)).toEqual(["b", "c", "a"])
+	})
+	test("close: upcoming dates cross the year boundary, with today first and archived cards sorted too", () => {
+		const cs = [
+			card("early", { cycle: { kind: "fixed", closeDay: 5, dueDay: 20 } }),
+			card("later", { cycle: { kind: "fixed", closeDay: 20, dueDay: 5 } }),
+			card("today", { cycle: { kind: "fixed", closeDay: 15, dueDay: 5 } }),
+		]
+		const r = cardsResults(
+			[...cs, ...cs.map((c) => ({ ...c, id: `${c.id}-archived`, archived: true }))],
+			[g],
+			rooms,
+			view({ sort: "close" }),
+			order,
+			"2026-12-15",
+		)
+		expect(r.flat?.map((c) => c.id)).toEqual(["today", "later", "early"])
+		expect(r.archived.map((c) => c.id)).toEqual(["today-archived", "later-archived", "early-archived"])
+	})
+	test("close: month-end clamping makes equal dates tie by id", () => {
+		const cs = [31, 30, 28].map((closeDay, i) =>
+			card(String(i), { cycle: { kind: "offset", closeDay, dueOffsetDays: 20 } }),
+		)
+		expect(cardsResults(cs, [g], rooms, view({ sort: "close" }), order, "2026-02-20").flat?.map((c) => c.id)).toEqual([
+			"0",
+			"1",
+			"2",
+		])
+	})
+	test("close: uses the preserved open-statement date displayed on the tile", () => {
+		const cs = [card("a"), card("b", { cycle: { kind: "fixed", closeDay: 20, dueDay: 5 } })]
+		const ledgers = new Map(
+			cs.map((c) => [
+				c.id,
+				cardLedger(
+					c,
+					[{ id: "purchase", cardId: "a", date: "2026-11-01", amount: 100, note: "" }],
+					[{ id: "payment", cardId: "a", date: "2026-11-01", amount: 100, status: "paid" }],
+					[{ cardId: "a", period: "2026-11", closeDate: "2026-11-25", dueDate: "2026-12-15" }],
+					"2026-11-01",
+				),
+			]),
+		)
+		expect(
+			cardsResults(cs, [g], rooms, view({ sort: "close" }), order, "2026-11-01", ledgers).flat?.map((c) => c.id),
+		).toEqual(["b", "a"])
+		expect(
+			cardsResults(cs, [g], rooms, view({ sort: "due" }), order, "2026-11-01", ledgers).flat?.map((c) => c.id),
+		).toEqual(["b", "a"])
+	})
+	test("due: full upcoming dates, independent of closing order, ties by id and archived sorted too", () => {
+		const cs = [
+			card("a", { cycle: { kind: "offset", closeDay: 20, dueOffsetDays: 30 } }),
+			card("c", { cycle: { kind: "fixed", closeDay: 25, dueDay: 5 } }),
+			card("b", { cycle: { kind: "fixed", closeDay: 25, dueDay: 5 } }),
+		]
+		const r = cardsResults(
+			[...cs, ...cs.map((c) => ({ ...c, id: `${c.id}-archived`, archived: true }))],
+			[g],
+			rooms,
+			view({ sort: "due" }),
+			order,
+			"2026-12-15",
+		)
+		expect(r.flat?.map((c) => c.id)).toEqual(["b", "c", "a"])
+		expect(r.archived.map((c) => c.id)).toEqual(["b-archived", "c-archived", "a-archived"])
 	})
 	test("archived sorted like the rest and filtered too", () => {
 		const cs = [

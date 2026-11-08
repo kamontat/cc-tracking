@@ -6,11 +6,10 @@
 	import { onMount } from "svelte"
 
 	import CardTile from "#components/molecules/CardTile.svelte"
-	import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
+	import { cardOpenDates } from "#lib/domain/cards-view"
 	import { displayDate, today as todayOf } from "#lib/domain/date"
 	import { takesPurchases } from "#lib/domain/locations"
 	import { cardOwnerOf } from "#lib/domain/owner"
-	import { openPeriod } from "#lib/domain/statement"
 	import { nameOfLocation } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { lastFour, tileTone } from "#lib/ui/card-tile"
@@ -71,12 +70,11 @@
 
 	/** Line 3: the open period's close and due dates; the ledger's kept dates win over the cycle's. */
 	const dates = (card: Card): string => {
-		const period = openPeriod(card, today)
-		const kept = ledgers.get(card.id)?.statements.find((s) => s.open)
+		const { closeDate, dueDate } = cardOpenDates(card, today, ledgers.get(card.id))
 		const locale = lang
 		return tr("cards.page.dates", {
-			close: displayDate(kept?.closeDate ?? closeDateOf(card.cycle, period), locale),
-			due: displayDate(kept?.dueDate ?? dueDateOf(card.cycle, period), locale),
+			close: displayDate(closeDate, locale),
+			due: displayDate(dueDate, locale),
 		})
 	}
 

@@ -1,14 +1,17 @@
 import type { GroupRoom } from "#lib/domain/room"
-import type { Card, LimitGroup } from "#lib/domain/types"
+import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
+import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
+import { compareDates, today as todayOf } from "#lib/domain/date"
 import { byGroupName } from "#lib/domain/list-view"
 import { cardOwnerOf, type Owner } from "#lib/domain/owner"
+import { openPeriod } from "#lib/domain/statement"
 import { getLocale } from "#lib/i18n/index"
 
 /** How the Cards page orders its results; `place` is the default, grouped by location. */
-export type CardsSort = "place" | "room" | "name" | "close"
+export type CardsSort = "place" | "room" | "name" | "close" | "due"
 
-export const CARDS_SORTS: readonly CardsSort[] = ["place", "room", "name", "close"]
+export const CARDS_SORTS: readonly CardsSort[] = ["place", "room", "name", "close", "due"]
 
 /** What narrows the Cards page. An empty list means "any". */
 export type CardsFilter = {
@@ -77,7 +80,22 @@ export type CardsResults = {
 
 const byId = (a: Card, b: Card): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
-function comparer(sort: CardsSort, rooms: CardsRooms): (a: Card, b: Card) => number {
+/** Dates shown on a Cards tile; preserved ledger dates take precedence over the cycle. */
+export function cardOpenDates(card: Card, today: PlainDate, ledger?: CardLedger) {
+	const kept = ledger?.statements.find((s) => s.open)
+	const period = openPeriod(card, today)
+	return {
+		closeDate: kept?.closeDate ?? closeDateOf(card.cycle, period),
+		dueDate: kept?.dueDate ?? dueDateOf(card.cycle, period),
+	}
+}
+
+function comparer(
+	sort: CardsSort,
+	rooms: CardsRooms,
+	today: PlainDate,
+	ledgers: ReadonlyMap<string, CardLedger>,
+): (a: Card, b: Card) => number {
 	const roomOf = (c: Card): number => (c.limitGroupId ? rooms.get(c.limitGroupId)?.room : undefined) ?? 0
 	switch (sort) {
 		case "room":
@@ -85,7 +103,14 @@ function comparer(sort: CardsSort, rooms: CardsRooms): (a: Card, b: Card) => num
 		case "name":
 			return (a, b) => a.name.localeCompare(b.name, getLocale()) || byId(a, b)
 		case "close":
-			return (a, b) => a.cycle.closeDay - b.cycle.closeDay || byId(a, b)
+		case "due": {
+			const field = sort === "close" ? "closeDate" : "dueDate"
+			return (a, b) =>
+				compareDates(
+					cardOpenDates(a, today, ledgers.get(a.id))[field],
+					cardOpenDates(b, today, ledgers.get(b.id))[field],
+				) || byId(a, b)
+		}
 		default:
 			return byId
 	}
@@ -97,13 +122,15 @@ export function cardsResults(
 	rooms: CardsRooms,
 	view: CardsView,
 	locationOrder: readonly string[],
+	today: PlainDate = todayOf(new Date()),
+	ledgers: ReadonlyMap<string, CardLedger> = new Map(),
 ): CardsResults {
 	const groupById = new Map(groups.map((g) => [g.id, g]))
 	const matches = cards.filter((c) =>
 		matchesCard(c, c.limitGroupId ? (groupById.get(c.limitGroupId) ?? null) : null, view),
 	)
 	const live = matches.filter((c) => !c.archived)
-	const compare = comparer(view.sort, rooms)
+	const compare = comparer(view.sort, rooms, today, ledgers)
 	const archived = matches.filter((c) => c.archived).sort(compare)
 	if (view.sort === "place") {
 		const sections = locationOrder

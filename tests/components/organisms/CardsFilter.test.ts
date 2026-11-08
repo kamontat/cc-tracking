@@ -88,7 +88,8 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 		"By place",
 		"Most room",
 		"Name",
-		"Close day",
+		"Soonest to close",
+		"Soonest due",
 	])
 	expect(
 		[...root.querySelectorAll<HTMLInputElement>("input[type=radio][name=sort]")].map((r) => [r.value, r.checked]),
@@ -97,6 +98,7 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 		["room", false],
 		["name", false],
 		["close", false],
+		["due", false],
 	])
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 5 cards")
 	click("[data-owner=NT]")

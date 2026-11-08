@@ -247,10 +247,14 @@
 			: []
 	})
 
-	const results = $derived(data ? cardsResults(data.money.cards, data.money.groups, data.rooms, view, order) : null)
+	const results = $derived(
+		data ? cardsResults(data.money.cards, data.money.groups, data.rooms, view, order, now, data.money.ledgers) : null,
+	)
 
 	const countFor = (draft: CardsView) =>
-		data ? cardsResults(data.money.cards, data.money.groups, data.rooms, draft, order).count : 0
+		data
+			? cardsResults(data.money.cards, data.money.groups, data.rooms, draft, order, now, data.money.ledgers).count
+			: 0
 
 	/** The group the address opens, or null for a blank one; undefined when there is none to open. */
 	const sheetGroup = $derived.by((): LimitGroup | null | undefined => {

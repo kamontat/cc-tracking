@@ -58,16 +58,16 @@ Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/
 
 ### `/cards`
 
-| Key         | Values                           | Default | Notes                                                                                                                                                                                    |
-| ----------- | -------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`      | `cards`, `groups`                | `cards` | Which view shows below 900px: the card list or the limit groups. Written only as `groups`; anything else reads as `cards`. From 900px both sit side by side and the key changes nothing. |
-| `q`         | any text                         | empty   | Search.                                                                                                                                                                                  |
-| `loc`       | location id (repeated)           | any     | Kept only when the id is a stored location.                                                                                                                                              |
-| `owner`     | `KC`, `NT`, `RI` (repeated)      | any     | Card owner.                                                                                                                                                                              |
-| `ungrouped` | `1`                              | off     | Only cards in no stored limit group.                                                                                                                                                     |
-| `sort`      | `place`, `room`, `name`, `close` | `place` | Order; `place` groups by location.                                                                                                                                                       |
-| `group`     | limit group id                   | none    | Opens the limit group sheet on that group.                                                                                                                                               |
-| `newGroup`  | `1`                              | none    | Opens a blank limit group sheet; wins over `group`.                                                                                                                                      |
+| Key         | Values                                  | Default | Notes                                                                                                                                                                                    |
+| ----------- | --------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`      | `cards`, `groups`                       | `cards` | Which view shows below 900px: the card list or the limit groups. Written only as `groups`; anything else reads as `cards`. From 900px both sit side by side and the key changes nothing. |
+| `q`         | any text                                | empty   | Search.                                                                                                                                                                                  |
+| `loc`       | location id (repeated)                  | any     | Kept only when the id is a stored location.                                                                                                                                              |
+| `owner`     | `KC`, `NT`, `RI` (repeated)             | any     | Card owner.                                                                                                                                                                              |
+| `ungrouped` | `1`                                     | off     | Only cards in no stored limit group.                                                                                                                                                     |
+| `sort`      | `place`, `room`, `name`, `close`, `due` | `place` | Order; `place` groups by location. `close` and `due` put the soonest full date shown on the card first.                                                                                  |
+| `group`     | limit group id                          | none    | Opens the limit group sheet on that group.                                                                                                                                               |
+| `newGroup`  | `1`                                     | none    | Opens a blank limit group sheet; wins over `group`.                                                                                                                                      |
 
 Switching the view, filter and sort changes rewrite the address (`replaceState`); opening a group sheet pushes
 one (`pushState`), keeping the other keys. Example: `/cards?owner=KC&sort=room&group=<id>`.
