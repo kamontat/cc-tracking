@@ -169,8 +169,10 @@ export function drawTablePng(table: ShareTable, deps: DrawDeps = {}): Promise<Bl
 	) => {
 		context.font = font(options.size ?? TEXT_SIZE, options.weight ?? 400)
 		context.fillStyle = options.muted ? PAPER.muted : PAPER.text
-		context.textAlign = options.end ? "right" : "left"
-		context.fillText(value, x, y)
+		// Right-aligned text is placed by its measured width, never by textAlign: iPad Safari has
+		// drawn it left-aligned from `x`, pushing the amounts off the paper's right edge.
+		context.textAlign = "left"
+		context.fillText(value, options.end ? x - context.measureText(value).width : x, y)
 	}
 	const rule = (y: number, color: string) => {
 		context.strokeStyle = color
