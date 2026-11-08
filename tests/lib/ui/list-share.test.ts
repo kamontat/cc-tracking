@@ -123,6 +123,39 @@ test("the image draws every cell, always on white paper", async () => {
 	expect(fills.has("#ffffff")).toBe(true)
 })
 
+test("every cell fits on the paper even where the canvas ignores textAlign (iPad Safari)", async () => {
+	setLocale("th")
+	const table = shareTable(list, cards)
+	const spans: { text: string; from: number; to: number }[] = []
+	const width = (text: string) => text.length * 8
+	const context = {
+		fillStyle: "",
+		strokeStyle: "",
+		font: "",
+		textAlign: "left",
+		textBaseline: "alphabetic",
+		lineWidth: 1,
+		scale() {},
+		fillRect() {},
+		beginPath() {},
+		moveTo() {},
+		lineTo() {},
+		stroke() {},
+		measureText: (text: string) => ({ width: width(text) }),
+		// Draws every string from its x rightward, whatever textAlign says.
+		fillText: (text: string, x: number) => spans.push({ text, from: x, to: x + width(text) }),
+	}
+	const createCanvas = fakeCanvas(context, new Blob(["png"]))
+	await drawTablePng(table, { createCanvas })
+	const paper = createCanvas().width / 2
+	for (const span of spans) {
+		expect(span.from, span.text).toBeGreaterThanOrEqual(0)
+		expect(span.to, span.text).toBeLessThanOrEqual(paper)
+	}
+	const amounts = spans.filter((span) => span.text === table.total[1] || span.text === table.headers[2])
+	expect(amounts).toHaveLength(2)
+})
+
 test("a saved list totals only what was made, at the real amount", () => {
 	setLocale("en")
 	const saved = {
