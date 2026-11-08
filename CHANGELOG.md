@@ -4,9 +4,19 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-08: Offline scripts load whatever the server's Vary header, and the list image keeps its amounts on iPad
+## 2026-11-08: Offline scripts load whatever the server's Vary header, the list image keeps its amounts on iPad, and Cards sorts by upcoming dates
+
+### Features
+
+- Cards offers _Soonest due_, ordering by the full due dates shown on the tiles. The choice
+  survives reloads and shared links as `sort=due`, in English and Thai.
 
 ### Bug fixes
+
+- Cards' _Soonest to close_ sorts by the upcoming closing date, not the day number: a card
+  closing this month comes before one closing early next month. Both date sorts follow the
+  dates shown on the tiles, including preserved ledger dates and short-month clamping; ties
+  use card id, and archived cards use the same order in their separate section.
 
 - The saved purchase list image shows its amounts in full on iPad. Safari there drew the
   amount column (its header, every amount and the total) starting at the right margin instead
@@ -20,6 +30,9 @@ reasons don't show up in the code.
   were gone. Production sends no `Vary` today; this keeps it working if that changes (DD-181).
 
 ### Decisions
+
+- Cards sorts by the open period's displayed dates, not the oldest unpaid bill. The close
+  sort keeps `sort=close`, so existing links use the corrected order (DD-115, DD-116).
 
 - The worker matches with `ignoreVary`, since each cached file is the build's one copy at its
   address. Stripping `Vary` when storing was the other option; ignoring it on lookup keeps the
