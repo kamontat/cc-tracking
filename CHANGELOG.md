@@ -4,6 +4,22 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-08: Offline scripts load whatever the server's Vary header
+
+### Bug fixes
+
+- The offline worker finds a cached file even when the server sent it with a `Vary` header. A
+  page loads its scripts with an `Origin` header the worker's own fetch lacked, so a
+  `Vary: Origin` answer (which `astro preview` gives) made every script miss the cache: offline
+  the page's island never ran, and after a deploy the old version's pages asked for files that
+  were gone. Production sends no `Vary` today; this keeps it working if that changes (DD-181).
+
+### Decisions
+
+- The worker matches with `ignoreVary`, since each cached file is the build's one copy at its
+  address. Stripping `Vary` when storing was the other option; ignoring it on lookup keeps the
+  stored responses as the server sent them.
+
 ## 2026-11-07: The card page, the card form, Make a payment, Transactions, the list pages and Home converted, Lit removed, and offline use
 
 ### BREAKING CHANGES
