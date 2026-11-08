@@ -2,24 +2,38 @@ import { describe, expect, test, vi } from "vitest"
 
 import { activate, CACHE_PREFIX, handles, install, respond } from "#lib/offline/worker"
 
-/** An in-memory `CacheStorage`, matching by path and, with `ignoreSearch`, without the query. */
+/**
+ * An in-memory `CacheStorage`, matching by path and, with `ignoreSearch`, without the query. Like
+ * the real one, a response with a `Vary` header matches only a request whose named headers equal
+ * the stored request's, unless `ignoreVary` is set.
+ */
 function fakeCaches() {
-	const stores = new Map<string, Map<string, Response>>()
+	type Entry = { headers: Headers; response: Response }
+	const stores = new Map<string, Map<string, Entry>>()
 	const keyOf = (request: RequestInfo | URL, ignoreSearch = false) => {
 		const url = new URL(request instanceof Request ? request.url : String(request), "https://cc.test")
 		return ignoreSearch ? url.pathname : url.pathname + url.search
 	}
+	const headersOf = (request: RequestInfo | URL) => (request instanceof Request ? request.headers : new Headers())
+	const varies = ({ headers, response }: Entry, request: RequestInfo | URL) =>
+		(response.headers.get("vary") ?? "")
+			.split(",")
+			.map((name) => name.trim())
+			.filter(Boolean)
+			.some((name) => headers.get(name) !== headersOf(request).get(name))
 	const open = async (name: string) => {
-		const store = stores.get(name) ?? new Map<string, Response>()
+		const store = stores.get(name) ?? new Map<string, Entry>()
 		stores.set(name, store)
 		return {
 			async put(request: RequestInfo | URL, response: Response) {
-				store.set(keyOf(request), response)
+				store.set(keyOf(request), { headers: headersOf(request), response })
 			},
 			async match(request: RequestInfo | URL, options?: CacheQueryOptions) {
 				const wanted = keyOf(request, options?.ignoreSearch)
-				for (const [key, response] of store) {
-					if ((options?.ignoreSearch ? key.split("?")[0] : key) === wanted) return response.clone()
+				for (const [key, entry] of store) {
+					if ((options?.ignoreSearch ? key.split("?")[0] : key) !== wanted) continue
+					if (!options?.ignoreVary && varies(entry, request)) continue
+					return entry.response.clone()
 				}
 				return undefined
 			},
@@ -86,6 +100,22 @@ describe("respond", () => {
 		const fetch = vi.fn()
 		const response = await respond({ caches, fetch }, "v1", new Request("https://cc.test/card?id=abc"))
 		expect(await response.text()).toBe("card page")
+		expect(fetch).not.toHaveBeenCalled()
+	})
+
+	// A server may answer a script with a `Vary` header (`astro preview` sends `Vary: Origin`). The
+	// worker stored it from a plain fetch, while the browser loads a page's module script with
+	// headers that fetch lacked (`Origin`, `Accept`); matching on Vary would miss and go to the
+	// network, so offline (or after a deploy, when the old file is gone) the page's island never
+	// runs. `Origin` cannot be set on a `Request` here, so `Accept` stands in for it.
+	test("serves a script stored with Vary to a module request that carries other headers", async () => {
+		const caches = fakeCaches()
+		const script = new Response("island", { headers: { Vary: "Accept", "Content-Type": "text/javascript" } })
+		await (await caches.open(`${CACHE_PREFIX}v1`)).put("/_astro/HomePage.js", script)
+		const fetch = vi.fn(async () => new Response("", { status: 404 }))
+		const module = new Request("https://cc.test/_astro/HomePage.js", { headers: { Accept: "*/*" } })
+		const response = await respond({ caches, fetch }, "v1", module)
+		expect(await response.text()).toBe("island")
 		expect(fetch).not.toHaveBeenCalled()
 	})
 
