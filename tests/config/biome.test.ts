@@ -23,6 +23,13 @@ describe("biome.json", () => {
 		expect(config.extends).toContain("@kcconfigs/biome/configs/astro")
 	})
 
+	// The agents' skill folders are copied from upstream as they are: formatting rewrites their
+	// front matter (`allowed-tools` globs turn from `*` to `_`), so Biome leaves them alone.
+	it("leaves the agents' folders unformatted", () => {
+		const config = JSON.parse(readFileSync(join(root, "biome.json"), "utf8"))
+		expect(config.files.includes).toEqual(expect.arrayContaining(["!.claude", "!.opencode"]))
+	})
+
 	// Every page imports BaseLayout only to use it in the template; `bun run format` must keep it.
 	it("does not flag frontmatter imports and variables used only in the template", () => {
 		const result = biome(
