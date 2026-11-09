@@ -496,3 +496,69 @@ test("the sub-header's muted line names the list's date and how many cards it ha
 	await setupDraft(draftWith(["A"]))
 	expect(subtitleOf()).toBe("Mon, 02 Nov 2026 · 1 card")
 })
+
+/** Adds an order to `cardId` and types `value` into it. */
+const addOrder = async (cardId: string, value: string) => {
+	const button = $(`.line[data-card="${cardId}"] [data-action="add-order"]`)
+	if (!button) throw new Error(`no add order for ${cardId}`)
+	button.click()
+	await settle()
+	const input = [
+		...document.querySelectorAll<HTMLInputElement>(`.line[data-card="${cardId}"] [data-field="amount"]`),
+	].at(-1)
+	if (!input) throw new Error(`no order for ${cardId}`)
+	input.value = value
+	input.dispatchEvent(new Event("input", { bubbles: true }))
+	await settle()
+}
+
+test("a card's orders are stored as a line each, in order", async () => {
+	const { repo } = await setup({ search: "?card=A&card=B" })
+	await typeAmount("A", "100")
+	await addOrder("A", "200")
+	await typeAmount("B", "50")
+	await click(document, "review")
+	expect(document.querySelectorAll(".doc tbody tr")).toHaveLength(3)
+	expect(subtitleOf()).toBe("Sat, 31 Oct 2026 · 2 cards · 3 orders")
+	await click(document, "back")
+	expect(
+		[...document.querySelectorAll<HTMLInputElement>('.line[data-card="A"] [data-field="amount"]')].map((i) => i.value),
+	).toEqual(["100", "200"])
+	await click(document, "review")
+	await click(document, "save-draft")
+	expect((await stored(repo))[0]?.lines).toEqual([
+		{ cardId: "A", amount: 100_00 },
+		{ cardId: "A", amount: 200_00 },
+		{ cardId: "B", amount: 50_00 },
+	])
+})
+
+test("a draft with several orders on a card opens them in the card's one panel", async () => {
+	const { repo } = await setupDraft((r) =>
+		r.savePurchaseList({
+			id: "d1",
+			date: "2026-11-02",
+			status: "draft",
+			lines: [
+				{ cardId: "A", amount: 100_00, note: "fuel" },
+				{ cardId: "B", amount: 50_00 },
+				{ cardId: "A", amount: 300_00 },
+			],
+		}),
+	)
+	expect(onList()).toEqual(["A", "B"])
+	expect(
+		[...document.querySelectorAll<HTMLInputElement>('.line[data-card="A"] [data-field="amount"]')].map((i) => i.value),
+	).toEqual(["100", "300"])
+	expect(
+		[...document.querySelectorAll<HTMLInputElement>('.line[data-card="A"] [data-field="note"]')].map((i) => i.value),
+	).toEqual(["fuel", ""])
+	expect(subtitleOf()).toBe("Mon, 02 Nov 2026 · 2 cards · 3 orders")
+	await click(document, "review")
+	await click(document, "mark-sent")
+	expect((await stored(repo))[0]?.lines).toEqual([
+		{ cardId: "A", amount: 100_00, note: "fuel" },
+		{ cardId: "A", amount: 300_00 },
+		{ cardId: "B", amount: 50_00 },
+	])
+})

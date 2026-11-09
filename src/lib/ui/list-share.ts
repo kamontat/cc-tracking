@@ -2,9 +2,9 @@ import type { Card, ListStatus, PlainDate, PurchaseList } from "#lib/domain/type
 
 import { headerDate } from "#lib/domain/date"
 import { formatAmount } from "#lib/domain/money"
-import { listTotal } from "#lib/domain/purchase-list"
+import { listCount, listTotal } from "#lib/domain/purchase-list"
 import { MessageError } from "#lib/i18n/error"
-import { getLocale, t } from "#lib/i18n/index"
+import { getLocale, type Params, t } from "#lib/i18n/index"
 import { cardLine } from "#lib/ui/card-label"
 
 type Cells = [card: string, name: string, amount: string]
@@ -20,6 +20,21 @@ export type ShareTable = {
 	 */
 	labels: string[]
 	total: [label: string, amount: string]
+}
+
+/**
+ * "Total · 2 cards", or "Total · 2 cards · 3 orders" once a card has more than one order: the
+ * `total` or `subtitle` words for a list's count (`listCount`), in the current locale.
+ */
+export function countWords(
+	prefix: "purchaseList.total" | "purchaseList.subtitle",
+	{ cards, orders }: { cards: number; orders: number },
+	params: Params = {},
+): string {
+	const many = cards === 1 ? "one" : "many"
+	return orders > cards
+		? t(`${prefix}.orders.${many}`, { ...params, count: cards, orders })
+		: t(`${prefix}.${many}`, { ...params, count: cards })
 }
 
 /**
@@ -48,19 +63,14 @@ export function shareTable(
 		return [line.cardId, name, amount]
 	})
 	const total = listTotal({ ...list, id: "", status: list.status ?? "draft" })
-	const count = saved ? list.lines.filter((line) => line.made).length : list.lines.length
+	const counted = listCount(saved ? list.lines.filter((line) => line.made) : list.lines)
 	return {
 		title: t("purchaseList.title"),
 		date: headerDate(list.date, getLocale(), true),
 		headers: [t("purchaseList.column.card"), t("purchaseList.column.name"), t("purchaseList.column.amount")],
 		rows,
 		labels,
-		total: [
-			t(count === 1 ? "purchaseList.total.one" : "purchaseList.total.many", {
-				count,
-			}),
-			formatAmount(total),
-		],
+		total: [countWords("purchaseList.total", counted), formatAmount(total)],
 	}
 }
 

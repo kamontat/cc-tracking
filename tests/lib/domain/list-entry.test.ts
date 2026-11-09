@@ -91,18 +91,26 @@ describe("list entry", () => {
 	})
 
 	test("blank lines are left off the list", () => {
-		expect(listLines(["A", "B", "C"], { A: 100, C: 0 })).toEqual([{ cardId: "A", amount: 100 }])
+		expect(listLines(["A", "B", "C"], { A: [100], C: [0] })).toEqual([{ cardId: "A", amount: 100 }])
+	})
+
+	test("each order on a card is its own line, in card order then order", () => {
+		expect(listLines(["B", "A"], { A: [100, 0, 300], B: [50] }, { A: ["fuel", "skipped", " tyres "], B: [] })).toEqual([
+			{ cardId: "B", amount: 50 },
+			{ cardId: "A", amount: 100, note: "fuel" },
+			{ cardId: "A", amount: 300, note: "tyres" },
+		])
 	})
 
 	test("a line keeps its note, trimmed; a blank note is not stored", () => {
 		expect(
 			listLines(
 				["A", "B", "C"],
-				{ A: 100, B: 200, C: 0 },
+				{ A: [100], B: [200], C: [0] },
 				{
-					A: "  fuel for the van ",
-					B: "   ",
-					C: "dropped with its line",
+					A: ["  fuel for the van "],
+					B: ["   "],
+					C: ["dropped with its line"],
 				},
 			),
 		).toEqual([

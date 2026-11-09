@@ -56,6 +56,20 @@ test("a waiting list is titled by its date and names its cards", () => {
 	expect(text.subtitle).toContain("Card A")
 })
 
+test("a list names a card with several orders once", () => {
+	const text = waitingText(
+		list({
+			lines: [
+				{ cardId: "1", amount: 500_00 },
+				{ cardId: "1", amount: 250_00 },
+			] as PurchaseList["lines"],
+		}),
+		[card("1", "Card A")],
+		[],
+	)
+	expect(text.subtitle.match(/Card A/g)).toHaveLength(1)
+})
+
 test("a planned payment says when, and its note only in the opened sentence", () => {
 	const payment = { id: "p1", cardId: "1", date: "2026-11-05", amount: 1_000_00, note: "rent" } as CardPayment
 	const text = plannedText(payment, card("1", "Card A"), [], "2026-11-03")

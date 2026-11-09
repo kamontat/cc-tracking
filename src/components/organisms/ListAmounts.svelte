@@ -13,10 +13,11 @@
 	import { formatAmount, formatAmountInput } from "#lib/domain/money"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { cardLine, cardName, groupColor } from "#lib/ui/card-label"
+	import { countWords } from "#lib/ui/list-share"
 
 	/**
-	 * Step 2 of a purchase list: a date and one amount (and an optional note) per card, each line
-	 * warned about what the bank may do with it. The warnings inform and never block; only text
+	 * Step 2 of a purchase list: a date and, per card, one or more orders, each an amount and an
+	 * optional note; each card is warned about what the bank may do with its orders together. The warnings inform and never block; only text
 	 * that is not money does. Every change calls `onentrychange` with the date and what was typed;
 	 * Review calls `onreview`. The `side` snippet takes the page's own actions, after Review (a
 	 * draft's Delete draft).
@@ -37,11 +38,15 @@
 		today: PlainDate
 		/** The date's first value; a new value replaces what was picked. */
 		date: PlainDate
-		/** The amounts' first texts, by card; a card's new value replaces what was typed. */
-		entries: Record<string, string>
-		/** The notes' first texts, by card; a card's new value replaces what was typed. */
-		notes: Record<string, string>
-		onentrychange: (detail: { date: PlainDate; entries: Record<string, string>; notes: Record<string, string> }) => void
+		/** The amounts' first texts, by card, one per order; a card's new value replaces what was typed. */
+		entries: Record<string, string[]>
+		/** The notes' first texts, by card, one per order; a card's new value replaces what was typed. */
+		notes: Record<string, string[]>
+		onentrychange: (detail: {
+			date: PlainDate
+			entries: Record<string, string[]>
+			notes: Record<string, string[]>
+		}) => void
 		onreview: (detail: { date: PlainDate }) => void
 		onremove: (cardId: string) => void
 		onadd: (cardId: string) => void
@@ -75,16 +80,16 @@
 	}
 
 	// What the reader typed lives here, so a parent re-render keeps it.
-	let typed = $state<Record<string, string>>(untrack(() => ({ ...entries })))
-	let typedNotes = $state<Record<string, string>>(untrack(() => ({ ...notes })))
+	let typed = $state<Record<string, string[]>>(untrack(() => ({ ...entries })))
+	let typedNotes = $state<Record<string, string[]>>(untrack(() => ({ ...notes })))
 	let dateText = $state<string>(untrack(() => date))
 	let picking = $state(false)
 
 	/** The keys of `next` whose value differs from `seen`. */
-	const changedKeys = (next: Record<string, string>, seen: Record<string, string>) => {
-		const out: Record<string, string> = {}
+	const changedKeys = (next: Record<string, string[]>, seen: Record<string, string[]>) => {
+		const out: Record<string, string[]> = {}
 		for (const [key, value] of Object.entries(next)) {
-			if (seen[key] !== value) out[key] = value
+			if (seen[key]?.join("\n") !== value.join("\n") || seen[key]?.length !== value.length) out[key] = [...value]
 		}
 		return out
 	}
@@ -126,13 +131,39 @@
 		onentrychange({ date: effectiveDate, entries: { ...typed }, notes: { ...typedNotes } })
 	}
 
-	const setAmount = (cardId: string, text: string) => {
-		typed = { ...typed, [cardId]: text }
+	/** How many orders a card has: at least one, else as many as anything typed for it. */
+	const orderCount = (cardId: string) => Math.max(1, typed[cardId]?.length ?? 0, typedNotes[cardId]?.length ?? 0)
+
+	/** A card's texts, one per order, blanks filling in what was never typed. */
+	const padded = (texts: string[] | undefined, count: number) =>
+		Array.from({ length: count }, (_, i) => texts?.[i] ?? "")
+
+	const setAmount = (cardId: string, order: number, text: string) => {
+		const next = padded(typed[cardId], orderCount(cardId))
+		next[order] = text
+		typed = { ...typed, [cardId]: next }
 		changed()
 	}
 
-	const setNote = (cardId: string, text: string) => {
-		typedNotes = { ...typedNotes, [cardId]: text }
+	const setNote = (cardId: string, order: number, text: string) => {
+		const next = padded(typedNotes[cardId], orderCount(cardId))
+		next[order] = text
+		typedNotes = { ...typedNotes, [cardId]: next }
+		changed()
+	}
+
+	const addOrder = (cardId: string) => {
+		const count = orderCount(cardId)
+		typed = { ...typed, [cardId]: [...padded(typed[cardId], count), ""] }
+		typedNotes = { ...typedNotes, [cardId]: [...padded(typedNotes[cardId], count), ""] }
+		changed()
+	}
+
+	const removeOrder = (cardId: string, order: number) => {
+		const count = orderCount(cardId)
+		const without = (texts: string[] | undefined) => padded(texts, count).filter((_, i) => i !== order)
+		typed = { ...typed, [cardId]: without(typed[cardId]) }
+		typedNotes = { ...typedNotes, [cardId]: without(typedNotes[cardId]) }
 		changed()
 	}
 
@@ -154,36 +185,43 @@
 			)
 			.join(", ")
 
+	/** Each card's orders in satang, null for one whose text is not money. */
 	const amounts = $derived.by(() => {
-		const out: Record<string, number | null> = {}
-		for (const card of cards) out[card.id] = lineAmount(typed[card.id] ?? "")
+		const out: Record<string, (number | null)[]> = {}
+		for (const card of cards) out[card.id] = padded(typed[card.id], orderCount(card.id)).map(lineAmount)
 		return out
 	})
 
+	const sum = (orders: (number | null)[]) => orders.reduce<number>((n, a) => n + (a ?? 0), 0)
+
+	// A card's line is all its orders together: the room and the warnings are the card's.
 	const lines = $derived.by(() => {
 		const money: Record<string, number> = {}
-		for (const [id, amount] of Object.entries(amounts)) money[id] = amount ?? 0
+		for (const [id, orders] of Object.entries(amounts)) money[id] = sum(orders)
 		return draftLines(cards, money, rooms, ledgers, planned, effectiveDate, known)
 	})
 
 	const passed = $derived(datePassed(effectiveDate, today))
 
-	/** One entry per card: its line, warnings, whether its text is not money, and its room after. */
+	/**
+	 * One entry per card: its line, warnings, which orders' text is not money, whether any is,
+	 * and its room after.
+	 */
 	const views = $derived.by(() => {
 		void lang
 		return cards.map((card) => {
 			const line = lines.find((l) => l.card.id === card.id)
 			const warnings = line ? lineWarnings(line, lines, effectiveDate, today) : []
-			const bad = amounts[card.id] === null
+			const orders = (amounts[card.id] ?? [0]).map((amount) => amount === null)
+			const bad = orders.some(Boolean)
 			const after = line && !bad ? formatAmount(roomAfter(line, lines)) : tr("common.none")
-			return { card, line, warnings, bad, warn: bad || warnings.length > 0, after }
+			return { card, line, warnings, orders, bad, warn: bad || warnings.length > 0, after }
 		})
 	})
 
-	const total = $derived(Object.values(amounts).reduce<number>((n, a) => n + (a ?? 0), 0))
-	const canReview = $derived(
-		Object.values(amounts).some((a) => a !== null && a > 0) && Object.values(amounts).every((a) => a !== null),
-	)
+	const all = $derived(Object.values(amounts).flat())
+	const total = $derived(sum(all))
+	const canReview = $derived(all.some((a) => a !== null && a > 0) && all.every((a) => a !== null))
 
 	const warned = $derived(views.filter((v) => v.warn).length)
 	const summary = $derived.by(() => {
@@ -192,6 +230,11 @@
 		if (warned > 1) parts.push(tr("purchaseList.warn.lines.many", { count: warned }))
 		if (passed) parts.push(tr("purchaseList.warn.datePassedShort"))
 		return parts.join(" · ")
+	})
+
+	const countText = $derived.by(() => {
+		void lang
+		return countWords("purchaseList.total", { cards: cards.length, orders: all.length })
 	})
 
 	const shown = (day: PlainDate) => {
@@ -228,12 +271,13 @@
 					{tr("purchaseList.warn.planned", { amount: formatAmount(warning.plannedBefore) })}
 				</span>
 			{/if}
-			{#if warning.room > 0}
+			<!-- With several orders it is not clear which one to lower, so it is left to the reader. -->
+			{#if warning.room > 0 && orderCount(card.id) === 1}
 				<button
 					type="button"
 					data-variant="quiet"
 					data-action="lower"
-					onclick={() => setAmount(card.id, formatAmountInput(warning.room))}>
+					onclick={() => setAmount(card.id, 0, formatAmountInput(warning.room))}>
 					{tr("purchaseList.warn.lowerTo", { room: formatAmount(warning.room) })}
 				</button>
 			{/if}
@@ -273,6 +317,7 @@
 			<div class="lines">
 				{#each views as view (view.card.id)}
 					{@const card = view.card}
+					{@const many = view.orders.length > 1}
 					<section class="line" data-card={card.id} data-warn={view.warn ? "" : undefined}>
 						<div class="top" row>
 							<b>
@@ -285,32 +330,53 @@
 								{tr("purchaseList.remove")}
 							</button>
 						</div>
-						<label class="bigin">
-							<span>฿</span>
-							<input
-								inputmode="decimal"
-								data-field="amount"
-								placeholder="0"
-								aria-label={tr("purchaseList.amountFor", { card: cardName(card.id, card) })}
-								value={typed[card.id] ?? ""}
-								oninput={(e) => setAmount(card.id, e.currentTarget.value)}>
-						</label>
-						{#if view.bad}
-							<p class="error">{tr("quickAdd.error.badAmount")}</p>
-						{/if}
+						{#each view.orders as bad, order (order)}
+							{@const named = { card: cardName(card.id, card), n: order + 1 }}
+							<div class="order" data-order={order}>
+								{#if many}
+									<div class="order-head" row>
+										<span>{tr("purchaseList.order", { n: order + 1 })}</span>
+										<button
+											type="button"
+											data-variant="quiet"
+											data-action="remove-order"
+											aria-label={tr("purchaseList.removeOrderFor", named)}
+											onclick={() => removeOrder(card.id, order)}>
+											{tr("purchaseList.remove")}
+										</button>
+									</div>
+								{/if}
+								<label class="bigin">
+									<span>฿</span>
+									<input
+										inputmode="decimal"
+										data-field="amount"
+										placeholder="0"
+										aria-label={many ? tr("purchaseList.amountForOrder", named) : tr("purchaseList.amountFor", named)}
+										value={typed[card.id]?.[order] ?? ""}
+										oninput={(e) => setAmount(card.id, order, e.currentTarget.value)}>
+								</label>
+								{#if bad}
+									<p class="error">{tr("quickAdd.error.badAmount")}</p>
+								{/if}
+								<label class="line-note">
+									{tr("purchaseList.noteLabel")}
+									<input
+										data-field="note"
+										placeholder={tr("purchaseList.notePlaceholder")}
+										aria-label={many ? tr("purchaseList.noteForOrder", named) : tr("purchaseList.noteFor", named)}
+										value={typedNotes[card.id]?.[order] ?? ""}
+										oninput={(e) => setNote(card.id, order, e.currentTarget.value)}>
+								</label>
+							</div>
+						{/each}
+						<button type="button" data-variant="quiet" data-action="add-order" onclick={() => addOrder(card.id)}>
+							+ {tr("purchaseList.addOrder")}
+						</button>
 						<div class="after" row>
 							<span>{tr("purchaseList.roomAfter")}</span>
 							<b>{view.after}</b>
 						</div>
-						<label class="line-note">
-							{tr("purchaseList.noteLabel")}
-							<input
-								data-field="note"
-								placeholder={tr("purchaseList.notePlaceholder")}
-								aria-label={tr("purchaseList.noteFor", { card: cardName(card.id, card) })}
-								value={typedNotes[card.id] ?? ""}
-								oninput={(e) => setNote(card.id, e.currentTarget.value)}>
-						</label>
 						{#if view.line}
 							{#each view.warnings as warning, i (i)}
 								{@render note(card, warning, view.line)}
@@ -359,9 +425,7 @@
 			{#if summary}
 				<span class="summary warned">{summary}</span>
 			{:else}
-				<span class="summary">
-					{tr(cards.length === 1 ? "purchaseList.total.one" : "purchaseList.total.many", { count: cards.length })}
-				</span>
+				<span class="summary">{countText}</span>
 			{/if}
 			<b class="total">{formatAmount(total)}</b>
 			<button
@@ -454,6 +518,37 @@
 		font-variant-numeric: tabular-nums;
 		background: transparent;
 		border: none;
+	}
+
+	/* An order: its amount and note, a line between it and the next. */
+	.order {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--cc-space-3);
+	}
+
+	.order + .order {
+		padding-block-start: var(--cc-space-3);
+		border-top: var(--cc-border-width) solid var(--cc-border);
+	}
+
+	.order-head {
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--cc-space-3);
+		font-size: var(--cc-text-sm);
+		font-weight: 600;
+		color: var(--cc-text-muted);
+	}
+
+	.order-head button,
+	button[data-action="add-order"] {
+		padding: var(--cc-space-1) var(--cc-space-2);
+		font-size: var(--cc-text-xs);
+	}
+
+	button[data-action="add-order"] {
+		justify-self: start;
 	}
 
 	.after {

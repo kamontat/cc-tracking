@@ -90,7 +90,7 @@
 	const moveText = $derived.by(() => {
 		void lang
 		return tr("reply.move", {
-			cards: unmade.map((line) => cardName(line.cardId, byId.get(line.cardId))).join(", "),
+			cards: [...new Set(unmade.map((line) => line.cardId))].map((id) => cardName(id, byId.get(id))).join(", "),
 			date: headerDate(addDays(list.date, 1), getLocale(), false),
 		})
 	})

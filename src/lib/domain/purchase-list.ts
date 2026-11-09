@@ -10,6 +10,11 @@ export function listTotal(list: PurchaseList): number {
 	return list.lines.reduce((sum, line) => sum + line.amount, 0)
 }
 
+/** How many cards are on `lines`, each counted once, and how many orders (lines) in all. */
+export function listCount(lines: ListLine[]): { cards: number; orders: number } {
+	return { cards: new Set(lines.map((line) => line.cardId)).size, orders: lines.length }
+}
+
 export function allAnswered(list: PurchaseList): boolean {
 	return list.lines.every((line) => line.made !== undefined)
 }

@@ -60,16 +60,18 @@ export function withNote(line: ListLine, text: string | undefined): ListLine {
 	return note ? { ...line, note } : line
 }
 
-/** Lines with an amount above zero, in card order, each with its note when one was typed. */
+/** One line per order with an amount above zero, in card order then order, each with its note when one was typed. */
 export function listLines(
 	cardIds: string[],
-	amounts: Record<string, number>,
-	notes: Record<string, string> = {},
+	amounts: Record<string, number[]>,
+	notes: Record<string, string[]> = {},
 ): ListLine[] {
 	const lines: ListLine[] = []
 	for (const cardId of cardIds) {
-		const amount = amounts[cardId] ?? 0
-		if (amount > 0) lines.push(withNote({ cardId, amount }, notes[cardId]))
+		const orders = amounts[cardId] ?? []
+		orders.forEach((amount, i) => {
+			if (amount > 0) lines.push(withNote({ cardId, amount }, notes[cardId]?.[i]))
+		})
 	}
 	return lines
 }
