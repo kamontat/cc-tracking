@@ -530,6 +530,10 @@ test("each order's boxes and Remove are named for the card and the order", async
 	expect(notesOf("A")[1]?.getAttribute("aria-label")).toBe("Note for Card A, order 2")
 	const remove = line("A").querySelectorAll('[data-action="remove-order"]')[1]
 	expect(remove?.getAttribute("aria-label")).toBe("Remove order 2 of Card A")
+	// An × icon, so it never reads as a second Remove beside the card's own.
+	expect(flat(remove)).toBe("")
+	expect(remove?.querySelector("svg")).not.toBeNull()
+	expect(flat(line("A").querySelector('.top [data-action="remove"]'))).toBe("Remove")
 	setLocale("th")
 	await settle()
 	expect(amountsOf("A")[1]?.getAttribute("aria-label")).toBe("จำนวนเงินของ Card A รายการที่ 2")

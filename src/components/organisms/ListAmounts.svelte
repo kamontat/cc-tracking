@@ -7,6 +7,7 @@
 
 	import { onMount, untrack } from "svelte"
 
+	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import { datePassed, lineWarnings } from "#lib/domain/amount-warnings"
 	import { displayDate, isValidDate } from "#lib/domain/date"
 	import { draftLines, lineAmount, roomAfter } from "#lib/domain/list-entry"
@@ -342,7 +343,7 @@
 											data-action="remove-order"
 											aria-label={tr("purchaseList.removeOrderFor", named)}
 											onclick={() => removeOrder(card.id, order)}>
-											{tr("purchaseList.remove")}
+											<SvgIcon name="close" />
 										</button>
 									</div>
 								{/if}
@@ -541,10 +542,23 @@
 		color: var(--cc-text-muted);
 	}
 
-	.order-head button,
 	button[data-action="add-order"] {
 		padding: var(--cc-space-1) var(--cc-space-2);
 		font-size: var(--cc-text-xs);
+	}
+
+	/* A small × with no word, so it never reads as a second Remove beside the card's own. */
+	.order-head button {
+		display: inline-grid;
+		place-items: center;
+		padding: var(--cc-space-1);
+		line-height: 0;
+		border-radius: var(--cc-radius-pill);
+	}
+
+	.order-head button :global(.icon) {
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
 	}
 
 	button[data-action="add-order"] {
