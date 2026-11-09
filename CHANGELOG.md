@@ -4,6 +4,40 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-10: Several orders per card on a purchase list
+
+### Features
+
+- A card on a purchase list can carry more than one order. On _Enter amounts_ the card stays
+  one panel with an amount and an optional note per order, _+ Add order_ under them, and a
+  small × on each order once there are two (named _Remove order N of <card>_). Each order is
+  its own line: a row each on the review, the copied text and the image, answered _Made_ or
+  _Not made_ on its own and saved as its own purchase. A reopened draft gathers a card's
+  orders back into its one panel (RD-09, DD-186).
+
+### Improvements
+
+- Room after, the over-room and shared-limit warnings and the total count a card's orders
+  together. Counts read `2 cards · 3 orders` (`2 ใบ · 3 รายการ`) once a card has more than one
+  order, on the total and the sub-header, and stay `2 cards` otherwise.
+
+- A card with several orders is named once in Home's list rows, the reply's _Move … to a
+  draft_ and the saved list's moved note.
+
+- Biome no longer checks `.opencode/`, as it already skipped `.claude/`: formatting rewrote the
+  playwright-cli skill's front matter (its `allowed-tools` globs) and failed `bun run check`.
+
+### Decisions
+
+- A list line stays one order, so the stored list, the backup shape and the `?card=` address
+  are unchanged; only the amounts step groups a card's lines into one panel.
+
+- _Lower to_ shows only for a card with one order: with several it is unclear which order to
+  lower, so the reader edits them.
+
+- An order's remove is an × icon rather than a second _Remove_ word, which read as a duplicate
+  of the card's own _Remove_ right above it.
+
 ## 2026-11-08: Offline scripts load whatever the server's Vary header, the list image keeps its amounts on iPad, and Cards sorts by upcoming dates
 
 ### Features

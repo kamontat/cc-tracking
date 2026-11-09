@@ -191,6 +191,45 @@ test("the total counts one card or many", () => {
 	expect(shareTable(list, cards).total[0]).toBe("Total · 2 cards")
 })
 
+test("several orders on a card are a row each, and the total counts cards and orders", () => {
+	setLocale("en")
+	const orders = {
+		date: "2026-10-31",
+		lines: [
+			{ cardId: "KB-F", amount: 1_000_00 },
+			{ cardId: "KB-F", amount: 2_000_00 },
+		],
+	}
+	expect(shareText(shareTable(orders, cards))).toBe(
+		[
+			"Purchase list · Sat, 31 Oct 2026",
+			"",
+			"KB-F) KBank Fuel (4412) — ฿1,000.00",
+			"KB-F) KBank Fuel (4412) — ฿2,000.00",
+			"",
+			"Total · 1 card · 2 orders — ฿3,000.00",
+		].join("\n"),
+	)
+	const more = { ...orders, lines: [...orders.lines, { cardId: "UOB-K", amount: 500_00 }] }
+	expect(shareTable(more, cards).total[0]).toBe("Total · 2 cards · 3 orders")
+	setLocale("th")
+	expect(shareTable(more, cards).total[0]).toBe("รวม · 2 ใบ · 3 รายการ")
+})
+
+test("a saved list counts the cards and orders that were made", () => {
+	setLocale("en")
+	const saved = {
+		date: "2026-10-31",
+		status: "saved" as const,
+		lines: [
+			{ cardId: "KB-F", amount: 1_000_00, made: true },
+			{ cardId: "KB-F", amount: 2_000_00, made: true },
+			{ cardId: "UOB-K", amount: 500_00, made: false },
+		],
+	}
+	expect(shareTable(saved, cards).total[0]).toBe("Total · 1 card · 2 orders")
+})
+
 const png = () => new Blob(["png"], { type: "image/png" })
 
 /** A share sheet that records what it was handed, and a download that records its calls. */

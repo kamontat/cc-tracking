@@ -122,3 +122,26 @@ test("its words follow a language switch", async () => {
 	expect(flatText(root.querySelector('[data-card="B"] .tag'))).not.toBe("Not made")
 	expect(titleOf(root.querySelector("h1"))).not.toBe("Fri, 30 Oct 2026")
 })
+
+test("a card with several orders moved is named once", async () => {
+	const { root } = await setup("?id=w1", async (repo) => {
+		await repo.savePurchaseList({
+			id: "w1",
+			date: "2026-10-30",
+			status: "saved",
+			sentAt: "2026-10-30T03:00:00.000Z",
+			savedAt: "2026-10-31T03:00:00.000Z",
+			movedTo: "w1-2",
+			lines: [
+				{ cardId: "A", amount: 1_000_00, made: true },
+				{ cardId: "B", amount: 1_000_00, made: false },
+				{ cardId: "B", amount: 2_000_00, made: false },
+			],
+		})
+	})
+	expect(root.querySelectorAll('.saved-lines [data-card="B"]')).toHaveLength(2)
+	expect(flatText(root.querySelector('[data-action="open-draft"]'))).toContain(
+		"B) B card moved to a draft for Sat, 31 Oct",
+	)
+	expect(flatText(root.querySelector('[data-action="open-draft"]'))).not.toContain("B) B card, B) B card")
+})

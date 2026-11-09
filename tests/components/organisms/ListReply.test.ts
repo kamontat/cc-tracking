@@ -320,3 +320,25 @@ test("each note box is named for its card", async () => {
 	// A card no longer stored keeps its id.
 	expect(noteOf("C").getAttribute("aria-label")).toBe("Note for c-[C]")
 })
+
+test("each order on a card is answered on its own, and the move names the card once", async () => {
+	const { seen } = await show({
+		...w1,
+		lines: [
+			{ cardId: "B", amount: 1_000_00 },
+			{ cardId: "B", amount: 2_000_00 },
+			{ cardId: "A", amount: 500_00 },
+		],
+	})
+	const notMade = [...root.querySelectorAll<HTMLButtonElement>('section.line[data-card="B"] [data-answer="not-made"]')]
+	expect(notMade).toHaveLength(2)
+	for (const button of notMade) button.click()
+	await answer("A", "made")
+	expect(flat(move()?.closest("label"))).toBe("Move Card B to a draft for Sat, 31 Oct")
+	saveButton().click()
+	expect(seen.at(-1)?.lines).toEqual([
+		{ cardId: "B", amount: 1_000_00, made: false },
+		{ cardId: "B", amount: 2_000_00, made: false },
+		{ cardId: "A", amount: 500_00, made: true },
+	])
+})

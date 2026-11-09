@@ -80,8 +80,8 @@ const C = card("C", "g2")
 
 interface EntryChange {
 	date: string
-	entries: Record<string, string>
-	notes: Record<string, string>
+	entries: Record<string, string[]>
+	notes: Record<string, string[]>
 }
 
 const side = createRawSnippet(() => ({
@@ -153,10 +153,10 @@ const show = async (props: Record<string, unknown> = {}, opts: { heldA?: number;
 				return get<string>("date")
 			},
 			get entries() {
-				return get<Record<string, string>>("entries")
+				return get<Record<string, string[]>>("entries")
 			},
 			get notes() {
-				return get<Record<string, string>>("notes")
+				return get<Record<string, string[]>>("notes")
 			},
 			side,
 			onentrychange: (detail: EntryChange) => changes.push(detail),
@@ -205,7 +205,7 @@ test("typing shows room after and the total", async () => {
 	await type("A", "20,000")
 	expect(flat(line("A").querySelector(".after"))).toContain("฿30,000.00")
 	expect(flat(footer())).toContain("฿20,000.00")
-	expect(changes.at(-1)?.entries["A"]).toBe("20,000")
+	expect(changes.at(-1)?.entries["A"]).toEqual(["20,000"])
 	expect(changes.at(-1)?.date).toBe("2026-10-31")
 })
 
@@ -332,7 +332,7 @@ test("an empty list says so", async () => {
 })
 
 test("starting values and a language switch keep what was typed", async () => {
-	await show({ entries: { A: "123" }, date: "2026-11-02" })
+	await show({ entries: { A: ["123"] }, date: "2026-11-02" })
 	expect(amountInput("A").value).toBe("123")
 	expect(dateInput().value).toBe("2026-11-02")
 	await type("B", "5")
@@ -344,16 +344,22 @@ test("starting values and a language switch keep what was typed", async () => {
 })
 
 test("a parent re-render keeps what was typed; a changed prop refills its field", async () => {
-	const { set } = await show({ entries: { A: "123" }, notes: { A: "office" } })
+	const { set } = await show({ entries: { A: ["123"] }, notes: { A: ["office"] } })
 	await type("A", "456")
 	await typeNote("A", "fuel")
 	await setDate("2026-11-05")
 	// The page hands fresh copies of the same values, and new data around them.
-	await set({ entries: { A: "123" }, notes: { A: "office" }, date: "2026-10-31", rooms: new Map(), ledgers: new Map() })
+	await set({
+		entries: { A: ["123"] },
+		notes: { A: ["office"] },
+		date: "2026-10-31",
+		rooms: new Map(),
+		ledgers: new Map(),
+	})
 	expect(amountInput("A").value).toBe("456")
 	expect(noteInput("A").value).toBe("fuel")
 	expect(dateInput().value).toBe("2026-11-05")
-	await set({ entries: { A: "789" }, notes: { A: "van" }, date: "2026-11-09" })
+	await set({ entries: { A: ["789"] }, notes: { A: ["van"] }, date: "2026-11-09" })
 	expect(amountInput("A").value).toBe("789")
 	expect(noteInput("A").value).toBe("van")
 	expect(dateInput().value).toBe("2026-11-09")
@@ -431,11 +437,11 @@ test("each line has an optional Note under its amount, sent with the entries", a
 	await type("A", "100")
 	await type("B", "50")
 	await typeNote("A", " fuel ")
-	expect(changes.at(-1)).toEqual({ date: "2026-10-31", entries: { A: "100", B: "50" }, notes: { A: " fuel " } })
+	expect(changes.at(-1)).toEqual({ date: "2026-10-31", entries: { A: ["100"], B: ["50"] }, notes: { A: [" fuel "] } })
 })
 
 test("starting notes show, and a language switch keeps a typed note", async () => {
-	await show({ cards: [A, B], notes: { A: "office" } })
+	await show({ cards: [A, B], notes: { A: ["office"] } })
 	expect(noteInput("A").value).toBe("office")
 	await typeNote("B", "van fuel")
 	setLocale("th")
@@ -452,6 +458,86 @@ test("each amount and note box is named for its card", async () => {
 	setLocale("th")
 	await settle()
 	expect(noteInput("B").getAttribute("aria-label")).toBe("หมายเหตุของ Card B")
+})
+
+/** The amount boxes of a card's orders, in order. */
+const amountsOf = (id: string) => [...line(id).querySelectorAll<HTMLInputElement>('[data-field="amount"]')]
+const notesOf = (id: string) => [...line(id).querySelectorAll<HTMLInputElement>('[data-field="note"]')]
+const addOrder = (id: string) => click(line(id).querySelector('[data-action="add-order"]'))
+
+test("a card with one order shows no order heading and no Remove order", async () => {
+	await show({ cards: [A] })
+	expect(amountsOf("A")).toHaveLength(1)
+	expect(line("A").querySelector(".order-head")).toBeNull()
+	expect(line("A").querySelector('[data-action="remove-order"]')).toBeNull()
+	expect(flat(line("A").querySelector('[data-action="add-order"]'))).toBe("+ Add order")
+})
+
+test("Add order puts another amount and note in the card's own panel", async () => {
+	const { changes } = await show()
+	await type("A", "100")
+	await addOrder("A")
+	expect(root.querySelectorAll('section.line[data-card="A"]')).toHaveLength(1)
+	expect(amountsOf("A")).toHaveLength(2)
+	expect(notesOf("A")).toHaveLength(2)
+	expect([...line("A").querySelectorAll(".order-head")].map((el) => flat(el.querySelector("span")))).toEqual([
+		"Order 1",
+		"Order 2",
+	])
+	await fill(amountsOf("A")[1] as HTMLInputElement, "200")
+	await fill(notesOf("A")[1] as HTMLInputElement, "tyres")
+	expect(changes.at(-1)?.entries["A"]).toEqual(["100", "200"])
+	expect(changes.at(-1)?.notes["A"]).toEqual(["", "tyres"])
+	// Room after and the total count every order on the card.
+	expect(flat(line("A").querySelector(".after"))).toContain("฿49,700.00")
+	expect(flat(footer())).toContain("Total · 3 cards · 4 orders")
+	expect(flat(footer())).toContain("฿300.00")
+})
+
+test("starting orders show, and Remove order drops only that one", async () => {
+	const { changes } = await show({ entries: { A: ["100", "200", "300"] }, notes: { A: ["a", "b", "c"] } })
+	expect(amountsOf("A").map((input) => input.value)).toEqual(["100", "200", "300"])
+	const removes = line("A").querySelectorAll('[data-action="remove-order"]')
+	expect(removes).toHaveLength(3)
+	await click(removes[1] as Element)
+	expect(amountsOf("A").map((input) => input.value)).toEqual(["100", "300"])
+	expect(notesOf("A").map((input) => input.value)).toEqual(["a", "c"])
+	expect(changes.at(-1)?.entries["A"]).toEqual(["100", "300"])
+	expect(changes.at(-1)?.notes["A"]).toEqual(["a", "c"])
+	await click(line("A").querySelector('[data-action="remove-order"]'))
+	expect(amountsOf("A").map((input) => input.value)).toEqual(["300"])
+	expect(line("A").querySelector('[data-action="remove-order"]')).toBeNull()
+})
+
+test("a card's orders are warned as one, with no Lower to", async () => {
+	await show({ entries: { A: ["30000", "30000"] } })
+	expect(flat(line("A").querySelector('[data-warning="over-room"]'))).toContain("฿10,000.00")
+	expect(line("A").querySelector('[data-action="lower"]')).toBeNull()
+	expect(root.querySelectorAll('[data-warning="over-room"]')).toHaveLength(1)
+})
+
+test("an order that is not money stops review and says so under it", async () => {
+	await show({ entries: { A: ["100", "1.234"] } })
+	expect(reviewButton().disabled).toBe(true)
+	const orders = line("A").querySelectorAll(".order")
+	expect(orders[0]?.querySelector(".error")).toBeNull()
+	expect(flat(orders[1]?.querySelector(".error"))).toBe("Enter the amount in baht, like 1234.56.")
+})
+
+test("each order's boxes and Remove are named for the card and the order", async () => {
+	await show({ entries: { A: ["1", "2"] } })
+	expect(amountsOf("A")[1]?.getAttribute("aria-label")).toBe("Amount for Card A, order 2")
+	expect(notesOf("A")[1]?.getAttribute("aria-label")).toBe("Note for Card A, order 2")
+	const remove = line("A").querySelectorAll('[data-action="remove-order"]')[1]
+	expect(remove?.getAttribute("aria-label")).toBe("Remove order 2 of Card A")
+	// An × icon, so it never reads as a second Remove beside the card's own.
+	expect(flat(remove)).toBe("")
+	expect(remove?.querySelector("svg")).not.toBeNull()
+	expect(flat(line("A").querySelector('.top [data-action="remove"]'))).toBe("Remove")
+	setLocale("th")
+	await settle()
+	expect(amountsOf("A")[1]?.getAttribute("aria-label")).toBe("จำนวนเงินของ Card A รายการที่ 2")
+	expect(flat(line("A").querySelector('[data-action="add-order"]'))).toBe("+ เพิ่มรายการ")
 })
 
 test("the layout and the side panel are app.css's, not a local copy", async () => {

@@ -21,12 +21,13 @@
 	import { composeList, lineAmount, listLines } from "#lib/domain/list-entry"
 	import { formatAmountInput } from "#lib/domain/money"
 	import { plannedOf } from "#lib/domain/pay"
+	import { listCount } from "#lib/domain/purchase-list"
 	import { messageOf } from "#lib/i18n/error"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { cardLines } from "#lib/ui/card-label"
 	import { listId, newListAddress } from "#lib/ui/list-address"
-	import { browserShare, imageName, shareTable, shareText } from "#lib/ui/list-share"
+	import { browserShare, countWords, imageName, shareTable, shareText } from "#lib/ui/list-share"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { deleteDraftList, storedDraft } from "#lib/ui/row-actions"
@@ -99,8 +100,9 @@
 	// Cards a reopened draft (or this page) had that can no longer take purchases, left out.
 	let dropped = $state.raw<string[]>([])
 	let date = $state<PlainDate>(now)
-	let entries = $state.raw<Record<string, string>>({})
-	let notes = $state.raw<Record<string, string>>({})
+	// What was typed, by card, one text per order.
+	let entries = $state.raw<Record<string, string[]>>({})
+	let notes = $state.raw<Record<string, string[]>>({})
 	let reviewed = $state.raw<{ date: PlainDate; lines: ListLine[] } | null>(null)
 	let status = $state.raw<ShareStatus | null>(null)
 	let startupFailure = $state<(() => string) | null>(null)
@@ -129,12 +131,13 @@
 		const kept = onList.filter((c) => ready.has(c))
 		cardIds = kept
 		dropped = onList.filter((c) => !ready.has(c))
-		const typed: Record<string, string> = {}
-		const noted: Record<string, string> = {}
+		// Each of a card's lines is one of its orders, in the order stored.
+		const typed: Record<string, string[]> = {}
+		const noted: Record<string, string[]> = {}
 		for (const line of list.lines) {
 			if (!kept.includes(line.cardId)) continue
-			typed[line.cardId] = formatAmountInput(line.amount)
-			if (line.note) noted[line.cardId] = line.note
+			typed[line.cardId] = [...(typed[line.cardId] ?? []), formatAmountInput(line.amount)]
+			noted[line.cardId] = [...(noted[line.cardId] ?? []), line.note ?? ""]
 		}
 		entries = typed
 		notes = noted
@@ -170,16 +173,19 @@
 		status = null
 	}
 
-	/** The sub-header's muted line: the list's date and how many cards are on it. */
-	const subtitle = (count: number, on: PlainDate): string | undefined => {
+	/** The sub-header's muted line: the list's date and how many cards (and orders) are on it. */
+	const subtitle = (count: { cards: number; orders: number }, on: PlainDate): string | undefined => {
 		void lang
 		return isValidDate(on)
-			? t(count === 1 ? "purchaseList.subtitle.one" : "purchaseList.subtitle.many", {
-					date: headerDate(on, getLocale(), true),
-					count,
-				})
+			? countWords("purchaseList.subtitle", count, { date: headerDate(on, getLocale(), true) })
 			: undefined
 	}
+
+	/** The amounts step's count: every card on the list, and every order typed or opened on it. */
+	const entryCount = (ids: string[]) => ({
+		cards: ids.length,
+		orders: ids.reduce((n, id) => n + Math.max(1, entries[id]?.length ?? 0, notes[id]?.length ?? 0), 0),
+	})
 
 	// A new list's address names its cards, so a reload or shared link shows the same ones; a
 	// draft's cards come from the stored draft, so its address stays as it is.
@@ -189,8 +195,8 @@
 
 	const onEntryChange = (next: {
 		date: PlainDate
-		entries: Record<string, string>
-		notes?: Record<string, string>
+		entries: Record<string, string[]>
+		notes?: Record<string, string[]>
 	}) => {
 		date = next.date
 		entries = { ...next.entries }
@@ -201,8 +207,8 @@
 		date = next.date
 		// Lines come from the cards on the list now: the typed amounts can still hold a key for a
 		// card that was removed.
-		const amounts: Record<string, number> = {}
-		for (const id of cardIds) amounts[id] = lineAmount(entries[id] ?? "") ?? 0
+		const amounts: Record<string, number[]> = {}
+		for (const id of cardIds) amounts[id] = (entries[id] ?? []).map((text) => lineAmount(text) ?? 0)
 		reviewed = { date, lines: listLines(cardIds, amounts, notes) }
 		show("review")
 	}
@@ -353,7 +359,7 @@
 {:else if data && amounts && view === "amounts"}
 	<SubHeaderBar
 		title={tr(editingId ? "purchaseList.draft" : "purchaseList.new")}
-		detail={subtitle(amounts.cards.length, date)}
+		detail={subtitle(entryCount(amounts.cards.map((card) => card.id)), date)}
 		back={mode === "new" ? "/list/new" : "/"} />
 	<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 	{#if droppedNote}
@@ -379,7 +385,7 @@
 {:else if data && view === "review"}
 	<SubHeaderBar
 		title={tr("purchaseList.reviewTitle")}
-		detail={reviewed ? subtitle(reviewed.lines.length, reviewed.date) : undefined}
+		detail={reviewed ? subtitle(listCount(reviewed.lines), reviewed.date) : undefined}
 		back={() => show("amounts")} />
 	<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 	<div class="list-layout">

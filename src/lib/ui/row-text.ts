@@ -82,11 +82,7 @@ export function whenWords(date: string, today: string): string {
 const listDate = (list: PurchaseList) => displayDate(list.date, getLocale())
 
 const listCards = (list: PurchaseList, cards: Card[], groups: LimitGroup[]) =>
-	cardsOrCount(
-		list.lines.map((l) => l.cardId),
-		cards,
-		groups,
-	)
+	cardsOrCount([...new Set(list.lines.map((l) => l.cardId))], cards, groups)
 
 /** A waiting list; the total is the row's amount on the right (DD-108), not in the subtitle. */
 export const waitingText = (list: PurchaseList, cards: Card[], groups: LimitGroup[]): RowText => ({

@@ -106,7 +106,7 @@
 						href: listPageAddress({ id: saved.movedTo, status: "draft" }),
 						says: t("saved.moved", {
 							cards: cardLines(
-								saved.lines.filter((line) => !line.made).map((line) => line.cardId),
+								[...new Set(saved.lines.filter((line) => !line.made).map((line) => line.cardId))],
 								data.cards,
 								{ short: true },
 							),

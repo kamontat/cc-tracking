@@ -2,7 +2,7 @@ import type { PurchaseList } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
 
-import { allAnswered, listTotal, saveReply } from "#lib/domain/purchase-list"
+import { allAnswered, listCount, listTotal, saveReply } from "#lib/domain/purchase-list"
 
 const now = "2026-10-30T12:00:00.000Z"
 const list = (over: Partial<PurchaseList> = {}): PurchaseList => ({
@@ -18,6 +18,16 @@ const list = (over: Partial<PurchaseList> = {}): PurchaseList => ({
 const opts = { now, newId: () => "new", moveUnmade: true }
 
 describe("purchase list", () => {
+	test("a list counts its cards once and every order", () => {
+		const lines = [
+			{ cardId: "a", amount: 1 },
+			{ cardId: "b", amount: 2 },
+			{ cardId: "a", amount: 3 },
+		]
+		expect(listCount(lines)).toEqual({ cards: 2, orders: 3 })
+		expect(listCount([])).toEqual({ cards: 0, orders: 0 })
+	})
+
 	test("total of a sent list is its planned amounts", () => {
 		expect(listTotal(list())).toBe(27_000)
 	})
