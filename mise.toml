@@ -1,6 +1,8 @@
 [tools]
-bun = "1.4.4"
-claude = "2.1.310"
-opencode = "2.2.6"
+bun            = "1.4.4"
+claude         = "2.1.319"
+opencode       = "2.2.6"
 playwright-cli = "0.1.23"
-"npm:omo-ai" = "5.1.63"
+
+[tool_alias]
+playwright-cli = "npm:@playwright/cli"
