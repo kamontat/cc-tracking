@@ -266,8 +266,10 @@
 		gap: var(--cc-space-2);
 	}
 
+	/* Never wider than the row, so a third button (a list's Merge) wraps rather than run off a phone. */
 	.a-foot .a-btns {
-		flex: none;
+		flex: 0 1 auto;
+		max-inline-size: 100%;
 		margin-inline-start: auto;
 	}
 
