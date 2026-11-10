@@ -157,7 +157,9 @@ export function listParts(list: PurchaseList, cards: Card[]): RowPart[] {
 	return list.lines.map((line) => ({
 		label: cardLine(line.cardId, byId.get(line.cardId)),
 		amount: !saved
-			? formatAmount(line.amount)
+			? line.amount > 0
+				? formatAmount(line.amount)
+				: t("common.none")
 			: line.made
 				? formatAmount(line.actual ?? line.amount)
 				: t("reply.notMade"),

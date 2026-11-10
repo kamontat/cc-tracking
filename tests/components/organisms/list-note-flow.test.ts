@@ -80,7 +80,6 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 	expect(document.querySelector<HTMLInputElement>('section.line[data-card="B"] [data-field="note"]')?.value).toBe(
 		"stamps",
 	)
-	await press('[data-action="review"]')
 	await click(document, "save-draft")
 	expect((await stored(repo)).find((l) => l.id === moved?.id)?.lines).toEqual([
 		{ cardId: "B", amount: 50_00, note: "stamps" },

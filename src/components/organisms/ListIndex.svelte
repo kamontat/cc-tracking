@@ -8,7 +8,7 @@
 	import ActionRow from "#components/molecules/ActionRow.svelte"
 	import TwoStepButtons from "#components/molecules/TwoStepButtons.svelte"
 	import { formatAmount, MINUS } from "#lib/domain/money"
-	import { listTotal } from "#lib/domain/purchase-list"
+	import { listTotal, mergeCandidates } from "#lib/domain/purchase-list"
 	import { listRows } from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { listPageAddress } from "#lib/ui/list-address"
@@ -20,7 +20,8 @@
 	 * Transactions' Lists view: every purchase list, newest first, narrowed by status chips (none
 	 * pressed means all), as one panel of rows that open in place (DD-108, DD-165). An opened draft
 	 * offers *Continue* and *Delete*, a waiting list *Record reply* and a two-step *Confirm*, a
-	 * saved list *Open*. Nothing is written here: the page hears the callbacks.
+	 * saved list *Open*; a draft or waiting list that shares its day and status with others also
+	 * offers *Merge* (DD-187). Nothing is written here: the page hears the callbacks.
 	 */
 	interface Props {
 		lists?: PurchaseList[]
@@ -32,11 +33,22 @@
 		onconfirmlist?: (list: PurchaseList) => void
 		/** A draft's *Delete*. */
 		ondeletedraft?: (list: PurchaseList) => void
+		/** *Merge*: the other same-day lists of its status go into this one. */
+		onmergelists?: (list: PurchaseList) => void
 		/** A chip pressed or released: the statuses pressed now. */
 		onstatus?: (status: ListStatus[]) => void
 	}
 
-	const { lists = [], cards = [], groups = [], status = [], onconfirmlist, ondeletedraft, onstatus }: Props = $props()
+	const {
+		lists = [],
+		cards = [],
+		groups = [],
+		status = [],
+		onconfirmlist,
+		ondeletedraft,
+		onmergelists,
+		onstatus,
+	}: Props = $props()
 
 	const STATUSES: ListStatus[] = ["draft", "sent", "saved"]
 
@@ -94,12 +106,12 @@
 		return listParts(list, cards)
 	}
 
-	/** A saved list is money out like a ledger purchase; a total of nothing has no sign. */
+	/** A saved list is money out like a ledger purchase; a total of nothing (a draft with no amounts yet too) has no sign. */
 	const amount = (list: PurchaseList): { text: string; tone: "out" | "muted" } => {
 		const sum = listTotal(list)
 		const total = formatAmount(sum)
-		if (list.status !== "saved") return { text: `${MINUS}${total}`, tone: "muted" }
 		if (sum === 0) return { text: total, tone: "muted" }
+		if (list.status !== "saved") return { text: `${MINUS}${total}`, tone: "muted" }
 		return { text: `${MINUS}${total}`, tone: "out" }
 	}
 </script>
@@ -141,9 +153,18 @@
 						parts={parts(list)}
 						say={words(list)}>
 						{#snippet actions()}
+							{@const others = mergeCandidates(list, lists).length}
+							{#snippet merge()}
+								<button type="button" data-variant="quiet" data-action="merge" onclick={() => onmergelists?.(list)}>
+									{others === 1 ? tr("row.merge.one") : tr("row.merge.many", { count: others })}
+								</button>
+							{/snippet}
 							{#if list.status === "draft"}
-								<a class="btn" data-action="continue" {href}>{tr("row.continue")}</a
-								><button
+								<a class="btn" data-action="continue" {href}>{tr("row.continue")}</a>
+								{#if others > 0}
+									{@render merge()}
+								{/if}
+								<button
 									type="button"
 									data-variant="danger"
 									data-action="delete-draft"
@@ -152,6 +173,9 @@
 								</button>
 							{:else if list.status === "sent"}
 								<a class="btn" data-action="record-reply" {href}>{tr("row.recordReply")}</a>
+								{#if others > 0}
+									{@render merge()}
+								{/if}
 								<TwoStepButtons {steps} kind="list" {list} onconfirm={() => onconfirmlist?.(list)} />
 							{:else}
 								<a class="btn" data-action="open" {href}>{tr("row.open")}</a>

@@ -481,9 +481,15 @@ describe("backup version 3", () => {
 		["days until due 61", cycleCard({ kind: "offset", closeDay: 5, dueOffsetDays: 61 }), "backup.card"],
 		["days until due 0", cycleCard({ kind: "offset", closeDay: 5, dueOffsetDays: 0 }), "backup.card"],
 		[
-			"a zero list line",
+			"a zero line on a list waiting for the spender",
 			v3({
-				lists: [samplePurchaseList({ lines: [{ cardId: "kbank", amount: 0 }] })],
+				lists: [
+					samplePurchaseList({
+						status: "sent",
+						sentAt: "2026-10-05T01:00:00.000Z",
+						lines: [{ cardId: "kbank", amount: 0 }],
+					}),
+				],
 			}),
 			"backup.list",
 		],
@@ -537,6 +543,12 @@ describe("backup version 3", () => {
 		const parsed = parseAnyBackup(v3({ lists: [samplePurchaseList({ lines })] }))
 		// A blank note is accepted, then dropped (DC-07).
 		expect(parsed.lists[0]?.lines).toEqual([...lines.slice(0, 2), { cardId: "kbank", amount: 3_000 }])
+	})
+
+	test("accepts a draft line with no amount yet (0) and nothing below it", () => {
+		const lines = [{ cardId: "kbank", amount: 0 }]
+		expect(parseAnyBackup(v3({ lists: [samplePurchaseList({ lines })] })).lists[0]?.lines).toEqual(lines)
+		rejects(v3({ lists: [samplePurchaseList({ lines: [{ cardId: "kbank", amount: -1 }] })] }), "backup.list", 1)
 	})
 
 	test("the rejection names which record is wrong", () => {

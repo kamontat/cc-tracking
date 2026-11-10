@@ -71,3 +71,34 @@ export function saveReply(
 	}
 	return { ok: true, saved, purchases, draft }
 }
+
+/** Only a draft or a list waiting for the spender can take in another. */
+const mergeable = (list: PurchaseList): boolean => list.status === "draft" || list.status === "sent"
+
+/** The other lists `list` can merge with: the same date and the same status, a draft or waiting (DD-187). */
+export function mergeCandidates(list: PurchaseList, lists: PurchaseList[]): PurchaseList[] {
+	if (!mergeable(list)) return []
+	return lists.filter((l) => l.id !== list.id && l.date === list.date && l.status === list.status)
+}
+
+/**
+ * `into` with every order of `others` added: a card's orders stay together, cards in the order
+ * first seen, and a card's blank draft line (no amount, no note) goes once it has a real order.
+ * Merged waiting lists keep the earliest sent time. Throws for lists that may not merge.
+ */
+export function mergeLists(into: PurchaseList, others: PurchaseList[]): PurchaseList {
+	if (!mergeable(into) || others.some((l) => l.date !== into.date || l.status !== into.status)) {
+		throw new Error("only same-day drafts, or same-day waiting lists, merge")
+	}
+	const byCard = new Map<string, ListLine[]>()
+	for (const line of [into, ...others].flatMap((l) => l.lines)) {
+		byCard.set(line.cardId, [...(byCard.get(line.cardId) ?? []), line])
+	}
+	const blank = (line: ListLine) => line.amount === 0 && !line.note
+	const lines = [...byCard.values()].flatMap((orders) => {
+		const real = orders.filter((line) => !blank(line))
+		return real.length > 0 ? real : orders.slice(0, 1)
+	})
+	const sent = [into, ...others].flatMap((l) => (l.sentAt ? [l.sentAt] : [])).sort()
+	return { ...into, lines, ...(sent[0] ? { sentAt: sent[0] } : {}) }
+}

@@ -19,7 +19,13 @@
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
-	import { confirmWaitingList, deleteDraftList, deletePlannedPayment, markPlanPaid } from "#lib/ui/row-actions"
+	import {
+		confirmWaitingList,
+		deleteDraftList,
+		deletePlannedPayment,
+		markPlanPaid,
+		mergeSameDayLists,
+	} from "#lib/ui/row-actions"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
@@ -87,6 +93,9 @@
 		write((store) => confirmWaitingList(store, list.id, clock()), "tx.error.confirmList")
 	const removeDraft = (list: PurchaseList) =>
 		write((store) => deleteDraftList(store, list.id), "purchaseList.error.delete")
+	/** *Merge*: the other same-day lists of its status go into this one (DD-187). */
+	const mergeLists = (list: PurchaseList) =>
+		write((store) => mergeSameDayLists(store, list.id), "purchaseList.error.merge")
 
 	const items = $derived(data ? needsYou(data, now, plannedOf(data.payments)) : [])
 	const rows = $derived(data ? readyRows(data, now) : [])
@@ -140,7 +149,8 @@
 			onmarkpaid={mark}
 			ondeletepayment={removePlan}
 			onconfirmlist={confirmList}
-			ondeletedraft={removeDraft} />
+			ondeletedraft={removeDraft}
+			onmergelists={mergeLists} />
 	</div>
 	<div class="home-ready">
 		<ReadyPanel {rows} {places} groups={data?.groups ?? []} today={now} {unassigned} />

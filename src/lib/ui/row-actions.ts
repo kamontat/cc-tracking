@@ -3,6 +3,7 @@ import type { Repository } from "#lib/storage/repository"
 import type { MoneyData } from "#lib/ui/money-data"
 
 import { markPaid } from "#lib/domain/pay"
+import { mergeCandidates, mergeLists } from "#lib/domain/purchase-list"
 import { MessageError } from "#lib/i18n/error"
 import { deletePayment, savePayment } from "#lib/ui/record-payment"
 import { writeListReply } from "#lib/ui/save-list-reply"
@@ -46,4 +47,19 @@ export async function storedDraft(repo: Repository, id: string): Promise<Purchas
 export async function deleteDraftList(repo: Repository, id: string): Promise<void> {
 	await storedDraft(repo, id)
 	await repo.deletePurchaseList(id)
+}
+
+/**
+ * Merges every other list on the same day with the same status (drafts, or lists waiting for
+ * the spender) into the stored list `id` (DD-187). The merged list is written before the others
+ * go, so a failure part-way leaves a line twice rather than losing it.
+ */
+export async function mergeSameDayLists(repo: Repository, id: string): Promise<void> {
+	const lists = await repo.listPurchaseLists()
+	const into = lists.find((l) => l.id === id)
+	if (!into) throw new MessageError("purchaseList.missing")
+	const others = mergeCandidates(into, lists)
+	if (others.length === 0) throw new MessageError("purchaseList.error.nothingToMerge")
+	await repo.savePurchaseList(mergeLists(into, others))
+	for (const other of others) await repo.deletePurchaseList(other.id)
 }

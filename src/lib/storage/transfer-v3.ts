@@ -172,7 +172,9 @@ function listProblem(value: unknown): MessageKey | null {
 	if (!isList(lines)) return "backup.problem.badLines"
 	for (const line of lines) {
 		if (!isPlainObject(line) || !isNonEmptyString(prop(line, "cardId"))) return "backup.problem.badLines"
-		if (!isPositiveAmount(prop(line, "amount"))) return "backup.problem.badLineAmount"
+		// A draft keeps a card with no amount yet as 0 (DD-187).
+		const amount = prop(line, "amount")
+		if (!isPositiveAmount(amount) && !(status === "draft" && amount === 0)) return "backup.problem.badLineAmount"
 		const made = prop(line, "made")
 		if (made !== undefined && typeof made !== "boolean") return "backup.problem.badLineMade"
 		const actual = prop(line, "actual")

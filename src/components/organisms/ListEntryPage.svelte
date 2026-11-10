@@ -8,7 +8,7 @@
 	import type { MoneyData } from "#lib/ui/money-data"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, tick } from "svelte"
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
@@ -16,12 +16,12 @@
 	import ListAmounts from "#components/organisms/ListAmounts.svelte"
 	import ListElsewhere from "#components/organisms/ListElsewhere.svelte"
 	import ListTable from "#components/organisms/ListTable.svelte"
-	import { headerDate, isValidDate, today } from "#lib/domain/date"
+	import { displayDate, headerDate, isValidDate, today } from "#lib/domain/date"
 	import { isReady, roomFor } from "#lib/domain/home"
-	import { composeList, lineAmount, listLines } from "#lib/domain/list-entry"
+	import { composeList, keptLines, lineAmount, listLines } from "#lib/domain/list-entry"
 	import { formatAmountInput } from "#lib/domain/money"
 	import { plannedOf } from "#lib/domain/pay"
-	import { listCount } from "#lib/domain/purchase-list"
+	import { listCount, mergeLists } from "#lib/domain/purchase-list"
 	import { messageOf } from "#lib/i18n/error"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
@@ -34,8 +34,9 @@
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * The two steps of writing a purchase list: enter amounts, then review the table and mark it
-	 * sent or keep it as a draft. `new` starts from the address's `card` parameters
+	 * The two steps of writing a purchase list: enter amounts (or keep it as a draft, amounts
+	 * optional, DD-187), then review the table and mark it sent. Saving on a day that already has
+	 * a list of the same kind asks first whether to merge into it. `new` starts from the address's `card` parameters
 	 * (`/list/new?card=…`); `draft` reopens the stored draft named by `id` (`/list/draft?id=`),
 	 * whose own lines hold no room. Everything typed lives here, so going back from the review
 	 * loses nothing, and a failed save keeps the review on screen under the banner.
@@ -105,6 +106,9 @@
 	let notes = $state.raw<Record<string, string[]>>({})
 	let reviewed = $state.raw<{ date: PlainDate; lines: ListLine[] } | null>(null)
 	let status = $state.raw<ShareStatus | null>(null)
+	// A save waiting on its answer: the day already has `count` lists of the kind it would be.
+	let asking = $state.raw<{ list: { date: PlainDate; lines: ListLine[] }; send: boolean; count: number } | null>(null)
+	let askRoot = $state<HTMLElement | undefined>()
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
 
@@ -136,7 +140,8 @@
 		const noted: Record<string, string[]> = {}
 		for (const line of list.lines) {
 			if (!kept.includes(line.cardId)) continue
-			typed[line.cardId] = [...(typed[line.cardId] ?? []), formatAmountInput(line.amount)]
+			// A draft's 0 is a card with no amount yet: its field opens blank.
+			typed[line.cardId] = [...(typed[line.cardId] ?? []), line.amount > 0 ? formatAmountInput(line.amount) : ""]
 			noted[line.cardId] = [...(noted[line.cardId] ?? []), line.note ?? ""]
 		}
 		entries = typed
@@ -171,6 +176,7 @@
 	const show = (next: View) => {
 		view = next
 		status = null
+		asking = null
 	}
 
 	/** The sub-header's muted line: the list's date and how many cards (and orders) are on it. */
@@ -201,16 +207,28 @@
 		date = next.date
 		entries = { ...next.entries }
 		notes = { ...next.notes }
+		asking = null
+	}
+
+	/** What was typed, in satang by card; blank and not-money text read as 0. */
+	const typedAmounts = () => {
+		const out: Record<string, number[]> = {}
+		for (const id of cardIds) out[id] = (entries[id] ?? []).map((text) => lineAmount(text) ?? 0)
+		return out
 	}
 
 	const onReview = (next: { date: PlainDate }) => {
 		date = next.date
 		// Lines come from the cards on the list now: the typed amounts can still hold a key for a
 		// card that was removed.
-		const amounts: Record<string, number[]> = {}
-		for (const id of cardIds) amounts[id] = (entries[id] ?? []).map((text) => lineAmount(text) ?? 0)
-		reviewed = { date, lines: listLines(cardIds, amounts, notes) }
+		reviewed = { date, lines: listLines(cardIds, typedAmounts(), notes) }
 		show("review")
+	}
+
+	/** *Save as draft*, before the review: every card stays, with or without an amount. */
+	const onDraft = (next: { date: PlainDate }) => {
+		date = next.date
+		void save({ date, lines: keptLines(cardIds, typedAmounts(), notes) }, false)
 	}
 
 	const onRemove = (cardId: string) => {
@@ -279,21 +297,63 @@
 		}
 	}
 
-	const save = async (send: boolean) => {
-		const list = reviewed
+	/** The other lists on `on` of the kind this save makes: drafts, or lists waiting for the spender. */
+	const sameDay = (lists: PurchaseList[], on: PlainDate, send: boolean) =>
+		lists.filter((l) => l.id !== editingId && l.date === on && l.status === (send ? "sent" : "draft"))
+
+	/**
+	 * Saves `list` as a draft or sent. When the day already has a list of that kind, it asks first
+	 * (`asking`); `merge` is the answer: true adds this list to the first of them, taking in the
+	 * rest, and removes this draft if it was stored; false saves it on its own.
+	 */
+	const save = async (list: { date: PlainDate; lines: ListLine[] }, send: boolean, merge?: boolean) => {
 		const store = repo
-		if (!list || !store) return
+		if (!store || !data) return
+		if (merge === undefined) {
+			const count = sameDay(data.lists, list.date, send).length
+			if (count > 0) {
+				asking = { list, send, count }
+				await tick()
+				askRoot?.querySelector<HTMLElement>('[data-action="merge"]')?.focus()
+				return
+			}
+		}
+		asking = null
 		let saved = false
-		await page.guard(async () => {
-			if (editingId) await storedDraft(store, editingId)
-			saveId ??= editingId ?? newId()
-			await store.savePurchaseList(
-				composeList({ id: saveId, date: list.date, lines: list.lines, send, now: clock().toISOString() }),
-			)
-			saved = true
-		}, "purchaseList.error.save")
+		await page.guard(
+			async () => {
+				if (editingId) await storedDraft(store, editingId)
+				saveId ??= editingId ?? newId()
+				const composed = composeList({
+					id: saveId,
+					date: list.date,
+					lines: list.lines,
+					send,
+					now: clock().toISOString(),
+				})
+				const [into, ...rest] = merge ? sameDay(await store.listPurchaseLists(), list.date, send) : []
+				if (!into) {
+					await store.savePurchaseList(composed)
+				} else {
+					// Written before anything goes, so a failure part-way leaves a line twice, never lost.
+					await store.savePurchaseList(mergeLists(into, [composed, ...rest]))
+					if (editingId) await store.deletePurchaseList(editingId)
+					for (const other of rest) await store.deletePurchaseList(other.id)
+				}
+				saved = true
+			},
+			merge ? "purchaseList.error.merge" : "purchaseList.error.save",
+		)
 		if (saved) navigate("/")
 	}
+
+	const askText = $derived.by(() => {
+		void lang
+		if (!asking) return ""
+		const kind = asking.send ? "sent" : "draft"
+		const params = { count: asking.count, date: displayDate(asking.list.date, getLocale()) }
+		return t(asking.count === 1 ? `purchaseList.merge.${kind}.one` : `purchaseList.merge.${kind}.many`, params)
+	})
 
 	/**
 	 * Deletes the stored draft at once, with no second step (DD-74): it holds nothing that was
@@ -346,6 +406,29 @@
 	})
 </script>
 
+{#snippet mergeAsk()}
+	{#if asking}
+		<div class="merge-ask" data-merge-ask bind:this={askRoot}>
+			<p>{askText}</p>
+			<button type="button" data-action="merge" onclick={() => asking && save(asking.list, asking.send, true)}>
+				{tr("purchaseList.merge")}
+			</button>
+			<button
+				type="button"
+				data-variant="quiet"
+				data-action="keep-separate"
+				onclick={() => asking && save(asking.list, asking.send, false)}>
+				{tr("purchaseList.keepSeparate")}
+			</button>
+		</div>
+	{/if}
+{/snippet}
+
+{#snippet amountsSide()}
+	{@render mergeAsk()}
+	{@render deleteButton()}
+{/snippet}
+
 {#snippet deleteButton()}
 	{#if editingId}
 		<button type="button" data-variant="danger" data-action="delete-draft" onclick={deleteDraft}>
@@ -379,9 +462,10 @@
 		{notes}
 		onentrychange={onEntryChange}
 		onreview={onReview}
+		ondraft={onDraft}
 		onremove={onRemove}
 		onadd={onAdd}
-		side={editingId ? deleteButton : undefined} />
+		side={amountsSide} />
 {:else if data && view === "review"}
 	<SubHeaderBar
 		title={tr("purchaseList.reviewTitle")}
@@ -414,15 +498,25 @@
 				{statusText}
 			</p>
 			<p class="note">{tr("purchaseList.sendHint")}</p>
-			<button type="button" data-action="mark-sent" onclick={() => save(true)}>
+			<button type="button" data-action="mark-sent" onclick={() => reviewed && save(reviewed, true)}>
 				<SvgIcon name="send" />{tr("purchaseList.markSent")}
 			</button>
-			<button type="button" data-variant="quiet" data-action="save-draft" onclick={() => save(false)}>
-				{tr("purchaseList.saveDraft")}
-			</button>
+			{@render mergeAsk()}
 			{@render deleteButton()}
 		</div>
 	</div>
 {:else}
 	<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 {/if}
+
+<style>
+	/* The question before a save that could merge: its words, then Merge and Keep separate. */
+	.merge-ask {
+		display: grid;
+		gap: var(--cc-space-2);
+		padding: var(--cc-space-3);
+		font-size: var(--cc-text-sm);
+		background: var(--cc-surface-sunken);
+		border-radius: var(--cc-radius-sm);
+	}
+</style>

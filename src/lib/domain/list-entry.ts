@@ -76,6 +76,25 @@ export function listLines(
 	return lines
 }
 
+/**
+ * A draft's lines: every card stays, so a draft is a list of cards with amounts optional. An
+ * order is kept when it has an amount or a note; a card with neither keeps one line of 0, which
+ * on a draft means no amount yet.
+ */
+export function keptLines(
+	cardIds: string[],
+	amounts: Record<string, number[]>,
+	notes: Record<string, string[]> = {},
+): ListLine[] {
+	return cardIds.flatMap((cardId) => {
+		const orders = (amounts[cardId] ?? []).map((amount, i) => withNote({ cardId, amount }, notes[cardId]?.[i]))
+		const count = Math.max(orders.length, notes[cardId]?.length ?? 0)
+		for (let i = orders.length; i < count; i++) orders.push(withNote({ cardId, amount: 0 }, notes[cardId]?.[i]))
+		const kept = orders.filter((line) => line.amount > 0 || line.note)
+		return kept.length > 0 ? kept : [{ cardId, amount: 0 }]
+	})
+}
+
 export function composeList(input: {
 	id: string
 	date: PlainDate

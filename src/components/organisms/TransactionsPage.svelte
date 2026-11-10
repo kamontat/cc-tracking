@@ -33,7 +33,13 @@
 	import { cardLine } from "#lib/ui/card-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
-	import { confirmWaitingList, deleteDraftList, deletePlannedPayment, markPlanPaid } from "#lib/ui/row-actions"
+	import {
+		confirmWaitingList,
+		deleteDraftList,
+		deletePlannedPayment,
+		markPlanPaid,
+		mergeSameDayLists,
+	} from "#lib/ui/row-actions"
 	import { openRepository } from "#lib/ui/startup"
 	import { LEDGER_PAGE, readTxView, type TxView, writeTxView } from "#lib/ui/tx-query"
 
@@ -112,6 +118,9 @@
 		write((store) => confirmWaitingList(store, list.id, clock()), "tx.error.confirmList")
 	const removeDraft = (list: PurchaseList) =>
 		write((store) => deleteDraftList(store, list.id), "purchaseList.error.delete")
+	/** *Merge*: the other same-day lists of its status go into this one (DD-187). */
+	const mergeLists = (list: PurchaseList) =>
+		write((store) => mergeSameDayLists(store, list.id), "purchaseList.error.merge")
 	const remove = (payment: CardPayment) => write((store) => deletePlannedPayment(store, payment), "tx.error.delete")
 
 	/** The active filters as removable chips; a card's shows its line form, and its short form on a phone. */
@@ -269,6 +278,7 @@
 						status={view.status}
 						onconfirmlist={confirmList}
 						ondeletedraft={removeDraft}
+						onmergelists={mergeLists}
 						onstatus={(status: ListStatus[]) => change({ status })} />
 				{:else}
 					<FilterControls

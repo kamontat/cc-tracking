@@ -63,7 +63,12 @@ type Options = { lists?: PurchaseList[]; status?: ListStatus[] }
 /** Mounts the view; `set` changes its lists afterwards, as a repaint does. */
 const draw = (options: Options = {}) => {
 	const state = new SvelteMap<string, PurchaseList[]>([["lists", options.lists ?? lists()]])
-	const seen = { confirm: [] as PurchaseList[], deleted: [] as PurchaseList[], status: [] as ListStatus[][] }
+	const seen = {
+		confirm: [] as PurchaseList[],
+		deleted: [] as PurchaseList[],
+		merged: [] as PurchaseList[],
+		status: [] as ListStatus[][],
+	}
 	mounted = mount(ListIndex, {
 		target: document.body,
 		props: {
@@ -78,6 +83,9 @@ const draw = (options: Options = {}) => {
 			},
 			ondeletedraft: (list: PurchaseList) => {
 				seen.deleted.push(list)
+			},
+			onmergelists: (list: PurchaseList) => {
+				seen.merged.push(list)
 			},
 			onstatus: (status: ListStatus[]) => {
 				seen.status.push(status)
@@ -293,4 +301,28 @@ test("when the only list goes, focus moves to the empty note", async () => {
 test("the panel clips the hover ground at its rounded corners", async () => {
 	const source = await Bun.file("src/components/organisms/ListIndex.svelte").text()
 	expect(source).toMatch(/\.row-panel\s*\{[^}]*overflow: clip/)
+})
+
+test("a draft or waiting list with others of its status that day offers Merge, which calls back", () => {
+	const all = lists()
+	const w2: PurchaseList = { ...(all[1] as PurchaseList), id: "w2" }
+	const w3: PurchaseList = { ...(all[1] as PurchaseList), id: "w3" }
+	const { seen } = draw({ lists: [...all, w2, w3] })
+	click(head("w1"))
+	const open = shown() as HTMLElement
+	const merge = open.querySelector('[data-action="merge"]')
+	expect(merge?.textContent?.trim()).toBe("Merge with 2 other lists")
+	expect([...open.querySelectorAll(".a-btns > *")].map((b) => b.getAttribute("data-action"))[1]).toBe("merge")
+	click(merge)
+	expect(seen.merged.map((l) => l.id)).toEqual(["w1"])
+	// The lone draft and the saved list offer none.
+	click(head("d1"))
+	expect(shown()?.querySelector('[data-action="merge"]')).toBeNull()
+	click(head("s1"))
+	expect(shown()?.querySelector('[data-action="merge"]')).toBeNull()
+})
+
+test("a draft with no amounts yet totals ฿0.00 with no sign", () => {
+	draw({ lists: [{ id: "d1", date: "2026-10-31", status: "draft", lines: [{ cardId: "A", amount: 0 }] }] })
+	expect(text(root.querySelector('[data-row="list:d1"] .a-hit .amount'))).toBe("฿0.00")
 })

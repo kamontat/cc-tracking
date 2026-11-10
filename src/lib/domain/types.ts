@@ -149,7 +149,7 @@ export type ListStatus = "draft" | "sent" | "saved"
 
 export type ListLine = {
 	cardId: string
-	/** Satang planned. A positive integer. */
+	/** Satang planned. A positive integer; on a draft, 0 means no amount yet. */
 	amount: number
 	/** Absent until the spender answers. */
 	made?: boolean

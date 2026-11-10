@@ -211,6 +211,18 @@ test("the Lists view's Delete removes a draft in one step", async () => {
 	expect($('[data-row="list:d9"]')).toBeNull()
 })
 
+test("the Lists view's Merge joins two same-day waiting lists into one", async () => {
+	const { repo } = await open("?view=lists", async (r) => {
+		await r.savePurchaseList(list("w2", "sent", ["A"]))
+	})
+	await press($('[data-row="list:w1"] .a-hit'))
+	await press($(`${shown} [data-action="merge"]`))
+	const stored = await repo.listPurchaseLists()
+	expect(stored.map((l) => l.id)).toEqual(["w1"])
+	expect(stored[0]?.lines.map((l) => l.cardId)).toEqual(["B", "A"])
+	expect($('[data-row="list:w2"]')).toBeNull()
+})
+
 test("the switch changes the view and the address", async () => {
 	const { written } = await open()
 	await press($('[data-view="lists"]'))
