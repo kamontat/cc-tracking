@@ -146,7 +146,7 @@ export const en = {
 	"common.seeMore": "See more ({count})",
 	"common.more": "More",
 	"common.showLess": "Show less",
-	"update.message": "A new version is available.",
+	"update.message": "New update is available",
 	"update.reload": "Reload",
 
 	"about.title": "About",
