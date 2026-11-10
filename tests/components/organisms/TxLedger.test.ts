@@ -363,7 +363,7 @@ test("a closed statement past its due date draws the overdue bill's line and say
 test("an opened row is a drawer under the text: its cycle or parts, then the foot", () => {
 	const css = source("molecules/ActionRow.svelte")
 	expect(css).toMatch(
-		/\.a-details\s*\{[^}]*display: grid;[^}]*padding-block: 0 var\(--cc-space-3\);[^}]*padding-inline-start: var\(--a-lead-inline\)/,
+		/\.a-details\s*\{[^}]*display: grid;[^}]*padding-block: var\(--cc-space-3\);[^}]*padding-inline-start: var\(--a-lead-inline\)/,
 	)
 	// The old 900px row of details and buttons is gone.
 	expect(css).not.toMatch(/\.a-details\s*\{[^}]*flex-direction: row/)

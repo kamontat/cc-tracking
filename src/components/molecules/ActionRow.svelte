@@ -233,11 +233,12 @@
 	}
 
 	/* What opens under the head, a drawer lined up with the text past the icon (DD-165): the
-	   billing cycle line or the parts, then the foot. */
+	   billing cycle line or the parts, then the foot; a gap above, so the first line never touches
+	   the open head's ground. */
 	.a-details {
 		display: grid;
 		gap: var(--cc-space-3);
-		padding-block: 0 var(--cc-space-3);
+		padding-block: var(--cc-space-3);
 		padding-inline-start: var(--a-lead-inline);
 		min-inline-size: 0;
 	}
