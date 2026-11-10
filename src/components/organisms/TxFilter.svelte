@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { SortDir } from "#lib/domain/sort"
 	import type { Card } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
@@ -7,18 +8,19 @@
 	import CardChoices from "#components/molecules/CardChoices.svelte"
 	import DateRangeChoices from "#components/molecules/DateRangeChoices.svelte"
 	import FilterChips from "#components/molecules/FilterChips.svelte"
+	import SortChoices from "#components/molecules/SortChoices.svelte"
 	import FilterSheet from "#components/organisms/FilterSheet.svelte"
-	import { DEFAULT_TX_FILTER, type TxFilter, type TxSort } from "#lib/domain/transactions"
+	import { DEFAULT_TX_FILTER, TX_DIRS, TX_SORTS, type TxFilter, type TxSort } from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { toggled } from "#lib/ui/toggle"
 
-	const SORTS: TxSort[] = ["new", "old", "big", "small"]
 	const TYPES = ["purchase", "payment"] as const
 
 	/**
 	 * The Transactions filter sheet, under *Filter and sort*: *Type*, *Card* (folded past eight
-	 * cards, `CardChoices`), *Date* (with from and to for a custom range) and *Sort by*, as pill
-	 * chips, then *Clear all* and *Show N results*. It edits a draft of `filter` and `sort`,
+	 * cards, `CardChoices`), *Date* (with from and to for a custom range) and *Sort* (date or
+	 * amount, and which way, `SortChoices`), as pill chips, then *Clear all* and *Show N results*.
+	 * It edits a draft of `filter`, `sort` and `dir`,
 	 * counted live by `count` so a dead end is seen before it is applied; only the apply button
 	 * hands it back, once the sheet has slid away (`onapply`). Close, Escape and the backdrop call
 	 * `onclose`.
@@ -27,15 +29,16 @@
 		cards: Card[]
 		filter: TxFilter
 		sort: TxSort
-		/** How many rows a filter and sort would show. */
-		count: (filter: TxFilter, sort: TxSort) => number
+		dir: SortDir
+		/** How many rows a filter would show. */
+		count: (filter: TxFilter) => number
 		/** The draft, once the sheet has slid away; the page takes the sheet off screen. */
-		onapply: (detail: { filter: TxFilter; sort: TxSort }) => void
+		onapply: (detail: { filter: TxFilter; sort: TxSort; dir: SortDir }) => void
 		/** The reader closed it; the page takes it off screen. */
 		onclose: () => void
 	}
 
-	const { cards, filter, sort, count, onapply, onclose }: Props = $props()
+	const { cards, filter, sort, dir, count, onapply, onclose }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -49,8 +52,10 @@
 	let draft = $state.raw<TxFilter>({ ...filter })
 	// svelte-ignore state_referenced_locally
 	let draftSort = $state<TxSort>(sort)
+	// svelte-ignore state_referenced_locally
+	let draftDir = $state<SortDir>(dir)
 
-	const shown = $derived(count(draft, draftSort))
+	const shown = $derived(count(draft))
 	const showLabel = $derived.by(() => {
 		void lang
 		if (shown === 0) return t("tx.filter.nothing")
@@ -59,7 +64,6 @@
 	const typeOptions = $derived(
 		TYPES.map((type) => ({ value: type, label: tr(type === "purchase" ? "tx.type.purchase" : "tx.type.payment") })),
 	)
-	const sortOptions = $derived(SORTS.map((option) => ({ value: option, label: tr(`tx.sort.${option}`) })))
 
 	const set = (patch: Partial<TxFilter>) => {
 		draft = { ...draft, ...patch }
@@ -78,9 +82,10 @@
 	label={showLabel}
 	onclear={() => {
 		draft = { ...DEFAULT_TX_FILTER, q: draft.q }
-		draftSort = "new"
+		draftSort = "date"
+		draftDir = TX_DIRS.date
 	}}
-	onapply={() => onapply({ filter: { ...draft }, sort: draftSort })}
+	onapply={() => onapply({ filter: { ...draft }, sort: draftSort, dir: draftDir })}
 	{onclose}>
 	<FilterChips
 		legend={tr("tx.filter.type")}
@@ -94,12 +99,14 @@
 		selected={draft.cards}
 		ontoggle={(id: string) => set({ cards: toggled(draft.cards, id) })} />
 	<DateRangeChoices range={draft.range} from={draft.from} to={draft.to} onchange={set} />
-	<FilterChips
+	<SortChoices
 		legend={tr("tx.filter.sort")}
-		name="sort"
-		options={sortOptions}
-		selected={[draftSort]}
-		ontoggle={(option: string) => {
-			draftSort = option as TxSort
+		fields={TX_SORTS}
+		defaults={TX_DIRS}
+		field={draftSort}
+		dir={draftDir}
+		onchange={(pick: { field: TxSort; dir: SortDir }) => {
+			draftSort = pick.field
+			draftDir = pick.dir
 		}} />
 </FilterSheet>

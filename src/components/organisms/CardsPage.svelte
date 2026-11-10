@@ -32,9 +32,9 @@
 		readGroupSheet,
 		writeCardsView,
 	} from "#lib/ui/cards-query"
-	import { cardsSortLabel } from "#lib/ui/cards-sort"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
+	import { sortOrderLabel } from "#lib/ui/sort-label"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
@@ -265,7 +265,7 @@
 
 	const sortLabel = $derived.by(() => {
 		void lang
-		return cardsSortLabel(view.sort)
+		return sortOrderLabel(view.sort, view.dir)
 	})
 
 	const onRetry = () => {

@@ -4,6 +4,7 @@ import { compareDates } from "#lib/domain/date"
 import { formatAmount, sumAmounts } from "#lib/domain/money"
 import { type PayChoice, payChoices } from "#lib/domain/pay"
 import { normaliseRange, presetRange, type RangePreset } from "#lib/domain/purchase-range"
+import { directed, type SortDir } from "#lib/domain/sort"
 
 export type TxEntry =
 	| { kind: "purchase"; purchase: Purchase; card: Card | undefined }
@@ -45,7 +46,13 @@ export type TxFilter = {
 	to: PlainDate | ""
 }
 
-export type TxSort = "new" | "old" | "big" | "small"
+/** What the ledger orders by: the entry's date (grouped by day) or its amount (one flat list). */
+export type TxSort = "date" | "amount"
+
+export const TX_SORTS: readonly TxSort[] = ["date", "amount"]
+
+/** Each ledger sort's own direction: newest first, biggest first. */
+export const TX_DIRS: Record<TxSort, SortDir> = { date: "desc", amount: "desc" }
 
 export const DEFAULT_TX_FILTER: TxFilter = {
 	q: "",
@@ -108,14 +115,17 @@ function withinDay(a: TxEntry, b: TxEntry): number {
 	return idOf(a) < idOf(b) ? -1 : idOf(a) > idOf(b) ? 1 : 0
 }
 
-export function sortEntries(entries: TxEntry[], sort: TxSort): TxEntry[] {
-	const newest = (a: TxEntry, b: TxEntry): number => compareDates(entryDate(b), entryDate(a)) || withinDay(a, b)
-	const compare = {
-		new: newest,
-		old: (a: TxEntry, b: TxEntry) => compareDates(entryDate(a), entryDate(b)) || withinDay(a, b),
-		big: (a: TxEntry, b: TxEntry) => entryAmount(b) - entryAmount(a) || newest(a, b),
-		small: (a: TxEntry, b: TxEntry) => entryAmount(a) - entryAmount(b) || newest(a, b),
-	}[sort]
+/**
+ * A new array in `sort`, run `dir`. Within a day the order never flips: purchases latest added
+ * first, then payments (DR-17); equal amounts go newest first.
+ */
+export function sortEntries(entries: TxEntry[], sort: TxSort, dir: SortDir = TX_DIRS[sort]): TxEntry[] {
+	const byDate = (a: TxEntry, b: TxEntry): number => compareDates(entryDate(a), entryDate(b))
+	const newest = (a: TxEntry, b: TxEntry): number => -byDate(a, b) || withinDay(a, b)
+	const compare =
+		sort === "date"
+			? directed(byDate, dir, withinDay)
+			: directed((a: TxEntry, b: TxEntry) => entryAmount(a) - entryAmount(b), dir, newest)
 	return [...entries].sort(compare)
 }
 
@@ -153,22 +163,42 @@ export function monthSummary(
 export type OwedRow = PayChoice
 export type OwedSort = "urgency" | "card" | "due" | "left"
 
-/** Every card that owes money or holds credit; archived ones only while they owe. */
-export function owedRows(cards: Card[], ledgers: Map<string, CardLedger>, today: PlainDate, sort: OwedSort): OwedRow[] {
+export const OWED_SORTS: readonly OwedSort[] = ["urgency", "card", "due", "left"]
+
+/** Each *Owed* sort's own direction: most urgent, card id, soonest due, most owed first. */
+export const OWED_DIRS: Record<OwedSort, SortDir> = { urgency: "asc", card: "asc", due: "asc", left: "desc" }
+
+/**
+ * Every card that owes money or holds credit; archived ones only while they owe. In `sort`, run
+ * `dir`; ties by card id either way, and under `due` a card with no bill is always last.
+ */
+export function owedRows(
+	cards: Card[],
+	ledgers: Map<string, CardLedger>,
+	today: PlainDate,
+	sort: OwedSort,
+	dir: SortDir = OWED_DIRS[sort],
+): OwedRow[] {
 	const rows = payChoices(cards, ledgers, today).filter((r) => r.owed > 0 || r.credit > 0)
 	const byId = (a: OwedRow, b: OwedRow): number => (a.card.id < b.card.id ? -1 : a.card.id > b.card.id ? 1 : 0)
 	switch (sort) {
-		case "urgency":
-			return rows
+		case "urgency": {
+			// `payChoices` already reads most pressing first.
+			const rank = new Map(rows.map((row, i) => [row, i]))
+			return rows.sort(directed((a, b) => (rank.get(a) ?? 0) - (rank.get(b) ?? 0), dir, byId))
+		}
 		case "card":
-			return rows.sort(byId)
+			return rows.sort(directed(byId, dir, byId))
 		case "left":
-			return rows.sort((a, b) => b.owed - a.owed || byId(a, b))
-		case "due":
-			return rows.sort((a, b) => {
-				if (!a.bill || !b.bill) return a.bill ? -1 : b.bill ? 1 : byId(a, b)
-				return compareDates(a.bill.dueDate, b.bill.dueDate) || byId(a, b)
-			})
+			return rows.sort(directed((a, b) => a.owed - b.owed, dir, byId))
+		case "due": {
+			const due = directed(
+				(a: OwedRow, b: OwedRow) => (a.bill && b.bill ? compareDates(a.bill.dueDate, b.bill.dueDate) : 0),
+				dir,
+				byId,
+			)
+			return rows.sort((a, b) => (!a.bill || !b.bill ? (a.bill ? -1 : b.bill ? 1 : byId(a, b)) : due(a, b)))
+		}
 	}
 }
 

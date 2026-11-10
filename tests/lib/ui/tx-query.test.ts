@@ -19,8 +19,10 @@ describe("tx-query", () => {
 				from: "2026-10-01",
 				to: "2026-10-31",
 			},
-			sort: "big",
+			sort: "amount",
+			dir: "asc",
 			owedSort: "left",
+			owedDir: "asc",
 			lists: {
 				q: "fuel & stamps",
 				status: ["draft", "saved"],
@@ -37,7 +39,7 @@ describe("tx-query", () => {
 
 	test("unknown values fall back to defaults", () => {
 		const view = readTxView(
-			"?sort=zzz&view=nope&owed=x&range=forever&type=bogus&status=x&from=notadate&lrange=forever&lfrom=nope",
+			"?sort=zzz&dir=up&odir=x&view=nope&owed=x&range=forever&type=bogus&status=x&from=notadate&lrange=forever&lfrom=nope",
 		)
 		expect(view).toEqual(DEFAULT_TX_VIEW)
 	})
@@ -47,6 +49,26 @@ describe("tx-query", () => {
 		expect(view.filter).toEqual(DEFAULT_TX_VIEW.filter)
 		expect(view.lists).toEqual({ q: "fuel", status: ["sent"], cards: ["A"], range: "week", from: "", to: "" })
 		expect(writeTxView(view)).toBe("?view=lists&lq=fuel&status=sent&lcard=A&lrange=week")
+	})
+
+	test("the ledger sorts by date or amount, each with its own default direction", () => {
+		expect(DEFAULT_TX_VIEW).toMatchObject({ sort: "date", dir: "desc", owedSort: "urgency", owedDir: "asc" })
+		expect(readTxView("?sort=amount")).toMatchObject({ sort: "amount", dir: "desc" })
+		expect(readTxView("?dir=asc")).toMatchObject({ sort: "date", dir: "asc" })
+		expect(writeTxView({ ...DEFAULT_TX_VIEW, dir: "asc" })).toBe("?dir=asc")
+		expect(writeTxView({ ...DEFAULT_TX_VIEW, sort: "amount", dir: "desc" })).toBe("?sort=amount")
+	})
+
+	test("the retired ledger sorts read as the default", () => {
+		for (const old of ["new", "old", "big", "small"]) {
+			expect(readTxView(`?sort=${old}`)).toMatchObject({ sort: "date", dir: "desc" })
+		}
+	})
+
+	test("Owed keeps its own direction, odir, read against its sort", () => {
+		expect(readTxView("?owed=left")).toMatchObject({ owedSort: "left", owedDir: "desc" })
+		expect(readTxView("?owed=left&odir=asc")).toMatchObject({ owedSort: "left", owedDir: "asc" })
+		expect(writeTxView({ ...DEFAULT_TX_VIEW, owedDir: "desc" })).toBe("?odir=desc")
 	})
 
 	test("a lone preset range is kept", () => {

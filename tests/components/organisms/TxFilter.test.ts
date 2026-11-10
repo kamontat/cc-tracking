@@ -1,3 +1,4 @@
+import type { SortDir } from "#lib/domain/sort"
 import type { Card } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
@@ -39,22 +40,24 @@ type Props = {
 	cards?: Card[]
 	filter?: Filter
 	sort?: TxSort
-	count?: (filter: Filter, sort: TxSort) => number
+	dir?: SortDir
+	count?: (filter: Filter) => number
 }
 
 const show = (props: Props = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
-	const applied: { filter: Filter; sort: TxSort }[] = []
+	const applied: { filter: Filter; sort: TxSort; dir: SortDir }[] = []
 	let closed = 0
 	mounted = mount(TxFilter, {
 		target: document.body,
 		props: {
 			cards: props.cards ?? [card("A"), card("B")],
 			filter: props.filter ?? DEFAULT_TX_FILTER,
-			sort: props.sort ?? "new",
+			sort: props.sort ?? "date",
+			dir: props.dir ?? "desc",
 			count: props.count ?? ((f: Filter) => f.types.length + f.cards.length + (f.range ? 1 : 0) + 5),
-			onapply: (detail: { filter: Filter; sort: TxSort }) => applied.push(detail),
+			onapply: (detail: { filter: Filter; sort: TxSort; dir: SortDir }) => applied.push(detail),
 			onclose: () => {
 				closed += 1
 			},
@@ -95,7 +98,7 @@ test("sits in a sheet with the apply button counting results", () => {
 
 test("groups its chips in fieldsets: type, card, date and sort", () => {
 	const { root } = show()
-	expect(root.querySelectorAll("fieldset")).toHaveLength(4)
+	expect(root.querySelectorAll("fieldset.filter-group")).toHaveLength(4)
 	expect(root.querySelectorAll("fieldset > legend")).toHaveLength(4)
 	const chip = root.querySelector("[data-type=purchase]")
 	expect(chip?.getAttribute("type")).toBe("button")
@@ -117,15 +120,17 @@ test("apply hands back the draft filter and sort", async () => {
 	click("[data-type=payment]")
 	click("[data-card=B]")
 	click("[data-range=week]")
-	click("[data-sort=big]")
-	expect(root.querySelector("[data-sort=big]")?.getAttribute("aria-pressed")).toBe("true")
+	click("[data-sort=amount]")
+	expect(root.querySelector("[data-sort=amount]")?.getAttribute("aria-pressed")).toBe("true")
+	click("[data-dir=asc]")
 	click("[data-action=apply]")
 	await settle()
 	expect(applied).toHaveLength(1)
 	expect(applied[0]?.filter.types).toEqual(["payment"])
 	expect(applied[0]?.filter.cards).toEqual(["B"])
 	expect(applied[0]?.filter.range).toBe("week")
-	expect(applied[0]?.sort).toBe("big")
+	expect(applied[0]?.sort).toBe("amount")
+	expect(applied[0]?.dir).toBe("asc")
 })
 
 test("types and cards toggle off again; the search text is kept", async () => {
@@ -139,9 +144,9 @@ test("types and cards toggle off again; the search text is kept", async () => {
 
 test("the draft starts from the filter and leaves it untouched", () => {
 	const filter: Filter = { ...DEFAULT_TX_FILTER, types: ["purchase"] }
-	const { root, click } = show({ filter, sort: "old" })
+	const { root, click } = show({ filter, sort: "date", dir: "asc" })
 	expect(root.querySelector("[data-type=purchase]")?.getAttribute("aria-pressed")).toBe("true")
-	expect(root.querySelector("[data-sort=old]")?.getAttribute("aria-pressed")).toBe("true")
+	expect(root.querySelector("[data-dir=asc]")?.getAttribute("aria-pressed")).toBe("true")
 	click("[data-type=payment]")
 	expect(filter).toEqual({ ...DEFAULT_TX_FILTER, types: ["purchase"] })
 })
@@ -169,14 +174,15 @@ test("a chosen range taps off again", () => {
 test("Clear all resets the draft but keeps the sheet open", () => {
 	const { root, click } = show({
 		filter: { ...DEFAULT_TX_FILTER, types: ["payment"], range: "month" },
-		sort: "old",
+		sort: "amount",
+		dir: "asc",
 	})
 	click("[data-action=clear]")
 	expect(root.querySelector("dialog")?.hasAttribute("open")).toBe(true)
 	expect(root.querySelector("[data-type=payment]")?.getAttribute("aria-pressed")).toBe("false")
 	expect(root.querySelector("[data-range=month]")?.getAttribute("aria-pressed")).toBe("false")
-	expect(root.querySelector("[data-sort=new]")?.getAttribute("aria-pressed")).toBe("true")
-	expect(root.querySelector("[data-sort=old]")?.getAttribute("aria-pressed")).toBe("false")
+	expect(root.querySelector("[data-sort=date]")?.getAttribute("aria-pressed")).toBe("true")
+	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
 })
 
 test("Close calls onclose and applies nothing", async () => {
@@ -199,10 +205,11 @@ test("leaving custom clears the typed from and to", async () => {
 	expect(applied[0]?.filter.to).toBe("")
 })
 
-test("card choices are in the line form, and there are four sorts", () => {
+test("card choices are in the line form; it sorts by date or amount, either way", () => {
 	const { root } = show()
 	expect(text(root.querySelector("[data-card=A]"))).toBe("A) Card A (1111)")
-	expect(root.querySelectorAll("[data-sort]")).toHaveLength(4)
+	expect([...root.querySelectorAll("[data-sort]")].map(text)).toEqual(["Date", "Amount"])
+	expect([...root.querySelectorAll("[data-dir]")].map(text)).toEqual(["↓ Newest first", "↑ Oldest first"])
 })
 
 test("apply waits for the sheet to slide away before it is handed back", async () => {

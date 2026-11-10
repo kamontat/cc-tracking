@@ -1,3 +1,4 @@
+import type { SortDir } from "#lib/domain/sort"
 import type { Card, CardPayment, Purchase, PurchaseList } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
@@ -15,8 +16,12 @@ import {
 	listIdOf,
 	listRows,
 	monthSummary,
+	OWED_DIRS,
+	type OwedSort,
 	owedRows,
 	sortEntries,
+	TX_DIRS,
+	TX_SORTS,
 	type TxEntry,
 } from "#lib/domain/transactions"
 
@@ -130,18 +135,22 @@ describe("sortEntries and byDay", () => {
 		],
 		[pay("m1", { date: "2026-10-10", amount: 900 })],
 	)
-	test("new: newest day first, purchases latest added first, then payments", () => {
-		expect(ids(sortEntries(entries, "new"))).toEqual(["p3", "p2", "p1", "m1"])
+	test("date, descending: newest day first, purchases latest added first, then payments", () => {
+		expect(ids(sortEntries(entries, "date", "desc"))).toEqual(["p3", "p2", "p1", "m1"])
 	})
-	test("old reverses the days", () => {
-		expect(ids(sortEntries(entries, "old"))).toEqual(["p2", "p1", "m1", "p3"])
+	test("date, ascending, reverses the days but not the order within a day", () => {
+		expect(ids(sortEntries(entries, "date", "asc"))).toEqual(["p2", "p1", "m1", "p3"])
 	})
-	test("big and small order by amount", () => {
-		expect(ids(sortEntries(entries, "big"))).toEqual(["m1", "p1", "p3", "p2"])
-		expect(ids(sortEntries(entries, "small"))).toEqual(["p2", "p3", "p1", "m1"])
+	test("amount orders biggest first descending and smallest first ascending", () => {
+		expect(ids(sortEntries(entries, "amount", "desc"))).toEqual(["m1", "p1", "p3", "p2"])
+		expect(ids(sortEntries(entries, "amount", "asc"))).toEqual(["p2", "p3", "p1", "m1"])
+	})
+	test("the fields and their default directions", () => {
+		expect(TX_SORTS).toEqual(["date", "amount"])
+		expect(TX_DIRS).toEqual({ date: "desc", amount: "desc" })
 	})
 	test("byDay keeps order", () => {
-		const days = byDay(sortEntries(entries, "new"))
+		const days = byDay(sortEntries(entries, "date", "desc"))
 		expect(days.map((d) => d.date)).toEqual(["2026-10-12", "2026-10-10"])
 		expect(ids(days[1]?.entries ?? [])).toEqual(["p2", "p1", "m1"])
 	})
@@ -282,17 +291,26 @@ describe("owedRows", () => {
 		buy("p3", { cardId: "c", date: "2026-10-01", amount: 500 }),
 	]
 	const ledgers = ledgersFor(cs, purchases, [], [], TODAY)
-	const order = (sort: Parameters<typeof owedRows>[3]) => owedRows(cs, ledgers, TODAY, sort).map((r) => r.card.id)
+	const order = (sort: OwedSort, dir: SortDir = OWED_DIRS[sort]) =>
+		owedRows(cs, ledgers, TODAY, sort, dir).map((r) => r.card.id)
 	test("urgency: overdue, then most owed; zero owed left out", () => {
 		expect(order("urgency")).toEqual(["a", "b", "c"])
 	})
-	test("card, due and left", () => {
+	test("card, due and left, each in its default direction", () => {
+		expect(OWED_DIRS).toEqual({ urgency: "asc", card: "asc", due: "asc", left: "desc" })
 		expect(order("card")).toEqual(["a", "b", "c"])
 		expect(order("due")).toEqual(["a", "b", "c"])
 		expect(order("left")).toEqual(["b", "c", "a"])
 	})
+	test("each runs the other way too", () => {
+		expect(order("urgency", "desc")).toEqual(["c", "b", "a"])
+		expect(order("card", "desc")).toEqual(["c", "b", "a"])
+		// b and c are due the same day, so they keep id order either way.
+		expect(order("due", "desc")).toEqual(["b", "c", "a"])
+		expect(order("left", "asc")).toEqual(["a", "c", "b"])
+	})
 	test("credit keeps a card in", () => {
 		const withCredit = ledgersFor(cs, [], [pay("m1", { cardId: "d", amount: 50 })], [], TODAY)
-		expect(owedRows(cs, withCredit, TODAY, "card").map((r) => r.card.id)).toEqual(["d"])
+		expect(owedRows(cs, withCredit, TODAY, "card", "asc").map((r) => r.card.id)).toEqual(["d"])
 	})
 })

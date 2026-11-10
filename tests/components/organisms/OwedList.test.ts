@@ -1,5 +1,6 @@
 import type { PayChoice } from "#lib/domain/pay"
 import type { GroupRoom } from "#lib/domain/room"
+import type { SortDir } from "#lib/domain/sort"
 import type { OwedSort } from "#lib/domain/transactions"
 import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
@@ -57,7 +58,8 @@ type Props = {
 	ledgers: Map<string, CardLedger>
 	today: PlainDate
 	sort: OwedSort
-	onsort: (sort: OwedSort) => void
+	dir: SortDir
+	onsort: (sort: OwedSort, dir: SortDir) => void
 }
 
 const show = (props: Partial<Props> = {}) => {
@@ -72,6 +74,7 @@ const show = (props: Partial<Props> = {}) => {
 			ledgers: new Map(),
 			today: "2026-11-04",
 			sort: "urgency",
+			dir: "asc",
 			onsort: () => {},
 			...props,
 		},
@@ -92,18 +95,37 @@ test("each row leads to the payment sheet on its card", () => {
 	expect(links[0]?.querySelector("[data-numeric]")).not.toBeNull()
 })
 
-test("the sort chip calls onsort with the chosen sort", () => {
-	const sorts: OwedSort[] = []
-	const root = show({ onsort: (sort) => sorts.push(sort) })
+test("the sort chip calls onsort with the chosen sort, in its own direction", () => {
+	const sorts: [OwedSort, SortDir][] = []
+	const root = show({ onsort: (sort, dir) => sorts.push([sort, dir]) })
 	const chip = root.querySelector("label.chip") as HTMLElement
 	expect(chip.hasAttribute("data-active")).toBe(false)
 	expect(flat(chip).startsWith("Sort")).toBe(true)
 	const select = root.querySelector("select[name=sort]") as HTMLSelectElement
 	expect(Array.from(select.options).map((o) => o.value)).toEqual(["urgency", "card", "due", "left"])
+	expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(["Urgency", "Card", "Due date", "Owed"])
 	expect(select.value).toBe("urgency")
 	select.value = "left"
 	select.dispatchEvent(new Event("change", { bubbles: true }))
-	expect(sorts).toEqual(["left"])
+	expect(sorts).toEqual([["left", "desc"]])
+})
+
+test("the order button says which way the list runs and flips it", () => {
+	const sorts: [OwedSort, SortDir][] = []
+	const root = show({ sort: "left", dir: "desc", onsort: (sort, dir) => sorts.push([sort, dir]) })
+	const flip = root.querySelector("button[data-action=flip-sort]") as HTMLButtonElement
+	expect(flip.getAttribute("type")).toBe("button")
+	expect(flip.getAttribute("data-variant")).toBe("quiet")
+	expect(flip.getAttribute("aria-label")).toBe("Order: Most owed. Reverse it")
+	expect(flat(flip)).toBe("↓")
+	flip.click()
+	expect(sorts).toEqual([["left", "asc"]])
+})
+
+test("the default sort run the other way marks the chip active", () => {
+	const root = show({ sort: "urgency", dir: "desc" })
+	expect(root.querySelector("label.chip")?.hasAttribute("data-active")).toBe(true)
+	expect(flat(root.querySelector("button[data-action=flip-sort]"))).toBe("↓")
 })
 
 test("a sort other than urgency marks the chip active and selects it", () => {
@@ -116,6 +138,7 @@ test("empty says nothing is owed, with no sort chip", () => {
 	const root = show({ rows: [] })
 	expect(root.querySelector(".empty")?.textContent?.trim()).toBe("Nothing owed on any card.")
 	expect(root.querySelector("select[name=sort]")).toBeNull()
+	expect(root.querySelector("[data-action=flip-sort]")).toBeNull()
 	expect(root.querySelector(".tiles")).toBeNull()
 })
 

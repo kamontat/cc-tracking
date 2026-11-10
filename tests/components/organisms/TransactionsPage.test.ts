@@ -183,6 +183,17 @@ test("the filter sheet applies a filter and a sort", async () => {
 	expect(ledgerRows()).toHaveLength(1)
 })
 
+test("the sheet sorts by amount, smallest first, kept in the address", async () => {
+	const { written } = await open()
+	await press($('[data-action="sort"]'))
+	await press($('dialog [data-sort="amount"]'))
+	await press($('dialog [data-dir="asc"]'))
+	await press($('dialog [data-action="apply"]'))
+	await exit()
+	expect(written.at(-1)).toBe("?sort=amount&dir=asc")
+	expect($('[data-action="sort"]')?.textContent).toContain("Sort: Smallest first")
+})
+
 test("the Lists view has a search box and a Filter button, but no sort", async () => {
 	await open("?view=lists")
 	expect($('.tx-body input[name="q"]')?.getAttribute("placeholder")).toBe("Search card or note")
@@ -281,6 +292,13 @@ test("Owed tiles lead to the payment sheet on the card, with each group's room",
 	expect(tile?.querySelector(".rail")?.getAttribute("aria-label")).toMatch(/of the limit used$/)
 })
 
+test("the Owed order button reverses the order, kept in the address as odir", async () => {
+	const { written } = await open("?view=owed")
+	await press($('.tx-owed [data-action="flip-sort"]'))
+	expect(written.at(-1)).toBe("?view=owed&odir=desc")
+	expect(text($('.tx-owed [data-action="flip-sort"]'))).toBe("↓")
+})
+
 test("Mark paid moves a plan into the ledger and lowers owed", async () => {
 	const { repo } = await open()
 	const owedBefore = text($('.tx-owed a[data-card="A"]'))
@@ -330,7 +348,7 @@ test("deleting a payment needs the second step", async () => {
 })
 
 test("the address read on load restores the view", async () => {
-	await open("?q=lunch&sort=old")
+	await open("?q=lunch&dir=asc")
 	expect($<HTMLInputElement>('input[name="q"]')?.value).toBe("lunch")
 	expect($('[data-action="sort"]')?.textContent).toContain("Sort: Oldest first")
 	expect(ledgerRows()).toHaveLength(1)
@@ -454,7 +472,7 @@ test("a search, filter or sort change starts the ledger at 50 again; the address
 	await press(more())
 	expect(ledgerRows()).toHaveLength(100)
 	await press($(".tx-fbtn"))
-	await press($('dialog [data-sort="big"]'))
+	await press($('dialog [data-sort="amount"]'))
 	await press($('dialog [data-action="apply"]'))
 	await exit()
 	expect(ledgerRows()).toHaveLength(50)
