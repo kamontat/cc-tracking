@@ -194,6 +194,28 @@ test("the sheet sorts by amount, smallest first, kept in the address", async () 
 	expect($('[data-action="sort"]')?.textContent).toContain("Sort: Smallest first")
 })
 
+test("the ledger groups by card from the sheet, kept in the address as by", async () => {
+	const { written } = await open()
+	expect($('[data-action="group"]')?.textContent).toContain("Group: Day")
+	await press($('[data-action="group"]'))
+	await press($('dialog [data-by="card"]'))
+	await press($('dialog [data-action="apply"]'))
+	await exit()
+	expect(written.at(-1)).toBe("?by=card")
+	expect($(".ledger section.day")).toBeNull()
+	expect($(".ledger section.card")).not.toBeNull()
+})
+
+test("the Lists view groups by month, kept in the address as lby", async () => {
+	const { written } = await open("?view=lists")
+	expect($('.tx-body [data-action="group"]')?.textContent).toContain("Group: Status")
+	await press($('.tx-body [data-action="filter"]'))
+	await press($('dialog [data-by="month"]'))
+	await press($('dialog [data-action="apply"]'))
+	await exit()
+	expect(written.at(-1)).toBe("?view=lists&lby=month")
+})
+
 test("the Lists view has a search box and a Filter button, but no sort", async () => {
 	await open("?view=lists")
 	expect($('.tx-body input[name="q"]')?.getAttribute("placeholder")).toBe("Search card or note")

@@ -30,8 +30,8 @@ export type Drawer = { cycle?: CycleInput; parts?: RowPart[]; say: string | Say 
 
 type Purchased = TxEntry & { kind: "purchase" }
 
-/** A day of the ledger: its date and its rows. */
-export type LedgerDay = { date: PlainDate; entries: TxEntry[] }
+/** A section of the ledger: a day's rows or a card's (`groupEntries`). */
+export type { LedgerSection } from "#lib/domain/transactions"
 
 /** A planned payment's open-row id: a payment's id repeats across cards. */
 export const planId = (payment: CardPayment): string => `plan:${payment.cardId}:${payment.id}`
@@ -43,9 +43,9 @@ export function entryId(entry: TxEntry): string {
 		: `pay:${entry.payment.cardId}:${entry.payment.id}`
 }
 
-/** The day groups cut to the first `limit` rows; a day cut part-way keeps its heading. */
-export function shownGroups(groups: LedgerDay[], limit: number): LedgerDay[] {
-	const shown: LedgerDay[] = []
+/** The sections cut to the first `limit` rows; a section cut part-way keeps its heading. */
+export function shownGroups<T extends { entries: TxEntry[] }>(groups: T[], limit: number): T[] {
+	const shown: T[] = []
 	let left = limit
 	for (const group of groups) {
 		if (left <= 0) break

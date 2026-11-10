@@ -9,7 +9,7 @@ import { afterEach, expect, test } from "vitest"
 
 import TxLedger from "#components/organisms/TxLedger.svelte"
 import { cardLedger } from "#lib/domain/ledger"
-import { byDay, type TxEntry } from "#lib/domain/transactions"
+import { byDay, groupEntries, type LedgerSection, type TxEntry } from "#lib/domain/transactions"
 import { setLocale } from "#lib/i18n/index"
 
 /**
@@ -71,7 +71,7 @@ const list = (id: string): PurchaseList => ({
 })
 
 interface Shown {
-	groups?: { date: string; entries: TxEntry[] }[] | null
+	groups?: LedgerSection[] | null
 	entries?: TxEntry[]
 	lists?: PurchaseList[]
 	ledgers?: Map<string, CardLedger>
@@ -416,6 +416,17 @@ test("a payment that left credit says how much was kept and where it goes", asyn
 		["Kept as credit", "฿500.00"],
 	])
 	expect(sentence(root)).toBe("Paid 31 Oct. Credit goes to the next statement first.")
+})
+
+test("card sections are headed by the card in the line form, each row saying its date", async () => {
+	const a = purchase("x", 100_00, "", card("A"))
+	const b = purchase("y", 10_00, "", card("B"))
+	const { root } = await show({ groups: groupEntries([a, b], "card", "date", "desc") })
+	const sections = [...root.querySelectorAll("section.card")]
+	expect(sections.map((s) => s.getAttribute("data-section"))).toEqual(["card:A", "card:B"])
+	expect(sections[0]?.querySelector("h3")?.getAttribute("data-refocus")).toBe("card:A")
+	expect(sections[0]?.querySelector("h3")?.textContent?.trim()).toBe("A) Card A (1111)")
+	expect(sections[0]?.querySelector(".a-sub")?.textContent).toMatch(/2026/)
 })
 
 test("at most one row is open across Upcoming and every day panel", async () => {

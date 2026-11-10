@@ -7,7 +7,7 @@ import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
 
 import ReadyFilter from "#components/organisms/ReadyFilter.svelte"
-import { DEFAULT_READY_FILTER, type ReadyFilter as Filter } from "#lib/domain/ready-filter"
+import { DEFAULT_READY_FILTER, type ReadyFilter as Filter, type ReadyGroup } from "#lib/domain/ready-filter"
 import { setLocale } from "#lib/i18n/index"
 
 /**
@@ -36,13 +36,14 @@ type Props = {
 	filter?: Filter
 	sort?: ReadySort
 	dir?: SortDir
+	by?: ReadyGroup
 	count?: (filter: Filter) => number
 }
 
 const show = (props: Props = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
-	const applied: { filter: Filter; sort: ReadySort; dir: SortDir }[] = []
+	const applied: { filter: Filter; sort: ReadySort; dir: SortDir; by: ReadyGroup }[] = []
 	let closed = 0
 	mounted = mount(ReadyFilter, {
 		target: document.body,
@@ -56,8 +57,9 @@ const show = (props: Props = {}) => {
 			filter: props.filter ?? DEFAULT_READY_FILTER,
 			sort: props.sort ?? "room",
 			dir: props.dir ?? "desc",
+			by: props.by ?? "none",
 			count: props.count ?? ((f: Filter) => 5 - f.locations.length - f.owners.length),
-			onapply: (detail: { filter: Filter; sort: ReadySort; dir: SortDir }) => applied.push(detail),
+			onapply: (detail: { filter: Filter; sort: ReadySort; dir: SortDir; by: ReadyGroup }) => applied.push(detail),
 			onclose: () => {
 				closed += 1
 			},
@@ -88,8 +90,9 @@ test("a sheet of Kept in, Account holder and Sort, counting cards", () => {
 	const { root } = show()
 	expect(root.querySelector("dialog")?.hasAttribute("open")).toBe(true)
 	expect(text(root, "dialog h2")).toBe("Filter and sort")
-	expect(root.querySelectorAll("fieldset > legend")).toHaveLength(3)
-	expect(texts(root, "legend")).toEqual(["Kept in", "Account holder", "Sort"])
+	expect(root.querySelectorAll("fieldset > legend")).toHaveLength(4)
+	expect(texts(root, "legend")).toEqual(["Kept in", "Account holder", "Sort", "Group by"])
+	expect(texts(root, "[data-by]")).toEqual(["None", "Place", "Account holder"])
 	expect(texts(root, "[data-location]")).toEqual(["Bangkok", "Krabi"])
 	expect(texts(root, "[data-owner]")).toEqual(["KC", "NT"])
 	expect(texts(root, "[data-sort]")).toEqual(["Room", "Close date", "Due date"])
@@ -122,12 +125,15 @@ test("picks count live and only apply hands them back", async () => {
 	click("[data-owner=NT]")
 	click("[data-sort=due]")
 	click("[data-dir=asc]")
+	click("[data-by=place]")
 	expect(root.querySelector("[data-location=krabi]")?.getAttribute("aria-pressed")).toBe("true")
 	expect(text(root, "[data-action=apply]")).toBe("Show 3 cards")
 	expect(applied).toEqual([])
 	click("[data-action=apply]")
 	await settle()
-	expect(applied).toEqual([{ filter: { q: "", locations: ["krabi"], owners: ["NT"] }, sort: "due", dir: "asc" }])
+	expect(applied).toEqual([
+		{ filter: { q: "", locations: ["krabi"], owners: ["NT"] }, sort: "due", dir: "asc", by: "place" },
+	])
 })
 
 test("a picked chip taps off again", () => {
@@ -143,13 +149,14 @@ test("Clear all keeps the search, and one or no card reads right", async () => {
 		filter: { q: "scb", locations: ["krabi"], owners: [] },
 		sort: "close",
 		dir: "asc",
+		by: "holder",
 	})
 	click("[data-action=clear]")
 	expect(root.querySelector("dialog")?.hasAttribute("open")).toBe(true)
 	expect(root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed")).toBe("true")
 	click("[data-action=apply]")
 	await settle()
-	expect(applied).toEqual([{ filter: { q: "scb", locations: [], owners: [] }, sort: "room", dir: "desc" }])
+	expect(applied).toEqual([{ filter: { q: "scb", locations: [], owners: [] }, sort: "room", dir: "desc", by: "none" }])
 	const one = show({ count: () => 1 })
 	expect(text(one.root, "[data-action=apply]")).toBe("Show 1 card")
 	const none = show({ count: () => 0 })
@@ -169,15 +176,15 @@ test("the draft starts from the filter and leaves it untouched", () => {
 
 test("a group with no choice is left out", () => {
 	const { root } = show({ owners: [] })
-	expect(texts(root, "legend")).toEqual(["Kept in", "Sort"])
+	expect(texts(root, "legend")).toEqual(["Kept in", "Sort", "Group by"])
 	const bare = show({ locations: [], owners: [] })
-	expect(texts(bare.root, "legend")).toEqual(["Sort"])
+	expect(texts(bare.root, "legend")).toEqual(["Sort", "Group by"])
 })
 
 test("reads in Thai", () => {
 	setLocale("th")
 	const { root } = show()
-	expect(texts(root, "legend")).toEqual(["สถานที่", "เจ้าของบัตร", "เรียงตาม"])
+	expect(texts(root, "legend")).toEqual(["สถานที่", "เจ้าของบัตร", "เรียงตาม", "จัดกลุ่มตาม"])
 	expect(text(root, "[data-action=apply]")).toBe("แสดง 5 ใบ")
 })
 

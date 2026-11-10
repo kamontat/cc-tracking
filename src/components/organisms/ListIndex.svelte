@@ -7,7 +7,7 @@
 
 	import ActionRow from "#components/molecules/ActionRow.svelte"
 	import TwoStepButtons from "#components/molecules/TwoStepButtons.svelte"
-	import { headerDate } from "#lib/domain/date"
+	import { headerDate, monthName } from "#lib/domain/date"
 	import { formatAmount, MINUS } from "#lib/domain/money"
 	import { listTotal, mergeCandidates } from "#lib/domain/purchase-list"
 	import {
@@ -15,6 +15,7 @@
 		filterLists,
 		type ListGroup,
 		type ListsFilter,
+		type ListsGroup,
 		listGroups,
 	} from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
@@ -37,6 +38,8 @@
 		groups?: LimitGroup[]
 		/** The page's search and filters; the default shows every list. */
 		filter?: ListsFilter
+		/** What the lists are sectioned by: status (DD-188), month, or not at all (DD-192). */
+		by?: ListsGroup
 		/** Today, which a date filter's preset counts from. */
 		today?: PlainDate
 		/** A waiting list's *Confirm*, after its second step. */
@@ -52,6 +55,7 @@
 		cards = [],
 		groups = [],
 		filter = DEFAULT_LISTS_FILTER,
+		by = "status",
 		today = "",
 		onconfirmlist,
 		ondeletedraft,
@@ -83,15 +87,17 @@
 	)
 
 	// Merge still looks at every list (`lists`): a list the filter hides is on that day all the same.
-	const sections = $derived(listGroups(filterLists(lists, filter, cards, today), []))
+	const sections = $derived(listGroups(filterLists(lists, filter, cards, today), [], by))
 
 	$effect.pre(() => {
 		rows.prune(sections.flatMap((g) => g.lists.map((l) => `list:${l.id}`)))
 	})
 
-	/** A section's heading: its status, or for saved lists the date they were for. */
+	/** A section's heading: its status (for saved lists, the date they were for), its month and year, or *All lists*. */
 	const heading = (group: ListGroup): string => {
 		void lang
+		if ("month" in group) return `${monthName(`${group.month}-01`, lang)} ${group.month.slice(0, 4)}`
+		if (!("status" in group)) return t("tx.lists.group.all")
 		if (group.status !== "saved") return t(`tx.lists.group.${group.status}`)
 		return t("tx.lists.group.saved", { date: headerDate(group.date, lang, true) })
 	}

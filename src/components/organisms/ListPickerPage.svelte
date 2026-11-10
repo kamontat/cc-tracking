@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ReadySort } from "#lib/domain/home"
-	import type { ReadyFilter as Filter } from "#lib/domain/ready-filter"
+	import type { ReadyFilter as Filter, ReadyGroup, ReadySection } from "#lib/domain/ready-filter"
 	import type { SortDir } from "#lib/domain/sort"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
@@ -19,10 +19,11 @@
 	import { today } from "#lib/domain/date"
 	import { readyRows, sortReady } from "#lib/domain/home"
 	import { unassignedCards } from "#lib/domain/limit"
-	import { filterReady, readyFilterCount, readyLocations, readyOwners } from "#lib/domain/ready-filter"
+	import { filterReady, groupReady, readyFilterCount, readyLocations, readyOwners } from "#lib/domain/ready-filter"
 	import { nameOfLocation, purchasePlaces } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
+	import { groupingLabel } from "#lib/ui/group-label"
 	import { newListAddress } from "#lib/ui/list-address"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
@@ -116,6 +117,21 @@
 		return sortOrderLabel(view.sort, view.dir)
 	})
 	const shown = $derived(sortReady(filterReady(all, view.filter), view.sort, view.dir))
+	const sections = $derived(data ? groupReady(shown, view.by, data.locations) : null)
+	const groupLabel = $derived.by(() => {
+		void lang
+		return groupingLabel(view.by)
+	})
+	/** A section's heading: its place's shown name or its account holder, and its count. */
+	const sectionHead = (section: ReadySection) => {
+		void lang
+		const name =
+			section.kind === "place"
+				? nameOfLocation(data?.locations ?? [], section.location)
+				: (section.owner ?? t("group.noHolder"))
+		const count = section.rows.length
+		return { name, count: count === 1 ? t("cards.page.count.one") : t("cards.page.count.many", { count }) }
+	}
 
 	// A card that is no longer ready (archived, moved, its group gone) drops out of the pick.
 	const picked = $derived.by(() => {
@@ -194,6 +210,7 @@
 			}}
 			count={readyFilterCount(view.filter)}
 			sort={sortLabel}
+			group={groupLabel}
 			{chips} />
 		{#if shown.length === 0}
 			<p class="placeholder" data-empty="no-match">
@@ -206,6 +223,14 @@
 					{tr("tx.filter.clear")}
 				</button>
 			</p>
+		{:else if sections}
+			{#each sections as section (section.key)}
+				{@const head = sectionHead(section)}
+				<section class="ready-section" data-section={section.key}>
+					<h2><b>{head.name}</b> <small>{head.count}</small></h2>
+					<ReadyPicker rows={section.rows} selected={picked} groups={money.groups} today={now} ontoggle={toggle} />
+				</section>
+			{/each}
 		{:else}
 			<ReadyPicker rows={shown} selected={picked} groups={money.groups} today={now} ontoggle={toggle} />
 		{/if}
@@ -217,10 +242,11 @@
 				filter={{ ...view.filter }}
 				sort={view.sort}
 				dir={view.dir}
+				by={view.by}
 				count={(filter: Filter) => filterReady(all, filter).length}
-				onapply={({ filter, sort, dir }: { filter: Filter; sort: ReadySort; dir: SortDir }) => {
+				onapply={({ filter, sort, dir, by }: { filter: Filter; sort: ReadySort; dir: SortDir; by: ReadyGroup }) => {
 					sheetOpen = false
-					change({ filter, sort, dir })
+					change({ filter, sort, dir, by })
 				}}
 				onclose={() => {
 					sheetOpen = false
@@ -254,3 +280,29 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	/* A section of the picker: a place or holder over its tiles, headed as Cards heads its places. */
+	.ready-section {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-1);
+	}
+
+	/* Two classes, to outrank app.css's `.page h2` and `.page small`. */
+	.ready-section h2 {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--cc-space-2);
+		margin: 0;
+		font-size: var(--cc-text-md);
+		font-weight: 400;
+	}
+
+	.ready-section h2 small {
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
+	}
+</style>

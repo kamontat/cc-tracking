@@ -20,7 +20,7 @@ afterEach(() => {
 
 type Chip = { key: string; label: string; short?: string; clear: () => void }
 
-const show = (props: { q?: string; count?: number; sort?: string; chips?: Chip[] } = {}) => {
+const show = (props: { q?: string; count?: number; sort?: string; group?: string; chips?: Chip[] } = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
 	const searched: string[] = []
@@ -36,6 +36,7 @@ const show = (props: { q?: string; count?: number; sort?: string; chips?: Chip[]
 			},
 			count: props.count ?? 0,
 			sort: props.sort ?? "By place",
+			...(props.group === undefined ? {} : { group: props.group }),
 			chips: props.chips ?? [],
 		},
 	})
@@ -83,6 +84,18 @@ test("the Filter button and the sort chip both open the sheet", () => {
 	expect(text(sort)).toBe("Sort: Most room ▾")
 	sort.click()
 	expect(opened()).toBe(2)
+})
+
+test("a group chip follows the sort chip and opens the sheet too; none draws none", () => {
+	expect(show().find("[data-action=group]")).toBeNull()
+	const { find, opened } = show({ group: "Place" })
+	const group = find<HTMLButtonElement>(".tx-chips button.tx-chip.tx-sort[data-action=group]") as HTMLButtonElement
+	expect(group.type).toBe("button")
+	expect(group.dataset["variant"]).toBe("quiet")
+	expect(text(group)).toBe("Group: Place ▾")
+	expect(group.previousElementSibling?.getAttribute("data-action")).toBe("sort")
+	group.click()
+	expect(opened()).toBe(1)
 })
 
 test("the Filter button counts the filters in use, and shows no badge with none", () => {

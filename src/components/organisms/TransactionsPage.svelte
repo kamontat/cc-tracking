@@ -21,20 +21,23 @@
 	import { plannedOf } from "#lib/domain/pay"
 	import { groupRoom } from "#lib/domain/room"
 	import {
-		byDay,
 		type TxFilter as Filter,
 		filterEntries,
 		filterLists,
+		groupEntries,
 		type ListsFilter as ListsFilterValue,
+		type ListsGroup,
 		ledgerEntries,
 		monthSummary,
 		owedRows,
 		sortEntries,
+		type TxGroup,
 		type TxSort,
 	} from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { cardLine } from "#lib/ui/card-label"
+	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import {
@@ -103,7 +106,7 @@
 	})
 
 	const change = (next: Partial<TxView>) => {
-		if (next.filter || next.sort || next.dir) limit = LEDGER_PAGE
+		if (next.filter || next.sort || next.dir || next.by) limit = LEDGER_PAGE
 		view = { ...view, ...next }
 		address.replace(`/transactions${writeTxView(view)}`)
 	}
@@ -202,7 +205,7 @@
 
 	const all = $derived(data ? ledgerEntries(data.cards, data.purchases, data.payments) : [])
 	const rows = $derived(sortEntries(filterEntries(all, view.filter, now), view.sort, view.dir))
-	const dated = $derived(view.sort === "date")
+	const sections = $derived(groupEntries(rows, view.by, view.sort, view.dir))
 
 	const summary = $derived.by(() => {
 		void lang
@@ -248,6 +251,15 @@
 			? new Map(data.groups.map((group) => [group.id, groupRoom(group, data.cards, data.ledgers, data.lists, "")]))
 			: new Map(),
 	)
+
+	const groupLabel = $derived.by(() => {
+		void lang
+		return groupingLabel(view.by)
+	})
+	const listsGroupLabel = $derived.by(() => {
+		void lang
+		return groupingLabel(view.listsBy)
+	})
 
 	const sortLabel = $derived.by(() => {
 		void lang
@@ -307,12 +319,14 @@
 							sheetOpen = true
 						}}
 						count={listChips.length}
+						group={listsGroupLabel}
 						chips={listChips} />
 					<ListIndex
 						lists={data.lists}
 						cards={data.cards}
 						groups={data.groups}
 						filter={view.lists}
+						by={view.listsBy}
 						today={now}
 						onconfirmlist={confirmList}
 						ondeletedraft={removeDraft}
@@ -325,9 +339,10 @@
 							)}
 							filter={{ ...view.lists }}
 							count={(filter: ListsFilterValue) => filterLists(money.lists, filter, money.cards, now).length}
-							onapply={(lists: ListsFilterValue) => {
+							by={view.listsBy}
+							onapply={(lists: ListsFilterValue, listsBy: ListsGroup) => {
 								sheetOpen = false
-								change({ lists })
+								change({ lists, listsBy })
 							}}
 							onclose={() => {
 								sheetOpen = false
@@ -343,6 +358,7 @@
 						}}
 						count={chips.length}
 						sort={sortLabel}
+						group={groupLabel}
 						{chips} />
 					{#if summary}
 						<section class="tx-summary" data-testid="summary">
@@ -358,7 +374,7 @@
 						</section>
 					{/if}
 					<TxLedger
-						groups={dated ? byDay(rows) : null}
+						groups={sections}
 						entries={rows}
 						lists={data.lists}
 						ledgers={data.ledgers}
@@ -381,9 +397,10 @@
 							sort={view.sort}
 							dir={view.dir}
 							count={(filter: Filter) => filterEntries(all, filter, now).length}
-							onapply={({ filter, sort, dir }: { filter: Filter; sort: TxSort; dir: SortDir }) => {
+							by={view.by}
+							onapply={({ filter, sort, dir, by }: { filter: Filter; sort: TxSort; dir: SortDir; by: TxGroup }) => {
 								sheetOpen = false
-								change({ filter, sort, dir })
+								change({ filter, sort, dir, by })
 							}}
 							onclose={() => {
 								sheetOpen = false

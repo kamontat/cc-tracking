@@ -4,19 +4,19 @@ import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
 import { compareDates, today as todayOf } from "#lib/domain/date"
 import { byGroupName } from "#lib/domain/list-view"
-import { cardOwnerOf, type Owner } from "#lib/domain/owner"
+import { cardOwnerOf, OWNERS, type Owner } from "#lib/domain/owner"
 import { directed, type SortDir } from "#lib/domain/sort"
 import { openPeriod } from "#lib/domain/statement"
 import { getLocale } from "#lib/i18n/index"
 
-/** How the Cards page orders its results; `place` is the default, grouped by location. */
-export type CardsSort = "place" | "room" | "name" | "close" | "due"
+/** How the Cards page orders its cards, in each section; `card` (by id) is the default. */
+export type CardsSort = "card" | "room" | "name" | "close" | "due"
 
-export const CARDS_SORTS: readonly CardsSort[] = ["place", "room", "name", "close", "due"]
+export const CARDS_SORTS: readonly CardsSort[] = ["card", "room", "name", "close", "due"]
 
-/** Each Cards sort's own direction: places in order, most room, A to Z, soonest close and due. */
+/** Each Cards sort's own direction: by id, most room, A to Z, soonest close and due. */
 export const CARDS_DIRS: Record<CardsSort, SortDir> = {
-	place: "asc",
+	card: "asc",
 	room: "desc",
 	name: "asc",
 	close: "asc",
@@ -32,15 +32,21 @@ export type CardsFilter = {
 	ungrouped: boolean
 }
 
-export type CardsView = CardsFilter & { sort: CardsSort; dir: SortDir }
+/** What the Cards page sections its cards by: place (the default), account holder, limit group, or not at all. */
+export type CardsGroup = "place" | "holder" | "limit" | "none"
+
+export const CARDS_GROUPS: readonly CardsGroup[] = ["place", "holder", "limit", "none"]
+
+export type CardsView = CardsFilter & { sort: CardsSort; dir: SortDir; by: CardsGroup }
 
 export const DEFAULT_CARDS_VIEW: CardsView = {
 	q: "",
 	locations: [],
 	owners: [],
 	ungrouped: false,
-	sort: "place",
+	sort: "card",
 	dir: "asc",
+	by: "place",
 }
 
 /**
@@ -78,10 +84,16 @@ export function matchesCard(card: Card, group: LimitGroup | null, filter: CardsF
 	return matchesQuery(card, filter.q)
 }
 
+/** One section of the Cards results: a place, an account holder (none: no holder), or a limit group (none: in no stored group). */
+export type CardsSection =
+	| { key: `place:${string}`; kind: "place"; location: string; cards: Card[] }
+	| { key: `holder:${string}`; kind: "holder"; owner: Owner | null; cards: Card[] }
+	| { key: `limit:${string}`; kind: "limit"; group: LimitGroup | null; cards: Card[] }
+
 export type CardsResults = {
-	/** Per location in order, empty ones left out; set only for the `place` sort. */
-	sections: { location: string; cards: Card[] }[] | null
-	/** Every unarchived match in one list; set for any other sort. */
+	/** The sections in order, empty ones left out; null when the view is not grouped (`none`). */
+	sections: CardsSection[] | null
+	/** Every unarchived match in one list; set when the view is not grouped. */
 	flat: Card[] | null
 	/** Archived matches, flat, same sort. */
 	archived: Card[]
@@ -128,6 +140,44 @@ function sortKey(
 	}
 }
 
+/**
+ * The live cards in sections: places in `locationOrder` (a card kept elsewhere is left out, as
+ * before), holders in `OWNERS` order then none, limit groups A to Z (`byGroupName`) then none.
+ */
+function sectionsOf(
+	by: Exclude<CardsGroup, "none">,
+	live: Card[],
+	groupById: Map<string, LimitGroup>,
+	locationOrder: readonly string[],
+	groups: LimitGroup[],
+): CardsSection[] {
+	const groupOf = (c: Card): LimitGroup | null => (c.limitGroupId ? (groupById.get(c.limitGroupId) ?? null) : null)
+	let sections: CardsSection[]
+	if (by === "place") {
+		sections = locationOrder.map((location) => ({
+			key: `place:${location}` as const,
+			kind: "place" as const,
+			location,
+			cards: live.filter((c) => c.location === location),
+		}))
+	} else if (by === "holder") {
+		sections = [...OWNERS, null].map((owner) => ({
+			key: `holder:${owner ?? "none"}` as const,
+			kind: "holder" as const,
+			owner,
+			cards: live.filter((c) => cardOwnerOf(c, groupOf(c)) === owner),
+		}))
+	} else {
+		sections = [...[...groups].sort(byGroupName), null].map((group) => ({
+			key: `limit:${group?.id ?? "none"}` as const,
+			kind: "limit" as const,
+			group,
+			cards: live.filter((c) => (groupOf(c)?.id ?? null) === (group?.id ?? null)),
+		}))
+	}
+	return sections.filter((s) => s.cards.length > 0)
+}
+
 export function cardsResults(
 	cards: Card[],
 	groups: LimitGroup[],
@@ -144,14 +194,8 @@ export function cardsResults(
 	const live = matches.filter((c) => !c.archived)
 	const compare = directed(sortKey(view.sort, rooms, today, ledgers), view.dir, byId)
 	const archived = matches.filter((c) => c.archived).sort(compare)
-	if (view.sort === "place") {
-		const places = view.dir === "desc" ? [...locationOrder].reverse() : locationOrder
-		const sections = places
-			.map((location) => ({
-				location,
-				cards: live.filter((c) => c.location === location).sort(byId),
-			}))
-			.filter((s) => s.cards.length > 0)
+	if (view.by !== "none") {
+		const sections = sectionsOf(view.by, live.sort(compare), groupById, locationOrder, groups)
 		return {
 			sections,
 			flat: null,

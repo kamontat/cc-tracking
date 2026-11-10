@@ -6,13 +6,17 @@ import { readDir, type SortDir } from "#lib/domain/sort"
 import {
 	DEFAULT_LISTS_FILTER,
 	DEFAULT_TX_FILTER,
+	LISTS_GROUPS,
 	type ListsFilter,
+	type ListsGroup,
 	OWED_DIRS,
 	OWED_SORTS,
 	type OwedSort,
 	TX_DIRS,
+	TX_GROUPS,
 	TX_SORTS,
 	type TxFilter,
+	type TxGroup,
 	type TxSort,
 } from "#lib/domain/transactions"
 
@@ -21,9 +25,13 @@ export type TxView = {
 	filter: TxFilter
 	sort: TxSort
 	dir: SortDir
+	/** What the ledger sections its rows by (`by`). */
+	by: TxGroup
 	owedSort: OwedSort
 	/** *Owed*'s own direction (`odir`), apart from the ledger's. */
 	owedDir: SortDir
+	/** What the Lists view sections its lists by (`lby`), apart from the ledger's. */
+	listsBy: ListsGroup
 	/** The Lists view's own search and filters (`lq`, `status`, `lcard`, `lrange`, `lfrom`, `lto`). */
 	lists: ListsFilter
 }
@@ -33,8 +41,10 @@ export const DEFAULT_TX_VIEW: TxView = {
 	filter: DEFAULT_TX_FILTER,
 	sort: "date",
 	dir: TX_DIRS.date,
+	by: "day",
 	owedSort: "urgency",
 	owedDir: OWED_DIRS.urgency,
+	listsBy: "status",
 	lists: DEFAULT_LISTS_FILTER,
 }
 
@@ -70,8 +80,10 @@ export function readTxView(search: string): TxView {
 		},
 		sort,
 		dir: readDir(p.get("dir"), sort, TX_DIRS),
+		by: oneOf(TX_GROUPS, p.get("by"), DEFAULT_TX_VIEW.by),
 		owedSort,
 		owedDir: readDir(p.get("odir"), owedSort, OWED_DIRS),
+		listsBy: oneOf(LISTS_GROUPS, p.get("lby"), DEFAULT_TX_VIEW.listsBy),
 		lists: {
 			q: p.get("lq") ?? "",
 			status: manyOf<ListStatus>(STATUSES, p.getAll("status")),
@@ -96,8 +108,10 @@ export function writeTxView(view: TxView): string {
 	if (filter.to) p.set("to", filter.to)
 	if (view.sort !== DEFAULT_TX_VIEW.sort) p.set("sort", view.sort)
 	if (view.dir !== TX_DIRS[view.sort]) p.set("dir", view.dir)
+	if (view.by !== DEFAULT_TX_VIEW.by) p.set("by", view.by)
 	if (view.owedSort !== DEFAULT_TX_VIEW.owedSort) p.set("owed", view.owedSort)
 	if (view.owedDir !== OWED_DIRS[view.owedSort]) p.set("odir", view.owedDir)
+	if (view.listsBy !== DEFAULT_TX_VIEW.listsBy) p.set("lby", view.listsBy)
 	const { lists } = view
 	if (lists.q) p.set("lq", lists.q)
 	for (const s of lists.status) p.append("status", s)

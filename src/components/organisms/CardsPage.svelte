@@ -32,6 +32,7 @@
 		readGroupSheet,
 		writeCardsView,
 	} from "#lib/ui/cards-query"
+	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { sortOrderLabel } from "#lib/ui/sort-label"
@@ -263,6 +264,11 @@
 		return data.money.groups.find((g) => g.id === sheetId)
 	})
 
+	const groupLabel = $derived.by(() => {
+		void lang
+		return groupingLabel(view.by)
+	})
+
 	const sortLabel = $derived.by(() => {
 		void lang
 		return sortOrderLabel(view.sort, view.dir)
@@ -361,6 +367,7 @@
 					}}
 					count={chips.length}
 					sort={sortLabel}
+					group={groupLabel}
 					{chips} />
 				<CardsList
 					{results}

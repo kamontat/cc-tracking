@@ -10,15 +10,16 @@
 	import FilterChips from "#components/molecules/FilterChips.svelte"
 	import SortChoices from "#components/molecules/SortChoices.svelte"
 	import FilterSheet from "#components/organisms/FilterSheet.svelte"
-	import { CARDS_DIRS, CARDS_SORTS, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
+	import { CARDS_DIRS, CARDS_GROUPS, CARDS_SORTS, type CardsGroup, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
 	import { OWNERS } from "#lib/domain/owner"
 	import { locationName, sortLocations } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
+	import { groupingLabel } from "#lib/ui/group-label"
 	import { toggled } from "#lib/ui/toggle"
 
 	/**
 	 * The Cards page's filter sheet, drawn like Transactions': *Kept in*, *Account holder* and
-	 * *Sort by* (the field and which way, `SortChoices`), under the heading *Filter cards*, then *Clear all* and *Show N
+	 * *Sort by* (the field and which way, `SortChoices`) and *Group by*, under the heading *Filter cards*, then *Clear all* and *Show N
 	 * cards*. It edits a draft of `view`, counted live by `count`; only the apply button hands it
 	 * back, once the sheet has slid away (`onapply`). Close, Escape and the backdrop call `onclose`.
 	 */
@@ -57,6 +58,11 @@
 		void lang
 		if (shown === 0) return t("tx.filter.nothing")
 		return t(shown === 1 ? "ready.filter.show.one" : "ready.filter.show.many", { count: shown })
+	})
+
+	const groupOptions = $derived.by(() => {
+		void lang
+		return CARDS_GROUPS.map((value) => ({ value, label: groupingLabel(value) }))
 	})
 
 	const set = (patch: Partial<CardsView>) => {
@@ -107,4 +113,12 @@
 		field={draft.sort}
 		dir={draft.dir}
 		onchange={(pick: { field: CardsSort; dir: SortDir }) => set({ sort: pick.field, dir: pick.dir })} />
+	<FilterChips
+		legend={tr("filter.group")}
+		name="by"
+		options={groupOptions}
+		selected={[draft.by]}
+		ontoggle={(value: string) => {
+			set({ by: value as CardsGroup })
+		}} />
 </FilterSheet>

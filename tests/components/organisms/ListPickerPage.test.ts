@@ -72,6 +72,7 @@ test("a list page under a sub-header to Home, with the ready cards by most room"
 	expect($('.sub-header [data-action="back"]')?.getAttribute("href")).toBe("/")
 	expect(order()).toEqual(["A", "C", "B", "D"])
 	expect(flat($('[data-action="sort"]'))).toBe("Sort: Most room ▾")
+	expect(flat($('[data-action="group"]'))).toBe("Group: None ▾")
 	expect($(".tx-count")).toBeNull()
 	expect($("[data-chip]")).toBeNull()
 })
@@ -155,6 +156,30 @@ test("the address restores the search, filters and sort", async () => {
 	expect(order()).toEqual(["A", "B"])
 	expect(flat($('[data-action="sort"]'))).toBe("Sort: Longest to close ▾")
 	expect(flat($('[data-chip="location:krabi"]'))).toBe("Krabi ×")
+})
+
+test("by place or holder, the cards sit in headed sections, keeping the sort inside each", async () => {
+	await setup("?by=place")
+	const sections = () => [...document.querySelectorAll("section[data-section]")]
+	expect(sections().map((s) => s.getAttribute("data-section"))).toEqual(["place:bangkok", "place:krabi"])
+	expect(sections().map((s) => flat(s.querySelector("h2")))).toEqual(["Bangkok 2 cards", "Krabi 2 cards"])
+	expect(order()).toEqual(["C", "D", "A", "B"])
+	expect(flat($('[data-action="group"]'))).toBe("Group: Place ▾")
+	cleanup()
+	await setup("?by=holder")
+	expect(sections().map((s) => flat(s.querySelector("h2")))).toEqual(["KC 2 cards", "NT 2 cards"])
+	expect(order()).toEqual(["A", "C", "B", "D"])
+})
+
+test("the sheet's Group by is kept in the address", async () => {
+	const { addresses } = await setup()
+	expect($("section[data-section]")).toBeNull()
+	await press('[data-action="group"]')
+	await press('dialog [data-by="holder"]')
+	await press('dialog [data-action="apply"]')
+	await exit()
+	expect(addresses.at(-1)).toBe("/list/new?by=holder")
+	expect(document.querySelectorAll("section[data-section]")).toHaveLength(2)
 })
 
 test("a custom place in the address filters, is offered by name and chipped by name", async () => {

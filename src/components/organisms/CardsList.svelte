@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CardsResults, CardsRooms } from "#lib/domain/cards-view"
+	import type { CardsResults, CardsRooms, CardsSection } from "#lib/domain/cards-view"
 	import type { Card, CardLedger, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
@@ -16,9 +16,10 @@
 	import { panelOpen, rememberPanel } from "#lib/ui/panel"
 
 	/**
-	 * The Cards page's results (DD prototype `cardResults`): by place, a section per location
-	 * headed by its name, its count and whether it takes purchases; under any other sort, one flat
-	 * list headed by its count whose tiles also say the place. Archived matches fold at the end
+	 * The Cards page's results (DD prototype `cardResults`), in sections (DD-192): by place, a
+	 * section per location headed by its name, its count and whether it takes purchases; by account
+	 * holder or limit group, a section per holder or group headed by it and its count; not grouped,
+	 * one flat list headed by its count. Outside the place sections the tiles also say the place. Archived matches fold at the end
 	 * (`cc:panel:cards-archive`). Each card is a card tile (DD-151) that opens its card page: the
 	 * last 4, the group's room and its word, the cardholder (`· Sub` for a supplementary card),
 	 * and the open period's dates.
@@ -85,6 +86,17 @@
 		return card.supplementary ? [owner, tr("tile.sub")].filter(Boolean).join(" · ") : owner
 	}
 
+	/** A section's heading: its place, holder or limit group, and what is said after the count. */
+	const sectionHead = (section: CardsSection): { name: string; extra: string } => {
+		void lang
+		if (section.kind === "place") {
+			const takes = takesPurchases(locations, section.location)
+			return { name: placeName(section.location), extra: takes ? ` · ${t("cards.page.takesPurchases")}` : "" }
+		}
+		if (section.kind === "holder") return { name: section.owner ?? t("group.noHolder"), extra: "" }
+		return { name: section.group?.name ?? t("cards.filter.ungrouped"), extra: "" }
+	}
+
 	const facts = (card: Card, flat: boolean): string => {
 		const place = flat ? placeName(card.location) : ""
 		return place ? `${dates(card)} · ${place}` : dates(card)
@@ -118,17 +130,14 @@
 	{#if results.count === 0}
 		<p class="empty">{total === 0 ? tr("cards.page.empty") : tr("cards.page.noMatch")}</p>
 	{/if}
-	{#each results.sections ?? [] as { location, cards } (location)}
-		<section data-location={location}>
+	{#each results.sections ?? [] as section (section.key)}
+		{@const head = sectionHead(section)}
+		<section data-section={section.key} data-location={section.kind === "place" ? section.location : undefined}>
 			<h2 class="place">
-				<b>{placeName(location)}</b>
-				<small
-					>{cardsCount(cards.length)}{takesPurchases(locations, location)
-						? ` · ${tr("cards.page.takesPurchases")}`
-						: ""}</small
-				>
+				<b>{head.name}</b>
+				<small>{cardsCount(section.cards.length)}{head.extra}</small>
 			</h2>
-			{@render tiles(cards, false)}
+			{@render tiles(section.cards, section.kind !== "place")}
 		</section>
 	{/each}
 	{#if results.flat && results.flat.length > 0}

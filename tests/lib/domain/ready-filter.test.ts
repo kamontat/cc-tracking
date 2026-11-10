@@ -6,7 +6,9 @@ import { describe, expect, test } from "vitest"
 import {
 	DEFAULT_READY_FILTER,
 	filterReady,
+	groupReady,
 	matchesReady,
+	READY_GROUPS,
 	readyFilterCount,
 	readyLocations,
 	readyOwnerOf,
@@ -140,5 +142,38 @@ describe("filterReady", () => {
 	test("the count of filters in use leaves the query out", () => {
 		expect(readyFilterCount(DEFAULT_READY_FILTER)).toBe(0)
 		expect(readyFilterCount({ q: "x", locations: ["krabi"], owners: ["KC", "NT"] })).toBe(3)
+	})
+})
+
+describe("groupReady", () => {
+	const records: LocationRecord[] = [
+		{ id: "krabi", name: "Krabi", takesPurchases: true },
+		{ id: "bangkok", name: "Bangkok", takesPurchases: true },
+		{ id: "phichit", name: "Phichit", takesPurchases: true },
+	]
+	const shape = (groups: ReturnType<typeof groupReady>) => groups?.map((g) => [g.key, ids(g.rows)])
+
+	test("the groupings, and none is flat", () => {
+		expect(READY_GROUPS).toEqual(["none", "place", "holder"])
+		expect(groupReady(rows(), "none", records)).toBeNull()
+	})
+
+	test("by place: places A to Z by shown name, rows kept in their order", () => {
+		setLocale("en")
+		expect(shape(groupReady(rows(), "place", records))).toEqual([
+			["place:bangkok", ["2"]],
+			["place:krabi", ["1", "3"]],
+			["place:phichit", ["4"]],
+		])
+		expect(groupReady(rows(), "place", records)?.[0]).toMatchObject({ kind: "place", location: "bangkok" })
+	})
+
+	test("by holder: KC, NT, RI", () => {
+		expect(shape(groupReady(rows(), "holder", records))).toEqual([
+			["holder:KC", ["1", "4"]],
+			["holder:NT", ["2"]],
+			["holder:RI", ["3"]],
+		])
+		expect(groupReady(rows(), "holder", records)?.[0]).toMatchObject({ kind: "holder", owner: "KC" })
 	})
 })
