@@ -4,7 +4,13 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-10: Several orders per card on a purchase list, drafts before the review, merging same-day lists, a sectioned and filterable Lists view, a right-aligned update bar, and a shorter card choice in the filter sheets
+## 2026-11-10: Several orders per card on a purchase list, drafts before the review, merging same-day lists, a sectioned and filterable Lists view, a right-aligned update bar, a shorter card choice in the filter sheets, and sorts that run either way
+
+### BREAKING CHANGES
+
+- The ledger's `sort` is now `date` or `amount`, with `dir` for the direction. Old links with
+  `sort=new`, `old`, `big` or `small` open on _Newest first_; bookmark the view again to keep
+  another order (DD-191).
 
 ### Features
 
@@ -36,6 +42,13 @@ reasons don't show up in the code.
   chips plus any card already picked, then _Show all N cards_ / _Show fewer_. Eight or fewer
   cards look as before (DD-190).
 
+- Every sort runs either way. The ledger sorts by _Date_ or _Amount_, _Owed_ by _Urgency_,
+  _Card_, _Due date_ or _Owed_, Cards by _Place_, _Room_, _Name_, _Close date_ or _Due date_, and
+  the new-list picker by _Room_, _Close date_ or _Due date_, each ascending or descending. The
+  filter sheets' _Sort_ section shows the fields, then the picked field's two orders in words
+  (_↓ Newest first_, _↑ Oldest first_); _Owed on each card_ has a ↑/↓ button beside its sort
+  select. The direction is kept in the address as `dir` (`odir` for _Owed_) (DD-191).
+
 ### Improvements
 
 - Room after, the over-room and shared-limit warnings and the total count a card's orders
@@ -66,6 +79,11 @@ reasons don't show up in the code.
   `FilterSheet` organism and its sections `FilterChips`, `DateRangeChoices` and `CardChoices`,
   with the chip look once in `app.css` (`.filter-group`). A new filter section is built from
   these rather than copied from another sheet (DD-190).
+
+- Cards' _Sort by_ radio list is now the same pills as the other sheets, and the page's sort
+  chip names the order in words (_Sort: Z to A_). The sort words are one shared set
+  (`sort.field.*`, `sort.order.*`, `#lib/ui/sort-label`), replacing each page's own keys and
+  `cards-sort.ts`.
 
 ### Bug fixes
 
@@ -102,6 +120,11 @@ reasons don't show up in the code.
   chip never vanishes from under a tap; the fold and the find are not kept in the address. The
   search, sort direction and group by work is split into three pull requests, this shared sheet
   first.
+
+- Each sort field keeps its own default direction (newest, biggest, most room, A to Z, soonest
+  due, and so on), so every bare address reads as it did and `dir` is written only when it
+  differs. Ties keep their order whichever way a sort runs. The old ledger sort values were
+  dropped rather than mapped onto the new form, as the user chose.
 
 ## 2026-11-08: Offline scripts load whatever the server's Vary header, the list image keeps its amounts on iPad, and Cards sorts by upcoming dates
 

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ReadySort } from "#lib/domain/home"
 	import type { ReadyFilter as Filter } from "#lib/domain/ready-filter"
+	import type { SortDir } from "#lib/domain/sort"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
@@ -26,6 +27,7 @@
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { type ReadyView, readReadyView, readyViewAddress } from "#lib/ui/ready-query"
+	import { sortOrderLabel } from "#lib/ui/sort-label"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
@@ -109,7 +111,11 @@
 	const setFilter = (patch: Partial<Filter>) => change({ filter: { ...view.filter, ...patch } })
 
 	const all = $derived(data ? readyRows(data, now) : [])
-	const shown = $derived(sortReady(filterReady(all, view.filter), view.sort))
+	const sortLabel = $derived.by(() => {
+		void lang
+		return sortOrderLabel(view.sort, view.dir)
+	})
+	const shown = $derived(sortReady(filterReady(all, view.filter), view.sort, view.dir))
 
 	// A card that is no longer ready (archived, moved, its group gone) drops out of the pick.
 	const picked = $derived.by(() => {
@@ -187,7 +193,7 @@
 				sheetOpen = true
 			}}
 			count={readyFilterCount(view.filter)}
-			sort={tr(`ready.sort.${view.sort}`)}
+			sort={sortLabel}
 			{chips} />
 		{#if shown.length === 0}
 			<p class="placeholder" data-empty="no-match">
@@ -210,10 +216,11 @@
 				owners={readyOwners(all)}
 				filter={{ ...view.filter }}
 				sort={view.sort}
+				dir={view.dir}
 				count={(filter: Filter) => filterReady(all, filter).length}
-				onapply={({ filter, sort }: { filter: Filter; sort: ReadySort }) => {
+				onapply={({ filter, sort, dir }: { filter: Filter; sort: ReadySort; dir: SortDir }) => {
 					sheetOpen = false
-					change({ filter, sort })
+					change({ filter, sort, dir })
 				}}
 				onclose={() => {
 					sheetOpen = false

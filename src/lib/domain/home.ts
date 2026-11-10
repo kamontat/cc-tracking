@@ -15,6 +15,7 @@ import { ledgerUrgency, nextBill, statementStart } from "#lib/domain/ledger"
 import { plannedHorizon } from "#lib/domain/pay"
 import { listTotal } from "#lib/domain/purchase-list"
 import { type GroupRoom, groupRoom } from "#lib/domain/room"
+import { directed, type SortDir } from "#lib/domain/sort"
 import { openPeriod } from "#lib/domain/statement"
 
 export type RoomData = {
@@ -70,6 +71,9 @@ export type ReadyRow = {
 export type ReadySort = "room" | "close" | "due"
 export const READY_SORTS: readonly ReadySort[] = ["room", "close", "due"]
 
+/** Each ready sort's own direction: most room, longest to close, latest due first. */
+export const READY_DIRS: Record<ReadySort, SortDir> = { room: "desc", close: "desc", due: "desc" }
+
 export function readyRows(data: ReadyData, today: PlainDate): ReadyRow[] {
 	const rows: ReadyRow[] = []
 	for (const card of data.cards) {
@@ -92,14 +96,14 @@ export function readyRows(data: ReadyData, today: PlainDate): ReadyRow[] {
 	return rows
 }
 
-/** A new array: most room, longest to close, or latest due first; ties by card id. */
-export function sortReady(rows: ReadyRow[], sort: ReadySort): ReadyRow[] {
+/** A new array by room, close date or due date, run `dir` (the sort's own by default); ties by card id. */
+export function sortReady(rows: ReadyRow[], sort: ReadySort, dir: SortDir = READY_DIRS[sort]): ReadyRow[] {
 	const key = (a: ReadyRow, b: ReadyRow): number => {
-		if (sort === "room") return b.room.room - a.room.room
-		if (sort === "close") return compareDates(b.closeDate, a.closeDate)
-		return compareDates(b.dueDate, a.dueDate)
+		if (sort === "room") return a.room.room - b.room.room
+		if (sort === "close") return compareDates(a.closeDate, b.closeDate)
+		return compareDates(a.dueDate, b.dueDate)
 	}
-	return [...rows].sort((a, b) => key(a, b) || byId(a.card, b.card))
+	return [...rows].sort(directed(key, dir, (a, b) => byId(a.card, b.card)))
 }
 
 export type NeedsItem =

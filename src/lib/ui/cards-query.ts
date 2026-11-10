@@ -1,5 +1,6 @@
-import { CARDS_SORTS, type CardsSort, type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
+import { CARDS_DIRS, CARDS_SORTS, type CardsSort, type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
 import { OWNERS } from "#lib/domain/owner"
+import { readDir } from "#lib/domain/sort"
 
 const manyOf = <T extends string>(known: readonly T[], values: string[]): T[] => known.filter((k) => values.includes(k))
 
@@ -8,18 +9,21 @@ const known = (ids: readonly string[], values: string[]): string[] =>
 	[...new Set(values)].filter((value) => ids.includes(value))
 
 /**
- * The Cards page's state from `/cards?q=&loc=&owner=&ungrouped=&sort=`; unknown values read as defaults.
+ * The Cards page's state from `/cards?q=&loc=&owner=&ungrouped=&sort=&dir=`; unknown values read as
+ * defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`).
  * A `loc` is kept only when it is one of `locationIds`, the stored records' ids.
  */
 export function readCardsView(search: string, locationIds: readonly string[]): CardsView {
 	const p = new URLSearchParams(search)
 	const sort = p.get("sort")
+	const field = CARDS_SORTS.includes(sort as CardsSort) ? (sort as CardsSort) : DEFAULT_CARDS_VIEW.sort
 	return {
 		q: p.get("q") ?? "",
 		locations: known(locationIds, p.getAll("loc")),
 		owners: manyOf(OWNERS, p.getAll("owner")),
 		ungrouped: p.get("ungrouped") === "1",
-		sort: CARDS_SORTS.includes(sort as CardsSort) ? (sort as CardsSort) : DEFAULT_CARDS_VIEW.sort,
+		sort: field,
+		dir: readDir(p.get("dir"), field, CARDS_DIRS),
 	}
 }
 
@@ -43,6 +47,7 @@ export function writeCardsView(view: CardsView, show: CardsShow = "cards"): stri
 	for (const o of view.owners) p.append("owner", o)
 	if (view.ungrouped) p.set("ungrouped", "1")
 	if (view.sort !== DEFAULT_CARDS_VIEW.sort) p.set("sort", view.sort)
+	if (view.dir !== CARDS_DIRS[view.sort]) p.set("dir", view.dir)
 	const text = p.toString()
 	return text ? `?${text}` : ""
 }

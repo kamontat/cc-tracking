@@ -6,6 +6,8 @@ served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pag
 or writes a fragment (`#...`).
 
 Unknown query keys are ignored, and a value the page does not know reads as the default.
+A sort's direction (`dir`, `odir`) defaults to that sort's own, so it is written only when it
+runs the other way.
 Keys marked _repeated_ may appear more than once (`?card=a&card=b`). Pages that rewrite their
 own address leave a key out while it holds its default, so the bare path is the default view.
 
@@ -25,23 +27,25 @@ No query.
 
 ### `/transactions`
 
-| Key      | Values                                          | Default   | Notes                                                       |
-| -------- | ----------------------------------------------- | --------- | ----------------------------------------------------------- |
-| `view`   | `ledger`, `lists`, `owed`                       | `ledger`  | Which view shows. On desktop `owed` sits beside the ledger. |
-| `q`      | any text                                        | empty     | Ledger search.                                              |
-| `type`   | `purchase`, `payment` (repeated)                | any       | Ledger entry types.                                         |
-| `card`   | card id (repeated)                              | any       | Ledger cards.                                               |
-| `range`  | `today`, `week`, `month`, `lastMonth`, `custom` | none      | Ledger date preset.                                         |
-| `from`   | `YYYY-MM-DD`                                    | none      | Ledger range start; an invalid date is dropped.             |
-| `to`     | `YYYY-MM-DD`                                    | none      | Ledger range end; an invalid date is dropped.               |
-| `sort`   | `new`, `old`, `big`, `small`                    | `new`     | Ledger order.                                               |
-| `owed`   | `urgency`, `card`, `due`, `left`                | `urgency` | Owed view order.                                            |
-| `lq`     | any text                                        | empty     | Lists view search: a line's card id, name, last 4 or note.  |
-| `status` | `draft`, `sent`, `saved` (repeated)             | any       | Lists view status filter.                                   |
-| `lcard`  | card id (repeated)                              | any       | Lists view cards: a list with any of them on a line.        |
-| `lrange` | `today`, `week`, `month`, `lastMonth`, `custom` | none      | Lists view date preset, on the list's date.                 |
-| `lfrom`  | `YYYY-MM-DD`                                    | none      | Lists view range start; an invalid date is dropped.         |
-| `lto`    | `YYYY-MM-DD`                                    | none      | Lists view range end; an invalid date is dropped.           |
+| Key      | Values                                          | Default        | Notes                                                                             |
+| -------- | ----------------------------------------------- | -------------- | --------------------------------------------------------------------------------- |
+| `view`   | `ledger`, `lists`, `owed`                       | `ledger`       | Which view shows. On desktop `owed` sits beside the ledger.                       |
+| `q`      | any text                                        | empty          | Ledger search.                                                                    |
+| `type`   | `purchase`, `payment` (repeated)                | any            | Ledger entry types.                                                               |
+| `card`   | card id (repeated)                              | any            | Ledger cards.                                                                     |
+| `range`  | `today`, `week`, `month`, `lastMonth`, `custom` | none           | Ledger date preset.                                                               |
+| `from`   | `YYYY-MM-DD`                                    | none           | Ledger range start; an invalid date is dropped.                                   |
+| `to`     | `YYYY-MM-DD`                                    | none           | Ledger range end; an invalid date is dropped.                                     |
+| `sort`   | `date`, `amount`                                | `date`         | Ledger order. The retired `new`, `old`, `big`, `small` read as `date`.            |
+| `dir`    | `asc`, `desc`                                   | the sort's own | Ledger direction: `date` and `amount` default to `desc` (newest, biggest first).  |
+| `owed`   | `urgency`, `card`, `due`, `left`                | `urgency`      | Owed view order.                                                                  |
+| `odir`   | `asc`, `desc`                                   | the sort's own | Owed direction: `left` defaults to `desc` (most owed first), the others to `asc`. |
+| `lq`     | any text                                        | empty          | Lists view search: a line's card id, name, last 4 or note.                        |
+| `status` | `draft`, `sent`, `saved` (repeated)             | any            | Lists view status filter.                                                         |
+| `lcard`  | card id (repeated)                              | any            | Lists view cards: a list with any of them on a line.                              |
+| `lrange` | `today`, `week`, `month`, `lastMonth`, `custom` | none           | Lists view date preset, on the list's date.                                       |
+| `lfrom`  | `YYYY-MM-DD`                                    | none           | Lists view range start; an invalid date is dropped.                               |
+| `lto`    | `YYYY-MM-DD`                                    | none           | Lists view range end; an invalid date is dropped.                                 |
 
 The page rewrites its address (`replaceState`) on every change, so the current view can be
 bookmarked. The Lists view's keys are its own, so a ledger search does not carry into it.
@@ -64,16 +68,17 @@ Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/
 
 ### `/cards`
 
-| Key         | Values                                  | Default | Notes                                                                                                                                                                                    |
-| ----------- | --------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`      | `cards`, `groups`                       | `cards` | Which view shows below 900px: the card list or the limit groups. Written only as `groups`; anything else reads as `cards`. From 900px both sit side by side and the key changes nothing. |
-| `q`         | any text                                | empty   | Search.                                                                                                                                                                                  |
-| `loc`       | location id (repeated)                  | any     | Kept only when the id is a stored location.                                                                                                                                              |
-| `owner`     | `KC`, `NT`, `RI` (repeated)             | any     | Card owner.                                                                                                                                                                              |
-| `ungrouped` | `1`                                     | off     | Only cards in no stored limit group.                                                                                                                                                     |
-| `sort`      | `place`, `room`, `name`, `close`, `due` | `place` | Order; `place` groups by location. `close` and `due` put the soonest full date shown on the card first.                                                                                  |
-| `group`     | limit group id                          | none    | Opens the limit group sheet on that group.                                                                                                                                               |
-| `newGroup`  | `1`                                     | none    | Opens a blank limit group sheet; wins over `group`.                                                                                                                                      |
+| Key         | Values                                  | Default        | Notes                                                                                                                                                                                    |
+| ----------- | --------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`      | `cards`, `groups`                       | `cards`        | Which view shows below 900px: the card list or the limit groups. Written only as `groups`; anything else reads as `cards`. From 900px both sit side by side and the key changes nothing. |
+| `q`         | any text                                | empty          | Search.                                                                                                                                                                                  |
+| `loc`       | location id (repeated)                  | any            | Kept only when the id is a stored location.                                                                                                                                              |
+| `owner`     | `KC`, `NT`, `RI` (repeated)             | any            | Card owner.                                                                                                                                                                              |
+| `ungrouped` | `1`                                     | off            | Only cards in no stored limit group.                                                                                                                                                     |
+| `sort`      | `place`, `room`, `name`, `close`, `due` | `place`        | Order; `place` groups by location. `close` and `due` put the soonest full date shown on the card first.                                                                                  |
+| `dir`       | `asc`, `desc`                           | the sort's own | Direction. `room` defaults to `desc` (most room first), the others to `asc`; `place` with `desc` runs the places backwards.                                                              |
+| `group`     | limit group id                          | none           | Opens the limit group sheet on that group.                                                                                                                                               |
+| `newGroup`  | `1`                                     | none           | Opens a blank limit group sheet; wins over `group`.                                                                                                                                      |
 
 Switching the view, filter and sort changes rewrite the address (`replaceState`); opening a group sheet pushes
 one (`pushState`), keeping the other keys. Example: `/cards?owner=KC&sort=room&group=<id>`.
@@ -110,12 +115,13 @@ Two steps on one path, told apart by `card`.
 
 Picker step (no `card`):
 
-| Key     | Values                      | Default | Notes                                       |
-| ------- | --------------------------- | ------- | ------------------------------------------- |
-| `q`     | any text                    | empty   | Search.                                     |
-| `loc`   | location id (repeated)      | any     | Kept only when the id is a stored location. |
-| `owner` | `KC`, `NT`, `RI` (repeated) | any     | Card owner.                                 |
-| `sort`  | `room`, `close`, `due`      | `room`  | Order.                                      |
+| Key     | Values                      | Default | Notes                                                                                     |
+| ------- | --------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `q`     | any text                    | empty   | Search.                                                                                   |
+| `loc`   | location id (repeated)      | any     | Kept only when the id is a stored location.                                               |
+| `owner` | `KC`, `NT`, `RI` (repeated) | any     | Card owner.                                                                               |
+| `sort`  | `room`, `close`, `due`      | `room`  | Order.                                                                                    |
+| `dir`   | `asc`, `desc`               | `desc`  | Direction; every sort defaults to `desc` (most room, longest to close, latest due first). |
 
 Entering step (any `card`):
 
@@ -125,6 +131,7 @@ Entering step (any `card`):
 
 - `/list/new` -- the picker.
 - `/list/new?owner=KC&sort=due` -- the picker, filtered and sorted.
+- `/list/new?sort=due&dir=asc` -- the picker, soonest due first.
 - `/list/new?card=<id>&card=<id>` -- entering amounts for those cards.
 
 ### `/list/draft`

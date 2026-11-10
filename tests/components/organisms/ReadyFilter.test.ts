@@ -1,5 +1,6 @@
 import type { ReadySort } from "#lib/domain/home"
 import type { Owner } from "#lib/domain/owner"
+import type { SortDir } from "#lib/domain/sort"
 import type { LocationRecord } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
@@ -34,13 +35,14 @@ type Props = {
 	owners?: Owner[]
 	filter?: Filter
 	sort?: ReadySort
+	dir?: SortDir
 	count?: (filter: Filter) => number
 }
 
 const show = (props: Props = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
-	const applied: { filter: Filter; sort: ReadySort }[] = []
+	const applied: { filter: Filter; sort: ReadySort; dir: SortDir }[] = []
 	let closed = 0
 	mounted = mount(ReadyFilter, {
 		target: document.body,
@@ -53,8 +55,9 @@ const show = (props: Props = {}) => {
 			owners: props.owners ?? ["KC", "NT"],
 			filter: props.filter ?? DEFAULT_READY_FILTER,
 			sort: props.sort ?? "room",
+			dir: props.dir ?? "desc",
 			count: props.count ?? ((f: Filter) => 5 - f.locations.length - f.owners.length),
-			onapply: (detail: { filter: Filter; sort: ReadySort }) => applied.push(detail),
+			onapply: (detail: { filter: Filter; sort: ReadySort; dir: SortDir }) => applied.push(detail),
 			onclose: () => {
 				closed += 1
 			},
@@ -89,8 +92,9 @@ test("a sheet of Kept in, Account holder and Sort, counting cards", () => {
 	expect(texts(root, "legend")).toEqual(["Kept in", "Account holder", "Sort"])
 	expect(texts(root, "[data-location]")).toEqual(["Bangkok", "Krabi"])
 	expect(texts(root, "[data-owner]")).toEqual(["KC", "NT"])
-	expect(texts(root, "[data-sort]")).toEqual(["Most room", "Longest to close", "Latest due"])
+	expect(texts(root, "[data-sort]")).toEqual(["Room", "Close date", "Due date"])
 	expect(root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed")).toBe("true")
+	expect(texts(root, "[data-dir]")).toEqual(["↓ Most room", "↑ Least room"])
 	expect(text(root, "[data-action=apply]")).toBe("Show 5 cards")
 	const chip = root.querySelector("[data-location=krabi]")
 	expect(chip?.getAttribute("type")).toBe("button")
@@ -117,12 +121,13 @@ test("picks count live and only apply hands them back", async () => {
 	click("[data-location=krabi]")
 	click("[data-owner=NT]")
 	click("[data-sort=due]")
+	click("[data-dir=asc]")
 	expect(root.querySelector("[data-location=krabi]")?.getAttribute("aria-pressed")).toBe("true")
 	expect(text(root, "[data-action=apply]")).toBe("Show 3 cards")
 	expect(applied).toEqual([])
 	click("[data-action=apply]")
 	await settle()
-	expect(applied).toEqual([{ filter: { q: "", locations: ["krabi"], owners: ["NT"] }, sort: "due" }])
+	expect(applied).toEqual([{ filter: { q: "", locations: ["krabi"], owners: ["NT"] }, sort: "due", dir: "asc" }])
 })
 
 test("a picked chip taps off again", () => {
@@ -137,13 +142,14 @@ test("Clear all keeps the search, and one or no card reads right", async () => {
 	const { root, click, applied } = show({
 		filter: { q: "scb", locations: ["krabi"], owners: [] },
 		sort: "close",
+		dir: "asc",
 	})
 	click("[data-action=clear]")
 	expect(root.querySelector("dialog")?.hasAttribute("open")).toBe(true)
 	expect(root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed")).toBe("true")
 	click("[data-action=apply]")
 	await settle()
-	expect(applied).toEqual([{ filter: { q: "scb", locations: [], owners: [] }, sort: "room" }])
+	expect(applied).toEqual([{ filter: { q: "scb", locations: [], owners: [] }, sort: "room", dir: "desc" }])
 	const one = show({ count: () => 1 })
 	expect(text(one.root, "[data-action=apply]")).toBe("Show 1 card")
 	const none = show({ count: () => 0 })

@@ -3,7 +3,14 @@ import type { Card, LimitGroup } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
 
-import { cardsResults, cardUsePct, DEFAULT_CARDS_VIEW, groupPanels, matchesCard } from "#lib/domain/cards-view"
+import {
+	CARDS_DIRS,
+	cardsResults,
+	cardUsePct,
+	DEFAULT_CARDS_VIEW,
+	groupPanels,
+	matchesCard,
+} from "#lib/domain/cards-view"
 import { cardLedger } from "#lib/domain/ledger"
 import { setLocale } from "#lib/i18n/index"
 
@@ -35,9 +42,11 @@ const room = (g: LimitGroup, used: number, held = 0): GroupRoom => ({
 })
 const g = group("g")
 const rooms = new Map([["g", room(g, 0)]])
+/** A view; its direction is the sort's own default unless given. */
 const view = (o: Partial<typeof DEFAULT_CARDS_VIEW> = {}) => ({
 	...DEFAULT_CARDS_VIEW,
 	...o,
+	dir: o.dir ?? CARDS_DIRS[o.sort ?? DEFAULT_CARDS_VIEW.sort],
 })
 const order = ["bangkok", "phichit", "krabi"]
 
@@ -106,6 +115,31 @@ describe("cardsResults", () => {
 		const r = cardsResults(cs, [g, g2], rs, view({ sort: "room" }), order)
 		expect(r.sections).toBeNull()
 		expect(r.flat?.map((c) => c.id)).toEqual(["b", "a", "c", "d", "e"])
+	})
+	test("each sort has its default direction", () => {
+		expect(DEFAULT_CARDS_VIEW.dir).toBe("asc")
+		expect(CARDS_DIRS).toEqual({ place: "asc", room: "desc", name: "asc", close: "asc", due: "asc" })
+	})
+	test("descending name runs Z to A, ties still by id", () => {
+		const cs = [card("b", { name: "Same" }), card("a", { name: "Same" }), card("c", { name: "Zed" })]
+		const r = cardsResults(cs, [g], rooms, view({ sort: "name", dir: "desc" }), order)
+		expect(r.flat?.map((c) => c.id)).toEqual(["c", "a", "b"])
+	})
+	test("place, descending, runs the places backwards, cards in each still by id", () => {
+		const cs = [card("b", { location: "krabi" }), card("a", { location: "krabi" }), card("c", { location: "bangkok" })]
+		const sections = (dir: "asc" | "desc") =>
+			cardsResults(cs, [g], rooms, view({ dir }), ["bangkok", "krabi"]).sections?.map((s) => [
+				s.location,
+				s.cards.map((c) => c.id),
+			])
+		expect(sections("asc")).toEqual([
+			["bangkok", ["c"]],
+			["krabi", ["a", "b"]],
+		])
+		expect(sections("desc")).toEqual([
+			["krabi", ["a", "b"]],
+			["bangkok", ["c"]],
+		])
 	})
 	test("name: locale compare, ties by id", () => {
 		const r = cardsResults(cards, [g], rooms, view({ sort: "name" }), order)

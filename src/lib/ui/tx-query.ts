@@ -2,11 +2,16 @@ import type { RangePreset } from "#lib/domain/purchase-range"
 import type { ListStatus, PlainDate } from "#lib/domain/types"
 
 import { isValidDate } from "#lib/domain/date"
+import { readDir, type SortDir } from "#lib/domain/sort"
 import {
 	DEFAULT_LISTS_FILTER,
 	DEFAULT_TX_FILTER,
 	type ListsFilter,
+	OWED_DIRS,
+	OWED_SORTS,
 	type OwedSort,
+	TX_DIRS,
+	TX_SORTS,
 	type TxFilter,
 	type TxSort,
 } from "#lib/domain/transactions"
@@ -15,7 +20,10 @@ export type TxView = {
 	view: "ledger" | "lists" | "owed"
 	filter: TxFilter
 	sort: TxSort
+	dir: SortDir
 	owedSort: OwedSort
+	/** *Owed*'s own direction (`odir`), apart from the ledger's. */
+	owedDir: SortDir
 	/** The Lists view's own search and filters (`lq`, `status`, `lcard`, `lrange`, `lfrom`, `lto`). */
 	lists: ListsFilter
 }
@@ -23,8 +31,10 @@ export type TxView = {
 export const DEFAULT_TX_VIEW: TxView = {
 	view: "ledger",
 	filter: DEFAULT_TX_FILTER,
-	sort: "new",
+	sort: "date",
+	dir: TX_DIRS.date,
 	owedSort: "urgency",
+	owedDir: OWED_DIRS.urgency,
 	lists: DEFAULT_LISTS_FILTER,
 }
 
@@ -32,8 +42,6 @@ export const DEFAULT_TX_VIEW: TxView = {
 export const LEDGER_PAGE = 50
 
 const VIEWS = ["ledger", "lists", "owed"] as const
-const SORTS = ["new", "old", "big", "small"] as const
-const OWED_SORTS = ["urgency", "card", "due", "left"] as const
 const TYPES = ["purchase", "payment"] as const
 const RANGES = ["today", "week", "month", "lastMonth", "custom"] as const
 const STATUSES = ["draft", "sent", "saved"] as const
@@ -48,6 +56,8 @@ const toDate = (value: string | null): PlainDate | "" => (value !== null && isVa
 /** The Transactions page's state, read from its query string; unknown values read as defaults. */
 export function readTxView(search: string): TxView {
 	const p = new URLSearchParams(search)
+	const sort = oneOf(TX_SORTS, p.get("sort"), DEFAULT_TX_VIEW.sort)
+	const owedSort = oneOf(OWED_SORTS, p.get("owed"), DEFAULT_TX_VIEW.owedSort)
 	return {
 		view: oneOf(VIEWS, p.get("view"), DEFAULT_TX_VIEW.view),
 		filter: {
@@ -58,8 +68,10 @@ export function readTxView(search: string): TxView {
 			from: toDate(p.get("from")),
 			to: toDate(p.get("to")),
 		},
-		sort: oneOf(SORTS, p.get("sort"), DEFAULT_TX_VIEW.sort),
-		owedSort: oneOf(OWED_SORTS, p.get("owed"), DEFAULT_TX_VIEW.owedSort),
+		sort,
+		dir: readDir(p.get("dir"), sort, TX_DIRS),
+		owedSort,
+		owedDir: readDir(p.get("odir"), owedSort, OWED_DIRS),
 		lists: {
 			q: p.get("lq") ?? "",
 			status: manyOf<ListStatus>(STATUSES, p.getAll("status")),
@@ -83,7 +95,9 @@ export function writeTxView(view: TxView): string {
 	if (filter.from) p.set("from", filter.from)
 	if (filter.to) p.set("to", filter.to)
 	if (view.sort !== DEFAULT_TX_VIEW.sort) p.set("sort", view.sort)
+	if (view.dir !== TX_DIRS[view.sort]) p.set("dir", view.dir)
 	if (view.owedSort !== DEFAULT_TX_VIEW.owedSort) p.set("owed", view.owedSort)
+	if (view.owedDir !== OWED_DIRS[view.owedSort]) p.set("odir", view.owedDir)
 	const { lists } = view
 	if (lists.q) p.set("lq", lists.q)
 	for (const s of lists.status) p.append("status", s)

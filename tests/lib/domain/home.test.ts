@@ -6,6 +6,7 @@ import {
 	isReady,
 	needsYou,
 	overRoom,
+	READY_DIRS,
 	READY_SORTS,
 	type ReadyData,
 	type ReadyRow,
@@ -201,17 +202,27 @@ describe("sortReady", () => {
 	]
 	const ids = (s: ReadyRow[]) => s.map((r) => r.card.id)
 
-	test("sorts by most room, longest to close, latest due", () => {
+	test("sorts by most room, longest to close, latest due by default", () => {
 		expect(READY_SORTS).toEqual(["room", "close", "due"])
+		expect(READY_DIRS).toEqual({ room: "desc", close: "desc", due: "desc" })
 		expect(ids(sortReady(rows, "room"))).toEqual(["b", "c", "a"])
 		expect(ids(sortReady(rows, "close"))).toEqual(["a", "c", "b"])
 		expect(ids(sortReady(rows, "due"))).toEqual(["b", "c", "a"])
 		expect(ids(rows)).toEqual(["a", "b", "c"])
 	})
 
-	test("equal values fall back to id order", () => {
+	test("ascending: least room, soonest to close, soonest due", () => {
+		expect(ids(sortReady(rows, "room", "asc"))).toEqual(["a", "c", "b"])
+		expect(ids(sortReady(rows, "close", "asc"))).toEqual(["b", "c", "a"])
+		expect(ids(sortReady(rows, "due", "asc"))).toEqual(["a", "c", "b"])
+	})
+
+	test("equal values fall back to id order, whichever way", () => {
 		const same = [row("y", 1, "2026-11-01", "2026-12-01"), row("x", 1, "2026-11-01", "2026-12-01")]
-		for (const s of READY_SORTS) expect(ids(sortReady(same, s))).toEqual(["x", "y"])
+		for (const s of READY_SORTS) {
+			expect(ids(sortReady(same, s, "desc"))).toEqual(["x", "y"])
+			expect(ids(sortReady(same, s, "asc"))).toEqual(["x", "y"])
+		}
 	})
 })
 

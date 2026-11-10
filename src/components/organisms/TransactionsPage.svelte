@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { SortDir } from "#lib/domain/sort"
 	import type { CardPayment, PlainDate, PurchaseList } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
@@ -43,6 +44,7 @@
 		markPlanPaid,
 		mergeSameDayLists,
 	} from "#lib/ui/row-actions"
+	import { sortOrderLabel } from "#lib/ui/sort-label"
 	import { openRepository } from "#lib/ui/startup"
 	import { LEDGER_PAGE, readTxView, type TxView, writeTxView } from "#lib/ui/tx-query"
 
@@ -101,7 +103,7 @@
 	})
 
 	const change = (next: Partial<TxView>) => {
-		if (next.filter || next.sort) limit = LEDGER_PAGE
+		if (next.filter || next.sort || next.dir) limit = LEDGER_PAGE
 		view = { ...view, ...next }
 		address.replace(`/transactions${writeTxView(view)}`)
 	}
@@ -199,8 +201,8 @@
 	})
 
 	const all = $derived(data ? ledgerEntries(data.cards, data.purchases, data.payments) : [])
-	const rows = $derived(sortEntries(filterEntries(all, view.filter, now), view.sort))
-	const dated = $derived(view.sort === "new" || view.sort === "old")
+	const rows = $derived(sortEntries(filterEntries(all, view.filter, now), view.sort, view.dir))
+	const dated = $derived(view.sort === "date")
 
 	const summary = $derived.by(() => {
 		void lang
@@ -249,7 +251,7 @@
 
 	const sortLabel = $derived.by(() => {
 		void lang
-		return t(`tx.sort.${view.sort}`)
+		return sortOrderLabel(view.sort, view.dir)
 	})
 
 	const onRetry = () => {
@@ -377,10 +379,11 @@
 							cards={money.cards.filter((c) => !c.archived || (money.ledgers.get(c.id)?.owed ?? 0) > 0)}
 							filter={{ ...view.filter }}
 							sort={view.sort}
+							dir={view.dir}
 							count={(filter: Filter) => filterEntries(all, filter, now).length}
-							onapply={({ filter, sort }: { filter: Filter; sort: TxSort }) => {
+							onapply={({ filter, sort, dir }: { filter: Filter; sort: TxSort; dir: SortDir }) => {
 								sheetOpen = false
-								change({ filter, sort })
+								change({ filter, sort, dir })
 							}}
 							onclose={() => {
 								sheetOpen = false
@@ -393,13 +396,14 @@
 	{#if data}
 		<aside class="tx-owed">
 			<OwedList
-				rows={owedRows(data.cards, data.ledgers, now, view.owedSort)}
+				rows={owedRows(data.cards, data.ledgers, now, view.owedSort, view.owedDir)}
 				groups={data.groups}
 				{rooms}
 				ledgers={data.ledgers}
 				today={now}
 				sort={view.owedSort}
-				onsort={(owedSort: TxView["owedSort"]) => change({ owedSort })} />
+				dir={view.owedDir}
+				onsort={(owedSort: TxView["owedSort"], owedDir: SortDir) => change({ owedSort, owedDir })} />
 		</aside>
 	{/if}
 </div>

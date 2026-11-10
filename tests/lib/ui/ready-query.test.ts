@@ -11,6 +11,7 @@ test("the view round-trips through the address, places and holders repeated", ()
 	const view = {
 		filter: { q: "scb k", locations: ["bangkok", "krabi"], owners: ["NT"] },
 		sort: "due",
+		dir: "asc",
 	} as const
 	const url = readyViewAddress({
 		filter: {
@@ -19,16 +20,25 @@ test("the view round-trips through the address, places and holders repeated", ()
 			owners: [...view.filter.owners],
 		},
 		sort: view.sort,
+		dir: view.dir,
 	})
-	expect(url).toBe("/list/new?q=scb+k&loc=bangkok&loc=krabi&owner=NT&sort=due")
+	expect(url).toBe("/list/new?q=scb+k&loc=bangkok&loc=krabi&owner=NT&sort=due&dir=asc")
 	expect(readReadyView(url.slice("/list/new".length), ["bangkok", "krabi"])).toEqual({
 		filter: { q: "scb k", locations: ["bangkok", "krabi"], owners: ["NT"] },
 		sort: "due",
+		dir: "asc",
 	})
 })
 
+test("dir is read against the sort's default and written only when it differs", () => {
+	expect(DEFAULT_READY_VIEW).toMatchObject({ sort: "room", dir: "desc" })
+	expect(readReadyView("?sort=close", [])).toMatchObject({ sort: "close", dir: "desc" })
+	expect(readReadyView("?dir=asc", [])).toMatchObject({ sort: "room", dir: "asc" })
+	expect(readyViewAddress({ ...DEFAULT_READY_VIEW, dir: "asc" })).toBe("/list/new?dir=asc")
+})
+
 test("unknown places, holders and sorts read as nothing", () => {
-	expect(readReadyView("?loc=mars&owner=ZZ&sort=big", ["bangkok"])).toEqual(DEFAULT_READY_VIEW)
+	expect(readReadyView("?loc=mars&owner=ZZ&sort=big&dir=up", ["bangkok"])).toEqual(DEFAULT_READY_VIEW)
 })
 
 test("any stored location id is read; one with no record is not", () => {

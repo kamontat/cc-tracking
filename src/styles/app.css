@@ -1260,6 +1260,14 @@ a:any-link:hover {
 	background: var(--cc-accent-surface);
 }
 
+/* The *Sort* section's second row: which way the picked field runs. */
+.filter-order {
+	min-inline-size: 0;
+	margin: var(--cc-space-1) 0 0;
+	padding: 0;
+	border: 0;
+}
+
 /* *Show all N cards* and *Show fewer* end the row of card chips as a quiet link. */
 .page .filter-chips .filter-more {
 	padding: var(--cc-space-1) var(--cc-space-2);

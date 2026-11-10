@@ -81,25 +81,15 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 	expect(chip?.getAttribute("type")).toBe("button")
 	expect(chip?.getAttribute("data-variant")).toBe("quiet")
 	expect(chip?.getAttribute("aria-pressed")).toBe("false")
-	const group = root.querySelector("[role=radiogroup]")
-	expect(group?.getAttribute("aria-labelledby")).toBeTruthy()
-	expect(group?.getAttribute("aria-labelledby")).toBe(root.querySelectorAll("legend")[2]?.id)
-	expect([...(group?.querySelectorAll("label") ?? [])].map((b) => text(b))).toEqual([
-		"By place",
-		"Most room",
+	expect([...root.querySelectorAll("[data-sort]")].map((b) => text(b))).toEqual([
+		"Place",
+		"Room",
 		"Name",
-		"Soonest to close",
-		"Soonest due",
+		"Close date",
+		"Due date",
 	])
-	expect(
-		[...root.querySelectorAll<HTMLInputElement>("input[type=radio][name=sort]")].map((r) => [r.value, r.checked]),
-	).toEqual([
-		["place", true],
-		["room", false],
-		["name", false],
-		["close", false],
-		["due", false],
-	])
+	expect(root.querySelector("[data-sort=place]")?.getAttribute("aria-pressed")).toBe("true")
+	expect([...root.querySelectorAll("[data-dir]")].map((b) => text(b))).toEqual(["↑ By place", "↓ By place, reversed"])
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 5 cards")
 	click("[data-owner=NT]")
 	expect(root.querySelector("[data-owner=NT]")?.getAttribute("aria-pressed")).toBe("true")
@@ -150,8 +140,9 @@ test("apply lets the sheet go, then hands back the draft view", async () => {
 	const { root, click, applied } = show({ view: { ...DEFAULT_CARDS_VIEW, q: "kb" } })
 	click("[data-location=krabi]")
 	click("[data-owner=RI]")
-	click("input[name=sort][value=room]")
-	expect(root.querySelector<HTMLInputElement>("input[name=sort][value=room]")?.checked).toBe(true)
+	click("[data-sort=room]")
+	expect(root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed")).toBe("true")
+	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
 	click("[data-action=apply]")
 	await settle()
 	expect(applied).toEqual([
@@ -161,6 +152,7 @@ test("apply lets the sheet go, then hands back the draft view", async () => {
 			owners: ["RI"],
 			ungrouped: false,
 			sort: "room",
+			dir: "desc",
 		},
 	])
 })
@@ -181,6 +173,7 @@ test("Clear all resets the draft but keeps the search", async () => {
 			owners: ["KC"],
 			ungrouped: false,
 			sort: "name",
+			dir: "desc",
 		},
 	})
 	click("[data-action=clear]")

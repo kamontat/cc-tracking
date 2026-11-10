@@ -1,22 +1,23 @@
 <script lang="ts">
 	import type { PayChoice } from "#lib/domain/pay"
 	import type { GroupRoom } from "#lib/domain/room"
-	import type { OwedSort } from "#lib/domain/transactions"
+	import type { SortDir } from "#lib/domain/sort"
 	import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
 	import CardTile from "#components/molecules/CardTile.svelte"
+	import { OWED_DIRS, OWED_SORTS, type OwedSort } from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { tileTone } from "#lib/ui/card-tile"
 	import { payAddress } from "#lib/ui/pay-address"
 	import { payTileContent, payTileName } from "#lib/ui/pay-tile"
-
-	const SORTS: OwedSort[] = ["urgency", "card", "due", "left"]
+	import { sortFieldLabel, sortOrderLabel } from "#lib/ui/sort-label"
 
 	/**
-	 * "Owed on each card": a heading with its sort chip, then a card list of payment tiles, one for
+	 * "Owed on each card": a heading with its sort chip (the field, and a button showing which way it
+	 * runs that reverses it), then a card list of payment tiles, one for
 	 * every card that owes money or holds credit, each a link to the payment sheet on its card. The
 	 * tile is the payment picker's (DD-166); the list is one column, since it sits in a narrow
 	 * column beside the ledger from 900px and has the phone's width below it.
@@ -32,11 +33,12 @@
 		/** Today, which picks a card's open period when its ledger has no open statement. */
 		today: PlainDate
 		sort: OwedSort
-		/** The reader chose a sort on the chip. */
-		onsort: (sort: OwedSort) => void
+		dir: SortDir
+		/** The reader chose a sort (in its own direction) or reversed the order. */
+		onsort: (sort: OwedSort, dir: SortDir) => void
 	}
 
-	const { rows, groups, rooms, ledgers, today, sort, onsort }: Props = $props()
+	const { rows, groups, rooms, ledgers, today, sort, dir, onsort }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -55,6 +57,15 @@
 		return payTileName(row)
 	}
 
+	const fieldLabel = (option: OwedSort) => {
+		void lang
+		return sortFieldLabel(option)
+	}
+	const flipLabel = $derived.by(() => {
+		void lang
+		return t("sort.flip", { order: sortOrderLabel(sort, dir) })
+	})
+
 	onMount(() =>
 		subscribe(() => {
 			lang = getLocale()
@@ -66,14 +77,32 @@
 	<div class="sec-head" row>
 		<h2>{tr("tx.owed.title")}</h2>
 		{#if rows.length}
-			<label class="chip" data-active={sort !== "urgency" ? "" : undefined}>
-				{tr("list.sort")}
-				<select name="sort" value={sort} onchange={(event) => onsort(event.currentTarget.value as OwedSort)}>
-					{#each SORTS as option (option)}
-						<option value={option}>{tr(`tx.owed.sort.${option}`)}</option>
-					{/each}
-				</select>
-			</label>
+			<div class="sort" row>
+				<label class="chip" data-active={sort !== "urgency" || dir !== OWED_DIRS.urgency ? "" : undefined}>
+					{tr("list.sort")}
+					<select
+						name="sort"
+						value={sort}
+						onchange={(event) => {
+							const next = event.currentTarget.value as OwedSort
+							onsort(next, OWED_DIRS[next])
+						}}>
+						{#each OWED_SORTS as option (option)}
+							<option value={option}>{fieldLabel(option)}</option>
+						{/each}
+					</select>
+				</label>
+				<button
+					type="button"
+					class="flip"
+					data-variant="quiet"
+					data-action="flip-sort"
+					aria-label={flipLabel}
+					title={flipLabel}
+					onclick={() => onsort(sort, dir === "asc" ? "desc" : "asc")}>
+					{dir === "asc" ? "↑" : "↓"}
+				</button>
+			</div>
 		{/if}
 	</div>
 	{#if rows.length === 0}
@@ -114,6 +143,21 @@
 		margin: 0;
 		font-size: var(--cc-text-lg);
 		font-weight: 700;
+	}
+
+	.sort {
+		display: flex;
+		flex-direction: row;
+		align-items: stretch;
+		gap: var(--cc-space-1);
+	}
+
+	/* The order button: as tall as the chip, its arrow centred. */
+	.owed-list .flip {
+		align-self: stretch;
+		padding: 0 var(--cc-space-2);
+		font-size: var(--cc-text-sm);
+		border-radius: var(--cc-radius-md);
 	}
 
 	/* The legacy `listControls` chip: its name, then a select stripped of its own box. */
