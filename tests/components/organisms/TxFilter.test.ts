@@ -227,3 +227,15 @@ test("the copy follows a switch of language", () => {
 	flushSync()
 	expect(text(root.querySelector("dialog h2"))).not.toBe("Filter and sort")
 })
+
+test("many cards fold under a find box, and a card unpicked past the fold stays", () => {
+	const cards = Array.from({ length: 12 }, (_, i) => card(String(i + 1)))
+	const { root, click } = show({ cards, filter: { ...DEFAULT_TX_FILTER, cards: ["11"] } })
+	const chips = () => [...root.querySelectorAll("[data-card]")].map((el) => el.getAttribute("data-card"))
+	expect(root.querySelector("input[name=cardq]")).not.toBeNull()
+	expect(chips()).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "11"])
+	click("[data-card='11']")
+	expect(root.querySelector("[data-card='11']")?.getAttribute("aria-pressed")).toBe("false")
+	click("[data-action=more-cards]")
+	expect(chips()).toHaveLength(12)
+})

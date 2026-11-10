@@ -1,16 +1,19 @@
 <script lang="ts">
 	import type { CardsSort, CardsView } from "#lib/domain/cards-view"
+	import type { Owner } from "#lib/domain/owner"
 	import type { LocationRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
-	import Sheet from "#components/molecules/Sheet.svelte"
+	import FilterChips from "#components/molecules/FilterChips.svelte"
+	import FilterSheet from "#components/organisms/FilterSheet.svelte"
 	import { CARDS_SORTS, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
 	import { OWNERS } from "#lib/domain/owner"
 	import { locationName, sortLocations } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { cardsSortLabel } from "#lib/ui/cards-sort"
+	import { toggled } from "#lib/ui/toggle"
 
 	/**
 	 * The Cards page's filter sheet, drawn like Transactions': *Kept in*, *Account holder* and
@@ -42,7 +45,6 @@
 		return t(key, params)
 	}
 
-	let sheet: { leave: (then: () => void) => void } | undefined = $state()
 	// A copy of the view the sheet opened with; the page renders a new sheet for a new view.
 	// svelte-ignore state_referenced_locally
 	let draft = $state.raw<CardsView>({ ...view })
@@ -50,8 +52,9 @@
 	const shown = $derived(count(draft))
 	const places = $derived.by(() => {
 		void lang
-		return sortLocations(locations).map((record) => ({ id: record.id, name: locationName(record) }))
+		return sortLocations(locations).map((record) => ({ value: record.id, label: locationName(record) }))
 	})
+	const ownerOptions = OWNERS.map((owner) => ({ value: owner, label: owner }))
 	const showLabel = $derived.by(() => {
 		void lang
 		if (shown === 0) return t("tx.filter.nothing")
@@ -67,18 +70,6 @@
 		draft = { ...draft, ...patch }
 	}
 
-	/** `values` with `value` added, or taken out when it is there. */
-	function toggle<T>(values: readonly T[], value: T): T[] {
-		return values.includes(value) ? values.filter((v) => v !== value) : [...values, value]
-	}
-
-	const apply = () => {
-		const value = { ...draft }
-		const emit = () => onapply(value)
-		if (sheet) sheet.leave(emit)
-		else emit()
-	}
-
 	onMount(() =>
 		subscribe(() => {
 			lang = getLocale()
@@ -86,46 +77,37 @@
 	)
 </script>
 
-<Sheet bind:this={sheet} heading={tr("cards.filter.title")} {onclose}>
-	<fieldset>
-		<legend>{tr("ready.filter.location")}</legend>
-		<div class="choices">
-			{#each places as place (place.id)}
-				<button
-					type="button"
-					data-variant="quiet"
-					data-location={place.id}
-					aria-pressed={draft.locations.includes(place.id) ? "true" : "false"}
-					onclick={() => set({ locations: toggle(draft.locations, place.id) })}>
-					{place.name}
-				</button>
-			{/each}
-		</div>
-	</fieldset>
-	<fieldset>
-		<legend>{tr("ready.filter.owner")}</legend>
-		<div class="choices">
-			{#each OWNERS as owner (owner)}
-				<button
-					type="button"
-					data-variant="quiet"
-					data-owner={owner}
-					aria-pressed={draft.owners.includes(owner) ? "true" : "false"}
-					onclick={() => set({ owners: toggle(draft.owners, owner) })}>
-					{owner}
-				</button>
-			{/each}
-			<button
-				type="button"
-				data-variant="quiet"
-				data-ungrouped=""
-				aria-pressed={draft.ungrouped ? "true" : "false"}
-				onclick={() => set({ ungrouped: !draft.ungrouped })}>
-				{tr("cards.filter.ungrouped")}
-			</button>
-		</div>
-	</fieldset>
-	<fieldset>
+<FilterSheet
+	heading={tr("cards.filter.title")}
+	{shown}
+	label={showLabel}
+	onclear={() => {
+		draft = { ...DEFAULT_CARDS_VIEW, q: draft.q }
+	}}
+	onapply={() => onapply({ ...draft })}
+	{onclose}>
+	<FilterChips
+		legend={tr("ready.filter.location")}
+		name="location"
+		options={places}
+		selected={draft.locations}
+		ontoggle={(location: string) => set({ locations: toggled(draft.locations, location) })} />
+	<FilterChips
+		legend={tr("ready.filter.owner")}
+		name="owner"
+		options={ownerOptions}
+		selected={draft.owners}
+		ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner as Owner) })}>
+		<button
+			type="button"
+			data-variant="quiet"
+			data-ungrouped=""
+			aria-pressed={draft.ungrouped ? "true" : "false"}
+			onclick={() => set({ ungrouped: !draft.ungrouped })}>
+			{tr("cards.filter.ungrouped")}
+		</button>
+	</FilterChips>
+	<fieldset class="filter-group">
 		<legend id={sortLegend}>{tr("cards.filter.sortBy")}</legend>
 		<div class="set" role="radiogroup" aria-labelledby={sortLegend}>
 			{#each CARDS_SORTS as sort (sort)}
@@ -141,69 +123,9 @@
 			{/each}
 		</div>
 	</fieldset>
-	<div class="footer">
-		<button
-			type="button"
-			data-variant="quiet"
-			data-action="clear"
-			onclick={() => {
-				draft = { ...DEFAULT_CARDS_VIEW, q: draft.q }
-			}}>
-			{tr("tx.filter.clear")}
-		</button>
-		<button type="button" data-action="apply" disabled={shown === 0} onclick={apply}>{showLabel}</button>
-	</div>
-</Sheet>
+</FilterSheet>
 
 <style>
-	/* The legacy `filterSheet` look: a muted legend over a wrapping row of pill chips. */
-	fieldset {
-		display: flex;
-		flex-direction: column;
-		gap: var(--cc-space-1);
-		min-inline-size: 0;
-		margin: 0;
-		padding: 0;
-		border: 0;
-	}
-
-	legend {
-		padding: 0;
-		margin-bottom: var(--cc-space-1);
-		font-size: var(--cc-text-sm);
-		font-weight: 400;
-		letter-spacing: normal;
-		text-transform: none;
-		color: var(--cc-text-muted);
-	}
-
-	.choices {
-		display: flex;
-		flex-direction: row;
-		flex-wrap: wrap;
-		gap: var(--cc-space-2);
-	}
-
-	/* Raised over app.css's `.page button`. */
-	.choices button[aria-pressed] {
-		padding: var(--cc-space-1) var(--cc-space-3);
-		font-weight: 400;
-		color: var(--cc-text);
-		background: var(--cc-surface-sunken);
-		border-color: transparent;
-		border-radius: var(--cc-radius-pill);
-	}
-
-	.choices button[aria-pressed]:hover {
-		background: var(--cc-border);
-	}
-
-	.choices button[aria-pressed="true"] {
-		font-weight: 600;
-		color: var(--cc-success);
-		background: var(--cc-accent-surface);
-	}
-
 	/* The sort as a radio list (the prototype's filter sheet): one row per sort on a panel, its
 	   words on the left and the radio mark on the right. */
 	.set {
@@ -250,21 +172,5 @@
 		.set input[type="radio"] {
 			appearance: auto;
 		}
-	}
-
-	.footer {
-		display: flex;
-		flex-direction: row;
-		gap: var(--cc-space-2);
-	}
-
-	.footer button[data-action] {
-		padding-block: var(--cc-space-3);
-		font-size: var(--cc-text-md);
-		font-weight: 650;
-	}
-
-	.footer button[data-action="apply"] {
-		flex: 1 1 auto;
 	}
 </style>
