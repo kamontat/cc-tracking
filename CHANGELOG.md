@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-10: Several orders per card on a purchase list, and a right-aligned update bar
+## 2026-11-10: Several orders per card on a purchase list, drafts before the review, merging same-day lists, a sectioned and filterable Lists view, and a right-aligned update bar
 
 ### Features
 
@@ -15,6 +15,22 @@ reasons don't show up in the code.
   _Not made_ on its own and saved as its own purchase. A reopened draft gathers a card's
   orders back into its one panel (RD-09, DD-186).
 
+- _Save as draft_ sits on _Enter amounts_, under _Review_, so a list can be kept before it is
+  reviewed. A draft is the list of cards with each amount optional: only text that is not money
+  stops it. A card with no amount yet is stored as amount `0`, which on a draft means "not set";
+  it opens blank, reads `—` in an opened row and adds nothing to the total (RD-09, DD-187).
+
+- Lists on the same day with the same status merge: draft with draft, waiting with waiting.
+  Saving a draft or marking a list sent on a day that already has one of that kind first asks
+  _Merge_ or _Keep separate_, and a draft or waiting row on Home's _Needs you_ and the _Lists_
+  view offers _Merge with N other lists_. Every order is kept, a card's orders together, and
+  merged waiting lists keep the earliest sent time (DD-187).
+
+- The _Lists_ view has the ledger's search box and _Filter_ button, with no sort. Search
+  matches a line's card id, name, last 4 or note; the _Filter lists_ sheet offers _Status_,
+  _Card_ and _Date_, and the filters in use show as removable chips. Its address keys are its
+  own: `lq`, `status`, `lcard`, `lrange`, `lfrom`, `lto` (DD-189).
+
 ### Improvements
 
 - Room after, the over-room and shared-limit warnings and the total count a card's orders
@@ -24,12 +40,30 @@ reasons don't show up in the code.
 - A card with several orders is named once in Home's list rows, the reply's _Move … to a
   draft_ and the saved list's moved note.
 
+- The _Lists_ view is in sections: _Drafts_, then _Waiting for the spender_, then saved lists
+  grouped by their date (`Saved · <date>`), newest first, each a small heading over its own row
+  panel like the ledger's days. The status chips moved into the filter sheet (DD-188, DD-189).
+
+- The review offers _Mark as sent_ only, and Backup version 3 accepts a line amount of `0` on a
+  draft (and only there), so a draft with blank amounts restores (DC-06).
+
+- A draft with no amounts yet totals `฿0.00` with no minus sign on Home and in the _Lists_
+  view.
+
 - The update bar reads _New update is available_ with _Reload_ (Thai _มีอัพเดตใหม่_ with
   _โหลดข้อมูล_), and from 900px it sits at the right end of the page's width, under the tabs,
   instead of centred; on a phone it stays centred (DD-181, FR-38).
 
 - Biome no longer checks `.opencode/`, as it already skipped `.claude/`: formatting rewrote the
   playwright-cli skill's front matter (its `allowed-tools` globs) and failed `bun run check`.
+
+### Bug fixes
+
+- An opened row's buttons wrap within the row: a third button (a list's _Merge_) ran off a
+  390px phone and hid _Confirm_.
+
+- An opened row's details have a gap under the head, as below their last line, so the first
+  line no longer touches the open head's ground (Home, the ledger, _Upcoming_ and _Lists_).
 
 ### Decisions
 
@@ -41,6 +75,18 @@ reasons don't show up in the code.
 
 - An order's remove is an × icon rather than a second _Remove_ word, which read as a duplicate
   of the card's own _Remove_ right above it.
+
+- Merging joins only lists of the same status. Saved lists do not merge, since their purchases
+  carry the list's id (DD-66); waiting lists merge without a resend, since the spender already
+  has every line. The merged list is written before the others are deleted, so a failure
+  part-way leaves a line twice rather than losing it.
+
+- A draft's blank amount is `0` rather than a missing field, so totals and the stored shape
+  stay as they were; only a draft may hold it.
+
+- The _Lists_ view's search and filters use their own address keys rather than sharing the
+  ledger's, so a ledger search does not carry into it. _Merge_ still counts lists the filter
+  hides, since they are on that day all the same.
 
 ## 2026-11-08: Offline scripts load whatever the server's Vary header, the list image keeps its amounts on iPad, and Cards sorts by upcoming dates
 
