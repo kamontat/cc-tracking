@@ -13,3 +13,9 @@ export const sortFieldLabel = (field: SortField): string => t(`sort.field.${fiel
 
 /** Which way a field runs, in words: *Newest first*, *Most room*; also the page's sort chip. */
 export const sortOrderLabel = (field: SortField, dir: SortDir): string => t(`sort.order.${field}.${dir}`)
+
+/**
+ * A direction's short words, for the order switch: *Newest*, *Most*. Always found inside the
+ * full words (`sortOrderLabel`), which name the button, so what is seen is what is said.
+ */
+export const sortShortLabel = (field: SortField, dir: SortDir): string => t(`sort.short.${field}.${dir}`)

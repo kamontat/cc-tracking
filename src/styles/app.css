@@ -1260,12 +1260,66 @@ a:any-link:hover {
 	background: var(--cc-accent-surface);
 }
 
-/* The *Sort* section's second row: which way the picked field runs. */
-.filter-order {
+/* The *Sort* section (DD-193): the legend at the left of its row and the order switch at the
+   right, then the field chips under both. Floated, since a floated legend is laid out like any
+   other box and the fieldset's flex column would ignore floats. */
+.filter-group.filter-sort {
+	display: block;
+}
+
+.filter-sort > legend {
+	float: inline-start;
+	padding-block: var(--cc-space-1);
+	margin: 0;
+}
+
+.filter-sort > .filter-head {
+	float: inline-end;
+}
+
+.filter-sort > .filter-chips {
+	clear: both;
+	padding-top: var(--cc-space-2);
+}
+
+/* The order switch: two halves of one pill, the picked one filled (the sheets' *Sort*, *Owed*). */
+.filter-seg {
+	display: inline-flex;
+	flex-direction: row;
 	min-inline-size: 0;
-	margin: var(--cc-space-1) 0 0;
-	padding: 0;
-	border: 0;
+	margin: 0;
+	padding: calc(var(--cc-space-1) / 2);
+	background: var(--cc-surface);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-pill);
+}
+
+.page .filter-seg button[aria-pressed] {
+	padding: calc(var(--cc-space-1) * 0.75) var(--cc-space-3);
+	font-size: var(--cc-text-sm);
+	font-weight: 500;
+	color: var(--cc-text-muted);
+	white-space: nowrap;
+	background: transparent;
+	border-color: transparent;
+	border-radius: var(--cc-radius-pill);
+}
+
+.page .filter-seg button[aria-pressed]:hover {
+	background: var(--cc-surface-sunken);
+}
+
+.page .filter-seg button[aria-pressed="true"] {
+	font-weight: 650;
+	color: var(--cc-accent-text);
+	background: var(--cc-accent);
+}
+
+/* Forced colours drop the fill, so the picked half keeps an outline. */
+@media (forced-colors: active) {
+	.page .filter-seg button[aria-pressed="true"] {
+		outline: var(--cc-ring-width) solid CanvasText;
+	}
 }
 
 /* *Show all N cards* and *Show fewer* end the row of card chips as a quiet link. */

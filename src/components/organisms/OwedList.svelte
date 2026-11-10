@@ -16,8 +16,8 @@
 	import { sortFieldLabel, sortOrderLabel } from "#lib/ui/sort-label"
 
 	/**
-	 * "Owed on each card": a heading with its sort chip (the field, and a button showing which way it
-	 * runs that reverses it), then a card list of payment tiles, one for
+	 * "Owed on each card": a heading with its sort chip (the field) and the order switch (↓ | ↑,
+	 * the sort's own way first, each named by its full words, DD-193), then a card list of payment tiles, one for
 	 * every card that owes money or holds credit, each a link to the payment sheet on its card. The
 	 * tile is the payment picker's (DD-166); the list is one column, since it sits in a narrow
 	 * column beside the ledger from 900px and has the phone's width below it.
@@ -61,9 +61,14 @@
 		void lang
 		return sortFieldLabel(option)
 	}
-	const flipLabel = $derived.by(() => {
+	/** The order switch's two ways, the sort's own first, each named by its full words. */
+	const ways = $derived.by(() => {
 		void lang
-		return t("sort.flip", { order: sortOrderLabel(sort, dir) })
+		const own = OWED_DIRS[sort]
+		return [own, own === "asc" ? "desc" : "asc"].map((way) => ({
+			dir: way as SortDir,
+			label: sortOrderLabel(sort, way as SortDir),
+		}))
 	})
 
 	onMount(() =>
@@ -92,16 +97,20 @@
 						{/each}
 					</select>
 				</label>
-				<button
-					type="button"
-					class="flip"
-					data-variant="quiet"
-					data-action="flip-sort"
-					aria-label={flipLabel}
-					title={flipLabel}
-					onclick={() => onsort(sort, dir === "asc" ? "desc" : "asc")}>
-					{dir === "asc" ? "↑" : "↓"}
-				</button>
+				<fieldset class="filter-seg" aria-label={tr("sort.order")}>
+					{#each ways as way (way.dir)}
+						<button
+							type="button"
+							data-variant="quiet"
+							data-dir={way.dir}
+							aria-pressed={dir === way.dir ? "true" : "false"}
+							aria-label={way.label}
+							title={way.label}
+							onclick={() => onsort(sort, way.dir)}>
+							{way.dir === "asc" ? "↑" : "↓"}
+						</button>
+					{/each}
+				</fieldset>
 			</div>
 		{/if}
 	</div>
@@ -150,14 +159,6 @@
 		flex-direction: row;
 		align-items: stretch;
 		gap: var(--cc-space-1);
-	}
-
-	/* The order button: as tall as the chip, its arrow centred. */
-	.owed-list .flip {
-		align-self: stretch;
-		padding: 0 var(--cc-space-2);
-		font-size: var(--cc-text-sm);
-		border-radius: var(--cc-radius-md);
 	}
 
 	/* The legacy `listControls` chip: its name, then a select stripped of its own box. */

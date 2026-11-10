@@ -97,7 +97,7 @@ test("a sheet of Kept in, Account holder and Sort, counting cards", () => {
 	expect(texts(root, "[data-owner]")).toEqual(["KC", "NT"])
 	expect(texts(root, "[data-sort]")).toEqual(["Room", "Close date", "Due date"])
 	expect(root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed")).toBe("true")
-	expect(texts(root, "[data-dir]")).toEqual(["↓ Most room", "↑ Least room"])
+	expect(texts(root, "[data-dir]")).toEqual(["↓ Most", "↑ Least"])
 	expect(text(root, "[data-action=apply]")).toBe("Show 5 cards")
 	const chip = root.querySelector("[data-location=krabi]")
 	expect(chip?.getAttribute("type")).toBe("button")

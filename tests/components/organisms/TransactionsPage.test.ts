@@ -314,11 +314,11 @@ test("Owed tiles lead to the payment sheet on the card, with each group's room",
 	expect(tile?.querySelector(".rail")?.getAttribute("aria-label")).toMatch(/of the limit used$/)
 })
 
-test("the Owed order button reverses the order, kept in the address as odir", async () => {
+test("the Owed order switch reverses the order, kept in the address as odir", async () => {
 	const { written } = await open("?view=owed")
-	await press($('.tx-owed [data-action="flip-sort"]'))
+	await press($('.tx-owed [data-dir="desc"]'))
 	expect(written.at(-1)).toBe("?view=owed&odir=desc")
-	expect(text($('.tx-owed [data-action="flip-sort"]'))).toBe("↓")
+	expect($('.tx-owed [data-dir="desc"]')?.getAttribute("aria-pressed")).toBe("true")
 })
 
 test("Mark paid moves a plan into the ledger and lowers owed", async () => {

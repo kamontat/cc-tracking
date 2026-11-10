@@ -211,7 +211,7 @@ test("card choices are in the line form; it sorts by date or amount, either way"
 	const { root } = show()
 	expect(text(root.querySelector("[data-card=A]"))).toBe("A) Card A (1111)")
 	expect([...root.querySelectorAll("[data-sort]")].map(text)).toEqual(["Date", "Amount"])
-	expect([...root.querySelectorAll("[data-dir]")].map(text)).toEqual(["↓ Newest first", "↑ Oldest first"])
+	expect([...root.querySelectorAll("[data-dir]")].map(text)).toEqual(["↓ Newest", "↑ Oldest"])
 })
 
 test("apply waits for the sheet to slide away before it is handed back", async () => {
