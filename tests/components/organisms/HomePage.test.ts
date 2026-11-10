@@ -327,6 +327,16 @@ test("Delete on a Needs you draft removes it at once", async () => {
 	expect($('[data-row="list:d1"]')).toBeNull()
 })
 
+test("Merge on a Needs you draft takes in the other draft for that day", async () => {
+	const repo = new InMemoryRepository()
+	await repo.savePurchaseList(draft)
+	await repo.savePurchaseList({ ...draft, id: "d2", lines: [{ cardId: "A", amount: 0 }] })
+	await setup(repo)
+	await tapIn("list:d1", "merge")
+	expect(await repo.listPurchaseLists()).toEqual([draft])
+	expect($('[data-row="list:d2"]')).toBeNull()
+})
+
 test("Delete refuses a draft sent since, and says why", async () => {
 	const repo = new InMemoryRepository()
 	await repo.savePurchaseList(draft)

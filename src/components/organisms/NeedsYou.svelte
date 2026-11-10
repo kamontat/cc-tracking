@@ -11,7 +11,7 @@
 	import TwoStepButtons from "#components/molecules/TwoStepButtons.svelte"
 	import { addDays } from "#lib/domain/date"
 	import { formatAmount, MINUS } from "#lib/domain/money"
-	import { listTotal } from "#lib/domain/purchase-list"
+	import { listTotal, mergeCandidates } from "#lib/domain/purchase-list"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { PAST_TODAY } from "#lib/ui/cycle-line"
 	import { listPageAddress } from "#lib/ui/list-address"
@@ -38,7 +38,8 @@
 	 * bill its billing cycle line, red up to today, *Pay* the amount left and *Open card*; a plan
 	 * *Paid* (`onmarkpaid`) and a two-step *Delete* (`ondeletepayment`); a waiting list its lines,
 	 * *Record reply* and a two-step *Confirm* (`onconfirmlist`); a draft its lines, *Continue* and
-	 * a one-step *Delete* (`ondeletedraft`, DD-74). Home writes them. More than five show the
+	 * a one-step *Delete* (`ondeletedraft`, DD-74); a waiting list or draft that shares its day
+	 * with another of its status also *Merge* (`onmergelists`, DD-187). Home writes them. More than five show the
 	 * first five and *See more (N)*, which opens the rest in place, in the same order.
 	 */
 	interface Props {
@@ -57,6 +58,8 @@
 		onconfirmlist?: ((list: PurchaseList) => void) | undefined
 		/** *Delete* on a draft. */
 		ondeletedraft?: ((list: PurchaseList) => void) | undefined
+		/** *Merge* on a waiting list or draft: the other same-day lists of its status go into it. */
+		onmergelists?: ((list: PurchaseList) => void) | undefined
 	}
 
 	const {
@@ -68,7 +71,11 @@
 		ondeletepayment,
 		onconfirmlist,
 		ondeletedraft,
+		onmergelists,
 	}: Props = $props()
+
+	/** Every waiting list and draft on Home, folded or not, to find a list's merge partners. */
+	const lists = $derived(items.flatMap((item) => (item.kind === "waiting" || item.kind === "draft" ? [item.list] : [])))
 
 	/** How many things show before *See more*. */
 	const SHOWN = 5
@@ -132,10 +139,11 @@
 		say: string | Say
 	}
 
-	const listAmount = (list: PurchaseList) => ({
-		text: `${MINUS}${formatAmount(listTotal(list))}`,
-		tone: "muted" as const,
-	})
+	/** A list's total, money out; a draft with no amounts yet totals nothing, with no sign. */
+	const listAmount = (list: PurchaseList) => {
+		const total = listTotal(list)
+		return { text: `${total > 0 ? MINUS : ""}${formatAmount(total)}`, tone: "muted" as const }
+	}
 
 	const wordsOf = (item: NeedsItem): Words => {
 		void lang
@@ -215,9 +223,18 @@
 					parts={words.parts}
 					say={words.say}>
 					{#snippet actions()}
+						{#snippet merge(list: PurchaseList)}
+							{@const others = mergeCandidates(list, lists).length}
+							{#if others > 0}
+								<button type="button" data-variant="quiet" data-action="merge" onclick={() => onmergelists?.(list)}>
+									{others === 1 ? tr("row.merge.one") : tr("row.merge.many", { count: others })}
+								</button>
+							{/if}
+						{/snippet}
 						{#if item.kind === "waiting"}
 							{@const list = item.list}
 							<a class="btn" data-action="record-reply" href={listPageAddress(list)}>{tr("row.recordReply")}</a>
+							{@render merge(list)}
 							<TwoStepButtons {steps} kind="list" {list} onconfirm={() => onconfirmlist?.(list)} />
 						{:else if item.kind === "overdue"}
 							<a class="btn" data-action="pay" href={payAddress({ cardId: item.card.id, amount: item.remaining })}
@@ -241,6 +258,7 @@
 						{:else}
 							{@const list = item.list}
 							<a class="btn" data-action="continue" href={listPageAddress(list)}>{tr("row.continue")}</a>
+							{@render merge(list)}
 							<button
 								type="button"
 								data-variant="danger"

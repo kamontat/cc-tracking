@@ -4,7 +4,13 @@ import { expect, test } from "vitest"
 
 import { InMemoryRepository } from "#lib/storage/repository"
 import { loadMoneyData } from "#lib/ui/money-data"
-import { confirmWaitingList, deleteDraftList, deletePlannedPayment, markPlanPaid } from "#lib/ui/row-actions"
+import {
+	confirmWaitingList,
+	deleteDraftList,
+	deletePlannedPayment,
+	markPlanPaid,
+	mergeSameDayLists,
+} from "#lib/ui/row-actions"
 
 const TODAY = "2026-10-31"
 const card: Card = {
@@ -79,4 +85,33 @@ test("deleteDraftList refuses a list no longer a draft", async () => {
 test("deleteDraftList refuses a missing list", async () => {
 	const repo = await setup()
 	await expect(deleteDraftList(repo, "nope")).rejects.toThrow()
+})
+
+test("mergeSameDayLists merges the other same-day lists of its status into it", async () => {
+	const repo = await setup()
+	await repo.savePurchaseList(list("draft"))
+	await repo.savePurchaseList({ ...list("draft"), id: "l2", lines: [{ cardId: "A", amount: 200_00 }] })
+	await repo.savePurchaseList({ ...list("sent"), id: "l3" })
+	await mergeSameDayLists(repo, "l1")
+	const stored = await repo.listPurchaseLists()
+	expect(stored.map((l) => l.id).sort()).toEqual(["l1", "l3"])
+	expect(stored.find((l) => l.id === "l1")?.lines).toEqual([
+		{ cardId: "A", amount: 500_00 },
+		{ cardId: "A", amount: 200_00 },
+	])
+})
+
+test("mergeSameDayLists refuses when nothing shares the list's day and status", async () => {
+	const repo = await setup()
+	await repo.savePurchaseList(list("draft"))
+	await repo.savePurchaseList({ ...list("sent"), id: "l3" })
+	await expect(mergeSameDayLists(repo, "l1")).rejects.toThrow()
+	expect((await repo.listPurchaseLists()).length).toBe(2)
+})
+
+test("mergeSameDayLists refuses a saved list", async () => {
+	const repo = await setup()
+	await repo.savePurchaseList(list("saved"))
+	await repo.savePurchaseList({ ...list("saved"), id: "l2" })
+	await expect(mergeSameDayLists(repo, "l1")).rejects.toThrow()
 })

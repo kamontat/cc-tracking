@@ -75,14 +75,18 @@ function matchesQuery(entry: TxEntry, query: string): boolean {
 	return /^[\d,.฿\s]+$/.test(q) && digits(printed).includes(wanted)
 }
 
+/** The dates a filter's *Date* choice covers: a preset, or from and to; either end may be open (""). */
+function dateRange(
+	filter: { range: RangePreset | ""; from: PlainDate | ""; to: PlainDate | "" },
+	today: PlainDate,
+): { from: PlainDate | ""; to: PlainDate | "" } {
+	if (filter.range && filter.range !== "custom") return presetRange(filter.range, today)
+	if (filter.range === "custom" || filter.from || filter.to) return normaliseRange({ from: filter.from, to: filter.to })
+	return { from: "", to: "" }
+}
+
 export function filterEntries(entries: TxEntry[], filter: TxFilter, today: PlainDate): TxEntry[] {
-	let range: { from: PlainDate | ""; to: PlainDate | "" } = {
-		from: "",
-		to: "",
-	}
-	if (filter.range && filter.range !== "custom") range = presetRange(filter.range, today)
-	else if (filter.range === "custom" || filter.from || filter.to)
-		range = normaliseRange({ from: filter.from, to: filter.to })
+	const range = dateRange(filter, today)
 	return entries.filter(
 		(e) =>
 			(filter.types.length === 0 || filter.types.includes(e.kind)) &&
@@ -176,9 +180,78 @@ export function listIdOf(purchaseId: string): string | null {
 
 export type ListFilter = ListStatus[]
 
+/** The Lists view's search and filters (DD-189), kept apart from the ledger's. */
+export type ListsFilter = {
+	q: string
+	status: ListStatus[]
+	cards: string[]
+	range: RangePreset | ""
+	from: PlainDate | ""
+	to: PlainDate | ""
+}
+
+export const DEFAULT_LISTS_FILTER: ListsFilter = { q: "", status: [], cards: [], range: "", from: "", to: "" }
+
+/**
+ * The lists `filter` keeps: in a status ticked, with a card picked on any line, dated in the
+ * range, and matching the search on a line's card id, name or last 4, or its note. Order is kept.
+ */
+export function filterLists(
+	lists: PurchaseList[],
+	filter: ListsFilter,
+	cards: Card[],
+	today: PlainDate,
+): PurchaseList[] {
+	const range = dateRange(filter, today)
+	const q = filter.q.trim().toLowerCase()
+	const byId = new Map(cards.map((card) => [card.id, card]))
+	const matches = (list: PurchaseList) =>
+		q === "" ||
+		list.lines.some((line) => {
+			const card = byId.get(line.cardId)
+			return [line.cardId, card?.name ?? "", card?.last4 ?? "", line.note ?? ""].some((t) =>
+				t.toLowerCase().includes(q),
+			)
+		})
+	return lists.filter(
+		(list) =>
+			(filter.status.length === 0 || filter.status.includes(list.status)) &&
+			(filter.cards.length === 0 || list.lines.some((line) => filter.cards.includes(line.cardId))) &&
+			(!range.from || compareDates(list.date, range.from) >= 0) &&
+			(!range.to || compareDates(list.date, range.to) <= 0) &&
+			matches(list),
+	)
+}
+
 /** Newest date first; no status ticked means every list. */
 export function listRows(lists: PurchaseList[], filter: ListFilter): PurchaseList[] {
 	return lists
 		.filter((l) => filter.length === 0 || filter.includes(l.status))
 		.sort((a, b) => compareDates(b.date, a.date) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
+}
+
+/** One section of the Lists view: every draft, every waiting list, or the saved lists of one date. */
+export type ListGroup =
+	| { key: "draft" | "sent"; status: "draft" | "sent"; lists: PurchaseList[] }
+	| { key: `saved:${PlainDate}`; status: "saved"; date: PlainDate; lists: PurchaseList[] }
+
+/**
+ * The Lists view's sections (DD-188): drafts, then lists waiting for the spender, then saved
+ * lists grouped by their date, newest date first; each in `listRows` order. Groups the filter
+ * leaves empty are left out.
+ */
+export function listGroups(lists: PurchaseList[], filter: ListFilter): ListGroup[] {
+	const rows = listRows(lists, filter)
+	const groups: ListGroup[] = []
+	for (const status of ["draft", "sent"] as const) {
+		const of = rows.filter((l) => l.status === status)
+		if (of.length > 0) groups.push({ key: status, status, lists: of })
+	}
+	for (const list of rows) {
+		if (list.status !== "saved") continue
+		const last = groups.at(-1)
+		if (last?.status === "saved" && last.date === list.date) last.lists.push(list)
+		else groups.push({ key: `saved:${list.date}`, status: "saved", date: list.date, lists: [list] })
+	}
+	return groups
 }

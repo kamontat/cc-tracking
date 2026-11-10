@@ -130,3 +130,15 @@ test("its words follow a language switch", () => {
 	expect(find("input.search")?.getAttribute("aria-label")).not.toBe("Search")
 	expect(find('[data-chip="loc:krabi"]')?.getAttribute("aria-label")).not.toBe("Remove Krabi")
 })
+
+test("with no sort given, there is no sort chip", () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	mounted = mount(FilterControls, {
+		target: document.body,
+		props: { q: "", placeholder: "Search", onsearch: () => {}, onopen: () => {}, count: 0, chips: [] },
+	})
+	flushSync()
+	expect(document.querySelector('[data-action="sort"]')).toBeNull()
+	expect(document.querySelector('[data-action="filter"]')).not.toBeNull()
+})

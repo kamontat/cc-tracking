@@ -233,11 +233,12 @@
 	}
 
 	/* What opens under the head, a drawer lined up with the text past the icon (DD-165): the
-	   billing cycle line or the parts, then the foot. */
+	   billing cycle line or the parts, then the foot; a gap above, so the first line never touches
+	   the open head's ground. */
 	.a-details {
 		display: grid;
 		gap: var(--cc-space-3);
-		padding-block: 0 var(--cc-space-3);
+		padding-block: var(--cc-space-3);
 		padding-inline-start: var(--a-lead-inline);
 		min-inline-size: 0;
 	}
@@ -266,8 +267,10 @@
 		gap: var(--cc-space-2);
 	}
 
+	/* Never wider than the row, so a third button (a list's Merge) wraps rather than run off a phone. */
 	.a-foot .a-btns {
-		flex: none;
+		flex: 0 1 auto;
+		max-inline-size: 100%;
 		margin-inline-start: auto;
 	}
 

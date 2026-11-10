@@ -97,12 +97,14 @@ const show = async (initial: Shown = {}) => {
 		deleted: [] as CardPayment[],
 		confirmed: [] as PurchaseList[],
 		drafts: [] as PurchaseList[],
+		merged: [] as PurchaseList[],
 	}
 	const props: Record<string, unknown> = {
 		onmarkpaid: (p: CardPayment) => calls.marked.push(p),
 		ondeletepayment: (p: CardPayment) => calls.deleted.push(p),
 		onconfirmlist: (l: PurchaseList) => calls.confirmed.push(l),
 		ondeletedraft: (l: PurchaseList) => calls.drafts.push(l),
+		onmergelists: (l: PurchaseList) => calls.merged.push(l),
 	}
 	for (const key of ["items", "cards", "groups", "today"])
 		Object.defineProperty(props, key, { get: () => values.get(key) })
@@ -586,4 +588,38 @@ test("an opened overdue bill's line is fitted by measuring its labels", async ()
 	} finally {
 		HTMLElement.prototype.getBoundingClientRect = real
 	}
+})
+
+test("a draft or waiting list with another of its status that day offers Merge, which calls back", async () => {
+	const d1 = list("d1", "draft", ["A"])
+	const d2 = list("d2", "draft", ["B"])
+	const w1 = { ...list("w1", "sent", ["A"]), sentAt: "2026-10-30T01:00:00.000Z" }
+	const { root, calls } = await show({
+		items: [
+			{ kind: "waiting", list: w1, total: 100 },
+			{ kind: "draft", list: d1, total: 100 },
+			{ kind: "draft", list: d2, total: 100 },
+		],
+	})
+	await open('[data-row="list:d1"] .a-hit')
+	const details = shownDetails(root) as HTMLElement
+	expect([...details.querySelectorAll(".a-btns > *")].map((b) => b.getAttribute("data-action"))).toEqual([
+		"continue",
+		"merge",
+		"delete-draft",
+	])
+	const merge = details.querySelector('[data-action="merge"]')
+	expect(merge?.getAttribute("data-variant")).toBe("quiet")
+	expect(merge?.textContent?.trim()).toBe("Merge with 1 other list")
+	await click(merge)
+	expect(calls.merged).toEqual([d1])
+	// The one waiting list has no other waiting list that day, so it offers no Merge.
+	await open('[data-row="list:w1"] .a-hit')
+	expect(shownDetails(root)?.querySelector('[data-action="merge"]')).toBeNull()
+})
+
+test("a draft with no amounts yet totals ฿0.00 with no sign", async () => {
+	const blank = { ...list("d1", "draft", ["A"]), lines: [{ cardId: "A", amount: 0 }] }
+	const { root } = await show({ items: [{ kind: "draft", list: blank, total: 0 }] })
+	expect(text(root, '[data-row="list:d1"] .a-hit .amount')).toBe("฿0.00")
 })

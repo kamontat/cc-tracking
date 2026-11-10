@@ -176,9 +176,9 @@ test("mark as sent stores a waiting list and goes home", async () => {
 	expect(visited).toEqual(["/"])
 })
 
-test("save as draft stores a draft", async () => {
+test("save as draft stores a draft from the amounts step", async () => {
 	const { repo, visited } = await setup()
-	await typeAndReview({ A: "125" })
+	await typeAmount("A", "125")
 	await click(document, "save-draft")
 	expect(await stored(repo)).toEqual([
 		{ id: "l-new", date: "2026-10-31", status: "draft", lines: [{ cardId: "A", amount: 125_00 }] },
@@ -250,7 +250,7 @@ test("a reopened draft says which cards were left out and why", async () => {
 test("a draft sent or saved elsewhere is not saved over", async () => {
 	for (const action of ["mark-sent", "save-draft"]) {
 		const { repo, visited } = await setupDraft(draftWith(["A"]))
-		await click(document, "review")
+		if (action === "mark-sent") await click(document, "review")
 		const elsewhere: PurchaseList = {
 			id: "d1",
 			date: "2026-11-02",
@@ -263,7 +263,7 @@ test("a draft sent or saved elsewhere is not saved over", async () => {
 		expect(bannerText(document)).toContain("This list was sent or saved elsewhere, so it was not changed.")
 		expect(await stored(repo)).toEqual([elsewhere])
 		expect(visited).toEqual([])
-		expect($(".list-layout__main .doc")).not.toBeNull()
+		expect($(action === "mark-sent" ? ".list-layout__main .doc" : ".line[data-card]")).not.toBeNull()
 	}
 })
 
@@ -301,7 +301,7 @@ test("a saved list replaces the page in history", async () => {
 			search: "?card=A",
 			props: { mode: "new", share: {}, newId: () => "l-new", navigate: undefined },
 		})
-		await typeAndReview({ A: "125" })
+		await typeAmount("A", "125")
 		await click(document, "save-draft")
 		expect(replace.mock.calls.map(([url]) => String(url))).toEqual(["/"])
 		expect(assign).not.toHaveBeenCalled()
@@ -394,8 +394,10 @@ test("the review puts the table in the main column and its actions in the side p
 	await typeAndReview({ A: "125" })
 	expect($(".list-layout > .list-layout__main .doc")).toBeInstanceOf(HTMLElement)
 	const side = $(".list-layout > .list-layout__side")
-	for (const action of ["copy", "save-image", "mark-sent", "save-draft"])
+	for (const action of ["copy", "save-image", "mark-sent"])
 		expect(side?.querySelector(`[data-action="${action}"]`)).toBeInstanceOf(HTMLElement)
+	// A draft is kept before the review, on the amounts step (DD-187).
+	expect(side?.querySelector('[data-action="save-draft"]')).toBeNull()
 	expect(side?.querySelector('p.status[role="status"]')).toBeInstanceOf(HTMLElement)
 })
 
@@ -524,7 +526,6 @@ test("a card's orders are stored as a line each, in order", async () => {
 	expect(
 		[...document.querySelectorAll<HTMLInputElement>('.line[data-card="A"] [data-field="amount"]')].map((i) => i.value),
 	).toEqual(["100", "200"])
-	await click(document, "review")
 	await click(document, "save-draft")
 	expect((await stored(repo))[0]?.lines).toEqual([
 		{ cardId: "A", amount: 100_00 },
@@ -561,4 +562,103 @@ test("a draft with several orders on a card opens them in the card's one panel",
 		{ cardId: "A", amount: 300_00 },
 		{ cardId: "B", amount: 50_00 },
 	])
+})
+
+test("a draft keeps a card with no amount yet, and reopens it blank", async () => {
+	const { repo } = await setup({ search: "?card=A&card=B" })
+	await typeAmount("A", "125")
+	expect($<HTMLButtonElement>('[data-action="review"]')?.disabled).toBe(false)
+	await click(document, "save-draft")
+	expect((await stored(repo))[0]?.lines).toEqual([
+		{ cardId: "A", amount: 125_00 },
+		{ cardId: "B", amount: 0 },
+	])
+
+	await setupDraft((r) => r.savePurchaseList(draft("d1", ["A", "B"], { lines: [{ cardId: "A", amount: 0 }] })))
+	expect(onList()).toEqual(["A"])
+	expect(amountOf("A")?.value).toBe("")
+})
+
+test("save as draft needs no amount at all, but refuses text that is not money", async () => {
+	const { repo } = await setup()
+	const button = () => $<HTMLButtonElement>('[data-action="save-draft"]')
+	expect(button()?.disabled).toBe(false)
+	await typeAmount("A", "abc")
+	expect(button()?.disabled).toBe(true)
+	await typeAmount("A", "")
+	await click(document, "save-draft")
+	expect((await stored(repo))[0]?.lines).toEqual([{ cardId: "A", amount: 0 }])
+})
+
+const mergeAsk = () => flatText($("[data-merge-ask]"))
+
+test("saving a draft on a day that has one asks to merge, and Merge adds this list to it", async () => {
+	const existing = draft("d0", ["B"], { date: "2026-10-31" })
+	const { repo, visited } = await setup({ before: (r) => r.savePurchaseList(existing) })
+	await typeAmount("A", "125")
+	await click(document, "save-draft")
+	expect(mergeAsk()).toContain("There is already a draft for")
+	expect(await stored(repo)).toEqual([existing])
+	expect(visited).toEqual([])
+	await click(document, "merge")
+	expect(await stored(repo)).toEqual([
+		{
+			...existing,
+			lines: [
+				{ cardId: "B", amount: 100 },
+				{ cardId: "A", amount: 125_00 },
+			],
+		},
+	])
+	expect(visited).toEqual(["/"])
+})
+
+test("Keep separate saves the draft on its own", async () => {
+	const existing = draft("d0", ["B"], { date: "2026-10-31" })
+	const { repo, visited } = await setup({ before: (r) => r.savePurchaseList(existing) })
+	await typeAmount("A", "125")
+	await click(document, "save-draft")
+	await click(document, "keep-separate")
+	expect((await stored(repo)).map((l) => l.id).sort()).toEqual(["d0", "l-new"])
+	expect(visited).toEqual(["/"])
+})
+
+test("a reopened draft merges into the other same-day draft and goes", async () => {
+	const { repo } = await setupDraft(async (r) => {
+		await r.savePurchaseList(draft("d1", ["A"]))
+		await r.savePurchaseList(draft("d2", ["B"]))
+	})
+	await click(document, "save-draft")
+	await click(document, "merge")
+	const lists = await stored(repo)
+	expect(lists.map((l) => l.id)).toEqual(["d2"])
+	expect(lists[0]?.lines.map((l) => l.cardId)).toEqual(["B", "A"])
+})
+
+test("marking sent on a day with a waiting list asks to add these orders to it", async () => {
+	const waiting = { ...sent("w0", ["B"]), date: "2026-10-31" }
+	const { repo, visited } = await setup({ before: (r) => r.savePurchaseList(waiting) })
+	await typeAndReview({ A: "125" })
+	await click(document, "mark-sent")
+	expect(mergeAsk()).toContain("already waiting for the spender")
+	await click(document, "merge")
+	expect(await stored(repo)).toEqual([
+		{
+			...waiting,
+			lines: [
+				{ cardId: "B", amount: 100 },
+				{ cardId: "A", amount: 125_00 },
+			],
+		},
+	])
+	expect(visited).toEqual(["/"])
+})
+
+test("the merge question reads in Thai", async () => {
+	await setup({ before: (r) => r.savePurchaseList(draft("d0", ["B"], { date: "2026-10-31" })) })
+	await click(document, "save-draft")
+	setLocale("th")
+	await settle()
+	expect(mergeAsk()).toContain("มีฉบับร่างของวันที่")
+	expect(flatText($('[data-action="keep-separate"]'))).toBe("แยกไว้")
 })

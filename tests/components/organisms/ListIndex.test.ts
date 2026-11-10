@@ -1,14 +1,15 @@
-import type { Card, ListStatus, PurchaseList } from "#lib/domain/types"
+import type { Card, PurchaseList } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
 import { afterEach, expect, test } from "vitest"
 
 import ListIndex from "#components/organisms/ListIndex.svelte"
+import { DEFAULT_LISTS_FILTER, type ListsFilter } from "#lib/domain/transactions"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * Transactions' Lists view: status chips, then one panel of purchase-list rows that open in
+ * Transactions' Lists view: sections of purchase-list rows, narrowed by the page's filter, that open in
  * place. Ported from the legacy `cc-list-index` tests, against the same markup.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -58,12 +59,16 @@ const lists = (): PurchaseList[] => [
 	},
 ]
 
-type Options = { lists?: PurchaseList[]; status?: ListStatus[] }
+type Options = { lists?: PurchaseList[]; filter?: Partial<ListsFilter> }
 
 /** Mounts the view; `set` changes its lists afterwards, as a repaint does. */
 const draw = (options: Options = {}) => {
 	const state = new SvelteMap<string, PurchaseList[]>([["lists", options.lists ?? lists()]])
-	const seen = { confirm: [] as PurchaseList[], deleted: [] as PurchaseList[], status: [] as ListStatus[][] }
+	const seen = {
+		confirm: [] as PurchaseList[],
+		deleted: [] as PurchaseList[],
+		merged: [] as PurchaseList[],
+	}
 	mounted = mount(ListIndex, {
 		target: document.body,
 		props: {
@@ -72,15 +77,16 @@ const draw = (options: Options = {}) => {
 			},
 			cards: [card("A"), card("B")],
 			groups: [],
-			status: options.status ?? [],
+			filter: { ...DEFAULT_LISTS_FILTER, ...options.filter },
+			today: "2026-10-31",
 			onconfirmlist: (list: PurchaseList) => {
 				seen.confirm.push(list)
 			},
 			ondeletedraft: (list: PurchaseList) => {
 				seen.deleted.push(list)
 			},
-			onstatus: (status: ListStatus[]) => {
-				seen.status.push(status)
+			onmergelists: (list: PurchaseList) => {
+				seen.merged.push(list)
 			},
 		},
 	})
@@ -214,23 +220,9 @@ test("an opened saved list shows made and not made, and Open links its page", ()
 	expect(text(btns[0])).toBe("Open")
 })
 
-test("status chips are a fieldset of pressed buttons that filter and call back", () => {
-	const { seen } = draw({ status: ["saved"] })
-	expect(root.querySelectorAll(".row-panel [data-row]").length).toBe(1)
-	const chips = root.querySelector("fieldset.chips")
-	expect(chips).not.toBeNull()
-	expect([...(chips?.querySelectorAll("button") ?? [])].map((b) => b.getAttribute("data-status"))).toEqual([
-		"draft",
-		"sent",
-		"saved",
-	])
-	expect(root.querySelector("[data-status=saved]")?.getAttribute("aria-pressed")).toBe("true")
-	expect(root.querySelector("[data-status=draft]")?.getAttribute("aria-pressed")).toBe("false")
-	expect(root.querySelector("[data-status=draft]")?.getAttribute("data-variant")).toBe("quiet")
-	expect(text(root.querySelector("[data-status=sent]"))).toBe("Waiting for the spender")
-	click(root.querySelector("[data-status=draft]"))
-	click(root.querySelector("[data-status=saved]"))
-	expect(seen.status).toEqual([["saved", "draft"], []])
+test("the view draws no filter controls of its own: the page holds them", () => {
+	draw()
+	expect(root.querySelector("fieldset.chips, [data-status], input[type=search]")).toBeNull()
 })
 
 test("empty names the next step", () => {
@@ -238,15 +230,13 @@ test("empty names the next step", () => {
 	const empty = root.querySelector(".empty")
 	expect(empty?.textContent?.trim()).toBe("No lists yet. Start one from Home.")
 	expect(empty?.getAttribute("data-refocus")).toBe("lists")
-	expect(root.querySelector(".chips")).toBeNull()
 })
 
-test("lists that no chip matches say so instead of asking for a first list", () => {
+test("lists that no filter matches say so instead of asking for a first list", () => {
 	const only = lists().filter((l) => l.status === "draft")
-	draw({ lists: only, status: ["saved"] })
-	expect(root.querySelector(".empty")?.textContent?.trim()).toBe(
-		"No list has these statuses. Clear a status to see more.",
-	)
+	draw({ lists: only, filter: { status: ["saved"] } })
+	expect(root.querySelector(".empty")?.textContent?.trim()).toBe("No list matches. Clear a filter to see more.")
+	expect(root.querySelector(".empty")?.getAttribute("data-refocus")).toBe("lists")
 	expect(root.querySelector("[data-row]")).toBeNull()
 })
 
@@ -259,13 +249,6 @@ test("opened lists read in Thai", () => {
 	expect(text(shown()?.querySelector(".a-say"))).toBe("ส่งเมื่อ 1 พ.ย. กดยืนยันเพื่อบันทึกทุกรายการว่าซื้อแล้ว")
 })
 
-test("the chips follow a switch of language", () => {
-	draw()
-	setLocale("th")
-	flushSync()
-	expect(text(root.querySelector("[data-status=draft]"))).not.toBe("Draft")
-})
-
 /** Opens `id`, focuses its draft's Delete, then repaints without the list, as a delete does. */
 const deleteDraft = async (all: PurchaseList[], id: string) => {
 	const { set } = draw({ lists: all })
@@ -275,10 +258,17 @@ const deleteDraft = async (all: PurchaseList[], id: string) => {
 	await settle()
 }
 
-test("when a deleted draft's row goes, focus moves to the next row's head", async () => {
-	await deleteDraft(lists(), "d1")
+test("when a deleted draft's row goes, focus moves to the next row's head in its section", async () => {
+	const d2: PurchaseList = { id: "d2", date: "2026-10-28", status: "draft", lines: [{ cardId: "A", amount: 100_00 }] }
+	await deleteDraft([...lists(), d2], "d1")
 	expect(root.querySelector('[data-row="list:d1"]')).toBeNull()
-	expect(document.activeElement).toBe(root.querySelector('[data-row="list:w1"] button.a-hit'))
+	expect(document.activeElement).toBe(root.querySelector('[data-row="list:d2"] button.a-hit'))
+})
+
+test("when the last draft goes, focus moves to the next section's heading", async () => {
+	await deleteDraft(lists(), "d1")
+	expect(root.querySelector('[data-section="draft"]')).toBeNull()
+	expect(document.activeElement).toBe(root.querySelector('[data-refocus="lists:sent"]'))
 })
 
 test("when the only list goes, focus moves to the empty note", async () => {
@@ -293,4 +283,86 @@ test("when the only list goes, focus moves to the empty note", async () => {
 test("the panel clips the hover ground at its rounded corners", async () => {
 	const source = await Bun.file("src/components/organisms/ListIndex.svelte").text()
 	expect(source).toMatch(/\.row-panel\s*\{[^}]*overflow: clip/)
+})
+
+test("a draft or waiting list with others of its status that day offers Merge, which calls back", () => {
+	const all = lists()
+	const w2: PurchaseList = { ...(all[1] as PurchaseList), id: "w2" }
+	const w3: PurchaseList = { ...(all[1] as PurchaseList), id: "w3" }
+	const { seen } = draw({ lists: [...all, w2, w3] })
+	click(head("w1"))
+	const open = shown() as HTMLElement
+	const merge = open.querySelector('[data-action="merge"]')
+	expect(merge?.textContent?.trim()).toBe("Merge with 2 other lists")
+	expect([...open.querySelectorAll(".a-btns > *")].map((b) => b.getAttribute("data-action"))[1]).toBe("merge")
+	click(merge)
+	expect(seen.merged.map((l) => l.id)).toEqual(["w1"])
+	// The lone draft and the saved list offer none.
+	click(head("d1"))
+	expect(shown()?.querySelector('[data-action="merge"]')).toBeNull()
+	click(head("s1"))
+	expect(shown()?.querySelector('[data-action="merge"]')).toBeNull()
+})
+
+test("a draft with no amounts yet totals ฿0.00 with no sign", () => {
+	draw({ lists: [{ id: "d1", date: "2026-10-31", status: "draft", lines: [{ cardId: "A", amount: 0 }] }] })
+	expect(text(root.querySelector('[data-row="list:d1"] .a-hit .amount'))).toBe("฿0.00")
+})
+
+test("lists sit in sections: drafts, waiting, then saved lists by date, newest first", () => {
+	const s2: PurchaseList = { ...(lists()[2] as PurchaseList), id: "s2", date: "2026-10-27" }
+	const s3: PurchaseList = { ...(lists()[2] as PurchaseList), id: "s3" }
+	draw({ lists: [...lists(), s2, s3] })
+	const sections = [...root.querySelectorAll<HTMLElement>("section[data-section]")]
+	expect(sections.map((sec) => sec.getAttribute("data-section"))).toEqual([
+		"draft",
+		"sent",
+		"saved:2026-10-29",
+		"saved:2026-10-27",
+	])
+	expect(sections.map((sec) => text(sec.querySelector("h3")))).toEqual([
+		"Drafts",
+		"Waiting for the spender",
+		"Saved · Thu, 29 Oct 2026",
+		"Saved · Tue, 27 Oct 2026",
+	])
+	// Each section is its own row panel; a heading can take focus when a row near it goes.
+	expect(sections.map((sec) => [...sec.querySelectorAll(".row-panel [data-row]")].length)).toEqual([1, 1, 2, 1])
+	expect(sections[0]?.querySelector("h3")?.getAttribute("tabindex")).toBe("-1")
+	expect(sections[0]?.querySelector("h3")?.getAttribute("data-refocus")).toBe("lists:draft")
+})
+
+test("the filter narrows the rows, and only its sections show", () => {
+	draw({ filter: { status: ["saved"] } })
+	expect([...root.querySelectorAll("section[data-section]")].map((sec) => sec.getAttribute("data-section"))).toEqual([
+		"saved:2026-10-29",
+	])
+})
+
+test("section headings read in Thai", () => {
+	setLocale("th")
+	draw()
+	expect([...root.querySelectorAll("section[data-section] h3")].map((h) => text(h))).toEqual([
+		"ฉบับร่าง",
+		"รอคำตอบของผู้ใช้บัตร",
+		`บันทึกแล้ว · ${text(root.querySelector('[data-section="saved:2026-10-29"] h3')).split(" · ")[1]}`,
+	])
+	expect(text(root.querySelector('[data-section="saved:2026-10-29"] h3'))).toContain("ต.ค.")
+})
+
+test("a filtered-out list still counts as a merge partner, since Merge acts on every list that day", () => {
+	const all = lists()
+	const w2: PurchaseList = { ...(all[1] as PurchaseList), id: "w2", lines: [{ cardId: "B", amount: 1 }] }
+	draw({ lists: [...all, w2], filter: { cards: ["A"] } })
+	expect(root.querySelector('[data-row="list:w2"]')).toBeNull()
+	click(head("w1"))
+	expect(text(shown()?.querySelector('[data-action="merge"]'))).toBe("Merge with 1 other list")
+})
+
+test("search narrows the rows by card or note", () => {
+	draw({ filter: { q: "card b" } })
+	expect([...root.querySelectorAll("[data-row]")].map((r) => r.getAttribute("data-row"))).toEqual([
+		"list:w1",
+		"list:s1",
+	])
 })

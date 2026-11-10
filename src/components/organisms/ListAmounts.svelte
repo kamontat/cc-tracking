@@ -20,8 +20,9 @@
 	 * Step 2 of a purchase list: a date and, per card, one or more orders, each an amount and an
 	 * optional note; each card is warned about what the bank may do with its orders together. The warnings inform and never block; only text
 	 * that is not money does. Every change calls `onentrychange` with the date and what was typed;
-	 * Review calls `onreview`. The `side` snippet takes the page's own actions, after Review (a
-	 * draft's Delete draft).
+	 * Review calls `onreview`; *Save as draft* calls `ondraft`, which needs no amount at all, only
+	 * no text that is not money (DD-187). The `side` snippet takes the page's own actions, after
+	 * them (a draft's Delete draft).
 	 */
 	interface Props {
 		/** The list's cards, in order. */
@@ -49,6 +50,8 @@
 			notes: Record<string, string[]>
 		}) => void
 		onreview: (detail: { date: PlainDate }) => void
+		/** *Save as draft*, shown only when given. */
+		ondraft?: (detail: { date: PlainDate }) => void
 		onremove: (cardId: string) => void
 		onadd: (cardId: string) => void
 		side?: Snippet
@@ -68,6 +71,7 @@
 		notes,
 		onentrychange,
 		onreview,
+		ondraft,
 		onremove,
 		onadd,
 		side,
@@ -223,6 +227,7 @@
 	const all = $derived(Object.values(amounts).flat())
 	const total = $derived(sum(all))
 	const canReview = $derived(all.some((a) => a !== null && a > 0) && all.every((a) => a !== null))
+	const canDraft = $derived(cards.length > 0 && all.every((a) => a !== null))
 
 	const warned = $derived(views.filter((v) => v.warn).length)
 	const summary = $derived.by(() => {
@@ -438,6 +443,16 @@
 				›
 			</button>
 		</div>
+		{#if ondraft}
+			<button
+				type="button"
+				data-variant="quiet"
+				data-action="save-draft"
+				disabled={!canDraft}
+				onclick={() => ondraft({ date: effectiveDate })}>
+				{tr("purchaseList.saveDraft")}
+			</button>
+		{/if}
 		{@render side?.()}
 	</div>
 </div>
@@ -673,7 +688,8 @@
 		white-space: nowrap;
 	}
 
-	.action-bar button:disabled {
+	.action-bar button:disabled,
+	button[data-action="save-draft"]:disabled {
 		cursor: default;
 		opacity: 0.55;
 	}

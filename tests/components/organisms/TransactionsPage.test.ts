@@ -183,13 +183,47 @@ test("the filter sheet applies a filter and a sort", async () => {
 	expect(ledgerRows()).toHaveLength(1)
 })
 
-test("the Lists view filters by status chip", async () => {
+test("the Lists view has a search box and a Filter button, but no sort", async () => {
+	await open("?view=lists")
+	expect($('.tx-body input[name="q"]')?.getAttribute("placeholder")).toBe("Search card or note")
+	expect($('.tx-body [data-action="filter"]')).not.toBeNull()
+	expect($('.tx-body [data-action="sort"]')).toBeNull()
+	expect($(".tx-body [data-status]")).toBeNull()
+})
+
+test("the Lists view's search narrows the lists and lives in its own key", async () => {
+	const { written } = await open("?view=lists&q=ledger-only", async (r) => {
+		await r.savePurchaseList({ ...list("d9", "draft", ["A"]), lines: [{ cardId: "A", amount: 100, note: "toner" }] })
+	})
+	expect($$('.tx-body [data-row^="list:"]')).toHaveLength(2)
+	await type("toner")
+	expect(written.at(-1)).toBe("?view=lists&q=ledger-only&lq=toner")
+	expect($$('.tx-body [data-row^="list:"]').map((r) => r.getAttribute("data-row"))).toEqual(["list:d9"])
+})
+
+test("the Lists view's filter sheet applies a status, shown as a removable chip", async () => {
 	const { written } = await open("?view=lists")
+	await press($('[data-action="filter"]'))
+	expect(text($("dialog h2"))).toBe("Filter lists")
+	await press($('dialog [data-status="saved"]'))
+	expect(text($('dialog [data-action="apply"]'))).toBe("Nothing matches")
+	await press($('dialog [data-status="sent"]'))
+	await press($('dialog [data-action="apply"]'))
+	await exit()
+	expect(written.at(-1)).toBe("?view=lists&status=saved&status=sent")
+	expect($('[data-action="filter"] .tx-count')?.textContent).toBe("2")
+	expect(text($('[data-chip="status:sent"]'))).toContain("Waiting for the spender")
+	await press($('[data-chip="status:sent"]'))
+	await press($('[data-chip="status:saved"]'))
+	expect(written.at(-1)).toBe("?view=lists")
 	expect($$('.tx-body [data-row^="list:"]')).toHaveLength(1)
-	await press($('[data-status="saved"]'))
-	expect(written.at(-1)).toBe("?view=lists&status=saved")
-	expect($('[data-status="saved"]')?.getAttribute("aria-pressed")).toBe("true")
-	expect($$('.tx-body [data-row^="list:"]')).toHaveLength(0)
+})
+
+test("the Lists view's card and date filters show as chips", async () => {
+	await open("?view=lists&lcard=B&lrange=month")
+	expect($('[data-chip="card:B"]')).not.toBeNull()
+	expect(text($('[data-chip="range"]'))).toContain("This month")
+	expect($$('.tx-body [data-row^="list:"]')).toHaveLength(1)
 })
 
 test("the Lists view's Confirm saves a sent list after the second step", async () => {
@@ -211,11 +245,23 @@ test("the Lists view's Delete removes a draft in one step", async () => {
 	expect($('[data-row="list:d9"]')).toBeNull()
 })
 
+test("the Lists view's Merge joins two same-day waiting lists into one", async () => {
+	const { repo } = await open("?view=lists", async (r) => {
+		await r.savePurchaseList(list("w2", "sent", ["A"]))
+	})
+	await press($('[data-row="list:w1"] .a-hit'))
+	await press($(`${shown} [data-action="merge"]`))
+	const stored = await repo.listPurchaseLists()
+	expect(stored.map((l) => l.id)).toEqual(["w1"])
+	expect(stored[0]?.lines.map((l) => l.cardId)).toEqual(["B", "A"])
+	expect($('[data-row="list:w2"]')).toBeNull()
+})
+
 test("the switch changes the view and the address", async () => {
 	const { written } = await open()
 	await press($('[data-view="lists"]'))
 	expect(written.at(-1)).toBe("?view=lists")
-	expect($('[data-status="draft"]')).not.toBeNull()
+	expect($('.tx-body [data-row="list:w1"]')).not.toBeNull()
 	expect($("fieldset.tx-switch")).not.toBeNull()
 })
 

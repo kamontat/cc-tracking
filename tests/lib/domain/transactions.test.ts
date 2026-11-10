@@ -5,10 +5,13 @@ import { describe, expect, test } from "vitest"
 import { ledgersFor } from "#lib/domain/ledger"
 import {
 	byDay,
+	DEFAULT_LISTS_FILTER,
 	DEFAULT_TX_FILTER,
 	entriesTotal,
 	filterEntries,
+	filterLists,
 	ledgerEntries,
+	listGroups,
 	listIdOf,
 	listRows,
 	monthSummary,
@@ -180,6 +183,94 @@ describe("listRows", () => {
 	test("newest first; empty filter is all", () => {
 		expect(listRows(lists, []).map((l) => l.id)).toEqual(["y", "z", "x"])
 		expect(listRows(lists, ["sent", "draft"]).map((l) => l.id)).toEqual(["z", "x"])
+	})
+})
+
+describe("listGroups", () => {
+	const list = (id: string, date: string, status: PurchaseList["status"]): PurchaseList => ({
+		id,
+		date,
+		status,
+		lines: [],
+	})
+	const lists = [
+		list("s1", "2026-10-05", "saved"),
+		list("d1", "2026-10-01", "draft"),
+		list("s2", "2026-10-07", "saved"),
+		list("w1", "2026-10-03", "sent"),
+		list("d2", "2026-10-04", "draft"),
+		list("s3", "2026-10-05", "saved"),
+	]
+	const shape = (filter: PurchaseList["status"][]) =>
+		listGroups(lists, filter).map((g) => [g.key, g.lists.map((l) => l.id)])
+
+	test("drafts, then waiting, then saved lists by date, newest first", () => {
+		expect(shape([])).toEqual([
+			["draft", ["d2", "d1"]],
+			["sent", ["w1"]],
+			["saved:2026-10-07", ["s2"]],
+			["saved:2026-10-05", ["s3", "s1"]],
+		])
+	})
+
+	test("a status ticked keeps only its groups, and an empty group is left out", () => {
+		expect(shape(["sent", "saved"])).toEqual([
+			["sent", ["w1"]],
+			["saved:2026-10-07", ["s2"]],
+			["saved:2026-10-05", ["s3", "s1"]],
+		])
+		expect(listGroups([list("d1", "2026-10-01", "draft")], [])).toEqual([
+			{ key: "draft", status: "draft", lists: [list("d1", "2026-10-01", "draft")] },
+		])
+	})
+
+	test("a saved group carries its date", () => {
+		expect(listGroups([list("s1", "2026-10-05", "saved")], [])[0]).toMatchObject({
+			key: "saved:2026-10-05",
+			status: "saved",
+			date: "2026-10-05",
+		})
+	})
+})
+
+describe("filterLists", () => {
+	const cards = [mk("A", { name: "SCB Krabi", last4: "1029" }), mk("B", { name: "KBank Fuel", last4: "4412" })]
+	const list = (id: string, date: string, status: PurchaseList["status"], lines: PurchaseList["lines"]) =>
+		({ id, date, status, lines }) as PurchaseList
+	const lists = [
+		list("d1", "2026-10-31", "draft", [{ cardId: "A", amount: 100 }]),
+		list("w1", "2026-10-28", "sent", [{ cardId: "B", amount: 100, note: "diesel" }]),
+		list("s1", "2026-09-30", "saved", [
+			{ cardId: "A", amount: 100, made: true },
+			{ cardId: "B", amount: 100, made: false },
+		]),
+	]
+	const ids = (filter: Partial<typeof DEFAULT_LISTS_FILTER>) =>
+		filterLists(lists, { ...DEFAULT_LISTS_FILTER, ...filter }, cards, TODAY).map((l) => l.id)
+
+	test("no filter keeps every list", () => {
+		expect(ids({})).toEqual(["d1", "w1", "s1"])
+	})
+
+	test("status keeps the lists in any status ticked", () => {
+		expect(ids({ status: ["sent", "saved"] })).toEqual(["w1", "s1"])
+	})
+
+	test("card keeps a list with any of the cards on it", () => {
+		expect(ids({ cards: ["B"] })).toEqual(["w1", "s1"])
+	})
+
+	test("date keeps lists dated in the range, a preset or from and to", () => {
+		expect(ids({ range: "month" })).toEqual(["d1", "w1"])
+		expect(ids({ range: "custom", from: "2026-09-01", to: "2026-09-30" })).toEqual(["s1"])
+	})
+
+	test("search matches a card's id, name or last 4, or a line's note, ignoring case", () => {
+		expect(ids({ q: "scb" })).toEqual(["d1", "s1"])
+		expect(ids({ q: "4412" })).toEqual(["w1", "s1"])
+		expect(ids({ q: "DIESEL" })).toEqual(["w1"])
+		expect(ids({ q: "  " })).toEqual(["d1", "w1", "s1"])
+		expect(ids({ q: "nothing" })).toEqual([])
 	})
 })
 

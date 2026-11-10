@@ -2,7 +2,7 @@ import type { PurchaseList } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
 
-import { allAnswered, listCount, listTotal, saveReply } from "#lib/domain/purchase-list"
+import { allAnswered, listCount, listTotal, mergeCandidates, mergeLists, saveReply } from "#lib/domain/purchase-list"
 
 const now = "2026-10-30T12:00:00.000Z"
 const list = (over: Partial<PurchaseList> = {}): PurchaseList => ({
@@ -95,5 +95,78 @@ describe("purchase list", () => {
 		if (!r.ok) throw new Error("expected ok")
 		expect(r.purchases.map((p) => p.note)).toEqual(["fuel", ""])
 		expect(r.draft?.lines).toEqual([{ cardId: "c", amount: 300, note: "next time" }])
+	})
+})
+
+describe("merging same-day lists", () => {
+	const draft = (id: string, lines: PurchaseList["lines"], over: Partial<PurchaseList> = {}): PurchaseList => ({
+		id,
+		date: "2026-11-10",
+		status: "draft",
+		lines,
+		...over,
+	})
+
+	test("candidates are the other lists on the same date with the same status", () => {
+		const a = draft("a", [{ cardId: "x", amount: 100 }])
+		const lists = [
+			a,
+			draft("b", [{ cardId: "y", amount: 100 }]),
+			draft("c", [], { date: "2026-11-11" }),
+			draft("d", [], { status: "sent", sentAt: now }),
+			draft("e", [], { status: "saved" }),
+		]
+		expect(mergeCandidates(a, lists).map((l) => l.id)).toEqual(["b"])
+	})
+
+	test("a saved list has no candidates", () => {
+		const saved = draft("a", [], { status: "saved" })
+		expect(mergeCandidates(saved, [saved, draft("b", [], { status: "saved" })])).toEqual([])
+	})
+
+	test("merging keeps every order, a card's orders together in first-seen order", () => {
+		const into = draft("a", [
+			{ cardId: "x", amount: 100 },
+			{ cardId: "y", amount: 200, note: "fuel" },
+		])
+		const other = draft("b", [
+			{ cardId: "z", amount: 300 },
+			{ cardId: "x", amount: 400 },
+		])
+		expect(mergeLists(into, [other])).toEqual({
+			...into,
+			lines: [
+				{ cardId: "x", amount: 100 },
+				{ cardId: "x", amount: 400 },
+				{ cardId: "y", amount: 200, note: "fuel" },
+				{ cardId: "z", amount: 300 },
+			],
+		})
+	})
+
+	test("a card's blank placeholder goes once the card has a real order", () => {
+		const into = draft("a", [
+			{ cardId: "x", amount: 0 },
+			{ cardId: "y", amount: 0 },
+		])
+		const other = draft("b", [{ cardId: "x", amount: 500 }])
+		expect(mergeLists(into, [other]).lines).toEqual([
+			{ cardId: "x", amount: 500 },
+			{ cardId: "y", amount: 0 },
+		])
+	})
+
+	test("merged waiting lists keep the earliest sent time", () => {
+		const into = draft("a", [{ cardId: "x", amount: 100 }], { status: "sent", sentAt: "2026-11-10T05:00:00.000Z" })
+		const other = draft("b", [{ cardId: "y", amount: 100 }], { status: "sent", sentAt: "2026-11-10T02:00:00.000Z" })
+		expect(mergeLists(into, [other]).sentAt).toBe("2026-11-10T02:00:00.000Z")
+	})
+
+	test("lists that differ in date or status, or are saved, do not merge", () => {
+		const into = draft("a", [])
+		expect(() => mergeLists(into, [draft("b", [], { date: "2026-11-11" })])).toThrow()
+		expect(() => mergeLists(into, [draft("b", [], { status: "sent", sentAt: now })])).toThrow()
+		const saved = draft("a", [], { status: "saved" })
+		expect(() => mergeLists(saved, [draft("b", [], { status: "saved" })])).toThrow()
 	})
 })

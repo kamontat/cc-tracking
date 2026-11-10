@@ -49,6 +49,11 @@ test("a list's parts are its lines, missing cards keep their id, and a saved lis
 	expect(listParts(saved, cards).map((p) => p.amount)).toEqual(["฿480.00", "Not made"])
 })
 
+test("a draft's card with no amount yet reads as a dash", () => {
+	const draft = list({ status: "draft", lines: [{ cardId: "1", amount: 0 }] as PurchaseList["lines"] })
+	expect(listParts(draft, [card("1", "Card A")]).map((p) => p.amount)).toEqual(["—"])
+})
+
 test("a waiting list is titled by its date and names its cards", () => {
 	const text = waitingText(list(), [card("1", "Card A")], [])
 	expect(text.kind).toBe("waiting")

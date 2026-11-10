@@ -3,7 +3,15 @@ import type { Card, CardLedger, CardPayment } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
 
-import { composeList, draftLines, lineAmount, listLines, roomAfter, sequentialIds } from "#lib/domain/list-entry"
+import {
+	composeList,
+	draftLines,
+	keptLines,
+	lineAmount,
+	listLines,
+	roomAfter,
+	sequentialIds,
+} from "#lib/domain/list-entry"
 
 const mk = (id: string, limitGroupId = "g"): Card => ({
 	id,
@@ -137,5 +145,25 @@ describe("list entry", () => {
 	test("ids follow the prefix", () => {
 		const next = sequentialIds("l1")
 		expect([next(), next(), next()]).toEqual(["l1-0", "l1-1", "l1-2"])
+	})
+})
+
+describe("keptLines (a draft's lines)", () => {
+	test("keeps every card, a card with nothing typed as one line with no amount (0)", () => {
+		expect(keptLines(["a", "b"], { a: [100] }, {})).toEqual([
+			{ cardId: "a", amount: 100 },
+			{ cardId: "b", amount: 0 },
+		])
+	})
+
+	test("keeps an order with an amount or a note, drops an empty one", () => {
+		expect(keptLines(["a"], { a: [0, 200, 0] }, { a: ["for fuel", "", " "] })).toEqual([
+			{ cardId: "a", amount: 0, note: "for fuel" },
+			{ cardId: "a", amount: 200 },
+		])
+	})
+
+	test("a card whose orders are all empty keeps one line", () => {
+		expect(keptLines(["a"], { a: [0, 0] }, { a: ["", ""] })).toEqual([{ cardId: "a", amount: 0 }])
 	})
 })
