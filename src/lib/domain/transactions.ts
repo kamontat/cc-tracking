@@ -182,3 +182,29 @@ export function listRows(lists: PurchaseList[], filter: ListFilter): PurchaseLis
 		.filter((l) => filter.length === 0 || filter.includes(l.status))
 		.sort((a, b) => compareDates(b.date, a.date) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
 }
+
+/** One section of the Lists view: every draft, every waiting list, or the saved lists of one date. */
+export type ListGroup =
+	| { key: "draft" | "sent"; status: "draft" | "sent"; lists: PurchaseList[] }
+	| { key: `saved:${PlainDate}`; status: "saved"; date: PlainDate; lists: PurchaseList[] }
+
+/**
+ * The Lists view's sections (DD-188): drafts, then lists waiting for the spender, then saved
+ * lists grouped by their date, newest date first; each in `listRows` order. Groups the filter
+ * leaves empty are left out.
+ */
+export function listGroups(lists: PurchaseList[], filter: ListFilter): ListGroup[] {
+	const rows = listRows(lists, filter)
+	const groups: ListGroup[] = []
+	for (const status of ["draft", "sent"] as const) {
+		const of = rows.filter((l) => l.status === status)
+		if (of.length > 0) groups.push({ key: status, status, lists: of })
+	}
+	for (const list of rows) {
+		if (list.status !== "saved") continue
+		const last = groups.at(-1)
+		if (last?.status === "saved" && last.date === list.date) last.lists.push(list)
+		else groups.push({ key: `saved:${list.date}`, status: "saved", date: list.date, lists: [list] })
+	}
+	return groups
+}

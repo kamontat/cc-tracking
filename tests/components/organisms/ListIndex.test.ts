@@ -283,10 +283,17 @@ const deleteDraft = async (all: PurchaseList[], id: string) => {
 	await settle()
 }
 
-test("when a deleted draft's row goes, focus moves to the next row's head", async () => {
-	await deleteDraft(lists(), "d1")
+test("when a deleted draft's row goes, focus moves to the next row's head in its section", async () => {
+	const d2: PurchaseList = { id: "d2", date: "2026-10-28", status: "draft", lines: [{ cardId: "A", amount: 100_00 }] }
+	await deleteDraft([...lists(), d2], "d1")
 	expect(root.querySelector('[data-row="list:d1"]')).toBeNull()
-	expect(document.activeElement).toBe(root.querySelector('[data-row="list:w1"] button.a-hit'))
+	expect(document.activeElement).toBe(root.querySelector('[data-row="list:d2"] button.a-hit'))
+})
+
+test("when the last draft goes, focus moves to the next section's heading", async () => {
+	await deleteDraft(lists(), "d1")
+	expect(root.querySelector('[data-section="draft"]')).toBeNull()
+	expect(document.activeElement).toBe(root.querySelector('[data-refocus="lists:sent"]'))
 })
 
 test("when the only list goes, focus moves to the empty note", async () => {
@@ -325,4 +332,45 @@ test("a draft or waiting list with others of its status that day offers Merge, w
 test("a draft with no amounts yet totals ฿0.00 with no sign", () => {
 	draw({ lists: [{ id: "d1", date: "2026-10-31", status: "draft", lines: [{ cardId: "A", amount: 0 }] }] })
 	expect(text(root.querySelector('[data-row="list:d1"] .a-hit .amount'))).toBe("฿0.00")
+})
+
+test("lists sit in sections: drafts, waiting, then saved lists by date, newest first", () => {
+	const s2: PurchaseList = { ...(lists()[2] as PurchaseList), id: "s2", date: "2026-10-27" }
+	const s3: PurchaseList = { ...(lists()[2] as PurchaseList), id: "s3" }
+	draw({ lists: [...lists(), s2, s3] })
+	const sections = [...root.querySelectorAll<HTMLElement>("section[data-section]")]
+	expect(sections.map((sec) => sec.getAttribute("data-section"))).toEqual([
+		"draft",
+		"sent",
+		"saved:2026-10-29",
+		"saved:2026-10-27",
+	])
+	expect(sections.map((sec) => text(sec.querySelector("h3")))).toEqual([
+		"Drafts",
+		"Waiting for the spender",
+		"Saved · Thu, 29 Oct 2026",
+		"Saved · Tue, 27 Oct 2026",
+	])
+	// Each section is its own row panel; a heading can take focus when a row near it goes.
+	expect(sections.map((sec) => [...sec.querySelectorAll(".row-panel [data-row]")].length)).toEqual([1, 1, 2, 1])
+	expect(sections[0]?.querySelector("h3")?.getAttribute("tabindex")).toBe("-1")
+	expect(sections[0]?.querySelector("h3")?.getAttribute("data-refocus")).toBe("lists:draft")
+})
+
+test("a status chip shows only its sections", () => {
+	draw({ status: ["saved"] })
+	expect([...root.querySelectorAll("section[data-section]")].map((sec) => sec.getAttribute("data-section"))).toEqual([
+		"saved:2026-10-29",
+	])
+})
+
+test("section headings read in Thai", () => {
+	setLocale("th")
+	draw()
+	expect([...root.querySelectorAll("section[data-section] h3")].map((h) => text(h))).toEqual([
+		"ฉบับร่าง",
+		"รอคำตอบของผู้ใช้บัตร",
+		`บันทึกแล้ว · ${text(root.querySelector('[data-section="saved:2026-10-29"] h3')).split(" · ")[1]}`,
+	])
+	expect(text(root.querySelector('[data-section="saved:2026-10-29"] h3'))).toContain("ต.ค.")
 })

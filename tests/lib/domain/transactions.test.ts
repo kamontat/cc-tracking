@@ -9,6 +9,7 @@ import {
 	entriesTotal,
 	filterEntries,
 	ledgerEntries,
+	listGroups,
 	listIdOf,
 	listRows,
 	monthSummary,
@@ -180,6 +181,53 @@ describe("listRows", () => {
 	test("newest first; empty filter is all", () => {
 		expect(listRows(lists, []).map((l) => l.id)).toEqual(["y", "z", "x"])
 		expect(listRows(lists, ["sent", "draft"]).map((l) => l.id)).toEqual(["z", "x"])
+	})
+})
+
+describe("listGroups", () => {
+	const list = (id: string, date: string, status: PurchaseList["status"]): PurchaseList => ({
+		id,
+		date,
+		status,
+		lines: [],
+	})
+	const lists = [
+		list("s1", "2026-10-05", "saved"),
+		list("d1", "2026-10-01", "draft"),
+		list("s2", "2026-10-07", "saved"),
+		list("w1", "2026-10-03", "sent"),
+		list("d2", "2026-10-04", "draft"),
+		list("s3", "2026-10-05", "saved"),
+	]
+	const shape = (filter: PurchaseList["status"][]) =>
+		listGroups(lists, filter).map((g) => [g.key, g.lists.map((l) => l.id)])
+
+	test("drafts, then waiting, then saved lists by date, newest first", () => {
+		expect(shape([])).toEqual([
+			["draft", ["d2", "d1"]],
+			["sent", ["w1"]],
+			["saved:2026-10-07", ["s2"]],
+			["saved:2026-10-05", ["s3", "s1"]],
+		])
+	})
+
+	test("a status ticked keeps only its groups, and an empty group is left out", () => {
+		expect(shape(["sent", "saved"])).toEqual([
+			["sent", ["w1"]],
+			["saved:2026-10-07", ["s2"]],
+			["saved:2026-10-05", ["s3", "s1"]],
+		])
+		expect(listGroups([list("d1", "2026-10-01", "draft")], [])).toEqual([
+			{ key: "draft", status: "draft", lists: [list("d1", "2026-10-01", "draft")] },
+		])
+	})
+
+	test("a saved group carries its date", () => {
+		expect(listGroups([list("s1", "2026-10-05", "saved")], [])[0]).toMatchObject({
+			key: "saved:2026-10-05",
+			status: "saved",
+			date: "2026-10-05",
+		})
 	})
 })
 

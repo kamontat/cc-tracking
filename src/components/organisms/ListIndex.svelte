@@ -7,9 +7,10 @@
 
 	import ActionRow from "#components/molecules/ActionRow.svelte"
 	import TwoStepButtons from "#components/molecules/TwoStepButtons.svelte"
+	import { headerDate } from "#lib/domain/date"
 	import { formatAmount, MINUS } from "#lib/domain/money"
 	import { listTotal, mergeCandidates } from "#lib/domain/purchase-list"
-	import { listRows } from "#lib/domain/transactions"
+	import { type ListGroup, listGroups } from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { listPageAddress } from "#lib/ui/list-address"
 	import { OpenRows } from "#lib/ui/open-row.svelte"
@@ -17,8 +18,9 @@
 	import { TwoStep } from "#lib/ui/two-step.svelte"
 
 	/**
-	 * Transactions' Lists view: every purchase list, newest first, narrowed by status chips (none
-	 * pressed means all), as one panel of rows that open in place (DD-108, DD-165). An opened draft
+	 * Transactions' Lists view: every purchase list, narrowed by status chips (none pressed means
+	 * all), in sections (DD-188): drafts, lists waiting for the spender, then saved lists by date,
+	 * newest first; each a heading over one panel of rows that open in place (DD-108, DD-165). An opened draft
 	 * offers *Continue* and *Delete*, a waiting list *Record reply* and a two-step *Confirm*, a
 	 * saved list *Open*; a draft or waiting list that shares its day and status with others also
 	 * offers *Merge* (DD-187). Nothing is written here: the page hears the callbacks.
@@ -76,11 +78,18 @@
 		}),
 	)
 
-	const shown = $derived(listRows([...lists], status))
+	const sections = $derived(listGroups([...lists], status))
 
 	$effect.pre(() => {
-		rows.prune(shown.map((l) => `list:${l.id}`))
+		rows.prune(sections.flatMap((g) => g.lists.map((l) => `list:${l.id}`)))
 	})
+
+	/** A section's heading: its status, or for saved lists the date they were for. */
+	const heading = (group: ListGroup): string => {
+		void lang
+		if (group.status !== "saved") return t(`tx.lists.group.${group.status}`)
+		return t("tx.lists.group.saved", { date: headerDate(group.date, lang, true) })
+	}
 
 	const toggle = (pick: ListStatus) => {
 		onstatus?.(status.includes(pick) ? status.filter((s) => s !== pick) : [...status, pick])
@@ -133,57 +142,62 @@
 				</button>
 			{/each}
 		</fieldset>
-		{#if shown.length === 0}
+		{#if sections.length === 0}
 			<p class="empty" tabindex="-1" data-refocus="lists">{tr("tx.lists.noMatch")}</p>
 		{:else}
-			<div class="row-panel">
-				{#each shown as list (list.id)}
-					{@const id = `list:${list.id}`}
-					{@const row = text(list)}
-					{@const href = listPageAddress(list)}
-					<ActionRow
-						kind={row.kind}
-						title={row.title}
-						subtitle={row.subtitle}
-						{id}
-						detailsId={rows.detailsId(id)}
-						expanded={rows.isOpen(id)}
-						ontoggle={() => rows.toggle(id)}
-						amount={amount(list)}
-						parts={parts(list)}
-						say={words(list)}>
-						{#snippet actions()}
-							{@const others = mergeCandidates(list, lists).length}
-							{#snippet merge()}
-								<button type="button" data-variant="quiet" data-action="merge" onclick={() => onmergelists?.(list)}>
-									{others === 1 ? tr("row.merge.one") : tr("row.merge.many", { count: others })}
-								</button>
-							{/snippet}
-							{#if list.status === "draft"}
-								<a class="btn" data-action="continue" {href}>{tr("row.continue")}</a>
-								{#if others > 0}
-									{@render merge()}
-								{/if}
-								<button
-									type="button"
-									data-variant="danger"
-									data-action="delete-draft"
-									onclick={() => ondeletedraft?.(list)}>
-									{tr("common.delete")}
-								</button>
-							{:else if list.status === "sent"}
-								<a class="btn" data-action="record-reply" {href}>{tr("row.recordReply")}</a>
-								{#if others > 0}
-									{@render merge()}
-								{/if}
-								<TwoStepButtons {steps} kind="list" {list} onconfirm={() => onconfirmlist?.(list)} />
-							{:else}
-								<a class="btn" data-action="open" {href}>{tr("row.open")}</a>
-							{/if}
-						{/snippet}
-					</ActionRow>
-				{/each}
-			</div>
+			{#each sections as group (group.key)}
+				<section class="group" data-section={group.key}>
+					<h3 class="sec-title" tabindex="-1" data-refocus={`lists:${group.key}`}>{heading(group)}</h3>
+					<div class="row-panel">
+						{#each group.lists as list (list.id)}
+							{@const id = `list:${list.id}`}
+							{@const row = text(list)}
+							{@const href = listPageAddress(list)}
+							<ActionRow
+								kind={row.kind}
+								title={row.title}
+								subtitle={row.subtitle}
+								{id}
+								detailsId={rows.detailsId(id)}
+								expanded={rows.isOpen(id)}
+								ontoggle={() => rows.toggle(id)}
+								amount={amount(list)}
+								parts={parts(list)}
+								say={words(list)}>
+								{#snippet actions()}
+									{@const others = mergeCandidates(list, lists).length}
+									{#snippet merge()}
+										<button type="button" data-variant="quiet" data-action="merge" onclick={() => onmergelists?.(list)}>
+											{others === 1 ? tr("row.merge.one") : tr("row.merge.many", { count: others })}
+										</button>
+									{/snippet}
+									{#if list.status === "draft"}
+										<a class="btn" data-action="continue" {href}>{tr("row.continue")}</a>
+										{#if others > 0}
+											{@render merge()}
+										{/if}
+										<button
+											type="button"
+											data-variant="danger"
+											data-action="delete-draft"
+											onclick={() => ondeletedraft?.(list)}>
+											{tr("common.delete")}
+										</button>
+									{:else if list.status === "sent"}
+										<a class="btn" data-action="record-reply" {href}>{tr("row.recordReply")}</a>
+										{#if others > 0}
+											{@render merge()}
+										{/if}
+										<TwoStepButtons {steps} kind="list" {list} onconfirm={() => onconfirmlist?.(list)} />
+									{:else}
+										<a class="btn" data-action="open" {href}>{tr("row.open")}</a>
+									{/if}
+								{/snippet}
+							</ActionRow>
+						{/each}
+					</div>
+				</section>
+			{/each}
 		{/if}
 	{/if}
 </div>
@@ -241,6 +255,23 @@
 		font-weight: 600;
 		color: var(--cc-success);
 		background: var(--cc-accent-surface);
+	}
+
+	.group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-2);
+		min-inline-size: 0;
+	}
+
+	/* A small, muted, uppercase heading over its panel, as the ledger's days are. */
+	.sec-title {
+		margin: 0;
+		font-size: var(--cc-text-xs);
+		font-weight: 650;
+		letter-spacing: var(--cc-tracking-caps);
+		text-transform: uppercase;
+		color: var(--cc-text-muted);
 	}
 
 	.empty {
