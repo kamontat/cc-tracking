@@ -35,7 +35,7 @@ const settle = async () => {
 	flushSync()
 }
 
-const show = (props: { filter?: Filter; count?: (filter: Filter) => number } = {}) => {
+const show = (props: { cards?: Card[]; filter?: Filter; count?: (filter: Filter) => number } = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
 	const applied: Filter[] = []
@@ -43,7 +43,7 @@ const show = (props: { filter?: Filter; count?: (filter: Filter) => number } = {
 	mounted = mount(ListsFilter, {
 		target: document.body,
 		props: {
-			cards: [card("A"), card("B")],
+			cards: props.cards ?? [card("A"), card("B")],
 			filter: props.filter ?? DEFAULT_LISTS_FILTER,
 			count: props.count ?? ((f: Filter) => f.status.length + f.cards.length + (f.range ? 1 : 0) + 3),
 			onapply: (filter: Filter) => applied.push(filter),
@@ -117,4 +117,12 @@ test("reads in Thai", () => {
 	expect(text(root.querySelector("dialog h2"))).toBe("กรองใบรายการ")
 	expect(text(root.querySelector("fieldset > legend"))).toBe("สถานะ")
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("แสดง 3 ใบ")
+})
+
+test("many cards fold under a find box", () => {
+	const cards = Array.from({ length: 12 }, (_, i) => card(String(i + 1)))
+	const { root } = show({ cards })
+	expect(root.querySelector("input[name=cardq]")).not.toBeNull()
+	expect(root.querySelectorAll("[data-card]")).toHaveLength(8)
+	expect(text(root.querySelector("[data-action=more-cards]"))).toBe("Show all 12 cards")
 })

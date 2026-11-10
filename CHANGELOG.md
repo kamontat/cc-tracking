@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-10: Several orders per card on a purchase list, drafts before the review, merging same-day lists, a sectioned and filterable Lists view, and a right-aligned update bar
+## 2026-11-10: Several orders per card on a purchase list, drafts before the review, merging same-day lists, a sectioned and filterable Lists view, a right-aligned update bar, and a shorter card choice in the filter sheets
 
 ### Features
 
@@ -31,6 +31,11 @@ reasons don't show up in the code.
   _Card_ and _Date_, and the filters in use show as removable chips. Its address keys are its
   own: `lq`, `status`, `lcard`, `lrange`, `lfrom`, `lto` (DD-189).
 
+- The _Card_ section of the ledger's and the _Lists_ view's filter sheets stays short with many
+  cards: past eight it adds a _Find a card_ box (id, name or last 4) and shows the first eight
+  chips plus any card already picked, then _Show all N cards_ / _Show fewer_. Eight or fewer
+  cards look as before (DD-190).
+
 ### Improvements
 
 - Room after, the over-room and shared-limit warnings and the total count a card's orders
@@ -56,6 +61,11 @@ reasons don't show up in the code.
 
 - Biome no longer checks `.opencode/`, as it already skipped `.claude/`: formatting rewrote the
   playwright-cli skill's front matter (its `allowed-tools` globs) and failed `bun run check`.
+
+- The four filter sheets (Cards, the ledger, _Lists_, the new-list picker) share one
+  `FilterSheet` organism and its sections `FilterChips`, `DateRangeChoices` and `CardChoices`,
+  with the chip look once in `app.css` (`.filter-group`). A new filter section is built from
+  these rather than copied from another sheet (DD-190).
 
 ### Bug fixes
 
@@ -87,6 +97,11 @@ reasons don't show up in the code.
 - The _Lists_ view's search and filters use their own address keys rather than sharing the
   ledger's, so a ledger search does not carry into it. _Merge_ still counts lists the filter
   hides, since they are on that day all the same.
+
+- A card picked past the fold stays shown, and so does one tapped since the sheet opened, so a
+  chip never vanishes from under a tap; the fold and the find are not kept in the address. The
+  search, sort direction and group by work is split into three pull requests, this shared sheet
+  first.
 
 ## 2026-11-08: Offline scripts load whatever the server's Vary header, the list image keeps its amounts on iPad, and Cards sorts by upcoming dates
 

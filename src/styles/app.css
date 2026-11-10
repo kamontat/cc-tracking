@@ -1211,6 +1211,116 @@ a:any-link:hover {
 	background: var(--cc-surface-sunken);
 }
 
+/* A filter sheet (`FilterSheet` and its sections): a muted legend over a wrapping row of pill
+   chips, then *Clear all* and the apply button. The one copy for every filter sheet. */
+.filter-group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-1);
+	min-inline-size: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.filter-group > legend {
+	padding: 0;
+	margin-bottom: var(--cc-space-1);
+	font-size: var(--cc-text-sm);
+	font-weight: 400;
+	letter-spacing: normal;
+	text-transform: none;
+	color: var(--cc-text-muted);
+}
+
+.filter-chips {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--cc-space-2);
+}
+
+/* Raised over `.page button[data-variant="quiet"]`. */
+.page .filter-chips button[aria-pressed] {
+	padding: var(--cc-space-1) var(--cc-space-3);
+	font-weight: 400;
+	color: var(--cc-text);
+	background: var(--cc-surface-sunken);
+	border-color: transparent;
+	border-radius: var(--cc-radius-pill);
+}
+
+.page .filter-chips button[aria-pressed]:hover {
+	background: var(--cc-border);
+}
+
+.page .filter-chips button[aria-pressed="true"] {
+	font-weight: 600;
+	color: var(--cc-success);
+	background: var(--cc-accent-surface);
+}
+
+/* *Show all N cards* and *Show fewer* end the row of card chips as a quiet link. */
+.page .filter-chips .filter-more {
+	padding: var(--cc-space-1) var(--cc-space-2);
+	color: var(--cc-link);
+	background: transparent;
+	border-color: transparent;
+}
+
+.page .filter-chips .filter-more:hover {
+	text-decoration: underline;
+	background: transparent;
+}
+
+/* The *Card* section's find box, the search box drawn smaller. */
+.filter-find {
+	margin-bottom: var(--cc-space-1);
+}
+
+.page .filter-find input {
+	padding-block: var(--cc-space-1);
+	font-size: var(--cc-text-sm);
+}
+
+.filter-none {
+	margin: 0;
+	font-size: var(--cc-text-sm);
+	color: var(--cc-text-muted);
+}
+
+/* A custom range's from and to, side by side while they fit. */
+.filter-dates {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: var(--cc-space-3);
+	margin-top: var(--cc-space-2);
+}
+
+.filter-dates label {
+	display: flex;
+	flex: 1 1 0;
+	flex-direction: column;
+	gap: var(--cc-space-1);
+}
+
+.filter-footer {
+	display: flex;
+	flex-direction: row;
+	gap: var(--cc-space-2);
+}
+
+.page .filter-footer button[data-action] {
+	padding-block: var(--cc-space-3);
+	font-size: var(--cc-text-md);
+	font-weight: 650;
+}
+
+.page .filter-footer button[data-action="apply"] {
+	flex: 1 1 auto;
+}
+
 /* The month so far: a title, then three figures in a row. */
 .tx-summary {
 	display: flex;
