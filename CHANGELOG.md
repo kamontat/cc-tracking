@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-10: Several orders per card on a purchase list
+## 2026-11-10: Several orders per card on a purchase list, and a right-aligned update bar
 
 ### Features
 
@@ -23,6 +23,10 @@ reasons don't show up in the code.
 
 - A card with several orders is named once in Home's list rows, the reply's _Move … to a
   draft_ and the saved list's moved note.
+
+- The update bar reads _New update is available_ with _Reload_ (Thai _มีอัพเดตใหม่_ with
+  _โหลดข้อมูล_), and from 900px it sits at the right end of the page's width, under the tabs,
+  instead of centred; on a phone it stays centred (DD-181, FR-38).
 
 - Biome no longer checks `.opencode/`, as it already skipped `.claude/`: formatting rewrote the
   playwright-cli skill's front matter (its `allowed-tools` globs) and failed `bun run check`.
