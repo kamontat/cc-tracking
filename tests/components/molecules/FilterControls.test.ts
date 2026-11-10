@@ -24,15 +24,15 @@ const show = (props: { q?: string; count?: number; sort?: string; group?: string
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
 	const searched: string[] = []
-	let opened = 0
+	const tabs: string[] = []
 	mounted = mount(FilterControls, {
 		target: document.body,
 		props: {
 			q: props.q ?? "",
 			placeholder: "Search cards",
 			onsearch: (q: string) => searched.push(q),
-			onopen: () => {
-				opened += 1
+			onopen: (tab: string) => {
+				tabs.push(tab)
 			},
 			count: props.count ?? 0,
 			sort: props.sort ?? "By place",
@@ -42,7 +42,7 @@ const show = (props: { q?: string; count?: number; sort?: string; group?: string
 	})
 	flushSync()
 	const find = <T extends Element = HTMLElement>(selector: string) => document.body.querySelector<T>(selector)
-	return { searched, opened: () => opened, find }
+	return { searched, opened: () => tabs.length, tabs, find }
 }
 
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
@@ -69,8 +69,8 @@ test("typing hands the box's value to onsearch, even for an input event that doe
 	expect(searched).toEqual(["kr", "kra"])
 })
 
-test("the Filter button and the sort chip both open the sheet", () => {
-	const { find, opened } = show({ sort: "Most room" })
+test("the Filter button and the sort chip both open the sheet, each on its own tab", () => {
+	const { find, opened, tabs } = show({ sort: "Most room" })
 	const filter = find<HTMLButtonElement>("button.tx-fbtn") as HTMLButtonElement
 	expect(filter.type).toBe("button")
 	expect(filter.dataset["variant"]).toBe("quiet")
@@ -84,11 +84,12 @@ test("the Filter button and the sort chip both open the sheet", () => {
 	expect(text(sort)).toBe("Sort: Most room ▾")
 	sort.click()
 	expect(opened()).toBe(2)
+	expect(tabs).toEqual(["filter", "sort"])
 })
 
 test("a group chip follows the sort chip and opens the sheet too; none draws none", () => {
 	expect(show().find("[data-action=group]")).toBeNull()
-	const { find, opened } = show({ group: "Place" })
+	const { find, opened, tabs } = show({ group: "Place" })
 	const group = find<HTMLButtonElement>(".tx-chips button.tx-chip.tx-sort[data-action=group]") as HTMLButtonElement
 	expect(group.type).toBe("button")
 	expect(group.dataset["variant"]).toBe("quiet")
@@ -96,6 +97,7 @@ test("a group chip follows the sort chip and opens the sheet too; none draws non
 	expect(group.previousElementSibling?.getAttribute("data-action")).toBe("sort")
 	group.click()
 	expect(opened()).toBe(1)
+	expect(tabs).toEqual(["group"])
 })
 
 test("the Filter button counts the filters in use, and shows no badge with none", () => {

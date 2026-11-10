@@ -194,6 +194,20 @@ test("the sheet sorts by amount, smallest first, kept in the address", async () 
 	expect($('[data-action="sort"]')?.textContent).toContain("Sort: Smallest first")
 })
 
+test("the sort and group chips open the sheet on their own tabs", async () => {
+	await open()
+	await press($('[data-action="sort"]'))
+	expect($<HTMLElement>('dialog [role=tabpanel][data-tab="sort"]')?.hidden).toBe(false)
+	await press($('dialog [data-action="close"]'))
+	await exit()
+	await press($('[data-action="group"]'))
+	expect($<HTMLElement>('dialog [role=tabpanel][data-tab="group"]')?.hidden).toBe(false)
+	await press($('dialog [data-action="close"]'))
+	await exit()
+	await press($('[data-action="filter"]'))
+	expect($<HTMLElement>('dialog [role=tabpanel][data-tab="filter"]')?.hidden).toBe(false)
+})
+
 test("the ledger groups by card from the sheet, kept in the address as by", async () => {
 	const { written } = await open()
 	expect($('[data-action="group"]')?.textContent).toContain("Group: Day")

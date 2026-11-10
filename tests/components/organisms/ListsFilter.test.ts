@@ -141,3 +141,8 @@ test("Group by offers status, month or none and hands it back beside the filter"
 	await settle()
 	expect(grouped).toEqual(["none"])
 })
+
+test("the Lists sheet has no Sort tab", () => {
+	const { root } = show()
+	expect([...root.querySelectorAll("[role=tab]")].map(text)).toEqual(["Filter", "Group"])
+})

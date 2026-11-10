@@ -6,6 +6,7 @@
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
 	import type { MoneyData } from "#lib/ui/money-data"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
 	import { onMount } from "svelte"
@@ -73,6 +74,8 @@
 	let selected = $state.raw<string[]>([])
 	// The filter sheet takes a fresh copy of the view, so its draft starts there.
 	let sheetOpen = $state(false)
+	/** The tab the filter sheet opens on: the control that opened it. */
+	let sheetTab = $state<SheetTab>("filter")
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
 
@@ -205,7 +208,8 @@
 			q={view.filter.q}
 			placeholder={tr("ready.search")}
 			onsearch={(q: string) => setFilter({ q })}
-			onopen={() => {
+			onopen={(tab: SheetTab) => {
+				sheetTab = tab
 				sheetOpen = true
 			}}
 			count={readyFilterCount(view.filter)}
@@ -236,6 +240,7 @@
 		{/if}
 		{#if sheetOpen}
 			<ReadyFilter
+				tab={sheetTab}
 				locations={readyLocations(all, money.locations)}
 				records={money.locations}
 				owners={readyOwners(all)}

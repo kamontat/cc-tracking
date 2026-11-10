@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { MessageKey, Params } from "#lib/i18n/index"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 
 	import { onMount } from "svelte"
 
@@ -16,7 +17,8 @@
 		placeholder: string
 		/** Every keystroke in the search box, with the box's whole value. */
 		onsearch: (q: string) => void
-		onopen: () => void
+		/** Opens the page's filter sheet on a tab: the Filter button's, the sort chip's or the group chip's. */
+		onopen: (tab: SheetTab) => void
 		/** How many filters are in use, for the Filter button's badge. */
 		count: number
 		/** The sort's own words, for the sort chip; none draws no sort chip (the Lists view). */
@@ -69,7 +71,7 @@
 				{placeholder}
 				{@attach listen}></label
 		>
-		<button type="button" class="tx-fbtn" data-variant="quiet" data-action="filter" onclick={onopen}>
+		<button type="button" class="tx-fbtn" data-variant="quiet" data-action="filter" onclick={() => onopen("filter")}>
 			<SvgIcon name="filter" />
 			{tr("tx.filter.open")}
 			{#if count}
@@ -79,13 +81,23 @@
 	</div>
 	<div class="tx-chips">
 		{#if sort !== undefined}
-			<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="sort" onclick={onopen}>
+			<button
+				type="button"
+				class="tx-chip tx-sort"
+				data-variant="quiet"
+				data-action="sort"
+				onclick={() => onopen("sort")}>
 				{tr("tx.sortChip", { sort })}
 				▾
 			</button>
 		{/if}
 		{#if group !== undefined}
-			<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="group" onclick={onopen}>
+			<button
+				type="button"
+				class="tx-chip tx-sort"
+				data-variant="quiet"
+				data-action="group"
+				onclick={() => onopen("group")}>
 				{tr("groupChip", { group })}
 				▾
 			</button>
