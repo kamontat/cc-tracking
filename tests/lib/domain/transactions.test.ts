@@ -5,9 +5,11 @@ import { describe, expect, test } from "vitest"
 import { ledgersFor } from "#lib/domain/ledger"
 import {
 	byDay,
+	DEFAULT_LISTS_FILTER,
 	DEFAULT_TX_FILTER,
 	entriesTotal,
 	filterEntries,
+	filterLists,
 	ledgerEntries,
 	listGroups,
 	listIdOf,
@@ -228,6 +230,47 @@ describe("listGroups", () => {
 			status: "saved",
 			date: "2026-10-05",
 		})
+	})
+})
+
+describe("filterLists", () => {
+	const cards = [mk("A", { name: "SCB Krabi", last4: "1029" }), mk("B", { name: "KBank Fuel", last4: "4412" })]
+	const list = (id: string, date: string, status: PurchaseList["status"], lines: PurchaseList["lines"]) =>
+		({ id, date, status, lines }) as PurchaseList
+	const lists = [
+		list("d1", "2026-10-31", "draft", [{ cardId: "A", amount: 100 }]),
+		list("w1", "2026-10-28", "sent", [{ cardId: "B", amount: 100, note: "diesel" }]),
+		list("s1", "2026-09-30", "saved", [
+			{ cardId: "A", amount: 100, made: true },
+			{ cardId: "B", amount: 100, made: false },
+		]),
+	]
+	const ids = (filter: Partial<typeof DEFAULT_LISTS_FILTER>) =>
+		filterLists(lists, { ...DEFAULT_LISTS_FILTER, ...filter }, cards, TODAY).map((l) => l.id)
+
+	test("no filter keeps every list", () => {
+		expect(ids({})).toEqual(["d1", "w1", "s1"])
+	})
+
+	test("status keeps the lists in any status ticked", () => {
+		expect(ids({ status: ["sent", "saved"] })).toEqual(["w1", "s1"])
+	})
+
+	test("card keeps a list with any of the cards on it", () => {
+		expect(ids({ cards: ["B"] })).toEqual(["w1", "s1"])
+	})
+
+	test("date keeps lists dated in the range, a preset or from and to", () => {
+		expect(ids({ range: "month" })).toEqual(["d1", "w1"])
+		expect(ids({ range: "custom", from: "2026-09-01", to: "2026-09-30" })).toEqual(["s1"])
+	})
+
+	test("search matches a card's id, name or last 4, or a line's note, ignoring case", () => {
+		expect(ids({ q: "scb" })).toEqual(["d1", "s1"])
+		expect(ids({ q: "4412" })).toEqual(["w1", "s1"])
+		expect(ids({ q: "DIESEL" })).toEqual(["w1"])
+		expect(ids({ q: "  " })).toEqual(["d1", "w1", "s1"])
+		expect(ids({ q: "nothing" })).toEqual([])
 	})
 })
 

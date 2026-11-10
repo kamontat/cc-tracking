@@ -21,7 +21,14 @@ describe("tx-query", () => {
 			},
 			sort: "big",
 			owedSort: "left",
-			status: ["draft", "saved"],
+			lists: {
+				q: "fuel & stamps",
+				status: ["draft", "saved"],
+				cards: ["x/y", "kbank"],
+				range: "custom",
+				from: "2026-11-01",
+				to: "2026-11-09",
+			},
 		}
 		const search = writeTxView(view)
 		expect(search.startsWith("?")).toBe(true)
@@ -29,8 +36,17 @@ describe("tx-query", () => {
 	})
 
 	test("unknown values fall back to defaults", () => {
-		const view = readTxView("?sort=zzz&view=nope&owed=x&range=forever&type=bogus&status=x&from=notadate")
+		const view = readTxView(
+			"?sort=zzz&view=nope&owed=x&range=forever&type=bogus&status=x&from=notadate&lrange=forever&lfrom=nope",
+		)
 		expect(view).toEqual(DEFAULT_TX_VIEW)
+	})
+
+	test("the Lists view keeps its own search and filters, apart from the ledger's", () => {
+		const view = readTxView("?view=lists&lq=fuel&status=sent&lcard=A&lrange=week")
+		expect(view.filter).toEqual(DEFAULT_TX_VIEW.filter)
+		expect(view.lists).toEqual({ q: "fuel", status: ["sent"], cards: ["A"], range: "week", from: "", to: "" })
+		expect(writeTxView(view)).toBe("?view=lists&lq=fuel&status=sent&lcard=A&lrange=week")
 	})
 
 	test("a lone preset range is kept", () => {

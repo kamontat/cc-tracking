@@ -19,8 +19,8 @@
 		onopen: () => void
 		/** How many filters are in use, for the Filter button's badge. */
 		count: number
-		/** The sort's own words, for the sort chip. */
-		sort: string
+		/** The sort's own words, for the sort chip; none draws no sort chip (the Lists view). */
+		sort?: string
 		/**
 		 * One removable chip per filter in use: `label` is drawn and read out by its remove label. A
 		 * card's chip also passes its `short` form, which app.css shows in its place on a phone (UI-14).
@@ -76,10 +76,12 @@
 		</button>
 	</div>
 	<div class="tx-chips">
-		<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="sort" onclick={onopen}>
-			{tr("tx.sortChip", { sort })}
-			▾
-		</button>
+		{#if sort !== undefined}
+			<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="sort" onclick={onopen}>
+				{tr("tx.sortChip", { sort })}
+				▾
+			</button>
+		{/if}
 		{#each chips as chip (chip.key)}
 			<button
 				type="button"

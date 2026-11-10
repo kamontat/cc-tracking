@@ -36,10 +36,16 @@ No query.
 | `to`     | `YYYY-MM-DD`                                    | none      | Ledger range end; an invalid date is dropped.               |
 | `sort`   | `new`, `old`, `big`, `small`                    | `new`     | Ledger order.                                               |
 | `owed`   | `urgency`, `card`, `due`, `left`                | `urgency` | Owed view order.                                            |
+| `lq`     | any text                                        | empty     | Lists view search: a line's card id, name, last 4 or note.  |
 | `status` | `draft`, `sent`, `saved` (repeated)             | any       | Lists view status filter.                                   |
+| `lcard`  | card id (repeated)                              | any       | Lists view cards: a list with any of them on a line.        |
+| `lrange` | `today`, `week`, `month`, `lastMonth`, `custom` | none      | Lists view date preset, on the list's date.                 |
+| `lfrom`  | `YYYY-MM-DD`                                    | none      | Lists view range start; an invalid date is dropped.         |
+| `lto`    | `YYYY-MM-DD`                                    | none      | Lists view range end; an invalid date is dropped.           |
 
 The page rewrites its address (`replaceState`) on every change, so the current view can be
-bookmarked. Example: `/transactions?view=lists&status=draft&status=sent`.
+bookmarked. The Lists view's keys are its own, so a ledger search does not carry into it.
+Example: `/transactions?view=lists&lq=fuel&status=draft&status=sent`.
 
 ### `/pay`
 

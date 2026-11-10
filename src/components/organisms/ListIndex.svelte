@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Card, LimitGroup, ListStatus, PurchaseList } from "#lib/domain/types"
+	import type { Card, LimitGroup, PlainDate, PurchaseList } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { RowText, Say } from "#lib/ui/row-text"
 
@@ -10,7 +10,13 @@
 	import { headerDate } from "#lib/domain/date"
 	import { formatAmount, MINUS } from "#lib/domain/money"
 	import { listTotal, mergeCandidates } from "#lib/domain/purchase-list"
-	import { type ListGroup, listGroups } from "#lib/domain/transactions"
+	import {
+		DEFAULT_LISTS_FILTER,
+		filterLists,
+		type ListGroup,
+		type ListsFilter,
+		listGroups,
+	} from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { listPageAddress } from "#lib/ui/list-address"
 	import { OpenRows } from "#lib/ui/open-row.svelte"
@@ -18,8 +24,8 @@
 	import { TwoStep } from "#lib/ui/two-step.svelte"
 
 	/**
-	 * Transactions' Lists view: every purchase list, narrowed by status chips (none pressed means
-	 * all), in sections (DD-188): drafts, lists waiting for the spender, then saved lists by date,
+	 * Transactions' Lists view: every purchase list, narrowed by the page's search and filters
+	 * (`filter`, DD-189), in sections (DD-188): drafts, lists waiting for the spender, then saved lists by date,
 	 * newest first; each a heading over one panel of rows that open in place (DD-108, DD-165). An opened draft
 	 * offers *Continue* and *Delete*, a waiting list *Record reply* and a two-step *Confirm*, a
 	 * saved list *Open*; a draft or waiting list that shares its day and status with others also
@@ -29,30 +35,28 @@
 		lists?: PurchaseList[]
 		cards?: Card[]
 		groups?: LimitGroup[]
-		/** The pressed status chips; none means every list. */
-		status?: ListStatus[]
+		/** The page's search and filters; the default shows every list. */
+		filter?: ListsFilter
+		/** Today, which a date filter's preset counts from. */
+		today?: PlainDate
 		/** A waiting list's *Confirm*, after its second step. */
 		onconfirmlist?: (list: PurchaseList) => void
 		/** A draft's *Delete*. */
 		ondeletedraft?: (list: PurchaseList) => void
 		/** *Merge*: the other same-day lists of its status go into this one. */
 		onmergelists?: (list: PurchaseList) => void
-		/** A chip pressed or released: the statuses pressed now. */
-		onstatus?: (status: ListStatus[]) => void
 	}
 
 	const {
 		lists = [],
 		cards = [],
 		groups = [],
-		status = [],
+		filter = DEFAULT_LISTS_FILTER,
+		today = "",
 		onconfirmlist,
 		ondeletedraft,
 		onmergelists,
-		onstatus,
 	}: Props = $props()
-
-	const STATUSES: ListStatus[] = ["draft", "sent", "saved"]
 
 	let root = $state<HTMLElement | undefined>()
 
@@ -78,7 +82,8 @@
 		}),
 	)
 
-	const sections = $derived(listGroups([...lists], status))
+	// Merge still looks at every list (`lists`): a list the filter hides is on that day all the same.
+	const sections = $derived(listGroups(filterLists(lists, filter, cards, today), []))
 
 	$effect.pre(() => {
 		rows.prune(sections.flatMap((g) => g.lists.map((l) => `list:${l.id}`)))
@@ -89,10 +94,6 @@
 		void lang
 		if (group.status !== "saved") return t(`tx.lists.group.${group.status}`)
 		return t("tx.lists.group.saved", { date: headerDate(group.date, lang, true) })
-	}
-
-	const toggle = (pick: ListStatus) => {
-		onstatus?.(status.includes(pick) ? status.filter((s) => s !== pick) : [...status, pick])
 	}
 
 	const text = (list: PurchaseList): RowText => {
@@ -129,19 +130,6 @@
 	{#if lists.length === 0}
 		<p class="empty" tabindex="-1" data-refocus="lists">{tr("tx.lists.empty")}</p>
 	{:else}
-		<fieldset class="chips">
-			{#each STATUSES as pick (pick)}
-				<button
-					type="button"
-					class="chip"
-					data-status={pick}
-					data-variant="quiet"
-					aria-pressed={status.includes(pick) ? "true" : "false"}
-					onclick={() => toggle(pick)}>
-					{tr(`tx.lists.status.${pick}`)}
-				</button>
-			{/each}
-		</fieldset>
 		{#if sections.length === 0}
 			<p class="empty" tabindex="-1" data-refocus="lists">{tr("tx.lists.noMatch")}</p>
 		{:else}
@@ -213,48 +201,6 @@
 	/* app.css draws the panel; it clips a hovered row's ground at its rounded corners (DD-109). */
 	.row-panel {
 		overflow: clip;
-	}
-
-	/* A group of toggles, not a form: no frame of its own. */
-	.chips {
-		display: flex;
-		flex-direction: row;
-		flex-wrap: wrap;
-		gap: var(--cc-space-2);
-		min-inline-size: 0;
-		margin: 0;
-		padding: 0;
-		border: 0;
-	}
-
-	/* Two classes and the element, to outrank app.css's `.page button[data-variant="quiet"]`. */
-	.chips button.chip {
-		align-self: flex-start;
-		padding: var(--cc-space-1) var(--cc-space-3);
-		font: inherit;
-		font-size: var(--cc-text-sm);
-		font-weight: 400;
-		line-height: 1.2;
-		white-space: nowrap;
-		color: var(--cc-text);
-		cursor: pointer;
-		background: var(--cc-surface-sunken);
-		border: var(--cc-border-width) solid transparent;
-		border-radius: var(--cc-radius-pill);
-	}
-
-	.chips button.chip:hover {
-		background: var(--cc-border);
-	}
-
-	.chips button.chip:focus-visible {
-		box-shadow: var(--cc-focus-ring);
-	}
-
-	.chips button.chip[aria-pressed="true"] {
-		font-weight: 600;
-		color: var(--cc-success);
-		background: var(--cc-accent-surface);
 	}
 
 	.group {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { CardPayment, ListStatus, PurchaseList } from "#lib/domain/types"
+	import type { CardPayment, PlainDate, PurchaseList } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
@@ -11,6 +11,7 @@
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
 	import ListIndex from "#components/organisms/ListIndex.svelte"
+	import ListsFilter from "#components/organisms/ListsFilter.svelte"
 	import OwedList from "#components/organisms/OwedList.svelte"
 	import TxFilter from "#components/organisms/TxFilter.svelte"
 	import TxLedger from "#components/organisms/TxLedger.svelte"
@@ -22,6 +23,8 @@
 		byDay,
 		type TxFilter as Filter,
 		filterEntries,
+		filterLists,
+		type ListsFilter as ListsFilterValue,
 		ledgerEntries,
 		monthSummary,
 		owedRows,
@@ -45,7 +48,8 @@
 
 	/**
 	 * Transactions' island: a switch between the ledger, the purchase lists and what is owed, with
-	 * the view kept in the address (`?view=&q=&type=&card=&range=&from=&to=&sort=&owedSort=&status=`),
+	 * the view kept in the address (`?view=&q=&type=&card=&range=&from=&to=&sort=&owedSort=`, and
+	 * the Lists view's own `lq=&status=&lcard=&lrange=&lfrom=&lto=`, DD-189),
 	 * replaced as it changes, so a reload or a shared link lands in the same place. From 900px the
 	 * owed list sits beside the ledger. Everything here is the reader's data (PRD DD-172).
 	 */
@@ -102,6 +106,7 @@
 		address.replace(`/transactions${writeTxView(view)}`)
 	}
 	const setFilter = (patch: Partial<Filter>) => change({ filter: { ...view.filter, ...patch } })
+	const setLists = (patch: Partial<ListsFilterValue>) => change({ lists: { ...view.lists, ...patch } })
 
 	/** Runs a write against the store; a failure shows in the banner under `key`. */
 	const write = (action: (store: Repository, money: MoneyData) => Promise<void>, key: MessageKey) => {
@@ -123,41 +128,62 @@
 		write((store) => mergeSameDayLists(store, list.id), "purchaseList.error.merge")
 	const remove = (payment: CardPayment) => write((store) => deletePlannedPayment(store, payment), "tx.error.delete")
 
-	/** The active filters as removable chips; a card's shows its line form, and its short form on a phone. */
-	const chips = $derived.by(() => {
-		void lang
-		if (!data) return []
-		const { filter } = view
-		const cards = data.cards
-		const list: { key: string; label: string; short?: string; clear: () => void }[] = []
-		for (const kind of filter.types)
-			list.push({
-				key: `type:${kind}`,
-				label: t(kind === "purchase" ? "tx.type.purchase" : "tx.type.payment"),
-				clear: () => setFilter({ types: filter.types.filter((x) => x !== kind) }),
-			})
+	type Chip = { key: string; label: string; short?: string; clear: () => void }
+
+	/** A card chip per card picked, then the date's chip: shared by the ledger's and the Lists view's filters. */
+	const cardAndDateChips = (
+		filter: { cards: string[]; range: Filter["range"]; from: PlainDate | ""; to: PlainDate | "" },
+		set: (patch: { cards?: string[]; range?: Filter["range"]; from?: ""; to?: "" }) => void,
+	): Chip[] => {
+		const list: Chip[] = []
 		for (const id of filter.cards) {
-			const card = cards.find((c) => c.id === id)
+			const card = data?.cards.find((c) => c.id === id)
 			list.push({
 				key: `card:${id}`,
 				label: cardLine(id, card),
 				short: cardLine(id, card, { short: true }),
-				clear: () => setFilter({ cards: filter.cards.filter((x) => x !== id) }),
+				clear: () => set({ cards: filter.cards.filter((x) => x !== id) }),
 			})
 		}
 		if (filter.range)
 			list.push({
 				key: "range",
 				label: t(`tx.range.${filter.range}`),
-				clear: () => setFilter({ range: "", from: "", to: "" }),
+				clear: () => set({ range: "", from: "", to: "" }),
 			})
 		if (filter.range === "" && (filter.from || filter.to))
 			list.push({
 				key: "range",
 				label: `${filter.from ? displayDate(filter.from, getLocale()) : "…"} – ${filter.to ? displayDate(filter.to, getLocale()) : "…"}`,
-				clear: () => setFilter({ from: "", to: "" }),
+				clear: () => set({ from: "", to: "" }),
 			})
 		return list
+	}
+
+	/** The active filters as removable chips; a card's shows its line form, and its short form on a phone. */
+	const chips = $derived.by(() => {
+		void lang
+		if (!data) return []
+		const { filter } = view
+		const types: Chip[] = filter.types.map((kind) => ({
+			key: `type:${kind}`,
+			label: t(kind === "purchase" ? "tx.type.purchase" : "tx.type.payment"),
+			clear: () => setFilter({ types: filter.types.filter((x) => x !== kind) }),
+		}))
+		return [...types, ...cardAndDateChips(filter, setFilter)]
+	})
+
+	/** The Lists view's filters as removable chips: each status, then cards and the date. */
+	const listChips = $derived.by(() => {
+		void lang
+		if (!data) return []
+		const { lists } = view
+		const statuses: Chip[] = lists.status.map((status) => ({
+			key: `status:${status}`,
+			label: t(`tx.lists.status.${status}`),
+			clear: () => setLists({ status: lists.status.filter((x) => x !== status) }),
+		}))
+		return [...statuses, ...cardAndDateChips(lists, setLists)]
 	})
 
 	const narrowed = $derived.by(() => {
@@ -271,15 +297,40 @@
 		{#if data}
 			<div class="tx-body">
 				{#if view.view === "lists"}
+					<FilterControls
+						q={view.lists.q}
+						placeholder={tr("tx.lists.search.placeholder")}
+						onsearch={(q: string) => setLists({ q })}
+						onopen={() => {
+							sheetOpen = true
+						}}
+						count={listChips.length}
+						chips={listChips} />
 					<ListIndex
 						lists={data.lists}
 						cards={data.cards}
 						groups={data.groups}
-						status={view.status}
+						filter={view.lists}
+						today={now}
 						onconfirmlist={confirmList}
 						ondeletedraft={removeDraft}
-						onmergelists={mergeLists}
-						onstatus={(status: ListStatus[]) => change({ status })} />
+						onmergelists={mergeLists} />
+					{#if sheetOpen}
+						{@const money = data}
+						<ListsFilter
+							cards={money.cards.filter(
+								(c) => !c.archived || money.lists.some((l) => l.lines.some((x) => x.cardId === c.id)),
+							)}
+							filter={{ ...view.lists }}
+							count={(filter: ListsFilterValue) => filterLists(money.lists, filter, money.cards, now).length}
+							onapply={(lists: ListsFilterValue) => {
+								sheetOpen = false
+								change({ lists })
+							}}
+							onclose={() => {
+								sheetOpen = false
+							}} />
+					{/if}
 				{:else}
 					<FilterControls
 						q={view.filter.q}

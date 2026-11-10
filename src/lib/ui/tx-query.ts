@@ -2,14 +2,22 @@ import type { RangePreset } from "#lib/domain/purchase-range"
 import type { ListStatus, PlainDate } from "#lib/domain/types"
 
 import { isValidDate } from "#lib/domain/date"
-import { DEFAULT_TX_FILTER, type OwedSort, type TxFilter, type TxSort } from "#lib/domain/transactions"
+import {
+	DEFAULT_LISTS_FILTER,
+	DEFAULT_TX_FILTER,
+	type ListsFilter,
+	type OwedSort,
+	type TxFilter,
+	type TxSort,
+} from "#lib/domain/transactions"
 
 export type TxView = {
 	view: "ledger" | "lists" | "owed"
 	filter: TxFilter
 	sort: TxSort
 	owedSort: OwedSort
-	status: ListStatus[]
+	/** The Lists view's own search and filters (`lq`, `status`, `lcard`, `lrange`, `lfrom`, `lto`). */
+	lists: ListsFilter
 }
 
 export const DEFAULT_TX_VIEW: TxView = {
@@ -17,7 +25,7 @@ export const DEFAULT_TX_VIEW: TxView = {
 	filter: DEFAULT_TX_FILTER,
 	sort: "new",
 	owedSort: "urgency",
-	status: [],
+	lists: DEFAULT_LISTS_FILTER,
 }
 
 /** How many ledger rows show at first, and how many more each *Show more* adds. */
@@ -52,11 +60,18 @@ export function readTxView(search: string): TxView {
 		},
 		sort: oneOf(SORTS, p.get("sort"), DEFAULT_TX_VIEW.sort),
 		owedSort: oneOf(OWED_SORTS, p.get("owed"), DEFAULT_TX_VIEW.owedSort),
-		status: manyOf(STATUSES, p.getAll("status")),
+		lists: {
+			q: p.get("lq") ?? "",
+			status: manyOf<ListStatus>(STATUSES, p.getAll("status")),
+			cards: [...new Set(p.getAll("lcard").filter((c) => c !== ""))],
+			range: oneOf<RangePreset | "">(["", ...RANGES], p.get("lrange"), ""),
+			from: toDate(p.get("lfrom")),
+			to: toDate(p.get("lto")),
+		},
 	}
 }
 
-/** `""` for the defaults, else `?` and the fields that differ, `card`, `type` and `status` repeated. */
+/** `""` for the defaults, else `?` and the fields that differ, `card`, `type`, `status` and `lcard` repeated. */
 export function writeTxView(view: TxView): string {
 	const p = new URLSearchParams()
 	const { filter } = view
@@ -69,7 +84,13 @@ export function writeTxView(view: TxView): string {
 	if (filter.to) p.set("to", filter.to)
 	if (view.sort !== DEFAULT_TX_VIEW.sort) p.set("sort", view.sort)
 	if (view.owedSort !== DEFAULT_TX_VIEW.owedSort) p.set("owed", view.owedSort)
-	for (const s of view.status) p.append("status", s)
+	const { lists } = view
+	if (lists.q) p.set("lq", lists.q)
+	for (const s of lists.status) p.append("status", s)
+	for (const c of lists.cards) p.append("lcard", c)
+	if (lists.range) p.set("lrange", lists.range)
+	if (lists.from) p.set("lfrom", lists.from)
+	if (lists.to) p.set("lto", lists.to)
 	const text = p.toString()
 	return text ? `?${text}` : ""
 }
