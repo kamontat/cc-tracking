@@ -1376,7 +1376,7 @@ a:any-link:hover {
 
 /*
  * A new version of the site has downloaded (DD-181): a slim panel floating under the header,
- * the message and the primary _Reload_. Fixed, so it shows wherever the reader has scrolled, and
+ * the message and the primary _Reload_, centred on a phone and at the right from 900px. Fixed, so it shows wherever the reader has scrolled, and
  * clear of the floating + New at the bottom.
  */
 .update-bar {
@@ -1407,6 +1407,15 @@ a:any-link:hover {
 .update-bar > button {
 	align-self: center;
 	white-space: nowrap;
+}
+
+/* From 900px the bar sits at the right end of the page's width, under the tabs, as wide as its
+   words need. */
+@media (min-width: 900px) {
+	.update-bar {
+		inset-inline: auto max(var(--cc-space-4), calc((100% - var(--cc-page-width)) / 2 + var(--cc-space-4)));
+		margin-inline: 0;
+	}
 }
 
 /*

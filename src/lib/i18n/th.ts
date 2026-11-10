@@ -147,8 +147,8 @@ export const th: Catalog = {
 	"common.seeMore": "ดูเพิ่ม ({count})",
 	"common.more": "เพิ่มเติม",
 	"common.showLess": "ย่อลง",
-	"update.message": "มีเวอร์ชันใหม่แล้ว",
-	"update.reload": "โหลดใหม่",
+	"update.message": "มีอัพเดตใหม่",
+	"update.reload": "โหลดข้อมูล",
 
 	"about.title": "เกี่ยวกับ",
 	"about.environment": "สภาพแวดล้อม",
