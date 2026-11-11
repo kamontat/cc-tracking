@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-11: Grouping every list, and tabbed filter sheets with an order switch
+## 2026-11-11: Grouping every list, tabbed filter sheets with an order switch, and no stale .gitkeep files
 
 ### BREAKING CHANGES
 
@@ -34,6 +34,9 @@ reasons don't show up in the code.
   _↑ Oldest_, _↓ Most_ | _↑ Least_), the field's own direction first, with the field chips
   under it, replacing the second row of order chips. _Owed on each card_ has the same switch,
   arrows only, in place of its single ↑/↓ button (DD-193).
+
+- The empty-folder placeholders `src/components/{atoms,molecules,organisms}/.gitkeep` are gone,
+  since each folder holds its components; a test now fails on a `.gitkeep` beside other files.
 
 ### Decisions
 
