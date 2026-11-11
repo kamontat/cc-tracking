@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New purchase list: build it as you go</title>
+<style>
+/* Three interactive takes on building a purchase list a card at a time, with each card's last 12 months of use beside it. Colours, radii and type are the app's own tokens (src/styles/tokens.css). The data is made up. */
+:root {
+	--bg: #f6f7f3; --surface: #ffffff; --sunken: #eef1ea; --border: #e1e6de;
+	--text: #22302a; --muted: #5f6b65; --accent: #367d5f; --accent-text: #ffffff; --accent-surface: #e2f0e8;
+	--danger: #a8403d; --danger-surface: #f8e2e0; --warning: #95591a; --warning-surface: #fbecd9;
+	--backdrop: rgb(10 20 15 / 0.42); --shadow-lg: 0 16px 40px rgb(34 48 42 / 0.18);
+	--blue: #e3e9fb; --blue-t: #3552b8; --green: #dff1e7; --green-t: #2f7457; --purple: #efe5f7; --purple-t: #7a45a8;
+	--orange: #fbe6dd; --orange-t: #a74e2c; --teal: #ddf8f7; --teal-t: #217370; --rose: #fbdae2; --rose-t: #9c1c3c;
+	--sans: system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai", "Noto Sans Thai", sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+	--r-xs: 6px; --r-sm: 12px; --r-md: 18px;
+	color-scheme: light;
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #121815; --surface: #1b231f; --sunken: #24302a; --border: #2c3832;
+	--text: #e6ede8; --muted: #9aa9a1; --accent: #74c9a1; --accent-text: #0f1a14; --accent-surface: #1d3328;
+	--danger: #ef8a86; --danger-surface: #3b1e1d; --warning: #e7a55e; --warning-surface: #3a2a18;
+	--backdrop: rgb(0 0 0 / 0.6); --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.5);
+	--blue: #1f2944; --blue-t: #9fb3f5; --green: #1b3328; --green-t: #8ed7b4; --purple: #2e2240; --purple-t: #cfa6ef;
+	--orange: #3a241b; --orange-t: #f2a882; --teal: #17312f; --teal-t: #8fe0da; --rose: #3a1c25; --rose-t: #f3a0b6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5; padding: 28px 16px 72px; }
+button, input, select { font: inherit; color: inherit; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 22px; }
+h1 { font-size: 1.75rem; margin: 0; }
+p { margin: 0; max-width: 78ch; }
+.lead { color: var(--muted); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-grid; grid-auto-flow: column; padding: 3px; background: var(--sunken); border-radius: 12px; font-size: 0.8125rem; font-weight: 600; }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: 9px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.seg.big { font-size: 0.9375rem; }
+.seg.big button { padding: 8px 16px; }
+.explain { display: grid; gap: 8px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.explain h2 { font-size: 1.125rem; margin: 0; }
+.explain ul { margin: 0; padding-left: 20px; display: grid; gap: 2px; }
+.explain .cols { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.explain h4 { margin: 0 0 4px; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+/* the device frame */
+.stage { overflow-x: auto; padding-bottom: 6px; }
+.device { position: relative; margin: 0 auto; inline-size: 390px; block-size: 800px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 28px; overflow: hidden; background: var(--bg); }
+.device.desk { inline-size: 1180px; block-size: 760px; border-radius: 16px; }
+.appbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 2px solid var(--text); background: var(--surface); font-size: 0.8125rem; flex: none; }
+.brand { font-family: var(--mono); font-weight: 700; }
+.brand b { background: var(--text); color: var(--bg); border-radius: 5px; padding: 0 4px; }
+.tabs { display: flex; gap: 22px; color: var(--muted); font-weight: 600; }
+.tabs .on { color: var(--text); }
+.subhead { display: flex; gap: 12px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--border); flex: none; }
+.desk .subhead, .desk .appbar { padding-inline: 32px; }
+.back { inline-size: 36px; block-size: 36px; border-radius: 10px; background: var(--sunken); display: grid; place-items: center; }
+.subhead b { display: block; font-size: 0.9375rem; }
+.subhead small { color: var(--muted); font-size: 0.75rem; }
+.screen { flex: 1; overflow: auto; padding: 16px; display: grid; gap: 14px; align-content: start; }
+.desk .screen { padding: 20px 32px 24px; }
+.foot { flex: none; display: flex; gap: 10px; align-items: center; padding: 10px 14px; margin: 0 12px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: 0 8px 20px rgb(34 48 42 / 0.12); }
+.desk .foot { margin: 0 32px 16px; }
+.foot .sum { flex: 1; min-width: 0; font-size: 0.8125rem; color: var(--muted); }
+.foot .sum b { display: block; color: var(--text); font-size: 1.0625rem; font-variant-numeric: tabular-nums; }
+.foot .sum.warn { color: var(--warning); }
+
+.btn { border: 1px solid transparent; background: var(--accent); color: var(--accent-text); font-size: 0.8125rem; font-weight: 600; padding: 8px 12px; border-radius: var(--r-sm); cursor: pointer; white-space: nowrap; }
+.btn[data-variant="quiet"] { background: var(--sunken); color: var(--text); border-color: var(--border); }
+.btn[data-variant="danger"] { background: transparent; color: var(--danger); border-color: var(--danger); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.small { padding: 4px 8px; font-size: 0.75rem; }
+.btn.wide { inline-size: 100%; padding: 12px; font-size: 0.9375rem; }
+h3 { margin: 0; font-size: 0.9375rem; display: flex; gap: 8px; align-items: baseline; }
+h3 small { color: var(--muted); font-weight: 500; font-size: 0.75rem; }
+.muted { color: var(--muted); }
+.sm { font-size: 0.75rem; }
+.money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.search { inline-size: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 9px 12px; font-size: 0.875rem; }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tools .search { flex: 1 1 180px; inline-size: auto; }
+select.sort { border: 1px solid var(--border); background: var(--sunken); border-radius: 12px; padding: 8px 10px; font-size: 0.8125rem; font-weight: 600; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.empty { padding: 18px; border: 1.5px dashed var(--border); border-radius: var(--r-md); color: var(--muted); font-size: 0.875rem; text-align: center; }
+.chip { flex: none; inline-size: 40px; block-size: 26px; border-radius: var(--r-xs); font: 700 0.625rem var(--mono); display: grid; place-items: end start; padding: 2px 4px; background: var(--g); color: var(--gt); }
+.c-blue { --g: var(--blue); --gt: var(--blue-t); } .c-green { --g: var(--green); --gt: var(--green-t); }
+.c-purple { --g: var(--purple); --gt: var(--purple-t); } .c-orange { --g: var(--orange); --gt: var(--orange-t); }
+.c-teal { --g: var(--teal); --gt: var(--teal-t); } .c-rose { --g: var(--rose); --gt: var(--rose-t); }
+.name { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name .id { color: var(--muted); }
+.warnline { font-size: 0.8125rem; color: var(--warning); background: var(--warning-surface); border-radius: var(--r-sm); padding: 6px 10px; }
+.toast { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 0.8125rem; font-weight: 600; white-space: nowrap; z-index: 9; }
+
+/* 12-month history: a spark (one shared scale, so cards compare) and a chart (its own scale) */
+.spark { display: inline-grid; grid-template-columns: repeat(12, 5px); gap: 2px; align-items: end; block-size: 22px; vertical-align: middle; }
+.spark i { display: block; background: var(--gt, var(--muted)); border-radius: 1px; min-block-size: 1px; opacity: 0.85; }
+.spark i.zero { background: var(--border); opacity: 1; }
+.spark i.now { opacity: 0.4; }
+.hist { display: grid; gap: 2px; }
+.hist small { font-size: 0.6875rem; color: var(--muted); white-space: nowrap; }
+.chart { position: relative; display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; align-items: end; block-size: 104px; }
+.chart .col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; }
+.chart .col b { font-size: 0.625rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chart .col i { display: block; inline-size: 100%; max-inline-size: 26px; border-radius: 4px 4px 1px 1px; background: var(--gt); min-block-size: 2px; }
+.chart .col i.zero { background: var(--border); }
+.chart .col i.now { opacity: 0.45; }
+.chart .avg { position: absolute; left: 0; right: 0; border-top: 1.5px dashed var(--muted); opacity: 0.6; pointer-events: none; }
+.months { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; font-size: 0.625rem; color: var(--muted); text-align: center; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stats div { background: var(--sunken); border-radius: var(--r-sm); padding: 8px 10px; }
+.stats small { display: block; font-size: 0.6875rem; color: var(--muted); }
+.stats b { font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+.phone .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* an entered line, as ListAmounts draws it */
+.line { display: grid; gap: 10px; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.line.warn { border-color: var(--warning); box-shadow: 0 0 0 1px var(--warning); }
+.line.flash { animation: flash 900ms ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 4px var(--accent); } }
+.line .top { display: flex; gap: 10px; align-items: center; }
+.line .top .name { flex: 1; }
+.bigin { display: flex; gap: 8px; align-items: baseline; padding: 2px 14px; background: var(--sunken); border-radius: var(--r-sm); }
+.bigin span { font-size: 1.125rem; color: var(--muted); }
+.bigin input { inline-size: 100%; border: 0; background: transparent; padding: 4px 0; font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums; outline: none; }
+.after { display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--muted); }
+.after b { color: var(--text); font-variant-numeric: tabular-nums; }
+.after b.bad { color: var(--warning); }
+/* a card's orders (DD-186): amount and note each, a line between them, × once there are two */
+.orders { display: grid; gap: 10px; }
+.order { display: grid; gap: 6px; }
+.order + .order { padding-top: 10px; border-top: 1px solid var(--border); }
+.order-head { display: flex; justify-content: space-between; align-items: center; font-size: 0.8125rem; font-weight: 600; color: var(--muted); }
+.ox { border: 0; background: var(--sunken); color: var(--muted); border-radius: 8px; inline-size: 26px; block-size: 26px; cursor: pointer; font-size: 0.75rem; }
+.addorder { justify-self: start; }
+.bigin.mid input { font-size: 1.25rem; padding: 2px 0; }
+input.note { inline-size: 100%; border: 1px solid var(--border); background: var(--surface); border-radius: var(--r-sm); padding: 8px 10px; font-size: 0.875rem; }
+
+/* ---------- A · Basket: tiles to tap, the list beside or above ---------- */
+.a-cols { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) 380px; align-items: start; }
+.a-side { position: sticky; top: 0; display: grid; gap: 10px; }
+.a-stack { display: grid; gap: 12px; }
+.tiles { display: grid; gap: 8px; }
+.desk .tiles { grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.tile { position: relative; text-align: start; display: grid; gap: 4px; padding: 10px 12px 12px; border-radius: 14px; background: var(--g); border: 1px solid color-mix(in oklab, var(--gt) 18%, transparent); cursor: pointer; }
+.tile .row1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.tile .pan { font: 700 0.75rem var(--mono); color: var(--gt); letter-spacing: 0.08em; }
+.tile .room { font-size: 1.0625rem; font-weight: 760; font-variant-numeric: tabular-nums; }
+.tile .room small { font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.tile .row1 .name { flex: 1; }
+.tile .row3 { display: grid; gap: 2px; }
+.tile[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.tile .badge { position: absolute; top: -7px; right: 10px; background: var(--accent); color: var(--accent-text); font-size: 0.6875rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+.a-lines { display: grid; gap: 10px; }
+.desk .a-lines { max-block-size: 470px; overflow: auto; padding: 2px; }
+.a-compact .line { padding: 10px 12px; gap: 6px; }
+.a-compact .bigin input { font-size: 1.25rem; }
+
+/* ---------- B · Sheet of every card: type an amount and it is on the list ---------- */
+.b-head, .brow { display: grid; grid-template-columns: minmax(0, 1.4fr) 150px minmax(0, 1.2fr) 170px; gap: 14px; align-items: center; padding: 10px 14px; }
+.b-head { font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding-block: 0; }
+.brow + .brow { border-top: 1px solid var(--border); }
+.brow.on { background: color-mix(in oklab, var(--accent-surface) 55%, transparent); }
+.brow.warn { box-shadow: inset 3px 0 0 var(--warning); }
+.bcard { display: flex; gap: 10px; align-items: center; min-width: 0; }
+.bcard > div { min-width: 0; }
+.bcard small, .broom small { display: block; font-size: 0.75rem; color: var(--muted); }
+.broom b { font-variant-numeric: tabular-nums; }
+.bhist { border: 0; background: none; padding: 4px 6px; margin: -4px -6px; border-radius: 8px; text-align: start; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+.bhist:hover { background: var(--sunken); }
+.bamt { display: flex; align-items: baseline; gap: 4px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.on .bamt { border-color: var(--accent); }
+.bamt span { color: var(--muted); }
+.bamt input { inline-size: 100%; border: 0; background: transparent; outline: none; font-weight: 700; font-size: 1rem; text-align: end; font-variant-numeric: tabular-nums; }
+.bsum { cursor: pointer; justify-content: space-between; text-align: end; }
+.bsum small { color: var(--muted); font-size: 0.75rem; white-space: nowrap; }
+.bopen { display: grid; gap: 18px; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; }
+.bopen-hist { display: grid; gap: 10px; }
+.phone .bopen { grid-template-columns: minmax(0, 1fr); }
+.bafter { grid-column: 4; font-size: 0.6875rem; color: var(--muted); text-align: end; margin-top: -8px; }
+.bafter.bad { color: var(--warning); font-weight: 600; }
+.bmore { grid-column: 1 / -1; display: grid; gap: 10px; padding: 6px 0 4px; }
+.bmore .warnline { justify-self: start; }
+.phone .b-head { display: none; }
+.phone .brow { grid-template-columns: minmax(0, 1fr) 128px; row-gap: 6px; }
+.phone .brow .broom { display: none; }
+.phone .brow .bhist { grid-column: 1; grid-row: 2; }
+.phone .brow .bamt { grid-column: 2; grid-row: 1; }
+.phone .bcard .due { display: none; }
+.phone .bafter { grid-column: 2; grid-row: 2; margin: 0; align-self: start; }
+
+/* ---------- C · List first, cards come from a sheet ---------- */
+.c-cols { display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) 320px; align-items: start; }
+.crow { inline-size: 100%; border: 0; background: none; text-align: start; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 12px 14px; cursor: pointer; }
+.crow + .crow { border-top: 1px solid var(--border); }
+.crow small { display: block; font-size: 0.75rem; color: var(--muted); }
+.crow small.bad { color: var(--warning); font-weight: 600; }
+.crow .amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+.crow .amt.blank { color: var(--muted); font-weight: 500; font-style: italic; }
+.crow.warn { box-shadow: inset 3px 0 0 var(--warning); }
+.chev { color: var(--muted); }
+.side { display: grid; gap: 12px; padding: 14px; }
+.side label { display: grid; gap: 4px; font-size: 0.8125rem; color: var(--muted); }
+.side input { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+.scrim { position: absolute; inset: 0; background: var(--backdrop); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-block-size: 88%; overflow: auto; background: var(--surface); border-radius: 22px 22px 0 0; z-index: 6; padding: 10px 16px 18px; display: grid; gap: 12px; align-content: start; box-shadow: var(--shadow-lg); }
+.desk .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); inline-size: 560px; border-radius: 18px; max-block-size: 90%; padding: 16px 20px 20px; }
+.grab { justify-self: center; inline-size: 40px; block-size: 4px; border-radius: 2px; background: var(--border); }
+.desk .grab { display: none; }
+.shead { display: flex; gap: 10px; align-items: center; }
+.shead .t { flex: 1; min-width: 0; }
+.shead .t b, .shead .t .name { display: block; }
+.x { border: 0; background: var(--sunken); border-radius: 10px; inline-size: 34px; block-size: 34px; cursor: pointer; }
+.pick { display: grid; }
+.prow { border: 0; background: none; text-align: start; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 2px; cursor: pointer; border-radius: 10px; }
+.prow + .prow { border-top: 1px solid var(--border); }
+.prow:hover { background: var(--sunken); }
+.prow small { display: block; font-size: 0.75rem; color: var(--muted); }
+.prow .tag { font-size: 0.6875rem; font-weight: 700; color: var(--accent); background: var(--accent-surface); border-radius: 999px; padding: 1px 8px; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; cursor: pointer; }
+.pill[aria-pressed="true"] { background: var(--accent-surface); border-color: var(--accent); color: var(--accent); }
+.sbtns { display: flex; gap: 8px; }
+.sbtns .btn { flex: 1; padding: 11px; font-size: 0.875rem; }
+.sbtns .btn[data-variant="danger"] { flex: 0 0 auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<header style="display:grid;gap:8px">
+		<h1>New purchase list: build it as you go</h1>
+		<p class="explain" style="max-width:none"><b>Chosen 2026-11-11: option C.</b> Changes after this mockup: the history is <b>per statement cycle</b> (what each card spent on each of its last 12 statements), not per calendar month. The sheet's picker keeps search and sorting only: <em>Room</em>, <em>Least used</em>, <em>Longest unused</em>, <em>Close date</em>, <em>Due date</em>. Today's <em>Kept in</em> and <em>Account holder</em> filters and the grouping go. Back closes the sheet, as on <code>/pay</code>.</p>
+		<p class="lead">Today a list starts with ticking every card on <code>/list/new</code>, then entering amounts on <code>?card=…</code>. Adding a card later is a small <em>+ Add another card</em> at the bottom of that step, with no room or history to go on. Each option below folds picking and entering into one page, so you can add a card, type its amount, add another, and change an amount, in any order. Every option keeps <b>more than one order per card</b> (DD-186): each order has its own amount and note, and counts read <em>N cards · M orders</em>. Every card also shows its <b>last 12 months of purchases</b>: a small bar per month (this month faded, since it isn't over), the 12-month total and when it was last used. The data is made up, and the options share it, so a list you build in one shows in the others.</p>
+	</header>
+
+	<div class="bar">
+		<div class="seg big" id="opts"></div>
+		<span style="flex:1"></span>
+		<div class="seg" id="sizes"></div>
+		<div class="seg" id="themes"></div>
+		<button class="btn" data-variant="quiet" data-act="reset">Reset list</button>
+	</div>
+
+	<section class="explain" id="explain"></section>
+
+	<div class="stage">
+		<div class="device" id="device">
+			<div class="appbar"><span class="brand"><b>cc</b> tracking</span><span class="tabs" id="tabs"></span></div>
+			<div class="subhead"><span class="back">‹</span><div><b>New purchase list</b><small id="subtitle"></small></div></div>
+			<div class="screen" id="screen"></div>
+			<div class="foot" id="foot"></div>
+			<div id="overlay"></div>
+		</div>
+	</div>
+</div>
+
+<script>
+const MONTHS = ["Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov"]
+const YEARS = ["2025", "2026", "", "", "", "", "", "", "", "", "", ""]
+const k = (xs) => xs.map((x) => Math.round(x * 1000))
+const GROUPS = {
+	scb: { name: "SCB shared", room: 48200, color: "blue" },
+	kbank: { name: "KBank", room: 112500, color: "green" },
+	uob: { name: "UOB", room: 9800, color: "purple" },
+	ktc: { name: "KTC", room: 61000, color: "orange" },
+	bay: { name: "Krungsri", room: 74300, color: "teal" },
+	citi: { name: "Citi", room: 38000, color: "rose" },
+}
+const CARDS = [
+	{ id: "1", name: "SCB Krabi", last4: "1029", group: "scb", closes: "25 Nov", due: "10 Dec", hist: k([42, 38, 51, 0, 47, 55, 40, 61, 39, 58, 44, 12]) },
+	{ id: "2", name: "KBank Krabi", last4: "4412", group: "kbank", closes: "18 Nov", due: "3 Dec", hist: k([88, 92, 75, 101, 96, 84, 110, 99, 87, 93, 105, 30]) },
+	{ id: "3", name: "UOB Krabi", last4: "7781", group: "uob", closes: "12 Nov", due: "2 Dec", hist: k([20, 25, 0, 30, 28, 22, 35, 27, 31, 26, 29, 18]) },
+	{ id: "5", name: "KTC Krabi", last4: "3300", group: "ktc", closes: "28 Nov", due: "15 Dec", hist: k([15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]) },
+	{ id: "7", name: "SCB Prime", last4: "5520", group: "scb", closes: "25 Nov", due: "10 Dec", hist: k([8, 0, 12, 0, 0, 9, 0, 15, 0, 11, 0, 0]) },
+	{ id: "10", name: "Krungsri Krabi", last4: "8812", group: "bay", closes: "20 Nov", due: "8 Dec", hist: k([30, 0, 32, 0, 29, 0, 31, 0, 33, 0, 28, 0]) },
+	{ id: "12", name: "KBank Platinum", last4: "0199", group: "kbank", closes: "18 Nov", due: "3 Dec", hist: k([5, 7, 6, 8, 5, 9, 6, 7, 8, 6, 7, 3]) },
+	{ id: "14", name: "Citi Krabi", last4: "6610", group: "citi", closes: "2 Dec", due: "22 Dec", hist: k([60, 55, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0]) },
+	{ id: "19", name: "Citi Rewards", last4: "4021", group: "citi", closes: "2 Dec", due: "22 Dec", hist: k([12, 14, 9, 16, 11, 13, 15, 10, 12, 14, 13, 4]) },
+]
+const byId = new Map(CARDS.map((c) => [c.id, c]))
+const MAX = Math.max(...CARDS.flatMap((c) => c.hist))
+
+const OPTIONS = {
+	A: {
+		label: "A · Basket",
+		title: "A · Basket: the cards and the list on one page",
+		how: "The picker and the amounts become one page. Tap a card tile and it lands on the list with its amount field focused. Tap it again to jump back to its line. Each line keeps today's orders: an amount and a note per order, <em>+ Add order</em> under them, and an × on each order once there are two. On a desktop the tiles fill the left and the list stays in a sticky column on the right. On a phone the list sits on top and the tiles below.",
+		good: ["Closest to today's look: the same tiles and line panels, merged.", "Every card's room and history is visible while you decide.", "No sheet or dialog: everything is on the page."],
+		cost: ["On a phone a long list pushes the tiles down, so adding a fourth or fifth card means scrolling. Every extra order makes that worse.", "The 12-month history is the spark only. There's no room for the month-by-month chart."],
+	},
+	B: {
+		label: "B · Spreadsheet",
+		title: "B · Spreadsheet: every ready card is a row with an amount box",
+		how: "No picking step. Every ready card is one row with an amount box, and typing an amount puts the card on the list (clear it and the card leaves). Sort by room, least used or longest unused to decide which card to use next. <em>On list</em> narrows the rows to what you've entered. Tap the history to open the row: the card's month-by-month chart, plus its orders, where <em>+ Add order</em> and the notes live. Once a card has two orders, its amount box shows the total and opens the row.",
+		good: ["Fewest taps: add, change and add again are all just typing.", "Cards are easy to compare: the history columns share one scale, and the sort answers <em>which card haven't we used?</em>", "Works well on a desktop with many cards."],
+		cost: ["Busier: every card shows all the time, even ones you'd never use today.", "A note or a second order needs the opened row, one tap away. A card with several orders can't be typed straight into its row any more."],
+	},
+	C: {
+		label: "C · List + sheet",
+		title: "C · List + sheet: the list first, cards added from a sheet",
+		how: "The page is just the list, starting empty. <em>+ Add a card</em> opens a sheet: search or sort the cards, then tap one to see its room and the <b>full 12-month chart</b> (each month's total, the monthly average as a dashed line) next to its orders, each with an amount and a note, plus <em>+ Add order</em>. The list row shows the card's total and how many orders it has. <em>Add & pick another</em> keeps the sheet open for the next card. Tap any line on the list to reopen it and change its amount or remove it.",
+		good: ["The list stays short and calm, which suits a phone.", "The most history: a real chart, average and last used, right where you type the amount.", "Fits the add, amend, add again loop: each step is one sheet."],
+		cost: ["Every amount goes through a sheet, so changing three amounts takes three trips.", "You can't compare cards on the list page itself, only in the sheet's picker."],
+	},
+}
+
+// `orders` by card: each order an amount text `a` and a note `n` (DD-186). A card in C's sheet
+// that isn't added yet keeps its orders here too, outside `lines`.
+const S = { opt: "A", size: "phone", theme: "light", lines: [], orders: {}, q: "", sort: "room", only: false, open: null, sheet: null, focus: null, flash: null, toast: "" }
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])
+const baht = (n) => `฿${Math.round(n).toLocaleString("en-US")}`
+const short = (n) => (n === 0 ? "–" : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n))
+const parse = (text) => Number(String(text ?? "").replace(/[^\d.]/g, "")) || 0
+const color = (card) => `c-${GROUPS[card.group].color}`
+const chip = (card) => `<span class="chip ${color(card)}">${card.last4}</span>`
+const label = (card) => `<span class="name"><span class="id">${card.id})</span> ${esc(card.name)}</span>`
+const onList = (id) => S.lines.includes(id)
+const ordersOf = (id) => S.orders[id] ?? [{ a: "", n: "" }]
+const cardSum = (id) => ordersOf(id).reduce((n, o) => n + parse(o.a), 0)
+const orderCount = () => S.lines.reduce((n, id) => n + ordersOf(id).length, 0)
+const blankCount = () => S.lines.reduce((n, id) => n + ordersOf(id).filter((o) => !parse(o.a)).length, 0)
+// "3 cards", or "3 cards · 5 orders" once a card has more than one order (DD-186).
+const countText = () => {
+	const n = S.lines.length
+	const o = orderCount()
+	return `${n} card${n === 1 ? "" : "s"}${o > n ? ` · ${o} orders` : ""}`
+}
+const ordersTag = (id) => (ordersOf(id).length > 1 ? ` · ${ordersOf(id).length} orders` : "")
+
+/** A card's orders: an amount and a note each, × on each once there are two, then + Add order. */
+function ordersBlock(id, { big = true } = {}) {
+	const card = byId.get(id)
+	const list = ordersOf(id)
+	return `<div class="orders">${list
+		.map((o, i) => `<div class="order">
+			${list.length > 1 ? `<div class="order-head"><span>Order ${i + 1}</span><button class="ox" data-act="del-order" data-card="${id}" data-i="${i}" aria-label="Remove order ${i + 1} of ${esc(card.name)}">✕</button></div>` : ""}
+			<label class="bigin ${big ? "" : "mid"}"><span>฿</span><input data-in="o-amt" data-card="${id}" data-i="${i}" data-key="o-${id}-${i}" inputmode="decimal" placeholder="0" value="${esc(o.a)}"></label>
+			<input class="note" data-in="o-note" data-card="${id}" data-i="${i}" data-key="n-${id}-${i}" placeholder="Note (optional)" value="${esc(o.n)}">
+		</div>`)
+		.join("")}
+		<button class="btn small addorder" data-variant="quiet" data-act="add-order" data-card="${id}">+ Add order</button>
+	</div>`
+}
+
+const stats = (card) => {
+	const total = card.hist.reduce((a, b) => a + b, 0)
+	const last = card.hist.findLastIndex((x) => x > 0)
+	const ago = last < 0 ? Infinity : 11 - last
+	const lastText = last < 0 ? "not in 12 months" : ago === 0 ? "this month" : ago === 1 ? "last month" : `${ago} months ago`
+	return { total, avg: total / 12, used: card.hist.filter((x) => x > 0).length, ago, lastText }
+}
+// The group's room now, less everything on the list on any card of that group.
+const roomAfter = (card) => {
+	const g = GROUPS[card.group]
+	const used = S.lines.filter((id) => byId.get(id).group === card.group).reduce((n, id) => n + cardSum(id), 0)
+	return g.room - used
+}
+const shared = (card) => CARDS.filter((c) => c.group === card.group).length > 1
+const warning = (card) => {
+	const after = roomAfter(card)
+	if (after >= 0) return ""
+	const mates = S.lines.filter((id) => id !== card.id && byId.get(id).group === card.group)
+	const why = mates.length ? ` with ${mates.map((id) => byId.get(id).name).join(", ")} (shared limit)` : ""
+	return `Over the room of ${GROUPS[card.group].name} by ${baht(-after)}${why}.`
+}
+const total = () => S.lines.reduce((n, id) => n + cardSum(id), 0)
+const warnCount = () => S.lines.filter((id) => warning(byId.get(id))).length
+
+const spark = (card) =>
+	`<span class="spark ${color(card)}" aria-label="Last 12 months">${card.hist
+		.map((v, i) => `<i class="${v === 0 ? "zero" : ""} ${i === 11 ? "now" : ""}" style="height:${v === 0 ? 2 : Math.max(8, (v / MAX) * 100)}%" title="${MONTHS[i]}: ${baht(v)}"></i>`)
+		.join("")}</span>`
+const histLine = (card) => {
+	const s = stats(card)
+	return `<span class="hist">${spark(card)}<small>${baht(s.total)} in 12 mo · last ${s.lastText}</small></span>`
+}
+const chart = (card) => {
+	const s = stats(card)
+	const top = Math.max(...card.hist, 1)
+	return `<div class="${color(card)}" style="display:grid;gap:4px">
+		<div class="chart">
+			${card.hist.map((v, i) => `<div class="col"><b>${short(v)}</b><i class="${v === 0 ? "zero" : ""} ${i === 11 ? "now" : ""}" style="height:${v === 0 ? 2 : Math.max(3, (v / top) * 80)}px" title="${MONTHS[i]}: ${baht(v)}"></i></div>`).join("")}
+			${s.avg > 0 ? `<span class="avg" style="bottom:${(s.avg / top) * 80}px" title="Average ${baht(s.avg)} a month"></span>` : ""}
+		</div>
+		<div class="months">${MONTHS.map((m, i) => `<span>${m}${YEARS[i] ? `<br>${YEARS[i].slice(2)}` : ""}</span>`).join("")}</div>
+	</div>`
+}
+const statBoxes = (card) => {
+	const s = stats(card)
+	return `<div class="stats">
+		<div><small>Room now</small><b>${baht(GROUPS[card.group].room)}</b></div>
+		<div><small>12 months</small><b>${baht(s.total)}</b></div>
+		<div><small>Avg / month</small><b>${baht(s.avg)}</b></div>
+		<div><small>Last used</small><b>${s.lastText}</b></div>
+	</div>`
+}
+
+const SORTS = { room: "Most room", least: "Least used (12 mo)", idle: "Longest unused", id: "Card number" }
+const sorted = (cards) => {
+	const by = {
+		room: (a, b) => GROUPS[b.group].room - GROUPS[a.group].room,
+		least: (a, b) => stats(a).total - stats(b).total,
+		idle: (a, b) => stats(b).ago - stats(a).ago || stats(a).total - stats(b).total,
+		id: (a, b) => Number(a.id) - Number(b.id),
+	}[S.sort]
+	return [...cards].sort(by)
+}
+const filtered = () => {
+	const q = S.q.trim().toLowerCase()
+	return sorted(CARDS.filter((c) => !q || `${c.id}) ${c.name} ${c.last4}`.toLowerCase().includes(q)))
+}
+const sortSelect = () =>
+	`<select class="sort" data-in="sort" aria-label="Sort">${Object.entries(SORTS).map(([v, l]) => `<option value="${v}" ${S.sort === v ? "selected" : ""}>${l}</option>`).join("")}</select>`
+const searchBox = (key) => `<input class="search" data-in="q" data-key="${key}" placeholder="Search cards" value="${esc(S.q)}">`
+
+function addCard(id, focus) {
+	if (!onList(id)) S.lines = [...S.lines, id]
+	S.flash = id
+	S.focus = focus
+}
+function removeCard(id) {
+	S.lines = S.lines.filter((x) => x !== id)
+	delete S.orders[id]
+}
+// B keeps a card on the list while it has an amount or a second order.
+function syncB(id) {
+	const want = cardSum(id) > 0 || ordersOf(id).length > 1
+	if (want && !onList(id)) S.lines = [...S.lines, id]
+	if (!want && onList(id)) S.lines = S.lines.filter((x) => x !== id)
+}
+
+/* ---------- A ---------- */
+function lineA(id) {
+	const card = byId.get(id)
+	const w = warning(card)
+	const after = roomAfter(card)
+	return `<section class="line ${w ? "warn" : ""} ${S.flash === id ? "flash" : ""}" id="line-${id}">
+		<div class="top">${chip(card)}${label(card)}<button class="btn small" data-variant="quiet" data-act="remove" data-card="${id}">Remove</button></div>
+		${ordersBlock(id, { big: S.size === "desk" })}
+		<div class="after"><span>Room after${shared(card) ? " (shared)" : ""}</span><b class="${after < 0 ? "bad" : ""}">${baht(after)}</b></div>
+		${w ? `<div class="warnline">${w}</div>` : ""}
+	</section>`
+}
+function tileA(card) {
+	const on = onList(card.id)
+	const amt = cardSum(card.id)
+	return `<button class="tile ${color(card)}" data-act="tile" data-card="${card.id}" aria-pressed="${on}">
+		${on ? `<span class="badge">On list${amt ? ` · ${baht(amt)}` : ""}${ordersTag(card.id)}</span>` : ""}
+		<span class="row1">${label(card)}<span class="pan">•${card.last4}</span></span>
+		<span class="room">${baht(roomAfter(card))}<small>room${on ? " after list" : ""}${shared(card) ? " · shared" : ""} · closes ${card.closes}</small></span>
+		<span class="row3">${histLine(card)}</span>
+	</button>`
+}
+function screenA() {
+	const desk = S.size === "desk"
+	const list = S.lines.length ? `<div class="a-lines ${desk ? "" : "a-compact"}">${S.lines.map(lineA).join("")}</div>` : `<p class="empty">Tap a card to put it on the list. Add more any time; what you've typed stays.</p>`
+	const picker = `<div class="tools">${searchBox("q-A")}${sortSelect()}</div><div class="tiles">${filtered().map(tileA).join("")}</div>`
+	if (desk)
+		return `<div class="a-cols"><div style="display:grid;gap:12px"><h3>Cards <small>${CARDS.length} ready · tap to add</small></h3>${picker}</div>
+			<aside class="a-side"><h3>On the list <small>${countText()}</small></h3>${dateField()}${list}</aside></div>`
+	return `<div class="a-stack"><h3>On the list <small>${countText()}</small></h3>${list}<h3 style="margin-top:8px">Add cards <small>tap to add, tap again to find it</small></h3>${picker}</div>`
+}
+
+/* ---------- B ---------- */
+function rowB(card) {
+	const on = onList(card.id)
+	const w = on ? warning(card) : ""
+	const after = roomAfter(card)
+	const open = S.open === card.id
+	const many = ordersOf(card.id).length > 1
+	// One order: type straight into the row. Two or more: the box is the total, and opens the row.
+	const amount = many
+		? `<button class="bamt bsum" data-act="hist" data-card="${card.id}" aria-expanded="${open}"><b class="money">${baht(cardSum(card.id))}</b><small>${ordersOf(card.id).length} orders ${open ? "▴" : "▾"}</small></button>`
+		: `<label class="bamt"><span>฿</span><input data-in="o-amt" data-card="${card.id}" data-i="0" data-key="o-${card.id}-0" inputmode="decimal" placeholder="0" value="${esc(ordersOf(card.id)[0].a)}"></label>`
+	return `<div class="brow ${on ? "on" : ""} ${w ? "warn" : ""}">
+		<div class="bcard">${chip(card)}<div>${label(card)}<small>closes ${card.closes}<span class="due"> · due ${card.due}</span></small></div></div>
+		<div class="broom"><b>${baht(GROUPS[card.group].room)}</b><small>${shared(card) ? `shared · ${GROUPS[card.group].name}` : "own limit"}</small></div>
+		<button class="bhist" data-act="hist" data-card="${card.id}" aria-expanded="${open}">${histLine(card)}<span class="chev">${open ? "▴" : "▾"}</span></button>
+		${amount}
+		${on ? `<div class="bafter ${after < 0 ? "bad" : ""}">room after ${baht(after)}</div>` : ""}
+		${open || w ? `<div class="bmore">${w ? `<div class="warnline">${w}</div>` : ""}${open ? `<div class="bopen"><div class="bopen-hist">${statBoxes(card)}${chart(card)}</div><div><h3 style="margin-bottom:8px">Orders <small>amount and note for each</small></h3>${ordersBlock(card.id, { big: false })}</div></div>` : ""}</div>` : ""}
+	</div>`
+}
+function screenB() {
+	const rows = filtered().filter((c) => !S.only || onList(c.id))
+	return `<div class="tools">${searchBox("q-B")}${sortSelect()}
+			<div class="seg"><button data-act="only" data-v="0" aria-pressed="${!S.only}">All ${CARDS.length}</button><button data-act="only" data-v="1" aria-pressed="${S.only}">On list ${S.lines.length}</button></div>
+			${S.size === "desk" ? dateField(true) : ""}</div>
+		<div class="b-head"><span>Card</span><span>Room now</span><span>Last 12 months</span><span style="text-align:end">Amount</span></div>
+		<div class="panel">${rows.length ? rows.map(rowB).join("") : `<p class="empty" style="margin:12px">Nothing on the list yet. Type an amount next to a card.</p>`}</div>`
+}
+
+/* ---------- C ---------- */
+function rowC(id) {
+	const card = byId.get(id)
+	const amt = cardSum(id)
+	const after = roomAfter(card)
+	const w = warning(card)
+	const list = ordersOf(id)
+	const notes = list.map((o) => o.n).filter(Boolean).join(", ")
+	return `<button class="crow ${w ? "warn" : ""}" data-act="edit" data-card="${id}">
+		${chip(card)}<span>${label(card)}<small class="${after < 0 ? "bad" : ""}">${list.length > 1 ? `${list.length} orders · ` : ""}${w ? "Over the room" : `room after ${baht(after)}`}${notes ? ` · ${esc(notes)}` : ""}</small></span>
+		<span class="amt ${amt ? "" : "blank"}">${amt ? baht(amt) : "no amount"}</span><span class="chev">›</span>
+	</button>`
+}
+function screenC() {
+	const list = S.lines.length
+		? `<div class="panel">${S.lines.map(rowC).join("")}</div><button class="btn wide" data-variant="quiet" data-act="sheet">+ Add a card</button>`
+		: `<button class="empty" data-act="sheet" style="cursor:pointer;background:none;font-size:1rem">+ Add a card<br><small>Pick a card, see its last 12 months, type the amount.</small></button>`
+	if (S.size === "desk")
+		return `<div class="c-cols"><div style="display:grid;gap:12px"><h3>On the list <small>${countText()}</small></h3>${list}</div>
+			<aside class="panel side">${dateField()}<div class="after"><span>Cards</span><b>${S.lines.length}</b></div><div class="after"><span>Orders</span><b>${orderCount()}</b></div><div class="after"><span>Total</span><b>${baht(total())}</b></div></aside></div>`
+	return `<h3>On the list <small>${countText()}</small></h3>${list}`
+}
+function sheetC() {
+	const sh = S.sheet
+	if (!sh) return ""
+	let body
+	if (sh.step === "pick") {
+		body = `<div class="shead"><div class="t"><b>Add a card</b><small class="muted sm">${countText()} on the list · ${baht(total())}</small></div><button class="x" data-act="close" aria-label="Close">✕</button></div>
+			${searchBox("q-C")}
+			<div class="pills">${Object.entries(SORTS).map(([v, l]) => `<button class="pill" data-act="sortpill" data-v="${v}" aria-pressed="${S.sort === v}">${l}</button>`).join("")}</div>
+			<div class="pick">${filtered().map((card) => {
+				const amt = cardSum(card.id)
+				return `<button class="prow" data-act="pick" data-card="${card.id}">${chip(card)}<span>${label(card)}<small>room ${baht(roomAfter(card))} · closes ${card.closes}</small>${histLine(card)}</span>${onList(card.id) ? `<span class="tag">On list${amt ? ` · ${baht(amt)}` : ""}${ordersTag(card.id)}</span>` : `<span class="chev">›</span>`}</button>`
+			}).join("")}</div>`
+	} else {
+		const card = byId.get(sh.card)
+		const editing = onList(card.id)
+		// A card not added yet: its orders aren't in `lines`, so take them off the room here.
+		const after = roomAfter(card) - (editing ? 0 : cardSum(card.id))
+		const w = editing ? warning(card) : ""
+		body = `<div class="shead"><button class="x" data-act="topick" aria-label="Back to cards">‹</button>${chip(card)}<div class="t">${label(card)}<small class="muted sm">closes ${card.closes} · due ${card.due}${shared(card) ? ` · shares ${GROUPS[card.group].name}` : ""}</small></div><button class="x" data-act="close" aria-label="Close">✕</button></div>
+			${statBoxes(card)}
+			${chart(card)}
+			${ordersBlock(card.id)}
+			<div class="after"><span>Room after${ordersOf(card.id).length > 1 ? ` · ${ordersOf(card.id).length} orders, ${baht(cardSum(card.id))}` : ""}</span><b class="${after < 0 ? "bad" : ""}">${baht(after)}</b></div>
+			${w ? `<div class="warnline">${w}</div>` : ""}
+			<div class="sbtns">${editing
+				? `<button class="btn" data-variant="danger" data-act="sheet-remove">Remove</button><button class="btn" data-act="sheet-done">Done</button>`
+				: `<button class="btn" data-variant="quiet" data-act="sheet-add" data-next="1">Add &amp; pick another</button><button class="btn" data-act="sheet-add">Add to list</button>`}</div>`
+	}
+	return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Add a card"><span class="grab"></span>${body}</div>`
+}
+
+/* ---------- shared ---------- */
+const dateField = (inline) =>
+	`<label class="${inline ? "" : "side"}" style="${inline ? "display:flex;gap:8px;align-items:center;font-size:0.8125rem" : "padding:0;display:grid;gap:4px;font-size:0.8125rem;color:var(--muted)"}">Purchase date <input type="date" value="2026-11-11" style="border:1px solid var(--border);border-radius:10px;padding:7px 10px;background:var(--surface)"></label>`
+
+function foot() {
+	const n = S.lines.length
+	const warns = warnCount()
+	const blanks = blankCount()
+	const words = n === 0 ? "No cards yet" : `${countText()}${blanks ? ` · ${blanks} without an amount` : ""}${warns ? ` · ${warns} warning${warns > 1 ? "s" : ""}` : ""}`
+	return `<div class="sum ${warns ? "warn" : ""}">${words}<b>${baht(total())}</b></div>
+		<button class="btn" data-variant="quiet" data-act="draft" ${n ? "" : "disabled"}>Save draft</button>
+		<button class="btn" data-act="review" ${n && !blanks ? "" : "disabled"}>Review ›</button>`
+}
+
+function render() {
+	const a = document.activeElement
+	const key = a?.dataset?.key
+	const pos = a?.selectionStart
+	document.documentElement.dataset.theme = S.theme
+	const o = OPTIONS[S.opt]
+	document.getElementById("opts").innerHTML = Object.entries(OPTIONS).map(([v, x]) => `<button data-act="opt" data-v="${v}" aria-pressed="${S.opt === v}">${x.label}</button>`).join("")
+	document.getElementById("sizes").innerHTML = [["phone", "Phone 390"], ["desk", "Desktop"]].map(([v, l]) => `<button data-act="size" data-v="${v}" aria-pressed="${S.size === v}">${l}</button>`).join("")
+	document.getElementById("themes").innerHTML = [["light", "Light"], ["dark", "Dark"]].map(([v, l]) => `<button data-act="theme" data-v="${v}" aria-pressed="${S.theme === v}">${l}</button>`).join("")
+	document.getElementById("explain").innerHTML = `<h2>${o.title}</h2><p>${o.how}</p><div class="cols"><div><h4>Good at</h4><ul>${o.good.map((x) => `<li>${x}</li>`).join("")}</ul></div><div><h4>Costs</h4><ul>${o.cost.map((x) => `<li>${x}</li>`).join("")}</ul></div></div>`
+	const dev = document.getElementById("device")
+	dev.className = `device ${S.size}`
+	document.getElementById("tabs").innerHTML = S.size === "desk" ? `<span class="on">Home</span><span>Transactions</span><span>Cards</span><span>Settings</span>` : ""
+	document.getElementById("subtitle").textContent = `Wed, 11 Nov · ${countText()}`
+	document.getElementById("screen").innerHTML = S.opt === "A" ? screenA() : S.opt === "B" ? screenB() : screenC()
+	document.getElementById("foot").innerHTML = foot()
+	document.getElementById("overlay").innerHTML = (S.opt === "C" ? sheetC() : "") + (S.toast ? `<div class="toast">${esc(S.toast)}</div>` : "")
+	const want = S.focus ?? key
+	if (want) {
+		const el = document.querySelector(`[data-key="${want}"]`)
+		if (el) {
+			el.focus({ preventScroll: !S.focus })
+			if (S.focus) el.scrollIntoView({ block: "nearest", behavior: "smooth" })
+			else if (pos != null) try { el.setSelectionRange(pos, pos) } catch {}
+		}
+	}
+	S.focus = null
+	S.flash = null
+}
+
+let toastTimer
+const toast = (text) => {
+	S.toast = text
+	clearTimeout(toastTimer)
+	toastTimer = setTimeout(() => { S.toast = ""; render() }, 1800)
+}
+
+document.addEventListener("click", (e) => {
+	const el = e.target.closest("[data-act]")
+	if (!el) return
+	const id = el.dataset.card
+	switch (el.dataset.act) {
+		case "opt": closeSheet(); S.opt = el.dataset.v; S.open = null; break
+		case "size": S.size = el.dataset.v; break
+		case "theme": S.theme = el.dataset.v; break
+		case "reset": closeSheet(); S.lines = []; S.orders = {}; S.open = null; break
+		case "tile":
+			if (onList(id)) { S.focus = `o-${id}-0`; S.flash = id } else addCard(id, `o-${id}-0`)
+			break
+		case "add-order": {
+			const next = [...ordersOf(id), { a: "", n: "" }]
+			S.orders[id] = next
+			S.focus = `o-${id}-${next.length - 1}`
+			if (S.opt === "B") { syncB(id); S.open = id }
+			break
+		}
+		case "del-order":
+			S.orders[id] = ordersOf(id).filter((_, i) => i !== Number(el.dataset.i))
+			if (S.opt === "B") syncB(id)
+			break
+		case "remove": removeCard(id); break
+		case "hist": S.open = S.open === id ? null : id; break
+		case "only": S.only = el.dataset.v === "1"; break
+		case "sheet": S.sheet = { step: "pick" }; S.focus = "q-C"; break
+		case "close": closeSheet(); break
+		case "topick": closeSheet(); S.sheet = { step: "pick" }; break
+		case "sortpill": S.sort = el.dataset.v; break
+		case "pick":
+		case "edit":
+			S.sheet = { step: "card", card: id }
+			S.focus = `o-${id}-0`
+			break
+		case "sheet-add": {
+			const c = S.sheet.card
+			addCard(c)
+			const n = ordersOf(c).length
+			toast(`Added ${byId.get(c).name}${cardSum(c) ? ` · ${baht(cardSum(c))}` : ""}${n > 1 ? ` (${n} orders)` : ""}`)
+			S.sheet = el.dataset.next ? { step: "pick" } : null
+			break
+		}
+		case "sheet-done": S.sheet = null; break
+		case "sheet-remove": removeCard(S.sheet.card); S.sheet = null; break
+		case "draft": toast("Saved as a draft (as today)"); break
+		case "review": toast("Goes to the review step, as today"); break
+		default: return
+	}
+	render()
+})
+
+document.addEventListener("input", (e) => {
+	const el = e.target
+	const id = el.dataset.card
+	switch (el.dataset.in) {
+		case "q": S.q = el.value; break
+		case "sort": S.sort = el.value; break
+		case "o-amt":
+		case "o-note": {
+			const list = ordersOf(id).map((o) => ({ ...o }))
+			list[Number(el.dataset.i)][el.dataset.in === "o-amt" ? "a" : "n"] = el.value
+			S.orders[id] = list
+			if (S.opt === "B") syncB(id)
+			break
+		}
+		default: return
+	}
+	render()
+})
+
+document.addEventListener("keydown", (e) => {
+	if (e.key === "Escape" && S.sheet) { closeSheet(); render() }
+})
+
+// Leaving the sheet on a card that was never added drops what was typed for it.
+function closeSheet() {
+	if (S.sheet?.card && !onList(S.sheet.card)) delete S.orders[S.sheet.card]
+	S.sheet = null
+}
+
+render()
+</script>
+</body>
+</html>
