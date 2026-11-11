@@ -4,6 +4,34 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-11: Grouping every list
+
+### BREAKING CHANGES
+
+- Cards no longer has a _Place_ sort: place is now a grouping (`by=place`, the default). Old
+  links with `sort=place` open on the new default _Card_ sort, which is the old order inside
+  each place (DD-192).
+
+- An amount sort on the ledger no longer gives one flat list by itself: it sorts inside each
+  day. Choose _Group by: None_ (`by=none`) for one list by amount (DD-192).
+
+### Features
+
+- Every list can be grouped, apart from its sort: each filter sheet has a _Group by_ row and
+  each page a _Group: X ▾_ chip. Cards groups by _Place_, _Account holder_, _Limit group_ or
+  _None_; the new-list picker by _None_, _Place_ or _Account holder_; the ledger by _Day_,
+  _Card_ or _None_; the _Lists_ view by _Status_, _Month_ or _None_. The sort runs inside each
+  section, and the choice is kept in the address as `by` (`lby` on the Lists view) (DD-192).
+
+### Decisions
+
+- Sections come in a fixed order rather than following the sort: places A to Z, holders KC,
+  NT, RI then none, limit groups A to Z then none, ledger cards by id, months newest first.
+  Ledger days follow the date sort's direction and run newest first under an amount sort.
+
+- The address key is `by`, not `group`, because `group` already opens a limit group's sheet on
+  `/cards`.
+
 ## 2026-11-10: Several orders per card on a purchase list, drafts before the review, merging same-day lists, a sectioned and filterable Lists view, a right-aligned update bar, a shorter card choice in the filter sheets, and sorts that run either way
 
 ### BREAKING CHANGES
