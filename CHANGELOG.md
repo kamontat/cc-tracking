@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-11: Grouping every list
+## 2026-11-11: Grouping every list, and tabbed filter sheets with an order switch
 
 ### BREAKING CHANGES
 
@@ -23,6 +23,18 @@ reasons don't show up in the code.
   _Card_ or _None_; the _Lists_ view by _Status_, _Month_ or _None_. The sort runs inside each
   section, and the choice is kept in the address as `by` (`lby` on the Lists view) (DD-192).
 
+### Improvements
+
+- Each filter sheet is split by tabs under its heading: _Filter_, _Sort_ and _Group_ (the Lists
+  view's sheet has _Filter_ and _Group_). It opens on the tab of the control that opened it: the
+  _Filter_ button, the sort chip or the group chip. _Clear all_ and _Show N_ act on every tab,
+  and a draft keeps its state across tabs (DD-194).
+
+- The sort's direction is a two-part switch at the right of the _Sort_ legend (_↓ Newest_ |
+  _↑ Oldest_, _↓ Most_ | _↑ Least_), the field's own direction first, with the field chips
+  under it, replacing the second row of order chips. _Owed on each card_ has the same switch,
+  arrows only, in place of its single ↑/↓ button (DD-193).
+
 ### Decisions
 
 - Sections come in a fixed order rather than following the sort: places A to Z, holders KC,
@@ -31,6 +43,11 @@ reasons don't show up in the code.
 
 - The address key is `by`, not `group`, because `group` already opens a limit group's sheet on
   `/cards`.
+
+- The order switch was picked from four mockups: tap a chip again to flip, a chip per order, a
+  switch beside the sort, and a radio list with a switch. Each half of the switch is named by
+  its full words (_Newest first_) and its short words are always inside them, so what is seen
+  is what is said.
 
 ## 2026-11-10: Several orders per card on a purchase list, drafts before the review, merging same-day lists, a sectioned and filterable Lists view, a right-aligned update bar, a shorter card choice in the filter sheets, and sorts that run either way
 

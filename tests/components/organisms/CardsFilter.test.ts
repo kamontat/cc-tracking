@@ -101,10 +101,7 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 		"Due date",
 	])
 	expect(root.querySelector("[data-sort=card]")?.getAttribute("aria-pressed")).toBe("true")
-	expect([...root.querySelectorAll("[data-dir]")].map((b) => text(b))).toEqual([
-		"↑ Card, first to last",
-		"↓ Card, last to first",
-	])
+	expect([...root.querySelectorAll("[data-dir]")].map((b) => text(b))).toEqual(["↑ First", "↓ Last"])
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 5 cards")
 	click("[data-owner=NT]")
 	expect(root.querySelector("[data-owner=NT]")?.getAttribute("aria-pressed")).toBe("true")

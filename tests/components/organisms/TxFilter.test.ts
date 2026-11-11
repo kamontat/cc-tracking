@@ -1,5 +1,6 @@
 import type { SortDir } from "#lib/domain/sort"
 import type { Card } from "#lib/domain/types"
+import type { SheetTab } from "#lib/ui/sheet-tab"
 
 import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
@@ -42,6 +43,7 @@ type Props = {
 	sort?: TxSort
 	dir?: SortDir
 	by?: TxGroup
+	tab?: SheetTab
 	count?: (filter: Filter) => number
 }
 
@@ -58,6 +60,7 @@ const show = (props: Props = {}) => {
 			sort: props.sort ?? "date",
 			dir: props.dir ?? "desc",
 			by: props.by ?? "day",
+			...(props.tab ? { tab: props.tab } : {}),
 			count: props.count ?? ((f: Filter) => f.types.length + f.cards.length + (f.range ? 1 : 0) + 5),
 			onapply: (detail: { filter: Filter; sort: TxSort; dir: SortDir; by: TxGroup }) => applied.push(detail),
 			onclose: () => {
@@ -211,7 +214,7 @@ test("card choices are in the line form; it sorts by date or amount, either way"
 	const { root } = show()
 	expect(text(root.querySelector("[data-card=A]"))).toBe("A) Card A (1111)")
 	expect([...root.querySelectorAll("[data-sort]")].map(text)).toEqual(["Date", "Amount"])
-	expect([...root.querySelectorAll("[data-dir]")].map(text)).toEqual(["↓ Newest first", "↑ Oldest first"])
+	expect([...root.querySelectorAll("[data-dir]")].map(text)).toEqual(["↓ Newest", "↑ Oldest"])
 })
 
 test("apply waits for the sheet to slide away before it is handed back", async () => {
@@ -262,4 +265,15 @@ test("Group by offers day, card or none, hands it back, and Clear all resets it 
 	const again = show({ by: "none" })
 	again.click("[data-action=clear]")
 	expect(again.root.querySelector("[data-by=day]")?.getAttribute("aria-pressed")).toBe("true")
+})
+
+test("Filter, Sort and Group are tabs; the sheet opens on the one asked for", () => {
+	const { root } = show({ tab: "group" })
+	const panel = (tab: string) => root.querySelector<HTMLElement>(`[role=tabpanel][data-tab=${tab}]`)
+	expect([...root.querySelectorAll("[role=tab]")].map(text)).toEqual(["Filter", "Sort", "Group"])
+	expect(panel("group")?.hidden).toBe(false)
+	expect(panel("filter")?.hidden).toBe(true)
+	expect(panel("filter")?.querySelector("[data-type=purchase]")).not.toBeNull()
+	expect(panel("sort")?.querySelector("[data-sort=date]")).not.toBeNull()
+	expect(panel("group")?.querySelector("[data-by=day]")).not.toBeNull()
 })

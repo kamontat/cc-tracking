@@ -4,6 +4,7 @@
 	import type { SortDir } from "#lib/domain/sort"
 	import type { LocationRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 
 	import { onMount } from "svelte"
 
@@ -24,6 +25,8 @@
 	 * back, once the sheet has slid away (`onapply`). Close, Escape and the backdrop call `onclose`.
 	 */
 	interface Props {
+		/** The tab to open on: the control that opened the sheet. */
+		tab?: SheetTab
 		view: CardsView
 		/** The stored locations, every one offered, A to Z by shown name. */
 		locations: LocationRecord[]
@@ -35,7 +38,7 @@
 		onclose: () => void
 	}
 
-	const { view, locations, count, onapply, onclose }: Props = $props()
+	const { view, locations, count, onapply, onclose, tab }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -84,41 +87,48 @@
 		draft = { ...DEFAULT_CARDS_VIEW, q: draft.q }
 	}}
 	onapply={() => onapply({ ...draft })}
+	{tab}
 	{onclose}>
-	<FilterChips
-		legend={tr("ready.filter.location")}
-		name="location"
-		options={places}
-		selected={draft.locations}
-		ontoggle={(location: string) => set({ locations: toggled(draft.locations, location) })} />
-	<FilterChips
-		legend={tr("ready.filter.owner")}
-		name="owner"
-		options={ownerOptions}
-		selected={draft.owners}
-		ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner as Owner) })}>
-		<button
-			type="button"
-			data-variant="quiet"
-			data-ungrouped=""
-			aria-pressed={draft.ungrouped ? "true" : "false"}
-			onclick={() => set({ ungrouped: !draft.ungrouped })}>
-			{tr("cards.filter.ungrouped")}
-		</button>
-	</FilterChips>
-	<SortChoices
-		legend={tr("cards.filter.sortBy")}
-		fields={CARDS_SORTS}
-		defaults={CARDS_DIRS}
-		field={draft.sort}
-		dir={draft.dir}
-		onchange={(pick: { field: CardsSort; dir: SortDir }) => set({ sort: pick.field, dir: pick.dir })} />
-	<FilterChips
-		legend={tr("filter.group")}
-		name="by"
-		options={groupOptions}
-		selected={[draft.by]}
-		ontoggle={(value: string) => {
-			set({ by: value as CardsGroup })
-		}} />
+	{#snippet filterPart()}
+		<FilterChips
+			legend={tr("ready.filter.location")}
+			name="location"
+			options={places}
+			selected={draft.locations}
+			ontoggle={(location: string) => set({ locations: toggled(draft.locations, location) })} />
+		<FilterChips
+			legend={tr("ready.filter.owner")}
+			name="owner"
+			options={ownerOptions}
+			selected={draft.owners}
+			ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner as Owner) })}>
+			<button
+				type="button"
+				data-variant="quiet"
+				data-ungrouped=""
+				aria-pressed={draft.ungrouped ? "true" : "false"}
+				onclick={() => set({ ungrouped: !draft.ungrouped })}>
+				{tr("cards.filter.ungrouped")}
+			</button>
+		</FilterChips>
+	{/snippet}
+	{#snippet sortPart()}
+		<SortChoices
+			legend={tr("cards.filter.sortBy")}
+			fields={CARDS_SORTS}
+			defaults={CARDS_DIRS}
+			field={draft.sort}
+			dir={draft.dir}
+			onchange={(pick: { field: CardsSort; dir: SortDir }) => set({ sort: pick.field, dir: pick.dir })} />
+	{/snippet}
+	{#snippet groupPart()}
+		<FilterChips
+			legend={tr("filter.group")}
+			name="by"
+			options={groupOptions}
+			selected={[draft.by]}
+			ontoggle={(value: string) => {
+				set({ by: value as CardsGroup })
+			}} />
+	{/snippet}
 </FilterSheet>

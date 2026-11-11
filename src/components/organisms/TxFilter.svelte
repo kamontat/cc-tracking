@@ -2,6 +2,7 @@
 	import type { SortDir } from "#lib/domain/sort"
 	import type { Card } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 
 	import { onMount } from "svelte"
 
@@ -35,6 +36,8 @@
 	 * `onclose`.
 	 */
 	interface Props {
+		/** The tab to open on: the control that opened the sheet. */
+		tab?: SheetTab
 		cards: Card[]
 		filter: TxFilter
 		sort: TxSort
@@ -48,7 +51,7 @@
 		onclose: () => void
 	}
 
-	const { cards, filter, sort, dir, by, count, onapply, onclose }: Props = $props()
+	const { cards, filter, sort, dir, by, count, onapply, onclose, tab }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -104,35 +107,42 @@
 		draftBy = "day"
 	}}
 	onapply={() => onapply({ filter: { ...draft }, sort: draftSort, dir: draftDir, by: draftBy })}
+	{tab}
 	{onclose}>
-	<FilterChips
-		legend={tr("tx.filter.type")}
-		name="type"
-		options={typeOptions}
-		selected={draft.types}
-		ontoggle={(type: string) => set({ types: toggled(draft.types, type as TxFilter["types"][number]) })} />
-	<CardChoices
-		legend={tr("tx.filter.card")}
-		{cards}
-		selected={draft.cards}
-		ontoggle={(id: string) => set({ cards: toggled(draft.cards, id) })} />
-	<DateRangeChoices range={draft.range} from={draft.from} to={draft.to} onchange={set} />
-	<SortChoices
-		legend={tr("tx.filter.sort")}
-		fields={TX_SORTS}
-		defaults={TX_DIRS}
-		field={draftSort}
-		dir={draftDir}
-		onchange={(pick: { field: TxSort; dir: SortDir }) => {
-			draftSort = pick.field
-			draftDir = pick.dir
-		}} />
-	<FilterChips
-		legend={tr("filter.group")}
-		name="by"
-		options={groupOptions}
-		selected={[draftBy]}
-		ontoggle={(value: string) => {
-			draftBy = value as TxGroup
-		}} />
+	{#snippet filterPart()}
+		<FilterChips
+			legend={tr("tx.filter.type")}
+			name="type"
+			options={typeOptions}
+			selected={draft.types}
+			ontoggle={(type: string) => set({ types: toggled(draft.types, type as TxFilter["types"][number]) })} />
+		<CardChoices
+			legend={tr("tx.filter.card")}
+			{cards}
+			selected={draft.cards}
+			ontoggle={(id: string) => set({ cards: toggled(draft.cards, id) })} />
+		<DateRangeChoices range={draft.range} from={draft.from} to={draft.to} onchange={set} />
+	{/snippet}
+	{#snippet sortPart()}
+		<SortChoices
+			legend={tr("tx.filter.sort")}
+			fields={TX_SORTS}
+			defaults={TX_DIRS}
+			field={draftSort}
+			dir={draftDir}
+			onchange={(pick: { field: TxSort; dir: SortDir }) => {
+				draftSort = pick.field
+				draftDir = pick.dir
+			}} />
+	{/snippet}
+	{#snippet groupPart()}
+		<FilterChips
+			legend={tr("filter.group")}
+			name="by"
+			options={groupOptions}
+			selected={[draftBy]}
+			ontoggle={(value: string) => {
+				draftBy = value as TxGroup
+			}} />
+	{/snippet}
 </FilterSheet>

@@ -5,6 +5,7 @@
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
 	import type { MoneyData } from "#lib/ui/money-data"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
 	import { onMount } from "svelte"
@@ -83,6 +84,8 @@
 	let view = $state.raw<TxView>(readTxView(address.search()))
 	// The filter sheet takes a fresh copy of the view, so its draft starts there.
 	let sheetOpen = $state(false)
+	/** The tab the filter sheet opens on: the control that opened it. */
+	let sheetTab = $state<SheetTab>("filter")
 	// How many ledger rows show; any search, filter or sort change starts again at one page.
 	let limit = $state(LEDGER_PAGE)
 	/** Why the store would not open, re-read in the reader's language. */
@@ -315,7 +318,8 @@
 						q={view.lists.q}
 						placeholder={tr("tx.lists.search.placeholder")}
 						onsearch={(q: string) => setLists({ q })}
-						onopen={() => {
+						onopen={(tab: SheetTab) => {
+							sheetTab = tab
 							sheetOpen = true
 						}}
 						count={listChips.length}
@@ -334,6 +338,7 @@
 					{#if sheetOpen}
 						{@const money = data}
 						<ListsFilter
+							tab={sheetTab}
 							cards={money.cards.filter(
 								(c) => !c.archived || money.lists.some((l) => l.lines.some((x) => x.cardId === c.id)),
 							)}
@@ -353,7 +358,8 @@
 						q={view.filter.q}
 						placeholder={tr("tx.search.placeholder")}
 						onsearch={(q: string) => setFilter({ q })}
-						onopen={() => {
+						onopen={(tab: SheetTab) => {
+							sheetTab = tab
 							sheetOpen = true
 						}}
 						count={chips.length}
@@ -392,6 +398,7 @@
 					{#if sheetOpen}
 						{@const money = data}
 						<TxFilter
+							tab={sheetTab}
 							cards={money.cards.filter((c) => !c.archived || (money.ledgers.get(c.id)?.owed ?? 0) > 0)}
 							filter={{ ...view.filter }}
 							sort={view.sort}

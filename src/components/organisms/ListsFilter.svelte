@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Card, ListStatus } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 
 	import { onMount } from "svelte"
 
@@ -23,6 +24,8 @@
 	 * Close, Escape and the backdrop call `onclose`.
 	 */
 	interface Props {
+		/** The tab to open on: the control that opened the sheet. */
+		tab?: SheetTab
 		cards: Card[]
 		filter: ListsFilter
 		/** What the view sections its lists by. */
@@ -33,7 +36,7 @@
 		onclose: () => void
 	}
 
-	const { cards, filter, by, count, onapply, onclose }: Props = $props()
+	const { cards, filter, by, count, onapply, onclose, tab }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -81,25 +84,30 @@
 		draftBy = "status"
 	}}
 	onapply={() => onapply({ ...draft }, draftBy)}
+	{tab}
 	{onclose}>
-	<FilterChips
-		legend={tr("tx.lists.filter.status")}
-		name="status"
-		options={statusOptions}
-		selected={draft.status}
-		ontoggle={(status: string) => set({ status: toggled(draft.status, status as ListStatus) })} />
-	<CardChoices
-		legend={tr("tx.filter.card")}
-		{cards}
-		selected={draft.cards}
-		ontoggle={(id: string) => set({ cards: toggled(draft.cards, id) })} />
-	<DateRangeChoices range={draft.range} from={draft.from} to={draft.to} onchange={set} />
-	<FilterChips
-		legend={tr("filter.group")}
-		name="by"
-		options={groupOptions}
-		selected={[draftBy]}
-		ontoggle={(value: string) => {
-			draftBy = value as ListsGroup
-		}} />
+	{#snippet filterPart()}
+		<FilterChips
+			legend={tr("tx.lists.filter.status")}
+			name="status"
+			options={statusOptions}
+			selected={draft.status}
+			ontoggle={(status: string) => set({ status: toggled(draft.status, status as ListStatus) })} />
+		<CardChoices
+			legend={tr("tx.filter.card")}
+			{cards}
+			selected={draft.cards}
+			ontoggle={(id: string) => set({ cards: toggled(draft.cards, id) })} />
+		<DateRangeChoices range={draft.range} from={draft.from} to={draft.to} onchange={set} />
+	{/snippet}
+	{#snippet groupPart()}
+		<FilterChips
+			legend={tr("filter.group")}
+			name="by"
+			options={groupOptions}
+			selected={[draftBy]}
+			ontoggle={(value: string) => {
+				draftBy = value as ListsGroup
+			}} />
+	{/snippet}
 </FilterSheet>
