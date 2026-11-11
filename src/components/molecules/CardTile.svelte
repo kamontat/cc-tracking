@@ -12,7 +12,7 @@
 	import { roomLevel, roomNote, roomShare } from "#lib/ui/room-note"
 
 	/**
-	 * One card tile (DD-151): every list of cards -- Home's *Ready to use*, the new-list picker
+	 * One card tile (DD-151): every list of cards -- Home's *Ready to use*, the add-a-card sheet
 	 * and the Cards page -- draws the same tile and fills its lines for the page. With an `href`
 	 * it is an `a.tile` that opens the card; without, a `button.tile`, the picker's toggle. Line 1
 	 * is `id) name` and the corner; line 2 the group's room and its word (`roomNote`), and the
@@ -50,6 +50,8 @@
 		figure?: { amount?: string; word?: string } | undefined
 		/** Line 3, muted: `closes … · due …`. Left out on Home. */
 		facts?: string | undefined
+		/** A last line across the tile, under the facts: the new-list sheet's 12-statement use. */
+		foot?: Snippet | undefined
 		/** Home and the picker: plain room needs no word; credit, `N% used` and *over limit* still show. */
 		plainRoom?: boolean
 		/** Home: past the limit the amount turns red and has no word under it. */
@@ -72,6 +74,7 @@
 		asideTone,
 		figure,
 		facts,
+		foot,
 		plainRoom = false,
 		quietOver = false,
 	}: Props = $props()
@@ -128,6 +131,9 @@
 	{/if}
 	{#if facts !== undefined}
 		<span class="facts">{facts}</span>
+	{/if}
+	{#if foot}
+		<span class="foot">{@render foot()}</span>
 	{/if}
 	{#if room}
 		{@const share = roomShare(room)}
@@ -300,6 +306,16 @@
 		font-size: var(--cc-text-xs);
 		color: var(--cc-text-muted);
 		font-variant-numeric: tabular-nums;
+	}
+
+	.foot {
+		display: flex;
+		grid-column: 1 / -1;
+		align-items: flex-end;
+		gap: var(--cc-space-2);
+		padding-block-start: var(--cc-space-1);
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
 	}
 
 	.rail {

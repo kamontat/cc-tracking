@@ -29,8 +29,8 @@
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * Home's island: what needs the reader first, then a short *Ready to use* that leads to the
-	 * new-list picker (DD-103). From 900px the two sit side by side, *Ready to use* on the left
+	 * Home's island: what needs the reader first, then a short *Ready to use* (DD-103); a list is
+	 * started from the *+ New* menu (DD-195). From 900px the two sit side by side, *Ready to use* on the left
 	 * (DD-152). A *Needs you* row's buttons write the same calls, with the same errors, as
 	 * Transactions; each write reloads, so a done item goes and a failed one stays under the banner.
 	 */

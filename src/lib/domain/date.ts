@@ -96,6 +96,11 @@ export function dayMonth(date: PlainDate, locale: Locale): string {
 	return `${day} ${MONTH_NAMES[locale][month - 1]}`
 }
 
+/** The short month alone ("Nov", "ธ.ค."): a chart's label under a statement's bar. */
+export function shortMonth(date: PlainDate, locale: Locale): string {
+	return MONTH_NAMES[locale][parseDate(date).month - 1] ?? ""
+}
+
 /** A statement's month as `Mon YYYY` ("Nov 2026", "พ.ย. 2026"), the year Gregorian as in `displayDate`. */
 export function periodLabel(period: Period, locale: Locale): string {
 	const { year, month } = periodParts(period)

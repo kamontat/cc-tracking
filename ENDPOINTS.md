@@ -114,35 +114,32 @@ a list in another status says so and links to the right page; an unknown id link
 
 ### `/list/new`
 
-Two steps on one path, told apart by `card`.
-
-Picker step (no `card`):
-
-| Key     | Values                      | Default | Notes                                                                                     |
-| ------- | --------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `q`     | any text                    | empty   | Search.                                                                                   |
-| `loc`   | location id (repeated)      | any     | Kept only when the id is a stored location.                                               |
-| `owner` | `KC`, `NT`, `RI` (repeated) | any     | Card owner.                                                                               |
-| `sort`  | `room`, `close`, `due`      | `room`  | Order.                                                                                    |
-| `dir`   | `asc`, `desc`               | `desc`  | Direction; every sort defaults to `desc` (most room, longest to close, latest due first). |
-| `by`    | `none`, `place`, `holder`   | `none`  | Sections: one flat list, each place, or each account holder.                              |
-
-Entering step (any `card`):
+The new list itself, empty or holding the cards named (DD-195). Cards are added from its
+add-a-card sheet; there is no picker step.
 
 | Key    | Values             | Notes                                                                                                                  |
 | ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
 | `card` | card id (repeated) | Cards on the new list, in order. Cards that cannot take purchases are dropped. Other keys are kept ahead of the cards. |
+| `add`  | `1`                | The add-a-card sheet, on its picker.                                                                                   |
+| `open` | card id            | The add-a-card sheet, on that card: its orders when it is on the list, else ready to add it. Wins over `add`.          |
 
-- `/list/new` -- the picker.
-- `/list/new?owner=KC&sort=due` -- the picker, filtered and sorted.
-- `/list/new?sort=due&dir=asc` -- the picker, soonest due first.
-- `/list/new?card=<id>&card=<id>` -- entering amounts for those cards.
+Opening the sheet pushes an entry, so Back closes it; moving within it (picking a card, back to
+the picker, the card before or after) rewrites that entry. Adding or removing a card rewrites
+`card` in place, never pushing. The picker's old keys (`q`, `loc`, `owner`, `sort`, `dir`, `by`)
+are no longer read.
+
+- `/list/new` -- an empty new list.
+- `/list/new?card=<id>&card=<id>` -- a new list holding those cards.
+- `/list/new?card=<id>&add=1` -- the list with the add-a-card sheet's picker open.
+- `/list/new?card=<id>&open=<id>` -- the list with that card's sheet open.
 
 ### `/list/draft`
 
-| Key  | Values  | Notes                         |
-| ---- | ------- | ----------------------------- |
-| `id` | list id | Required. Edits a draft list. |
+| Key    | Values  | Notes                                    |
+| ------ | ------- | ---------------------------------------- |
+| `id`   | list id | Required. Edits a draft list.            |
+| `add`  | `1`     | The add-a-card sheet, as on `/list/new`. |
+| `open` | card id | That card's sheet, as on `/list/new`.    |
 
 ### `/list/reply`
 

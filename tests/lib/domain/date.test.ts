@@ -18,6 +18,7 @@ import {
 	periodLabel,
 	periodOf,
 	periodParts,
+	shortMonth,
 	today,
 } from "#lib/domain/date"
 
@@ -228,5 +229,12 @@ describe("dayMonth", () => {
 		expect(dayMonth("2026-11-03", "en")).toBe("3 Nov")
 		expect(dayMonth("2026-10-29", "en")).toBe("29 Oct")
 		expect(dayMonth("2026-12-15", "th")).toBe("15 ธ.ค.")
+	})
+})
+
+describe("shortMonth", () => {
+	test("the short month alone, for a chart's label", () => {
+		expect(shortMonth("2026-11-03", "en")).toBe("Nov")
+		expect(shortMonth("2026-12-25", "th")).toBe("ธ.ค.")
 	})
 })

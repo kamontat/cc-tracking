@@ -13,20 +13,25 @@ import {
 	card,
 	cleanup,
 	click,
+	closeCard,
 	draft,
 	elsewhereLink,
+	fieldsOf,
 	flatText,
+	openCard,
 	saved,
 	sent,
 	settle,
 	setupPage,
 	stored,
+	typeField,
 } from "./list-support"
 
 /**
- * Writing a purchase list: enter amounts, then review and mark it sent or keep it as a draft
- * (`/list/new?card=…`, `/list/draft?id=`). Ported from the legacy `entry` tests; where those
- * dispatched the amounts element's events, these type into the real form.
+ * Writing a purchase list: the list, with each card's amounts in its add-a-card sheet, then
+ * review and mark it sent or keep it as a draft (`/list/new?card=…`, `/list/draft?id=`). Ported
+ * from the legacy `entry` tests; where those dispatched the amounts element's events, these type
+ * into the real form.
  */
 afterEach(cleanup)
 
@@ -76,18 +81,18 @@ const draftWith =
 
 const $ = <E extends Element = HTMLElement>(selector: string) => document.querySelector<E>(selector)
 
-/** The cards on the amounts step, in order. */
-const onList = () => [...document.querySelectorAll(".line[data-card]")].map((el) => el.getAttribute("data-card"))
+/** The cards on the list, in order. */
+const onList = () =>
+	[...document.querySelectorAll(".lines > .line[data-card]")].map((el) => el.getAttribute("data-card"))
 
-const amountOf = (cardId: string) => $<HTMLInputElement>(`.line[data-card="${cardId}"] [data-field="amount"]`)
-
-const typeAmount = async (cardId: string, value: string) => {
-	const input = amountOf(cardId)
-	if (!input) throw new Error(`no amount for ${cardId}`)
-	input.value = value
-	input.dispatchEvent(new Event("input", { bubbles: true }))
-	await settle()
+/** A card's first amount, read from its sheet, which closes again. */
+const amountOf = async (cardId: string) => {
+	const [value] = await fieldsOf(cardId, "amount")
+	await closeCard()
+	return value
 }
+
+const typeAmount = (cardId: string, value: string) => typeField(cardId, "amount", value)
 
 const setDate = async (value: string) => {
 	const input = $<HTMLInputElement>('[data-field="date"]')
@@ -97,27 +102,29 @@ const setDate = async (value: string) => {
 	await settle()
 }
 
+/** Takes a card off the list from its sheet. */
 const remove = async (cardId: string) => {
-	const button = $(`.line[data-card="${cardId}"] [data-action="remove"]`)
-	if (!button) throw new Error(`no remove for ${cardId}`)
-	button.click()
-	await settle()
+	await openCard(cardId)
+	await click(document, "remove")
 }
 
-/** Opens *Add card* and picks `cardId` from the offered cards. */
+/** Opens *Add a card*, picks `cardId` and adds it to the list. */
 const add = async (cardId: string) => {
 	await click(document, "add-card")
-	const row = $(`button.crow[data-card="${cardId}"]`)
-	if (!row) throw new Error(`${cardId} is not offered`)
-	row.click()
+	const tile = $(`dialog .tile[data-card="${cardId}"]`)
+	if (!tile) throw new Error(`${cardId} is not offered`)
+	tile.click()
 	await settle()
+	await click(document, "add-to-list")
 }
 
-/** The cards *Add card* offers, without picking one. */
+/** The cards *Add a card* offers that are not on the list yet, without picking one. */
 const offered = async () => {
 	await click(document, "add-card")
-	const ids = [...document.querySelectorAll("button.crow[data-card]")].map((el) => el.getAttribute("data-card"))
-	await click(document, "add-card")
+	const ids = [...document.querySelectorAll("dialog .tile[data-card]")]
+		.filter((tile) => !tile.querySelector(".aside"))
+		.map((el) => el.getAttribute("data-card"))
+	await click(document, "close")
 	return ids
 }
 
@@ -135,8 +142,8 @@ test("a new list opens with the picked cards and today", async () => {
 	expect(onList()).toEqual(["B", "A"])
 	expect($<HTMLInputElement>('[data-field="date"]')?.value).toBe("2026-10-31")
 	expect($("h1")?.textContent).toContain("New purchase list")
-	// Back goes to the picker the cards came from (DD-103).
-	expect($('[data-action="back"]')?.getAttribute("href")).toBe("/list/new")
+	// There is no picker before the list any more (DD-195): Back goes Home.
+	expect($('[data-action="back"]')?.getAttribute("href")).toBe("/")
 })
 
 test("a draft's back still goes Home", async () => {
@@ -157,7 +164,7 @@ test("review shows the table and comes back with everything typed", async () => 
 	expect($('[data-field="amount"]')).toBeNull()
 	expect($("h1")?.textContent).toContain("Review list")
 	await click(document, "back")
-	expect(amountOf("A")?.value).toBe("125")
+	expect(await amountOf("A")).toBe("125")
 })
 
 test("mark as sent stores a waiting list and goes home", async () => {
@@ -218,7 +225,7 @@ test("a draft opens into enter amounts and keeps its id", async () => {
 		}),
 	)
 	expect(onList()).toEqual(["A"])
-	expect(amountOf("A")?.value).toBe("12345")
+	expect(await amountOf("A")).toBe("12345")
 	expect($<HTMLInputElement>('[data-field="date"]')?.value).toBe("2026-11-02")
 	expect($("h1")?.textContent).toContain("Draft list")
 	await click(document, "review")
@@ -378,7 +385,7 @@ test("a failed save keeps the review, and Back still has what was typed", async 
 	expect($(".list-layout__main .doc")).not.toBeNull()
 	expect(visited).toEqual([])
 	await click(document, "back")
-	expect(amountOf("A")?.value).toBe("125")
+	expect(await amountOf("A")).toBe("125")
 })
 
 test("re-renders in Thai", async () => {
@@ -451,37 +458,91 @@ test("a failed delete says so and stays", async () => {
 	expect($(".line[data-card]")).not.toBeNull()
 })
 
-test("add appends the card to the address, with replace not push", async () => {
-	const { replaced } = await setup()
+test("add writes the card into the list's own address, not a new entry", async () => {
+	const { now, replaced } = await setup()
 	await add("B")
-	expect(replaced).toEqual(["/list/new?card=A&card=B"])
+	expect(now()).toBe("/list/new?card=A&card=B")
+	expect(replaced.at(-1)).toBe("/list/new?card=A&card=B")
 })
 
 test("remove drops the card from the address and keeps order and other params", async () => {
-	const { replaced } = await setup({ search: "?card=A&x=1&card=B" })
+	const { now } = await setup({ search: "?card=A&x=1&card=B" })
 	await remove("A")
-	expect(replaced).toEqual(["/list/new?x=1&card=B"])
+	expect(now()).toBe("/list/new?x=1&card=B")
 	await remove("B")
-	expect(replaced).toEqual(["/list/new?x=1&card=B", "/list/new?x=1"])
+	expect(now()).toBe("/list/new?x=1")
 })
 
 test("ids with & or , survive in the address", async () => {
-	const { replaced } = await setup({
+	const { now } = await setup({
 		search: "?card=A",
 		before: async (r) => {
 			await r.saveCard(card("a&b,c"))
 		},
 	})
 	await add("a&b,c")
-	expect(replaced).toEqual(["/list/new?card=A&card=a%26b%2Cc"])
-	expect(new URLSearchParams(replaced[0]?.split("?")[1]).getAll("card")).toEqual(["A", "a&b,c"])
+	expect(now()).toBe("/list/new?card=A&card=a%26b%2Cc")
+	expect(new URLSearchParams(now().split("?")[1]).getAll("card")).toEqual(["A", "a&b,c"])
 })
 
-test("a draft page leaves its address alone", async () => {
-	const { replaced } = await setupDraft(draftWith(["A"]))
+test("a draft page keeps its address as it is", async () => {
+	const { now } = await setupDraft(draftWith(["A"]))
 	await add("B")
 	await remove("A")
-	expect(replaced).toEqual([])
+	expect(now()).toBe("?id=d1")
+	expect(onList()).toEqual(["B"])
+})
+
+test("the add-a-card sheet is in history: it pushes one entry, a pick rewrites it, Back closes it", async () => {
+	const { now, entries, back } = await setup()
+	await click(document, "add-card")
+	expect(now()).toBe("/list/new?card=A&add=1")
+	expect(entries).toHaveLength(2)
+	$('dialog .tile[data-card="B"]')?.click()
+	await settle()
+	expect(now()).toBe("/list/new?card=A&open=B")
+	expect(entries).toHaveLength(2)
+	back()
+	await settle()
+	expect($("dialog")).toBeNull()
+	expect(now()).toBe("/list/new?card=A")
+	expect(onList()).toEqual(["A"])
+})
+
+test("Back between the page's own entries stays the page's, so the router keeps what was typed", async () => {
+	const { popOptions, pushOptions } = await setup()
+	expect(popOptions).toEqual([{ ownPage: true }])
+	await click(document, "add-card")
+	expect(pushOptions).toEqual([{ ownPage: true }])
+})
+
+test("a row's sheet is in history too, on a draft as on a new list", async () => {
+	const { now, back } = await setupDraft(draftWith(["A"]))
+	await openCard("A")
+	expect(now()).toBe("/list/draft?id=d1&open=A")
+	back()
+	await settle()
+	expect($("dialog")).toBeNull()
+	expect(now()).toBe("?id=d1")
+})
+
+test("opened with the sheet in its address, the page shows it, and closing rewrites it away", async () => {
+	const { now, entries } = await setup({ search: "?card=A&add=1" })
+	expect($("dialog .tile")).not.toBeNull()
+	await click(document, "close")
+	expect($("dialog")).toBeNull()
+	expect(now()).toBe("/list/new?card=A")
+	expect(entries).toHaveLength(1)
+})
+
+test("a new list with no card opens empty, ready to add the first", async () => {
+	await setup({ search: "" })
+	expect(onList()).toEqual([])
+	await click(document, "add-card")
+	expect([...document.querySelectorAll("dialog .tile")].map((t) => t.getAttribute("data-card")).sort()).toEqual([
+		"A",
+		"B",
+	])
 })
 
 test("the sub-header's muted line names the list's date and how many cards it has", async () => {
@@ -501,17 +562,11 @@ test("the sub-header's muted line names the list's date and how many cards it ha
 
 /** Adds an order to `cardId` and types `value` into it. */
 const addOrder = async (cardId: string, value: string) => {
-	const button = $(`.line[data-card="${cardId}"] [data-action="add-order"]`)
-	if (!button) throw new Error(`no add order for ${cardId}`)
-	button.click()
+	const sheet = await openCard(cardId)
+	sheet.querySelector<HTMLElement>('[data-action="add-order"]')?.click()
 	await settle()
-	const input = [
-		...document.querySelectorAll<HTMLInputElement>(`.line[data-card="${cardId}"] [data-field="amount"]`),
-	].at(-1)
-	if (!input) throw new Error(`no order for ${cardId}`)
-	input.value = value
-	input.dispatchEvent(new Event("input", { bubbles: true }))
-	await settle()
+	const orders = (await fieldsOf(cardId, "amount")).length
+	await typeField(cardId, "amount", value, orders - 1)
 }
 
 test("a card's orders are stored as a line each, in order", async () => {
@@ -523,9 +578,8 @@ test("a card's orders are stored as a line each, in order", async () => {
 	expect(document.querySelectorAll(".doc tbody tr")).toHaveLength(3)
 	expect(subtitleOf()).toBe("Sat, 31 Oct 2026 · 2 cards · 3 orders")
 	await click(document, "back")
-	expect(
-		[...document.querySelectorAll<HTMLInputElement>('.line[data-card="A"] [data-field="amount"]')].map((i) => i.value),
-	).toEqual(["100", "200"])
+	expect(await fieldsOf("A", "amount")).toEqual(["100", "200"])
+	await closeCard()
 	await click(document, "save-draft")
 	expect((await stored(repo))[0]?.lines).toEqual([
 		{ cardId: "A", amount: 100_00 },
@@ -534,7 +588,7 @@ test("a card's orders are stored as a line each, in order", async () => {
 	])
 })
 
-test("a draft with several orders on a card opens them in the card's one panel", async () => {
+test("a draft with several orders on a card opens them in the card's one sheet", async () => {
 	const { repo } = await setupDraft((r) =>
 		r.savePurchaseList({
 			id: "d1",
@@ -548,12 +602,9 @@ test("a draft with several orders on a card opens them in the card's one panel",
 		}),
 	)
 	expect(onList()).toEqual(["A", "B"])
-	expect(
-		[...document.querySelectorAll<HTMLInputElement>('.line[data-card="A"] [data-field="amount"]')].map((i) => i.value),
-	).toEqual(["100", "300"])
-	expect(
-		[...document.querySelectorAll<HTMLInputElement>('.line[data-card="A"] [data-field="note"]')].map((i) => i.value),
-	).toEqual(["fuel", ""])
+	expect(await fieldsOf("A", "amount")).toEqual(["100", "300"])
+	expect(await fieldsOf("A", "note")).toEqual(["fuel", ""])
+	await closeCard()
 	expect(subtitleOf()).toBe("Mon, 02 Nov 2026 · 2 cards · 3 orders")
 	await click(document, "review")
 	await click(document, "mark-sent")
@@ -576,7 +627,7 @@ test("a draft keeps a card with no amount yet, and reopens it blank", async () =
 
 	await setupDraft((r) => r.savePurchaseList(draft("d1", ["A", "B"], { lines: [{ cardId: "A", amount: 0 }] })))
 	expect(onList()).toEqual(["A"])
-	expect(amountOf("A")?.value).toBe("")
+	expect(await amountOf("A")).toBe("")
 })
 
 test("save as draft needs no amount at all, but refuses text that is not money", async () => {

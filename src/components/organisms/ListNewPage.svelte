@@ -4,14 +4,11 @@
 	import type { Opened } from "#lib/ui/startup"
 
 	import ListEntryPage from "#components/organisms/ListEntryPage.svelte"
-	import ListPickerPage from "#components/organisms/ListPickerPage.svelte"
-	import { browserBar } from "#lib/ui/address-bar"
-	import { namesCards } from "#lib/ui/ready-query"
 
 	/**
-	 * A new purchase list (`/list/new`). With no `card` in the address it is the picker, *Ready to
-	 * use* in full (DD-103); `?card=<id>`, once per card, enters the amounts for the cards picked
-	 * there. The address is read once: the picker leaves for the entering step with a new load.
+	 * A new purchase list (`/list/new`): the list itself, empty or holding the address's `card`
+	 * parameters, with cards added from the add-a-card sheet (DD-195). The picker that came first
+	 * is gone; its search and sorts live in the sheet.
 	 */
 	interface Props {
 		open?: () => Promise<Opened>
@@ -22,13 +19,7 @@
 		newId?: () => string
 	}
 
-	const { address = browserBar(), ...rest }: Props = $props()
-
-	const entering = namesCards(address.search())
+	const props: Props = $props()
 </script>
 
-{#if entering}
-	<ListEntryPage mode="new" {address} {...rest} />
-{:else}
-	<ListPickerPage {address} {...rest} />
-{/if}
+<ListEntryPage mode="new" {...props} />

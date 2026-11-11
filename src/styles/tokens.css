@@ -110,6 +110,15 @@
 	--cc-cycle-tick: 1.125rem;
 	--cc-cycle-fill-opacity: 0.55;
 
+	/* A card's last 12 statements (DD-195): the picker's small bars (each bar, the gap between,
+	   the row's height), the sheet's chart (its bars' tallest), and how faint the open
+	   statement's bar is, since it is still filling. */
+	--cc-spark-bar: 0.3125rem;
+	--cc-spark-gap: 0.125rem;
+	--cc-spark-height: 1.25rem;
+	--cc-chart-height: 5rem;
+	--cc-usage-open-opacity: 0.45;
+
 	/* How wide an opened row's sentence wants to be before its buttons drop under it. */
 	--cc-foot-say: 18rem;
 
