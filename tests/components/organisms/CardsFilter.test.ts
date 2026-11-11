@@ -74,7 +74,19 @@ const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g
 
 test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 	const { root, click } = show()
-	expect([...root.querySelectorAll("legend")].map((l) => text(l))).toEqual(["Kept in", "Account holder", "Sort by"])
+	expect([...root.querySelectorAll("legend")].map((l) => text(l))).toEqual([
+		"Kept in",
+		"Account holder",
+		"Sort by",
+		"Group by",
+	])
+	expect([...root.querySelectorAll("[data-by]")].map((b) => text(b))).toEqual([
+		"Place",
+		"Account holder",
+		"Limit group",
+		"None",
+	])
+	expect(root.querySelector("[data-by=place]")?.getAttribute("aria-pressed")).toBe("true")
 	expect([...root.querySelectorAll("[data-location]")].map((b) => text(b))).toEqual(["Bangkok", "Krabi", "Phichit"])
 	expect([...root.querySelectorAll("[data-owner]")].map((b) => text(b))).toEqual(["KC", "NT", "RI"])
 	const chip = root.querySelector("[data-location=krabi]")
@@ -82,14 +94,17 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 	expect(chip?.getAttribute("data-variant")).toBe("quiet")
 	expect(chip?.getAttribute("aria-pressed")).toBe("false")
 	expect([...root.querySelectorAll("[data-sort]")].map((b) => text(b))).toEqual([
-		"Place",
+		"Card",
 		"Room",
 		"Name",
 		"Close date",
 		"Due date",
 	])
-	expect(root.querySelector("[data-sort=place]")?.getAttribute("aria-pressed")).toBe("true")
-	expect([...root.querySelectorAll("[data-dir]")].map((b) => text(b))).toEqual(["↑ By place", "↓ By place, reversed"])
+	expect(root.querySelector("[data-sort=card]")?.getAttribute("aria-pressed")).toBe("true")
+	expect([...root.querySelectorAll("[data-dir]")].map((b) => text(b))).toEqual([
+		"↑ Card, first to last",
+		"↓ Card, last to first",
+	])
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 5 cards")
 	click("[data-owner=NT]")
 	expect(root.querySelector("[data-owner=NT]")?.getAttribute("aria-pressed")).toBe("true")
@@ -141,6 +156,7 @@ test("apply lets the sheet go, then hands back the draft view", async () => {
 	click("[data-location=krabi]")
 	click("[data-owner=RI]")
 	click("[data-sort=room]")
+	click("[data-by=limit]")
 	expect(root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed")).toBe("true")
 	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
 	click("[data-action=apply]")
@@ -153,6 +169,7 @@ test("apply lets the sheet go, then hands back the draft view", async () => {
 			ungrouped: false,
 			sort: "room",
 			dir: "desc",
+			by: "limit",
 		},
 	])
 })
@@ -174,6 +191,7 @@ test("Clear all resets the draft but keeps the search", async () => {
 			ungrouped: false,
 			sort: "name",
 			dir: "desc",
+			by: "holder",
 		},
 	})
 	click("[data-action=clear]")

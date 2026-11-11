@@ -21,8 +21,10 @@ describe("tx-query", () => {
 			},
 			sort: "amount",
 			dir: "asc",
+			by: "card",
 			owedSort: "left",
 			owedDir: "asc",
+			listsBy: "month",
 			lists: {
 				q: "fuel & stamps",
 				status: ["draft", "saved"],
@@ -69,6 +71,13 @@ describe("tx-query", () => {
 		expect(readTxView("?owed=left")).toMatchObject({ owedSort: "left", owedDir: "desc" })
 		expect(readTxView("?owed=left&odir=asc")).toMatchObject({ owedSort: "left", owedDir: "asc" })
 		expect(writeTxView({ ...DEFAULT_TX_VIEW, owedDir: "desc" })).toBe("?odir=desc")
+	})
+
+	test("the ledger groups by day by default and the Lists view by status, each with its own key", () => {
+		expect(DEFAULT_TX_VIEW).toMatchObject({ by: "day", listsBy: "status" })
+		expect(readTxView("?by=card&lby=month")).toMatchObject({ by: "card", listsBy: "month" })
+		expect(readTxView("?by=month&lby=card")).toMatchObject({ by: "day", listsBy: "status" })
+		expect(writeTxView({ ...DEFAULT_TX_VIEW, by: "none", listsBy: "none" })).toBe("?by=none&lby=none")
 	})
 
 	test("a lone preset range is kept", () => {

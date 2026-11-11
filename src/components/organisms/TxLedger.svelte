@@ -5,7 +5,7 @@
 <script lang="ts">
 	import type { Card, CardLedger, CardPayment, LimitGroup, PlainDate, PurchaseList } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
-	import type { Drawer, LedgerDay, Upcoming } from "#lib/ui/ledger-drawer"
+	import type { Drawer, LedgerSection, Upcoming } from "#lib/ui/ledger-drawer"
 
 	import { onMount, untrack } from "svelte"
 
@@ -25,8 +25,8 @@
 	import { LEDGER_PAGE } from "#lib/ui/tx-query"
 
 	/**
-	 * The ledger: purchases and paid payments, grouped under day headings (`groups`) or flat
-	 * (`entries`), and the *Upcoming* section above it. Each day (or the flat list) is one panel of
+	 * The ledger: purchases and paid payments, grouped under day or card headings (`groups`, DD-192)
+	 * or flat (`entries`), and the *Upcoming* section above it. Each section (or the flat list) is one panel of
 	 * rows. Every row is the shared opening row (`ActionRow`): its head is one button and it opens
 	 * in place, one row at a time across Upcoming and every day, to a drawer of one sentence and
 	 * its buttons (DD-165). A purchase opens to its statement's billing cycle line and what that
@@ -40,7 +40,8 @@
 	 * entry.
 	 */
 	interface Props {
-		groups?: LedgerDay[] | null
+		/** The rows in sections, by day or by card (`groupEntries`); null draws them flat (`entries`). */
+		groups?: LedgerSection[] | null
 		entries?: TxEntry[]
 		lists?: PurchaseList[]
 		/** Each card's ledger, by card id: a purchase's statement and where a payment went. */
@@ -152,9 +153,14 @@
 		return { text: plannedText(payment, card, limitGroups, today), say: plannedSay(payment) }
 	}
 
-	const dayHeading = (date: PlainDate) => {
-		const words = headerDate(date, lang, false)
-		return date === today ? tr("tx.today", { date: words }) : words
+	/** A section's heading: its day (*Today · …* for today), or its card in the line form. */
+	const heading = (section: LedgerSection) => {
+		if (section.kind === "card") {
+			void lang
+			return cardLine(section.cardId, section.card)
+		}
+		const words = headerDate(section.date, lang, false)
+		return section.date === today ? tr("tx.today", { date: words }) : words
 	}
 
 	const resultHead = $derived.by(() => {
@@ -305,12 +311,12 @@
 	{#if all.length === 0}
 		<p class="empty" tabindex="-1" data-refocus="ledger">{tr(filtered ? "tx.noResults" : "tx.empty")}</p>
 	{:else if days}
-		{#each days as group (group.date)}
-			<section class="day">
-				<h3 class="sec-title" tabindex="-1" data-refocus={`day:${group.date}`}>{dayHeading(group.date)}</h3>
+		{#each days as group (group.key)}
+			<section class={group.kind} data-section={group.key}>
+				<h3 class="sec-title" tabindex="-1" data-refocus={group.key}>{heading(group)}</h3>
 				<div class="row-panel panel">
 					{#each group.entries as entry (entryId(entry))}
-						{@render ledgerRow(entry, false)}
+						{@render ledgerRow(entry, group.kind === "card")}
 					{/each}
 				</div>
 			</section>

@@ -12,6 +12,7 @@ test("the view round-trips through the address, places and holders repeated", ()
 		filter: { q: "scb k", locations: ["bangkok", "krabi"], owners: ["NT"] },
 		sort: "due",
 		dir: "asc",
+		by: "place",
 	} as const
 	const url = readyViewAddress({
 		filter: {
@@ -21,13 +22,21 @@ test("the view round-trips through the address, places and holders repeated", ()
 		},
 		sort: view.sort,
 		dir: view.dir,
+		by: view.by,
 	})
-	expect(url).toBe("/list/new?q=scb+k&loc=bangkok&loc=krabi&owner=NT&sort=due&dir=asc")
+	expect(url).toBe("/list/new?q=scb+k&loc=bangkok&loc=krabi&owner=NT&sort=due&dir=asc&by=place")
 	expect(readReadyView(url.slice("/list/new".length), ["bangkok", "krabi"])).toEqual({
 		filter: { q: "scb k", locations: ["bangkok", "krabi"], owners: ["NT"] },
 		sort: "due",
 		dir: "asc",
+		by: "place",
 	})
+})
+
+test("by groups the picker, none by default", () => {
+	expect(DEFAULT_READY_VIEW.by).toBe("none")
+	expect(readReadyView("?by=holder", []).by).toBe("holder")
+	expect(readReadyView("?by=limit", []).by).toBe("none")
 })
 
 test("dir is read against the sort's default and written only when it differs", () => {

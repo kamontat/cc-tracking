@@ -30,9 +30,10 @@ test("round trip with repeated loc and owner", () => {
 		ungrouped: true,
 		sort: "close",
 		dir: "desc",
+		by: "holder",
 	}
 	const text = writeCardsView(view)
-	expect(text).toBe("?q=kb+x&loc=bangkok&loc=krabi&owner=KC&owner=RI&ungrouped=1&sort=close&dir=desc")
+	expect(text).toBe("?q=kb+x&loc=bangkok&loc=krabi&owner=KC&owner=RI&ungrouped=1&sort=close&dir=desc&by=holder")
 	expect(readCardsView(text, ["bangkok", "krabi"])).toEqual(view)
 })
 
@@ -46,7 +47,7 @@ test("unknown sort, owner and place are ignored, as are the retired keys", () =>
 test("dir is written only when it is not the sort's own default, and read against that sort", () => {
 	expect(readCardsView("?sort=room", [])).toMatchObject({ sort: "room", dir: "desc" })
 	expect(readCardsView("?sort=room&dir=asc", [])).toMatchObject({ sort: "room", dir: "asc" })
-	expect(readCardsView("?dir=desc", [])).toMatchObject({ sort: "place", dir: "desc" })
+	expect(readCardsView("?dir=desc", [])).toMatchObject({ sort: "card", dir: "desc" })
 	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, sort: "room", dir: "asc" })).toBe("?sort=room&dir=asc")
 	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, dir: "desc" })).toBe("?dir=desc")
 })
@@ -94,4 +95,11 @@ test("the phone view: ?view=groups shows the groups, anything else the cards", (
 	expect(writeCardsView(DEFAULT_CARDS_VIEW, "cards")).toBe("")
 	expect(writeCardsView(DEFAULT_CARDS_VIEW, "groups")).toBe("?view=groups")
 	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, q: "a" }, "groups")).toBe("?view=groups&q=a")
+})
+
+test("by groups the cards, place by default; the retired place sort reads as the default", () => {
+	expect(readCardsView("?by=limit", [])).toMatchObject({ by: "limit" })
+	expect(readCardsView("?by=zzz", [])).toMatchObject({ by: "place" })
+	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, by: "none" })).toBe("?by=none")
+	expect(readCardsView("?sort=place", [])).toEqual(DEFAULT_CARDS_VIEW)
 })

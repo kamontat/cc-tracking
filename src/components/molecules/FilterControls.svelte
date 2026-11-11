@@ -7,9 +7,9 @@
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 
 	/**
-	 * The search box, the Filter button (its badge counts the filters in use), the sort chip and a
+	 * The search box, the Filter button (its badge counts the filters in use), the sort chip, the group chip and a
 	 * removable chip per filter, drawn in the light DOM where app.css's `.tx-controls` styles them.
-	 * The Filter button and the sort chip both call `onopen`, for the page to show its filter sheet.
+	 * The Filter button, the sort chip and the group chip all call `onopen`, for the page to show its filter sheet.
 	 */
 	interface Props {
 		q: string
@@ -21,6 +21,8 @@
 		count: number
 		/** The sort's own words, for the sort chip; none draws no sort chip (the Lists view). */
 		sort?: string
+		/** The grouping's own words, for a group chip after the sort chip; none draws no group chip. */
+		group?: string
 		/**
 		 * One removable chip per filter in use: `label` is drawn and read out by its remove label. A
 		 * card's chip also passes its `short` form, which app.css shows in its place on a phone (UI-14).
@@ -28,7 +30,7 @@
 		chips: { key: string; label: string; short?: string; clear: () => void }[]
 	}
 
-	const { q, placeholder, onsearch, onopen, count, sort, chips }: Props = $props()
+	const { q, placeholder, onsearch, onopen, count, sort, group, chips }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -79,6 +81,12 @@
 		{#if sort !== undefined}
 			<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="sort" onclick={onopen}>
 				{tr("tx.sortChip", { sort })}
+				▾
+			</button>
+		{/if}
+		{#if group !== undefined}
+			<button type="button" class="tx-chip tx-sort" data-variant="quiet" data-action="group" onclick={onopen}>
+				{tr("groupChip", { group })}
 				▾
 			</button>
 		{/if}

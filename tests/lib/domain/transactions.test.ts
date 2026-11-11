@@ -11,6 +11,8 @@ import {
 	entriesTotal,
 	filterEntries,
 	filterLists,
+	groupEntries,
+	LISTS_GROUPS,
 	ledgerEntries,
 	listGroups,
 	listIdOf,
@@ -21,6 +23,7 @@ import {
 	owedRows,
 	sortEntries,
 	TX_DIRS,
+	TX_GROUPS,
 	TX_SORTS,
 	type TxEntry,
 } from "#lib/domain/transactions"
@@ -154,6 +157,34 @@ describe("sortEntries and byDay", () => {
 		expect(days.map((d) => d.date)).toEqual(["2026-10-12", "2026-10-10"])
 		expect(ids(days[1]?.entries ?? [])).toEqual(["p2", "p1", "m1"])
 	})
+	test("groupEntries by day follows the date sort's direction, rows kept in their order", () => {
+		expect(TX_GROUPS).toEqual(["day", "card", "none"])
+		const desc = groupEntries(sortEntries(entries, "date", "desc"), "day", "date", "desc")
+		expect(desc?.map((g) => [g.key, ids(g.entries)])).toEqual([
+			["day:2026-10-12", ["p3"]],
+			["day:2026-10-10", ["p2", "p1", "m1"]],
+		])
+		expect(desc?.[0]).toMatchObject({ kind: "day", date: "2026-10-12" })
+		const asc = groupEntries(sortEntries(entries, "date", "asc"), "day", "date", "asc")
+		expect(asc?.map((g) => g.key)).toEqual(["day:2026-10-10", "day:2026-10-12"])
+	})
+	test("groupEntries by day under an amount sort: newest day first, amounts inside", () => {
+		const rows = sortEntries(entries, "amount", "asc")
+		expect(groupEntries(rows, "day", "amount", "asc")?.map((g) => [g.key, ids(g.entries)])).toEqual([
+			["day:2026-10-12", ["p3"]],
+			["day:2026-10-10", ["p2", "p1", "m1"]],
+		])
+	})
+	test("groupEntries by card: a section per card by id; none is flat", () => {
+		const both = ledgerEntries(cards, [buy("p1", { cardId: "b" }), buy("p2", { cardId: "a" })], [])
+		const groups = groupEntries(both, "card", "date", "desc")
+		expect(groups?.map((g) => [g.key, ids(g.entries)])).toEqual([
+			["card:a", ["p2"]],
+			["card:b", ["p1"]],
+		])
+		expect(groups?.[0]).toMatchObject({ kind: "card", cardId: "a" })
+		expect(groupEntries(both, "none", "date", "desc")).toBeNull()
+	})
 	test("total: payments plus, purchases minus", () => {
 		expect(entriesTotal(entries)).toBe(900 - 600)
 	})
@@ -231,6 +262,23 @@ describe("listGroups", () => {
 		expect(listGroups([list("d1", "2026-10-01", "draft")], [])).toEqual([
 			{ key: "draft", status: "draft", lists: [list("d1", "2026-10-01", "draft")] },
 		])
+	})
+
+	test("by month: a section per month, newest first, every status together", () => {
+		const more = [...lists, list("s4", "2026-09-30", "saved")]
+		expect(LISTS_GROUPS).toEqual(["status", "month", "none"])
+		expect(listGroups(more, [], "month").map((g) => [g.key, g.lists.map((l) => l.id)])).toEqual([
+			["month:2026-10", ["s2", "s3", "s1", "d2", "w1", "d1"]],
+			["month:2026-09", ["s4"]],
+		])
+		expect(listGroups(more, [], "month")[0]).toMatchObject({ month: "2026-10" })
+	})
+
+	test("none: one section of every list, newest first", () => {
+		expect(listGroups(lists, [], "none").map((g) => [g.key, g.lists.map((l) => l.id)])).toEqual([
+			["all", ["s2", "s3", "s1", "d2", "w1", "d1"]],
+		])
+		expect(listGroups([], [], "none")).toEqual([])
 	})
 
 	test("a saved group carries its date", () => {
