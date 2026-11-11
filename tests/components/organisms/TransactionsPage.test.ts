@@ -194,6 +194,42 @@ test("the sheet sorts by amount, smallest first, kept in the address", async () 
 	expect($('[data-action="sort"]')?.textContent).toContain("Sort: Smallest first")
 })
 
+test("the sort and group chips open the sheet on their own tabs", async () => {
+	await open()
+	await press($('[data-action="sort"]'))
+	expect($<HTMLElement>('dialog [role=tabpanel][data-tab="sort"]')?.hidden).toBe(false)
+	await press($('dialog [data-action="close"]'))
+	await exit()
+	await press($('[data-action="group"]'))
+	expect($<HTMLElement>('dialog [role=tabpanel][data-tab="group"]')?.hidden).toBe(false)
+	await press($('dialog [data-action="close"]'))
+	await exit()
+	await press($('[data-action="filter"]'))
+	expect($<HTMLElement>('dialog [role=tabpanel][data-tab="filter"]')?.hidden).toBe(false)
+})
+
+test("the ledger groups by card from the sheet, kept in the address as by", async () => {
+	const { written } = await open()
+	expect($('[data-action="group"]')?.textContent).toContain("Group: Day")
+	await press($('[data-action="group"]'))
+	await press($('dialog [data-by="card"]'))
+	await press($('dialog [data-action="apply"]'))
+	await exit()
+	expect(written.at(-1)).toBe("?by=card")
+	expect($(".ledger section.day")).toBeNull()
+	expect($(".ledger section.card")).not.toBeNull()
+})
+
+test("the Lists view groups by month, kept in the address as lby", async () => {
+	const { written } = await open("?view=lists")
+	expect($('.tx-body [data-action="group"]')?.textContent).toContain("Group: Status")
+	await press($('.tx-body [data-action="filter"]'))
+	await press($('dialog [data-by="month"]'))
+	await press($('dialog [data-action="apply"]'))
+	await exit()
+	expect(written.at(-1)).toBe("?view=lists&lby=month")
+})
+
 test("the Lists view has a search box and a Filter button, but no sort", async () => {
 	await open("?view=lists")
 	expect($('.tx-body input[name="q"]')?.getAttribute("placeholder")).toBe("Search card or note")
@@ -292,11 +328,11 @@ test("Owed tiles lead to the payment sheet on the card, with each group's room",
 	expect(tile?.querySelector(".rail")?.getAttribute("aria-label")).toMatch(/of the limit used$/)
 })
 
-test("the Owed order button reverses the order, kept in the address as odir", async () => {
+test("the Owed order switch reverses the order, kept in the address as odir", async () => {
 	const { written } = await open("?view=owed")
-	await press($('.tx-owed [data-action="flip-sort"]'))
+	await press($('.tx-owed [data-dir="desc"]'))
 	expect(written.at(-1)).toBe("?view=owed&odir=desc")
-	expect(text($('.tx-owed [data-action="flip-sort"]'))).toBe("↓")
+	expect($('.tx-owed [data-dir="desc"]')?.getAttribute("aria-pressed")).toBe("true")
 })
 
 test("Mark paid moves a plan into the ledger and lowers owed", async () => {

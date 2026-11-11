@@ -110,22 +110,27 @@ test("the sort chip calls onsort with the chosen sort, in its own direction", ()
 	expect(sorts).toEqual([["left", "desc"]])
 })
 
-test("the order button says which way the list runs and flips it", () => {
+test("the order switch shows both ways, the field's own first, and picks one", () => {
 	const sorts: [OwedSort, SortDir][] = []
 	const root = show({ sort: "left", dir: "desc", onsort: (sort, dir) => sorts.push([sort, dir]) })
-	const flip = root.querySelector("button[data-action=flip-sort]") as HTMLButtonElement
-	expect(flip.getAttribute("type")).toBe("button")
-	expect(flip.getAttribute("data-variant")).toBe("quiet")
-	expect(flip.getAttribute("aria-label")).toBe("Order: Most owed. Reverse it")
-	expect(flat(flip)).toBe("↓")
-	flip.click()
+	const group = root.querySelector("fieldset.filter-seg")
+	expect(group?.getAttribute("aria-label")).toBe("Order")
+	const ways = [...root.querySelectorAll<HTMLButtonElement>(".filter-seg button[data-dir]")]
+	expect(
+		ways.map((b) => [b.dataset["dir"], flat(b), b.getAttribute("aria-label"), b.getAttribute("aria-pressed")]),
+	).toEqual([
+		["desc", "↓", "Most owed", "true"],
+		["asc", "↑", "Least owed", "false"],
+	])
+	expect(ways[0]?.getAttribute("type")).toBe("button")
+	ways[1]?.click()
 	expect(sorts).toEqual([["left", "asc"]])
 })
 
 test("the default sort run the other way marks the chip active", () => {
 	const root = show({ sort: "urgency", dir: "desc" })
 	expect(root.querySelector("label.chip")?.hasAttribute("data-active")).toBe(true)
-	expect(flat(root.querySelector("button[data-action=flip-sort]"))).toBe("↓")
+	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
 })
 
 test("a sort other than urgency marks the chip active and selects it", () => {
@@ -138,7 +143,7 @@ test("empty says nothing is owed, with no sort chip", () => {
 	const root = show({ rows: [] })
 	expect(root.querySelector(".empty")?.textContent?.trim()).toBe("Nothing owed on any card.")
 	expect(root.querySelector("select[name=sort]")).toBeNull()
-	expect(root.querySelector("[data-action=flip-sort]")).toBeNull()
+	expect(root.querySelector(".filter-seg")).toBeNull()
 	expect(root.querySelector(".tiles")).toBeNull()
 })
 

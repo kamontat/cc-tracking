@@ -3,6 +3,7 @@
 	import type { SortDir } from "#lib/domain/sort"
 	import type { LocationRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 
 	import { onMount } from "svelte"
 
@@ -10,9 +11,10 @@
 	import SortChoices from "#components/molecules/SortChoices.svelte"
 	import FilterSheet from "#components/organisms/FilterSheet.svelte"
 	import { READY_DIRS, READY_SORTS, type ReadySort } from "#lib/domain/home"
-	import { DEFAULT_READY_FILTER, type ReadyFilter } from "#lib/domain/ready-filter"
+	import { DEFAULT_READY_FILTER, READY_GROUPS, type ReadyFilter, type ReadyGroup } from "#lib/domain/ready-filter"
 	import { nameOfLocation } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
+	import { groupingLabel } from "#lib/ui/group-label"
 	import { toggled } from "#lib/ui/toggle"
 
 	/**
@@ -24,6 +26,8 @@
 	 * backdrop call `onclose`. A group with nothing to offer is left out.
 	 */
 	interface Props {
+		/** The tab to open on: the control that opened the sheet. */
+		tab?: SheetTab
 		/** The ids of the places to offer, in order: those the ready cards are kept in. */
 		locations: string[]
 		/** The stored locations, which name the places offered. */
@@ -33,15 +37,16 @@
 		filter: ReadyFilter
 		sort: ReadySort
 		dir: SortDir
+		by: ReadyGroup
 		/** How many cards a filter would show. */
 		count: (filter: ReadyFilter) => number
 		/** The draft, once the sheet has slid away; the page takes the sheet off screen. */
-		onapply: (detail: { filter: ReadyFilter; sort: ReadySort; dir: SortDir }) => void
+		onapply: (detail: { filter: ReadyFilter; sort: ReadySort; dir: SortDir; by: ReadyGroup }) => void
 		/** The reader closed it; the page takes it off screen. */
 		onclose: () => void
 	}
 
-	const { locations, records, owners, filter, sort, dir, count, onapply, onclose }: Props = $props()
+	const { locations, records, owners, filter, sort, dir, by, count, onapply, onclose, tab }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -57,6 +62,8 @@
 	let draftSort = $state<ReadySort>(sort)
 	// svelte-ignore state_referenced_locally
 	let draftDir = $state<SortDir>(dir)
+	// svelte-ignore state_referenced_locally
+	let draftBy = $state<ReadyGroup>(by)
 
 	const shown = $derived(count(draft))
 	const showLabel = $derived.by(() => {
@@ -69,6 +76,11 @@
 		return locations.map((id) => ({ value: id, label: nameOfLocation(records, id) }))
 	})
 	const ownerOptions = $derived(owners.map((owner) => ({ value: owner, label: owner })))
+
+	const groupOptions = $derived.by(() => {
+		void lang
+		return READY_GROUPS.map((value) => ({ value, label: groupingLabel(value) }))
+	})
 
 	onMount(() =>
 		subscribe(() => {
@@ -85,37 +97,53 @@
 		draft = { ...DEFAULT_READY_FILTER, q: draft.q }
 		draftSort = "room"
 		draftDir = READY_DIRS.room
+		draftBy = "none"
 	}}
-	onapply={() => onapply({ filter: { ...draft }, sort: draftSort, dir: draftDir })}
+	onapply={() => onapply({ filter: { ...draft }, sort: draftSort, dir: draftDir, by: draftBy })}
+	{tab}
 	{onclose}>
-	{#if locations.length > 0}
-		<FilterChips
-			legend={tr("ready.filter.location")}
-			name="location"
-			options={placeOptions}
-			selected={draft.locations}
-			ontoggle={(location: string) => {
-				draft = { ...draft, locations: toggled(draft.locations, location) }
+	{#snippet filterPart()}
+		{#if locations.length > 0}
+			<FilterChips
+				legend={tr("ready.filter.location")}
+				name="location"
+				options={placeOptions}
+				selected={draft.locations}
+				ontoggle={(location: string) => {
+					draft = { ...draft, locations: toggled(draft.locations, location) }
+				}} />
+		{/if}
+		{#if owners.length > 0}
+			<FilterChips
+				legend={tr("ready.filter.owner")}
+				name="owner"
+				options={ownerOptions}
+				selected={draft.owners}
+				ontoggle={(owner: string) => {
+					draft = { ...draft, owners: toggled(draft.owners, owner as Owner) }
+				}} />
+		{/if}
+	{/snippet}
+	{#snippet sortPart()}
+		<SortChoices
+			legend={tr("tx.filter.sort")}
+			fields={READY_SORTS}
+			defaults={READY_DIRS}
+			field={draftSort}
+			dir={draftDir}
+			onchange={(pick: { field: ReadySort; dir: SortDir }) => {
+				draftSort = pick.field
+				draftDir = pick.dir
 			}} />
-	{/if}
-	{#if owners.length > 0}
+	{/snippet}
+	{#snippet groupPart()}
 		<FilterChips
-			legend={tr("ready.filter.owner")}
-			name="owner"
-			options={ownerOptions}
-			selected={draft.owners}
-			ontoggle={(owner: string) => {
-				draft = { ...draft, owners: toggled(draft.owners, owner as Owner) }
+			legend={tr("filter.group")}
+			name="by"
+			options={groupOptions}
+			selected={[draftBy]}
+			ontoggle={(value: string) => {
+				draftBy = value as ReadyGroup
 			}} />
-	{/if}
-	<SortChoices
-		legend={tr("tx.filter.sort")}
-		fields={READY_SORTS}
-		defaults={READY_DIRS}
-		field={draftSort}
-		dir={draftDir}
-		onchange={(pick: { field: ReadySort; dir: SortDir }) => {
-			draftSort = pick.field
-			draftDir = pick.dir
-		}} />
+	{/snippet}
 </FilterSheet>

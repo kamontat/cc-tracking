@@ -5,6 +5,8 @@ import { describe, expect, test } from "vitest"
 
 import {
 	CARDS_DIRS,
+	CARDS_GROUPS,
+	CARDS_SORTS,
 	cardsResults,
 	cardUsePct,
 	DEFAULT_CARDS_VIEW,
@@ -92,10 +94,11 @@ describe("cardsResults", () => {
 	test("place: sections in location order, by id, empties left out", () => {
 		const r = cardsResults(cards, [g], rooms, view(), order)
 		expect(r.flat).toBeNull()
-		expect(r.sections?.map((s) => [s.location, s.cards.map((c) => c.id)])).toEqual([
-			["bangkok", ["a", "c"]],
-			["krabi", ["b"]],
+		expect(r.sections?.map((s) => [s.key, s.cards.map((c) => c.id)])).toEqual([
+			["place:bangkok", ["a", "c"]],
+			["place:krabi", ["b"]],
 		])
+		expect(r.sections?.[0]).toMatchObject({ kind: "place", location: "bangkok" })
 		expect(r.archived.map((c) => c.id)).toEqual(["x"])
 		expect(r.count).toBe(3)
 	})
@@ -112,42 +115,70 @@ describe("cardsResults", () => {
 			card("d", { limitGroupId: "nope" }),
 			(({ limitGroupId: _, ...rest }) => rest)(card("e")),
 		]
-		const r = cardsResults(cs, [g, g2], rs, view({ sort: "room" }), order)
+		const r = cardsResults(cs, [g, g2], rs, view({ sort: "room", by: "none" }), order)
 		expect(r.sections).toBeNull()
 		expect(r.flat?.map((c) => c.id)).toEqual(["b", "a", "c", "d", "e"])
 	})
-	test("each sort has its default direction", () => {
-		expect(DEFAULT_CARDS_VIEW.dir).toBe("asc")
-		expect(CARDS_DIRS).toEqual({ place: "asc", room: "desc", name: "asc", close: "asc", due: "asc" })
+	test("each sort has its default direction; the default view is by card, grouped by place", () => {
+		expect(DEFAULT_CARDS_VIEW).toMatchObject({ sort: "card", dir: "asc", by: "place" })
+		expect(CARDS_SORTS).toEqual(["card", "room", "name", "close", "due"])
+		expect(CARDS_GROUPS).toEqual(["place", "holder", "limit", "none"])
+		expect(CARDS_DIRS).toEqual({ card: "asc", room: "desc", name: "asc", close: "asc", due: "asc" })
+	})
+	test("a sort runs inside each place", () => {
+		const r = cardsResults(cards, [g], rooms, view({ sort: "name", dir: "desc" }), order)
+		expect(r.sections?.map((s) => [s.key, s.cards.map((c) => c.id)])).toEqual([
+			["place:bangkok", ["c", "a"]],
+			["place:krabi", ["b"]],
+		])
+	})
+	test("holder: a section per account holder in KC, NT, RI order, then cards with none", () => {
+		const nt = group("g2", { owner: "NT" })
+		const cs = [
+			card("a", { limitGroupId: "g2" }),
+			card("b"),
+			card("c", { supplementary: true, owner: "RI" }),
+			card("d", { limitGroupId: "gone" }),
+		]
+		const r = cardsResults(cs, [g, nt], rooms, view({ by: "holder" }), order)
+		expect(r.sections?.map((s) => [s.key, s.cards.map((c) => c.id)])).toEqual([
+			["holder:KC", ["b"]],
+			["holder:NT", ["a"]],
+			["holder:RI", ["c"]],
+			["holder:none", ["d"]],
+		])
+		expect(r.sections?.[3]).toMatchObject({ kind: "holder", owner: null })
+		expect(r.count).toBe(4)
+	})
+	test("limit: a section per limit group A to Z, then cards in no stored group", () => {
+		const zed = group("g2", { name: "Zed" })
+		const amy = group("g3", { name: "Amy" })
+		const cs = [card("a", { limitGroupId: "g2" }), card("b", { limitGroupId: "g3" }), card("c", { limitGroupId: "x" })]
+		const r = cardsResults(cs, [zed, amy], rooms, view({ by: "limit" }), order)
+		expect(r.sections?.map((s) => [s.key, s.cards.map((c) => c.id)])).toEqual([
+			["limit:g3", ["b"]],
+			["limit:g2", ["a"]],
+			["limit:none", ["c"]],
+		])
+		expect(r.sections?.[0]).toMatchObject({ kind: "limit", group: amy })
+	})
+	test("none: one flat list", () => {
+		const r = cardsResults(cards, [g], rooms, view({ by: "none" }), order)
+		expect(r.sections).toBeNull()
+		expect(r.flat?.map((c) => c.id)).toEqual(["a", "b", "c"])
 	})
 	test("descending name runs Z to A, ties still by id", () => {
 		const cs = [card("b", { name: "Same" }), card("a", { name: "Same" }), card("c", { name: "Zed" })]
-		const r = cardsResults(cs, [g], rooms, view({ sort: "name", dir: "desc" }), order)
+		const r = cardsResults(cs, [g], rooms, view({ by: "none", sort: "name", dir: "desc" }), order)
 		expect(r.flat?.map((c) => c.id)).toEqual(["c", "a", "b"])
 	})
-	test("place, descending, runs the places backwards, cards in each still by id", () => {
-		const cs = [card("b", { location: "krabi" }), card("a", { location: "krabi" }), card("c", { location: "bangkok" })]
-		const sections = (dir: "asc" | "desc") =>
-			cardsResults(cs, [g], rooms, view({ dir }), ["bangkok", "krabi"]).sections?.map((s) => [
-				s.location,
-				s.cards.map((c) => c.id),
-			])
-		expect(sections("asc")).toEqual([
-			["bangkok", ["c"]],
-			["krabi", ["a", "b"]],
-		])
-		expect(sections("desc")).toEqual([
-			["krabi", ["a", "b"]],
-			["bangkok", ["c"]],
-		])
-	})
 	test("name: locale compare, ties by id", () => {
-		const r = cardsResults(cards, [g], rooms, view({ sort: "name" }), order)
+		const r = cardsResults(cards, [g], rooms, view({ by: "none", sort: "name" }), order)
 		expect(r.flat?.map((c) => c.id)).toEqual(["a", "c", "b"])
 	})
 	test("close: by close day, ties by id", () => {
 		const cs = [card("a", { cycle: { kind: "fixed", closeDay: 20, dueDay: 5 } }), card("c"), card("b")]
-		const r = cardsResults(cs, [g], rooms, view({ sort: "close" }), order, "2026-11-01")
+		const r = cardsResults(cs, [g], rooms, view({ by: "none", sort: "close" }), order, "2026-11-01")
 		expect(r.flat?.map((c) => c.id)).toEqual(["b", "c", "a"])
 	})
 	test("close: upcoming dates cross the year boundary, with today first and archived cards sorted too", () => {
@@ -160,7 +191,7 @@ describe("cardsResults", () => {
 			[...cs, ...cs.map((c) => ({ ...c, id: `${c.id}-archived`, archived: true }))],
 			[g],
 			rooms,
-			view({ sort: "close" }),
+			view({ by: "none", sort: "close" }),
 			order,
 			"2026-12-15",
 		)
@@ -171,11 +202,9 @@ describe("cardsResults", () => {
 		const cs = [31, 30, 28].map((closeDay, i) =>
 			card(String(i), { cycle: { kind: "offset", closeDay, dueOffsetDays: 20 } }),
 		)
-		expect(cardsResults(cs, [g], rooms, view({ sort: "close" }), order, "2026-02-20").flat?.map((c) => c.id)).toEqual([
-			"0",
-			"1",
-			"2",
-		])
+		expect(
+			cardsResults(cs, [g], rooms, view({ by: "none", sort: "close" }), order, "2026-02-20").flat?.map((c) => c.id),
+		).toEqual(["0", "1", "2"])
 	})
 	test("close: uses the preserved open-statement date displayed on the tile", () => {
 		const cs = [card("a"), card("b", { cycle: { kind: "fixed", closeDay: 20, dueDay: 5 } })]
@@ -192,10 +221,14 @@ describe("cardsResults", () => {
 			]),
 		)
 		expect(
-			cardsResults(cs, [g], rooms, view({ sort: "close" }), order, "2026-11-01", ledgers).flat?.map((c) => c.id),
+			cardsResults(cs, [g], rooms, view({ by: "none", sort: "close" }), order, "2026-11-01", ledgers).flat?.map(
+				(c) => c.id,
+			),
 		).toEqual(["b", "a"])
 		expect(
-			cardsResults(cs, [g], rooms, view({ sort: "due" }), order, "2026-11-01", ledgers).flat?.map((c) => c.id),
+			cardsResults(cs, [g], rooms, view({ by: "none", sort: "due" }), order, "2026-11-01", ledgers).flat?.map(
+				(c) => c.id,
+			),
 		).toEqual(["b", "a"])
 	})
 	test("due: full upcoming dates, independent of closing order, ties by id and archived sorted too", () => {
@@ -208,7 +241,7 @@ describe("cardsResults", () => {
 			[...cs, ...cs.map((c) => ({ ...c, id: `${c.id}-archived`, archived: true }))],
 			[g],
 			rooms,
-			view({ sort: "due" }),
+			view({ by: "none", sort: "due" }),
 			order,
 			"2026-12-15",
 		)
@@ -221,7 +254,7 @@ describe("cardsResults", () => {
 			card("y", { archived: true, name: "A" }),
 			card("w", { archived: true, name: "Q" }),
 		]
-		expect(cardsResults(cs, [g], rooms, view({ sort: "name" }), order).archived.map((c) => c.id)).toEqual([
+		expect(cardsResults(cs, [g], rooms, view({ by: "none", sort: "name" }), order).archived.map((c) => c.id)).toEqual([
 			"y",
 			"z",
 			"w",
@@ -308,7 +341,7 @@ test("name sort compares with the UI locale", () => {
 		for (const locale of ["th", "en"] as const) {
 			setLocale(locale)
 			seen.length = 0
-			cardsResults(names, [g], rooms, view({ sort: "name" }), order)
+			cardsResults(names, [g], rooms, view({ by: "none", sort: "name" }), order)
 			expect(seen.length).toBeGreaterThan(0)
 			expect(seen.every((l) => l === locale)).toBe(true)
 		}

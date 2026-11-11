@@ -5,6 +5,7 @@
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
 	import type { MoneyData } from "#lib/ui/money-data"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
 	import { onMount } from "svelte"
@@ -32,6 +33,7 @@
 		readGroupSheet,
 		writeCardsView,
 	} from "#lib/ui/cards-query"
+	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { sortOrderLabel } from "#lib/ui/sort-label"
@@ -91,6 +93,8 @@
 	let sheetId = $state(readGroupSheet(address.search()))
 	// The filter sheet takes a fresh copy of the view, so its draft starts there.
 	let filterOpen = $state(false)
+	/** The tab the filter sheet opens on: the control that opened it. */
+	let sheetTab = $state<SheetTab>("filter")
 	// Read once per page load: the notice is consumed here, not on every paint.
 	let resetNames = $state<string[]>([])
 	let busy = $state(false)
@@ -263,6 +267,11 @@
 		return data.money.groups.find((g) => g.id === sheetId)
 	})
 
+	const groupLabel = $derived.by(() => {
+		void lang
+		return groupingLabel(view.by)
+	})
+
 	const sortLabel = $derived.by(() => {
 		void lang
 		return sortOrderLabel(view.sort, view.dir)
@@ -356,11 +365,13 @@
 					q={view.q}
 					placeholder={tr("cards.searchPlaceholder")}
 					onsearch={(q: string) => change({ q })}
-					onopen={() => {
+					onopen={(tab: SheetTab) => {
+						sheetTab = tab
 						filterOpen = true
 					}}
 					count={chips.length}
 					sort={sortLabel}
+					group={groupLabel}
 					{chips} />
 				<CardsList
 					{results}
@@ -373,6 +384,7 @@
 					today={now} />
 				{#if filterOpen}
 					<CardsFilter
+						tab={sheetTab}
 						view={{ ...view }}
 						locations={data.money.locations}
 						count={countFor}

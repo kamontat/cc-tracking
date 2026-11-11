@@ -1,11 +1,12 @@
 import type { SortDir } from "#lib/domain/sort"
 import type { Card } from "#lib/domain/types"
+import type { SheetTab } from "#lib/ui/sheet-tab"
 
 import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
 
 import TxFilter from "#components/organisms/TxFilter.svelte"
-import { DEFAULT_TX_FILTER, type TxFilter as Filter, type TxSort } from "#lib/domain/transactions"
+import { DEFAULT_TX_FILTER, type TxFilter as Filter, type TxGroup, type TxSort } from "#lib/domain/transactions"
 import { setLocale } from "#lib/i18n/index"
 
 /**
@@ -41,13 +42,15 @@ type Props = {
 	filter?: Filter
 	sort?: TxSort
 	dir?: SortDir
+	by?: TxGroup
+	tab?: SheetTab
 	count?: (filter: Filter) => number
 }
 
 const show = (props: Props = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
-	const applied: { filter: Filter; sort: TxSort; dir: SortDir }[] = []
+	const applied: { filter: Filter; sort: TxSort; dir: SortDir; by: TxGroup }[] = []
 	let closed = 0
 	mounted = mount(TxFilter, {
 		target: document.body,
@@ -56,8 +59,10 @@ const show = (props: Props = {}) => {
 			filter: props.filter ?? DEFAULT_TX_FILTER,
 			sort: props.sort ?? "date",
 			dir: props.dir ?? "desc",
+			by: props.by ?? "day",
+			...(props.tab ? { tab: props.tab } : {}),
 			count: props.count ?? ((f: Filter) => f.types.length + f.cards.length + (f.range ? 1 : 0) + 5),
-			onapply: (detail: { filter: Filter; sort: TxSort; dir: SortDir }) => applied.push(detail),
+			onapply: (detail: { filter: Filter; sort: TxSort; dir: SortDir; by: TxGroup }) => applied.push(detail),
 			onclose: () => {
 				closed += 1
 			},
@@ -96,10 +101,10 @@ test("sits in a sheet with the apply button counting results", () => {
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 6 results")
 })
 
-test("groups its chips in fieldsets: type, card, date and sort", () => {
+test("groups its chips in fieldsets: type, card, date, sort and group by", () => {
 	const { root } = show()
-	expect(root.querySelectorAll("fieldset.filter-group")).toHaveLength(4)
-	expect(root.querySelectorAll("fieldset > legend")).toHaveLength(4)
+	expect(root.querySelectorAll("fieldset.filter-group")).toHaveLength(5)
+	expect(root.querySelectorAll("fieldset > legend")).toHaveLength(5)
 	const chip = root.querySelector("[data-type=purchase]")
 	expect(chip?.getAttribute("type")).toBe("button")
 	expect(chip?.getAttribute("data-variant")).toBe("quiet")
@@ -209,7 +214,7 @@ test("card choices are in the line form; it sorts by date or amount, either way"
 	const { root } = show()
 	expect(text(root.querySelector("[data-card=A]"))).toBe("A) Card A (1111)")
 	expect([...root.querySelectorAll("[data-sort]")].map(text)).toEqual(["Date", "Amount"])
-	expect([...root.querySelectorAll("[data-dir]")].map(text)).toEqual(["↓ Newest first", "↑ Oldest first"])
+	expect([...root.querySelectorAll("[data-dir]")].map(text)).toEqual(["↓ Newest", "↑ Oldest"])
 })
 
 test("apply waits for the sheet to slide away before it is handed back", async () => {
@@ -245,4 +250,30 @@ test("many cards fold under a find box, and a card unpicked past the fold stays"
 	expect(root.querySelector("[data-card='11']")?.getAttribute("aria-pressed")).toBe("false")
 	click("[data-action=more-cards]")
 	expect(chips()).toHaveLength(12)
+})
+
+test("Group by offers day, card or none, hands it back, and Clear all resets it to day", async () => {
+	const { root, click, applied } = show({ by: "card" })
+	const legends = [...root.querySelectorAll("fieldset.filter-group > legend")].map(text)
+	expect(legends.at(-1)).toBe("Group by")
+	expect([...root.querySelectorAll("[data-by]")].map(text)).toEqual(["Day", "Card", "None"])
+	expect(root.querySelector("[data-by=card]")?.getAttribute("aria-pressed")).toBe("true")
+	click("[data-by=none]")
+	click("[data-action=apply]")
+	await settle()
+	expect(applied[0]?.by).toBe("none")
+	const again = show({ by: "none" })
+	again.click("[data-action=clear]")
+	expect(again.root.querySelector("[data-by=day]")?.getAttribute("aria-pressed")).toBe("true")
+})
+
+test("Filter, Sort and Group are tabs; the sheet opens on the one asked for", () => {
+	const { root } = show({ tab: "group" })
+	const panel = (tab: string) => root.querySelector<HTMLElement>(`[role=tabpanel][data-tab=${tab}]`)
+	expect([...root.querySelectorAll("[role=tab]")].map(text)).toEqual(["Filter", "Sort", "Group"])
+	expect(panel("group")?.hidden).toBe(false)
+	expect(panel("filter")?.hidden).toBe(true)
+	expect(panel("filter")?.querySelector("[data-type=purchase]")).not.toBeNull()
+	expect(panel("sort")?.querySelector("[data-sort=date]")).not.toBeNull()
+	expect(panel("group")?.querySelector("[data-by=day]")).not.toBeNull()
 })

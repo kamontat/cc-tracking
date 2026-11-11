@@ -1,15 +1,16 @@
 import { READY_DIRS, READY_SORTS, type ReadySort } from "#lib/domain/home"
 import { OWNERS } from "#lib/domain/owner"
-import { DEFAULT_READY_FILTER, type ReadyFilter } from "#lib/domain/ready-filter"
+import { DEFAULT_READY_FILTER, READY_GROUPS, type ReadyFilter, type ReadyGroup } from "#lib/domain/ready-filter"
 import { readDir, type SortDir } from "#lib/domain/sort"
 
 /** The new-list picker's state as its address keeps it (DD-103). */
-export type ReadyView = { filter: ReadyFilter; sort: ReadySort; dir: SortDir }
+export type ReadyView = { filter: ReadyFilter; sort: ReadySort; dir: SortDir; by: ReadyGroup }
 
 export const DEFAULT_READY_VIEW: ReadyView = {
 	filter: DEFAULT_READY_FILTER,
 	sort: "room",
 	dir: READY_DIRS.room,
+	by: "none",
 }
 
 const manyOf = <T extends string>(known: readonly T[], values: string[]): T[] => known.filter((k) => values.includes(k))
@@ -19,7 +20,7 @@ const known = (ids: readonly string[], values: string[]): string[] =>
 	[...new Set(values)].filter((value) => ids.includes(value))
 
 /**
- * The picker's state from `/list/new?q=&loc=&owner=&sort=&dir=`; unknown values read as defaults,
+ * The picker's state from `/list/new?q=&loc=&owner=&sort=&dir=&by=`; unknown values read as defaults,
  * and a missing `dir` as the sort's own (`READY_DIRS`).
  * A `loc` is kept only when it is one of `locationIds`, the stored records' ids.
  */
@@ -35,6 +36,7 @@ export function readReadyView(search: string, locationIds: readonly string[]): R
 		},
 		sort: field,
 		dir: readDir(p.get("dir"), field, READY_DIRS),
+		by: READY_GROUPS.includes(p.get("by") as ReadyGroup) ? (p.get("by") as ReadyGroup) : DEFAULT_READY_VIEW.by,
 	}
 }
 
@@ -49,6 +51,7 @@ export function readyViewAddress(view: ReadyView): string {
 	for (const o of view.filter.owners) p.append("owner", o)
 	if (view.sort !== DEFAULT_READY_VIEW.sort) p.set("sort", view.sort)
 	if (view.dir !== READY_DIRS[view.sort]) p.set("dir", view.dir)
+	if (view.by !== DEFAULT_READY_VIEW.by) p.set("by", view.by)
 	const text = p.toString()
 	return text ? `/list/new?${text}` : "/list/new"
 }

@@ -5,6 +5,7 @@
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
 	import type { MoneyData } from "#lib/ui/money-data"
+	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
 	import { onMount } from "svelte"
@@ -21,20 +22,23 @@
 	import { plannedOf } from "#lib/domain/pay"
 	import { groupRoom } from "#lib/domain/room"
 	import {
-		byDay,
 		type TxFilter as Filter,
 		filterEntries,
 		filterLists,
+		groupEntries,
 		type ListsFilter as ListsFilterValue,
+		type ListsGroup,
 		ledgerEntries,
 		monthSummary,
 		owedRows,
 		sortEntries,
+		type TxGroup,
 		type TxSort,
 	} from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { cardLine } from "#lib/ui/card-label"
+	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import {
@@ -80,6 +84,8 @@
 	let view = $state.raw<TxView>(readTxView(address.search()))
 	// The filter sheet takes a fresh copy of the view, so its draft starts there.
 	let sheetOpen = $state(false)
+	/** The tab the filter sheet opens on: the control that opened it. */
+	let sheetTab = $state<SheetTab>("filter")
 	// How many ledger rows show; any search, filter or sort change starts again at one page.
 	let limit = $state(LEDGER_PAGE)
 	/** Why the store would not open, re-read in the reader's language. */
@@ -103,7 +109,7 @@
 	})
 
 	const change = (next: Partial<TxView>) => {
-		if (next.filter || next.sort || next.dir) limit = LEDGER_PAGE
+		if (next.filter || next.sort || next.dir || next.by) limit = LEDGER_PAGE
 		view = { ...view, ...next }
 		address.replace(`/transactions${writeTxView(view)}`)
 	}
@@ -202,7 +208,7 @@
 
 	const all = $derived(data ? ledgerEntries(data.cards, data.purchases, data.payments) : [])
 	const rows = $derived(sortEntries(filterEntries(all, view.filter, now), view.sort, view.dir))
-	const dated = $derived(view.sort === "date")
+	const sections = $derived(groupEntries(rows, view.by, view.sort, view.dir))
 
 	const summary = $derived.by(() => {
 		void lang
@@ -248,6 +254,15 @@
 			? new Map(data.groups.map((group) => [group.id, groupRoom(group, data.cards, data.ledgers, data.lists, "")]))
 			: new Map(),
 	)
+
+	const groupLabel = $derived.by(() => {
+		void lang
+		return groupingLabel(view.by)
+	})
+	const listsGroupLabel = $derived.by(() => {
+		void lang
+		return groupingLabel(view.listsBy)
+	})
 
 	const sortLabel = $derived.by(() => {
 		void lang
@@ -303,16 +318,19 @@
 						q={view.lists.q}
 						placeholder={tr("tx.lists.search.placeholder")}
 						onsearch={(q: string) => setLists({ q })}
-						onopen={() => {
+						onopen={(tab: SheetTab) => {
+							sheetTab = tab
 							sheetOpen = true
 						}}
 						count={listChips.length}
+						group={listsGroupLabel}
 						chips={listChips} />
 					<ListIndex
 						lists={data.lists}
 						cards={data.cards}
 						groups={data.groups}
 						filter={view.lists}
+						by={view.listsBy}
 						today={now}
 						onconfirmlist={confirmList}
 						ondeletedraft={removeDraft}
@@ -320,14 +338,16 @@
 					{#if sheetOpen}
 						{@const money = data}
 						<ListsFilter
+							tab={sheetTab}
 							cards={money.cards.filter(
 								(c) => !c.archived || money.lists.some((l) => l.lines.some((x) => x.cardId === c.id)),
 							)}
 							filter={{ ...view.lists }}
 							count={(filter: ListsFilterValue) => filterLists(money.lists, filter, money.cards, now).length}
-							onapply={(lists: ListsFilterValue) => {
+							by={view.listsBy}
+							onapply={(lists: ListsFilterValue, listsBy: ListsGroup) => {
 								sheetOpen = false
-								change({ lists })
+								change({ lists, listsBy })
 							}}
 							onclose={() => {
 								sheetOpen = false
@@ -338,11 +358,13 @@
 						q={view.filter.q}
 						placeholder={tr("tx.search.placeholder")}
 						onsearch={(q: string) => setFilter({ q })}
-						onopen={() => {
+						onopen={(tab: SheetTab) => {
+							sheetTab = tab
 							sheetOpen = true
 						}}
 						count={chips.length}
 						sort={sortLabel}
+						group={groupLabel}
 						{chips} />
 					{#if summary}
 						<section class="tx-summary" data-testid="summary">
@@ -358,7 +380,7 @@
 						</section>
 					{/if}
 					<TxLedger
-						groups={dated ? byDay(rows) : null}
+						groups={sections}
 						entries={rows}
 						lists={data.lists}
 						ledgers={data.ledgers}
@@ -376,14 +398,16 @@
 					{#if sheetOpen}
 						{@const money = data}
 						<TxFilter
+							tab={sheetTab}
 							cards={money.cards.filter((c) => !c.archived || (money.ledgers.get(c.id)?.owed ?? 0) > 0)}
 							filter={{ ...view.filter }}
 							sort={view.sort}
 							dir={view.dir}
 							count={(filter: Filter) => filterEntries(all, filter, now).length}
-							onapply={({ filter, sort, dir }: { filter: Filter; sort: TxSort; dir: SortDir }) => {
+							by={view.by}
+							onapply={({ filter, sort, dir, by }: { filter: Filter; sort: TxSort; dir: SortDir; by: TxGroup }) => {
 								sheetOpen = false
-								change({ filter, sort, dir })
+								change({ filter, sort, dir, by })
 							}}
 							onclose={() => {
 								sheetOpen = false

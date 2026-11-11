@@ -7,7 +7,7 @@ import { OWED_SORTS, TX_SORTS } from "#lib/domain/transactions"
 import { en } from "#lib/i18n/en"
 import { setLocale } from "#lib/i18n/index"
 import { th } from "#lib/i18n/th"
-import { sortFieldLabel, sortOrderLabel } from "#lib/ui/sort-label"
+import { sortFieldLabel, sortOrderLabel, sortShortLabel } from "#lib/ui/sort-label"
 
 const FIELDS = [...new Set([...TX_SORTS, ...OWED_SORTS, ...CARDS_SORTS, ...READY_SORTS])]
 
@@ -33,4 +33,19 @@ test("the words say which way the list runs, and follow the language", () => {
 	setLocale("th")
 	expect(sortOrderLabel("date", "desc")).toBe("ใหม่สุดก่อน")
 	setLocale("en")
+})
+
+test("each order has a short form for the switch, found inside its full words (label in name)", () => {
+	for (const catalog of [en, th] as Record<string, string>[]) {
+		for (const field of FIELDS) {
+			for (const dir of SORT_DIRS) {
+				const short = catalog[`sort.short.${field}.${dir}`]
+				expect(short, `${field}.${dir}`).toBeTruthy()
+				expect(catalog[`sort.order.${field}.${dir}`]?.toLowerCase()).toContain(short?.toLowerCase())
+			}
+		}
+	}
+	setLocale("en")
+	expect(sortShortLabel("date", "desc")).toBe("Newest")
+	expect(sortShortLabel("room", "asc")).toBe("Least")
 })

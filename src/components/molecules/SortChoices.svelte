@@ -5,13 +5,14 @@
 	import { onMount } from "svelte"
 
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
-	import { sortFieldLabel, sortOrderLabel } from "#lib/ui/sort-label"
+	import { sortFieldLabel, sortOrderLabel, sortShortLabel } from "#lib/ui/sort-label"
 
 	/**
-	 * A filter sheet's *Sort* section: a pill chip per field (`data-sort`), then, in a group named
-	 * *Order*, the picked field's two directions in words (`data-dir`: *Newest first*, *Oldest
-	 * first*), its own direction first. A new field starts in its own direction (`defaults`); an
-	 * order keeps the field. Each pick goes to `onchange`.
+	 * A filter sheet's *Sort* section (DD-193): the legend with, at the right of its row, a
+	 * two-part switch named *Order* holding the picked field's two directions in short words with
+	 * an arrow (`data-dir`: *↓ Newest* | *↑ Oldest*, its own direction first, each button named by
+	 * the full words, *Newest first*), then a pill chip per field (`data-sort`). A new field starts
+	 * in its own direction (`defaults`); an order keeps the field. Each pick goes to `onchange`.
 	 */
 	interface Props {
 		legend: string
@@ -35,9 +36,9 @@
 		void lang
 		return sortFieldLabel(value)
 	}
-	const orderLabel = (value: SortDir) => {
+	const order = (value: SortDir) => {
 		void lang
-		return sortOrderLabel(field, value)
+		return { short: sortShortLabel(field, value), full: sortOrderLabel(field, value) }
 	}
 
 	const orders = $derived<SortDir[]>(defaults[field] === "asc" ? ["asc", "desc"] : ["desc", "asc"])
@@ -49,8 +50,25 @@
 	)
 </script>
 
-<fieldset class="filter-group">
+<fieldset class="filter-group filter-sort">
 	<legend>{legend}</legend>
+	<div class="filter-head">
+		<fieldset class="filter-seg" aria-label={tr("sort.order")}>
+			{#each orders as value (value)}
+				{@const words = order(value)}
+				<button
+					type="button"
+					data-variant="quiet"
+					data-dir={value}
+					aria-pressed={dir === value ? "true" : "false"}
+					aria-label={words.full}
+					onclick={() => onchange({ field, dir: value })}>
+					<span aria-hidden="true">{value === "asc" ? "↑" : "↓"}</span>
+					{words.short}
+				</button>
+			{/each}
+		</fieldset>
+	</div>
 	<div class="filter-chips">
 		{#each fields as value (value)}
 			<button
@@ -65,17 +83,4 @@
 			</button>
 		{/each}
 	</div>
-	<fieldset class="filter-chips filter-order" aria-label={tr("sort.order")}>
-		{#each orders as value (value)}
-			<button
-				type="button"
-				data-variant="quiet"
-				data-dir={value}
-				aria-pressed={dir === value ? "true" : "false"}
-				onclick={() => onchange({ field, dir: value })}>
-				<span aria-hidden="true">{value === "asc" ? "↑" : "↓"}</span>
-				{orderLabel(value)}
-			</button>
-		{/each}
-	</fieldset>
 </fieldset>

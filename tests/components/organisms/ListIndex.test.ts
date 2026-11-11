@@ -5,7 +5,7 @@ import { SvelteMap } from "svelte/reactivity"
 import { afterEach, expect, test } from "vitest"
 
 import ListIndex from "#components/organisms/ListIndex.svelte"
-import { DEFAULT_LISTS_FILTER, type ListsFilter } from "#lib/domain/transactions"
+import { DEFAULT_LISTS_FILTER, type ListsFilter, type ListsGroup } from "#lib/domain/transactions"
 import { setLocale } from "#lib/i18n/index"
 
 /**
@@ -59,7 +59,7 @@ const lists = (): PurchaseList[] => [
 	},
 ]
 
-type Options = { lists?: PurchaseList[]; filter?: Partial<ListsFilter> }
+type Options = { lists?: PurchaseList[]; filter?: Partial<ListsFilter>; by?: ListsGroup }
 
 /** Mounts the view; `set` changes its lists afterwards, as a repaint does. */
 const draw = (options: Options = {}) => {
@@ -78,6 +78,7 @@ const draw = (options: Options = {}) => {
 			cards: [card("A"), card("B")],
 			groups: [],
 			filter: { ...DEFAULT_LISTS_FILTER, ...options.filter },
+			by: options.by ?? "status",
 			today: "2026-10-31",
 			onconfirmlist: (list: PurchaseList) => {
 				seen.confirm.push(list)
@@ -330,6 +331,21 @@ test("lists sit in sections: drafts, waiting, then saved lists by date, newest f
 	expect(sections.map((sec) => [...sec.querySelectorAll(".row-panel [data-row]")].length)).toEqual([1, 1, 2, 1])
 	expect(sections[0]?.querySelector("h3")?.getAttribute("tabindex")).toBe("-1")
 	expect(sections[0]?.querySelector("h3")?.getAttribute("data-refocus")).toBe("lists:draft")
+})
+
+test("by month: a section per month, headed by its name and year", () => {
+	draw({ by: "month" })
+	const sections = [...root.querySelectorAll<HTMLElement>("section[data-section]")]
+	expect(sections.map((sec) => sec.getAttribute("data-section"))).toEqual(["month:2026-10"])
+	expect(text(sections[0]?.querySelector("h3"))).toBe("October 2026")
+	expect(sections[0]?.querySelectorAll(".row-panel [data-row]")).toHaveLength(3)
+})
+
+test("not grouped: one section of every list, newest first", () => {
+	draw({ by: "none" })
+	const sections = [...root.querySelectorAll<HTMLElement>("section[data-section]")]
+	expect(sections.map((sec) => sec.getAttribute("data-section"))).toEqual(["all"])
+	expect(text(sections[0]?.querySelector("h3"))).toBe("All lists")
 })
 
 test("the filter narrows the rows, and only its sections show", () => {

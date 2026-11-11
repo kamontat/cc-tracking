@@ -4,7 +4,7 @@ import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
 
 import ListsFilter from "#components/organisms/ListsFilter.svelte"
-import { DEFAULT_LISTS_FILTER, type ListsFilter as Filter } from "#lib/domain/transactions"
+import { DEFAULT_LISTS_FILTER, type ListsFilter as Filter, type ListsGroup } from "#lib/domain/transactions"
 import { setLocale } from "#lib/i18n/index"
 
 /**
@@ -35,18 +35,23 @@ const settle = async () => {
 	flushSync()
 }
 
-const show = (props: { cards?: Card[]; filter?: Filter; count?: (filter: Filter) => number } = {}) => {
+const show = (props: { cards?: Card[]; filter?: Filter; by?: ListsGroup; count?: (filter: Filter) => number } = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
 	const applied: Filter[] = []
+	const grouped: ListsGroup[] = []
 	let closed = 0
 	mounted = mount(ListsFilter, {
 		target: document.body,
 		props: {
 			cards: props.cards ?? [card("A"), card("B")],
 			filter: props.filter ?? DEFAULT_LISTS_FILTER,
+			by: props.by ?? "status",
 			count: props.count ?? ((f: Filter) => f.status.length + f.cards.length + (f.range ? 1 : 0) + 3),
-			onapply: (filter: Filter) => applied.push(filter),
+			onapply: (filter: Filter, by: ListsGroup) => {
+				applied.push(filter)
+				grouped.push(by)
+			},
 			onclose: () => {
 				closed += 1
 			},
@@ -60,7 +65,7 @@ const show = (props: { cards?: Card[]; filter?: Filter; count?: (filter: Filter)
 		target.click()
 		flushSync()
 	}
-	return { root, applied, closed: () => closed, click }
+	return { root, applied, grouped, closed: () => closed, click }
 }
 
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
@@ -68,7 +73,7 @@ const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g
 test("a sheet of status, card and date, with no sort, counting lists", () => {
 	const { root, click } = show()
 	expect(text(root.querySelector("dialog h2"))).toBe("Filter lists")
-	expect([...root.querySelectorAll("fieldset > legend")].map(text)).toEqual(["Status", "Card", "Date"])
+	expect([...root.querySelectorAll("fieldset > legend")].map(text)).toEqual(["Status", "Card", "Date", "Group by"])
 	expect(root.querySelector("[data-sort]")).toBeNull()
 	expect([...root.querySelectorAll("[data-status]")].map((b) => text(b))).toEqual([
 		"Draft",
@@ -125,4 +130,19 @@ test("many cards fold under a find box", () => {
 	expect(root.querySelector("input[name=cardq]")).not.toBeNull()
 	expect(root.querySelectorAll("[data-card]")).toHaveLength(8)
 	expect(text(root.querySelector("[data-action=more-cards]"))).toBe("Show all 12 cards")
+})
+
+test("Group by offers status, month or none and hands it back beside the filter", async () => {
+	const { root, click, grouped } = show({ by: "month" })
+	expect([...root.querySelectorAll("[data-by]")].map(text)).toEqual(["Status", "Month", "None"])
+	expect(root.querySelector("[data-by=month]")?.getAttribute("aria-pressed")).toBe("true")
+	click("[data-by=none]")
+	click("[data-action=apply]")
+	await settle()
+	expect(grouped).toEqual(["none"])
+})
+
+test("the Lists sheet has no Sort tab", () => {
+	const { root } = show()
+	expect([...root.querySelectorAll("[role=tab]")].map(text)).toEqual(["Filter", "Group"])
 })

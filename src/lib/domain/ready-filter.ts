@@ -67,3 +67,37 @@ export function filterReady(rows: ReadyRow[], filter: ReadyFilter): ReadyRow[] {
 export function readyFilterCount(filter: ReadyFilter): number {
 	return filter.locations.length + filter.owners.length
 }
+
+/** What the new-list picker sections its cards by: not at all (the default), place, or account holder. */
+export type ReadyGroup = "none" | "place" | "holder"
+
+export const READY_GROUPS: readonly ReadyGroup[] = ["none", "place", "holder"]
+
+/** One section of the picker: the ready cards kept at one place, or held by one account holder. */
+export type ReadySection =
+	| { key: `place:${string}`; kind: "place"; location: string; rows: ReadyRow[] }
+	| { key: `holder:${string}`; kind: "holder"; owner: Owner | null; rows: ReadyRow[] }
+
+/**
+ * The sorted `rows` in sections, each keeping the rows' order, empty ones left out; null for
+ * `none`. Places run A to Z by shown name (`readyLocations`), holders in `OWNERS` order then none.
+ */
+export function groupReady(rows: ReadyRow[], by: ReadyGroup, records: LocationRecord[]): ReadySection[] | null {
+	if (by === "none") return null
+	if (by === "place") {
+		return readyLocations(rows, records).map((location) => ({
+			key: `place:${location}` as const,
+			kind: "place" as const,
+			location,
+			rows: rows.filter((row) => row.card.location === location),
+		}))
+	}
+	return [...OWNERS, null]
+		.map((owner) => ({
+			key: `holder:${owner ?? "none"}` as const,
+			kind: "holder" as const,
+			owner,
+			rows: rows.filter((row) => readyOwnerOf(row) === owner),
+		}))
+		.filter((section) => section.rows.length > 0)
+}

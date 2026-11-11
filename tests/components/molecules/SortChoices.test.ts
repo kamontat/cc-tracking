@@ -46,15 +46,25 @@ test("a chip per field, the picked one pressed", () => {
 	expect(root.querySelector("[data-sort=amount]")?.getAttribute("aria-pressed")).toBe("false")
 })
 
-test("the picked field's two orders, its own first, in a named group", () => {
+test("a switch beside the legend holds the picked field's two orders, its own first", () => {
 	const { root, text } = show()
-	const group = root.querySelector("fieldset.filter-order")
+	const head = root.querySelector("fieldset.filter-group > .filter-head")
+	expect(head?.querySelector("legend")).toBeNull()
+	const group = root.querySelector("fieldset.filter-seg")
 	expect(group?.getAttribute("aria-label")).toBe("Order")
-	expect(text("[data-dir]")).toEqual(["↓ Newest first", "↑ Oldest first"])
+	expect(group?.closest(".filter-head")).not.toBeNull()
+	expect(text("[data-dir]")).toEqual(["↓ Newest", "↑ Oldest"])
 	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
+	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-label")).toBe("Newest first")
 	const name = show("name", "desc")
 	expect(name.text("[data-dir]")).toEqual(["↑ A to Z", "↓ Z to A"])
 	expect(name.root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
+})
+
+test("the fields sit under the switch, apart from the orders", () => {
+	const { root } = show()
+	expect(root.querySelector(".filter-seg [data-sort]")).toBeNull()
+	expect(root.querySelectorAll(".filter-chips [data-sort]")).toHaveLength(3)
 })
 
 test("a new field starts in its own direction; an order keeps the field", () => {
@@ -79,5 +89,6 @@ test("the words follow a switch of language", () => {
 	const { root } = show()
 	setLocale("th")
 	flushSync()
-	expect(root.querySelector("[data-dir=desc]")?.textContent).toContain("ใหม่สุดก่อน")
+	expect(root.querySelector("[data-dir=desc]")?.textContent).toContain("ใหม่สุด")
+	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-label")).toBe("ใหม่สุดก่อน")
 })

@@ -379,6 +379,18 @@ test("the filter sheet applies a whole view, shown as chips that clear one at a 
 	expect(address.now()).toBe("/cards?sort=room")
 })
 
+test("Group by is applied from the sheet, kept in the address, and named on its chip", async () => {
+	const { address } = await setup()
+	expect(flat($('[data-action="group"]'))).toBe("Group: Place ▾")
+	await press('[data-action="group"]')
+	await press('dialog [data-by="none"]')
+	await press("dialog [data-action=apply]")
+	await exit()
+	expect(address.now()).toBe("/cards?by=none")
+	expect($("section[data-location]")).toBeNull()
+	expect(flat($('[data-action="group"]'))).toBe("Group: None ▾")
+})
+
 test("a sort runs either way, kept in the address as dir", async () => {
 	const { address } = await setup("/cards?sort=name")
 	await press('[data-action="sort"]')

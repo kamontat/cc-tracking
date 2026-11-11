@@ -111,8 +111,25 @@ test("places are named by their records; one with no record by its id", () => {
 	flushSync()
 	expect(text(root.querySelector("section[data-location=krabi] .place b"))).toBe("กระบี่")
 	setLocale("en")
-	const flat = show({ sort: "name" }, props, [...cards, card("G", { location: "gone" })])
+	const flat = show({ by: "none", sort: "name" }, props, [...cards, card("G", { location: "gone" })])
 	expect(text(flat.root.querySelector('a[data-card="G"] .facts'))).toMatch(/ · gone$/)
+})
+
+test("by holder: a section per account holder, headed by it and its count, tiles saying the place", () => {
+	const { root } = show({ by: "holder" }, {}, [...cards, card("D", { limitGroupId: "gone" })])
+	const sections = [...root.querySelectorAll("section[data-section]")]
+	expect(sections.map((s) => s.getAttribute("data-section"))).toEqual(["holder:KC", "holder:NT", "holder:none"])
+	expect(text(sections[0]?.querySelector(".place"))).toBe("KC 2 cards")
+	expect(text(sections[2]?.querySelector(".place"))).toBe("No account holder 1 card")
+	expect(text(root.querySelector('a[data-card="B/2"] .facts'))).toMatch(/ · Krabi$/)
+})
+
+test("by limit group: a section per group A to Z, then cards in none", () => {
+	const { root } = show({ by: "limit" }, {}, [...cards, card("D", { limitGroupId: "gone" })])
+	const sections = [...root.querySelectorAll("section[data-section]")]
+	expect(sections.map((s) => s.getAttribute("data-section"))).toEqual(["limit:g1", "limit:g2", "limit:none"])
+	expect(text(sections[0]?.querySelector(".place"))).toBe("SCB 2 cards")
+	expect(text(sections[2]?.querySelector(".place"))).toBe("Not in a group 1 card")
 })
 
 test("tiles link to the card page, encoded, in the group's colour", () => {
@@ -193,8 +210,8 @@ test("a card with no limit group, or a deleted one, says so, with no colour and 
 	}
 })
 
-test("any other sort is one flat list headed N cards, line 3 adding the place", () => {
-	const { root } = show({ sort: "name" })
+test("not grouped is one flat list headed N cards, line 3 adding the place", () => {
+	const { root } = show({ by: "none", sort: "name" })
 	expect(root.querySelector("section[data-location]")).toBeNull()
 	expect(text(root.querySelector(".result-head"))).toBe("3 cards")
 	expect(text(root.querySelector('a[data-card="B/2"] .facts'))).toMatch(/ · Krabi$/)

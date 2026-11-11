@@ -1,4 +1,12 @@
-import { CARDS_DIRS, CARDS_SORTS, type CardsSort, type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
+import {
+	CARDS_DIRS,
+	CARDS_GROUPS,
+	CARDS_SORTS,
+	type CardsGroup,
+	type CardsSort,
+	type CardsView,
+	DEFAULT_CARDS_VIEW,
+} from "#lib/domain/cards-view"
 import { OWNERS } from "#lib/domain/owner"
 import { readDir } from "#lib/domain/sort"
 
@@ -9,7 +17,7 @@ const known = (ids: readonly string[], values: string[]): string[] =>
 	[...new Set(values)].filter((value) => ids.includes(value))
 
 /**
- * The Cards page's state from `/cards?q=&loc=&owner=&ungrouped=&sort=&dir=`; unknown values read as
+ * The Cards page's state from `/cards?q=&loc=&owner=&ungrouped=&sort=&dir=&by=`; unknown values read as
  * defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`).
  * A `loc` is kept only when it is one of `locationIds`, the stored records' ids.
  */
@@ -24,6 +32,7 @@ export function readCardsView(search: string, locationIds: readonly string[]): C
 		ungrouped: p.get("ungrouped") === "1",
 		sort: field,
 		dir: readDir(p.get("dir"), field, CARDS_DIRS),
+		by: CARDS_GROUPS.includes(p.get("by") as CardsGroup) ? (p.get("by") as CardsGroup) : DEFAULT_CARDS_VIEW.by,
 	}
 }
 
@@ -48,6 +57,7 @@ export function writeCardsView(view: CardsView, show: CardsShow = "cards"): stri
 	if (view.ungrouped) p.set("ungrouped", "1")
 	if (view.sort !== DEFAULT_CARDS_VIEW.sort) p.set("sort", view.sort)
 	if (view.dir !== CARDS_DIRS[view.sort]) p.set("dir", view.dir)
+	if (view.by !== DEFAULT_CARDS_VIEW.by) p.set("by", view.by)
 	const text = p.toString()
 	return text ? `?${text}` : ""
 }

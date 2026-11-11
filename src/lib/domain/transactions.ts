@@ -129,13 +129,49 @@ export function sortEntries(entries: TxEntry[], sort: TxSort, dir: SortDir = TX_
 	return [...entries].sort(compare)
 }
 
+/** What the ledger sections its rows by: the day (the default), the card, or not at all. */
+export type TxGroup = "day" | "card" | "none"
+
+export const TX_GROUPS: readonly TxGroup[] = ["day", "card", "none"]
+
+/** One section of the ledger: a day's rows, or one card's. */
+export type LedgerSection =
+	| { key: `day:${PlainDate}`; kind: "day"; date: PlainDate; entries: TxEntry[] }
+	| { key: `card:${string}`; kind: "card"; cardId: string; card: Card | undefined; entries: TxEntry[] }
+
+const cardIdOf = (e: TxEntry): string => (e.kind === "purchase" ? e.purchase.cardId : e.payment.cardId)
+
+/**
+ * The sorted `entries` in sections, each keeping the rows' order; null for `none`. Days run in the
+ * date sort's direction, and newest first under an amount sort; cards run by id.
+ */
+export function groupEntries(entries: TxEntry[], by: TxGroup, sort: TxSort, dir: SortDir): LedgerSection[] | null {
+	if (by === "none") return null
+	if (by === "day") {
+		const days = new Map<PlainDate, TxEntry[]>()
+		for (const e of entries) days.set(entryDate(e), [...(days.get(entryDate(e)) ?? []), e])
+		const newestFirst = sort !== "date" || dir === "desc"
+		return [...days.keys()]
+			.sort((a, b) => (newestFirst ? compareDates(b, a) : compareDates(a, b)))
+			.map((date) => ({ key: `day:${date}` as const, kind: "day" as const, date, entries: days.get(date) ?? [] }))
+	}
+	const byCard = new Map<string, TxEntry[]>()
+	for (const e of entries) byCard.set(cardIdOf(e), [...(byCard.get(cardIdOf(e)) ?? []), e])
+	return [...byCard.keys()]
+		.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+		.map((cardId) => {
+			const rows = byCard.get(cardId) ?? []
+			return { key: `card:${cardId}` as const, kind: "card" as const, cardId, card: rows[0]?.card, entries: rows }
+		})
+}
+
 /** Groups consecutive entries of the same date, keeping the order given. */
-export function byDay(entries: TxEntry[]): { date: PlainDate; entries: TxEntry[] }[] {
-	const days: { date: PlainDate; entries: TxEntry[] }[] = []
+export function byDay(entries: TxEntry[]): Extract<LedgerSection, { kind: "day" }>[] {
+	const days: Extract<LedgerSection, { kind: "day" }>[] = []
 	for (const e of entries) {
 		const last = days[days.length - 1]
 		if (last && last.date === entryDate(e)) last.entries.push(e)
-		else days.push({ date: entryDate(e), entries: [e] })
+		else days.push({ key: `day:${entryDate(e)}`, kind: "day", date: entryDate(e), entries: [e] })
 	}
 	return days
 }
@@ -260,18 +296,39 @@ export function listRows(lists: PurchaseList[], filter: ListFilter): PurchaseLis
 		.sort((a, b) => compareDates(b.date, a.date) || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0))
 }
 
-/** One section of the Lists view: every draft, every waiting list, or the saved lists of one date. */
+/** What the Lists view sections its lists by: status (the default), month, or not at all. */
+export type ListsGroup = "status" | "month" | "none"
+
+export const LISTS_GROUPS: readonly ListsGroup[] = ["status", "month", "none"]
+
+/**
+ * One section of the Lists view: every draft, every waiting list, the saved lists of one date,
+ * the lists of one month (`YYYY-MM`), or every list.
+ */
 export type ListGroup =
 	| { key: "draft" | "sent"; status: "draft" | "sent"; lists: PurchaseList[] }
 	| { key: `saved:${PlainDate}`; status: "saved"; date: PlainDate; lists: PurchaseList[] }
+	| { key: `month:${string}`; month: string; lists: PurchaseList[] }
+	| { key: "all"; lists: PurchaseList[] }
 
 /**
  * The Lists view's sections (DD-188): drafts, then lists waiting for the spender, then saved
  * lists grouped by their date, newest date first; each in `listRows` order. Groups the filter
  * leaves empty are left out.
  */
-export function listGroups(lists: PurchaseList[], filter: ListFilter): ListGroup[] {
+export function listGroups(lists: PurchaseList[], filter: ListFilter, by: ListsGroup = "status"): ListGroup[] {
 	const rows = listRows(lists, filter)
+	if (by === "none") return rows.length > 0 ? [{ key: "all", lists: rows }] : []
+	if (by === "month") {
+		const months: Extract<ListGroup, { month: string }>[] = []
+		for (const list of rows) {
+			const month = list.date.slice(0, 7)
+			const last = months.at(-1)
+			if (last?.month === month) last.lists.push(list)
+			else months.push({ key: `month:${month}`, month, lists: [list] })
+		}
+		return months
+	}
 	const groups: ListGroup[] = []
 	for (const status of ["draft", "sent"] as const) {
 		const of = rows.filter((l) => l.status === status)
@@ -280,7 +337,7 @@ export function listGroups(lists: PurchaseList[], filter: ListFilter): ListGroup
 	for (const list of rows) {
 		if (list.status !== "saved") continue
 		const last = groups.at(-1)
-		if (last?.status === "saved" && last.date === list.date) last.lists.push(list)
+		if (last && "date" in last && last.date === list.date) last.lists.push(list)
 		else groups.push({ key: `saved:${list.date}`, status: "saved", date: list.date, lists: [list] })
 	}
 	return groups
