@@ -17,7 +17,7 @@
 	import ListElsewhere from "#components/organisms/ListElsewhere.svelte"
 	import ListTable from "#components/organisms/ListTable.svelte"
 	import { displayDate, headerDate, isValidDate, today } from "#lib/domain/date"
-	import { isReady, roomFor } from "#lib/domain/home"
+	import { isReady, readyRows, roomFor } from "#lib/domain/home"
 	import { composeList, keptLines, lineAmount, listLines } from "#lib/domain/list-entry"
 	import { formatAmountInput } from "#lib/domain/money"
 	import { plannedOf } from "#lib/domain/pay"
@@ -26,7 +26,7 @@
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { cardLines } from "#lib/ui/card-label"
-	import { listId, newListAddress } from "#lib/ui/list-address"
+	import { type ListSheet, listId, listSheetAddress, newListAddress, readListSheet } from "#lib/ui/list-address"
 	import { browserShare, countWords, imageName, shareTable, shareText } from "#lib/ui/list-share"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
@@ -37,9 +37,15 @@
 	 * The two steps of writing a purchase list: enter amounts (or keep it as a draft, amounts
 	 * optional, DD-187), then review the table and mark it sent. Saving on a day that already has
 	 * a list of the same kind asks first whether to merge into it. `new` starts from the address's `card` parameters
-	 * (`/list/new?card=…`); `draft` reopens the stored draft named by `id` (`/list/draft?id=`),
-	 * whose own lines hold no room. Everything typed lives here, so going back from the review
-	 * loses nothing, and a failed save keeps the review on screen under the banner.
+	 * (`/list/new?card=…`), or none; `draft` reopens the stored draft named by `id`
+	 * (`/list/draft?id=`), whose own lines hold no room. Everything typed lives here, so going
+	 * back from the review loses nothing, and a failed save keeps the review on screen under the
+	 * banner.
+	 *
+	 * The add-a-card sheet lives in the address (`add=1`, `open=<card>`, DD-195), as `/pay`'s does
+	 * (DD-76): opening it pushes an entry, so Back closes it; moving within it rewrites that entry;
+	 * closing it steps back over the entry, or rewrites the address when the page was opened with
+	 * the sheet already in it.
 	 */
 	interface Props {
 		mode: "new" | "draft"
@@ -111,6 +117,13 @@
 	let askRoot = $state<HTMLElement | undefined>()
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
+	/** The open add-a-card sheet, as the address has it. */
+	let sheet = $state<ListSheet>(readListSheet(search))
+	// Whether this page pushed the entry now showing: closing the sheet then steps back, so the
+	// list is not in history twice. A sheet the page was opened on is rewritten away instead.
+	let pushed = false
+	let pickedOnce = false
+	const path = mode === "new" ? "/list/new" : "/list/draft"
 
 	const readyCards = (from: MoneyData): Card[] =>
 		from.cards.filter((card) => isReady(card, from.groups, from.locations))
@@ -196,7 +209,32 @@
 	// A new list's address names its cards, so a reload or shared link shows the same ones; a
 	// draft's cards come from the stored draft, so its address stays as it is.
 	const syncAddress = () => {
-		if (mode === "new") address.replace(newListAddress(cardIds, search))
+		if (mode === "new") address.replace(newListAddress(cardIds, address.search()))
+	}
+
+	/** Opens, moves or closes the add-a-card sheet, keeping the address and history in step. */
+	const onSheet = (next: ListSheet) => {
+		if (next === null) {
+			if (sheet === null) return
+			if (pushed) {
+				pushed = false
+				// The pop that follows reads the address without the sheet.
+				address.back()
+				return
+			}
+			sheet = null
+			address.replace(listSheetAddress(path, address.search(), null))
+			return
+		}
+		if (sheet === null) {
+			pushed = true
+			pickedOnce = true
+			// The page's own entry: Back to the list must not have the router swap in a fresh page.
+			address.push(listSheetAddress(path, address.search(), next), { ownPage: true })
+		} else {
+			address.replace(listSheetAddress(path, address.search(), next))
+		}
+		sheet = next
 	}
 
 	const onEntryChange = (next: {
@@ -241,19 +279,22 @@
 		syncAddress()
 	}
 
-	/** The amounts step's cards and their room; a card no longer ready drops off and says so. */
+	/**
+	 * The amounts step's cards, every ready card (the sheet's picker) and each one's room; a card
+	 * no longer ready drops off and says so.
+	 */
 	const amounts = $derived.by(() => {
 		if (!data) return null
 		const from = data
-		const ready = readyCards(from)
-		const byId = new Map(ready.map((card) => [card.id, card]))
+		const rows = readyRows(from, now)
+		const byId = new Map(rows.map((row) => [row.card.id, row.card]))
 		const cards = cardIds.flatMap((id) => byId.get(id) ?? [])
 		const rooms = new Map<string, GroupRoom>()
-		for (const card of cards) {
-			const room = roomFor(card, from, editingId)
-			if (room) rooms.set(card.id, room)
+		for (const row of rows) {
+			const room = roomFor(row.card, from, editingId)
+			if (room) rooms.set(row.card.id, room)
 		}
-		return { ready, cards, rooms, gone: cardIds.filter((id) => !byId.has(id)) }
+		return { rows, cards, rooms, gone: cardIds.filter((id) => !byId.has(id)) }
 	})
 
 	// A card that stopped being ready since the page opened leaves the list, and says so.
@@ -393,6 +434,16 @@
 		const unsubscribe = subscribe(() => {
 			lang = getLocale()
 		})
+		const removePop = address.onPop(
+			() => {
+				sheet = readListSheet(address.search())
+				// Back onto the list, or Forward onto a sheet only this page could have pushed.
+				pushed = pickedOnce && sheet !== null
+				// The entry stepped onto may predate cards added since: keep its address up to date.
+				syncAddress()
+			},
+			{ ownPage: true },
+		)
 		void (async () => {
 			const opened = await open()
 			if (!opened.ok) {
@@ -402,7 +453,10 @@
 			repo = opened.repo
 			await page.load()
 		})()
-		return unsubscribe
+		return () => {
+			unsubscribe()
+			removePop()
+		}
 	})
 </script>
 
@@ -443,7 +497,7 @@
 	<SubHeaderBar
 		title={tr(editingId ? "purchaseList.draft" : "purchaseList.new")}
 		detail={subtitle(entryCount(amounts.cards.map((card) => card.id)), date)}
-		back={mode === "new" ? "/list/new" : "/"} />
+		back="/" />
 	<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 	{#if droppedNote}
 		<p class="note" data-dropped>{droppedNote}</p>
@@ -453,8 +507,10 @@
 		allCards={data.cards}
 		groups={data.groups}
 		planned={plannedOf(data.payments)}
-		candidates={amounts.ready.filter((card) => !cardIds.includes(card.id))}
+		ready={amounts.rows}
 		rooms={amounts.rooms}
+		{sheet}
+		onsheet={onSheet}
 		ledgers={data.ledgers}
 		today={now}
 		{date}

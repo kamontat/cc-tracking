@@ -10,7 +10,7 @@
 	import { SHEET_TABS } from "#lib/ui/sheet-tab"
 
 	/**
-	 * The frame every filter sheet shares (Cards, the ledger, the Lists view, the new-list picker):
+	 * The frame every filter sheet shares (Cards, the ledger, the Lists view):
 	 * the sheet under `heading`, then tabs (DD-194) for *Filter*, *Sort* and *Group* over their
 	 * panels (`filterPart`, `sortPart`, `groupPart`; a part left out has no tab), then *Clear all* and the apply
 	 * button, which reads `label` and is disabled while the draft would show nothing. It opens on

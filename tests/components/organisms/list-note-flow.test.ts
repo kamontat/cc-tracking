@@ -6,12 +6,12 @@ import ListViewPage from "#components/organisms/ListViewPage.svelte"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
-import { cleanup, click, settle, setupPage, stored } from "./list-support"
+import { cleanup, click, closeCard, fieldsOf, settle, setupPage, stored, typeField } from "./list-support"
 
 /** A line's note across every list page and a backup. Ported from the legacy `note-flow` test. */
 afterEach(cleanup)
 
-/** Types into a field of a list line, by card and field. */
+/** Types into a field of a reply's line, by card and field. */
 const typeInto = async (cardId: string, field: string, text: string) => {
 	const input = document.querySelector<HTMLInputElement>(`section.line[data-card="${cardId}"] [data-field="${field}"]`)
 	if (!input) throw new Error(`no ${field} for ${cardId}`)
@@ -35,19 +35,18 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 
 	// Enter amounts: a note under each amount, kept through Review and back and a language switch.
 	const entry = await entryPage(repo, "new", "?card=A&card=B")
-	await typeInto("A", "amount", "125")
-	await typeInto("A", "note", "  van fuel ")
-	await typeInto("B", "amount", "50")
-	await typeInto("B", "note", "stamps")
+	await typeField("A", "amount", "125")
+	await typeField("A", "note", "  van fuel ")
+	await typeField("B", "amount", "50")
+	await typeField("B", "note", "stamps")
 	setLocale("th")
 	await settle()
 	setLocale("en")
 	await settle()
 	await press('[data-action="review"]')
 	await click(entry.root, "back")
-	expect(document.querySelector<HTMLInputElement>('section.line[data-card="A"] [data-field="note"]')?.value).toBe(
-		"  van fuel ",
-	)
+	expect(await fieldsOf("A", "note")).toEqual(["  van fuel "])
+	await closeCard()
 	await press('[data-action="review"]')
 	await click(entry.root, "mark-sent")
 	expect((await stored(repo))[0]?.lines).toEqual([
@@ -77,9 +76,8 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 		search: `?id=${moved?.id}`,
 		props: { mode: "draft", share: {} },
 	})
-	expect(document.querySelector<HTMLInputElement>('section.line[data-card="B"] [data-field="note"]')?.value).toBe(
-		"stamps",
-	)
+	expect(await fieldsOf("B", "note")).toEqual(["stamps"])
+	await closeCard()
 	await click(document, "save-draft")
 	expect((await stored(repo)).find((l) => l.id === moved?.id)?.lines).toEqual([
 		{ cardId: "B", amount: 50_00, note: "stamps" },

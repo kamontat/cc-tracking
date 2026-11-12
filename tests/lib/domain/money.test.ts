@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { amountOf, formatAmount, formatAmountInput, parseAmount, sumAmounts } from "#lib/domain/money"
+import { amountOf, formatAmount, formatAmountInput, formatCompact, parseAmount, sumAmounts } from "#lib/domain/money"
 
 describe("parseAmount", () => {
 	test("reads whole baht", () => {
@@ -82,4 +82,12 @@ describe("amountOf", () => {
 		expect(amountOf("abc")).toBeNull()
 		expect(amountOf("0")).toBeNull()
 	})
+})
+
+test("formatCompact shortens baht for a chart label, the same in every language", () => {
+	expect(formatCompact(0)).toBe("0")
+	expect(formatCompact(999_00)).toBe("999")
+	expect(formatCompact(12_500_00)).toBe("12.5K")
+	expect(formatCompact(105_040_00)).toBe("105K")
+	expect(formatCompact(1_060_000_00)).toBe("1.1M")
 })

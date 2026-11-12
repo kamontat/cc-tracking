@@ -66,12 +66,18 @@ test("the amounts and reply steps keep their tighter phone gap", async () => {
 	}
 })
 
-// A Thai warning has long runs with no space; the line card's one track must still shrink to the
-// card, or the card grows past a phone's edge.
-test("a line card's track shrinks to the card", async () => {
-	for (const island of ["ListAmounts", "ListReply"]) {
+// A Thai warning has long runs with no space; the one track it sits in must still shrink to its
+// box, or the box grows past a phone's edge: a reply's line card, and the add-a-card sheet's card
+// (DD-195), where the amounts step's warnings now are.
+test("the track a warning sits in shrinks to its box", async () => {
+	for (const [island, selector] of [
+		["ListAmounts", "card-step"],
+		["ListReply", "line"],
+	]) {
 		const source = await Bun.file(`src/components/organisms/${island}.svelte`).text()
-		expect(source, island).toMatch(/\t\.line\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/)
+		expect(source, island).toMatch(
+			new RegExp(`\\t\\.${selector}\\s*\\{[^}]*grid-template-columns: minmax\\(0, 1fr\\);`),
+		)
 	}
 })
 

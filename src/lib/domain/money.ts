@@ -44,6 +44,13 @@ export function formatAmountInput(satang: number): string {
 	return remainder === 0 ? `${sign}${baht}` : `${sign}${baht}.${String(remainder).padStart(2, "0")}`
 }
 
+const COMPACT = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 })
+
+/** Satang as short baht for a chart label: `12.5K`, `1.1M`; no symbol, the same in every language. */
+export function formatCompact(satang: number): string {
+	return COMPACT.format(Math.round(satang / 100))
+}
+
 export function sumAmounts(values: number[]): number {
 	return values.reduce((total, value) => total + value, 0)
 }

@@ -1,7 +1,8 @@
 # Endpoints
 
-Every address the app answers, as of the redesign (phases 1 to 7; no address changed in
-phase 7). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+Every address the app answers, kept in step with the code: a change to an address or a query
+key updates this file in the same change (last: `/list/new` and `/list/draft`, 2026-11-11,
+PRD DD-195). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -114,35 +115,44 @@ a list in another status says so and links to the right page; an unknown id link
 
 ### `/list/new`
 
-Two steps on one path, told apart by `card`.
+The new list itself, empty or holding the cards named (DD-195). Cards are added from its
+add-a-card sheet; there is no picker step. Reached from the _+ New_ menu (`/list/new`) and a
+card page's _Use on a list_ (`/list/new?card=<id>`). An `id` is ignored: a stored draft opens at
+`/list/draft`.
 
-Picker step (no `card`):
+| Key    | Values             | Notes                                                                                                                                                                                  |
+| ------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `card` | card id (repeated) | Cards on the new list, in order, each once. Cards that cannot take purchases are dropped. Other keys are kept ahead of the cards.                                                      |
+| `add`  | `1`                | The add-a-card sheet, on its picker. Written as `1`; any value, even empty, opens it.                                                                                                  |
+| `open` | card id            | The add-a-card sheet, on that card: its orders when it is on the list, else ready to add it. Wins over `add`. Empty reads as none; a card neither on the list nor ready opens nothing. |
 
-| Key     | Values                      | Default | Notes                                                                                     |
-| ------- | --------------------------- | ------- | ----------------------------------------------------------------------------------------- |
-| `q`     | any text                    | empty   | Search.                                                                                   |
-| `loc`   | location id (repeated)      | any     | Kept only when the id is a stored location.                                               |
-| `owner` | `KC`, `NT`, `RI` (repeated) | any     | Card owner.                                                                               |
-| `sort`  | `room`, `close`, `due`      | `room`  | Order.                                                                                    |
-| `dir`   | `asc`, `desc`               | `desc`  | Direction; every sort defaults to `desc` (most room, longest to close, latest due first). |
-| `by`    | `none`, `place`, `holder`   | `none`  | Sections: one flat list, each place, or each account holder.                              |
+The sheet follows `/pay`'s pattern (DD-76): opening it from the list pushes an entry, so Back
+closes it; moving within it (picking a card, _All cards_, the card before or after) rewrites that
+entry; closing it (_Done_, _Add to list_, _Remove from list_, Close, Escape, the backdrop) steps
+back over that entry, or, when the page was opened with `add` or `open` already in its address,
+rewrites the address without them. Adding or removing a card rewrites `card` in place, never
+pushing, and Back rewrites the current cards into the entry it lands on. The picker's old keys
+(`q`, `loc`, `owner`, `sort`, `dir`, `by`) are no longer read; an old link keeps them in the
+address, where they do nothing.
 
-Entering step (any `card`):
-
-| Key    | Values             | Notes                                                                                                                  |
-| ------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| `card` | card id (repeated) | Cards on the new list, in order. Cards that cannot take purchases are dropped. Other keys are kept ahead of the cards. |
-
-- `/list/new` -- the picker.
-- `/list/new?owner=KC&sort=due` -- the picker, filtered and sorted.
-- `/list/new?sort=due&dir=asc` -- the picker, soonest due first.
-- `/list/new?card=<id>&card=<id>` -- entering amounts for those cards.
+- `/list/new` -- an empty new list.
+- `/list/new?card=<id>&card=<id>` -- a new list holding those cards.
+- `/list/new?card=<id>&add=1` -- the list with the add-a-card sheet's picker open.
+- `/list/new?card=<id>&open=<id>` -- the list with that card's sheet open.
 
 ### `/list/draft`
 
-| Key  | Values  | Notes                         |
-| ---- | ------- | ----------------------------- |
-| `id` | list id | Required. Edits a draft list. |
+| Key    | Values  | Notes                                    |
+| ------ | ------- | ---------------------------------------- |
+| `id`   | list id | Required. Edits a draft list.            |
+| `add`  | `1`     | The add-a-card sheet, as on `/list/new`. |
+| `open` | card id | That card's sheet, as on `/list/new`.    |
+
+The draft's cards come from the stored draft, never the address, so the page leaves `id` and
+any other key as they are; only `add` and `open` change, as on `/list/new`.
+
+- `/list/draft?id=<id>` -- the draft.
+- `/list/draft?id=<id>&open=<card id>` -- the draft with that card's sheet open.
 
 ### `/list/reply`
 

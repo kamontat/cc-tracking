@@ -1531,9 +1531,9 @@ a:any-link:hover {
 }
 
 /*
- * The new-list picker's selection bar: what is ticked on the left, its actions on the right. It
- * sticks to the bottom of the page as it scrolls, above the phone's tab bar. The picker is a
- * list page, so the floating + New menu is hidden there and the bar has the full width.
+ * A list page's bar (the amounts step's and the reply's): what the list holds on the left, its
+ * actions on the right. It sticks to the bottom of the page as it scrolls, above the phone's tab
+ * bar. The floating + New menu is hidden on a list page, so the bar has the full width.
  */
 .action-bar {
 	position: sticky;
@@ -1816,7 +1816,7 @@ a:any-link:hover {
 	clip-path: inset(50%);
 }
 
-/* The new-list picker with no card ready: what to do, on a sunken note. */
+/* No card ready (Home's *Ready to use*, the add-a-card sheet): what to do, on a sunken note. */
 .ready-empty {
 	display: flex;
 	flex-direction: column;

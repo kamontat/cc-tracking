@@ -77,7 +77,7 @@ export const setupPage = async (page: Component<never>, { search, before, repo: 
 	await seed(repo)
 	await before?.(repo)
 	const visited: string[] = []
-	const { bar, replaced } = fakeBar(search)
+	const { bar, replaced, now, entries, popOptions, pushOptions } = fakeBar(search)
 	mounted = mount(page, {
 		target: document.body,
 		props: {
@@ -91,26 +91,49 @@ export const setupPage = async (page: Component<never>, { search, before, repo: 
 		} as never,
 	})
 	await settle()
-	return { root: document.body, repo, visited, replaced }
+	return { root: document.body, repo, visited, replaced, now, entries, popOptions, pushOptions, back: () => bar.back() }
 }
 
-/** An address bar on `search` that records each replace (the whole address given). */
+/**
+ * An address bar on `search` that records each replace (the whole address given) and keeps a
+ * history it can step Back through, telling the page as the browser's `popstate` would.
+ */
 export const fakeBar = (search: string) => {
-	let query = search
+	const entries = [search]
+	let at = 0
 	const replaced: string[] = []
+	let pop = () => {}
+	const popOptions: ({ ownPage?: boolean } | undefined)[] = []
+	const pushOptions: ({ ownPage?: boolean } | undefined)[] = []
 	const bar: AddressBar = {
-		search: () => query,
-		push: () => {},
+		search: () => {
+			const entry = entries[at] ?? ""
+			const q = entry.indexOf("?")
+			return q === -1 ? "" : entry.slice(q)
+		},
+		push: (url, options) => {
+			pushOptions.push(options)
+			entries.splice(at + 1, entries.length, url)
+			at++
+		},
 		replace: (url) => {
 			replaced.push(url)
-			const at = url.indexOf("?")
-			query = at === -1 ? "" : url.slice(at)
+			entries[at] = url
 		},
-		onPop: () => () => {},
-		length: () => 1,
-		back: () => {},
+		onPop: (listener, options) => {
+			popOptions.push(options)
+			pop = listener
+			return () => {
+				pop = () => {}
+			}
+		},
+		length: () => entries.length,
+		back: () => {
+			at = Math.max(0, at - 1)
+			pop()
+		},
 	}
-	return { bar, replaced }
+	return { bar, replaced, entries, popOptions, pushOptions, now: () => entries[at] ?? "" }
 }
 
 export const click = async (root: ParentNode, action: string) => {
@@ -121,6 +144,45 @@ export const click = async (root: ParentNode, action: string) => {
 }
 
 export const stored = (repo: Repository): Promise<PurchaseList[]> => repo.listPurchaseLists()
+
+/** The open add-a-card sheet's card, or null. */
+export const cardSheet = (cardId: string) =>
+	document.querySelector<HTMLElement>(`dialog .card-step[data-card="${cardId}"]`)
+
+/** Opens a card's sheet from its row on the list, as a tap does, unless it is open already. */
+export const openCard = async (cardId: string) => {
+	if (!cardSheet(cardId)) {
+		const row = document.querySelector<HTMLElement>(`.lines > .line[data-card="${cardId}"]`)
+		if (!row) throw new Error(`${cardId} is not on the list`)
+		row.click()
+		await settle()
+	}
+	const sheet = cardSheet(cardId)
+	if (!sheet) throw new Error(`no sheet for ${cardId}`)
+	return sheet
+}
+
+/** Closes the open card's sheet with *Done*, as the reader would before Review. */
+export const closeCard = async () => {
+	const done = document.querySelector<HTMLElement>('dialog [data-action="done"]')
+	if (!done) return
+	done.click()
+	await settle()
+}
+
+/** The values of a card's fields (`amount` or `note`), one per order, read from its sheet. */
+export const fieldsOf = async (cardId: string, field: string) =>
+	[...(await openCard(cardId)).querySelectorAll<HTMLInputElement>(`[data-field="${field}"]`)].map((i) => i.value)
+
+/** Types into a card's field in its sheet (the first order, or `order`), then closes the sheet. */
+export const typeField = async (cardId: string, field: string, text: string, order = 0) => {
+	const input = (await openCard(cardId)).querySelectorAll<HTMLInputElement>(`[data-field="${field}"]`)[order]
+	if (!input) throw new Error(`no ${field} ${order} for ${cardId}`)
+	input.value = text
+	input.dispatchEvent(new Event("input", { bubbles: true }))
+	await settle()
+	await closeCard()
+}
 
 export const bannerText = (root: ParentNode) => flatText(root.querySelector(".error-banner p"))
 

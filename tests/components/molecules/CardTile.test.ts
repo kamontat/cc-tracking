@@ -152,3 +152,14 @@ test("a tile hovers without an underline and keeps a focus ring", async () => {
 	expect(hover).toContain("border-color")
 	expect(style).toMatch(/\.tile:focus-visible\s*\{[^}]*box-shadow: var\(--cc-focus-ring\)/)
 })
+
+test("a foot adds a last line under the facts, across the tile", () => {
+	const tile = show({
+		facts: "closes 18 Nov · due 3 Dec",
+		foot: createRawSnippet(() => ({ render: () => `<span class="usage">฿12,000.00 in 12 statements</span>` })),
+	})
+	const foot = tile.querySelector(".foot")
+	expect(text(foot)).toBe("฿12,000.00 in 12 statements")
+	expect(tile.querySelector(".facts + .foot")).toBe(foot)
+	expect(show({}).querySelector(".foot")).toBeNull()
+})
