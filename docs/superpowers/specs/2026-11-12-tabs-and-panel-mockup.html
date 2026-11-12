@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tabs and a detail panel</title>
+<style>
+/* Tabs on Transactions and Cards, a record opening in a panel (desktop) or a sheet (phone). Colours, radii and type are the app's own tokens (src/styles/tokens.css). The data is made up. The address bar over each device follows every click; ‹ is the browser's Back. */
+:root {
+	--bg: #f6f7f3; --surface: #ffffff; --sunken: #eef1ea; --border: #e1e6de;
+	--text: #22302a; --muted: #5f6b65; --accent: #367d5f; --accent-text: #ffffff; --accent-surface: #e2f0e8;
+	--danger: #a8403d; --danger-surface: #f8e2e0; --warning: #95591a; --warning-surface: #fbecd9;
+	--backdrop: rgb(10 20 15 / 0.42); --shadow-lg: 0 16px 40px rgb(34 48 42 / 0.18);
+	--blue: #e3e9fb; --blue-t: #3552b8; --green: #dff1e7; --green-t: #2f7457; --purple: #efe5f7; --purple-t: #7a45a8;
+	--orange: #fbe6dd; --orange-t: #a74e2c; --teal: #ddf8f7; --teal-t: #217370; --rose: #fbdae2; --rose-t: #9c1c3c;
+	--sans: system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai", "Noto Sans Thai", sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+	--r-xs: 6px; --r-sm: 12px; --r-md: 18px;
+	color-scheme: light;
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #121815; --surface: #1b231f; --sunken: #24302a; --border: #2c3832;
+	--text: #e6ede8; --muted: #9aa9a1; --accent: #74c9a1; --accent-text: #0f1a14; --accent-surface: #1d3328;
+	--danger: #ef8a86; --danger-surface: #3b1e1d; --warning: #e7a55e; --warning-surface: #3a2a18;
+	--backdrop: rgb(0 0 0 / 0.6); --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.5);
+	--blue: #1f2944; --blue-t: #9fb3f5; --green: #1b3328; --green-t: #8ed7b4; --purple: #2e2240; --purple-t: #cfa6ef;
+	--orange: #3a241b; --orange-t: #f2a882; --teal: #17312f; --teal-t: #8fe0da; --rose: #3a1c25; --rose-t: #f3a0b6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5; padding: 28px 16px 72px; }
+button, input, select { font: inherit; color: inherit; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 22px; }
+h1 { font-size: 1.75rem; margin: 0; }
+p { margin: 0; max-width: 78ch; }
+.lead { color: var(--muted); }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-grid; grid-auto-flow: column; padding: 3px; background: var(--sunken); border-radius: 12px; font-size: 0.8125rem; font-weight: 600; }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: 9px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.explain { display: grid; gap: 8px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.explain h2 { font-size: 1.125rem; margin: 0; }
+.explain ul { margin: 0; padding-left: 20px; display: grid; gap: 2px; }
+.explain .cols { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.explain h4 { margin: 0 0 4px; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+code { font-family: var(--mono); font-size: 0.8125em; background: var(--sunken); border-radius: 5px; padding: 0 4px; }
+
+/* the device and its address bar */
+.stage { overflow-x: auto; padding-bottom: 6px; }
+.device { position: relative; margin: 0 auto; inline-size: 390px; block-size: 820px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 28px; overflow: hidden; background: var(--bg); }
+.device.desk { inline-size: 1180px; block-size: 760px; border-radius: 16px; }
+.url { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: var(--sunken); border-bottom: 1px solid var(--border); flex: none; }
+.url button { border: 0; background: var(--surface); border-radius: 8px; inline-size: 30px; block-size: 28px; cursor: pointer; font-weight: 700; }
+.url button:disabled { opacity: 0.4; cursor: default; }
+.url output { flex: 1; min-width: 0; font: 600 0.75rem var(--mono); background: var(--surface); border-radius: 8px; padding: 5px 10px; overflow-x: auto; white-space: nowrap; }
+.url output .q { color: var(--accent); }
+.appbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 2px solid var(--text); background: var(--surface); font-size: 0.8125rem; flex: none; }
+.desk .appbar { padding-inline: 32px; }
+.brand { font-family: var(--mono); font-weight: 700; }
+.brand b { background: var(--text); color: var(--bg); border-radius: 5px; padding: 0 4px; }
+.navtabs { display: flex; gap: 22px; }
+.navtabs button { border: 0; background: none; padding: 0; color: var(--muted); font-weight: 600; cursor: pointer; }
+.navtabs button[aria-current="page"] { color: var(--text); }
+.phone .navtabs { display: none; }
+.tabbar { display: none; flex: none; border-top: 1px solid var(--border); background: var(--surface); }
+.phone .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabbar button { border: 0; background: none; padding: 10px 0 14px; font-size: 0.75rem; font-weight: 600; color: var(--muted); cursor: pointer; }
+.tabbar button[aria-current="page"] { color: var(--accent); }
+
+.body { flex: 1; min-block-size: 0; display: flex; }
+.main { flex: 1; min-inline-size: 0; overflow: auto; padding: 16px; display: grid; gap: 14px; align-content: start; }
+.desk .main { padding: 20px 32px 24px; }
+.title { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.title h2 { margin: 0; font-size: 1.375rem; }
+/* the page's tabs: underlined labels, links in the app */
+.ptabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; margin-top: -4px; }
+.ptabs button { border: 0; background: none; padding: 8px 12px; font-weight: 650; font-size: 0.9375rem; color: var(--muted); cursor: pointer; border-bottom: 2.5px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.ptabs button[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+.ptabs small { font-weight: 600; font-size: 0.75rem; color: var(--muted); margin-left: 4px; }
+
+.btn { border: 1px solid transparent; background: var(--accent); color: var(--accent-text); font-size: 0.8125rem; font-weight: 600; padding: 8px 12px; border-radius: var(--r-sm); cursor: pointer; white-space: nowrap; }
+.btn[data-variant="quiet"] { background: var(--sunken); color: var(--text); border-color: var(--border); }
+.btn[data-variant="danger"] { background: transparent; color: var(--danger); border-color: var(--danger); }
+.btn.small { padding: 4px 9px; font-size: 0.75rem; }
+.btn.wide { inline-size: 100%; padding: 12px; font-size: 0.9375rem; }
+.tools { display: flex; gap: 8px; align-items: center; }
+.search { flex: 1; min-inline-size: 0; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 9px 12px; font-size: 0.875rem; }
+.muted { color: var(--muted); }
+.sm { font-size: 0.75rem; }
+.money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.neg { color: var(--danger); } .pos { color: var(--accent); }
+h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; }
+.panelbox { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.chip { flex: none; inline-size: 40px; block-size: 26px; border-radius: var(--r-xs); font: 700 0.625rem var(--mono); display: grid; place-items: end start; padding: 2px 4px; background: var(--g); color: var(--gt); }
+.c-blue { --g: var(--blue); --gt: var(--blue-t); } .c-green { --g: var(--green); --gt: var(--green-t); }
+.c-purple { --g: var(--purple); --gt: var(--purple-t); } .c-orange { --g: var(--orange); --gt: var(--orange-t); }
+.c-teal { --g: var(--teal); --gt: var(--teal-t); } .c-rose { --g: var(--rose); --gt: var(--rose-t); }
+.name { font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.name .id { color: var(--muted); font-weight: 500; }
+
+/* a row list: one panel, a line between rows */
+.rows > * + * { border-top: 1px solid var(--border); }
+.row { inline-size: 100%; border: 0; background: none; text-align: start; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 11px 14px; cursor: pointer; }
+.row small { display: block; font-size: 0.75rem; color: var(--muted); }
+.row:hover { background: color-mix(in oklab, var(--sunken) 60%, transparent); }
+.row[aria-current="true"] { background: var(--accent-surface); }
+.rowopen { display: flex; gap: 8px; justify-content: flex-end; padding: 0 14px 12px; border-top: 0 !important; }
+.badge { font-size: 0.6875rem; font-weight: 700; border-radius: 999px; padding: 1px 8px; background: var(--sunken); color: var(--muted); }
+.badge.draft { background: var(--warning-surface); color: var(--warning); }
+.badge.sent { background: var(--blue); color: var(--blue-t); }
+.badge.saved { background: var(--accent-surface); color: var(--accent); }
+
+/* a card list: one tile per card */
+.tiles { display: grid; gap: 8px; }
+.desk .tiles { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.tile { text-align: start; display: grid; gap: 4px; padding: 10px 12px 12px; border-radius: 14px; background: var(--g); border: 1px solid color-mix(in oklab, var(--gt) 18%, transparent); cursor: pointer; }
+.tile[aria-current="true"] { box-shadow: 0 0 0 2px var(--accent); }
+.tile .r1 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.tile .pan { font: 700 0.75rem var(--mono); color: var(--gt); letter-spacing: 0.08em; }
+.tile .big { font-size: 1.0625rem; font-weight: 760; font-variant-numeric: tabular-nums; }
+.tile .big small { font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.tile .r3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--muted); }
+.sect { display: grid; gap: 8px; }
+.meter { block-size: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.meter i { display: block; block-size: 100%; background: var(--accent); border-radius: 3px; }
+.meter i.hot { background: var(--warning); }
+
+/* the detail panel: a column from 900px, a sheet below */
+.aside { flex: none; inline-size: 400px; border-left: 1px solid var(--border); background: var(--surface); overflow: auto; display: grid; align-content: start; }
+.phone .aside { position: absolute; left: 0; right: 0; bottom: 0; inline-size: auto; block-size: 92%; border: 0; border-radius: 22px 22px 0 0; z-index: 6; box-shadow: var(--shadow-lg); animation: up 220ms ease-out; }
+@keyframes up { from { transform: translateY(40px); opacity: 0.4; } }
+.desk .aside { animation: in 180ms ease-out; }
+@keyframes in { from { transform: translateX(24px); opacity: 0.4; } }
+.scrim { position: absolute; inset: 0; background: var(--backdrop); z-index: 5; }
+.grab { justify-self: center; inline-size: 40px; block-size: 4px; border-radius: 2px; background: var(--border); margin-top: 8px; }
+.desk .grab { display: none; }
+.phead { position: sticky; top: 0; z-index: 1; display: flex; gap: 10px; align-items: center; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.phead .t { flex: 1; min-width: 0; }
+.phead .t small { display: block; font-size: 0.75rem; color: var(--muted); }
+.ib { border: 0; background: var(--sunken); border-radius: 10px; inline-size: 34px; block-size: 34px; cursor: pointer; flex: none; font-weight: 700; }
+.pbody { padding: 16px; display: grid; gap: 16px; }
+.hero { display: grid; gap: 8px; padding: 14px; border-radius: 16px; background: var(--g); }
+.hero .big { font-size: 1.75rem; font-weight: 780; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.hero .meter { background: color-mix(in oklab, var(--surface) 60%, transparent); }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stats div { background: var(--sunken); border-radius: var(--r-sm); padding: 8px 10px; }
+.stats small { display: block; font-size: 0.6875rem; color: var(--muted); }
+.stats b { font-variant-numeric: tabular-nums; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.stmt { display: grid; gap: 6px; }
+.stmt .sh { display: flex; justify-content: space-between; font-size: 0.8125rem; font-weight: 650; }
+.stmt .rows { font-size: 0.875rem; }
+.stmt .rows > div { display: flex; justify-content: space-between; padding: 8px 12px; gap: 8px; }
+.form { display: grid; gap: 12px; }
+.form label { display: grid; gap: 4px; font-size: 0.8125rem; color: var(--muted); }
+.form input { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; background: var(--surface); font-size: 0.9375rem; color: var(--text); }
+.form input.amt { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { inline-size: 26px; block-size: 26px; border-radius: 50%; border: 2px solid transparent; background: var(--gt); cursor: pointer; }
+.pill[aria-pressed="true"] { border-color: var(--text); }
+.twin { display: flex; gap: 8px; }
+.twin .btn { flex: 1; padding: 11px; }
+.toast { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 0.8125rem; font-weight: 600; white-space: nowrap; z-index: 9; max-inline-size: 92%; overflow: hidden; text-overflow: ellipsis; }
+.home { display: grid; gap: 14px; }
+.desk .home { grid-template-columns: 1fr 1fr; align-items: start; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<h1>Tabs and a detail panel</h1>
+	<p class="lead">Transactions and Cards show one tab at a time on every screen. A card, a limit group or a list opens beside its list from 900px and in a sheet that slides up on a phone. Everything is in the address; ‹ in the address bar is Back. See <code>2026-11-12-tabs-and-panel-design.md</code>.</p>
+	<div class="bar">
+		<div class="seg" id="device"><button aria-pressed="false" data-v="phone">Phone 390</button><button aria-pressed="true" data-v="desk">Desktop 1180</button></div>
+		<div class="seg" id="theme"><button aria-pressed="true" data-v="light">Light</button><button aria-pressed="false" data-v="dark">Dark</button></div>
+	</div>
+	<div class="stage"><div class="device desk" id="dev"></div></div>
+	<section class="explain">
+		<h2>Try</h2>
+		<div class="cols">
+			<div><h4>Cards</h4><ul>
+				<li>Tap a tile: its panel opens. Tap another: the panel swaps, the address is rewritten (Back closes, it does not walk through every card).</li>
+				<li><em>Pay</em> or <em>Add purchase</em> replaces the panel's content; ‹ in the panel or Back returns to the card.</li>
+				<li><em>Limits</em> tab: a group's panel lists its cards; tap one to open it.</li>
+			</ul></div>
+			<div><h4>Transactions</h4><ul>
+				<li><em>Owed</em>: <em>Pay</em> on a tile opens that card's pay form here, without leaving the tab (decision 5).</li>
+				<li><em>Ledger</em>: a row still opens in place; its <em>Open card</em> opens the card's panel over the ledger.</li>
+				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page.</li>
+			</ul></div>
+			<div><h4>Home</h4><ul>
+				<li><em>Needs you</em>: <em>Pay</em> and a card's name open the panel over Home (<code>/?card=…</code>).</li>
+				<li>Home keeps its two columns; it has nothing to open beside a list.</li>
+			</ul></div>
+		</div>
+	</section>
+</div>
+<script>
+const CARDS = [
+	{ id: "7", name: "KTC Visa", last4: "4410", color: "blue", place: "Bangkok", owner: "KC", limit: "g1", room: 42100, cap: 120000, owed: 8350, due: "18 Nov", close: "3 Nov" },
+	{ id: "9.1", name: "KTC Visa (NT)", last4: "8821", color: "blue", place: "Bangkok", owner: "NT", limit: "g1", room: 42100, cap: 120000, owed: 2120, due: "18 Nov", close: "3 Nov" },
+	{ id: "12.3", name: "Krungsri Bangkok", last4: "0193", color: "orange", place: "Bangkok", owner: "RI", limit: "g2", room: 15600, cap: 80000, owed: 31450, due: "21 Nov", close: "6 Nov" },
+	{ id: "17", name: "SCB M Legend", last4: "5577", color: "purple", place: "Krabi", owner: "KC", limit: "g3", room: 51200, cap: 60000, owed: 0, due: "25 Nov", close: "10 Nov" },
+	{ id: "17.2", name: "SCB Prime", last4: "2210", color: "purple", place: "Krabi", owner: "NT", limit: "g3", room: 51200, cap: 60000, owed: 1890, due: "25 Nov", close: "10 Nov" },
+	{ id: "31", name: "UOB Yolo", last4: "7302", color: "teal", place: "Phichit", owner: "RI", limit: null, room: 22800, cap: 30000, owed: 7200, due: "2 Dec", close: "16 Nov" },
+	{ id: "51.4", name: "TTB Reserve", last4: "6064", color: "green", place: "Phichit", owner: "KC", limit: null, room: 88000, cap: 100000, owed: 0, due: "5 Dec", close: "20 Nov" },
+]
+const LIMITS = [
+	{ id: "8d3e5a1c", name: "KTC shared", cap: 120000, color: "blue" },
+	{ id: "2b91c7f4", name: "Krungsri", cap: 80000, color: "orange" },
+	{ id: "c07a4b9e", name: "SCB family", cap: 60000, color: "purple" },
+]
+const limitOf = (id) => LIMITS.find((l) => l.id === id)
+const groupKey = { g1: LIMITS[0].id, g2: LIMITS[1].id, g3: LIMITS[2].id }
+CARDS.forEach((c) => (c.limit = c.limit && groupKey[c.limit]))
+const LEDGER = [
+	{ day: "Today, 12 Nov", rows: [["12.3", -1250, "Big C"], ["7", -480, "7-Eleven"], ["17.2", 1890, "Payment"]] },
+	{ day: "Mon, 10 Nov", rows: [["31", -7200, "Central"], ["9.1", -2120, "Shell"]] },
+	{ day: "Sat, 8 Nov", rows: [["12.3", 20000, "Payment"], ["7", -3600, "Tops"], ["51.4", -950, "Grab"]] },
+]
+const LISTS = [
+	{ id: "0d9f9698", date: "12 Nov", status: "draft", lines: [["12.3", 1250], ["7", 0]] },
+	{ id: "8941ebd7", date: "10 Nov", status: "sent", lines: [["31", 7200], ["9.1", 2120], ["17", 3000]] },
+	{ id: "a4b417f4", date: "3 Nov", status: "saved", lines: [["7", 3600], ["51.4", 950]] },
+]
+const STATUS = { draft: "Draft", sent: "Waiting for the spender", saved: "Saved" }
+const card = (id) => CARDS.find((c) => c.id === id)
+const baht = (n) => "฿" + Math.abs(n).toLocaleString("en-US")
+const used = (l) => l.cap - (CARDS.find((c) => c.limit === l.id)?.room ?? l.cap)
+
+// ---------- the address: state <-> URL, a history stack for ‹ ----------
+const PAGES = { "/": "home", "/transactions": "tx", "/transactions/owed": "tx", "/transactions/lists": "tx", "/cards": "cards", "/cards/limits": "cards" }
+let stack = [{ path: "/cards" }]
+let at = 0
+let device = "desk"
+let toast = ""
+let openRow = null
+const now = () => stack[at]
+const urlOf = (s) => {
+	const q = new URLSearchParams()
+	for (const k of ["card", "pay", "amount", "purchase", "limit", "edit", "list"]) if (s[k] != null) q.set(k, s[k])
+	const t = q.toString()
+	return { path: s.path, query: t ? "?" + t : "" }
+}
+function push(s) { stack = stack.slice(0, at + 1); stack.push(s); at++; openRow = null; draw() }
+function replace(s) { stack[at] = s; draw() }
+function back() { if (at > 0) { at--; draw() } }
+const panelOpen = (s) => s.card || s.limit || s.list
+function go(path) { if (now().path !== path || panelOpen(now())) push({ path }) }
+// a record from the list: swap the panel in place when one is open on a desktop, else push
+function openRecord(rec) {
+	const s = { path: now().path, ...rec }
+	if (panelOpen(now()) && device === "desk") replace(s)
+	else push(s)
+}
+function closePanel() {
+	// step back over our own entries to the bare page; a pasted address is rewritten instead
+	const path = now().path
+	while (at > 0 && panelOpen(now()) && stack[at - 1].path === path) at--
+	if (panelOpen(now())) replace({ path })
+	else draw()
+}
+// from a pay or purchase form to its card: Back when the card is the entry before, else rewrite
+// (a form opened straight from an owed tile or a pasted link has no card entry under it)
+function toCard() {
+	const s = now(), prev = stack[at - 1]
+	if (prev && prev.path === s.path && prev.card === s.card && !prev.pay && !prev.purchase) back()
+	else replace({ path: s.path, card: s.card })
+}
+function say(text) { toast = text; draw(); setTimeout(() => { if (toast === text) { toast = ""; draw() } }, 2600) }
+
+// ---------- drawing ----------
+const h = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])
+const chip = (c) => `<span class="chip c-${c.color}">${c.last4}</span>`
+const cname = (c) => `<span class="name">${h(c.name)} <span class="id">${c.id}</span></span>`
+
+function cardsTab(s) {
+	if (s.path === "/cards/limits") {
+		return `<div class="tools"><input class="search" placeholder="Search limits"><button class="btn" data-variant="quiet">Sort: Name ▾</button><button class="btn" data-do="limit:new">+ Add limit</button></div>
+		<div class="panelbox rows">${LIMITS.map((l) => {
+			const u = used(l), pct = Math.round((u / l.cap) * 100)
+			return `<button class="row c-${l.color}" data-do="limit:${l.id}" aria-current="${s.limit === l.id}"><span class="chip"></span><span><span class="name">${h(l.name)}</span><small>${CARDS.filter((c) => c.limit === l.id).length} cards · ${baht(u)} of ${baht(l.cap)}</small><span class="meter"><i class="${pct > 75 ? "hot" : ""}" style="inline-size:${pct}%"></i></span></span><span class="money"><b>${baht(l.cap - u)}</b><small>room</small></span></button>`
+		}).join("")}</div>`
+	}
+	const places = [...new Set(CARDS.map((c) => c.place))]
+	return `<div class="tools"><input class="search" placeholder="Search cards"><button class="btn" data-variant="quiet">Filter</button><button class="btn" data-variant="quiet">+ Add card</button></div>
+	${places.map((p) => `<section class="sect"><h3>${p} <span>${CARDS.filter((c) => c.place === p).length}</span></h3><div class="tiles">${CARDS.filter((c) => c.place === p).map((c) => `<button class="tile c-${c.color}" data-do="card:${c.id}" aria-current="${s.card === c.id}"><span class="r1">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.room)}<small>room</small></span><span class="r3"><span>${c.owner} · due ${c.due}</span><span>${c.owed ? "owes " + baht(c.owed) : "nothing owed"}</span></span></button>`).join("")}</div></section>`).join("")}`
+}
+
+function txTab(s) {
+	if (s.path === "/transactions/owed") {
+		const owing = CARDS.filter((c) => c.owed).sort((a, b) => a.due.localeCompare(b.due))
+		return `<div class="tools"><button class="btn" data-variant="quiet">Sort: Most urgent ▾</button></div><div class="tiles">${owing.map((c) => `<div class="tile c-${c.color}" aria-current="${s.card === c.id}"><span class="r1" data-do="card:${c.id}">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.owed)}<small>due ${c.due}</small></span><span class="r3"><span>closed ${c.close}</span><button class="btn small" data-do="pay:${c.id}">Pay</button></span></div>`).join("")}</div>`
+	}
+	if (s.path === "/transactions/lists") {
+		return `<div class="tools"><input class="search" placeholder="Search card or note"><button class="btn" data-variant="quiet">Filter</button></div>
+		${["draft", "sent", "saved"].map((st) => `<section class="sect"><h3>${STATUS[st]}</h3><div class="panelbox rows">${LISTS.filter((l) => l.status === st).map((l) => `<button class="row" data-do="list:${l.id}" aria-current="${s.list === l.id}"><span class="badge ${l.status}">${l.date}</span><span><span class="name">${l.lines.map(([id]) => card(id).name).join(", ")}</span><small>${l.lines.length} cards</small></span><b class="money">${baht(l.lines.reduce((a, [, n]) => a + n, 0))}</b></button>`).join("")}</div></section>`).join("")}`
+	}
+	return `<div class="tools"><input class="search" placeholder="Search card or note"><button class="btn" data-variant="quiet">Filter</button></div>
+	${LEDGER.map((d, i) => `<section class="sect"><h3>${d.day}</h3><div class="panelbox rows">${d.rows.map(([id, n, note], j) => {
+		const c = card(id), key = `${i}.${j}`
+		return `<button class="row" data-do="row:${key}" aria-expanded="${openRow === key}">${chip(c)}<span>${cname(c)}<small>${note}</small></span><b class="money ${n < 0 ? "neg" : "pos"}">${n < 0 ? "−" : "+"}${baht(n)}</b></button>${openRow === key ? `<div class="rowopen"><button class="btn" data-variant="quiet" data-do="card:${id}">Open card</button><button class="btn" data-variant="danger" data-do="say:Delete asks first, as today">Delete</button></div>` : ""}`
+	}).join("")}</div></section>`).join("")}`
+}
+
+function homeTab() {
+	const due = CARDS.filter((c) => c.owed > 5000)
+	return `<div class="home"><section class="sect"><h3>Needs you</h3><div class="panelbox rows">${due.map((c) => `<div class="row" style="cursor:default">${chip(c)}<span><button class="btn small" data-variant="quiet" data-do="card:${c.id}" style="padding:0;border:0;background:none">${cname(c)}</button><small>${baht(c.owed)} due ${c.due}</small></span><button class="btn small" data-do="pay:${c.id}">Pay</button></div>`).join("")}</div></section>
+	<section class="sect"><h3>Ready to use</h3><div class="tiles">${CARDS.slice().sort((a, b) => b.room - a.room).slice(0, 3).map((c) => `<button class="tile c-${c.color}" data-do="card:${c.id}"><span class="r1">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.room)}<small>room</small></span></button>`).join("")}</div></section></div>`
+}
+
+function cardPanel(s) {
+	const c = card(s.card)
+	if (!c) return `<div class="phead"><div class="t"><b>Card not found</b></div><button class="ib" data-do="close" aria-label="Close">×</button></div>`
+	if (s.pay || s.purchase) {
+		const pay = !s.purchase
+		return `<div class="phead"><button class="ib" data-do="tocard" aria-label="Back to the card">‹</button><div class="t"><b>${pay ? "Pay" : "Add purchase"}</b><small>${h(c.name)} ${c.id} · ${c.last4}</small></div><button class="ib" data-do="close" aria-label="Close">×</button></div>
+		<div class="pbody"><div class="form">
+			<label>Amount<input class="amt" value="${pay ? (s.amount ? (s.amount / 100).toLocaleString("en-US") : c.owed.toLocaleString("en-US")) : ""}" placeholder="0"></label>
+			${pay ? `<p class="sm muted">Statement closed ${c.close}, due ${c.due}: ${baht(c.owed)} left.</p>` : ""}
+			<label>Date<input value="2026-11-12"></label>
+			<label>Note<input placeholder="Optional"></label>
+			<div class="twin"><button class="btn" data-variant="quiet" data-do="tocard">Cancel</button><button class="btn" data-do="saved:${pay ? "Payment saved" : "Purchase saved"}">${pay ? "Save payment" : "Save purchase"}</button></div>
+		</div></div>`
+	}
+	const l = limitOf(c.limit), pct = Math.round(((c.cap - c.room) / c.cap) * 100)
+	return `<div class="phead">${chip(c)}<div class="t">${cname(c)}<small>${c.place} · ${c.owner}${l ? " · " + h(l.name) : ""}</small></div><button class="btn small" data-variant="quiet" data-do="say:Edit goes to /cards/edit?card=${c.id}">Edit</button><button class="ib" aria-label="More">⋯</button><button class="ib" data-do="close" aria-label="Close">×</button></div>
+	<div class="pbody">
+		<div class="hero c-${c.color}"><small class="muted">Room</small><span class="big">${baht(c.room)}</span><span class="meter"><i class="${pct > 75 ? "hot" : ""}" style="inline-size:${pct}%"></i></span><small class="muted">${baht(c.cap - c.room)} used of ${baht(c.cap)}${l ? " (shared)" : ""}</small></div>
+		<div class="stats"><div><small>Owed</small><b>${baht(c.owed)}</b></div><div><small>Next bill</small><b>due ${c.due}</b></div></div>
+		<div class="acts"><button class="btn" data-do="say:Goes to /lists/new?cards=${c.id}">Use on a list</button><button class="btn" data-variant="quiet" data-do="purchase:${c.id}">Add purchase</button><button class="btn" data-variant="quiet" data-do="pay:${c.id}">Pay</button></div>
+		<section class="stmt"><h3>Statements</h3>
+			${[["Closes 3 Dec", "open", [["Big C", 1250], ["7-Eleven", 480]]], [`Closed ${c.close}`, `${baht(c.owed)} due ${c.due}`, [["Central", 7200], ["Tops", 3600]]]].map(([t, sub, rows]) => `<div class="stmt"><div class="sh"><span>${t}</span><span class="muted">${sub}</span></div><div class="panelbox rows">${rows.map(([n, a]) => `<div><span>${n}</span><span class="money">${baht(a)}</span></div>`).join("")}</div></div>`).join("")}
+			<button class="btn" data-variant="quiet">Show older</button>
+		</section>
+	</div>`
+}
+
+function limitPanel(s) {
+	const isNew = s.limit === "new", l = limitOf(s.limit)
+	if (!isNew && !l) return `<div class="phead"><div class="t"><b>Limit not found</b></div><button class="ib" data-do="close">×</button></div>`
+	if (isNew || s.edit) {
+		return `<div class="phead">${isNew ? "" : `<button class="ib" data-do="back" aria-label="Back to the limit">‹</button>`}<div class="t"><b>${isNew ? "New limit" : "Edit limit"}</b>${isNew ? "" : `<small>${h(l.name)}</small>`}</div><button class="ib" data-do="close" aria-label="Close">×</button></div>
+		<div class="pbody"><div class="form"><label>Name<input value="${isNew ? "" : h(l.name)}"></label><label>Limit<input class="amt" value="${isNew ? "" : l.cap.toLocaleString("en-US")}"></label>
+		<div><small class="muted">Colour</small><div class="pills">${["blue", "green", "purple", "orange", "teal", "rose"].map((c) => `<span class="pill c-${c}" aria-pressed="${!isNew && l.color === c}"></span>`).join("")}</div></div>
+		<div class="twin">${isNew ? "" : `<button class="btn" data-variant="danger">Delete</button>`}<button class="btn" data-do="${isNew ? "close" : "back"}">Save</button></div></div></div>`
+	}
+	const u = used(l), cards = CARDS.filter((c) => c.limit === l.id)
+	return `<div class="phead"><span class="chip c-${l.color}"></span><div class="t"><b>${h(l.name)}</b><small>${cards.length} cards</small></div><button class="btn small" data-variant="quiet" data-do="edit">Edit</button><button class="ib" data-do="close" aria-label="Close">×</button></div>
+	<div class="pbody"><div class="hero c-${l.color}"><small class="muted">Room</small><span class="big">${baht(l.cap - u)}</span><span class="meter"><i style="inline-size:${Math.round((u / l.cap) * 100)}%"></i></span><small class="muted">${baht(u)} used of ${baht(l.cap)}</small></div>
+	<section class="sect"><h3>Cards</h3><div class="panelbox rows">${cards.map((c) => `<button class="row" data-do="deep:${c.id}">${chip(c)}<span>${cname(c)}<small>${c.owner} · owes ${baht(c.owed)}</small></span><span class="muted">›</span></button>`).join("")}</div></section></div>`
+}
+
+function listPanel(s) {
+	const l = LISTS.find((x) => x.id === s.list)
+	if (!l) return `<div class="phead"><div class="t"><b>List not found</b></div><button class="ib" data-do="close">×</button></div>`
+	const total = l.lines.reduce((a, [, n]) => a + n, 0)
+	const act = { draft: `<button class="btn" data-do="say:Goes to /lists/edit?list=${l.id} (the builder)">Continue</button><button class="btn" data-variant="danger">Delete</button>`, sent: `<button class="btn" data-do="say:Goes to /lists/edit?list=${l.id} (the reply)">Enter reply</button><button class="btn" data-variant="quiet">Merge</button>`, saved: "" }[l.status]
+	return `<div class="phead"><span class="badge ${l.status}">${STATUS[l.status]}</span><div class="t"><b>List, ${l.date}</b><small>${l.lines.length} cards</small></div><button class="ib" data-do="close" aria-label="Close">×</button></div>
+	<div class="pbody"><div class="panelbox rows">${l.lines.map(([id, n]) => `<button class="row" data-do="deep:${id}">${chip(card(id))}<span>${cname(card(id))}</span><b class="money">${n ? baht(n) : "—"}</b></button>`).join("")}<div class="row" style="cursor:default"><span></span><b>Total</b><b class="money">${baht(total)}</b></div></div>${act ? `<div class="acts">${act}</div>` : ""}</div>`
+}
+
+function draw() {
+	const s = now(), { path, query } = urlOf(s), page = PAGES[path]
+	const dev = document.getElementById("dev")
+	dev.className = "device " + device
+	const nav = [["/", "Home", "home"], ["/transactions", "Transactions", "tx"], ["/cards", "Cards", "cards"], ["/settings", "Settings", "set"]]
+	const navBtns = nav.map(([p, t, k]) => `<button data-go="${p}" aria-current="${k === page ? "page" : "false"}">${t}</button>`).join("")
+	const ptabs = page === "tx" ? [["/transactions", "Ledger"], ["/transactions/owed", "Owed", CARDS.filter((c) => c.owed).length], ["/transactions/lists", "Lists", LISTS.length]] : page === "cards" ? [["/cards", "Cards", CARDS.length], ["/cards/limits", "Limits", LIMITS.length]] : []
+	const content = page === "home" ? homeTab() : page === "tx" ? txTab(s) : cardsTab(s)
+	const panel = s.card ? cardPanel(s) : s.limit ? limitPanel(s) : s.list ? listPanel(s) : ""
+	dev.innerHTML = `<div class="url"><button data-do="back" ${at ? "" : "disabled"} aria-label="Back">‹</button><output>${path}<span class="q">${h(query)}</span></output></div>
+	<header class="appbar"><span class="brand"><b>cc</b> tracking</span><nav class="navtabs">${navBtns}</nav></header>
+	<div class="body"><main class="main">
+		<div class="title"><h2>${{ home: "Home", tx: "Transactions", cards: "Cards" }[page]}</h2></div>
+		${ptabs.length ? `<nav class="ptabs">${ptabs.map(([p, t, n]) => `<button data-go="${p}" aria-current="${p === path ? "page" : "false"}">${t}${n ? `<small>${n}</small>` : ""}</button>`).join("")}</nav>` : ""}
+		${content}
+	</main>${panel && device === "desk" ? `<aside class="aside">${panel}</aside>` : ""}</div>
+	<nav class="tabbar">${navBtns}</nav>
+	${panel && device === "phone" ? `<div class="scrim" data-do="close"></div><aside class="aside"><span class="grab"></span>${panel}</aside>` : ""}
+	${toast ? `<div class="toast">${h(toast)}</div>` : ""}`
+}
+
+document.getElementById("dev").addEventListener("click", (e) => {
+	const t = e.target.closest("[data-go],[data-do]")
+	if (!t) return
+	if (t.dataset.go) {
+		if (t.dataset.go === "/settings") return say("Settings is unchanged")
+		return go(t.dataset.go)
+	}
+	const [act, arg] = t.dataset.do.split(/:(.*)/s)
+	const s = now()
+	if (act === "back") back()
+	else if (act === "close") closePanel()
+	else if (act === "card") openRecord({ card: arg })
+	else if (act === "list") openRecord({ list: arg })
+	else if (act === "limit") openRecord({ limit: arg })
+	// deeper from inside a panel pushes, so Back returns to it
+	else if (act === "deep") push({ path: s.path, card: arg })
+	else if (act === "edit") push({ ...s, edit: 1 })
+	else if (act === "pay") { const c = card(arg); s.card === arg ? push({ path: s.path, card: arg, pay: 1 }) : push({ path: s.path, card: arg, pay: 1, amount: c.owed * 100 }) }
+	else if (act === "purchase") push({ path: s.path, card: arg, purchase: "new" })
+	else if (act === "row") { openRow = openRow === arg ? null : arg; draw() }
+	else if (act === "tocard") toCard()
+	else if (act === "saved") { toCard(); say(arg) }
+	else if (act === "say") say(arg)
+})
+for (const [id, fn] of [["device", (v) => { device = v }], ["theme", (v) => { document.documentElement.dataset.theme = v }]]) {
+	const seg = document.getElementById(id)
+	seg.addEventListener("click", (e) => {
+		const b = e.target.closest("button")
+		if (!b) return
+		for (const x of seg.children) x.setAttribute("aria-pressed", String(x === b))
+		fn(b.dataset.v)
+		draw()
+	})
+}
+draw()
+</script>
+</body>
+</html>
