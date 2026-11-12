@@ -4,6 +4,57 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-12: Building a purchase list a card at a time, with each card's last 12 statements
+
+### BREAKING CHANGES
+
+- The new-list picker page is gone: `/list/new` opens the list itself. Its _Kept in_ and
+  _Account holder_ filters, its grouping and its ticks went with it, and the address keys `q`,
+  `loc`, `owner`, `sort`, `dir` and `by` on `/list/new` are no longer read; an old link opens
+  an empty new list. Cards are picked from the list's _+ Add a card_ sheet instead (DD-195).
+
+### Features
+
+- _+ Add a card_ opens a sheet with every ready card as a tile, its last 12 statement cycles
+  drawn under it as small bars with the 12-statement total and the day it was last used, a
+  search, and sorts by _Most room_, _Least used_, _Longest unused_, _Longest to close_ and
+  _Latest due_ (DD-195).
+
+- A picked card shows its room now, its 12-statement total, the average of its closed
+  statements and when it was last used, then a bar per statement (its amount over it, the open
+  one faint, the average as a dashed line), then its orders, room after and warnings. _Add &
+  pick another_ (or Enter) adds it and goes straight back to the cards (DD-195).
+
+- The sheet lives in the address (`add=1` for the cards, `open=<card id>` for one card) on both
+  `/list/new` and `/list/draft`, and Back closes it, as on `/pay` (DD-195).
+
+### Improvements
+
+- The list is one row per card: its total or _No amount yet_, how many orders, its warnings or
+  room after, and its notes. A row reopens its card in the sheet to change its orders, step to
+  the card before or after, or take it off, so cards can be added and amounts changed in any
+  order (DD-195).
+
+- A draft opens on the same list and sheet, and the list page's Back now goes Home.
+
+### Decisions
+
+- Of three mockups (`docs/superpowers/specs/2026-11-11-list-builder-mockup.html`), the user
+  chose the list first with cards added from a sheet (option C), over tiles and list on one
+  page (A) and a spreadsheet of every card with an amount box (B): it keeps a list with several
+  orders per card short on a phone, and puts the most history beside the amount being typed.
+
+- A card's use is counted per statement cycle by its own close day, from the ledger, not per
+  calendar month (the user's answer).
+
+- The picker keeps only search and sorts; the filters and grouping were dropped to keep the
+  sheet short (the user's answer).
+
+- Opening the sheet takes the client router's state off the list's own entry until Back
+  returns, so the router lets that Back be and the page keeps what was typed; without it Astro
+  swapped in a fresh page and lost every unsaved amount. Known limit: Forward onto a closed
+  sheet and Back again still swaps the page.
+
 ## 2026-11-11: Grouping every list, tabbed filter sheets with an order switch, and no stale .gitkeep files
 
 ### BREAKING CHANGES
