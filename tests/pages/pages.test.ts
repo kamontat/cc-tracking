@@ -177,6 +177,11 @@ test("Cards and Limits head the page with the title and the Cards · Limits tabs
 		const links = [...(main?.querySelectorAll(".page-tabs nav a") ?? [])]
 		expect(links.map((a) => a.getAttribute("href"))).toEqual(["/cards", "/cards/limits"])
 		expect(main?.querySelector('.page-tabs nav a[aria-current="page"]')?.getAttribute("href"), page).toBe(current)
+		// The title, a divider and the tabs share one bar.
+		const bar = main?.querySelector(".page-tabs")
+		expect(main?.querySelector(".page-tabs h1")?.parentElement, page).toBe(bar)
+		expect(main?.querySelector(".page-tabs nav")?.parentElement, page).toBe(bar)
+		expect(bar?.querySelector(':scope > h1 + .page-tabs__divider[aria-hidden="true"] + nav'), page).not.toBeNull()
 		// The tabs come before the island.
 		expect(main?.firstElementChild?.classList.contains("page-tabs")).toBe(true)
 	}

@@ -48,6 +48,27 @@ describe("PageTabs", () => {
 		expect(nav?.classList.contains("page-tabs__nav")).toBe(true)
 	})
 
+	test("puts the title, a divider and the tabs in one bar, in that order", async () => {
+		const bar = (await render("/cards")).querySelector(".page-tabs")
+		expect([...(bar?.children ?? [])].map((child) => child.tagName)).toEqual(["H1", "SPAN", "NAV"])
+		const divider = bar?.children[1]
+		expect(divider?.classList.contains("page-tabs__divider")).toBe(true)
+		expect(divider?.getAttribute("aria-hidden")).toBe("true")
+		expect(divider?.textContent).toBe("")
+	})
+
+	test("draws one rule under the whole bar, and only the tabs scroll sideways", async () => {
+		const css = (await Bun.file("src/components/molecules/PageTabs.astro").text()).split("<style>")[1] ?? ""
+		const rule = (selector: string) => css.match(new RegExp(`\\n\\t${selector} \\{([^}]*)\\}`))?.[1] ?? ""
+		expect(rule("\\.page-tabs")).toMatch(/border-block-end: var\(--cc-border-width\) solid var\(--cc-border\)/)
+		expect(rule("\\.page-tabs")).toMatch(/flex-direction: row/)
+		expect(rule("nav")).not.toMatch(/border-block-end/)
+		expect(rule("nav")).toMatch(/overflow-x: auto/)
+		expect(rule("nav")).toMatch(/scrollbar-width: none/)
+		expect(rule("\\.page-tabs__title")).toMatch(/font-size: var\(--cc-text-xl\)/)
+		expect(rule("\\.page-tabs__title")).toMatch(/flex: none/)
+	})
+
 	test("holds nothing in the nav but the links", async () => {
 		const nav = (await render("/cards")).querySelector("nav")
 		expect([...(nav?.children ?? [])].every((child) => child.tagName === "A")).toBe(true)

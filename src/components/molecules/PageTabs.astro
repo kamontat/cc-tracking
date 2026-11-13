@@ -5,8 +5,9 @@ import type { PageTab } from "#lib/ui/page-tabs"
 import { en } from "#lib/i18n/en"
 
 /**
- * A page's title and its tabs (PRD RD-22): the title, then a row of underlined labels under it
- * that scrolls sideways when it must, the same on every width. Each tab is a link to its own
+ * A page's title and its tabs (PRD RD-22): one bar on one rule, the title at the start, a thin
+ * divider, then the underlined labels straight after it, the one on show underlined on the bar's
+ * rule. Only the labels scroll sideways when they must, never wrapping; the same on every width. Each tab is a link to its own
  * address (RD-29), so Back, a bookmark or a pasted link reaches it; the one on show is marked
  * `aria-current="page"`. Static: every tab is its own page, so which one shows is known when the
  * page is built. Cards' (`CARDS_TABS`), Transactions' and Home's tabs all go through it.
@@ -26,7 +27,8 @@ const { title, label, tabs, current } = Astro.props
 ---
 
 <div class="page-tabs">
-	<h1 data-i18n={title}>{en[title]}</h1>
+	<h1 class="page-tabs__title" data-i18n={title}>{en[title]}</h1>
+	<span class="page-tabs__divider" aria-hidden="true"></span>
 	<nav class="page-tabs__nav" aria-label={en[label]} data-i18n-aria-label={label}>
 		{tabs.map((tab) => (
 			<a href={tab.href} aria-current={tab.href === current ? "page" : undefined}>
@@ -37,32 +39,50 @@ const { title, label, tabs, current } = Astro.props
 </div>
 
 <style>
+	/* One bar on one rule: the title, the divider and the tabs on a line. */
 	.page-tabs {
 		display: flex;
-		flex-direction: column;
-		gap: var(--cc-space-2);
+		flex-direction: row;
+		gap: var(--cc-space-3);
+		align-items: center;
 		min-inline-size: 0;
+		border-block-end: var(--cc-border-width) solid var(--cc-border);
 	}
 
-	h1 {
+	/* `.page-tabs__title`, to outweigh app.css's `.page h1` size. */
+	.page-tabs__title {
+		flex: none;
 		margin: 0;
+		font-size: var(--cc-text-xl);
+		white-space: nowrap;
 	}
 
-	/* A row of underlined labels on a rule, scrolling sideways rather than wrapping. */
+	/* A thin upright line, about the title's height. */
+	.page-tabs__divider {
+		flex: none;
+		inline-size: var(--cc-border-width);
+		block-size: var(--cc-text-xl);
+		background: var(--cc-border);
+	}
+
+	/* The underlined labels, scrolling sideways rather than wrapping, reaching down over the
+	   bar's rule so the one on show is underlined on it. */
 	nav {
 		display: flex;
 		flex-direction: row;
+		flex: 1 1 auto;
+		align-self: stretch;
 		gap: var(--cc-space-1);
+		margin-block-end: calc(-1 * var(--cc-border-width));
+		min-inline-size: 0;
 		overflow-x: auto;
 		scrollbar-width: none;
-		border-block-end: var(--cc-border-width) solid var(--cc-border);
 	}
 
 	/* `:any-link`, to outweigh app.css's own `a:any-link` colour and underline. */
 	a:any-link {
 		flex: 0 0 auto;
-		margin-block-end: calc(-1 * var(--cc-border-width));
-		padding: var(--cc-space-2) var(--cc-space-3);
+		padding: var(--cc-space-3);
 		font-size: var(--cc-text-md);
 		font-weight: 650;
 		color: var(--cc-text-muted);
@@ -86,6 +106,11 @@ const { title, label, tabs, current } = Astro.props
 	}
 
 	@media (forced-colors: active) {
+		.page-tabs__divider {
+			forced-color-adjust: none;
+			background: CanvasText;
+		}
+
 		a[aria-current="page"] {
 			border-block-end-color: Highlight;
 		}

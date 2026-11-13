@@ -12,6 +12,8 @@
 	--cc-text-sm: 0.8125rem;
 	--cc-text-md: 0.9375rem;
 	--cc-text-lg: 1.125rem;
+	/* A title that shares its line with tabs (`PageTabs`). */
+	--cc-text-xl: 1.375rem;
 	--cc-text-2xl: 1.75rem;
 
 	--cc-space-1: 0.25rem;

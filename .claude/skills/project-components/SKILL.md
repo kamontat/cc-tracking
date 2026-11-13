@@ -105,8 +105,9 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   and `LimitPanel.svelte` do, so any page can hold it. `PurchaseForm.svelte` and
   `GroupForm.svelte` are the purchase and group forms without a sheet.
 - A page with tabs (PRD RD-22) heads its `main` slot with `PageTabs.astro` (molecule, static):
-  the title and one link per tab, each tab its own page, the one on show marked
-  `aria-current="page"` (`<PageTabs title="cards.title" label="cards.tabs" tabs={CARDS_TABS}
+  one bar on one rule, the title (`--cc-text-xl`), an `aria-hidden` divider, then one link per
+  tab, each tab its own page, the one on show marked `aria-current="page"` and underlined on the
+  bar's rule; only the links scroll sideways (never wrapping), on every width (`<PageTabs title="cards.title" label="cards.tabs" tabs={CARDS_TABS}
   current="/cards" />`). A tab list is a `PageTab[]` in `#lib/ui/page-tabs`. A tab's add button
   goes at the end of its search row, through `FilterControls`' `end` snippet, as a quiet
   `button.tx-fbtn` (_+ Add card_, _+ Add limit_).
