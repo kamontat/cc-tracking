@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed
+## 2026-11-14: Data versions 1 and 2 removed, and locations and owners in a panel over settings
 
 ### BREAKING CHANGES
 
@@ -21,7 +21,28 @@ reasons don't show up in the code.
   Message keys removed: `startup.paymentsFailed`, `backup.payment`, `backup.problem.badLocation`,
   `backup.problem.badPaidAt` and `backup.problem.badParts`.
 
+- `/settings/locations` and `/settings/owners` are gone, each a 404, with no redirect: Locations
+  and Owners open at `/settings?panel=locations` and `/settings?panel=owners`. Update bookmarks
+  (DD-203).
+
+- The static `SubHeader` molecule, the `.page--form` width and the message keys
+  `title.locations`, `title.owners` and `locations.takesHint` are removed.
+
+### Features
+
+- _Manage locations_ and _Manage owners_ open their editor in the detail panel beside Settings
+  (a sheet on a phone), at `?panel=locations` and `?panel=owners`. A row's click opens its panel
+  in place and marks the row; the other row swaps it; ×, Escape and Back close it. A write in the
+  panel updates the row's summary at once, and a restore or _Delete all data_ reads the open
+  panel again. Every "choose places in Locations" link goes to the panel (DD-203).
+
 ### Improvements
+
+- Beside an open panel, Settings stacks its two columns into one when the page has less than
+  `40rem` beside the panel, through a container query on `.settings-layout`.
+
+- A location's _Takes purchases_ tick reads its name alone, without "· its cards show under
+  Ready to use".
 
 - The version error names the range of versions read: "This backup is version 2, but this app
   reads versions 3–4." `backup.version` now takes `oldest` and `newest` in place of `expected`.
@@ -37,6 +58,14 @@ reasons don't show up in the code.
 
 - The existing `backup.version` key gives the message, not a separate "no longer supported"
   one. It gives the versions read as a range, so a later version updates it without new text.
+
+- Locations and Owners are a panel over Settings, as the user asked, so Settings stays in view as
+  a card's list does beside its panel. The panel is in the address as `panel=` (the user's
+  choice over `manage=`), so a reload or a shared link keeps it, and the old pages went without
+  a redirect, as RD-29 does for every retired address.
+
+- Moving the delete note above each list was tried and reverted: the user preferred it under the
+  list.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
