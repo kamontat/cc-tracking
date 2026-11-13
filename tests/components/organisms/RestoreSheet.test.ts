@@ -712,6 +712,38 @@ test("Restore waits for text on the paste step", async () => {
 	})
 })
 
+test("the link and text steps slide in, and Back slides the step before in from the other side", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		const sheet = await show(new InMemoryRepository())
+		const slide = () => sheet.root.querySelector("[data-step]")?.getAttribute("data-slide")
+		// The sheet opening rises on its own; its first step does not slide as well.
+		expect(slide()).toBeNull()
+
+		await sheet.click("from-link")
+		expect(slide()).toBe("in")
+		await sheet.click("back")
+		expect(sheet.step()).toBe("start")
+		expect(slide()).toBe("out")
+
+		await sheet.click("paste-by-hand")
+		expect(slide()).toBe("in")
+		await sheet.click("back")
+		expect(slide()).toBe("out")
+	})
+})
+
+test("without a readable clipboard, the link step slides in over the text and Back slides the text in again", async () => {
+	await withClipboard(undefined, async () => {
+		const sheet = await show(new InMemoryRepository())
+		const slide = () => sheet.root.querySelector("[data-step]")?.getAttribute("data-slide")
+		expect(slide()).toBeNull()
+		await sheet.click("from-link")
+		expect(slide()).toBe("in")
+		await sheet.click("back")
+		expect(slide()).toBe("out")
+	})
+})
+
 test("a failure with no message of its own says so once, not twice", async () => {
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => text }, async () => {

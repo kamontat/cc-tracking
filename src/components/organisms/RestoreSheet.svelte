@@ -68,6 +68,8 @@
 	/** Whether the start step is on offer; without it the sheet opens on the text area. */
 	const clipboard = canReadClipboard()
 	let step = $state<RestoreStep>(clipboard ? "start" : "paste")
+	/** Which way the step last slid: in going forward, out on *Back*. None for the first step. */
+	let slide = $state<"in" | "out" | undefined>()
 	let text = $state("")
 	let link = $state("")
 	/** The clipboard read was refused, so the text area says to paste by hand. */
@@ -144,6 +146,7 @@
 				read = await navigator.clipboard.readText()
 			} catch {
 				refused = true
+				slide = "in"
 				step = "paste"
 				return
 			}
@@ -160,9 +163,10 @@
 
 	const onLink = () => run(async () => start(linkName(link), await fetchBackupText(link)))
 
-	/** Moves to `next`, leaving the last failure behind. */
-	const goTo = (next: RestoreStep) => {
+	/** Moves to `next`, sliding it in from the end, or from the start on `back`, leaving the last failure behind. */
+	const goTo = (next: RestoreStep, back = false) => {
 		failure = null
+		slide = back ? "out" : "in"
 		step = next
 	}
 
@@ -226,7 +230,7 @@
 			</button>
 		</div>
 	{:else if step === "paste"}
-		<div class="step" data-step="paste">
+		<div class="step" data-step="paste" data-slide={slide}>
 			{#if refused}
 				<p class="hint">{tr("backup.clipboardRefused")}</p>
 			{/if}
@@ -236,7 +240,12 @@
 			</label>
 			<div class="foot">
 				{#if clipboard}
-					<button type="button" data-variant="quiet" data-action="back" disabled={busy} onclick={() => goTo("start")}>
+					<button
+						type="button"
+						data-variant="quiet"
+						data-action="back"
+						disabled={busy}
+						onclick={() => goTo("start", true)}>
 						<SvgIcon name="back" />
 						{tr("common.back")}
 					</button>
@@ -262,6 +271,7 @@
 		<form
 			class="step"
 			data-step="link"
+			data-slide={slide}
 			novalidate
 			onsubmit={(event) => {
 				event.preventDefault()
@@ -278,7 +288,7 @@
 					data-variant="quiet"
 					data-action="back"
 					disabled={busy}
-					onclick={() => goTo(clipboard ? "start" : "paste")}>
+					onclick={() => goTo(clipboard ? "start" : "paste", true)}>
 					<SvgIcon name="back" />
 					{tr("common.back")}
 				</button>
@@ -289,7 +299,7 @@
 			</div>
 		</form>
 	{:else}
-		<div class="step" data-step="start">
+		<div class="step" data-step="start" data-slide={slide}>
 			<button type="button" data-variant="quiet" data-action="paste-clipboard" disabled={busy} onclick={onClipboard}>
 				<SvgIcon name="clipboard" />
 				{tr("backup.fromClipboard")}
@@ -322,6 +332,36 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--cc-space-3);
+	}
+
+	/* A step slides in from the end, as a page pushed on; *Back* brings the step before in from the
+	   start. The same motion as the detail panel's form (DD-205). */
+	.step[data-slide="in"] {
+		animation: restore-forward var(--cc-sheet-motion) var(--cc-sheet-ease);
+	}
+
+	.step[data-slide="out"] {
+		animation: restore-backward var(--cc-sheet-motion) var(--cc-sheet-ease);
+	}
+
+	@keyframes restore-forward {
+		from {
+			opacity: 0;
+			transform: translateX(var(--cc-space-7));
+		}
+	}
+
+	@keyframes restore-backward {
+		from {
+			opacity: 0;
+			transform: translateX(calc(var(--cc-space-7) * -1));
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.step[data-slide] {
+			animation: none;
+		}
 	}
 
 	/* Every way in, Back and Restore are the same quiet button, an icon before the words. */
