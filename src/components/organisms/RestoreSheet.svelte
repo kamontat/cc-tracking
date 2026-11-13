@@ -305,6 +305,7 @@
 			</button>
 			<button
 				type="button"
+				class="by-hand"
 				data-variant="quiet"
 				data-action="paste-by-hand"
 				disabled={busy}
@@ -382,6 +383,23 @@
 
 	.foot > [data-action^="import"] {
 		flex: 1;
+	}
+
+	/* *Paste by hand* reads as a text link, the least of the ways in. */
+	.step > .by-hand {
+		gap: var(--cc-space-1);
+		align-self: center;
+		padding: var(--cc-space-1);
+		font-size: var(--cc-text-sm);
+		font-weight: 400;
+		color: var(--cc-link);
+		text-decoration: underline;
+		background: transparent;
+		border-color: transparent;
+	}
+
+	.step > .by-hand:hover {
+		background: transparent;
 	}
 
 	.step :global(.icon) {

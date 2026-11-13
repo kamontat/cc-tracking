@@ -160,7 +160,7 @@ const leadingIcons = (root: HTMLElement) =>
 		el.firstElementChild?.matches("svg.icon") ?? false,
 	])
 
-test("every way in, Back and Restore look the same: quiet, each led by an icon", async () => {
+test("every way in, Back and Restore are quiet and led by an icon, Paste by hand as text", async () => {
 	await withClipboard({ readText: async () => "" }, async () => {
 		const sheet = await show(new InMemoryRepository())
 		const quiet = () =>
@@ -172,8 +172,9 @@ test("every way in, Back and Restore look the same: quiet, each led by an icon",
 			["paste-by-hand", true],
 		])
 		expect(quiet()).toEqual([true, true, true, true])
-		// Paste by hand is a button like the rest, not a text link.
-		expect(sheet.action("paste-by-hand")?.classList.contains("by-hand")).toBe(false)
+		// Paste by hand stays text, the least of the ways in: drawn as a link, not a button.
+		expect(sheet.action("paste-by-hand")?.classList.contains("by-hand")).toBe(true)
+		expect(sheet.root.querySelectorAll(".by-hand")).toHaveLength(1)
 
 		await sheet.click("from-link")
 		expect(leadingIcons(sheet.root)).toEqual([
