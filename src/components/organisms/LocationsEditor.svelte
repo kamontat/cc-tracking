@@ -274,7 +274,7 @@
 								data-action="takes-purchases"
 								checked={record.takesPurchases}
 								onchange={(event) => onTakes(record, event)}>
-							<span>{tr("locations.takes")} <small>{tr("locations.takesHint")}</small></span>
+							<span>{tr("locations.takes")}</span>
 						</label>
 					</div>
 				{/each}

@@ -672,10 +672,6 @@ a:any-link:hover {
 	cursor: pointer;
 }
 
-.page .record-row__takes small {
-	font-size: var(--cc-text-xs);
-}
-
 .page .record-row__takes input {
 	padding: 0;
 	accent-color: var(--cc-accent);

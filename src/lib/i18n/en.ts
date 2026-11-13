@@ -411,7 +411,6 @@ export const en = {
 	"locations.renameLabel": "New name for {name}",
 	"locations.save": "Save",
 	"locations.takes": "Takes purchases",
-	"locations.takesHint": "· its cards show under Ready to use",
 	"locations.deleteAsk": "Delete {name}?",
 	"locations.noneTake": "No place takes purchases, so Ready to use on Home is empty.",
 	"locations.deleteNote": "A location with cards can't be deleted. Move its cards first (Cards › a card › Edit).",

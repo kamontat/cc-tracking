@@ -421,7 +421,6 @@ export const th: Catalog = {
 	"locations.renameLabel": "ชื่อใหม่ของ {name}",
 	"locations.save": "บันทึก",
 	"locations.takes": "บันทึกรายการซื้อได้",
-	"locations.takesHint": "· บัตรที่นี่แสดงใต้หัวข้อพร้อมใช้",
 	"locations.deleteAsk": "ลบ {name} ไหม",
 	"locations.noneTake": "ไม่มีสถานที่ใดบันทึกรายการซื้อได้ หัวข้อพร้อมใช้ในหน้าหลักจึงว่างเปล่า",
 	"locations.deleteNote": "ลบสถานที่ที่ยังมีบัตรอยู่ไม่ได้ ย้ายบัตรออกก่อน (บัตร › เลือกบัตร › แก้ไข)",
