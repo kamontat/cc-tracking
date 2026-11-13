@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, and a data summary
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, and a quiet test run
 
 ### BREAKING CHANGES
 
@@ -58,6 +58,19 @@ reasons don't show up in the code.
 - Restore reads only versions 3 and 4. The version 2 conversion, its payment and closed-set
   location checks, and the clearing of stale `m:` parts on import are gone, so every Merge is
   purely additive (DD-95 and DD-133 retired).
+
+- `bun run test` prints no warnings. Every Svelte component compiles cleanly: the read-once
+  `clock`, `address` and `mode` props are read through `untrack`, `Sheet`'s script-set
+  `data-closing` selectors are `:global`, `CardHero`'s unused `.hero p` rule is gone, and
+  `DetailPanel`'s swipe moves onto its `listen` attachment. The page tests load pages through
+  `import.meta.glob`, and the container renderer comes from
+  `@astrojs/svelte/container-renderer` rather than the deprecated root export.
+
+- `tests/components/svelte-warnings.test.ts` compiles every `.svelte` component and fails on
+  any warning, so a new one breaks the test run instead of scrolling past in the log.
+
+- An empty `svelte.config.js` keeps Svelte's defaults and stops vite-plugin-svelte noting on
+  every run that it found no config (`tests/config/svelte.test.ts` holds it empty).
 
 ### Decisions
 

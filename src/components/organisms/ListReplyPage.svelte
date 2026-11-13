@@ -6,7 +6,7 @@
 	import type { MoneyData } from "#lib/ui/money-data"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import SubHeaderBar from "#components/molecules/SubHeaderBar.svelte"
@@ -54,8 +54,8 @@
 		return t(key, params)
 	}
 
-	const now = today(clock())
-	const id = listKey(address.search())
+	const now = untrack(() => today(clock()))
+	const id = untrack(() => listKey(address.search()))
 	/** Where ‹ and a cancel lead: the Lists tab. */
 	const home = LISTS_ADDRESS
 	let repo: Repository | null = null

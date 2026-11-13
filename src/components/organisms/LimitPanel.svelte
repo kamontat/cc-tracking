@@ -65,7 +65,7 @@
 		return t(key, params)
 	}
 
-	const now = today(clock())
+	const now = untrack(() => today(clock()))
 	let repo = $state.raw<Repository | null>(null)
 	/** The group the panel asks for: its id, or null for a blank form (or no limit panel at all). */
 	const view = $derived(panel.view?.kind === "limit" ? panel.view : null)

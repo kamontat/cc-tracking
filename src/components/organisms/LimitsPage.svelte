@@ -8,7 +8,7 @@
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
@@ -67,7 +67,7 @@
 	}
 
 	/** The open group, or a group's card, in the address and history (RD-23). */
-	const panel = new RecordPanel({ address, path: LIMITS_ADDRESS, kinds: ["card", "limit"] })
+	const panel = untrack(() => new RecordPanel({ address, path: LIMITS_ADDRESS, kinds: ["card", "limit"] }))
 
 	type LimitsData = { money: MoneyData; panels: GroupPanel[] }
 
@@ -77,10 +77,10 @@
 		return t(key, params)
 	}
 
-	const now = today(clock())
+	const now = untrack(() => today(clock()))
 	let repo: Repository | null = null
 	let data = $state.raw<LimitsData | null>(null)
-	let view = $state.raw<LimitsView>(readLimitsView(address.search()))
+	let view = $state.raw<LimitsView>(untrack(() => readLimitsView(address.search())))
 	let filterOpen = $state(false)
 	let sheetTab = $state<SheetTab>("filter")
 	/** Why the store would not open, re-read in the reader's language. */

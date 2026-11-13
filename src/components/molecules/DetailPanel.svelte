@@ -89,14 +89,18 @@
 
 	/**
 	 * Listens on the element for each event named, as an attachment: the backdrop's click (whose
-	 * keyboard twin is Escape) and the body's changes, which no control of its own stands for.
+	 * keyboard twin is Escape), the head's swipe (whose twin is the close button) and the body's
+	 * changes, which no control of its own stands for.
 	 */
-	const listen = (handlers: Record<string, (event: Event) => void>) => (node: HTMLElement) => {
-		for (const [type, handler] of Object.entries(handlers)) node.addEventListener(type, handler)
-		return () => {
-			for (const [type, handler] of Object.entries(handlers)) node.removeEventListener(type, handler)
+	const listen =
+		(handlers: { [K in keyof HTMLElementEventMap]?: (event: HTMLElementEventMap[K]) => void }) =>
+		(node: HTMLElement) => {
+			const entries = Object.entries(handlers) as [string, (event: Event) => void][]
+			for (const [type, handler] of entries) node.addEventListener(type, handler)
+			return () => {
+				for (const [type, handler] of entries) node.removeEventListener(type, handler)
+			}
 		}
-	}
 
 	const onPointerDown = (event: PointerEvent) => {
 		swipeFrom = event.clientY
@@ -139,7 +143,7 @@
 	aria-labelledby={titleId}
 	tabindex="-1"
 	{@attach listen({ input: onTouch, change: onTouch, click: onTouch })}>
-	<div class="detail-panel__head" onpointerdown={onPointerDown} onpointerup={onPointerUp}>
+	<div class="detail-panel__head" {@attach listen({ pointerdown: onPointerDown, pointerup: onPointerUp })}>
 		<span class="detail-panel__grab" aria-hidden="true"></span>
 		<div class="detail-panel__bar">
 			{#if onback}

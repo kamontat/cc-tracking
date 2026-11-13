@@ -9,7 +9,7 @@
 	import type { RestoredDetail } from "#lib/ui/restore"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import DetailPanel from "#components/molecules/DetailPanel.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
@@ -77,7 +77,7 @@
 	const isPanel = (id: string): id is PanelName => (PANELS as readonly string[]).includes(id)
 
 	/** The open panel in the address and history (RD-23): Back closes it, as on every other page. */
-	const panel = new RecordPanel({ address, path: "/settings", kinds: ["panel"] })
+	const panel = untrack(() => new RecordPanel({ address, path: "/settings", kinds: ["panel"] }))
 	const current = $derived.by((): PanelName | null => {
 		const id = panel.record?.id
 		return id !== undefined && isPanel(id) ? id : null
