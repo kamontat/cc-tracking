@@ -189,7 +189,7 @@ needs escaping.
 
 The builder's sheet keeps `add` and `open` (DD-195): they open a sheet over a full page, not a
 record's panel. `/cards/limits` gains its own search and sort, which the group panels lack
-today; dropping them keeps it a plain list (decide with 1).
+today; dropping them keeps it a plain list.
 
 Every page is a static file, so no address needs a rewrite: `_redirects`, local dev, preview
 and the offline worker work as they are (the worker already ignores the query).
@@ -212,7 +212,7 @@ and the offline worker work as they are (the worker already ignores the query).
 ## When it ships
 
 PRD.md and PRD_TH.md: new decisions for the tabs, the panel, the card page's retirement, the
-pay picker's, the card form in the panel and its unsaved-changes prompt, Home's tabs with Owed
+pay picker's and _+ New_'s, the card form in the panel and its unsaved-changes prompt, Home's tabs with Owed
 among them, the addresses and the card id format; RD-13, RD-15, DD-76, DD-79, DD-104 (retired), DD-106, DD-144,
 DD-184, CD-01 and DC-17 amended. ENDPOINTS.md rewritten from the tables above. The `TODO.md` endpoint item is replaced
 by this spec.
