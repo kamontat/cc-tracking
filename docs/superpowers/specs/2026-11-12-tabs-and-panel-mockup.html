@@ -189,17 +189,17 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 			<div><h4>Cards</h4><ul>
 				<li>Tap a tile: its panel opens. Tap another: the panel swaps, the address is rewritten (Back closes, it does not walk through every card).</li>
 				<li><em>Pay</em> or <em>Add purchase</em> replaces the panel's content; ‹ in the panel or Back returns to the card.</li>
-				<li><em>Edit</em> in a card's panel, and <em>+ Add card</em>, open the card form in the panel (<code>?card=12.3&amp;edit=1</code>, <code>?card=new</code>). With a form open, tapping another card or × asks first; Back does not.</li>
+				<li><em>Edit</em> in a card's panel, and <em>+ Add card</em>, open the card form in the panel (<code>?card=12.3&amp;edit=1</code>; a new card's blank form has no address of its own, and once added the address names it). With a form open, tapping another card or × asks first; Back does not.</li>
 				<li><em>Limits</em> tab: a group's panel lists its cards; tap one to open it. <em>Edit</em> is the group form, in the panel the same way.</li>
 			</ul></div>
 			<div><h4>Transactions</h4><ul>
 				<li><em>Ledger</em>: a row still opens in place; its <em>Open card</em> opens the card's panel over the ledger.</li>
-				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page. <em>+ Add list</em> starts a new one (<code>/lists/new</code>), as <em>+ Add card</em> and <em>+ Add limit</em> do on their tabs.</li>
+				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page. <em>+ Add list</em> starts a new one (<code>/transactions/lists/new</code>), as <em>+ Add card</em> and <em>+ Add limit</em> do on their tabs.</li>
 			</ul></div>
 			<div><h4>Starting a list or a payment</h4><ul>
 				<li>No floating <em>+ New</em>: things start where they live.</li>
-				<li>A list: <em>+ Add list</em> on the <em>Lists</em> tab, or a card's <em>Use on a list</em>. Both open the builder, <code>/lists/new</code>; <em>+ Add a card</em> opens its sheet (<code>add=1</code>, then <code>open=&lt;id&gt;</code>), <em>Add to list</em> writes <code>cards</code>.</li>
-				<li><em>Save as draft</em> leaves for Home with the list open over <em>Needs you</em> (<code>/?list=…</code>). A draft's <em>Continue</em> and a waiting list's <em>Enter reply</em> open <code>/lists/edit?list=…</code>.</li>
+				<li>A list: <em>+ Add list</em> on the <em>Lists</em> tab, or a card's <em>Use on a list</em>. Both open the builder, <code>/transactions/lists/new</code>; <em>+ Add a card</em> opens its sheet (<code>add=1</code>, then <code>open=&lt;id&gt;</code>), <em>Add to list</em> writes <code>cards</code>.</li>
+				<li><em>Save as draft</em> leaves for the <em>Lists</em> tab with the list open in its panel (<code>/transactions/lists?list=…</code>). A draft's <em>Continue</em> and a waiting list's <em>Enter reply</em> open <code>/transactions/lists/edit?list=…</code>.</li>
 				<li>A payment: <em>Pay</em> on a bill in Home's <em>Owed</em>, or <em>Pay</em> in a card's panel (a card that owes nothing).</li>
 			</ul></div>
 			<div><h4>Home</h4><ul>
@@ -244,7 +244,7 @@ const baht = (n) => "฿" + Math.abs(n).toLocaleString("en-US")
 const used = (l) => l.cap - (CARDS.find((c) => c.limit === l.id)?.room ?? l.cap)
 
 // ---------- the address: state <-> URL, a history stack for ‹ ----------
-const PAGES = { "/": "home", "/owed": "home", "/ready": "home", "/transactions": "tx", "/transactions/lists": "tx", "/cards": "cards", "/cards/limits": "cards", "/lists/new": "list", "/lists/edit": "list" }
+const PAGES = { "/": "home", "/owed": "home", "/ready": "home", "/transactions": "tx", "/transactions/lists": "tx", "/cards": "cards", "/cards/limits": "cards", "/transactions/lists/new": "list", "/transactions/lists/edit": "list" }
 let stack = [{ path: "/cards" }]
 let at = 0
 let device = "desk"
@@ -254,8 +254,9 @@ const now = () => stack[at]
 const urlOf = (s) => {
 	const q = new URLSearchParams()
 	// a new list's cards are in its address; a draft's come from the stored draft, never the address
-	if (s.path === "/lists/new") for (const id of s.cards ?? []) q.append("cards", id)
-	for (const k of ["list", "add", "open", "card", "pay", "amount", "purchase", "limit", "edit"]) if (s[k] != null) q.set(k, s[k])
+	if (s.path === "/transactions/lists/new") for (const id of s.cards ?? []) q.append("cards", id)
+	// a blank form for a new card or group has nothing stored to come back to, so it is not in the address
+	for (const k of ["list", "add", "open", "card", "pay", "amount", "purchase", "limit", "edit"]) if (s[k] != null && s[k] !== "new") q.set(k, s[k])
 	const t = q.toString()
 	return { path: s.path, query: t ? "?" + t : "" }
 }
@@ -417,13 +418,13 @@ function listPanel(s) {
 // ---------- the list pages: full pages, their add-a-card sheet in the address (DD-195) ----------
 function listPage(s) {
 	const l = s.list ? LISTS.find((x) => x.id === s.list) : null
-	if (s.path === "/lists/edit" && l?.status === "sent") {
+	if (s.path === "/transactions/lists/edit" && l?.status === "sent") {
 		return `<div class="sub"><button class="ib" data-do="back" aria-label="Back">‹</button><div><b>Reply, list of ${l.date}</b><small>What the spender bought, for each line</small></div></div>
 		<div class="panelbox rows">${l.lines.map(([id, n]) => `<div class="row" style="cursor:default">${chip(card(id))}<span>${cname(card(id))}<small>asked ${baht(n)}</small></span><input class="lamt" value="${n.toLocaleString("en-US")}"></div>`).join("")}</div>
 		<div class="lfoot"><span class="muted sm">Saving makes these purchases</span><button class="btn" data-do="listsaved:${l.id}">Save</button></div>`
 	}
 	const ids = s.cards ?? []
-	const title = s.path === "/lists/new" ? "New list" : `Draft, ${l?.date ?? ""}`
+	const title = s.path === "/transactions/lists/new" ? "New list" : `Draft, ${l?.date ?? ""}`
 	return `<div class="sub"><button class="ib" data-do="back" aria-label="Back">‹</button><div><b>${title}</b><small>Thu 13 Nov · ${ids.length} cards</small></div></div>
 	${ids.length ? `<div class="panelbox rows">${ids.map((id) => `<button class="row" data-do="lopen:${id}">${chip(card(id))}<span>${cname(card(id))}<small>${baht(card(id).room)} room</small></span><b class="money">—</b></button>`).join("")}</div>` : `<p class="empty">No cards yet. Add the cards this list is for.</p>`}
 	<button class="btn" data-variant="quiet" data-do="ladd">+ Add a card</button>
@@ -495,9 +496,9 @@ document.getElementById("dev").addEventListener("click", (e) => {
 	else if (act === "purchase") push({ path: s.path, card: arg, purchase: "new" })
 	else if (act === "row") { openRow = openRow === arg ? null : arg; draw() }
 	else if (act === "tocard") toCard()
-	else if (act === "newlist") push({ path: "/lists/new" })
-	else if (act === "uselist") push({ path: "/lists/new", cards: [arg] })
-	else if (act === "editlist") { const l = LISTS.find((x) => x.id === arg); push({ path: "/lists/edit", list: arg, cards: l.lines.map(([id]) => id) }) }
+	else if (act === "newlist") push({ path: "/transactions/lists/new" })
+	else if (act === "uselist") push({ path: "/transactions/lists/new", cards: [arg] })
+	else if (act === "editlist") { const l = LISTS.find((x) => x.id === arg); push({ path: "/transactions/lists/edit", list: arg, cards: l.lines.map(([id]) => id) }) }
 	else if (act === "ladd") push({ ...s, add: 1 })
 	else if (act === "lopen") push({ ...s, open: arg })
 	else if (act === "lpick") { const n = { ...s, open: arg }; delete n.add; replace(n) }
@@ -506,7 +507,7 @@ document.getElementById("dev").addEventListener("click", (e) => {
 	else if (act === "lremove") closeSheet((s.cards ?? []).filter((id) => id !== arg))
 	else if (act === "lclose") closeSheet()
 	// a write leaves with location.replace, so Back does not reopen the list just written
-	else if (act === "listsaved") { stack[at] = { path: "/", list: arg }; draw(); say("Saved; the list opens over Needs you") }
+	else if (act === "listsaved") { stack[at] = { path: "/transactions/lists", list: arg }; draw(); say("Saved; the list opens on the Lists tab") }
 	else if (act === "saved") { toCard(); say(arg) }
 	// a new card, once added, is the card the panel shows
 	else if (act === "added") { replace({ path: s.path, card: "51.4" }); say("Card added") }
