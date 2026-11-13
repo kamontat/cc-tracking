@@ -411,6 +411,8 @@ export const en = {
 	"settings.owners.title": "Owners",
 	"settings.owners.manage": "Manage owners",
 	"settings.data.title": "Your data",
+	"settings.data.open": "Data summary",
+	"settings.data.openAction": "View",
 	"settings.data.none": "None yet",
 	"settings.data.cards": "Cards",
 	"settings.data.cardsSub": "{active} active · {archived} archived",

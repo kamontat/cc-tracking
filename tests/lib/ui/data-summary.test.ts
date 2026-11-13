@@ -5,7 +5,7 @@ import { afterEach, expect, test } from "vitest"
 
 import { resetLocale, setLocale } from "#lib/i18n/index"
 import { memoryStorage } from "#lib/storage/contract"
-import { formatBytes, storedBytes, summariseData, summaryRows } from "#lib/ui/data-summary"
+import { formatBytes, storedBytes, summariseData, summaryLine, summaryRows } from "#lib/ui/data-summary"
 
 afterEach(() => resetLocale())
 
@@ -107,7 +107,7 @@ test("draws a row per kind, with its count and the detail under it", () => {
 		["lists", "Purchase lists", "4", "1 draft · 1 waiting · 2 saved"],
 		["locations", "Locations", "2", ""],
 		["owners", "Owners", "3", ""],
-		["storage", "Storage used", "1.5 KB", "In this browser only"],
+		["storage", "Storage used", "1.5 KB", ""],
 	])
 })
 
@@ -122,4 +122,9 @@ test("reads in Thai", () => {
 	const rows = rowsOf(full, 1536)
 	expect(rows[0]?.[1]).toBe("บัตร")
 	expect(rows[2]?.[3]).toContain("ม.ค. 2025")
+})
+
+test("the button's line gives the gist: cards, purchases and the space they take", () => {
+	expect(summaryLine(summariseData(full, 1536))).toBe("3 cards · 3 purchases · 1.5 KB")
+	expect(summaryLine(summariseData({ ...empty, cards: [card("k1")] }, 0))).toBe("1 card · 0 purchases · 0 B")
 })

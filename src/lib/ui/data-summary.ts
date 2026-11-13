@@ -5,7 +5,7 @@ import { compareDates, displayDate } from "#lib/domain/date"
 import { formatAmount, sumAmounts } from "#lib/domain/money"
 import { getLocale, t } from "#lib/i18n/index"
 
-/** What the browser holds, kind by kind: the Settings page's _Your data_ panel (RD-31). */
+/** What the browser holds, kind by kind: the Settings page's _Your data_ panel, opened from its row (RD-31). */
 export type DataSummary = {
 	cards: { active: number; archived: number }
 	limitGroups: number
@@ -76,6 +76,17 @@ export function summariseData(backup: BackupV4, bytes: number): DataSummary {
 	}
 }
 
+/** The _Data summary_ button's muted line: "3 cards · 66 purchases · 17.5 KB". */
+export function summaryLine(summary: DataSummary): string {
+	const cards = summary.cards.active + summary.cards.archived
+	const purchases = summary.purchases.count
+	return [
+		t(cards === 1 ? "counts.cards.one" : "counts.cards.many", { count: cards }),
+		t(purchases === 1 ? "counts.purchases.one" : "counts.purchases.many", { count: purchases }),
+		formatBytes(summary.bytes),
+	].join(" · ")
+}
+
 /** The panel's rows, in the reader's language; a kind with no records says so under its label. */
 export function summaryRows(summary: DataSummary): SummaryRow[] {
 	const locale = getLocale()
@@ -126,11 +137,7 @@ export function summaryRows(summary: DataSummary): SummaryRow[] {
 		},
 		{ row: "locations", label: t("settings.data.locations"), value: String(summary.locations), sub: "" },
 		{ row: "owners", label: t("settings.data.owners"), value: String(summary.owners), sub: "" },
-		{
-			row: "storage",
-			label: t("settings.data.storage"),
-			value: formatBytes(summary.bytes),
-			sub: t("settings.data.storageSub"),
-		},
+		// The panel's own line says where: _In this browser only_.
+		{ row: "storage", label: t("settings.data.storage"), value: formatBytes(summary.bytes), sub: "" },
 	]
 }

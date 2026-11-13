@@ -421,6 +421,8 @@ export const th: Catalog = {
 	"settings.owners.title": "เจ้าของบัตร",
 	"settings.owners.manage": "จัดการเจ้าของบัตร",
 	"settings.data.title": "ข้อมูลของคุณ",
+	"settings.data.open": "สรุปข้อมูล",
+	"settings.data.openAction": "ดู",
 	"settings.data.none": "ยังไม่มี",
 	"settings.data.cards": "บัตร",
 	"settings.data.cardsSub": "ใช้อยู่ {active} · เก็บเข้าคลัง {archived}",

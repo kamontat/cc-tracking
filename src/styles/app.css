@@ -571,7 +571,7 @@ a:any-link:hover {
 }
 
 /* A row that states a fact rather than doing something, its figure on the right: the
-   _Your data_ panel (RD-31), a `<dl>` whose rows are `dt` and `dd`. */
+   _Your data_ panel's rows (RD-31), a `<dl>` whose rows are `dt` and `dd`. */
 .page dl.set,
 .page .set-row--fact > * {
 	margin: 0;

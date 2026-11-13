@@ -571,52 +571,101 @@ const purgeable = async () => {
 	return repo
 }
 
+const dataPanel = (root: HTMLElement) => root.querySelector<HTMLElement>(".detail-panel")
+
+/** Opens the data panel from its row in the Your data section. */
+const openData = async (root: HTMLElement) => {
+	if (!dataPanel(root)) await press(row(root, "data"))
+}
+
 /** A data row's label, the detail under it, and its figure, joined by `|`. */
 const dataRow = (root: HTMLElement, name: string) => {
-	const found = root.querySelector(`[data-section="data"] [data-row="${name}"]`)
+	const found = dataPanel(root)?.querySelector(`[data-row="${name}"]`)
 	return [".set-row__label", ".set-row__sub", ".set-row__value"]
 		.map((part) => flat(found?.querySelector(part)))
 		.join(" | ")
 }
 
-test("the data panel sums up what this browser holds, a row per kind", async () => {
+test("Your data is one row, a button with the gist that opens the data panel", async () => {
 	const root = await show(await fullyPopulated(new InMemoryRepository()))
 
+	const rows = [...root.querySelectorAll('[data-section="data"] .set > .set-row')]
+	expect(rows.map((found) => found.getAttribute("data-row"))).toEqual(["data"])
+	const button = row(root, "data")
+	expect(button.tagName).toBe("BUTTON")
+	expect(flat(button.querySelector(".set-row__sub"))).toMatch(/^2 cards · 3 purchases · \d/)
+	expect(button.getAttribute("aria-expanded")).toBe("false")
+	expect(dataPanel(root)).toBeNull()
+	expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(false)
+
+	await press(button)
+
+	expect(button.getAttribute("aria-expanded")).toBe("true")
+	expect(flat(dataPanel(root)?.querySelector("h2"))).toBe("Your data")
+	// The page makes room for the panel from 900px.
+	expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+})
+
+test("the data panel closes from its ×, and the row opens it again", async () => {
+	const root = await show()
+
+	await openData(root)
+	await press(dataPanel(root)?.querySelector<HTMLElement>('[data-action="close-panel"]') as HTMLElement)
+	expect(dataPanel(root)).toBeNull()
+	expect(row(root, "data").getAttribute("aria-expanded")).toBe("false")
+
+	await press(row(root, "data"))
+	expect(dataPanel(root)).not.toBeNull()
+	// Pressing the row again closes it, as a toggle.
+	await press(row(root, "data"))
+	expect(dataPanel(root)).toBeNull()
+})
+
+test("the data panel sums up what this browser holds, a row per kind", async () => {
+	const root = await show(await fullyPopulated(new InMemoryRepository()))
+	await openData(root)
+
 	expect(
-		[...root.querySelectorAll('[data-section="data"] .set > .set-row')].map((found) => found.getAttribute("data-row")),
+		[...(dataPanel(root)?.querySelectorAll(".set > .set-row") ?? [])].map((found) => found.getAttribute("data-row")),
 	).toEqual(["cards", "limit-groups", "purchases", "payments", "lists", "locations", "owners", "storage"])
 	expect(dataRow(root, "cards")).toBe("Cards | 2 active · 0 archived | 2")
 	expect(dataRow(root, "purchases")).toBe("Purchases | ฿3.00 · 05 Sep 2026 to 07 Sep 2026 | 3")
 	expect(dataRow(root, "lists")).toBe("Purchase lists | 1 draft · 0 waiting · 0 saved | 1")
 	expect(dataRow(root, "locations")).toBe("Locations |  | 3")
-	// The data panel reads; none of its rows is a control.
-	expect(root.querySelector('[data-section="data"] button, [data-section="data"] a')).toBeNull()
+	// The panel reads; only its head has buttons.
+	expect(dataPanel(root)?.querySelector(".detail-panel__body button, .detail-panel__body a")).toBeNull()
 })
 
 test("the storage row counts this browser's own keys", async () => {
 	const storage = memoryStorage()
 	storage.setItem("cc:card:k1", "x".repeat(1020))
 	const root = await show(new InMemoryRepository(), storage)
+	await openData(root)
 
-	expect(dataRow(root, "storage")).toBe("Storage used | In this browser only | 2.0 KB")
+	expect(dataRow(root, "storage")).toBe("Storage used |  | 2.0 KB")
+	expect(flat(dataPanel(root)?.querySelector(".detail-panel__detail"))).toBe("In this browser only")
 })
 
 test("the data panel follows a language switch", async () => {
 	const root = await show(await fullyPopulated(new InMemoryRepository()))
+	await openData(root)
 
 	setLocale("th")
 	flushSync()
 	expect(dataRow(root, "cards")).not.toContain("Cards")
+	expect(flat(row(root, "data"))).not.toContain("cards")
 })
 
 test("the data panel counts again after a reset", async () => {
 	const root = await show(await fullyPopulated(new InMemoryRepository()))
+	await openData(root)
 
 	await click(root, "reset")
 	await click(root, "delete-everything")
 
 	expect(dataRow(root, "cards")).toBe("Cards | None yet | 0")
 	expect(dataRow(root, "owners")).toBe("Owners |  | 3")
+	expect(flat(row(root, "data").querySelector(".set-row__sub"))).toMatch(/^0 cards · 0 purchases/)
 })
 
 test("the Delete old purchases row opens the purge sheet, and closing takes it away", async () => {
@@ -645,6 +694,7 @@ test("a purge reports what it deleted in the Reset panel, in the reader's langua
 	expect(resetStatus(root)).toBe("Deleted 2 purchases older than 1 year.")
 	expect((await repo.listPurchases("k1")).map((purchase) => purchase.id)).toEqual(["c"])
 	// The data panel counts again, too.
+	await openData(root)
 	expect(dataRow(root, "purchases")).toMatch(/\| 1$/)
 	setLocale("th")
 	flushSync()

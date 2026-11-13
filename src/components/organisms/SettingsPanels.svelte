@@ -10,6 +10,7 @@
 
 	import { onMount } from "svelte"
 
+	import DetailPanel from "#components/molecules/DetailPanel.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import PurgeSheet from "#components/organisms/PurgeSheet.svelte"
 	import RestoreSheet from "#components/organisms/RestoreSheet.svelte"
@@ -18,7 +19,7 @@
 	import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
 	import { OWNERS_SEED_KEY, seedOwners } from "#lib/storage/seed-owners"
 	import { countRecordsV4, exportBackupV4 } from "#lib/storage/transfer-v4"
-	import { type DataSummary, storedBytes, summariseData, summaryRows } from "#lib/ui/data-summary"
+	import { type DataSummary, storedBytes, summariseData, summaryLine, summaryRows } from "#lib/ui/data-summary"
 	import { createPageState } from "#lib/ui/page-state"
 	import { countsText } from "#lib/ui/record-counts"
 	import { backupFilename, locationsSummary, ownersSummary, prepareBackupFile } from "#lib/ui/settings"
@@ -26,7 +27,7 @@
 
 	/**
 	 * The Settings page's island (RD-19): its sections in `.set` panels, Display, Locations and
-	 * owners (a row into each page) and Backup in the main column, Your data (RD-31), Reset and
+	 * owners (a row into each page) and Backup in the main column, Your data (a row into its panel, RD-31), Reset and
 	 * About beside them from 900px. Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
 	 * so it renders in the browser (PRD DD-172). The markup is the legacy route's, so app.css
 	 * draws it unchanged.
@@ -58,6 +59,8 @@
 	let owners = $state<OwnerRecord[]>([])
 	/** What the store holds, counted afresh after every load, reset and purge. */
 	let data = $state<DataSummary | null>(null)
+	/** Whether the data panel is open, beside the page from 900px and a sheet below. */
+	let dataOpen = $state(false)
 	/** Why the store would not open, re-read in the reader's language. */
 	let startupFailure = $state<(() => string) | null>(null)
 	/** Bumped after every load, so the banner re-reads the page state's error. */
@@ -209,6 +212,11 @@
 		return data ? summaryRows(data) : []
 	})
 
+	const dataLine = $derived.by(() => {
+		void lang
+		return data ? summaryLine(data) : ""
+	})
+
 	const onRetry = () => {
 		if (startupFailure) location.reload()
 		else void page.load()
@@ -232,147 +240,171 @@
 </script>
 
 <ErrorBanner message={bannerMessage} retryLabel={tr("common.reload")} onretry={onRetry} />
-<div class="settings-grid">
-	<div class="settings-grid__main">
-		<section class="set-section" data-section="display">
-			<h2>{tr("settings.display.title")}</h2>
-			<div class="set">{@render display?.()}</div>
-		</section>
-		<section class="set-section" data-section="locations">
-			<h2>{tr("settings.places.title")}</h2>
-			<div class="set">
-				<a class="set-row" data-row="locations" href="/settings/locations">
-					<span class="set-row__text"
-						>{tr("settings.locations.manage")}<small class="set-row__sub">{summary}</small></span
-					>
-					<span class="set-row__chev" aria-hidden="true">›</span>
-				</a>
-				<a class="set-row" data-row="owners" href="/settings/owners">
-					<span class="set-row__text"
-						>{tr("settings.owners.manage")}<small class="set-row__sub">{ownersLine}</small></span
-					>
-					<span class="set-row__chev" aria-hidden="true">›</span>
-				</a>
-			</div>
-		</section>
-		<section class="set-section" data-section="backup">
-			<h2>{tr("backup.title")}</h2>
-			<div class="set">
-				<button class="set-row" type="button" data-row="download" onclick={onExport}>
-					<span class="set-row__text"
-						>{tr("settings.backup.download")}<small class="set-row__sub">{backupFilename(new Date())}</small></span
-					>
-					<span class="set-row__action">{tr("settings.backup.downloadAction")}</span>
-				</button>
-				{#if canWriteClipboard}
-					<button class="set-row" type="button" data-row="copy" onclick={onCopy}>
+<div class="panel-layout" data-panel={dataOpen ? "" : undefined}>
+	<div class="settings-grid">
+		<div class="settings-grid__main">
+			<section class="set-section" data-section="display">
+				<h2>{tr("settings.display.title")}</h2>
+				<div class="set">{@render display?.()}</div>
+			</section>
+			<section class="set-section" data-section="locations">
+				<h2>{tr("settings.places.title")}</h2>
+				<div class="set">
+					<a class="set-row" data-row="locations" href="/settings/locations">
 						<span class="set-row__text"
-							>{tr("settings.backup.copy")}<small class="set-row__sub">{tr("settings.backup.copyHint")}</small></span
+							>{tr("settings.locations.manage")}<small class="set-row__sub">{summary}</small></span
 						>
-						<span class="set-row__action" data-variant="quiet" aria-live="polite"
-							>{copied ? tr("settings.backup.copied") : tr("settings.backup.copyAction")}</span
+						<span class="set-row__chev" aria-hidden="true">›</span>
+					</a>
+					<a class="set-row" data-row="owners" href="/settings/owners">
+						<span class="set-row__text"
+							>{tr("settings.owners.manage")}<small class="set-row__sub">{ownersLine}</small></span
 						>
+						<span class="set-row__chev" aria-hidden="true">›</span>
+					</a>
+				</div>
+			</section>
+			<section class="set-section" data-section="backup">
+				<h2>{tr("backup.title")}</h2>
+				<div class="set">
+					<button class="set-row" type="button" data-row="download" onclick={onExport}>
+						<span class="set-row__text"
+							>{tr("settings.backup.download")}<small class="set-row__sub">{backupFilename(new Date())}</small></span
+						>
+						<span class="set-row__action">{tr("settings.backup.downloadAction")}</span>
 					</button>
+					{#if canWriteClipboard}
+						<button class="set-row" type="button" data-row="copy" onclick={onCopy}>
+							<span class="set-row__text"
+								>{tr("settings.backup.copy")}<small class="set-row__sub">{tr("settings.backup.copyHint")}</small></span
+							>
+							<span class="set-row__action" data-variant="quiet" aria-live="polite"
+								>{copied ? tr("settings.backup.copied") : tr("settings.backup.copyAction")}</span
+							>
+						</button>
+					{/if}
+					<button
+						class="set-row"
+						type="button"
+						data-row="restore"
+						aria-haspopup="dialog"
+						aria-expanded={openSheet === "restore"}
+						onclick={() => toggleSheet("restore")}>
+						<span class="set-row__text"
+							>{tr("backup.restore.title")}<small class="set-row__sub">{tr("settings.backup.restoreHint")}</small></span
+						>
+						<span class="set-row__action" data-variant="quiet">{tr("settings.backup.restoreAction")}</span>
+					</button>
+				</div>
+				<p class="set-note">{tr("backup.warning")}</p>
+				<p class="import-status" role="status">{importedMessage}</p>
+				{#if openSheet === "restore" && repo}
+					<RestoreSheet
+						{repo}
+						{storage}
+						onrestored={onRestored}
+						onclose={() => {
+							openSheet = null
+						}} />
 				{/if}
-				<button
-					class="set-row"
-					type="button"
-					data-row="restore"
-					aria-haspopup="dialog"
-					aria-expanded={openSheet === "restore"}
-					onclick={() => toggleSheet("restore")}>
-					<span class="set-row__text"
-						>{tr("backup.restore.title")}<small class="set-row__sub">{tr("settings.backup.restoreHint")}</small></span
-					>
-					<span class="set-row__action" data-variant="quiet">{tr("settings.backup.restoreAction")}</span>
-				</button>
-			</div>
-			<p class="set-note">{tr("backup.warning")}</p>
-			<p class="import-status" role="status">{importedMessage}</p>
-			{#if openSheet === "restore" && repo}
-				<RestoreSheet
-					{repo}
-					{storage}
-					onrestored={onRestored}
-					onclose={() => {
-						openSheet = null
-					}} />
-			{/if}
-		</section>
-	</div>
-	<div class="settings-grid__side">
-		<section class="set-section" data-section="data">
-			<h2>{tr("settings.data.title")}</h2>
-			<dl class="set">
-				{#each dataRows as fact (fact.row)}
-					<div class="set-row set-row--fact" data-row={fact.row}>
-						<dt class="set-row__text">
-							<span class="set-row__label">{fact.label}</span>
-							{#if fact.sub}
-								<small class="set-row__sub">{fact.sub}</small>
-							{/if}
-						</dt>
-						<dd class="set-row__value">{fact.value}</dd>
-					</div>
-				{/each}
-			</dl>
-		</section>
-		<section class="set-section" data-section="reset">
-			<h2>{tr("reset.title")}</h2>
-			<div class="set">
-				<button
-					class="set-row"
-					type="button"
-					data-row="purge"
-					aria-haspopup="dialog"
-					aria-expanded={openSheet === "purge"}
-					onclick={() => toggleSheet("purge")}>
-					<span class="set-row__text"
-						>{tr("settings.reset.purge")}<small class="set-row__sub">{tr("settings.reset.purgeHint")}</small></span
-					>
-					<span class="set-row__action" data-variant="quiet">{tr("settings.reset.purgeAction")}</span>
-				</button>
-				{#if resetCounts === null}
-					<button class="set-row" type="button" data-row="delete-all" onclick={onStartReset}>
-						<span class="set-row__text"
-							>{tr("settings.reset.all")}<small class="set-row__sub">{tr("settings.reset.allHint")}</small></span
-						>
-						<span class="set-row__action" data-variant="danger">{tr("settings.reset.allAction")}</span>
+			</section>
+		</div>
+		<div class="settings-grid__side">
+			<section class="set-section" data-section="data">
+				<h2>{tr("settings.data.title")}</h2>
+				<div class="set">
+					<button
+						class="set-row"
+						type="button"
+						data-row="data"
+						aria-expanded={dataOpen}
+						onclick={() => {
+							dataOpen = !dataOpen
+						}}>
+						<span class="set-row__text">{tr("settings.data.open")}<small class="set-row__sub">{dataLine}</small></span>
+						<span class="set-row__action" data-variant="quiet">{tr("settings.data.openAction")}</span>
 					</button>
-				{:else}
-					{@const counts = resetCounts}
-					<div class="set-ask">
-						<p class="set-ask__note">{askText(counts)}</p>
-						<div class="set-ask__actions">
-							<button
-								type="button"
-								data-action="keep-data"
-								onclick={() => {
-									resetCounts = null
-								}}>
-								{tr("reset.keep")}
-							</button>
-							<button data-variant="danger" type="button" data-action="delete-everything" onclick={onConfirmReset}>
-								{tr("reset.deleteEverything")}
-							</button>
+				</div>
+			</section>
+			<section class="set-section" data-section="reset">
+				<h2>{tr("reset.title")}</h2>
+				<div class="set">
+					<button
+						class="set-row"
+						type="button"
+						data-row="purge"
+						aria-haspopup="dialog"
+						aria-expanded={openSheet === "purge"}
+						onclick={() => toggleSheet("purge")}>
+						<span class="set-row__text"
+							>{tr("settings.reset.purge")}<small class="set-row__sub">{tr("settings.reset.purgeHint")}</small></span
+						>
+						<span class="set-row__action" data-variant="quiet">{tr("settings.reset.purgeAction")}</span>
+					</button>
+					{#if resetCounts === null}
+						<button class="set-row" type="button" data-row="delete-all" onclick={onStartReset}>
+							<span class="set-row__text"
+								>{tr("settings.reset.all")}<small class="set-row__sub">{tr("settings.reset.allHint")}</small></span
+							>
+							<span class="set-row__action" data-variant="danger">{tr("settings.reset.allAction")}</span>
+						</button>
+					{:else}
+						{@const counts = resetCounts}
+						<div class="set-ask">
+							<p class="set-ask__note">{askText(counts)}</p>
+							<div class="set-ask__actions">
+								<button
+									type="button"
+									data-action="keep-data"
+									onclick={() => {
+										resetCounts = null
+									}}>
+									{tr("reset.keep")}
+								</button>
+								<button data-variant="danger" type="button" data-action="delete-everything" onclick={onConfirmReset}>
+									{tr("reset.deleteEverything")}
+								</button>
+							</div>
 						</div>
-					</div>
+					{/if}
+				</div>
+				<p class="reset-status" role="status">{resetMessage}</p>
+				{#if openSheet === "purge" && repo}
+					<PurgeSheet
+						{repo}
+						today={today()}
+						onpurged={onPurged}
+						onclose={() => {
+							openSheet = null
+						}} />
 				{/if}
-			</div>
-			<p class="reset-status" role="status">{resetMessage}</p>
-			{#if openSheet === "purge" && repo}
-				<PurgeSheet
-					{repo}
-					today={today()}
-					onpurged={onPurged}
-					onclose={() => {
-						openSheet = null
-					}} />
-			{/if}
-		</section>
-		<section class="set-section" data-section="about">
-			<h2>{tr("about.title")}</h2>
-			<div class="set">{@render about?.()}</div>
-		</section>
+			</section>
+			<section class="set-section" data-section="about">
+				<h2>{tr("about.title")}</h2>
+				<div class="set">{@render about?.()}</div>
+			</section>
+		</div>
 	</div>
 </div>
+{#if dataOpen}
+	<DetailPanel
+		title={tr("settings.data.title")}
+		detail={tr("settings.data.storageSub")}
+		onclose={() => {
+			dataOpen = false
+		}}>
+		<dl class="set">
+			{#each dataRows as fact (fact.row)}
+				<div class="set-row set-row--fact" data-row={fact.row}>
+					<dt class="set-row__text">
+						<span class="set-row__label">{fact.label}</span>
+						{#if fact.sub}
+							<small class="set-row__sub">{fact.sub}</small>
+						{/if}
+					</dt>
+					<dd class="set-row__value">{fact.value}</dd>
+				</div>
+			{/each}
+		</dl>
+	</DetailPanel>
+{/if}
