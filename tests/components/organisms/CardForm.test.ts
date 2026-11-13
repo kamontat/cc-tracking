@@ -180,7 +180,7 @@ test("with no group stored, says to add one first and links to Limits instead of
 	await show(null, [])
 	expect($('[name="limitGroupId"]')).toBeNull()
 	expect($("[data-no-groups]")?.textContent).toContain("Add one first")
-	expect($<HTMLAnchorElement>("[data-no-groups] a")?.getAttribute("href")).toBe("/cards?view=groups")
+	expect($<HTMLAnchorElement>("[data-no-groups] a")?.getAttribute("href")).toBe("/cards/limits")
 })
 
 test("the placeholder cannot be picked: the group is required (RD-27)", async () => {
