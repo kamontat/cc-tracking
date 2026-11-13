@@ -377,7 +377,10 @@ export const en = {
 	"backup.clipboardRefused": "The browser would not read the clipboard. Paste the text here instead.",
 	"backup.fromLink": "From a link",
 	"backup.linkLabel": "Link to a backup file",
-	"backup.linkHint": "The site must let other sites read the file, as a raw GitHub or gist link does.",
+	"backup.linkHint":
+		"The site must let other sites read the file. Save the copy on {gist} or {pastefox}, then paste its raw link.",
+	"backup.linkHint.gist": "GitHub Gist",
+	"backup.linkHint.pastefox": "PasteFox",
 	"backup.link.notAddress": "That is not a web address (https://…).",
 	"backup.link.unreachable":
 		"Could not reach that link. The site may not let other sites read it; download the file and choose it instead.",

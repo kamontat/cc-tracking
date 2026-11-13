@@ -60,6 +60,32 @@ export const linkName = (link: string): string => {
 	}
 }
 
+/** A run of the link hint: plain text, or a link to a site that serves a raw file other sites can read. */
+export type HintPart = { text: string; href?: string }
+
+/** Where to keep a copy *From a link* can fetch; both serve raw files any site may read. */
+const HINT_SITES = [
+	{ slot: "gist", label: "backup.linkHint.gist", href: "https://gist.github.com/" },
+	{ slot: "pastefox", label: "backup.linkHint.pastefox", href: "https://pastefox.com/create" },
+] as const
+
+/**
+ * The link step's hint as runs of text and links, in the reader's language. Each site's name
+ * fills its slot through a marker, so a translation may put the slots in any order.
+ */
+export const linkHintParts = (): HintPart[] => {
+	const marker = (index: number) => `\u0001${index}\u0001`
+	const params = Object.fromEntries(HINT_SITES.map((site, index) => [site.slot, marker(index)]))
+	return t("backup.linkHint", params)
+		.split("\u0001")
+		.map((run, index): HintPart => {
+			if (index % 2 === 0) return { text: run }
+			const site = HINT_SITES[Number(run)]
+			return site ? { text: t(site.label), href: site.href } : { text: run }
+		})
+		.filter((part) => part.text !== "")
+}
+
 /** The restore failure's lead sentence, then why, unless the reason is that same sentence again. */
 export const restoreFailureText = (failure: unknown): string => {
 	const lead = t("backup.error.import")

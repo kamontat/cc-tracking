@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "vitest"
 
 import { messageOf } from "#lib/i18n/error"
 import { setLocale } from "#lib/i18n/index"
-import { fetchBackupText, isWebAddress, linkName } from "#lib/ui/restore"
+import { fetchBackupText, isWebAddress, linkHintParts, linkName } from "#lib/ui/restore"
 
 afterEach(() => setLocale("en"))
 
@@ -77,4 +77,21 @@ test("a link is named by its file, else its host", () => {
 	expect(linkName("https://example.com/a%20copy.json?dl=1")).toBe("a copy.json")
 	expect(linkName("https://example.com/")).toBe("example.com")
 	expect(linkName(" https://example.com/backups/ ")).toBe("backups")
+})
+
+test("the link hint names gist and PasteFox as links, in the reader's language", () => {
+	const links = (parts: ReturnType<typeof linkHintParts>) => parts.filter((part) => part.href !== undefined)
+	const en = linkHintParts()
+	expect(en.map((part) => part.text).join("")).toBe(
+		"The site must let other sites read the file. Save the copy on GitHub Gist or PasteFox, then paste its raw link.",
+	)
+	expect(links(en)).toEqual([
+		{ text: "GitHub Gist", href: "https://gist.github.com/" },
+		{ text: "PasteFox", href: "https://pastefox.com/create" },
+	])
+
+	setLocale("th")
+	const th = linkHintParts()
+	expect(th.map((part) => part.text).join("")).not.toContain("{")
+	expect(links(th).map((part) => part.href)).toEqual(["https://gist.github.com/", "https://pastefox.com/create"])
 })

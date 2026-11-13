@@ -218,7 +218,9 @@ The _Backup_ section on `/settings` is how you keep a copy: _Download a copy_
 saves indented JSON, and _Copy as text_ puts the same backup on the clipboard as
 compact JSON. _Restore…_ opens a sheet that offers the clipboard first, then a
 file, a link (fetched by the browser, so the site must allow cross-site reads, as
-a raw GitHub or gist link does) or text pasted by hand. If this browser already holds records, it shows what
+a raw [GitHub Gist](https://gist.github.com/) link or a
+[PasteFox](https://pastefox.com/create) one, `pastefox.com/api/pastes/<id>/raw`,
+does) or text pasted by hand. If this browser already holds records, it shows what
 is here next to what is in the copy and asks: _Merge_ keeps what is here and adds
 the copy's records, updating any it shares, while _Replace_ deletes everything
 here first. An empty browser restores straight away.

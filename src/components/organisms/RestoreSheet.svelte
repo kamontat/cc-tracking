@@ -23,7 +23,14 @@
 		replaceWithBackupV4,
 	} from "#lib/storage/transfer-v4"
 	import { countsText } from "#lib/ui/record-counts"
-	import { canReadClipboard, fetchBackupText, isWebAddress, linkName, restoreFailureText } from "#lib/ui/restore"
+	import {
+		canReadClipboard,
+		fetchBackupText,
+		isWebAddress,
+		linkHintParts,
+		linkName,
+		restoreFailureText,
+	} from "#lib/ui/restore"
 
 	/**
 	 * *Restore a copy*, clipboard first, in a sheet. The start offers *Paste from clipboard*
@@ -81,6 +88,12 @@
 	let busy = $state(false)
 	/** The copy is in and the sheet is sliding away: it stays busy until it is gone. */
 	let leaving = false
+
+	/** The link step's hint, with where to keep a copy as links. */
+	const hintParts = $derived.by(() => {
+		void lang
+		return linkHintParts()
+	})
 
 	const failureText = $derived.by(() => {
 		void lang
@@ -281,7 +294,15 @@
 				{tr("backup.linkLabel")}
 				<input type="url" inputmode="url" autocomplete="off" spellcheck="false" bind:value={link}>
 			</label>
-			<p class="hint">{tr("backup.linkHint")}</p>
+			<p class="hint">
+				{#each hintParts as part, index (index)}
+					{#if part.href}
+						<a href={part.href} target="_blank" rel="noopener noreferrer">{part.text}</a>
+					{:else}
+						{part.text}
+					{/if}
+				{/each}
+			</p>
 			<div class="foot">
 				<button
 					type="button"

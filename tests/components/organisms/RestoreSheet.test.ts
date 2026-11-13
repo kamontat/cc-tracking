@@ -577,6 +577,19 @@ test("from a link opens a step with the address field and Restore, quiet beside 
 	})
 })
 
+test("the link step's hint links to GitHub Gist and PasteFox, each in a new tab", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		const sheet = await show(new InMemoryRepository())
+		await sheet.click("from-link")
+		const links = [...sheet.root.querySelectorAll<HTMLAnchorElement>(".hint a")]
+		expect(links.map((link) => [link.textContent, link.getAttribute("href"), link.target, link.rel])).toEqual([
+			["GitHub Gist", "https://gist.github.com/", "_blank", "noopener noreferrer"],
+			["PasteFox", "https://pastefox.com/create", "_blank", "noopener noreferrer"],
+		])
+		expect(sheet.root.querySelector(".hint")?.textContent).toContain("then paste its raw link.")
+	})
+})
+
 test("a link restores into an empty browser at once, named by its file", async () => {
 	const text = await oneCardBackup()
 	await withClipboard({ readText: async () => "" }, async () => {
