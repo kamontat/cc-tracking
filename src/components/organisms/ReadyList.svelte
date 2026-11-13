@@ -100,7 +100,7 @@
 			<div class="note">
 				<p>{tr("ready.empty")}</p>
 				<p>{tr("quickAdd.noEligible")}</p>
-				<a data-action="settings" href="/settings/locations">{tr("ready.toSettings")}</a>
+				<a data-action="settings" href="/settings?panel=locations">{tr("ready.toSettings")}</a>
 			</div>
 		</section>
 	{:else if count === 0}

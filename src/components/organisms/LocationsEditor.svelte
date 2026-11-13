@@ -16,7 +16,7 @@
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * The Locations page's island (`/settings/locations`, RD-17): one block per location record,
+	 * The Locations panel's body (`/settings?panel=locations`, RD-17): one block per location record,
 	 * A to Z by shown name, with its card count (archived cards too), *Rename*, *Delete* while no
 	 * card is kept there and it is not the last record, and *Takes purchases*. Then a warning
 	 * when nowhere takes purchases, and *Add a location*, whose id comes from `locationId` and
@@ -26,9 +26,11 @@
 	interface Props {
 		/** Opens the store; tests pass one over an in-memory repository. */
 		open?: () => Promise<Opened>
+		/** A write went through, so Settings can sum the records up again. */
+		onchange?: () => void
 	}
 
-	const { open = () => openRepository() }: Props = $props()
+	const { open = () => openRepository(), onchange }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -87,6 +89,7 @@
 			await action(store)
 			done = true
 		}, messageKey)
+		if (done) onchange?.()
 		return done
 	}
 

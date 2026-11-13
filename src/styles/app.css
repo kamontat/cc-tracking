@@ -296,11 +296,6 @@ a:any-link:hover {
 	max-width: var(--cc-page-narrow);
 }
 
-/* A form page (the card form) keeps its narrow measure at every width. */
-.page--form {
-	max-width: var(--cc-page-narrow);
-}
-
 @media (min-width: 900px) {
 	.page--narrow {
 		max-width: var(--cc-page-width);
@@ -570,6 +565,12 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
+/* The row whose panel is open beside Settings (Locations, Owners): its label and › in the accent. */
+.page .set-row[aria-current="true"],
+.set-row[aria-current="true"] .set-row__chev {
+	color: var(--cc-accent);
+}
+
 /* *Delete all data*, asked: the warning over *Keep my data* and *Delete everything*, side by
    side, in the row's place. */
 .set-ask {
@@ -604,7 +605,7 @@ a:any-link:hover {
 }
 
 /*
- * The Locations and Owners pages (prototype `vLocations`, RD-17, RD-30): one `.set` panel with
+ * The Locations and Owners panels (prototype `vLocations`, RD-17, RD-30): one `.set` panel with
  * a block per record -- its name and count beside *Rename* and *Delete* (or the name field, or
  * the asking *Delete* and *Cancel* on the same line), and on Locations *Takes purchases* under
  * them -- then the notes and the add field.

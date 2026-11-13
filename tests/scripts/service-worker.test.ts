@@ -22,11 +22,11 @@ const writeDist = async (files: Record<string, string>) => {
 }
 
 test("a page is cached at the address Cloudflare serves it from, without .html", () => {
-	expect(precacheUrls(["index.html", "cards.html", "cards/limits.html", "settings/locations.html"])).toEqual([
+	expect(precacheUrls(["index.html", "cards.html", "cards/limits.html", "transactions/lists.html"])).toEqual([
 		"/",
 		"/cards",
 		"/cards/limits",
-		"/settings/locations",
+		"/transactions/lists",
 	])
 })
 

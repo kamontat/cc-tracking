@@ -29,8 +29,6 @@ export const th: Catalog = {
 	"title.lists": "ใบรายการซื้อ — cc-tracking",
 	"title.listEdit": "ใบรายการซื้อ — cc-tracking",
 	"title.settings": "ตั้งค่า — cc-tracking",
-	"title.locations": "สถานที่ — cc-tracking",
-	"title.owners": "เจ้าของบัตร — cc-tracking",
 	"title.transactions": "รายการเคลื่อนไหว — cc-tracking",
 	"title.listNew": "ใบรายการซื้อใหม่ — cc-tracking",
 	"pay.title": "ชำระเงิน",

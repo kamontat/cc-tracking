@@ -64,7 +64,7 @@ import AppLayout from "#layouts/AppLayout.astro"
   the copy pass translates (adding the build's mark).
 - `tab` is the place the page belongs to (`/owed` and `/ready` under Home, the list pages
   under Transactions, `/cards/limits` under Cards, Locations under Settings).
-- `mainClass` is the width (`page--narrow`, `page--form`); leave it out for the full width.
+- `mainClass` is the width (`page--narrow`); leave it out for the full width.
 - The page itself stays static: no `<script>`. The island opens the store with
   `openRepository()` (`#lib/ui/startup`), loads through `createPageState`
   (`#lib/ui/page-state`) and reads and writes its address through the `AddressBar` seam
@@ -98,20 +98,18 @@ own static page, so this changes nothing in `ENDPOINTS.md`. What follows from it
 A page composes components inside `AppLayout`'s `main` slot and keeps the page-level
 decisions — which sections, in which order, and what is the same for every reader (tab,
 title, width). What is the same for every reader stays `.astro`; only what shows the reader's
-data is the island. Settings > Locations has a static sub-header over its island:
+data is the island. A new purchase list is all the reader's data, so its page is the island alone:
 
 ```astro
 ---
-import SubHeader from "#components/molecules/SubHeader.astro"
-import LocationsEditor from "#components/organisms/LocationsEditor.svelte"
+import ListNewPage from "#components/organisms/ListNewPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<!-- Settings > Locations (RD-17): a static sub-header, and the reader's locations as an island. -->
-<AppLayout title="Locations" titleKey="title.locations" tab="settings" mainClass="page--form">
+<!-- A new purchase list, a full page under the Lists tab (RD-26): the builder as an island. -->
+<AppLayout title="New purchase list" titleKey="title.listNew" tab="transactions" mainClass="page--narrow">
 	<Fragment slot="main">
-		<SubHeader titleKey="settings.locations.title" back="/settings" />
-		<LocationsEditor client:load />
+		<ListNewPage client:load />
 	</Fragment>
 </AppLayout>
 ```

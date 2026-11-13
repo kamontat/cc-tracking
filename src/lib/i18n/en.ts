@@ -20,8 +20,6 @@ export const en = {
 	"title.lists": "Lists — cc-tracking",
 	"title.listEdit": "Purchase list — cc-tracking",
 	"title.settings": "Settings — cc-tracking",
-	"title.locations": "Locations — cc-tracking",
-	"title.owners": "Owners — cc-tracking",
 	"title.transactions": "Transactions — cc-tracking",
 	"title.listNew": "New purchase list — cc-tracking",
 	"pay.title": "Make a payment",
