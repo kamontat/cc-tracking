@@ -226,6 +226,7 @@ test("the backup rows: download names the file it saves, copy and restore say wh
 		expect(row(root, "download").textContent).toContain(`cc-tracking-${today}.json`)
 		expect(row(root, "copy").textContent).toContain("To paste into another browser")
 		expect(row(root, "restore").textContent).toContain("Restore a copy")
+		expect(row(root, "restore").textContent).toContain("From pasted text, a file or a link")
 	})
 })
 

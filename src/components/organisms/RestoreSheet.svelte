@@ -6,6 +6,7 @@
 
 	import { onMount } from "svelte"
 
+	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import Sheet from "#components/molecules/Sheet.svelte"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { migrateLocations } from "#lib/storage/migrate-locations"
@@ -22,12 +23,14 @@
 		replaceWithBackupV4,
 	} from "#lib/storage/transfer-v4"
 	import { countsText } from "#lib/ui/record-counts"
-	import { canReadClipboard, restoreFailureText } from "#lib/ui/restore"
+	import { canReadClipboard, fetchBackupText, isWebAddress, linkName, restoreFailureText } from "#lib/ui/restore"
 
 	/**
 	 * *Restore a copy*, clipboard first, in a sheet. The start offers *Paste from clipboard*
-	 * (primary), *Choose a file* and *Paste by hand*; a browser that cannot read the clipboard
-	 * opens on the text area instead. The clipboard and a file are parsed at once. Into an empty
+	 * (primary), *Choose a file*, *From a link* and *Paste by hand*; a browser that cannot read the
+	 * clipboard opens on the text area instead, with *From a link* under it. *From a link* fetches
+	 * the address typed in and names the copy by the link's file. The clipboard and a file are
+	 * parsed at once. Into an empty
 	 * browser (no records, and locations only the untouched starting places) the copy goes in
 	 * straight away, its locations over the seeded ones; otherwise the sheet shows both counts
 	 * and asks *Merge* or *Replace*. After any write the starting locations are seeded and every
@@ -62,8 +65,13 @@
 	}
 
 	let sheet: { leave: (then: () => void) => void } | undefined = $state()
-	let step = $state<RestoreStep>(canReadClipboard() ? "start" : "paste")
+	/** Whether the start step is on offer; without it the sheet opens on the text area. */
+	const clipboard = canReadClipboard()
+	let step = $state<RestoreStep>(clipboard ? "start" : "paste")
+	/** Which way the step last slid: in going forward, out on *Back*. None for the first step. */
+	let slide = $state<"in" | "out" | undefined>()
 	let text = $state("")
+	let link = $state("")
 	/** The clipboard read was refused, so the text area says to paste by hand. */
 	let refused = $state(false)
 	/** Why the last parse or write failed, kept raw so a language switch re-translates it. */
@@ -138,6 +146,7 @@
 				read = await navigator.clipboard.readText()
 			} catch {
 				refused = true
+				slide = "in"
 				step = "paste"
 				return
 			}
@@ -150,6 +159,15 @@
 		if (!file) return
 		input.value = ""
 		return run(async () => start(file.name, await file.text()))
+	}
+
+	const onLink = () => run(async () => start(linkName(link), await fetchBackupText(link)))
+
+	/** Moves to `next`, sliding it in from the end, or from the start on `back`, leaving the last failure behind. */
+	const goTo = (next: RestoreStep, back = false) => {
+		failure = null
+		slide = back ? "out" : "in"
+		step = next
 	}
 
 	const answer = (replace: boolean) => {
@@ -212,7 +230,7 @@
 			</button>
 		</div>
 	{:else if step === "paste"}
-		<div class="step" data-step="paste">
+		<div class="step" data-step="paste" data-slide={slide}>
 			{#if refused}
 				<p class="hint">{tr("backup.clipboardRefused")}</p>
 			{/if}
@@ -220,29 +238,89 @@
 				{tr("backup.pasteLabel")}
 				<textarea rows="6" spellcheck="false" bind:value={text}></textarea>
 			</label>
-			<button type="button" data-action="import-text" disabled={busy} onclick={() => run(() => start(undefined, text))}>
-				{tr("backup.importText")}
-			</button>
+			<div class="foot">
+				{#if clipboard}
+					<button
+						type="button"
+						data-variant="quiet"
+						data-action="back"
+						disabled={busy}
+						onclick={() => goTo("start", true)}>
+						<SvgIcon name="back" />
+						{tr("common.back")}
+					</button>
+				{/if}
+				<button
+					type="button"
+					data-variant="quiet"
+					data-action="import-text"
+					disabled={busy || text.trim() === ""}
+					onclick={() => run(() => start(undefined, text))}>
+					<SvgIcon name="restore" />
+					{tr("backup.importText")}
+				</button>
+			</div>
+			{#if !clipboard}
+				<button type="button" data-variant="quiet" data-action="from-link" disabled={busy} onclick={() => goTo("link")}>
+					<SvgIcon name="link" />
+					{tr("backup.fromLink")}
+				</button>
+			{/if}
 		</div>
+	{:else if step === "link"}
+		<form
+			class="step"
+			data-step="link"
+			data-slide={slide}
+			novalidate
+			onsubmit={(event) => {
+				event.preventDefault()
+				if (isWebAddress(link)) onLink()
+			}}>
+			<label>
+				{tr("backup.linkLabel")}
+				<input type="url" inputmode="url" autocomplete="off" spellcheck="false" bind:value={link}>
+			</label>
+			<p class="hint">{tr("backup.linkHint")}</p>
+			<div class="foot">
+				<button
+					type="button"
+					data-variant="quiet"
+					data-action="back"
+					disabled={busy}
+					onclick={() => goTo(clipboard ? "start" : "paste", true)}>
+					<SvgIcon name="back" />
+					{tr("common.back")}
+				</button>
+				<button type="submit" data-variant="quiet" data-action="import-link" disabled={busy || !isWebAddress(link)}>
+					<SvgIcon name="restore" />
+					{tr("backup.importText")}
+				</button>
+			</div>
+		</form>
 	{:else}
-		<div class="step" data-step="start">
-			<button type="button" data-action="paste-clipboard" disabled={busy} onclick={onClipboard}>
+		<div class="step" data-step="start" data-slide={slide}>
+			<button type="button" data-variant="quiet" data-action="paste-clipboard" disabled={busy} onclick={onClipboard}>
+				<SvgIcon name="clipboard" />
 				{tr("backup.fromClipboard")}
 			</button>
 			<label class="file">
+				<SvgIcon name="file" />
 				{tr("backup.import")}
 				<input type="file" accept="application/json" data-action="choose-file" disabled={busy} onchange={onFile}>
 			</label>
+			<button type="button" data-variant="quiet" data-action="from-link" disabled={busy} onclick={() => goTo("link")}>
+				<SvgIcon name="link" />
+				{tr("backup.fromLink")}
+			</button>
 			<button
 				type="button"
 				class="by-hand"
 				data-variant="quiet"
 				data-action="paste-by-hand"
 				disabled={busy}
-				onclick={() => {
-					failure = null
-					step = "paste"
-				}}>
+				onclick={() => goTo("paste")}>
+				<SvgIcon name="keyboard" />
 				{tr("backup.paste")}
 			</button>
 		</div>
@@ -256,8 +334,46 @@
 		gap: var(--cc-space-3);
 	}
 
+	/* A step slides in from the end, as a page pushed on; *Back* brings the step before in from the
+	   start. The same motion as the detail panel's form (DD-205). */
+	.step[data-slide="in"] {
+		animation: restore-forward var(--cc-sheet-motion) var(--cc-sheet-ease);
+	}
+
+	.step[data-slide="out"] {
+		animation: restore-backward var(--cc-sheet-motion) var(--cc-sheet-ease);
+	}
+
+	@keyframes restore-forward {
+		from {
+			opacity: 0;
+			transform: translateX(var(--cc-space-7));
+		}
+	}
+
+	@keyframes restore-backward {
+		from {
+			opacity: 0;
+			transform: translateX(calc(var(--cc-space-7) * -1));
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.step[data-slide] {
+			animation: none;
+		}
+	}
+
+	/* Every way in, Back and Restore are the same quiet button, an icon before the words. */
 	.step > button,
+	.foot > button,
 	.file {
+		display: flex;
+		/* A label is a column app-wide; the icon sits before the words. */
+		flex-direction: row;
+		gap: var(--cc-space-2);
+		align-items: center;
+		justify-content: center;
 		align-self: stretch;
 		padding: var(--cc-space-3) var(--cc-space-4);
 		font-size: var(--cc-text-md);
@@ -269,7 +385,9 @@
 	   the layout and the tab order, so the label's focus ring follows the keyboard. */
 	.file {
 		position: relative;
-		display: block;
+		/* A label takes the body's leading; a button's is tighter, so match it or the file
+		   choice stands taller than the buttons around it. */
+		line-height: 1.2;
 		color: var(--cc-text);
 		cursor: pointer;
 		background: var(--cc-surface-sunken);
@@ -295,8 +413,21 @@
 		opacity: 0;
 	}
 
-	/* *Paste by hand* reads as a text link, the least of the three ways in. */
+	/* Back and Restore share a line, Restore taking the room Back leaves. */
+	.foot {
+		display: flex;
+		/* The reset makes every div a column. */
+		flex-direction: row;
+		gap: var(--cc-space-2);
+	}
+
+	.foot > [data-action^="import"] {
+		flex: 1;
+	}
+
+	/* *Paste by hand* reads as a text link, the least of the ways in. */
 	.step > .by-hand {
+		gap: var(--cc-space-1);
 		align-self: center;
 		padding: var(--cc-space-1);
 		font-size: var(--cc-text-sm);
@@ -311,7 +442,14 @@
 		background: transparent;
 	}
 
-	.step textarea {
+	.step :global(.icon) {
+		flex: none;
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
+	}
+
+	.step textarea,
+	.step input[type="url"] {
 		inline-size: 100%;
 		padding: var(--cc-space-2);
 		font-family: var(--cc-font-mono);

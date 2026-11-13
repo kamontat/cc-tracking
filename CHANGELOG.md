@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, and statements listed newest first
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link
 
 ### BREAKING CHANGES
 
@@ -65,6 +65,13 @@ reasons don't show up in the code.
   `--seed <text>` draws the same file again. `tests/scripts/mock-data.test.ts` checks every
   scenario through the domain functions across several days and seeds.
 
+- _Restore a copy_ can fetch a backup from a link: _From a link_ opens a step with an address
+  field, and the copy goes through the same checks and _Merge_ or _Replace_ as a file, named by
+  the link's file. A link that is not an http or https address, cannot be reached (most often a
+  site that does not allow cross-site reads) or answers with an error says why and writes
+  nothing (DD-208). Keys added: `backup.fromLink`, `backup.linkLabel`, `backup.linkHint`,
+  `backup.link.notAddress`, `backup.link.unreachable` and `backup.link.status`.
+
 ### Improvements
 
 - Beside an open panel, Settings stacks its two columns into one when the page has less than
@@ -105,6 +112,15 @@ reasons don't show up in the code.
 - An unfolded statement on a card lists its purchases and payments newest first, as the
   statements themselves are; on one day a purchase still comes before a payment (DD-122).
 
+- The restore sheet's link and text steps have _Back_, and their _Restore_ waits for a web
+  address or for text. Going to either step slides it in, and _Back_ slides the step before in
+  from the other side; reduced motion turns it off.
+
+- Every way into a restore, _Back_ and _Restore_ are the same quiet button led by an icon
+  (clipboard, file, link, back, restore; new `clipboard`, `file`, `link`, `keyboard` and
+  `restore` icons). _Paste by hand_ stays a text link, with a keyboard icon, and _Merge_ stays
+  primary. The Settings row reads "From pasted text, a file or a link".
+
 ### Bug fixes
 
 - On a phone, opening a form in a card's or a limit's sheet no longer jumps to the full screen
@@ -116,6 +132,9 @@ reasons don't show up in the code.
 - An unfolded statement's _Edit_ and _Delete_ no longer stack on two lines in the side column
   from 900px: they share a line under the date and amount, and join the row only when the panel
   itself is wide enough (a container query on the panel instead of a screen-width media query).
+
+- _Choose a file_ in the restore sheet is as tall as the buttons beside it: as a label it took
+  the body's line height.
 
 ### Decisions
 
@@ -150,6 +169,11 @@ reasons don't show up in the code.
 - The mock data is a backup file rather than a seed the app loads itself, so it goes in and out
   through the same restore checks as real data, and nothing extra ships to production. The
   scenarios are built per role, with the randomness only around them, so no seed can lose one.
+
+- Restore from a link fetches a backup file from a URL, the user's choice over packing the backup
+  into an app link. The browser does the fetch, so only sites that allow cross-site reads work
+  (a raw GitHub or gist link does); share links (Google Drive, Dropbox) are not rewritten into
+  direct downloads, and the message points to downloading the file instead.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
