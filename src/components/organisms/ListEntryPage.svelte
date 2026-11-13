@@ -8,7 +8,7 @@
 	import type { MoneyData } from "#lib/ui/money-data"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount, tick } from "svelte"
+	import { onMount, tick, untrack } from "svelte"
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
@@ -101,8 +101,8 @@
 		return t(key, params)
 	}
 
-	const search = address.search()
-	const now = today(clock())
+	const search = untrack(() => address.search())
+	const now = untrack(() => today(clock()))
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
 	let view = $state<View>("loading")
@@ -131,7 +131,7 @@
 	// Whether this page pushed the entry now showing: closing the sheet then steps back, so the
 	// list is not in history twice.
 	let pushed = false
-	const path = mode === "new" ? NEW_LIST_ADDRESS : EDIT_LIST_ADDRESS
+	const path = untrack(() => (mode === "new" ? NEW_LIST_ADDRESS : EDIT_LIST_ADDRESS))
 	/** Where a write leaves for: the list's panel on the Lists tab, or with no list the tab itself. */
 	const after = (id?: string) => (id ? listPanelAddress(id) : LISTS_ADDRESS)
 	const back = LISTS_ADDRESS

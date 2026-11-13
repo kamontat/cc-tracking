@@ -1,5 +1,5 @@
 import { loadRenderers } from "astro:container"
-import { getContainerRenderer as svelteRenderer } from "@astrojs/svelte"
+import { getContainerRenderer as svelteRenderer } from "@astrojs/svelte/container-renderer"
 import { experimental_AstroContainer as AstroContainer } from "astro/container"
 import { Window } from "happy-dom"
 

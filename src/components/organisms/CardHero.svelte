@@ -175,10 +175,6 @@
 		border-color: transparent;
 	}
 
-	.hero p {
-		margin: 0;
-	}
-
 	.who,
 	.used {
 		font-size: var(--cc-text-xs);

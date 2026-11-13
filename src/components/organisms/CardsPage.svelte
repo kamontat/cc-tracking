@@ -7,7 +7,7 @@
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
@@ -71,7 +71,7 @@
 	}
 
 	/** The card panel's place in the address and history (RD-23). */
-	const panel = new RecordPanel({ address, path: "/cards", kinds: ["card"] })
+	const panel = untrack(() => new RecordPanel({ address, path: "/cards", kinds: ["card"] }))
 
 	/** Everything the page draws from, read once per load. */
 	type CardsData = { money: MoneyData; rooms: CardsRooms; credits: Map<string, number> }
@@ -82,11 +82,11 @@
 		return t(key, params)
 	}
 
-	const now = today(clock())
+	const now = untrack(() => today(clock()))
 	let repo: Repository | null = null
 	let data = $state.raw<CardsData | null>(null)
 	// No location is known before the first load, so the address is read again once one lands.
-	let view = $state.raw<CardsView>(readCardsView(address.search(), []))
+	let view = $state.raw<CardsView>(untrack(() => readCardsView(address.search(), [])))
 	// The filter sheet takes a fresh copy of the view, so its draft starts there.
 	let filterOpen = $state(false)
 	/** The tab the filter sheet opens on: the control that opened it. */

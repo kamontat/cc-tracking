@@ -8,7 +8,7 @@
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
@@ -69,7 +69,7 @@
 	}
 
 	/** The card a row's _Open card_ opened, in the address and history (RD-23). */
-	const panel = new RecordPanel({ address, path: LEDGER_ADDRESS, kinds: ["card"] })
+	const panel = untrack(() => new RecordPanel({ address, path: LEDGER_ADDRESS, kinds: ["card"] }))
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -77,10 +77,10 @@
 		return t(key, params)
 	}
 
-	const now = today(clock())
+	const now = untrack(() => today(clock()))
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
-	let view = $state.raw<LedgerView>(readLedgerView(address.search()))
+	let view = $state.raw<LedgerView>(untrack(() => readLedgerView(address.search())))
 	// The filter sheet takes a fresh copy of the view, so its draft starts there.
 	let sheetOpen = $state(false)
 	/** The tab the filter sheet opens on: the control that opened it. */
