@@ -94,6 +94,15 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   the static `SubHeader.astro` takes a catalog key instead), and `#lib/ui/card-label` (a
   card's name in its text forms; never copy it), and `ActionRow.svelte` (molecule; the row that
   opens in place, with `TwoStepButtons` for a two-step _Delete_ or _Confirm_).
+- The detail panel (PRD RD-23, DD-196) is three pieces; never build another. `RecordPanel`
+  (`#lib/ui/record-panel.svelte`) is the open record in the address (`card`, `limit`, `list`)
+  and every step through history: the page makes one over its `AddressBar` (`path`, `kinds`),
+  calls `start()` in `onMount`, writes its own address through `panel.keep(url)`, and calls
+  `show(ref)` from a list, `deeper(ref)` from inside a panel, `openForm`, `blank(kind)`, `back`,
+  `close`, `created(ref)`. `DetailPanel.svelte` (molecule) draws the column or sheet and its
+  head; the page wraps its list and the panel in `.panel-layout` (`data-panel` while open,
+  app.css). A kind's content is an organism that reads the store itself, as `CardPanel.svelte`
+  does, so any page can hold it. `PurchaseForm.svelte` is the purchase form without a sheet.
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.

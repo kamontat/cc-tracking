@@ -1,8 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: `/list/new` and `/list/draft`, 2026-11-11,
-PRD DD-195). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: `card` on `/cards`, 2026-11-13, PRD DD-196). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -17,7 +16,8 @@ replaced by the tabs-and-panel plan: tabs as paths (`/owed`, `/ready`, `/transac
 `/cards/limits`), the open record in the query (`card`, `limit`, `list`), filters prefixed `f.`,
 and `/card`, `/pay`, `/list/*` and the `/backup` redirect retired. The full list is in
 `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`. This file stays in step with the
-code: each part of the plan rewrites the addresses it changes here as it ships.
+code: each part of the plan rewrites the addresses it changes here as it ships. Shipped so far:
+`card` on `/cards` (part 2, DD-196).
 
 ## Redirects
 
@@ -89,9 +89,21 @@ Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/
 | `by`       | `place`, `holder`, `limit`, `none`     | `place`        | Sections: each place, each account holder, each limit group (A to Z), or one flat list.                                                                                                  |
 | `group`    | limit group id                         | none           | Opens the limit group sheet on that group.                                                                                                                                               |
 | `newGroup` | `1`                                    | none           | Opens a blank limit group sheet; wins over `group`.                                                                                                                                      |
+| `card`     | card id                                | none           | Opens the card's detail panel (RD-23). An empty id, an id not in the card id format (RD-28) or a card not stored opens nothing, and the key is taken out of the address.                 |
 
 Switching the view, filter and sort changes rewrite the address (`replaceState`); opening a group sheet pushes
 one (`pushState`), keeping the other keys. Example: `/cards?owner=KC&sort=room&group=<id>`.
+
+The card panel (DD-196): a tile's click opens it, pushing `card` when no panel is open and
+rewriting the entry when one is, so Back closes it rather than walking through every card seen.
+Every address the page rewrites keeps `card`. No form in the panel is in the address: _Edit_,
+_Add purchase_, a purchase's _Edit_ and _Make a payment_ push an entry with the address unchanged
+(Back returns to the card, and a reload shows the card); _Add card_ opens a blank card form with
+the address unchanged (pushed when no panel is open, else over the open card's entry without
+`card`), and adding the card writes `card=<new id>` over that entry. Closing (×, Escape, the
+backdrop) steps back over every entry the panel pushed, or, on an address opened with `card`
+already in it, rewrites it without `card`. A tile links to `/cards?card=<id>`, which a new tab
+opens. Example: `/cards?q=kbank&card=12.3`.
 
 ### `/card`
 
@@ -99,7 +111,8 @@ one (`pushState`), keeping the other keys. Example: `/cards?owner=KC&sort=room&g
 | ---- | ------- | --------------------------------------------------------- |
 | `id` | card id | Required. A missing or unknown id shows "card not found". |
 
-- `/card?id=<id>` -- the card's page.
+- `/card?id=<id>` -- the card's page. Still served; the Cards page opens a card in its panel
+  instead (`/cards?card=<id>`), and this page retires with the rest of the plan.
 
 ### `/card/new`
 
