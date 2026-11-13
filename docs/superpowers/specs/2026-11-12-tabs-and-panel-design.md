@@ -83,6 +83,9 @@ Back leaves without asking, as leaving a page does today (no page guards a form 
   (the picker), picking a card rewrites it to `open=<card id>`, and _Add to list_, _Remove from
   list_, _Done_ or × close it by stepping back over its entry, writing the cards into `cards`.
   On a desktop the sheet is a dialog in the middle, as today.
+- The _Lists_ tab has _+ Add list_ at the end of its search row, going to `/lists/new`, as
+  _Cards_ has _+ Add card_ and _Limits_ _+ Add limit_ (the user asked, 2026-11-13). The three are
+  the same quiet button.
 - A card's _Use on a list_ starts one with that card: `/lists/new?cards=<id>`.
 - A draft's _Continue_ and a waiting list's _Enter reply_ (in the list's panel) go to
   `/lists/edit?list=<id>`: the builder on the draft, or the reply. A saved list has no edit page;

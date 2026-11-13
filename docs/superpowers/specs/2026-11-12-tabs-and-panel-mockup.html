@@ -200,7 +200,7 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 			</ul></div>
 			<div><h4>Transactions</h4><ul>
 				<li><em>Ledger</em>: a row still opens in place; its <em>Open card</em> opens the card's panel over the ledger.</li>
-				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page.</li>
+				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page. <em>+ Add list</em> starts a new one (<code>/lists/new</code>), as <em>+ Add card</em> and <em>+ Add limit</em> do on their tabs.</li>
 			</ul></div>
 			<div><h4>+ New</h4><ul>
 				<li><em>+</em> opens <em>New list</em> and <em>Pay a card</em>, on every tab.</li>
@@ -305,7 +305,7 @@ const cname = (c) => `<span class="name">${h(c.name)} <span class="id">${c.id}</
 
 function cardsTab(s) {
 	if (s.path === "/cards/limits") {
-		return `<div class="tools"><input class="search" placeholder="Search limits"><button class="btn" data-variant="quiet">Sort: Name ▾</button><button class="btn" data-do="limit:new">+ Add limit</button></div>
+		return `<div class="tools"><input class="search" placeholder="Search limits"><button class="btn" data-variant="quiet">Sort: Name ▾</button><button class="btn" data-variant="quiet" data-do="limit:new">+ Add limit</button></div>
 		<div class="panelbox rows">${LIMITS.map((l) => {
 			const u = used(l), pct = Math.round((u / l.cap) * 100)
 			return `<button class="row c-${l.color}" data-do="limit:${l.id}" aria-current="${s.limit === l.id}"><span class="chip"></span><span><span class="name">${h(l.name)}</span><small>${CARDS.filter((c) => c.limit === l.id).length} cards · ${baht(u)} of ${baht(l.cap)}</small><span class="meter"><i class="${pct > 75 ? "hot" : ""}" style="inline-size:${pct}%"></i></span></span><span class="money"><b>${baht(l.cap - u)}</b><small>room</small></span></button>`
@@ -318,7 +318,7 @@ function cardsTab(s) {
 
 function txTab(s) {
 	if (s.path === "/transactions/lists") {
-		return `<div class="tools"><input class="search" placeholder="Search card or note"><button class="btn" data-variant="quiet">Filter</button></div>
+		return `<div class="tools"><input class="search" placeholder="Search card or note"><button class="btn" data-variant="quiet">Filter</button><button class="btn" data-variant="quiet" data-do="newlist">+ Add list</button></div>
 		${["draft", "sent", "saved"].map((st) => `<section class="sect"><h3>${STATUS[st]}</h3><div class="panelbox rows">${LISTS.filter((l) => l.status === st).map((l) => `<button class="row" data-do="list:${l.id}" aria-current="${s.list === l.id}"><span class="badge ${l.status}">${l.date}</span><span><span class="name">${l.lines.map(([id]) => card(id).name).join(", ")}</span><small>${l.lines.length} cards</small></span><b class="money">${baht(l.lines.reduce((a, [, n]) => a + n, 0))}</b></button>`).join("")}</div></section>`).join("")}`
 	}
 	return `<div class="tools"><input class="search" placeholder="Search card or note"><button class="btn" data-variant="quiet">Filter</button></div>
