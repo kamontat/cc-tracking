@@ -136,6 +136,11 @@
 	/* The purchase list's side panel from 900px: the date, the summary and the one action. */
 	--cc-side-panel: 20rem;
 
+	/* The detail panel (RD-23): its column beside the list from 900px, and how much of the
+	   screen's height its sheet takes below that. */
+	--cc-detail-panel: 25rem;
+	--cc-detail-sheet-height: 92dvh;
+
 	/* A `select` left at `appearance: auto` reserves its own arrow area — about 20px in Chrome,
 	   more in Safari — inside the border box and on top of whatever padding we set, so its right
 	   inset stops matching the inputs beside it and changes per browser. `controls` paints this
