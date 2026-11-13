@@ -341,14 +341,15 @@
 		cursor: pointer;
 		background: transparent;
 		border: 0;
-		border-radius: var(--cc-radius-sm);
+		border-radius: 0;
 	}
 
 	.panel div.crow {
 		cursor: default;
 	}
 
-	/* Hover is a quiet ground, never an underline (DD-105), carried across the side padding. */
+	/* Hover is a quiet ground, never an underline (DD-105), carried across the side padding: a
+	   square band that meets the panel's edges, as every row list's does (DD-109). */
 	.panel button.crow:hover {
 		text-decoration: none;
 		background: var(--cc-surface-sunken);
