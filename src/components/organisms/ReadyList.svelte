@@ -35,15 +35,13 @@
 		locations?: LocationRecord[]
 		/** Kept for the page's clock; the tiles' dates come with the rows. */
 		today: PlainDate
-		/** How many unarchived cards that could take a purchase point at no limit group. */
-		unassigned: number
 		/** The card open in the panel now, whose tile is marked. */
 		current?: string | null
 		/** A tile's plain click: open the card's panel. */
 		onopencard?: (id: string) => void
 	}
 
-	const { results, total, places, groups, locations = [], unassigned, current = null, onopencard }: Props = $props()
+	const { results, total, places, groups, locations = [], current = null, onopencard }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -114,12 +112,6 @@
 				head={results.flat ? head : undefined}
 				{tile} />
 		</div>
-	{/if}
-	{#if unassigned > 0}
-		<p class="sub" data-testid="unassigned">
-			{tr(unassigned === 1 ? "spendable.unassigned.one" : "spendable.unassigned.many", { count: unassigned })}
-			<a href="/cards?ungrouped=1">{tr("spendable.unassignedAction")}</a>
-		</p>
 	{/if}
 </div>
 

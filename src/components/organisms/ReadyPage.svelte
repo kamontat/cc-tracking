@@ -14,10 +14,8 @@
 	import CardListFilter from "#components/organisms/CardListFilter.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import ReadyList from "#components/organisms/ReadyList.svelte"
-	import { canPurchase } from "#lib/domain/card"
 	import { today } from "#lib/domain/date"
 	import { DEFAULT_READY_VIEW, READY_DIRS, READY_SORTS, readyResults, readyRows } from "#lib/domain/home"
-	import { unassignedCards } from "#lib/domain/limit"
 	import { nameOfLocation, placeOrder, purchasePlaces } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
@@ -111,11 +109,6 @@
 		void lang
 		return data ? purchasePlaces(data.locations) : []
 	})
-	const unassigned = $derived(
-		data
-			? unassignedCards(data.cards, data.groups).filter((card) => canPurchase(card, data?.locations ?? [])).length
-			: 0,
-	)
 
 	// Sorted on every paint, so the place sections follow a language switch.
 	const order = $derived.by(() => {
@@ -221,7 +214,6 @@
 				groups={data.groups}
 				locations={data.locations}
 				today={now}
-				{unassigned}
 				current={panel.record?.kind === "card" ? panel.record.id : null}
 				onopencard={(id) => panel.show({ kind: "card", id })} />
 			{#if filterOpen}

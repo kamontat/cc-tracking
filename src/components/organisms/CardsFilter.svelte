@@ -12,7 +12,7 @@
 
 	/**
 	 * The Cards page's filter sheet: the sheet every list of cards shares (`CardListFilter`) under
-	 * the heading *Filter cards*, with Cards' sorts and, after the account holders, *Not in a group*.
+	 * the heading *Filter cards*, with Cards' sorts.
 	 * Only the apply button hands the draft back, once the sheet has slid away (`onapply`). Close,
 	 * Escape and the backdrop call `onclose`.
 	 */
@@ -56,5 +56,4 @@
 	{locations}
 	{count}
 	{onapply}
-	{onclose}>
-</CardListFilter>
+	{onclose} />

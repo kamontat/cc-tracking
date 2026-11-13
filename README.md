@@ -82,8 +82,8 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
 - `/pay` — _Make a payment_: pick a card, then a sheet takes the amount, the date
   and a note. A date after today saves it as a planned payment.
 - `/cards` and `/cards/limits` — Cards' two tabs, _Cards_ and _Limits_, one at a
-  time on every screen. The cards are searchable, filterable (including _Not in a
-  group_, `/cards?ungrouped=1`) and sortable, and a card opens in its panel
+  time on every screen. The cards are searchable, filterable and sortable, and a
+  card opens in its panel
   (`?card=<id>`). The limit groups are searchable, filterable by holder and
   sortable; a group opens in its panel (`?limit=<id>`), where it is edited, and
   _+ Add limit_ adds one; each group has a colour, one of 12 swatches or _Random_.
@@ -159,10 +159,10 @@ a real purchase goes unrecorded. While amounts are entered on a list, going over
 is a warning with _Lower to_ the room left; a purchase added on the card page
 that goes over says by how much, once, under the card's hero.
 
-A card stored before limit groups existed has no group at all. It shows under
-the _Not in a group_ filter (`/cards?ungrouped=1`) and is left out of _Ready to
-use_ until it is edited once and a group is chosen — the card form will not save
-a card without one.
+Every card has a limit group: the card form will not save a card without one,
+and restore refuses a file with a card that has none or names a group not in it.
+A card that still meets none (a hand-edited store) is invalid data, left out of
+every list.
 
 ## How statements work
 

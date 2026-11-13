@@ -207,12 +207,12 @@ test("grouped, the tiles sit in Cards' sections, each headed by its name and cou
 		locations: [{ id: "krabi", name: "Krabi", takesPurchases: true }],
 		sections: [
 			{ key: "holder:KC", kind: "holder", owner: "KC", cards: [b] },
-			{ key: "holder:none", kind: "holder", owner: null, cards: [a] },
+			{ key: "holder:RI", kind: "holder", owner: "RI", cards: [a] },
 		],
 	} as Partial<Props>)
 	expect([...root.querySelectorAll("section[data-section]")].map((el) => flat(el.querySelector("h2")))).toEqual([
 		"KC 1 card",
-		"No account holder 1 card",
+		"RI 1 card",
 	])
 	expect(root.querySelectorAll('section[data-section] [data-action="pay"]')).toHaveLength(2)
 })

@@ -56,9 +56,10 @@ const seed = async (repo: Repository) => {
 	await repo.saveCard(card("9", 5, "g1", { archived: true }))
 }
 
-const open = async (search = "") => {
+const open = async (search = "", more?: (repo: Repository) => Promise<void>) => {
 	const repo = new InMemoryRepository()
 	await seed(repo)
+	await more?.(repo)
 	const history = fakeHistory(`/ready${search}`)
 	mounted = mount(ReadyPage, {
 		target: document.body,
@@ -85,6 +86,18 @@ test("every ready card by place, most room first, with no See more", async () =>
 	expect(tiles()).toEqual(["1", "2", "3", "4", "5"])
 	expect(text($('.ready section[data-section="place:krabi"] h2'))).toBe("Krabi 5 cards · takes purchases")
 	expect($('[data-action="more"]')).toBeNull()
+})
+
+test("a card in no stored group is left out, and nothing counts it or links to assign it (RD-27)", async () => {
+	await open("", async (repo) => {
+		const { limitGroupId: _, ...loose } = card("7", 5)
+		await repo.saveCard(loose)
+		await repo.saveCard(card("8", 5, "gone"))
+	})
+	expect(tiles()).toEqual(["1", "2", "3", "4", "5"])
+	expect(document.body.textContent).not.toContain("no limit group")
+	expect($('a[href^="/cards?ungrouped"]')).toBeNull()
+	expect($('[data-testid="unassigned"]')).toBeNull()
 })
 
 const sortChip = () => $<HTMLButtonElement>(".ready-main > .tx-controls > .tx-chips > button.tx-chip.tx-sort")

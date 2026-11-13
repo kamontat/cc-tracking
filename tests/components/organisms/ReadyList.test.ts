@@ -32,7 +32,6 @@ type Props = {
 	groups: LimitGroup[]
 	locations: LocationRecord[]
 	today: PlainDate
-	unassigned: number
 	current: string | null
 	onopencard: (id: string) => void
 }
@@ -50,7 +49,6 @@ const show = ({ rows = testRows(), sections = null, total, ...props }: Partial<P
 			groups: [testGroup],
 			places: ["Bangkok", "Krabi"],
 			today: "2026-10-31",
-			unassigned: 0,
 			...props,
 		},
 	})

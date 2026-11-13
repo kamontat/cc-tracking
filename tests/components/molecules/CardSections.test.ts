@@ -65,19 +65,21 @@ test("a section per place, headed by its name, its count and that it takes purch
 	])
 })
 
-test("holders and limit groups head their sections; none reads as no holder or no group", () => {
+test("holders and limit groups head their sections by name (every card has both, RD-27)", () => {
 	const root = show({
 		sections: [
-			{ key: "holder:none", kind: "holder", owner: null, cards: [card("A")] },
-			{ key: "limit:none", kind: "limit", group: null, cards: [card("B")] },
+			{ key: "holder:KC", kind: "holder", owner: "KC", cards: [card("A")] },
+			{
+				key: "limit:g",
+				kind: "limit",
+				group: { id: "g", name: "SCB Pool", limit: 100_00, owner: "KC" },
+				cards: [card("B")],
+			},
 		],
 		flat: null,
 		count: 2,
 	})
-	expect([...root.querySelectorAll("section h2")].map(flat)).toEqual([
-		"No account holder 1 card",
-		"Not in a group 1 card",
-	])
+	expect([...root.querySelectorAll("section h2")].map(flat)).toEqual(["KC 1 card", "SCB Pool 1 card"])
 	expect(root.querySelector('[data-card="A"]')?.getAttribute("data-unplaced")).toBe("true")
 })
 
