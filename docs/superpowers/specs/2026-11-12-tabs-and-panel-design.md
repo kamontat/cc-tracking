@@ -19,8 +19,8 @@ beside its list on a desktop and in a sheet that slides up on a phone.
 
 ### Tabs
 
-- **Transactions**: _Ledger · Lists_, what happened. **Cards**: _Cards · Owed · Limits_, where
-  each card stands.
+- **Home**: _Needs you · Ready to use_, what to do now. **Transactions**: _Ledger · Lists_,
+  what happened. **Cards**: _Cards · Owed · Limits_, where each card stands.
 - The tabs sit under the page title, a row of underlined labels that scrolls sideways if it
   must, the same on every width. They are links: each tab is its own address (below), so a
   tab is reached by Back, a bookmark or a pasted link.
@@ -102,8 +102,14 @@ Each has a recommendation, drawn in the mockup.
    and `PayPicker` retire): each owed tile has _Pay_. Trade-off: a card that owes nothing is not
    on Owed, so paying ahead is from its panel (Cards tab, _Pay_). Recommended: yes; the
    alternative keeps a picker at `/payments/new`.
-7. **Home and Settings keep their two columns** (DD-184, CD-11): they have no records to open
-   beside a list. Out of scope; a card opened from Home uses the panel (decision 5).
+7. **Home gets tabs too**: _Needs you_ first at `/`, _Ready to use_ at `/ready` (amends RD-15
+   and DD-184's two columns). Decided by the user, 2026-11-13. Each tab has the screen to itself,
+   so both show everything and _See more (N)_ / _Show less_ go (amends DD-106): _Needs you_ every
+   row, in DD-62's order, its rows still opening in place; _Ready to use_ every ready card, not
+   four, sorted by most room with the new-list picker's old sorts back (most room, longest to
+   close, latest due). A tile, a card's name, _Pay_ or a list row opens the panel over Home.
+   `/ready` is a top-level path, as Home's own is `/`; the tab bar lights Home for it.
+   Settings keeps its two columns (CD-11): it has no records to open.
 
 ## Addresses
 
@@ -126,7 +132,7 @@ needs escaping.
 | `amount`   | whole satang > 0          | With `pay`: the amount filled in. Anything else is dropped.                                    |
 | `purchase` | `new`, purchase id        | With `card`: the panel's purchase form, blank or on that purchase. Wins over `pay`.            |
 | `limit`    | group id, `new`           | That limit group's panel; `new` a blank group form. Only on `/cards/limits`.                   |
-| `list`     | list id                   | That list's panel. Only on `/transactions/lists` and `/`.                                      |
+| `list`     | list id                   | That list's panel. Only on `/transactions/lists` and `/` (_Needs you_).                        |
 | `edit`     | `1`                       | With `card` or `limit`: the record's form instead of its summary.                              |
 
 `card` wins over `limit` and `list` when more than one is given; `purchase` wins over `pay`, and
@@ -136,7 +142,8 @@ needs escaping.
 
 | Address               | Tab          | Query, besides the panel keys                                                                                                                                                                                                                                                                                                   |
 | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                   | Home         | none                                                                                                                                                                                                                                                                                                                            |
+| `/`                   | Home         | none: _Needs you_                                                                                                                                                                                                                                                                                                                            |
+| `/ready`              | Home         | `sort` (`room`, `close`, `due`; default `room`); `dir` (`asc`, `desc`; default `desc`: most room, longest to close, latest due first)
 | `/transactions`       | Transactions | `q` (text); `types` (`purchase`, `payment`); `cards` (card id); `range` (`today`, `week`, `month`, `lastMonth`, `custom`); `from`, `to` (`YYYY-MM-DD`); `sort` (`date`, `amount`; default `date`); `dir` (`asc`, `desc`; default `desc`); `by` (`day`, `card`, `none`; default `day`)                                         |
 | `/transactions/lists` | Transactions | `q` (a line's card id, name, last 4 or note); `statuses` (`draft`, `sent`, `saved`); `cards`; `range`, `from`, `to` (on the list's date); `by` (`status`, `month`, `none`; default `status`). Its own page now, so the `l` prefix goes.                                                                                       |
 | `/lists/new`          | Transactions | `cards` (card id, in order, each once; cards that cannot take purchases are dropped); `add` (`1`: the add-a-card sheet's picker); `open` (card id: that card in the sheet)                                                                                                                                                    |
@@ -166,15 +173,16 @@ and the offline worker work as they are (the worker already ignores the query).
 | `/cards?group=<id>`, `?newGroup=1`         | `/cards/limits?limit=<id>`, `?limit=new`    |
 | `/card?id=`                                | `/cards?card=`                              |
 | `/card/new`, `/card/edit?id=`              | `/cards?card=new`, `/cards?card=<id>&edit=1` |
+| Home's _Ready to use_ (part of `/`)        | `/ready`                                    |
 | `/backup`                                  | gone                                        |
 
 ## When it ships
 
 PRD.md and PRD_TH.md: new decisions for the tabs, the panel, the card page's retirement, the
-pay picker's, the card form in the panel and its unsaved-changes prompt, the addresses and the card id format; RD-13, DD-76, DD-79, DD-144, CD-01 and DC-17
+pay picker's, the card form in the panel and its unsaved-changes prompt, Home's tabs, the addresses and the card id format; RD-13, DD-76, DD-79, DD-144, CD-01 and DC-17
 amended. ENDPOINTS.md rewritten from the tables above. The `TODO.md` endpoint item is replaced
 by this spec.
 
 Suggested order, each its own pull request: (1) the card id check; (2) the panel molecule and
 the card panel on `/cards`; (3) tabs and paths for Cards, Owed among them; (4) the same for Transactions and
-lists; (5) Home's panel; (6) retire `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/*`.
+lists; (5) Home's tabs and panel; (6) retire `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/*`.

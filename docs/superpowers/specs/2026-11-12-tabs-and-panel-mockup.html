@@ -169,7 +169,7 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 <body>
 <div class="wrap">
 	<h1>Tabs and a detail panel</h1>
-	<p class="lead">Transactions and Cards show one tab at a time on every screen. A card, a limit group or a list opens beside its list from 900px and in a sheet that slides up on a phone. Everything is in the address; ‹ in the address bar is Back. See <code>2026-11-12-tabs-and-panel-design.md</code>.</p>
+	<p class="lead">Home, Transactions and Cards show one tab at a time on every screen. A card, a limit group or a list opens beside its list from 900px and in a sheet that slides up on a phone. Everything is in the address; ‹ in the address bar is Back. See <code>2026-11-12-tabs-and-panel-design.md</code>.</p>
 	<div class="bar">
 		<div class="seg" id="device"><button aria-pressed="false" data-v="phone">Phone 390</button><button aria-pressed="true" data-v="desk">Desktop 1180</button></div>
 		<div class="seg" id="theme"><button aria-pressed="true" data-v="light">Light</button><button aria-pressed="false" data-v="dark">Dark</button></div>
@@ -190,8 +190,8 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page.</li>
 			</ul></div>
 			<div><h4>Home</h4><ul>
-				<li><em>Needs you</em>: <em>Pay</em> and a card's name open the panel over Home (<code>/?card=…</code>).</li>
-				<li>Home keeps its two columns; it has nothing to open beside a list.</li>
+				<li>Two tabs: <em>Needs you</em> (<code>/</code>) first, <em>Ready to use</em> (<code>/ready</code>). Each shows everything, so <em>See more</em> goes.</li>
+				<li><em>Pay</em>, a card's name, a list row or a ready tile open the panel over Home (<code>/?card=…</code>, <code>/ready?card=…</code>, <code>/?list=…</code>).</li>
 			</ul></div>
 		</div>
 	</section>
@@ -230,7 +230,7 @@ const baht = (n) => "฿" + Math.abs(n).toLocaleString("en-US")
 const used = (l) => l.cap - (CARDS.find((c) => c.limit === l.id)?.room ?? l.cap)
 
 // ---------- the address: state <-> URL, a history stack for ‹ ----------
-const PAGES = { "/": "home", "/transactions": "tx", "/transactions/lists": "tx", "/cards": "cards", "/cards/owed": "cards", "/cards/limits": "cards" }
+const PAGES = { "/": "home", "/ready": "home", "/transactions": "tx", "/transactions/lists": "tx", "/cards": "cards", "/cards/owed": "cards", "/cards/limits": "cards" }
 let stack = [{ path: "/cards" }]
 let at = 0
 let device = "desk"
@@ -309,10 +309,17 @@ function txTab(s) {
 	}).join("")}</div></section>`).join("")}`
 }
 
-function homeTab() {
+// Home's two tabs: Needs you (every row, no See more) and Ready to use (every ready card)
+function homeTab(s) {
+	if (s.path === "/ready") {
+		const ready = CARDS.filter((c) => c.room > 0).sort((a, b) => b.room - a.room)
+		return `<div class="tools"><button class="btn" data-variant="quiet">Sort: Most room ▾</button><span class="muted sm">${ready.length} cards ready</span></div>
+		<div class="tiles">${ready.map((c) => `<button class="tile c-${c.color}" data-do="card:${c.id}" aria-current="${s.card === c.id}"><span class="r1">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.room)}<small>room</small></span><span class="r3"><span>closes ${c.close}</span><span>due ${c.due}</span></span></button>`).join("")}</div>`
+	}
 	const due = CARDS.filter((c) => c.owed > 5000)
-	return `<div class="home"><section class="sect"><h3>Needs you</h3><div class="panelbox rows">${due.map((c) => `<div class="row" style="cursor:default">${chip(c)}<span><button class="btn small" data-variant="quiet" data-do="card:${c.id}" style="padding:0;border:0;background:none">${cname(c)}</button><small>${baht(c.owed)} due ${c.due}</small></span><button class="btn small" data-do="pay:${c.id}">Pay</button></div>`).join("")}</div></section>
-	<section class="sect"><h3>Ready to use</h3><div class="tiles">${CARDS.slice().sort((a, b) => b.room - a.room).slice(0, 3).map((c) => `<button class="tile c-${c.color}" data-do="card:${c.id}"><span class="r1">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.room)}<small>room</small></span></button>`).join("")}</div></section></div>`
+	return `<div class="panelbox rows">${due.map((c) => `<div class="row" style="cursor:default">${chip(c)}<span><button class="btn small" data-variant="quiet" data-do="card:${c.id}" style="padding:0;border:0;background:none">${cname(c)}</button><small>${baht(c.owed)} due ${c.due}</small></span><button class="btn small" data-do="pay:${c.id}">Pay</button></div>`).join("")}
+	<button class="row" data-do="list:8941ebd7"><span class="badge sent">10 Nov</span><span><span class="name">Waiting for the spender</span><small>3 cards</small></span><b class="money">฿12,320</b></button>
+	<button class="row" data-do="list:0d9f9698"><span class="badge draft">12 Nov</span><span><span class="name">Draft list</span><small>2 cards</small></span><b class="money">฿1,250</b></button></div>`
 }
 
 // the card form (today's /card/new and /card/edit), its four sections in the column
@@ -397,8 +404,8 @@ function draw() {
 	dev.className = "device " + device
 	const nav = [["/", "Home", "home"], ["/transactions", "Transactions", "tx"], ["/cards", "Cards", "cards"], ["/settings", "Settings", "set"]]
 	const navBtns = nav.map(([p, t, k]) => `<button data-go="${p}" aria-current="${k === page ? "page" : "false"}">${t}</button>`).join("")
-	const ptabs = page === "tx" ? [["/transactions", "Ledger"], ["/transactions/lists", "Lists", LISTS.length]] : page === "cards" ? [["/cards", "Cards", CARDS.length], ["/cards/owed", "Owed", CARDS.filter((c) => c.owed).length], ["/cards/limits", "Limits", LIMITS.length]] : []
-	const content = page === "home" ? homeTab() : page === "tx" ? txTab(s) : cardsTab(s)
+	const ptabs = page === "home" ? [["/", "Needs you", 5], ["/ready", "Ready to use", CARDS.filter((c) => c.room > 0).length]] : page === "tx" ? [["/transactions", "Ledger"], ["/transactions/lists", "Lists", LISTS.length]] : page === "cards" ? [["/cards", "Cards", CARDS.length], ["/cards/owed", "Owed", CARDS.filter((c) => c.owed).length], ["/cards/limits", "Limits", LIMITS.length]] : []
+	const content = page === "home" ? homeTab(s) : page === "tx" ? txTab(s) : cardsTab(s)
 	const panel = s.card ? cardPanel(s) : s.limit ? limitPanel(s) : s.list ? listPanel(s) : ""
 	dev.innerHTML = `<div class="url"><button data-do="back" ${at ? "" : "disabled"} aria-label="Back">‹</button><output>${path}<span class="q">${h(query)}</span></output></div>
 	<header class="appbar"><span class="brand"><b>cc</b> tracking</span><nav class="navtabs">${navBtns}</nav></header>
