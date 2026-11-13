@@ -189,7 +189,7 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 			<div><h4>Cards</h4><ul>
 				<li>Tap a tile: its panel opens. Tap another: the panel swaps, the address is rewritten (Back closes, it does not walk through every card).</li>
 				<li><em>Pay</em> or <em>Add purchase</em> replaces the panel's content; ‹ in the panel or Back returns to the card.</li>
-				<li><em>Edit</em> in a card's panel, and <em>+ Add card</em>, open the card form in the panel (<code>?card=12.3&amp;edit=1</code>; a new card's blank form has no address of its own, and once added the address names it). With a form open, tapping another card or × asks first; Back does not.</li>
+				<li><em>Edit</em> in a card's panel, and <em>+ Add card</em>, open the card form in the panel (no form changes the address: it stays <code>?card=12.3</code>, and Back returns to the card; once a new card is added the address names it). With a form open, tapping another card or × asks first; Back does not.</li>
 				<li><em>Limits</em> tab: a group's panel lists its cards; tap one to open it. <em>Edit</em> is the group form, in the panel the same way.</li>
 			</ul></div>
 			<div><h4>Transactions</h4><ul>
@@ -256,7 +256,8 @@ const urlOf = (s) => {
 	// a new list's cards are in its address; a draft's come from the stored draft, never the address
 	if (s.path === "/transactions/lists/new") for (const id of s.cards ?? []) q.append("cards", id)
 	// a blank form for a new card or group has nothing stored to come back to, so it is not in the address
-	for (const k of ["list", "add", "open", "card", "pay", "amount", "purchase", "limit", "edit"]) if (s[k] != null && s[k] !== "new") q.set(k, s[k])
+	// the address names the open record, never a form in its panel (edit, pay, purchase, a new record's)
+	for (const k of ["list", "add", "open", "card", "limit"]) if (s[k] != null && s[k] !== "new") q.set(k, s[k])
 	const t = q.toString()
 	return { path: s.path, query: t ? "?" + t : "" }
 }

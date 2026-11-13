@@ -58,14 +58,16 @@ beside its list on a desktop and in a sheet that slides up on a phone.
 
 _Pay_, _Add purchase_, editing a purchase and editing the card or group itself replace the
 panel's content, with a ‹ back to the record in the panel's head, instead of a sheet on top of a
-sheet or a page of its own. Saving, _Cancel_ or ‹ returns to the record: a step back when its
-panel is the entry before, else the address is rewritten to it (a form opened straight from an
-owed tile, _Needs you_ or a pasted link). A form on a stored record is in the address (`pay`,
-`purchase`, `edit`), so a pasted link opens it. A blank form for a new card or a new group is
-not (the user asked, 2026-11-13): _+ Add card_ and _+ Add limit_ open it in the panel and push an
-entry with the address unchanged, so Back closes it and a reload drops it, as there is nothing
-stored to come back to. Adding the card or group writes its address (`?card=<id>`,
-`?limit=<id>`) over that entry, so the panel shows the new record and the list behind has it.
+sheet or a page of its own. **No form is in the address** (the user asked, 2026-11-13): the
+address names the record whose panel is open (`?card=<id>`, `?limit=<id>`), never what is being
+done in it. Opening a form pushes an entry with the address unchanged, so Back returns to the
+record; a reload or a pasted link shows the record's summary, and the form is a tap away.
+Saving, _Cancel_ or ‹ returns to the record: a step back over the form's entry, or, for a form
+opened straight from a bill (_Pay_ on an owed tile or in _Needs you_, which opens the card's
+panel on its pay form with the amount left filled in), the panel's content swaps back in place.
+A new card's or group's blank form works the same: _+ Add card_ and _+ Add limit_ open it with
+the address unchanged, and adding the record writes its address (`?card=<id>`, `?limit=<id>`)
+over the form's entry, so the panel shows the new record and the list behind has it.
 
 The card form fits the column as it is: its four sections (_Card_, _Where_, _Statement_,
 _Comment_) are already one column of fields. On a phone the sheet is the full height while a form
@@ -168,12 +170,9 @@ needs escaping.
 
 Each page lists which panels it opens; these are their keys.
 
-- **Card panel**: `card` (card id; unknown or invalid opens nothing), then at most one of:
-  `edit` (`1`: the card form), `pay` (`1`: the pay form, at the next bill) with `amount` (whole
-  satang > 0, filled in; else dropped), `purchase` (`new` or a purchase id: the purchase form,
-  blank or on it). `purchase` wins over `pay`, `pay` over `edit`. A new card's form has no key.
-- **Limit panel**: `limit` (group id), then `edit` (`1`: the group form). A new group's form has
-  no key.
+- **Card panel**: `card` (card id; unknown or invalid opens nothing). Its forms (edit, pay,
+  purchase) and a new card's form have no key.
+- **Limit panel**: `limit` (group id). Its form and a new group's form have no key.
 - **List panel**: `list` (list id). No keys of its own: writing a list is a page.
 
 When a page takes more than one record key, `card` wins.
@@ -264,14 +263,14 @@ are new: the group panels have none today.
 | ---------------------------------------- | -------------------------------------------------------- |
 | `/transactions?view=owed`                | `/owed`                                                  |
 | `/transactions?view=lists`               | `/transactions/lists`                                    |
-| `/pay`, `/pay?card=<id>&amount=<satang>` | `/owed`, `/owed?card=<id>&pay=1&amount=<satang>`         |
+| `/pay`, `/pay?card=<id>&amount=<satang>` | `/owed`; the pay form is _Pay_ on the bill (no address)  |
 | `/list/new`                              | `/transactions/lists/new`                                |
 | `/list/draft?id=`, `/list/reply?id=`     | `/transactions/lists/edit?list=`                         |
 | `/list/view?id=`                         | `/transactions/lists?list=`                              |
 | `/cards?view=groups`                     | `/cards/limits`                                          |
 | `/cards?group=<id>`, `?newGroup=1`       | `/cards/limits?limit=<id>`; a new group has no address   |
 | `/card?id=`                              | `/cards?card=`                                           |
-| `/card/new`, `/card/edit?id=`            | none (a new card has no address), `/cards?card=<id>&edit=1` |
+| `/card/new`, `/card/edit?id=`            | none: forms in the panel have no address                 |
 | Home's _Ready to use_ (part of `/`)      | `/ready`                                                 |
 | `/backup`                                | gone                                                     |
 
