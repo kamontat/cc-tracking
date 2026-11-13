@@ -13,8 +13,8 @@ test("translates a MessageError in the current language", () => {
 
 test("substitutes a MessageError's parameters", () => {
 	setLocale("en")
-	const failure = new MessageError("card.error.notFound", { id: "kbank" })
-	expect(messageOf(failure, "card.error.read")).toBe("No card with the id kbank.")
+	const failure = new MessageError("cards.error.duplicateId", { id: "kbank" })
+	expect(messageOf(failure, "card.error.read")).toBe('A card with id "kbank" already exists. Card ids must be unique.')
 })
 
 test("passes an ordinary Error's own message through untouched", () => {

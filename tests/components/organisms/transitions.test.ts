@@ -19,16 +19,14 @@ test("the header doesn't animate between pages", async () => {
 })
 
 /**
- * A view transition captures each named element as its own box. The bottom bar and + New are
- * `position: fixed`, so the `#tabbar` slot around them has no height: naming the slot held still
- * an empty box, and the bar and the button faded out with the page. The fixed boxes carry the
- * names themselves.
+ * A view transition captures each named element as its own box. The bottom bar is
+ * `position: fixed`, so the `#tabbar` slot around it has no height: naming the slot held still
+ * an empty box, and the bar faded out with the page. The fixed box carries the name itself.
  */
-test("the bottom bar and + New hold still between pages, not their empty slot", async () => {
+test("the bottom bar holds still between pages, not its empty slot", async () => {
 	const doc = parseHtml(await (await createContainer()).renderToString(TabBar, { props: { current: "home" } }))
 	const scope = (selector: string) => doc.querySelector(selector)?.getAttribute("data-astro-transition-scope")
 	expect(scope(".tabbar")).toBeTruthy()
-	expect(scope(".fab-menu")).toBeTruthy()
 	expect(scope("#tabbar")).toBeFalsy()
 })
 

@@ -29,10 +29,8 @@ import {
 
 /**
  * Writing a purchase list: the list, with each card's amounts in its add-a-card sheet, then
- * review and mark it sent or keep it as a draft. Most of these run on the old pages
- * (`/list/new?card=…`, `/list/draft?id=`, `legacy`), which still build until they retire; the
- * last section holds the builder to its new addresses (`/transactions/lists/new?cards=…`,
- * `/transactions/lists/edit?list=`, RD-26). Ported from the legacy `entry` tests; where those
+ * review and mark it sent or keep it as a draft, at `/transactions/lists/new?cards=…` and
+ * `/transactions/lists/edit?list=` (RD-26). Ported from the legacy `entry` tests; where those
  * dispatched the amounts element's events, these type into the real form.
  */
 afterEach(cleanup)
@@ -56,17 +54,15 @@ const setup = async (
 		search?: string
 		share?: ShareApi
 		before?: (repo: Repository) => Promise<void>
-		legacy?: boolean
 	} = {},
 ) => {
 	const calls: Calls = { copy: [], saveImage: [] }
 	const page = await setupPage(ListEntryPage, {
 		...(options.repo ? { repo: options.repo } : {}),
-		search: options.search ?? "?card=A",
+		search: options.search ?? "?cards=A",
 		...(options.before ? { before: options.before } : {}),
 		props: {
 			mode: options.mode ?? "new",
-			legacy: options.legacy ?? true,
 			share: options.share ?? recordingShare(calls),
 			newId: () => "l-new",
 		},
@@ -76,7 +72,7 @@ const setup = async (
 
 /** The draft page, opened on `d1` as `before` stored it. */
 const setupDraft = (before: (repo: Repository) => Promise<void>, repo?: Repository) =>
-	setup({ mode: "draft", search: "?id=d1", before, ...(repo ? { repo } : {}) })
+	setup({ mode: "draft", search: "?list=d1", before, ...(repo ? { repo } : {}) })
 
 const draftWith =
 	(cardIds: string[]) =>
@@ -142,21 +138,21 @@ const deleteButton = () => $<HTMLButtonElement>('[data-action="delete-draft"]')
 const subtitleOf = () => flatText($(".sub-header h1 .sub-header__detail"))
 
 test("a new list opens with the picked cards and today", async () => {
-	await setup({ search: "?card=B&card=A&card=Z&card=nope" })
+	await setup({ search: "?cards=B&cards=A&cards=Z&cards=nope" })
 	expect(onList()).toEqual(["B", "A"])
 	expect($<HTMLInputElement>('[data-field="date"]')?.value).toBe("2026-10-31")
 	expect($("h1")?.textContent).toContain("New purchase list")
-	// There is no picker before the list any more (DD-195): Back goes Home.
-	expect($('[data-action="back"]')?.getAttribute("href")).toBe("/")
+	// There is no picker before the list any more (DD-195): Back goes to the Lists tab.
+	expect($('[data-action="back"]')?.getAttribute("href")).toBe("/transactions/lists")
 })
 
-test("a draft's back still goes Home", async () => {
+test("a draft's back goes to the Lists tab too", async () => {
 	await setupDraft(draftWith(["A"]))
-	expect($('[data-action="back"]')?.getAttribute("href")).toBe("/")
+	expect($('[data-action="back"]')?.getAttribute("href")).toBe("/transactions/lists")
 })
 
-test("a new list ignores an id in its address", async () => {
-	await setup({ search: "?id=d1", before: draftWith(["A"]) })
+test("a new list ignores a list in its address", async () => {
+	await setup({ search: "?list=d1", before: draftWith(["A"]) })
 	expect(onList()).toEqual([])
 	expect($("h1")?.textContent).toContain("New purchase list")
 })
@@ -171,7 +167,7 @@ test("review shows the table and comes back with everything typed", async () => 
 	expect(await amountOf("A")).toBe("125")
 })
 
-test("mark as sent stores a waiting list and goes home", async () => {
+test("mark as sent stores a waiting list and leaves for its panel", async () => {
 	const { repo, visited } = await setup()
 	await typeAndReview({ A: "125" })
 	await click(document, "mark-sent")
@@ -184,7 +180,7 @@ test("mark as sent stores a waiting list and goes home", async () => {
 			lines: [{ cardId: "A", amount: 125_00 }],
 		},
 	])
-	expect(visited).toEqual(["/"])
+	expect(visited).toEqual(["/transactions/lists?list=l-new"])
 })
 
 test("save as draft stores a draft from the amounts step", async () => {
@@ -194,11 +190,11 @@ test("save as draft stores a draft from the amounts step", async () => {
 	expect(await stored(repo)).toEqual([
 		{ id: "l-new", date: "2026-10-31", status: "draft", lines: [{ cardId: "A", amount: 125_00 }] },
 	])
-	expect(visited).toEqual(["/"])
+	expect(visited).toEqual(["/transactions/lists?list=l-new"])
 })
 
 test("lines come only from the cards still on the list", async () => {
-	const { repo } = await setup({ search: "?card=A&card=B" })
+	const { repo } = await setup({ search: "?cards=A&cards=B" })
 	await typeAmount("A", "125")
 	await typeAmount("B", "50")
 	await remove("B")
@@ -279,7 +275,7 @@ test("a draft sent or saved elsewhere is not saved over", async () => {
 })
 
 test("an unknown draft says so and leads to the Lists tab", async () => {
-	await setup({ mode: "draft", search: "?id=gone" })
+	await setup({ mode: "draft", search: "?list=gone" })
 	expect(document.body.textContent).toContain("This list no longer exists.")
 	expect(flatText($('a[href="/transactions/lists"]:not([data-action])'))).toBe("Go to Lists")
 	expect($('[data-field="amount"]')).toBeNull()
@@ -309,12 +305,12 @@ test("a saved list replaces the page in history", async () => {
 	const assign = vi.spyOn(location, "assign").mockImplementation(() => {})
 	try {
 		await setupPage(ListEntryPage, {
-			search: "?card=A",
-			props: { mode: "new", legacy: true, share: {}, newId: () => "l-new", navigate: undefined },
+			search: "?cards=A",
+			props: { mode: "new", share: {}, newId: () => "l-new", navigate: undefined },
 		})
 		await typeAmount("A", "125")
 		await click(document, "save-draft")
-		expect(replace.mock.calls.map(([url]) => String(url))).toEqual(["/"])
+		expect(replace.mock.calls.map(([url]) => String(url))).toEqual(["/transactions/lists?list=l-new"])
 		expect(assign).not.toHaveBeenCalled()
 	} finally {
 		replace.mockRestore()
@@ -426,14 +422,14 @@ test("only a draft offers Delete draft, in the side panel of both steps", async 
 	expect($(".list-layout > .list-layout__side")?.contains(deleteButton())).toBe(true)
 })
 
-test("delete draft removes the draft at once and goes home", async () => {
+test("delete draft removes the draft at once and leaves for the Lists tab", async () => {
 	const { repo, visited } = await setupDraft(async (r) => {
 		await draftWith(["A"])(r)
 		await r.savePurchaseList(sent("s1", ["B"]))
 	})
 	await click(document, "delete-draft")
 	expect((await stored(repo)).map((l) => l.id)).toEqual(["s1"])
-	expect(visited).toEqual(["/"])
+	expect(visited).toEqual(["/transactions/lists"])
 })
 
 test("a draft sent or saved elsewhere is not deleted", async () => {
@@ -462,55 +458,23 @@ test("a failed delete says so and stays", async () => {
 	expect($(".line[data-card]")).not.toBeNull()
 })
 
-test("add writes the card into the list's own address, not a new entry", async () => {
-	const { now, replaced } = await setup()
-	await add("B")
-	expect(now()).toBe("/list/new?card=A&card=B")
-	expect(replaced.at(-1)).toBe("/list/new?card=A&card=B")
-})
-
-test("remove drops the card from the address and keeps order and other params", async () => {
-	const { now } = await setup({ search: "?card=A&x=1&card=B" })
-	await remove("A")
-	expect(now()).toBe("/list/new?x=1&card=B")
-	await remove("B")
-	expect(now()).toBe("/list/new?x=1")
-})
-
 test("ids with & or , survive in the address", async () => {
 	const { now } = await setup({
-		search: "?card=A",
 		before: async (r) => {
 			await r.saveCard(card("a&b,c"))
 		},
 	})
 	await add("a&b,c")
-	expect(now()).toBe("/list/new?card=A&card=a%26b%2Cc")
-	expect(new URLSearchParams(now().split("?")[1]).getAll("card")).toEqual(["A", "a&b,c"])
+	expect(now()).toBe("/transactions/lists/new?cards=A&cards=a%26b%2Cc")
+	expect(new URLSearchParams(now().split("?")[1]).getAll("cards")).toEqual(["A", "a&b,c"])
 })
 
 test("a draft page keeps its address as it is", async () => {
 	const { now } = await setupDraft(draftWith(["A"]))
 	await add("B")
 	await remove("A")
-	expect(now()).toBe("?id=d1")
+	expect(now()).toBe("?list=d1")
 	expect(onList()).toEqual(["B"])
-})
-
-test("the add-a-card sheet is in history: it pushes one entry, a pick rewrites it, Back closes it", async () => {
-	const { now, entries, back } = await setup()
-	await click(document, "add-card")
-	expect(now()).toBe("/list/new?card=A&add=1")
-	expect(entries).toHaveLength(2)
-	$('dialog .tile[data-card="B"]')?.click()
-	await settle()
-	expect(now()).toBe("/list/new?card=A&open=B")
-	expect(entries).toHaveLength(2)
-	back()
-	await settle()
-	expect($("dialog")).toBeNull()
-	expect(now()).toBe("/list/new?card=A")
-	expect(onList()).toEqual(["A"])
 })
 
 test("Back between the page's own entries stays the page's, so the router keeps what was typed", async () => {
@@ -521,22 +485,13 @@ test("Back between the page's own entries stays the page's, so the router keeps 
 })
 
 test("a row's sheet is in history too, on a draft as on a new list", async () => {
-	const { now, back } = await setupDraft(draftWith(["A"]))
+	const { now, back, entries } = await setupDraft(draftWith(["A"]))
 	await openCard("A")
-	expect(now()).toBe("/list/draft?id=d1&open=A")
+	expect(entries).toEqual(["?list=d1", "/transactions/lists/edit?list=d1"])
 	back()
 	await settle()
 	expect($("dialog")).toBeNull()
-	expect(now()).toBe("?id=d1")
-})
-
-test("opened with the sheet in its address, the page shows it, and closing rewrites it away", async () => {
-	const { now, entries } = await setup({ search: "?card=A&add=1" })
-	expect($("dialog .tile")).not.toBeNull()
-	await click(document, "close")
-	expect($("dialog")).toBeNull()
-	expect(now()).toBe("/list/new?card=A")
-	expect(entries).toHaveLength(1)
+	expect(now()).toBe("?list=d1")
 })
 
 test("a new list with no card opens empty, ready to add the first", async () => {
@@ -550,7 +505,7 @@ test("a new list with no card opens empty, ready to add the first", async () => 
 })
 
 test("the sub-header's muted line names the list's date and how many cards it has", async () => {
-	await setup({ search: "?card=B&card=A" })
+	await setup({ search: "?cards=B&cards=A" })
 	expect(flatText($(".sub-header .sub-header__title"))).toBe("New purchase list")
 	expect(subtitleOf()).toBe("Sat, 31 Oct 2026 · 2 cards")
 	// A new date shows at once; review counts the lines that carry an amount.
@@ -574,7 +529,7 @@ const addOrder = async (cardId: string, value: string) => {
 }
 
 test("a card's orders are stored as a line each, in order", async () => {
-	const { repo } = await setup({ search: "?card=A&card=B" })
+	const { repo } = await setup({ search: "?cards=A&cards=B" })
 	await typeAmount("A", "100")
 	await addOrder("A", "200")
 	await typeAmount("B", "50")
@@ -620,7 +575,7 @@ test("a draft with several orders on a card opens them in the card's one sheet",
 })
 
 test("a draft keeps a card with no amount yet, and reopens it blank", async () => {
-	const { repo } = await setup({ search: "?card=A&card=B" })
+	const { repo } = await setup({ search: "?cards=A&cards=B" })
 	await typeAmount("A", "125")
 	expect($<HTMLButtonElement>('[data-action="review"]')?.disabled).toBe(false)
 	await click(document, "save-draft")
@@ -665,7 +620,7 @@ test("saving a draft on a day that has one asks to merge, and Merge adds this li
 			],
 		},
 	])
-	expect(visited).toEqual(["/"])
+	expect(visited).toEqual(["/transactions/lists?list=d0"])
 })
 
 test("Keep separate saves the draft on its own", async () => {
@@ -675,7 +630,7 @@ test("Keep separate saves the draft on its own", async () => {
 	await click(document, "save-draft")
 	await click(document, "keep-separate")
 	expect((await stored(repo)).map((l) => l.id).sort()).toEqual(["d0", "l-new"])
-	expect(visited).toEqual(["/"])
+	expect(visited).toEqual(["/transactions/lists?list=l-new"])
 })
 
 test("a reopened draft merges into the other same-day draft and goes", async () => {
@@ -706,7 +661,7 @@ test("marking sent on a day with a waiting list asks to add these orders to it",
 			],
 		},
 	])
-	expect(visited).toEqual(["/"])
+	expect(visited).toEqual(["/transactions/lists?list=w0"])
 })
 
 test("the merge question reads in Thai", async () => {
@@ -720,9 +675,9 @@ test("the merge question reads in Thai", async () => {
 
 describe("the builder on its own addresses (RD-26)", () => {
 	const fresh = (search: string, before?: (repo: Repository) => Promise<void>) =>
-		setup({ legacy: false, search, ...(before ? { before } : {}) })
+		setup({ search, ...(before ? { before } : {}) })
 	const freshDraft = (before: (repo: Repository) => Promise<void>) =>
-		setup({ legacy: false, mode: "draft", search: "?list=d1", before })
+		setup({ mode: "draft", search: "?list=d1", before })
 
 	test("a new list holds the cards in `cards`, each once, dropping cards that cannot take purchases", async () => {
 		await fresh("?cards=B&cards=A&cards=B&cards=Z&card=A")

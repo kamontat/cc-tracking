@@ -8,7 +8,7 @@ import CardForm from "#components/organisms/CardForm.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * The card form, the whole of `/card/new` and `/card/edit` under their sub-header. Ported from
+ * The card form, as the card's panel shows it for a new card or an edit (RD-24). Ported from
  * the legacy `cc-card-form` tests; where those read the element's state, these read what it draws.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -449,7 +449,7 @@ test("a new card has no archive, no delete and no cancel -- the sub-header leave
 	expect($('button[type="submit"]')?.textContent?.trim()).toBe("Add card")
 })
 
-test("editing saves changes, with no Archive or Delete -- they live on the card page", async () => {
+test("editing saves changes, with no Archive or Delete -- they live on the card panel", async () => {
 	await show(stored())
 	expect($('button[type="submit"]')?.textContent?.trim()).toBe("Save changes")
 	expect($('[data-action="archive"]')).toBeNull()

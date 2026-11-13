@@ -142,7 +142,7 @@ test("the head names the card: its chip, title, id and place, Edit and More", as
 	expect(head?.querySelector('[data-action="panel-back"]')).toBeNull()
 })
 
-test("the body is the card page's: hero, actions and statements", async () => {
+test("the body is the card's: hero, actions and statements", async () => {
 	const repo = await stocked()
 	await repo.saveCard({ ...card, comment: "Pays fuel" })
 	await repo.savePurchase(purchase)

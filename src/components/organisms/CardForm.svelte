@@ -15,13 +15,13 @@
 	import { LIMITS_ADDRESS } from "#lib/ui/cards-query"
 
 	/**
-	 * The card form, the whole of `/card/new` and `/card/edit` under their sub-header, in panels:
+	 * The card form, in the card's panel (RD-24) for a new card or an edit, in sections:
 	 * *Card* (name; card id, disabled when editing, beside last 4), *Where and who* (*Kept in* as a
 	 * segmented control of every stored location, A to Z by shown name; the limit group,
 	 * `name (holder) · limit`, required, or with none stored a note to add one from Limits; the cardholder, the group's account holder or a supplementary card
 	 * with its own holder), *Billing cycle* (the kind, then the close day beside *due days after
 	 * close* or *due on day*) and *Comment*; then the submit. Archive and Delete live on the card
-	 * page's More menu, not here.
+	 * panel's More menu, not here.
 	 *
 	 * Calls `onsave` with the card; with `oncancel`, a quiet *Cancel* beside the submit calls that
 	 * (back to the card in its panel, RD-24). `error` is the page's reason a write failed; what was

@@ -12,8 +12,8 @@
 	import { cardLine, groupColor } from "#lib/ui/card-label"
 
 	/**
-	 * A purchase's form, the card fixed and named (FR-21), then its date, amount and note: inside
-	 * `PurchaseSheet` on the card page, and in place of the card in its panel (RD-24). Given a
+	 * A purchase's form, the card fixed and named (FR-21), then its date, amount and note, in place
+	 * of the card in its panel (RD-24). Given a
 	 * saved `purchase` it edits it, with *Save changes*, keeping its id, card and `addedAt`. With
 	 * none it adds one, with *Save purchase*: dated today, blank otherwise, its id made once when
 	 * the form opens -- so a failed save retried writes the same record -- and stamped `addedAt`

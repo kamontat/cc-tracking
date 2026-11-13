@@ -59,7 +59,7 @@ export function handles(request: Request, origin: string): boolean {
 }
 
 /**
- * The version's copy of what is asked for, else the network. A page's query (`/card?id=`) is
+ * The version's copy of what is asked for, else the network. A page's query (`/cards?card=`) is
  * read by its script, so the one cached page answers every query. Each cached file is the
  * build's one copy at its address, so a `Vary` header on it is ignored: the browser loads a
  * module script with headers (`Origin`) the install's fetch lacked, and honouring a server's

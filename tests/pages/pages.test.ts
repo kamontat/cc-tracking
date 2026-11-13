@@ -3,6 +3,7 @@
 
 import type { AstroComponentFactory } from "astro/runtime/server/index.js"
 
+import { existsSync } from "node:fs"
 import { expect, test } from "vitest"
 
 import { createContainer, parseHtml } from "../container"
@@ -27,18 +28,10 @@ const render = async (page: string) => {
 
 test("src/pages has every page", () => {
 	expect(pages).toEqual([
-		"card.astro",
-		"card/edit.astro",
-		"card/new.astro",
 		"cards.astro",
 		"cards/limits.astro",
 		"index.astro",
-		"list/draft.astro",
-		"list/new.astro",
-		"list/reply.astro",
-		"list/view.astro",
 		"owed.astro",
-		"pay.astro",
 		"ready.astro",
 		"settings.astro",
 		"settings/locations.astro",
@@ -47,6 +40,15 @@ test("src/pages has every page", () => {
 		"transactions/lists/edit.astro",
 		"transactions/lists/new.astro",
 	])
+})
+
+// The card page, the card form's pages, the payment page and the old list pages retired with the
+// tabs and the detail panel (RD-23, RD-25, RD-26): no file serves them and nothing redirects.
+test("the retired addresses are not built", () => {
+	for (const gone of ["card.astro", "card", "pay.astro", "list", "list.astro", "backup.astro"]) {
+		expect(existsSync(`src/pages/${gone}`), gone).toBe(false)
+	}
+	expect(pages.some((page) => /^(card|pay|list)[./]/.test(page))).toBe(false)
 })
 
 const layouts = Array.from(new Bun.Glob("*.astro").scanSync({ cwd: "src/layouts" })).map((file) =>
@@ -124,18 +126,10 @@ test("each page keeps the width it asks for", async () => {
 		widths[page] = (await render(page)).match(/<main class="([^"]*)"/)?.[1] ?? ""
 	}
 	expect(widths).toEqual({
-		"card.astro": "page card-page",
-		"card/edit.astro": "page page--form",
-		"card/new.astro": "page page--form",
 		"cards.astro": "page",
 		"cards/limits.astro": "page",
 		"index.astro": "page",
-		"list/draft.astro": "page page--narrow",
-		"list/new.astro": "page page--narrow",
-		"list/reply.astro": "page page--narrow",
-		"list/view.astro": "page page--narrow",
 		"owed.astro": "page",
-		"pay.astro": "page page--narrow",
 		"ready.astro": "page",
 		"settings.astro": "page",
 		"settings/locations.astro": "page page--form",
@@ -146,37 +140,28 @@ test("each page keeps the width it asks for", async () => {
 	})
 })
 
-test("each page marks its place in both navs, and steps + New aside when mid-task", async () => {
+test("each page marks its place in both navs, and none has a floating + New (it retired, RD-25)", async () => {
 	const shell: Record<string, string> = {}
 	for (const page of pages) {
 		const doc = parseHtml(await render(page))
 		const header = doc.querySelector('.site-header__tabs [aria-current="page"]')?.getAttribute("data-tab")
 		const bar = doc.querySelector('.tabbar [aria-current="page"]')?.getAttribute("data-tab")
 		expect(bar, page).toBe(header)
-		shell[page] = `${header ?? "none"}${doc.querySelector(".fab-menu") ? " +new" : ""}`
+		expect(doc.querySelector(".fab-menu, .fab"), page).toBeNull()
+		shell[page] = header ?? "none"
 	}
-	// The payment page sits under Transactions; a card's pages under Cards; Locations under
-	// Settings; Home's three tabs and the old purchase list pages under Home, the new ones under
-	// Transactions (RD-26).
-	// + New steps aside on the payment page, the list pages and the card form (PRD DD-104).
+	// Home's three tabs under Home; the purchase list pages under Transactions (RD-26); Locations
+	// under Settings.
 	expect(shell).toEqual({
-		"card.astro": "cards +new",
-		"card/edit.astro": "cards",
-		"card/new.astro": "cards",
-		"cards.astro": "cards +new",
-		"cards/limits.astro": "cards +new",
-		"index.astro": "home +new",
-		"list/draft.astro": "home",
-		"list/new.astro": "home",
-		"list/reply.astro": "home",
-		"list/view.astro": "home",
-		"owed.astro": "home +new",
-		"pay.astro": "transactions",
-		"ready.astro": "home +new",
-		"settings.astro": "settings +new",
-		"settings/locations.astro": "settings +new",
-		"transactions.astro": "transactions +new",
-		"transactions/lists.astro": "transactions +new",
+		"cards.astro": "cards",
+		"cards/limits.astro": "cards",
+		"index.astro": "home",
+		"owed.astro": "home",
+		"ready.astro": "home",
+		"settings.astro": "settings",
+		"settings/locations.astro": "settings",
+		"transactions.astro": "transactions",
+		"transactions/lists.astro": "transactions",
 		"transactions/lists/edit.astro": "transactions",
 		"transactions/lists/new.astro": "transactions",
 	})

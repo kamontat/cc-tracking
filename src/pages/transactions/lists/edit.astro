@@ -4,7 +4,7 @@ import AppLayout from "#layouts/AppLayout.astro"
 ---
 
 <!-- A draft or a waiting list to work on (`?list=`, RD-26): the builder on a draft, the reply on a waiting list; the list is the reader's data, so the page is an island. -->
-<AppLayout title="Purchase list" titleKey="title.listEdit" tab="transactions" fab={false} mainClass="page--narrow">
+<AppLayout title="Purchase list" titleKey="title.listEdit" tab="transactions" mainClass="page--narrow">
 	<Fragment slot="main">
 		<ListEditPage client:load />
 	</Fragment>

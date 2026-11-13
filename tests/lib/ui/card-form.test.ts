@@ -2,7 +2,7 @@ import type { Card, LimitGroup, LocationRecord } from "#lib/domain/types"
 
 import { expect, test } from "vitest"
 
-import { type CardDraft, cardAddress, draftOf, editCardId, keptIn, readCardDraft } from "#lib/ui/card-form"
+import { type CardDraft, draftOf, keptIn, readCardDraft } from "#lib/ui/card-form"
 
 const groups: LimitGroup[] = [{ id: "pool", name: "KBank account", limit: 500_000 }]
 
@@ -38,15 +38,6 @@ const valid = (extra: Partial<CardDraft> = {}): CardDraft => ({
 	location: "krabi",
 	groupId: "pool",
 	...extra,
-})
-
-test("a card's page address encodes its id", () => {
-	expect(cardAddress("N 1")).toBe("/card?id=N%201")
-})
-
-test("the edit page's card id comes from the address's id", () => {
-	expect(editCardId("?id=A")).toBe("A")
-	expect(editCardId("")).toBeNull()
 })
 
 test("a new card's draft is blank, on the offset rule", () => {

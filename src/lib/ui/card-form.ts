@@ -25,12 +25,6 @@ export type CardDraft = {
 	owner: Owner | ""
 }
 
-/** A card's page address: `/card?id=<id>`. */
-export const cardAddress = (id: string): string => `/card?id=${encodeURIComponent(id)}`
-
-/** The card `/card/edit?id=<id>` edits, or null when the address names none. */
-export const editCardId = (search: string): string | null => new URLSearchParams(search).get("id")
-
 /** The form's fields filled from `card`, or blank for a new one. */
 export function draftOf(card: Card | null): CardDraft {
 	const rule = card?.cycle

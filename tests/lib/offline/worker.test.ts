@@ -53,19 +53,19 @@ describe("install", () => {
 	test("fetches every file afresh into the version's cache", async () => {
 		const caches = fakeCaches()
 		const fetch = vi.fn(async (url: Request | string, _init?: RequestInit) => ok(String(url)))
-		await install({ caches, fetch }, "v1", ["/", "/card"])
+		await install({ caches, fetch }, "v1", ["/", "/cards"])
 		expect(fetch.mock.calls).toEqual([
 			["/", { cache: "reload" }],
-			["/card", { cache: "reload" }],
+			["/cards", { cache: "reload" }],
 		])
 		const cache = await caches.open(`${CACHE_PREFIX}v1`)
-		expect(await (await cache.match("/card"))?.text()).toBe("/card")
+		expect(await (await cache.match("/cards"))?.text()).toBe("/cards")
 	})
 
 	test("fails, keeping the old version, when a file does not arrive", async () => {
 		const caches = fakeCaches()
-		const fetch = async (url: Request | string) => (url === "/card" ? new Response("", { status: 404 }) : ok("home"))
-		await expect(install({ caches, fetch }, "v2", ["/", "/card"])).rejects.toThrow("/card")
+		const fetch = async (url: Request | string) => (url === "/cards" ? new Response("", { status: 404 }) : ok("home"))
+		await expect(install({ caches, fetch }, "v2", ["/", "/cards"])).rejects.toThrow("/cards")
 		expect(await caches.keys()).toEqual([])
 	})
 })
@@ -81,7 +81,7 @@ test("activate drops every other version's cache and leaves caches it does not o
 
 describe("handles", () => {
 	test("this site's GET requests", () => {
-		expect(handles(new Request("https://cc.test/card?id=1"), "https://cc.test")).toBe(true)
+		expect(handles(new Request("https://cc.test/cards?card=1"), "https://cc.test")).toBe(true)
 	})
 
 	test("not another site's, such as Google Tag Manager", () => {
@@ -96,9 +96,9 @@ describe("handles", () => {
 describe("respond", () => {
 	test("serves a page from the cache whatever its query", async () => {
 		const caches = fakeCaches()
-		await (await caches.open(`${CACHE_PREFIX}v1`)).put("/card", ok("card page"))
+		await (await caches.open(`${CACHE_PREFIX}v1`)).put("/cards", ok("card page"))
 		const fetch = vi.fn()
-		const response = await respond({ caches, fetch }, "v1", new Request("https://cc.test/card?id=abc"))
+		const response = await respond({ caches, fetch }, "v1", new Request("https://cc.test/cards?card=abc"))
 		expect(await response.text()).toBe("card page")
 		expect(fetch).not.toHaveBeenCalled()
 	})
@@ -123,7 +123,7 @@ describe("respond", () => {
 		const caches = fakeCaches()
 		await caches.open(`${CACHE_PREFIX}v1`)
 		const fetch = vi.fn(async () => ok("from the network"))
-		const request = new Request("https://cc.test/backup")
+		const request = new Request("https://cc.test/gone")
 		const response = await respond({ caches, fetch }, "v1", request)
 		expect(await response.text()).toBe("from the network")
 		expect(fetch).toHaveBeenCalledWith(request)

@@ -4,7 +4,7 @@ import AppLayout from "#layouts/AppLayout.astro"
 ---
 
 <!-- A new purchase list, a full page under the Lists tab (RD-26): the builder, empty or holding the address's `cards`; the list is the reader's data, so the page is an island. -->
-<AppLayout title="New purchase list" titleKey="title.listNew" tab="transactions" fab={false} mainClass="page--narrow">
+<AppLayout title="New purchase list" titleKey="title.listNew" tab="transactions" mainClass="page--narrow">
 	<Fragment slot="main">
 		<ListNewPage client:load />
 	</Fragment>

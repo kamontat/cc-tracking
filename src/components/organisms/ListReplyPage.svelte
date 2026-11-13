@@ -16,7 +16,7 @@
 	import { MessageError } from "#lib/i18n/error"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
-	import { listId, listKey, listPageAddress } from "#lib/ui/list-address"
+	import { listKey, listPageAddress } from "#lib/ui/list-address"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { writeListReply } from "#lib/ui/save-list-reply"
@@ -28,25 +28,20 @@
 	 * (`/transactions/lists/edit?list=`, RD-26). Saving writes the purchases and the saved list,
 	 * then leaves for the Lists tab with the saved list open in its panel; *Cancel list* deletes the
 	 * waiting list and leaves for the Lists tab. A list in any other state (or none) says so and
-	 * links to where it can be opened. `legacy` is the old `/list/reply?id=`, until it retires: the
-	 * list in `id`, and Home for ‹ and after *Cancel list*. Everything here is the reader's data
-	 * (DD-172).
+	 * links to where it can be opened. Everything here is the reader's data (DD-172).
 	 */
 	interface Props {
-		/** The old `/list/reply`: the list in `id`, Home for ‹ and after a cancel. */
-		legacy?: boolean
 		/** Opens the store; tests pass one over an in-memory repository. */
 		open?: () => Promise<Opened>
 		/** The page's only clock reading: today's date, and when the reply is saved. */
 		clock?: () => Date
-		/** The address bar, read once for the list's `list` (or `id`). */
+		/** The address bar, read once for the list's `list`. */
 		address?: AddressBar
 		/** Leaves after a write; `location.replace`, so Back does not reopen the list just written. */
 		navigate?: (url: string) => void
 	}
 
 	const {
-		legacy = false,
 		open = () => openRepository(),
 		clock = () => new Date(),
 		address = browserBar(),
@@ -60,9 +55,9 @@
 	}
 
 	const now = today(clock())
-	const id = legacy ? listId(address.search()) : listKey(address.search())
-	/** Where ‹ and a cancel lead: the Lists tab, or Home from the old page. */
-	const home = legacy ? "/" : LISTS_ADDRESS
+	const id = listKey(address.search())
+	/** Where ‹ and a cancel lead: the Lists tab. */
+	const home = LISTS_ADDRESS
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
 	// What the page shows: frozen once a write succeeds, so the page keeps the reply on its way

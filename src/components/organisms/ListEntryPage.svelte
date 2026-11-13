@@ -29,14 +29,10 @@
 	import {
 		EDIT_LIST_ADDRESS,
 		type ListSheet,
-		legacyListAddress,
-		listId,
 		listKey,
 		listPanelAddress,
-		listSheetAddress,
 		NEW_LIST_ADDRESS,
 		newListAddress,
-		readListSheet,
 	} from "#lib/ui/list-address"
 	import { browserShare, countWords, imageName, shareTable, shareText } from "#lib/ui/list-share"
 	import { loadMoneyData } from "#lib/ui/money-data"
@@ -59,16 +55,9 @@
 	 * The add-a-card sheet is not in the address: opening it pushes an entry with the address
 	 * unchanged, so Back closes it; moving within it changes nothing in history; closing it steps
 	 * back over its entry.
-	 *
-	 * `legacy` is the old pages' way (`/list/new?card=…`, `/list/draft?id=`, DD-195), until they
-	 * retire: the sheet in the address (`add=1`, `open=<card>`) as `/pay`'s is (DD-76), opening
-	 * it pushes an entry, moving within it rewrites that entry, closing steps back over it or
-	 * rewrites it away when the page was opened on it; a write goes Home.
 	 */
 	interface Props {
 		mode: "new" | "draft"
-		/** The old `/list/new` and `/list/draft`: their keys, the sheet in the address, Home after a write. */
-		legacy?: boolean
 		/** Opens the store; tests pass one over an in-memory repository. */
 		open?: () => Promise<Opened>
 		/** The page's only clock reading: today's date, and when a list is marked sent. */
@@ -85,7 +74,6 @@
 
 	const {
 		mode,
-		legacy = false,
 		open = () => openRepository(),
 		clock = () => new Date(),
 		address = browserBar(),
@@ -138,22 +126,15 @@
 	let askRoot = $state<HTMLElement | undefined>()
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
-	/** The open add-a-card sheet: as the address has it on an old page, else in memory only. */
-	let sheet = $state<ListSheet>(legacy ? readListSheet(search) : null)
+	/** The open add-a-card sheet, in memory only. */
+	let sheet = $state<ListSheet>(null)
 	// Whether this page pushed the entry now showing: closing the sheet then steps back, so the
-	// list is not in history twice. A sheet the page was opened on is rewritten away instead.
+	// list is not in history twice.
 	let pushed = false
-	let pickedOnce = false
-	const path = legacy
-		? mode === "new"
-			? "/list/new"
-			: "/list/draft"
-		: mode === "new"
-			? NEW_LIST_ADDRESS
-			: EDIT_LIST_ADDRESS
+	const path = mode === "new" ? NEW_LIST_ADDRESS : EDIT_LIST_ADDRESS
 	/** Where a write leaves for: the list's panel on the Lists tab, or with no list the tab itself. */
-	const after = (id?: string) => (legacy ? "/" : id ? listPanelAddress(id) : LISTS_ADDRESS)
-	const back = legacy ? "/" : LISTS_ADDRESS
+	const after = (id?: string) => (id ? listPanelAddress(id) : LISTS_ADDRESS)
+	const back = LISTS_ADDRESS
 
 	const readyCards = (from: MoneyData): Card[] =>
 		from.cards.filter((card) => isReady(card, from.groups, from.locations))
@@ -162,11 +143,11 @@
 	const start = (from: MoneyData) => {
 		const ready = new Set(readyCards(from).map((card) => card.id))
 		if (mode === "new") {
-			cardIds = unique(new URLSearchParams(search).getAll(legacy ? "card" : "cards")).filter((c) => ready.has(c))
+			cardIds = unique(new URLSearchParams(search).getAll("cards")).filter((c) => ready.has(c))
 			view = "amounts"
 			return
 		}
-		const id = legacy ? listId(search) : listKey(search)
+		const id = listKey(search)
 		const list = from.lists.find((l) => l.id === id)
 		if (list?.status !== "draft") {
 			elsewhere = list
@@ -241,44 +222,20 @@
 	// draft's cards come from the stored draft, so its address stays as it is.
 	const syncAddress = () => {
 		if (mode !== "new") return
-		address.replace(legacy ? legacyListAddress(cardIds, address.search()) : newListAddress(cardIds))
+		address.replace(newListAddress(cardIds))
 	}
 
 	/** Opens, moves or closes the add-a-card sheet, keeping history in step. */
 	const onSheet = (next: ListSheet) => {
-		if (!legacy) {
-			if (next !== null && sheet === null) {
-				pushed = true
-				// The page's own entry: Back to the list must not have the router swap in a fresh page.
-				address.push(`${path}${address.search()}`, { ownPage: true })
-			} else if (next === null && sheet !== null && pushed) {
-				pushed = false
-				// The pop that follows closes the sheet.
-				address.back()
-				return
-			}
-			sheet = next
-			return
-		}
-		if (next === null) {
-			if (sheet === null) return
-			if (pushed) {
-				pushed = false
-				// The pop that follows reads the address without the sheet.
-				address.back()
-				return
-			}
-			sheet = null
-			address.replace(listSheetAddress(path, address.search(), null))
-			return
-		}
-		if (sheet === null) {
+		if (next !== null && sheet === null) {
 			pushed = true
-			pickedOnce = true
 			// The page's own entry: Back to the list must not have the router swap in a fresh page.
-			address.push(listSheetAddress(path, address.search(), next), { ownPage: true })
-		} else {
-			address.replace(listSheetAddress(path, address.search(), next))
+			address.push(`${path}${address.search()}`, { ownPage: true })
+		} else if (next === null && sheet !== null && pushed) {
+			pushed = false
+			// The pop that follows closes the sheet.
+			address.back()
+			return
 		}
 		sheet = next
 	}
@@ -485,17 +442,9 @@
 		})
 		const removePop = address.onPop(
 			() => {
-				if (!legacy) {
-					// Back over the sheet's entry closes it; Forward onto it leaves it closed.
-					sheet = null
-					pushed = false
-					syncAddress()
-					return
-				}
-				sheet = readListSheet(address.search())
-				// Back onto the list, or Forward onto a sheet only this page could have pushed.
-				pushed = pickedOnce && sheet !== null
-				// The entry stepped onto may predate cards added since: keep its address up to date.
+				// Back over the sheet's entry closes it; Forward onto it leaves it closed.
+				sheet = null
+				pushed = false
 				syncAddress()
 			},
 			{ ownPage: true },

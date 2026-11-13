@@ -1,30 +1,10 @@
 import { expect, test } from "vitest"
 
 /**
- * The four old list pages: one static page per case, each an island over the shared flows, on
- * their old keys (`legacy`) until they retire (RD-26). Ported from the legacy
- * `routes/list/pages` test.
+ * The purchase list pages' layout (`/transactions/lists/new`, `/transactions/lists/edit`): the
+ * builder's and the reply's steps, their side panel and their bars. Moved from the old `/list/*`
+ * pages' test when those pages retired (RD-26).
  */
-const PAGES = {
-	new: "ListNewPage",
-	draft: "ListEntryPage",
-	reply: "ListReplyPage",
-	view: "ListViewPage",
-} as const
-
-const page = (name: string) => Bun.file(`src/pages/list/${name}.astro`).text()
-
-test("each list case has its own page with its island, and the old single page is gone", async () => {
-	for (const [name, island] of Object.entries(PAGES)) {
-		const source = await page(name)
-		expect(source, name).toContain(`<${island} client:load`)
-		expect(source, name).toContain('mainClass="page--narrow"')
-	}
-	expect(await page("draft")).toContain('mode="draft"')
-	for (const name of ["new", "draft", "reply"]) expect(await page(name), name).toMatch(/client:load[^>]*\blegacy\b/)
-	expect(await Bun.file("src/pages/list.astro").exists()).toBe(false)
-})
-
 /** The body of the first rule in `css` whose selector is exactly `selector`. */
 const ruleBody = (css: string, selector: string) => {
 	const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -91,10 +71,9 @@ test("the list bottom bars reserve no room for the Payment button", async () => 
 	}
 })
 
-test("the floating + New button and the selection bars share one height token", async () => {
+test("the selection bars keep one height token", async () => {
 	const tokens = await Bun.file("src/styles/tokens.css").text()
 	expect(tokens).toMatch(/--cc-bar-height:/)
 	const css = await Bun.file("src/styles/app.css").text()
-	expect(ruleBody(css, ".fab")).toContain("block-size: var(--cc-bar-height)")
 	expect(ruleBody(css, ".action-bar")).toContain("min-block-size: var(--cc-bar-height)")
 })

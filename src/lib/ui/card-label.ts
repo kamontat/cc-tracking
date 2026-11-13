@@ -10,7 +10,7 @@ import { t } from "#lib/i18n/index"
  * - line: `id) name (last4)` -- single-line text, the copied list text, pickers and filter
  *   chips; short `id) name`;
  * - name: the name -- buttons, notices and sentences; short `c-[id]`.
- * A short form is for a small space. The Cards rows, the card page and the edit page use
+ * A short form is for a small space. The Cards rows and the card panel use
  * `cardTitle` instead. A card that is no longer stored keeps its id: `id) —`, and `c-[id]` for
  * its name. These are the text forms; a component draws the chip (`.mini`) and `.card-label` around them.
  */
@@ -55,7 +55,7 @@ export function cardOwnerName(id: string, card: Card | undefined, groups: LimitG
 }
 
 /**
- * The title the Cards page, the card page and the edit page give a card (amends UI-14 there):
+ * The title the Cards page and the card panel give a card (amends UI-14 there):
  * `Krungsri Bangkok · RI (4412)`. The holder is `cardOwnerOf` (DR-13) and is left out, with its
  * `·`, when unknown; `(last4)` is left out when the card has none.
  */

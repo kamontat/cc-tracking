@@ -36,7 +36,7 @@ test("a pop listener runs on popstate until it is removed", () => {
 })
 
 test("an own-page entry hides the page's own entry from the router until Back returns to it", () => {
-	history.replaceState({ index: 3 }, "", "/list/new?card=A")
+	history.replaceState({ index: 3 }, "", "/transactions/lists/new?cards=A")
 	const bar = browserBar()
 	// The client router ignores a pop onto an entry with no state, as Astro's does.
 	const routed: unknown[] = []
@@ -54,10 +54,10 @@ test("an own-page entry hides the page's own entry from the router until Back re
 		{ ownPage: true },
 	)
 	try {
-		bar.push("/list/new?card=A&add=1", { ownPage: true })
+		bar.push("/transactions/lists/new?cards=A", { ownPage: true })
 		expect(history.state).toBeNull()
 		// Back onto the page's own entry, which the push left with no state.
-		history.replaceState(null, "", "/list/new?card=A")
+		history.replaceState(null, "", "/transactions/lists/new?cards=A")
 		dispatchEvent(new PopStateEvent("popstate", { state: null }))
 		expect(routed).toEqual([])
 		expect(pops).toBe(1)
@@ -69,10 +69,10 @@ test("an own-page entry hides the page's own entry from the router until Back re
 })
 
 test("a plain push leaves the page's own entry to the router", () => {
-	history.replaceState({ index: 2 }, "", "/pay")
+	history.replaceState({ index: 2 }, "", "/owed")
 	const bar = browserBar()
-	bar.push("/pay?card=A")
-	history.replaceState(null, "", "/pay")
+	bar.push("/owed?card=A")
+	history.replaceState(null, "", "/owed")
 	let pops = 0
 	const remove = bar.onPop(() => {
 		pops++

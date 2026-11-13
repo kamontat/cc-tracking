@@ -4,16 +4,12 @@ import { expect, test } from "vitest"
 
 import {
 	EDIT_LIST_ADDRESS,
-	legacyListAddress,
 	listEditAddress,
-	listId,
 	listKey,
 	listPageAddress,
 	listPanelAddress,
-	listSheetAddress,
 	NEW_LIST_ADDRESS,
 	newListAddress,
-	readListSheet,
 } from "#lib/ui/list-address"
 
 const list = (id: string, status: PurchaseList["status"]): PurchaseList => ({
@@ -48,34 +44,4 @@ test("listKey reads the edit page's `list`, or null when there is none", () => {
 	expect(listKey("?list=w1")).toBe("w1")
 	expect(listKey("?id=w1")).toBeNull()
 	expect(listKey("?list=")).toBeNull()
-})
-
-// The old /list/* pages still build until Part 6, on their old keys.
-test("listId reads an old list page's `id`, or null when there is none", () => {
-	expect(listId("?id=w1")).toBe("w1")
-	expect(listId("?id=a%2Fb")).toBe("a/b")
-	expect(listId("")).toBeNull()
-})
-
-test("the old /list/new keeps its `card` keys, ahead of nothing but its sheet's", () => {
-	expect(legacyListAddress(["A", "B"], "?card=A&add=1")).toBe("/list/new?add=1&card=A&card=B")
-	expect(legacyListAddress([], "")).toBe("/list/new")
-})
-
-test("readListSheet reads an old page's add-a-card sheet: the picker, one card, or none", () => {
-	expect(readListSheet("")).toBeNull()
-	expect(readListSheet("?card=A")).toBeNull()
-	expect(readListSheet("?card=A&add=1")).toEqual({ kind: "pick" })
-	expect(readListSheet("?id=d1&open=B")).toEqual({ kind: "card", cardId: "B" })
-	expect(readListSheet("?add=1&open=a%2Fb")).toEqual({ kind: "card", cardId: "a/b" })
-	expect(readListSheet("?open=")).toBeNull()
-})
-
-test("listSheetAddress writes the sheet into an old page's address, keeping every other key", () => {
-	expect(listSheetAddress("/list/new", "?card=A&card=B", { kind: "pick" })).toBe("/list/new?card=A&card=B&add=1")
-	expect(listSheetAddress("/list/new", "?card=A&add=1", { kind: "card", cardId: "a/b" })).toBe(
-		"/list/new?card=A&open=a%2Fb",
-	)
-	expect(listSheetAddress("/list/draft", "?id=d1&open=B", null)).toBe("/list/draft?id=d1")
-	expect(listSheetAddress("/list/new", "?add=1", null)).toBe("/list/new")
 })

@@ -20,10 +20,9 @@ import {
 } from "./list-support"
 
 /**
- * The spender's reply to a waiting list. Most of these run on the old page (`/list/reply?id=`,
- * `legacy`), which still builds until it retires; the last section holds the reply to its new
- * address (`/transactions/lists/edit?list=`, RD-26). Ported from the legacy `reply-page` tests;
- * where those dispatched the reply element's event, these answer the real form.
+ * The spender's reply to a waiting list, at `/transactions/lists/edit?list=` (RD-26). Ported
+ * from the legacy `reply-page` tests; where those dispatched the reply element's event, these
+ * answer the real form.
  */
 afterEach(cleanup)
 
@@ -44,14 +43,11 @@ const withW1 = async (repo: Repository) => {
 	await repo.savePurchaseList(w1)
 }
 
-const setup = (
-	options: { repo?: Repository; search?: string; before?: (repo: Repository) => Promise<void>; legacy?: boolean } = {},
-) =>
+const setup = (options: { repo?: Repository; search?: string; before?: (repo: Repository) => Promise<void> } = {}) =>
 	setupPage(ListReplyPage, {
 		...(options.repo ? { repo: options.repo } : {}),
-		search: options.search ?? "?id=w1",
+		search: options.search ?? "?list=w1",
 		before: options.before ?? withW1,
-		props: { legacy: options.legacy ?? true },
 	})
 
 const answers: ListLine[] = [
@@ -97,7 +93,7 @@ test("a sent list opens the reply", async () => {
 	const h1 = root.querySelector("h1")
 	expect(titleOf(h1)).toBe("Spender's reply")
 	expect(h1?.querySelector("small")?.textContent).toBe("List for Fri, 30 Oct")
-	expect(root.querySelector('[data-action="back"]')?.getAttribute("href")).toBe("/")
+	expect(root.querySelector('[data-action="back"]')?.getAttribute("href")).toBe("/transactions/lists")
 })
 
 test("saving the reply stores purchases, the draft and the saved list, then shows it", async () => {
@@ -152,19 +148,19 @@ test("a list already saved is refused", async () => {
 })
 
 test("an unknown list says so and leads to the Lists tab", async () => {
-	const { root } = await setup({ search: "?id=gone" })
+	const { root } = await setup({ search: "?list=gone" })
 	expect(root.textContent).toContain("This list no longer exists.")
 	expect(root.querySelector('a[href="/transactions/lists"]:not([data-action])')).not.toBeNull()
 	expect(root.querySelector(".line[data-card]")).toBeNull()
 })
 
 test("a saved list or a draft leads to where it is now", async () => {
-	const done = await setup({ search: "?id=s1", before: (repo) => repo.savePurchaseList(saved("s1", ["A"])) })
+	const done = await setup({ search: "?list=s1", before: (repo) => repo.savePurchaseList(saved("s1", ["A"])) })
 	expect(done.root.querySelector(".line[data-card]")).toBeNull()
 	expect(done.root.textContent).toContain("This list is already saved.")
 	expect(elsewhereLink(done.root)).toBe("/transactions/lists?list=s1")
 
-	const notSent = await setup({ search: "?id=d1", before: (repo) => repo.savePurchaseList(draft("d1", ["A"])) })
+	const notSent = await setup({ search: "?list=d1", before: (repo) => repo.savePurchaseList(draft("d1", ["A"])) })
 	expect(notSent.root.textContent).toContain("This list is a draft.")
 	expect(elsewhereLink(notSent.root)).toBe("/transactions/lists/edit?list=d1")
 })
@@ -280,7 +276,7 @@ test("a waiting list offers Cancel list in the reply's side panel", async () => 
 	expect(button?.textContent?.trim()).toBe("Cancel list")
 })
 
-test("cancel list removes the waiting list at once, buys nothing and goes home", async () => {
+test("cancel list removes the waiting list at once, buys nothing and leaves for the Lists tab", async () => {
 	const { root, repo, visited } = await setup({
 		before: async (r) => {
 			await withW1(r)
@@ -290,7 +286,7 @@ test("cancel list removes the waiting list at once, buys nothing and goes home",
 	await click(root, "cancel-list")
 	expect((await stored(repo)).map((l) => l.id)).toEqual(["d1"])
 	expect(await allPurchases(repo)).toEqual([])
-	expect(visited).toEqual(["/"])
+	expect(visited).toEqual(["/transactions/lists"])
 })
 
 test("a list saved meanwhile is not cancelled", async () => {
@@ -303,22 +299,8 @@ test("a list saved meanwhile is not cancelled", async () => {
 	expect(visited).toEqual([])
 })
 
-test("on its new address the reply reads `list`, ‹ leads to the Lists tab, and so does Cancel list", async () => {
-	const { root, visited } = await setup({ search: "?list=w1", legacy: false })
-	expect([...root.querySelectorAll(".line[data-card]")]).toHaveLength(3)
-	expect(root.querySelector('[data-action="back"]')?.getAttribute("href")).toBe("/transactions/lists")
-	await click(root, "cancel-list")
-	expect(visited).toEqual(["/transactions/lists"])
-})
-
-test("on its new address a save opens the saved list in its panel", async () => {
-	const { root, visited } = await setup({ search: "?list=w1", legacy: false })
-	await sendReply(root, false)
-	expect(visited).toEqual(["/transactions/lists?list=w1"])
-})
-
-test("on its new address an old `id` is not read", async () => {
-	const { root } = await setup({ search: "?id=w1", legacy: false })
+test("an old `id` is not read", async () => {
+	const { root } = await setup({ search: "?id=w1" })
 	expect(root.querySelector(".line[data-card]")).toBeNull()
 	expect(root.textContent).toContain("This list no longer exists.")
 })

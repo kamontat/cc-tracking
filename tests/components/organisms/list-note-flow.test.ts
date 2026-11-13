@@ -1,14 +1,17 @@
+import { mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
 
 import ListEntryPage from "#components/organisms/ListEntryPage.svelte"
+import ListPanel from "#components/organisms/ListPanel.svelte"
 import ListReplyPage from "#components/organisms/ListReplyPage.svelte"
-import ListViewPage from "#components/organisms/ListViewPage.svelte"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { type BackupV3, exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
+import { RecordPanel } from "#lib/ui/record-panel.svelte"
+import { fakeHistory } from "../../lib/ui/fake-history"
 import { cleanup, click, closeCard, fieldsOf, settle, setupPage, stored, typeField } from "./list-support"
 
-/** A line's note across every list page and a backup. Ported from the legacy `note-flow` test. */
+/** A line's note across every list page, the list's panel and a backup. Ported from the legacy `note-flow` test. */
 afterEach(cleanup)
 
 /** Types into a field of a reply's line, by card and field. */
@@ -86,9 +89,23 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 	const moved = (await stored(repo)).find((l) => l.status === "draft")
 	expect(moved?.lines).toEqual([{ cardId: "B", amount: 50_00, note: "stamps" }])
 
-	// The saved view shows the note.
-	await setupPage(ListViewPage, { repo, search: "?id=l1" })
-	expect(document.querySelector('[data-card="A"] .line-note')?.textContent?.trim()).toBe("diesel for the van")
+	// The saved list's panel shows the note.
+	const panel = new RecordPanel({
+		address: fakeHistory("/transactions/lists?list=l1").bar,
+		path: "/transactions/lists",
+		kinds: ["card", "list"],
+	})
+	const stop = panel.start()
+	const shown = mount(ListPanel, {
+		target: document.body,
+		props: { panel, open: async () => ({ ok: true as const, repo }), clock: () => new Date("2026-10-31T03:00:00Z") },
+	})
+	await settle()
+	expect(document.querySelector('.list-lines [data-card="A"] .set-row__sub')?.textContent?.trim()).toBe(
+		"diesel for the van",
+	)
+	unmount(shown)
+	stop()
 
 	// The moved draft reopens with its note, and saving it again keeps it.
 	await setupPage(ListEntryPage, {

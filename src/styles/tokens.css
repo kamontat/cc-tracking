@@ -75,12 +75,10 @@
 	   (the detail panel's *Edit*) takes the same height. */
 	--cc-control-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
 	/* The four-tab bar measured 69px at 390px in English and Thai (no label wraps), before the
-	   bottom safe-area inset. The floating + New menu sits this far up, plus a gap. */
+	   bottom safe-area inset. */
 	--cc-tabbar-height: 4.375rem;
-	/* One height for the floating + New button (the round button's diameter, the pill's
-	   height) and the selection bars at the foot of a page, so the two read as one family. */
+	/* The least height of the selection bars at the foot of a list page. */
 	--cc-bar-height: 3.125rem;
-	--cc-fab-shadow: 0 8px 18px color-mix(in oklab, var(--cc-accent) 40%, transparent);
 
 	/* How strongly a non-production build tints the page, and the width of its top rule. */
 	--cc-env-tint: 16%;
@@ -154,8 +152,8 @@
 	--cc-detail-panel: 25rem;
 	--cc-detail-sheet-height: 92dvh;
 
-	/* From 900px a page's bottom padding, which clears the floating + New button. */
-	--cc-page-foot: calc(var(--cc-space-5) + var(--cc-bar-height) + var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
+	/* From 900px a page's bottom padding: its own margin, past a home indicator. */
+	--cc-page-foot: calc(var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
 
 	/* The detail panel's column from 900px is fixed to the screen: from where the page's content
 	   starts (under the header and the page's top padding) to where it ends (above the page's

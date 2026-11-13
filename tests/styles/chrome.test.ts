@@ -109,20 +109,23 @@ test("leading leaves room for Thai", () => {
 	expect(value("--cc-font-sans")).toContain('"Noto Sans Thai"')
 })
 
-test("the page ends with room for the floating + New button, on a phone and from 900px", async () => {
+// The floating + New retired (RD-25): a phone's page clears the tab bar, a desktop's nothing more.
+test("the page ends with room for the tab bar on a phone, and no room for a floating button", async () => {
 	const css = await Bun.file("src/styles/app.css").text()
 	const rule = (from: number) => {
 		const block = css.slice(css.indexOf("\n.page {", from))
 		return block.slice(0, block.indexOf("}"))
 	}
 	const phone = rule(0)
-	for (const token of ["--cc-tabbar-height", "--cc-bar-height", "safe-area-inset-bottom"])
-		expect(phone).toContain(token)
+	for (const token of ["--cc-tabbar-height", "safe-area-inset-bottom"]) expect(phone).toContain(token)
+	expect(phone).not.toContain("--cc-bar-height")
 	const wide = css.slice(css.indexOf("From 900px the bar is gone"))
 	const wideRule = wide.slice(0, wide.indexOf("}\n}"))
 	// From 900px it is `--cc-page-foot`, which the detail panel's column clears as well.
 	expect(wideRule).toContain("padding-bottom: var(--cc-page-foot)")
 	const tokens = await Bun.file("src/styles/tokens.css").text()
 	const foot = tokens.match(/--cc-page-foot:([^;]+);/)?.[1] ?? ""
-	for (const token of ["--cc-bar-height", "safe-area-inset-bottom"]) expect(foot).toContain(token)
+	expect(foot).toContain("safe-area-inset-bottom")
+	expect(foot).not.toContain("--cc-bar-height")
+	expect(css).not.toMatch(/\.fab\b|--fab-|--cc-fab-/)
 })

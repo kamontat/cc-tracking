@@ -14,12 +14,11 @@
 	import { figureParts, payDetail, readyAmount } from "#lib/ui/pay-form"
 
 	/**
-	 * The payment sheet's second step, for one card: the card with *Change*, its owed, next bill
-	 * and credit, chips that fill the amount, the amount, the date and a note. A date after today
-	 * plans the payment instead of recording it. Sending calls `onpay` with the amount and date
-	 * (and the note when one was typed); *Change*, shown with `onchange`, calls it to go back to
-	 * the card picker; *Cancel*, shown with `oncancel`, calls it (back to the card in its panel,
-	 * RD-24). The page wraps it in its sheet or panel. Renders nothing without a card.
+	 * The pay form in a card's panel (RD-24): the card, its owed, next bill and credit, chips that
+	 * fill the amount, the amount, the date and a note. A date after today plans the payment
+	 * instead of recording it. Sending calls `onpay` with the amount and date (and the note when
+	 * one was typed); *Cancel*, shown with `oncancel`, calls it (back to the card in its panel).
+	 * Renders nothing without a card.
 	 */
 	interface Props {
 		card: Card | null
@@ -38,8 +37,6 @@
 		/** A save is under way; the button waits so a second tap cannot record it twice. */
 		busy?: boolean
 		onpay: (detail: PayDetail) => void
-		/** Shows *Change*, back to the card picker (`/pay`). */
-		onchange?: (() => void) | undefined
 		/** Shows *Cancel* beside the submit: back to the card in its panel. */
 		oncancel?: (() => void) | undefined
 	}
@@ -55,7 +52,6 @@
 		error = "",
 		busy = false,
 		onpay,
-		onchange,
 		oncancel,
 	}: Props = $props()
 
@@ -161,11 +157,6 @@
 			<span class="what"
 				><b><span class="card-label">{cardLine(card.id, card, { short: true })}</span></b></span
 			>
-			{#if onchange}
-				<button type="button" data-variant="quiet" data-action="change" onclick={() => onchange()}>
-					{tr("pay.change")}
-				</button>
-			{/if}
 		</div>
 		<div class="stats">
 			<div class="stat" data-stat="owed">
@@ -290,7 +281,7 @@
 	/* The chip and label themselves are app.css's `.mini` and `.card-label`. */
 	.paycard {
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto;
+		grid-template-columns: auto minmax(0, 1fr);
 		align-items: center;
 		gap: var(--cc-space-3);
 		padding: var(--cc-space-3);
@@ -308,10 +299,6 @@
 
 	.what b {
 		font-size: var(--cc-text-md);
-	}
-
-	.pay-form .paycard button {
-		align-self: center;
 	}
 
 	.stats {

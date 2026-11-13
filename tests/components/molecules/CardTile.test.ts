@@ -55,9 +55,9 @@ const show = (props: Record<string, unknown>) => {
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
 test("with an href it is a link in its tone, carrying the card's id", () => {
-	const tile = show({ href: "/card?id=A", tone: "blue", mono: true })
+	const tile = show({ href: "/cards?card=A", tone: "blue", mono: true })
 	expect(tile.tagName).toBe("A")
-	expect(tile.getAttribute("href")).toBe("/card?id=A")
+	expect(tile.getAttribute("href")).toBe("/cards?card=A")
 	expect(tile.dataset["g"]).toBe("blue")
 	expect(tile.dataset["card"]).toBe("A")
 	expect(tile.querySelector(".corner")?.hasAttribute("data-mono")).toBe(true)
