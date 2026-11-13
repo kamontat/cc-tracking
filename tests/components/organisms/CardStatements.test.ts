@@ -432,17 +432,23 @@ const style = async () =>
 test("the look takes every value from the tokens", async () => {
 	const css = await style()
 	expect(css).not.toBe("")
-	// Media queries can't read a custom property, so a breakpoint is the one literal allowed.
-	const rules = css.replace(/@media[^{]*/g, "")
+	// Media and container queries can't read a custom property, so a breakpoint is the one literal allowed.
+	const rules = css.replace(/@(?:media|container)[^{]*/g, "")
 	expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i)
 	expect(rules).not.toMatch(/\d(?:\.\d+)?(?:px|rem|em)\b/)
 	expect(rules).not.toContain("calc(var(--cc-border-width) *")
 })
 
-test("the phone layout gives the buttons their own line", async () => {
+// The panel's own width decides, not the screen's: from 900px it sits in the narrow side column,
+// where one line has no room for the date, note, amount and both buttons.
+test("a narrow panel gives the buttons their own line; a wide one keeps them on the row", async () => {
 	const css = await style()
+	expect(css).not.toContain("@media (max-width: 639px)")
+	expect(css).toMatch(/\.panel\s*{[^}]*container: statements \/ inline-size;/)
+	expect(css).toMatch(/\.purchases\s*{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto;/)
+	expect(css).toMatch(/\.pactions\s*{[^}]*grid-column: 1 \/ -1;/)
 	expect(css).toMatch(
-		/@media \(max-width: 639px\)\s*{[^}]*\.purchases\s*{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto;/,
+		/@container statements \(min-width: [\d.]+rem\)\s*{[^}]*\.purchases\s*{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto auto;/,
 	)
-	expect(css).toMatch(/@media \(max-width: 639px\)[\s\S]*\.pactions\s*{[^}]*grid-column: 1 \/ -1;/)
+	expect(css).toMatch(/@container statements \(min-width: [\d.]+rem\)[\s\S]*\.pactions\s*{[^}]*grid-column: auto;/)
 })
