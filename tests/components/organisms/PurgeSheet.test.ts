@@ -11,7 +11,7 @@ import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 
 /**
- * *Delete old purchases* (RD-18) in a sheet: age chips recount, a note says what goes and what
+ * *Clean old data* (RD-18) in a sheet: age chips recount, a note says what goes and what
  * stays, and a second ask guards the write. Ported from the legacy `cc-purge-sheet` tests.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -97,7 +97,7 @@ const show = async (repo: Repository) => {
 test("opens in a sheet on 1 year pressed and counts what would go", async () => {
 	const { find, text } = await show(await populated())
 	expect(find("dialog")?.hasAttribute("open")).toBe(true)
-	expect(find("dialog h2")?.textContent?.trim()).toBe("Delete old purchases")
+	expect(find("dialog h2")?.textContent?.trim()).toBe("Clean old data")
 	expect(find('[data-age="1y"]')?.getAttribute("aria-pressed")).toBe("true")
 	expect(find('[data-age="6m"]')?.getAttribute("aria-pressed")).toBe("false")
 	expect(find('[data-age="6m"]')?.getAttribute("data-variant")).toBe("quiet")

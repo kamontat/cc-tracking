@@ -288,13 +288,16 @@ const click = async (root: HTMLElement, action: string) => {
 
 const resetText = (root: HTMLElement) => flat(root.querySelector('[data-section="reset"]'))
 
-test("the reset rows: delete old purchases, then delete all data", async () => {
+test("the reset rows: clean old data, then delete all data", async () => {
 	const root = await show()
 
 	expect(
 		[...root.querySelectorAll('[data-section="reset"] .set > .set-row')].map((found) => found.getAttribute("data-row")),
 	).toEqual(["purge", "delete-all"])
-	expect(row(root, "purge").textContent).toContain("Delete old purchases")
+	expect(row(root, "purge").textContent).toContain("Clean old data")
+	expect(row(root, "purge").textContent).toContain(
+		"Free space by removing old purchases, payments and lists on paid statements",
+	)
 	expect(row(root, "delete-all").textContent).toContain("Delete all data")
 })
 
@@ -680,7 +683,7 @@ test("the data panel counts again after a reset", async () => {
 	expect(flat(row(root, "data").querySelector(".set-row__sub"))).toMatch(/^0 cards · 0 purchases/)
 })
 
-test("the Delete old purchases row opens the purge sheet, and closing takes it away", async () => {
+test("the Clean old data row opens the purge sheet, and closing takes it away", async () => {
 	const root = await show()
 	expect(purgeSheet(root)).toBeNull()
 	expect(row(root, "purge").getAttribute("aria-expanded")).toBe("false")
