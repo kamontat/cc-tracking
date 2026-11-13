@@ -10,6 +10,9 @@ dist
 coverage
 *.lcov
 
+# mock backups (bun run mock)
+cc-tracking-mock-*.json
+
 # logs
 logs
 _.log
