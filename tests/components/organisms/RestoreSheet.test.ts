@@ -586,7 +586,7 @@ test("the link step's hint links to GitHub Gist and PasteFox, each in a new tab"
 			["GitHub Gist", "https://gist.github.com/", "_blank", "noopener noreferrer"],
 			["PasteFox", "https://pastefox.com/create", "_blank", "noopener noreferrer"],
 		])
-		expect(sheet.root.querySelector(".hint")?.textContent).toContain("then paste its raw link.")
+		expect(sheet.root.querySelector(".hint")?.textContent).toContain("then paste its link.")
 	})
 })
 
@@ -605,6 +605,46 @@ test("a link restores into an empty browser at once, named by its file", async (
 				expect(asked).toEqual(["https://example.com/backups/cc-tracking-2026-11-14.json"])
 				expect((await repo.listCards()).map((card) => card.id)).toEqual(["s1"])
 				expect(sheet.restored).toEqual([{ file: "cc-tracking-2026-11-14.json", ...oneCardCounts }])
+			},
+		)
+	})
+})
+
+test("a PasteFox page restores from its raw address, named by its code", async () => {
+	const text = await oneCardBackup()
+	await withClipboard({ readText: async () => "" }, async () => {
+		await withFetch(
+			async () => new Response(text),
+			async (asked) => {
+				const { repo, storage } = await freshBrowser()
+				const sheet = await show(repo, storage)
+				await sheet.click("from-link")
+				typeLink(sheet.root, "pastefox.com/206br1")
+				await sheet.click("import-link")
+
+				expect(asked).toEqual(["https://pastefox.com/api/pastes/206br1/raw"])
+				expect(sheet.restored).toEqual([{ file: "206br1", ...oneCardCounts }])
+			},
+		)
+	})
+})
+
+test("a PasteFox page that holds no backup says so, naming PasteFox, and writes nothing", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		await withFetch(
+			async () => new Response("<!doctype html><p>hello</p>"),
+			async () => {
+				const repo = await populated()
+				const sheet = await show(repo)
+				await sheet.click("from-link")
+				typeLink(sheet.root, "https://pastefox.com/206br1")
+				await sheet.click("import-link")
+
+				expect(sheet.step()).toBe("link")
+				expect(sheet.root.querySelector('[role="alert"]')?.textContent).toBe(
+					"Could not restore that copy. That PasteFox link does not hold a backup. Save the text from Copy as text there, then paste its link.",
+				)
+				expect(await repo.listPurchases("k1")).toHaveLength(2)
 			},
 		)
 	})
@@ -699,7 +739,7 @@ test("Restore waits for a web address on the link step", async () => {
 		await sheet.click("from-link")
 		const restore = () => sheet.action("import-link") as HTMLButtonElement
 		expect(restore().disabled).toBe(true)
-		for (const link of ["copy.json", "ftp://example.com/b.json", "   "]) {
+		for (const link of ["copy", "ftp://example.com/b.json", "   "]) {
 			typeLink(sheet.root, link)
 			await settle()
 			expect(restore().disabled).toBe(true)

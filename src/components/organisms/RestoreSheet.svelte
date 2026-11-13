@@ -27,6 +27,7 @@
 		canReadClipboard,
 		fetchBackupText,
 		isWebAddress,
+		linkedFailure,
 		linkHintParts,
 		linkName,
 		restoreFailureText,
@@ -174,7 +175,15 @@
 		return run(async () => start(file.name, await file.text()))
 	}
 
-	const onLink = () => run(async () => start(linkName(link), await fetchBackupText(link)))
+	const onLink = () =>
+		run(async () => {
+			const source = await fetchBackupText(link)
+			try {
+				await start(linkName(link), source)
+			} catch (caught) {
+				throw linkedFailure(caught, link)
+			}
+		})
 
 	/** Moves to `next`, sliding it in from the end, or from the start on `back`, leaving the last failure behind. */
 	const goTo = (next: RestoreStep, back = false) => {
