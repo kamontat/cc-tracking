@@ -23,6 +23,7 @@ test("an island's built frame reads English, like the static copy beside it", as
 		"Display",
 		"Locations and owners",
 		"Backup",
+		"Your data",
 		"Reset",
 		"About",
 	])
