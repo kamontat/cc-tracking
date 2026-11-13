@@ -10,11 +10,13 @@
 	import { onMount } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
+	import FilterControls from "#components/molecules/FilterControls.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import ReadyList from "#components/organisms/ReadyList.svelte"
+	import SortSheet from "#components/organisms/SortSheet.svelte"
 	import { canPurchase } from "#lib/domain/card"
 	import { today } from "#lib/domain/date"
-	import { readyRows } from "#lib/domain/home"
+	import { READY_DIRS, READY_SORTS, readyRows } from "#lib/domain/home"
 	import { unassignedCards } from "#lib/domain/limit"
 	import { purchasePlaces } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
@@ -23,11 +25,13 @@
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { RecordPanel } from "#lib/ui/record-panel.svelte"
+	import { sortOrderLabel } from "#lib/ui/sort-label"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * Home's _Ready to use_ tab (`/ready`, RD-22): every card ready for a purchase, as card tiles,
-	 * in the order kept in the address (`?sort=&dir=`, most room first by default, rewritten in
+	 * Home's _Ready to use_ tab (`/ready`, RD-22): the control row with only its sort chip
+	 * (`FilterControls`, as on Cards; the chip opens `SortSheet`), then every card ready for a
+	 * purchase, as card tiles, in the order kept in the address (`?sort=&dir=`, most room first by default, rewritten in
 	 * place, RD-29). A tile opens the card's panel over the tab (`?card=<id>`, `CardPanel`), beside
 	 * the list from 900px and over it below. Every address the page writes keeps the open card
 	 * (`panel.keep`); a write in the panel reads the cards again.
@@ -70,6 +74,7 @@
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
 	let view = $state.raw<ReadyView>(readReadyView(address.search()))
+	let sortOpen = $state(false)
 	/** Why the store would not open, re-read in the reader's language. */
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
@@ -101,6 +106,11 @@
 			? unassignedCards(data.cards, data.groups).filter((card) => canPurchase(card, data?.locations ?? [])).length
 			: 0,
 	)
+
+	const sortLabel = $derived.by(() => {
+		void lang
+		return sortOrderLabel(view.sort, view.dir)
+	})
 
 	const sortBy = (sort: ReadySort, dir: SortDir) => {
 		view = { sort, dir }
@@ -141,6 +151,13 @@
 	<div class="ready-main">
 		<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 		{#if data}
+			{#if rows.length > 0}
+				<FilterControls
+					onopen={() => {
+						sortOpen = true
+					}}
+					sort={sortLabel} />
+			{/if}
 			<ReadyList
 				{rows}
 				{places}
@@ -149,9 +166,25 @@
 				{unassigned}
 				sort={view.sort}
 				dir={view.dir}
-				onsort={sortBy}
 				current={panel.record?.kind === "card" ? panel.record.id : null}
 				onopencard={(id) => panel.show({ kind: "card", id })} />
+			{#if sortOpen}
+				<SortSheet
+					heading={tr("ready.sort.title")}
+					fields={READY_SORTS}
+					defaults={READY_DIRS}
+					initial="room"
+					field={view.sort}
+					dir={view.dir}
+					shown={rows.length}
+					onapply={(sort: ReadySort, dir: SortDir) => {
+						sortOpen = false
+						sortBy(sort, dir)
+					}}
+					onclose={() => {
+						sortOpen = false
+					}} />
+			{/if}
 		{/if}
 	</div>
 	<CardPanel {panel} open={openOnce} {clock} {newId} onchange={() => void page.load()} />

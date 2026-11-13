@@ -130,6 +130,28 @@ test("a part left out has no tab; asking for it opens on Filter", () => {
 	expect(visible(root)).toEqual(["filter"])
 })
 
+test("with only a sort part (a tab with no filters) there are no tabs, and the sort shows", () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	mounted = mount(FilterSheet, {
+		target: document.body,
+		props: {
+			heading: "Sort",
+			shown: 2,
+			label: "Show 2 cards",
+			tab: "sort",
+			onclear: () => {},
+			onapply: () => {},
+			onclose: () => {},
+			sortPart: part("sort"),
+		},
+	})
+	flushSync()
+	expect(tabs(document.body)).toHaveLength(0)
+	expect(visible(document.body)).toEqual(["sort"])
+	expect(document.querySelector('[data-part="filter"]')).toBeNull()
+})
+
 test("Clear all asks the page and keeps the sheet open", () => {
 	const { root, click, calls } = show()
 	click("[data-action=clear]")

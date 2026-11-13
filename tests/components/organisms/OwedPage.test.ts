@@ -85,18 +85,35 @@ test("only the cards that owe, most urgent first", async () => {
 	expect($('.owed-list a[data-card="7"]')?.getAttribute("href")).toBe("/owed?card=7")
 })
 
+const sortChip = () => $<HTMLButtonElement>(".owed-main > .tx-controls > .tx-chips > button.tx-chip.tx-sort")
+
+/** Opens the sort sheet from the chip, picks a field (or keeps it) and a way, and applies. */
+const sortBy = async (field: string | null, dir: string | null) => {
+	await press(sortChip())
+	if (field) await press($(`dialog [data-sort="${field}"]`))
+	if (dir) await press($(`dialog [data-dir="${dir}"]`))
+	await press($("dialog [data-action=apply]"))
+}
+
+test("the sort is the shared control row's chip, as on Cards: no search, no Filter", async () => {
+	await open()
+	expect(text(sortChip())).toBe("Sort: Most urgent first ▾")
+	expect(sortChip()?.dataset["action"]).toBe("sort")
+	expect($(".tx-controls input.search")).toBeNull()
+	expect($('.tx-controls [data-action="filter"]')).toBeNull()
+	// The control row heads the tab's column, before the list, as on Cards.
+	expect($(".owed-main > .tx-controls + .owed-list")).not.toBeNull()
+})
+
 test("the order comes from the address, and a new one is written in place, keys at default left out", async () => {
 	const { history } = await open("?sort=left")
 	expect(tiles()).toEqual(["12.3", "7"])
-	await press($('.filter-seg [data-dir="asc"]'))
+	expect(text(sortChip())).toBe("Sort: Most owed ▾")
+	await sortBy(null, "asc")
 	expect(history.now()).toBe("/owed?sort=left&dir=asc")
 	expect(history.size()).toBe(1)
 	expect(tiles()).toEqual(["7", "12.3"])
-	const select = $<HTMLSelectElement>(".sort-bar select[name=sort]")
-	if (!select) throw new Error("no sort")
-	select.value = "urgency"
-	select.dispatchEvent(new Event("change", { bubbles: true }))
-	await settle()
+	await sortBy("urgency", null)
 	expect(history.now()).toBe("/owed")
 	history.userBack()
 	await settle()
@@ -110,7 +127,7 @@ test("a tile opens the card's panel over the tab, pushing ?card=; the sort keeps
 	expect($(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
 	expect($(".detail-panel .card-hero")).not.toBeNull()
 	expect($('.owed-list a[data-card="12.3"]')?.getAttribute("aria-current")).toBe("true")
-	await press($('.filter-seg [data-dir="desc"]'))
+	await sortBy(null, "desc")
 	expect(history.now()).toBe("/owed?sort=card&dir=desc&card=12.3")
 	history.userBack()
 	await settle()

@@ -1,16 +1,14 @@
 <script lang="ts">
 	import type { OwedRow } from "#lib/domain/owed"
 	import type { GroupRoom } from "#lib/domain/room"
-	import type { SortDir } from "#lib/domain/sort"
 	import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
 	import CardTile from "#components/molecules/CardTile.svelte"
-	import SortBar from "#components/molecules/SortBar.svelte"
 	import { formatAmount } from "#lib/domain/money"
-	import { OWED_DIRS, OWED_SORTS, type OwedSort, owedLeft } from "#lib/domain/owed"
+	import { owedLeft } from "#lib/domain/owed"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { cardLine } from "#lib/ui/card-label"
 	import { tileTone } from "#lib/ui/card-tile"
@@ -19,7 +17,7 @@
 	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
-	 * Home's _Owed_ tab (RD-25): the sort row (the field chip and the order switch, DD-193), then a
+	 * Home's _Owed_ tab (RD-25), under the page's control row (its sort chip, `OwedPage`): a
 	 * card list of payment tiles (DD-166), one for every card that owes. A tile opens the card's
 	 * panel over the tab (`/owed?card=<id>`; a click asking for a new tab is the browser's), the open
 	 * card's tile marked; _Pay_ on its last line (beside the link, not in it) hands the row to
@@ -35,10 +33,6 @@
 		ledgers: Map<string, CardLedger>
 		/** Today, which picks a card's open period when its ledger has no open statement. */
 		today: PlainDate
-		sort: OwedSort
-		dir: SortDir
-		/** The reader chose a sort (in its own direction) or reversed the order. */
-		onsort: (sort: OwedSort, dir: SortDir) => void
 		/** The card open in the panel now, whose tile is marked. */
 		current?: string | null
 		/** A tile's plain click: open the card's panel. */
@@ -47,7 +41,7 @@
 		onpay?: (row: OwedRow) => void
 	}
 
-	const { rows, groups, rooms, ledgers, today, sort, dir, onsort, current = null, onopencard, onpay }: Props = $props()
+	const { rows, groups, rooms, ledgers, today, current = null, onopencard, onpay }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -84,7 +78,6 @@
 	{#if rows.length === 0}
 		<p class="empty">{tr("owed.empty")}</p>
 	{:else}
-		<SortBar fields={OWED_SORTS} defaults={OWED_DIRS} initial="urgency" field={sort} {dir} onchange={onsort} />
 		<div class="tiles">
 			{#each rows as row (row.card.id)}
 				<CardTile

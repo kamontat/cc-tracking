@@ -10,7 +10,7 @@ import { setLocale } from "#lib/i18n/index"
 import { flat, testGroup, testRow, testRows } from "./ready-test-rows"
 
 /**
- * Home's _Ready to use_ tab (RD-22): the count and places, the sort, then every ready card as a
+ * Home's _Ready to use_ tab (RD-22): the count and places, then every ready card as a
  * tile that opens the card's panel over the tab.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -30,7 +30,6 @@ type Props = {
 	unassigned: number
 	sort: ReadySort
 	dir: SortDir
-	onsort: (sort: ReadySort, dir: SortDir) => void
 	current: string | null
 	onopencard: (id: string) => void
 }
@@ -48,7 +47,6 @@ const show = (props: Partial<Props> = {}) => {
 			unassigned: 0,
 			sort: "room",
 			dir: "desc",
-			onsort: () => {},
 			...props,
 		},
 	})
@@ -63,9 +61,9 @@ const tile = (root: ParentNode, id: string) => root.querySelector(`[data-card="$
 test("the head counts the ready cards and their places, with no heading (the tab names it)", () => {
 	const root = show()
 	expect(root.querySelector("h2")).toBeNull()
-	expect(flat(root.querySelector(".head small"))).toBe("3 cards in Bangkok, Krabi")
+	expect(flat(root.querySelector(".result-head"))).toBe("3 cards in Bangkok, Krabi")
 	const one = show({ rows: testRows().slice(0, 1) })
-	expect(flat(one.querySelector(".head small"))).toBe("1 card in Bangkok, Krabi")
+	expect(flat(one.querySelector(".result-head"))).toBe("1 card in Bangkok, Krabi")
 })
 
 const five = () => [
@@ -104,8 +102,7 @@ test("a plain click opens the panel in place, the open card marked; a new-tab cl
 	expect(opened).toEqual(["12.3"])
 })
 
-test("sorts by room, close or due, either way, and the sort row says so", () => {
-	const sorts: [ReadySort, SortDir][] = []
+test("sorts by room, close or due, either way", () => {
 	const rows = [
 		testRow("A", 1_00, "2026-11-12", "2026-11-30"),
 		testRow("B", 3_00, "2026-11-10", "2026-12-02"),
@@ -114,14 +111,7 @@ test("sorts by room, close or due, either way, and the sort row says so", () => 
 	expect(order(show({ rows, sort: "room", dir: "asc" }))).toEqual(["A", "C", "B"])
 	expect(order(show({ rows, sort: "close", dir: "desc" }))).toEqual(["C", "A", "B"])
 	expect(order(show({ rows, sort: "due", dir: "desc" }))).toEqual(["B", "A", "C"])
-	const root = show({ rows, sort: "due", dir: "asc", onsort: (sort, dir) => sorts.push([sort, dir]) })
-	expect(order(root)).toEqual(["C", "A", "B"])
-	const select = root.querySelector(".sort-bar select[name=sort]") as HTMLSelectElement
-	expect(Array.from(select.options).map((o) => o.value)).toEqual(["room", "close", "due"])
-	expect(select.value).toBe("due")
-	select.value = "close"
-	select.dispatchEvent(new Event("change", { bubbles: true }))
-	expect(sorts).toEqual([["close", "desc"]])
+	expect(order(show({ rows, sort: "due", dir: "asc" }))).toEqual(["C", "A", "B"])
 })
 
 test("nothing ready names the next step and offers no list", () => {
@@ -130,8 +120,7 @@ test("nothing ready names the next step and offers no list", () => {
 	expect(flat(root.querySelector(".note"))).toContain("Settings")
 	expect(root.querySelectorAll("[data-card]")).toHaveLength(0)
 	expect(root.querySelector(".tiles")).toBeNull()
-	expect(root.querySelector(".sort-bar")).toBeNull()
-	expect(flat(root.querySelector(".head small"))).toBe("0 cards in Bangkok, Krabi")
+	expect(flat(root.querySelector(".result-head"))).toBe("0 cards in Bangkok, Krabi")
 })
 
 test("no line counts cards without a limit group, nor links to assign them (RD-27)", () => {
@@ -144,15 +133,15 @@ test("no line counts cards without a limit group, nor links to assign them (RD-2
 test("reads in Thai", () => {
 	setLocale("th")
 	const root = show()
-	expect(flat(root.querySelector(".head small"))).not.toContain("cards in")
+	expect(flat(root.querySelector(".result-head"))).not.toContain("cards in")
 })
 
 test("follows a language switch while shown", () => {
 	const root = show()
-	expect(flat(root.querySelector(".head small"))).toBe("3 cards in Bangkok, Krabi")
+	expect(flat(root.querySelector(".result-head"))).toBe("3 cards in Bangkok, Krabi")
 	setLocale("th")
 	flushSync()
-	expect(flat(root.querySelector(".head small"))).not.toContain("cards in")
+	expect(flat(root.querySelector(".result-head"))).not.toContain("cards in")
 	expect(flat(tile(root, "A").querySelector(".facts"))).toBe("สรุปยอด 10 พ.ย. 2026")
 })
 

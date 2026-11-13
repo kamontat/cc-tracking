@@ -7,17 +7,17 @@
 	import { onMount } from "svelte"
 
 	import CardTile from "#components/molecules/CardTile.svelte"
-	import SortBar from "#components/molecules/SortBar.svelte"
 	import { displayDate } from "#lib/domain/date"
-	import { READY_DIRS, READY_SORTS, sortReady } from "#lib/domain/home"
+	import { sortReady } from "#lib/domain/home"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { lastFour, tileTone } from "#lib/ui/card-tile"
 	import { READY_ADDRESS } from "#lib/ui/home-query"
 	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
-	 * Home's _Ready to use_ tab (RD-22): the count and places with the sort row (most room, longest
-	 * to close, latest due, either way, DD-193), then every ready card as a card tile (DD-151) that
+	 * Home's _Ready to use_ tab (RD-22), under the page's control row (its sort chip, `ReadyPage`):
+	 * the count and places, as Cards' result line, then every ready card, in `sort` and `dir` (most
+	 * room, longest to close, latest due, either way, DD-193), as a card tile (DD-151) that
 	 * opens the card's panel over the tab (`/ready?card=<id>`; a click asking for a new tab is the
 	 * browser's), the open card's tile marked. With no card ready it says so and leads to Settings.
 	 */
@@ -33,15 +33,13 @@
 		unassigned: number
 		sort: ReadySort
 		dir: SortDir
-		/** The reader chose a sort (in its own direction) or reversed the order. */
-		onsort: (sort: ReadySort, dir: SortDir) => void
 		/** The card open in the panel now, whose tile is marked. */
 		current?: string | null
 		/** A tile's plain click: open the card's panel. */
 		onopencard?: (id: string) => void
 	}
 
-	const { rows, places, groups, unassigned, sort, dir, onsort, current = null, onopencard }: Props = $props()
+	const { rows, places, groups, unassigned, sort, dir, current = null, onopencard }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -74,57 +72,62 @@
 </script>
 
 <div class="ready">
-	<div class="head">
-		<small>{tr(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places: places.join(", ") })}</small>
-		{#if count > 0}
-			<SortBar fields={READY_SORTS} defaults={READY_DIRS} initial="room" field={sort} {dir} onchange={onsort} />
+	<section>
+		<p class="result-head">
+			{tr(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places: places.join(", ") })}
+		</p>
+		{#if count === 0}
+			<div class="note">
+				<p>{tr("ready.empty")}</p>
+				<p>{tr("quickAdd.noEligible")}</p>
+				<a data-action="settings" href="/settings/locations">{tr("ready.toSettings")}</a>
+			</div>
+		{:else}
+			<div class="tiles" id="ready-list">
+				{#each sorted as row (row.card.id)}
+					<CardTile
+						card={row.card}
+						room={row.room}
+						credit={row.credit}
+						tone={tileTone(row.card, groups)}
+						href={withRecord(READY_ADDRESS, { kind: "card", id: row.card.id })}
+						current={row.card.id === current}
+						onclick={opener(row.card.id)}
+						corner={lastFour(row.card)}
+						mono
+						facts={facts(row)}
+						plainRoom
+						quietOver />
+				{/each}
+			</div>
 		{/if}
-	</div>
-	{#if count === 0}
-		<div class="note">
-			<p>{tr("ready.empty")}</p>
-			<p>{tr("quickAdd.noEligible")}</p>
-			<a data-action="settings" href="/settings/locations">{tr("ready.toSettings")}</a>
-		</div>
-	{:else}
-		<div class="tiles" id="ready-list">
-			{#each sorted as row (row.card.id)}
-				<CardTile
-					card={row.card}
-					room={row.room}
-					credit={row.credit}
-					tone={tileTone(row.card, groups)}
-					href={withRecord(READY_ADDRESS, { kind: "card", id: row.card.id })}
-					current={row.card.id === current}
-					onclick={opener(row.card.id)}
-					corner={lastFour(row.card)}
-					mono
-					facts={facts(row)}
-					plainRoom
-					quietOver />
-			{/each}
-		</div>
+	</section>
+	{#if unassigned > 0}
+		<p class="sub" data-testid="unassigned">
+			{tr(unassigned === 1 ? "spendable.unassigned.one" : "spendable.unassigned.many", { count: unassigned })}
+			<a href="/cards?ungrouped=1">{tr("spendable.unassignedAction")}</a>
+		</p>
 	{/if}
 </div>
 
 <style>
+	/* The list's column, spaced as Cards' (`CardsList`): the result line over the tiles, then the note. */
 	.ready {
 		display: flex;
 		flex-direction: column;
-		gap: var(--cc-space-3);
+		gap: var(--cc-space-4);
+		min-inline-size: 0;
 	}
 
-	.ready .head {
+	.ready section {
 		display: flex;
-		flex-direction: row;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--cc-space-1) var(--cc-space-3);
+		flex-direction: column;
+		gap: var(--cc-space-1);
 	}
 
-	/* Outranks app.css's `.page small`. */
-	.ready .head small {
+	/* Cards' result line (*N cards*). Two classes, to outrank app.css's `.page p`. */
+	.ready .result-head {
+		margin: 0;
 		font-size: var(--cc-text-sm);
 		color: var(--cc-text-muted);
 	}

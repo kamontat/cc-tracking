@@ -83,21 +83,35 @@ const tiles = () => [...document.querySelectorAll("#ready-list [data-card]")].ma
 test("every ready card, most room first, with no See more", async () => {
 	await open()
 	expect(tiles()).toEqual(["1", "2", "3", "4", "5"])
-	expect(text($(".ready .head small"))).toBe("5 cards in Krabi")
+	expect(text($(".ready .result-head"))).toBe("5 cards in Krabi")
 	expect($('[data-action="more"]')).toBeNull()
+})
+
+const sortChip = () => $<HTMLButtonElement>(".ready-main > .tx-controls > .tx-chips > button.tx-chip.tx-sort")
+
+/** Opens the sort sheet from the chip, picks a field (or keeps it) and a way, and applies. */
+const sortBy = async (field: string | null, dir: string | null) => {
+	await press(sortChip())
+	if (field) await press($(`dialog [data-sort="${field}"]`))
+	if (dir) await press($(`dialog [data-dir="${dir}"]`))
+	await press($("dialog [data-action=apply]"))
+}
+
+test("the sort is the shared control row's chip, as on Cards and Owed: no search, no Filter", async () => {
+	await open()
+	expect(text(sortChip())).toBe("Sort: Most room ▾")
+	expect($(".tx-controls input.search")).toBeNull()
+	expect($('.tx-controls [data-action="filter"]')).toBeNull()
+	expect($(".ready-main > .tx-controls + .ready")).not.toBeNull()
 })
 
 test("the order comes from the address, and a new one is written in place", async () => {
 	const { history } = await open("?sort=close")
 	// Longest to close first: the 28th closes last, the 5th first.
 	expect(tiles()).toEqual(["5", "4", "3", "2", "1"])
-	const select = $<HTMLSelectElement>(".sort-bar select[name=sort]")
-	if (!select) throw new Error("no sort")
-	select.value = "room"
-	select.dispatchEvent(new Event("change", { bubbles: true }))
-	await settle()
+	await sortBy("room", null)
 	expect(history.now()).toBe("/ready")
-	await press($('.filter-seg [data-dir="asc"]'))
+	await sortBy(null, "asc")
 	expect(history.now()).toBe("/ready?dir=asc")
 	expect(history.size()).toBe(1)
 	expect(tiles()).toEqual(["3", "4", "5", "1", "2"])
@@ -124,5 +138,5 @@ test("names the places in the reader's language", async () => {
 	await open()
 	setLocale("th")
 	await settle()
-	expect(text($(".ready .head small"))).toContain("กระบี่")
+	expect(text($(".ready .result-head"))).toContain("กระบี่")
 })

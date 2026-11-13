@@ -1,7 +1,5 @@
-import type { OwedSort } from "#lib/domain/owed"
 import type { PayChoice } from "#lib/domain/pay"
 import type { GroupRoom } from "#lib/domain/room"
-import type { SortDir } from "#lib/domain/sort"
 import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
@@ -11,7 +9,7 @@ import OwedList from "#components/organisms/OwedList.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * Home's _Owed_ tab (RD-25): its sort, then the pay tiles of the cards that owe, each opening the
+ * Home's _Owed_ tab (RD-25): the pay tiles of the cards that owe, each opening the
  * card's panel over the tab, with _Pay_ on its last line opening the panel on its pay form.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -57,9 +55,6 @@ type Props = {
 	rooms: Map<string, GroupRoom>
 	ledgers: Map<string, CardLedger>
 	today: PlainDate
-	sort: OwedSort
-	dir: SortDir
-	onsort: (sort: OwedSort, dir: SortDir) => void
 	current: string | null
 	onopencard: (id: string) => void
 	onpay: (row: PayChoice) => void
@@ -76,9 +71,6 @@ const show = (props: Partial<Props> = {}) => {
 			rooms: new Map(),
 			ledgers: new Map(),
 			today: "2026-11-04",
-			sort: "urgency",
-			dir: "asc",
-			onsort: () => {},
 			...props,
 		},
 	})
@@ -126,26 +118,9 @@ test("Pay sits on each tile's last line, outside its link, and hands over the ro
 	expect(paid).toEqual(["B.2"])
 })
 
-test("the sort row calls onsort with the chosen sort, in its own direction, and marks the order", () => {
-	const sorts: [OwedSort, SortDir][] = []
-	const root = show({ sort: "left", dir: "desc", onsort: (sort, dir) => sorts.push([sort, dir]) })
-	const select = root.querySelector(".sort-bar select[name=sort]") as HTMLSelectElement
-	expect(Array.from(select.options).map((o) => o.value)).toEqual(["urgency", "card", "due", "left"])
-	expect(select.value).toBe("left")
-	expect(root.querySelector("label.chip")?.hasAttribute("data-active")).toBe(true)
-	select.value = "due"
-	select.dispatchEvent(new Event("change", { bubbles: true }))
-	root.querySelector<HTMLButtonElement>('.filter-seg [data-dir="asc"]')?.click()
-	expect(sorts).toEqual([
-		["due", "asc"],
-		["left", "asc"],
-	])
-})
-
-test("empty says nothing is owed, with no sort chip", () => {
+test("empty says nothing is owed", () => {
 	const root = show({ rows: [] })
 	expect(root.querySelector(".empty")?.textContent?.trim()).toBe("Nothing owed on any card.")
-	expect(root.querySelector(".sort-bar")).toBeNull()
 	expect(root.querySelector(".tiles")).toBeNull()
 })
 

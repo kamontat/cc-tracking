@@ -177,6 +177,25 @@ test("with no onopen, it is the search box alone: no Filter button and no chip r
 	expect(searched).toEqual(["uob"])
 })
 
+test("with no search (a tab with only a sort), only the chip row: the sort chip, as on Cards", () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	const tabs: string[] = []
+	mounted = mount(FilterControls, {
+		target: document.body,
+		props: { onopen: (tab: string) => tabs.push(tab), sort: "Most urgent first" },
+	})
+	flushSync()
+	expect(document.querySelector(".tx-controls")).not.toBeNull()
+	expect(document.querySelector(".tx-ctl")).toBeNull()
+	expect(document.querySelector("input.search")).toBeNull()
+	expect(document.querySelector('[data-action="filter"]')).toBeNull()
+	const sort = document.querySelector<HTMLButtonElement>(".tx-controls > .tx-chips > button.tx-chip.tx-sort")
+	expect(text(sort)).toBe("Sort: Most urgent first ▾")
+	sort?.click()
+	expect(tabs).toEqual(["sort"])
+})
+
 test("an end snippet sits at the end of the search row, after Filter", async () => {
 	const { createRawSnippet } = await import("svelte")
 	if (mounted) unmount(mounted)

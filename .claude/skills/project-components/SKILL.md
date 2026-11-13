@@ -112,12 +112,14 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   rule; only the links scroll sideways (never wrapping), on every width (`<PageTabs
   title="cards.title" label="cards.tabs" tabs={CARDS_TABS} current="/cards" />`). A tab list is a
   `PageTab[]` in `#lib/ui/page-tabs` (`CARDS_TABS`, `TRANSACTIONS_TABS`, `HOME_TABS`). A tab with a
-  sort but no filter sheet (Home's _Owed_ and _Ready to use_) puts `SortBar.svelte` (molecule: the
-  _Sort_ chip and the order switch) over its list. A tile that needs a button (_Pay_ on an owed
-  tile) passes it as `CardTile`'s `action` snippet, drawn beside the tile's link, never inside it. A
-  tab's add button goes at the end of its search row, through `FilterControls`' `end` snippet, as a
-  quiet `button.tx-fbtn` (_+ Add card_, _+ Add limit_), or an `a.btn.tx-fbtn` when it leads to a
-  page (_+ Add list_).
+  sort but no filter sheet (Home's _Owed_ and _Ready to use_) still heads its list with
+  `FilterControls`, leaving out `onsearch` so only the _Sort_ chip shows, in the same row and place
+  as on Cards; the chip opens `SortSheet.svelte` (organism: `FilterSheet` with only its _Sort_
+  section). Never draw a sort control of its own. A tile that needs a button (_Pay_ on an owed tile)
+  passes it as `CardTile`'s `action` snippet, drawn beside the tile's link, never inside it. A tab's
+  add button goes at the end of its search row, through `FilterControls`' `end` snippet, as a quiet
+  `button.tx-fbtn` (_+ Add card_, _+ Add limit_), or an `a.btn.tx-fbtn` when it leads to a page (_+
+  Add list_).
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.

@@ -10,10 +10,12 @@
 	import { onMount } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
+	import FilterControls from "#components/molecules/FilterControls.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import OwedList from "#components/organisms/OwedList.svelte"
+	import SortSheet from "#components/organisms/SortSheet.svelte"
 	import { today } from "#lib/domain/date"
-	import { type OwedSort, owedLeft, owedRows } from "#lib/domain/owed"
+	import { OWED_DIRS, OWED_SORTS, type OwedSort, owedLeft, owedRows } from "#lib/domain/owed"
 	import { groupRoom } from "#lib/domain/room"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
@@ -21,11 +23,13 @@
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { RecordPanel } from "#lib/ui/record-panel.svelte"
+	import { sortOrderLabel } from "#lib/ui/sort-label"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * Home's _Owed_ tab (`/owed`, RD-25): every card that owes, as payment tiles, in the order kept
-	 * in the address (`?sort=&dir=`, rewritten in place, RD-29). A tile opens the card's panel over
+	 * Home's _Owed_ tab (`/owed`, RD-25): the control row with only its sort chip (`FilterControls`,
+	 * as on Cards; the chip opens `SortSheet`), then every card that owes, as payment tiles, in the
+	 * order kept in the address (`?sort=&dir=`, rewritten in place, RD-29). A tile opens the card's panel over
 	 * the tab (`?card=<id>`, `CardPanel`), beside the list from 900px and over it below; _Pay_ on a
 	 * tile opens it straight on the pay form with what is left filled in, and the save, _Cancel_ and
 	 * ‹ swap the card back in place (RD-24). Every address the page writes keeps the open card
@@ -69,6 +73,7 @@
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
 	let view = $state.raw<OwedView>(readOwedView(address.search()))
+	let sortOpen = $state(false)
 	/** Why the store would not open, re-read in the reader's language. */
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
@@ -95,6 +100,11 @@
 			: new Map(),
 	)
 	const rows = $derived(data ? owedRows(data.cards, data.ledgers, now, view.sort, view.dir) : [])
+
+	const sortLabel = $derived.by(() => {
+		void lang
+		return sortOrderLabel(view.sort, view.dir)
+	})
 
 	const sortBy = (sort: OwedSort, dir: SortDir) => {
 		view = { sort, dir }
@@ -138,18 +148,39 @@
 	<div class="owed-main">
 		<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 		{#if data}
+			{#if rows.length > 0}
+				<FilterControls
+					onopen={() => {
+						sortOpen = true
+					}}
+					sort={sortLabel} />
+			{/if}
 			<OwedList
 				{rows}
 				groups={data.groups}
 				{rooms}
 				ledgers={data.ledgers}
 				today={now}
-				sort={view.sort}
-				dir={view.dir}
-				onsort={sortBy}
 				current={panel.record?.kind === "card" ? panel.record.id : null}
 				onopencard={(id) => panel.show({ kind: "card", id })}
 				onpay={pay} />
+			{#if sortOpen}
+				<SortSheet
+					heading={tr("owed.sort.title")}
+					fields={OWED_SORTS}
+					defaults={OWED_DIRS}
+					initial="urgency"
+					field={view.sort}
+					dir={view.dir}
+					shown={rows.length}
+					onapply={(sort: OwedSort, dir: SortDir) => {
+						sortOpen = false
+						sortBy(sort, dir)
+					}}
+					onclose={() => {
+						sortOpen = false
+					}} />
+			{/if}
 		{/if}
 	</div>
 	<CardPanel {panel} open={openOnce} {clock} {newId} onchange={() => void page.load()} />

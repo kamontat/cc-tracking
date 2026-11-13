@@ -12,13 +12,14 @@
 	 * The search box, the Filter button (its badge counts the filters in use), the sort chip, the group chip and a
 	 * removable chip per filter, drawn in the light DOM where app.css's `.tx-controls` styles them.
 	 * The Filter button, the sort chip and the group chip all call `onopen`, for the page to show its filter sheet.
+	 * A tab with only a sort (Home's _Owed_ and _Ready to use_) leaves out `onsearch`: no search row, only the chips.
 	 * With no `onopen` it is the search box alone (the add-a-card sheet).
 	 */
 	interface Props {
-		q: string
-		placeholder: string
-		/** Every keystroke in the search box, with the box's whole value. */
-		onsearch: (q: string) => void
+		q?: string
+		placeholder?: string
+		/** Every keystroke in the search box, with the box's whole value; none draws no search row. */
+		onsearch?: (q: string) => void
 		/**
 		 * Opens the page's filter sheet on a tab: the Filter button's, the sort chip's or the group chip's. None
 		 * draws no Filter button and no chip row.
@@ -39,7 +40,7 @@
 		end?: Snippet | undefined
 	}
 
-	const { q, placeholder, onsearch, onopen, count = 0, sort, group, chips = [], end }: Props = $props()
+	const { q = "", placeholder = "", onsearch, onopen, count = 0, sort, group, chips = [], end }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -53,7 +54,7 @@
 	 * root listener, so an `input` that does not bubble still reaches `onsearch`.
 	 */
 	const listen = (input: HTMLInputElement) => {
-		const handle = () => onsearch(input.value)
+		const handle = () => onsearch?.(input.value)
 		input.addEventListener("input", handle)
 		return () => input.removeEventListener("input", handle)
 	}
@@ -66,29 +67,36 @@
 </script>
 
 <div class="tx-controls">
-	<div class="tx-ctl">
-		<label class="tx-search"
-			><SvgIcon name="search" />
-			<input
-				class="search"
-				type="search"
-				name="q"
-				value={q}
-				aria-label={tr("list.search")}
-				{placeholder}
-				{@attach listen}></label
-		>
-		{#if onopen}
-			<button type="button" class="tx-fbtn" data-variant="quiet" data-action="filter" onclick={() => onopen("filter")}>
-				<SvgIcon name="filter" />
-				{tr("tx.filter.open")}
-				{#if count}
-					<b class="tx-count">{count}</b>
-				{/if}
-			</button>
-		{/if}
-		{@render end?.()}
-	</div>
+	{#if onsearch}
+		<div class="tx-ctl">
+			<label class="tx-search"
+				><SvgIcon name="search" />
+				<input
+					class="search"
+					type="search"
+					name="q"
+					value={q}
+					aria-label={tr("list.search")}
+					{placeholder}
+					{@attach listen}></label
+			>
+			{#if onopen}
+				<button
+					type="button"
+					class="tx-fbtn"
+					data-variant="quiet"
+					data-action="filter"
+					onclick={() => onopen?.("filter")}>
+					<SvgIcon name="filter" />
+					{tr("tx.filter.open")}
+					{#if count}
+						<b class="tx-count">{count}</b>
+					{/if}
+				</button>
+			{/if}
+			{@render end?.()}
+		</div>
+	{/if}
 	{#if onopen}
 		<div class="tx-chips">
 			{#if sort !== undefined}
@@ -97,7 +105,7 @@
 					class="tx-chip tx-sort"
 					data-variant="quiet"
 					data-action="sort"
-					onclick={() => onopen("sort")}>
+					onclick={() => onopen?.("sort")}>
 					{tr("tx.sortChip", { sort })}
 					▾
 				</button>
@@ -108,7 +116,7 @@
 					class="tx-chip tx-sort"
 					data-variant="quiet"
 					data-action="group"
-					onclick={() => onopen("group")}>
+					onclick={() => onopen?.("group")}>
 					{tr("groupChip", { group })}
 					▾
 				</button>
