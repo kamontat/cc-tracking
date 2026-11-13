@@ -330,6 +330,9 @@ export const en = {
 	"card.edit": "Edit card",
 	"card.noPurchases":
 		"{location} takes no new purchases, so this card isn't offered on lists. Tick it under Settings › Locations.",
+	"card.noPurchasesLinked":
+		"{location} takes no new purchases, so this card isn't offered on lists. Tick it under {link}.",
+	"card.locationsLink": "Settings › Locations",
 	"card.error.noSelection": "No card was selected.",
 	"card.error.notFound": "No card with the id {id}.",
 	"card.error.read": "Could not read this card.",

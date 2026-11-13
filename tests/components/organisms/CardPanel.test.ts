@@ -157,6 +157,26 @@ test("the body is the card page's: hero, actions and statements", async () => {
 	expect(body?.querySelector(`[data-period="${periodOfPurchase(card.cycle, purchaseDate)}"]`)).not.toBeNull()
 })
 
+test("a card kept where purchases aren't taken says so in a note with a link, and Pay is the one action", async () => {
+	const repo = await stocked()
+	await repo.saveLocation({ id: "bangkok", name: "Bangkok", takesPurchases: false })
+	await repo.saveCard({ ...card, location: "bangkok" })
+	await show(repo)
+	const body = $(".detail-panel__body")
+	const note = body?.querySelector(".card-note")
+	expect(text(note)).toBe(
+		"Bangkok takes no new purchases, so this card isn't offered on lists. Tick it under Settings › Locations.",
+	)
+	// A plain link inside the note, not a button beside the actions.
+	const link = note?.querySelector<HTMLAnchorElement>('a[data-action="settings"]')
+	expect(link?.getAttribute("href")).toBe("/settings/locations")
+	expect(link?.classList.contains("btn")).toBe(false)
+	expect(text(link)).toBe("Settings › Locations")
+	const actions = body?.querySelector(".card-actions")
+	expect(actions?.querySelector(".note")).toBeNull()
+	expect([...(actions?.children ?? [])].map((el) => el.getAttribute("data-action"))).toEqual(["pay"])
+})
+
 test("Edit turns the panel into the card form; saving returns to the card", async () => {
 	const repo = await stocked()
 	const { history, changes } = await show(repo)

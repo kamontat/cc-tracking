@@ -342,6 +342,8 @@ export const th: Catalog = {
 	"card.showOlder": "ดูใบแจ้งยอดเก่ากว่านี้",
 	"card.edit": "แก้ไขบัตร",
 	"card.noPurchases": "{location} ไม่รับรายการใช้จ่ายใหม่ บัตรใบนี้จึงไม่แสดงในใบรายการซื้อ ติ๊กที่นี่ในตั้งค่า › สถานที่",
+	"card.noPurchasesLinked": "{location} ไม่รับรายการใช้จ่ายใหม่ บัตรใบนี้จึงไม่แสดงในใบรายการซื้อ ติ๊กที่นี่ใน{link}",
+	"card.locationsLink": "ตั้งค่า › สถานที่",
 	"card.error.noSelection": "ยังไม่ได้เลือกบัตร",
 	"card.error.notFound": "ไม่พบบัตรรหัส {id}",
 	"card.error.read": "อ่านข้อมูลบัตรนี้ไม่สำเร็จ",

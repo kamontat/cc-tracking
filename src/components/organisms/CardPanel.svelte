@@ -329,16 +329,17 @@
 	})
 
 	/** Why this card is not offered on lists, or nothing when it is (FR-22). */
-	const cannotPurchase = $derived.by((): { text: string; toLocations?: true } | null => {
+	const cannotPurchase = $derived.by((): { text: string; toLocations?: { before: string; after: string } } | null => {
 		void lang
 		if (!card) return null
 		if (card.archived) return { text: t("card.archivedNote") }
 		if (data && !roomFor(card, data)) return { text: t("card.noGroupNote") }
-		if (data && !canPurchase(card, data.locations))
-			return {
-				text: t("card.noPurchases", { location: nameOfLocation(data.locations, card.location) }),
-				toLocations: true,
-			}
+		if (data && !canPurchase(card, data.locations)) {
+			// The note's "Settings › Locations" is the link itself, cut out of the sentence at {link}.
+			const location = nameOfLocation(data.locations, card.location)
+			const [before = "", after = ""] = t("card.noPurchasesLinked", { location, link: "\u0001" }).split("\u0001")
+			return { text: t("card.noPurchases", { location }), toLocations: { before, after } }
+		}
 		return null
 	})
 
@@ -526,15 +527,21 @@
 		{#if overNote}
 			<p class="card-over" role="status" data-over-room>{overNote}</p>
 		{/if}
-		<div class="card-actions">
-			{#if cannotPurchase}
-				<p class="note">{cannotPurchase.text}</p>
+		{#if cannotPurchase}
+			<!-- Why the card isn't offered on lists, with the way to change it as a link in the note,
+			     so the actions below stay buttons of one size: Pay alone, full width. -->
+			<p class="note card-note">
 				{#if cannotPurchase.toLocations}
-					<a class="btn" data-variant="quiet" data-action="settings" href="/settings/locations"
-						>{tr("ready.toSettings")}</a
-					>
+					{cannotPurchase.toLocations.before}<a data-action="settings" href="/settings/locations"
+						>{tr("card.locationsLink")}</a
+					>{cannotPurchase.toLocations.after}
+				{:else}
+					{cannotPurchase.text}
 				{/if}
-			{:else}
+			</p>
+		{/if}
+		<div class="card-actions">
+			{#if !cannotPurchase}
 				<a class="btn" data-action="use-on-list" href={newListAddress([current.id])}>{tr("card.useOnList")}</a>
 				<button
 					type="button"
