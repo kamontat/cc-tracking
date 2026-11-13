@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, and a mock backup script
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, and statements listed newest first
 
 ### BREAKING CHANGES
 
@@ -101,6 +101,9 @@ reasons don't show up in the code.
 
 - A form in the detail panel (_Edit_, _Make a payment_, _Add purchase_) slides in from the side,
   and ‹ back slides the record in again; reduced motion turns it off (DD-205).
+
+- An unfolded statement on a card lists its purchases and payments newest first, as the
+  statements themselves are; on one day a purchase still comes before a payment (DD-122).
 
 ### Bug fixes
 

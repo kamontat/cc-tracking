@@ -351,12 +351,12 @@ const lines = (root: ParentNode, period: string) => [
 	...(row(root, period)?.querySelectorAll<HTMLElement>(".purchases > li") ?? []),
 ]
 
-test("an unfolded statement lists its payment parts among its purchases, by date", async () => {
+test("an unfolded statement lists its payment parts among its purchases, newest first", async () => {
 	const { root } = await show({ statements: [withPayments] })
 	await unfold(root, "2026-10")
 	expect(
 		lines(root, "2026-10").map((li) => li.getAttribute("data-purchase") ?? li.getAttribute("data-payment")),
-	).toEqual(["p2", "y1", "p1", "y2"])
+	).toEqual(["y2", "p1", "y1", "p2"])
 
 	const whole = root.querySelector<HTMLElement>('[data-payment="y1"]')
 	expect(whole?.classList.contains("payment")).toBe(true)
@@ -399,6 +399,22 @@ test("two parts of one payment on one statement read as one line", async () => {
 	expect(found.length).toBe(1)
 	expect(text(found[0]?.querySelector(".pamount"))).toBe("+฿700.00")
 	expect(text(found[0]?.querySelector(".ppart"))).toBe("(part of ฿1,000.00)")
+})
+
+test("on one day, a purchase still comes before a payment", async () => {
+	const { root } = await show({
+		statements: [
+			statement({
+				...withPayments,
+				purchases: [purchase({ id: "p1", date: "2026-10-02", amount: 1_200_00 })],
+				payments: [{ payment: payment("y1", "2026-10-02", 500_00), amount: 500_00 }],
+			}),
+		],
+	})
+	await unfold(root, "2026-10")
+	expect(
+		lines(root, "2026-10").map((li) => li.getAttribute("data-purchase") ?? li.getAttribute("data-payment")),
+	).toEqual(["p1", "y1"])
 })
 
 test("a statement with payments and no purchases still unfolds", async () => {
