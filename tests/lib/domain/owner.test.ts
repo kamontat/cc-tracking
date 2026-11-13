@@ -79,7 +79,7 @@ test("the starting owners are KC, NT and RI, each named by its initials", () => 
 	expect(DEFAULT_OWNERS.map((o) => o.id)).toContain(DEFAULT_OWNER)
 })
 
-test("tells the three a version 2 or 3 backup knew from anything else", () => {
+test("tells the three a version 3 backup knew from anything else", () => {
 	for (const { id } of DEFAULT_OWNERS) expect(isStartingOwner(id)).toBe(true)
 	// The codes are stored exactly as written: casing matters.
 	for (const value of ["kc", "KCC", "", null, undefined, 7, { owner: "KC" }]) expect(isStartingOwner(value)).toBe(false)

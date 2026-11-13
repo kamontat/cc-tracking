@@ -372,7 +372,6 @@ export const th: Catalog = {
 
 	"storage.unavailable": "เบราว์เซอร์นี้ไม่อนุญาตให้หน้าเว็บเก็บข้อมูล หน้าต่างส่วนตัวและการบล็อกข้อมูลเว็บไซต์ทำให้เกิดปัญหานี้",
 	"startup.failed": "เริ่มหน้าเว็บไม่สำเร็จ",
-	"startup.paymentsFailed": "อัปเดตการชำระที่บันทึกไว้ไม่สำเร็จ ข้อมูลไม่สูญหาย โหลดใหม่เพื่อลองอีกครั้ง",
 
 	"backup.title": "สำรองข้อมูล",
 	"backup.warning": "ข้อมูลอยู่ในเบราว์เซอร์นี้เท่านั้น ดาวน์โหลดสำเนาเก็บไว้เพื่อความปลอดภัย",
@@ -502,14 +501,13 @@ export const th: Catalog = {
 	"purge.error": "ลบรายการซื้อเก่าไม่สำเร็จ",
 
 	"backup.unreadable": "นี่ไม่ใช่ข้อมูลสำรองที่อ่านได้",
-	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
-	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.payment are each
+	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านได้เฉพาะเวอร์ชัน {oldest}–{newest}",
+	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.cardPayment are each
 	// assembled with one of the backup.problem.* fragments below (backup.card + " " +
 	// backup.problem.missingId, say) to form one sentence, so Thai word order has to match
 	// what the English assembly produces, not just translate each fragment in isolation.
 	"backup.card": "บัตรลำดับที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.purchase": "รายการใช้จ่ายลำดับที่ {index} ในข้อมูลสำรอง {problem}",
-	"backup.payment": "การชำระเงินลำดับที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.limitGroup": "กลุ่มวงเงินที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.cardPayment": "รายการชำระเงินบัตรลำดับที่ {index} ในข้อมูลสำรอง {problem}",
 	"backup.statementDates": "วันที่ของใบแจ้งยอดลำดับที่ {index} ในข้อมูลสำรอง {problem}",
@@ -520,7 +518,6 @@ export const th: Catalog = {
 	"backup.problem.missingId": "ไม่มีรหัส",
 	"backup.problem.missingName": "ไม่มีชื่อ",
 	"backup.problem.missingLast4": "ไม่มีเลข 4 ตัวท้าย",
-	"backup.problem.badLocation": "มีสถานที่ที่ไม่ใช่ bangkok, phichit หรือ krabi",
 	"backup.problem.unknownLocation": "มีสถานที่ที่ไม่อยู่ในรายการสถานที่ของไฟล์สำรอง",
 	"backup.problem.unknownOwner": "มีเจ้าของที่ไม่อยู่ในรายการเจ้าของของไฟล์สำรอง",
 	"backup.problem.badCardId": "มีรหัสที่ไม่ใช่ตัวเลขคั่นด้วยจุด นำหน้าด้วยอักษรอังกฤษตัวเล็กได้หนึ่งตัว (เช่น 5, 12.3 หรือ k1.2)",
@@ -529,8 +526,8 @@ export const th: Catalog = {
 	"backup.problem.badOwner": "มีเจ้าของที่ไม่ใช่ KC, NT หรือ RI",
 	// FLAG FOR OWNER REVIEW: noCycle and missingPeriod below both render as "ไม่มีรอบบิล"
 	// ("has no cycle" vs. "is missing a period" in English -- two different problems).
-	// Benign today: backup.card and backup.payment name which one broke ("card #N ..." vs.
-	// "payment #N ..."), so the sentence still disambiguates. But it is the exact class of
+	// Benign today: backup.card and backup.cardPayment name which one broke ("card #N ..." vs.
+	// "card payment #N ..."), so the sentence still disambiguates. But it is the exact class of
 	// bug this review exists to catch, so it is flagged rather than silently left.
 	"backup.problem.noCycle": "ไม่มีรอบบิล",
 	"backup.problem.badOffsetCycle": "มีรอบบิลแบบ offset ที่ค่าวันไม่ใช่จำนวนเต็ม",
@@ -542,10 +539,8 @@ export const th: Catalog = {
 	"backup.problem.badAddedAt": "เวลาที่บันทึกไม่ใช่วันเวลาที่ถูกต้อง",
 	// See the noCycle comment above -- same collision, same "ไม่มีรอบบิล" text.
 	"backup.problem.missingPeriod": "ไม่มีรอบบิล",
-	"backup.problem.badPaidAt": "วันที่ paidAt ไม่ถูกต้อง",
 	"backup.problem.badCloseDate": "วันที่ closeDate ไม่ถูกต้อง",
 	"backup.problem.badDueDate": "วันที่ dueDate ไม่ถูกต้อง",
-	"backup.problem.badParts": "มีรายการชำระบางส่วนที่ไม่ใช่รายการวันที่และจำนวนเงินเต็มสตางค์ที่มากกว่าศูนย์",
 	"backup.problem.badLimit": "มีวงเงินที่ไม่ใช่จำนวนเต็มสตางค์",
 	"backup.problem.badLimitRange": "มีวงเงินที่ไม่ใช่จำนวนเต็มสตางค์ที่มากกว่าศูนย์",
 	"backup.problem.badAmountRange": "มีจำนวนเงินที่ไม่ใช่จำนวนเต็มสตางค์ที่มากกว่าศูนย์",

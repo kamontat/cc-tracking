@@ -19,9 +19,6 @@ export type MoneyData = ReadyData & {
 /**
  * Everything Home and the purchase lists page draw from, with a ledger per card (archived
  * cards included).
- *
- * Payments and kept statement dates come from storage; `migratePayments` has converted the
- * old per-statement records by the time any page asks.
  */
 export async function loadMoneyData(repo: Repository, today: PlainDate): Promise<MoneyData> {
 	const [cards, groups, locations, lists, stored] = await Promise.all([

@@ -8,7 +8,6 @@ import { migrateGroupColors } from "#lib/storage/assign-group-colors"
 import { memoryStorage } from "#lib/storage/contract"
 import { LocalStorageRepository } from "#lib/storage/local"
 import { migrateLocations } from "#lib/storage/migrate-locations"
-import { migratePayments } from "#lib/storage/migrate-payments"
 import { seedLocations } from "#lib/storage/seed-locations"
 import fixture from "./fixtures/main-4876074.json"
 
@@ -16,7 +15,7 @@ import fixture from "./fixtures/main-4876074.json"
  * Data saved by the current version (main, 4876074) must load unchanged (PRD acceptance). The
  * fixture is localStorage exactly as main's LocalStorageRepository wrote it, with what main read
  * back: cards, groups, purchases and every statement's dates and amounts. Here it is opened the
- * way a page opens storage (`bootstrap`: seed and migrate locations, then migrate payments).
+ * way a page opens storage (`bootstrap`: seed and migrate locations, then colour the groups).
  */
 /** JSON widens the owner and the cycle kind to strings; the file holds what main saved. */
 const expected = fixture.expected as unknown as {
@@ -32,7 +31,6 @@ const open = async () => {
 	const repo = new LocalStorageRepository(storage)
 	await seedLocations(repo, storage)
 	await migrateLocations(repo, storage)
-	await migratePayments(repo, storage)
 	await migrateGroupColors(repo, storage)
 	return repo
 }

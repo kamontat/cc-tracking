@@ -7,7 +7,6 @@ import type {
 	Purchase,
 	PurchaseList,
 	StatementDates,
-	StatementPayment,
 } from "#lib/domain/types"
 
 import { canDeleteOwner } from "#lib/domain/owner"
@@ -18,7 +17,6 @@ import { type Repository, StorageError } from "#lib/storage/repository"
 const PREFIX = "cc:"
 const CARD = `${PREFIX}card:`
 const PURCHASE = `${PREFIX}purchase:`
-const PAYMENT = `${PREFIX}payment:`
 const LIMIT_GROUP = `${PREFIX}limitgroup:`
 const CARD_PAYMENT = `${PREFIX}cardpayment:`
 const STATEMENT_DATES = `${PREFIX}statementdates:`
@@ -26,6 +24,8 @@ const LIST = `${PREFIX}list:`
 const LOCATION = `${PREFIX}location:`
 const OWNER = `${PREFIX}owner:`
 const SETTINGS = `${PREFIX}settings`
+/** The old per-statement payments. Nothing reads or writes them now (DD-202); a reset still clears a leftover. */
+const OLD_PAYMENT = `${PREFIX}payment:`
 /** The old dashboard's batch start. Nothing reads or writes it now (DD-14); a reset still clears a leftover. */
 const BATCH_START = `${PREFIX}batch-start`
 /** One-off notices a data migration leaves for the next page load; see `migrate-locations`. */
@@ -34,8 +34,6 @@ const MIGRATION = `${PREFIX}migration:`
 export const cardKey = (cardId: string): string => `${CARD}${encodeURIComponent(cardId)}`
 export const purchaseKey = (p: Purchase): string =>
 	`${PURCHASE}${encodeURIComponent(p.cardId)}:${encodeURIComponent(p.date)}:${encodeURIComponent(p.id)}`
-export const paymentKey = (cardId: string, period: string): string =>
-	`${PAYMENT}${encodeURIComponent(cardId)}:${encodeURIComponent(period)}`
 export const limitGroupKey = (id: string): string => `${LIMIT_GROUP}${encodeURIComponent(id)}`
 
 export const cardPaymentKey = (cardId: string, id: string): string =>
@@ -109,9 +107,9 @@ export class LocalStorageRepository implements Repository {
 			}
 		}
 		this.storage.removeItem(cardKey(id))
-		// Cascade: delete the card's payments, card payments and statement dates.
+		// Cascade: delete the card's card payments and statement dates.
 		// The trailing colon keeps a card whose id merely starts the same untouched.
-		for (const kind of [PAYMENT, CARD_PAYMENT, STATEMENT_DATES]) {
+		for (const kind of [CARD_PAYMENT, STATEMENT_DATES]) {
 			for (const key of this.keysWithPrefix(`${kind}${encodedCardId}:`)) {
 				this.storage.removeItem(key)
 			}
@@ -137,18 +135,6 @@ export class LocalStorageRepository implements Repository {
 			const segments = key.split(":")
 			if (segments[segments.length - 1] === encodedId) this.storage.removeItem(key)
 		}
-	}
-
-	async listPayments(cardId: string): Promise<StatementPayment[]> {
-		return this.readAll<StatementPayment>(`${PAYMENT}${encodeURIComponent(cardId)}:`)
-	}
-
-	async savePayment(payment: StatementPayment): Promise<void> {
-		this.write(paymentKey(payment.cardId, payment.period), payment)
-	}
-
-	async deletePayment(cardId: string, period: string): Promise<void> {
-		this.storage.removeItem(paymentKey(cardId, period))
 	}
 
 	async listLimitGroups(): Promise<LimitGroup[]> {
@@ -250,13 +236,14 @@ export class LocalStorageRepository implements Repository {
 	 * Names each kind of record rather than sweeping every `cc:` key: the language choice
 	 * (`cc:lang`) is the reader's, not the data's, and a reset must not flip the page they are
 	 * reading into another language. A pending migration notice goes too -- it names cards that
-	 * no longer exist -- and so does a leftover batch start from the old dashboard.
+	 * no longer exist -- and so do leftovers nothing reads now: the old statement payments and the
+	 * old dashboard's batch start.
 	 */
 	async clearAll(): Promise<void> {
 		for (const prefix of [
 			CARD,
 			PURCHASE,
-			PAYMENT,
+			OLD_PAYMENT,
 			LIMIT_GROUP,
 			CARD_PAYMENT,
 			STATEMENT_DATES,
