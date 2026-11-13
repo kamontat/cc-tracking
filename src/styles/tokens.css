@@ -147,11 +147,14 @@
 	/* From 900px a page's bottom padding, which clears the floating + New button. */
 	--cc-page-foot: calc(var(--cc-space-5) + var(--cc-bar-height) + var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
 
-	/* The detail panel's column from 900px fits the screen: it parks where the page's content
-	   starts (under the header and the page's top padding) and ends where it ends (above the
-	   page's foot), so reading it never scrolls the page; its body scrolls instead. */
+	/* The detail panel's column from 900px is fixed to the screen: from where the page's content
+	   starts (under the header and the page's top padding) to where it ends (above the page's
+	   foot), at the page's content edge, whatever sits above the list (a page's tab bar). So
+	   reading it never scrolls the page; its body scrolls instead. The end edge is the page's
+	   centring (up to --cc-page-width) plus its padding; a fixed box's 100% is the screen's width
+	   without its scrollbar. */
 	--cc-detail-column-top: calc(var(--cc-header-height) + var(--cc-space-5));
-	--cc-detail-column-height: calc(100dvh - var(--cc-detail-column-top) - var(--cc-page-foot));
+	--cc-detail-column-end: calc((100% - min(100%, var(--cc-page-width))) / 2 + var(--cc-space-4));
 
 	/* The room under the panel body's last line, past a phone's home indicator. A form's sticky
 	   save sinks through it, so it parks at the panel's very foot. */

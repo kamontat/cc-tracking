@@ -309,10 +309,14 @@
 
 		.detail-panel,
 		.detail-panel[data-full] {
-			position: sticky;
+			position: fixed;
 			top: var(--cc-detail-column-top);
-			z-index: auto;
-			block-size: var(--cc-detail-column-height);
+			bottom: var(--cc-page-foot);
+			inset-inline-start: auto;
+			inset-inline-end: var(--cc-detail-column-end);
+			z-index: 2;
+			inline-size: var(--cc-detail-panel);
+			block-size: auto;
 			background: var(--cc-surface);
 			border: var(--cc-border-width) solid var(--cc-border);
 			border-radius: var(--cc-radius-md);

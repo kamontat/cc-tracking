@@ -57,12 +57,16 @@ const rule = (css: string, selector: string): Map<string, string> => {
 const wide = (css: string) => media(css, "min-width: 900px").join("\n")
 const narrow = (css: string) => media(css, "max-width: 899px").join("\n")
 
-test("the column's place and height are tokens, the page's foot among them", () => {
+test("the column's place is tokens: under the header, above the page's foot, at the page's end edge", () => {
 	expect(tokens).toMatch(/--cc-page-foot:\s*calc\(/)
 	expect(tokens).toMatch(/--cc-detail-column-top:\s*calc\(var\(--cc-header-height\) \+ var\(--cc-space-5\)\);/)
+	// The page is centred up to --cc-page-width with --cc-space-4 of padding; a fixed box's 100% is the
+	// screen's width without its scrollbar, so the column lines up with the page's content edge.
 	expect(tokens).toMatch(
-		/--cc-detail-column-height:\s*calc\(100dvh - var\(--cc-detail-column-top\) - var\(--cc-page-foot\)\);/,
+		/--cc-detail-column-end:\s*calc\(\(100% - min\(100%, var\(--cc-page-width\)\)\) \/ 2 \+ var\(--cc-space-4\)\);/,
 	)
+	// Its height is no longer a guess at what sits above it (a tab bar did not count).
+	expect(tokens).not.toMatch(/--cc-detail-column-height:/)
 })
 
 test("from 900px the page's foot is the token the column clears", () => {
@@ -78,12 +82,25 @@ test("the panel itself never scrolls: its body does, and holds the scroll in", (
 	expect(body.get("overscroll-behavior")).toBe("contain")
 })
 
-test("from 900px the panel is a column of the screen's remaining height, parked under the header", () => {
+test("from 900px the panel is fixed to the screen: under the header, above the page's foot, whatever sits above the list", () => {
 	const column = rule(wide(panel), ".detail-panel")
-	expect(column.get("position")).toBe("sticky")
+	expect(column.get("position")).toBe("fixed")
 	expect(column.get("top")).toBe("var(--cc-detail-column-top)")
-	expect(column.get("block-size")).toBe("var(--cc-detail-column-height)")
+	expect(column.get("bottom")).toBe("var(--cc-page-foot)")
+	expect(column.get("inset-inline-start")).toBe("auto")
+	expect(column.get("inset-inline-end")).toBe("var(--cc-detail-column-end)")
+	expect(column.get("inline-size")).toBe("var(--cc-detail-panel)")
+	expect(column.get("block-size")).toBe("auto")
 	expect(column.has("max-block-size")).toBe(false)
+})
+
+test("from 900px the page makes room on its end side for the open panel, tabs and list alike", () => {
+	const room = rule(wide(app), ".page:has(.panel-layout[data-panel])")
+	expect(room.get("padding-inline-end")).toBe("calc(var(--cc-space-4) + var(--cc-detail-panel) + var(--cc-space-5))")
+	// The panel is out of the flow, so the list keeps one column.
+	expect(app).not.toMatch(
+		/\.panel-layout\[data-panel\]\s*\{\s*grid-template-columns: minmax\(0, 1fr\) var\(--cc-detail-panel\)/,
+	)
 })
 
 test("a form's sticky save sinks through the body's bottom padding to the panel's foot", () => {

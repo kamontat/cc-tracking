@@ -1994,8 +1994,9 @@ a:any-link:hover {
 
 /*
  * A page with a detail panel (RD-23, `DetailPanel`): the list alone, and from 900px, while a
- * record is open, the list narrowed beside the panel's column. Below 900px the panel is a sheet
- * over the list, so the list keeps the width.
+ * record is open, the page (its tabs and its list) narrowed beside the panel's column, which is
+ * fixed to the screen (DetailPanel). Below 900px the panel is a sheet over the list, so the list
+ * keeps the width.
  */
 .panel-layout {
 	display: grid;
@@ -2012,8 +2013,8 @@ a:any-link:hover {
 }
 
 @media (min-width: 900px) {
-	.panel-layout[data-panel] {
-		grid-template-columns: minmax(0, 1fr) var(--cc-detail-panel);
+	.page:has(.panel-layout[data-panel]) {
+		padding-inline-end: calc(var(--cc-space-4) + var(--cc-detail-panel) + var(--cc-space-5));
 	}
 
 	/* Until Limits is its own tab, the groups step aside while a card's panel is open, so the
