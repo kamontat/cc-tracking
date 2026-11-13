@@ -1,7 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: Transactions' tabs and the purchase list pages, `/transactions`, `/transactions/lists`, `/transactions/lists/new` and `/transactions/lists/edit`, 2026-11-13, PRD DD-198). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: Home's tabs, `/`, `/owed` and `/ready`, 2026-11-13, PRD DD-199). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -20,7 +20,9 @@ code: each part of the plan rewrites the addresses it changes here as it ships. 
 `card` on `/cards` (part 2, DD-196); Cards' tabs, `/cards` and `/cards/limits`, with `f.`
 filters and the `limit` key (part 3, DD-197); Transactions' tabs, `/transactions` and
 `/transactions/lists`, with `f.` filters and the `card` and `list` keys, and the list pages
-`/transactions/lists/new` and `/transactions/lists/edit` (part 4, DD-198).
+`/transactions/lists/new` and `/transactions/lists/edit` (part 4, DD-198); Home's tabs, `/`,
+`/owed` and `/ready`, with the `card` and `list` keys and the tabs' `sort` and `dir` (part 5,
+DD-199).
 
 ## Redirects
 
@@ -30,16 +32,60 @@ filters and the `limit` key (part 3, DD-197); Transactions' tabs, `/transactions
 
 ## Home
 
+Three tabs, each its own page (RD-22): _Needs you_ at `/`, _Owed_ at `/owed` and _Ready to use_
+at `/ready`, under the page title on every width. `/owed` and `/ready` are top-level paths, as
+Home's own is `/`; the tab bar lights Home for all three. Each tab shows everything (no _See
+more_). A card opens in its panel over the tab on show (`card`), as on `/cards`.
+
 ### `/`
 
-No query.
+_Needs you_: overdue bills, late and soon planned payments, lists waiting for the spender and
+drafts, money at risk first (DD-62).
+
+| Key    | Values  | Default | Notes                                                                                                                                                  |
+| ------ | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `card` | card id | none    | Opens the card's panel (an overdue bill's _Open card_ or _Pay_). Wins over `list`. An invalid id or a card not stored opens nothing, and the key goes. |
+| `list` | list id | none    | Opens the list's panel (a waiting list's or a draft's row), as on `/transactions/lists`. A list not stored opens nothing, and the key goes.            |
+
+A list's row and _Open card_ push their key (Back closes the panel); another row rewrites it.
+_Pay_ on an overdue bill opens the card's panel straight on its pay form with the amount left
+filled in; the form has no address (`/?card=<id>`), and its save, _Cancel_ and ‹ swap the card
+back in place.
+
+### `/owed`
+
+_Owed_: every card that owes, as payment tiles.
+
+| Key    | Values                           | Default        | Notes                                                                                                                |
+| ------ | -------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `sort` | `urgency`, `card`, `due`, `left` | `urgency`      | Order: most urgent (overdue, due within 7 days, then most owed), card id, due date, or what is owed.                 |
+| `dir`  | `asc`, `desc`                    | the sort's own | Direction: `left` defaults to `desc` (most owed first), the rest to `asc`.                                           |
+| `card` | card id                          | none           | Opens the card's panel (a tile, or _Pay_ on it). An invalid id or a card not stored opens nothing, and the key goes. |
+
+A sort change rewrites the address (`replaceState`), keeping `card`. A tile pushes `card`; _Pay_
+on a tile opens the card's panel on its pay form with what is left on the bill filled in, with no
+address of its own. Example: `/owed?sort=left&dir=asc&card=12.3`. Replaces Transactions' old
+`?view=owed` (and its `owed` and `odir` keys).
+
+### `/ready`
+
+_Ready to use_: every card that can take a purchase now, as card tiles.
+
+| Key    | Values                 | Default | Notes                                                                                                |
+| ------ | ---------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `sort` | `room`, `close`, `due` | `room`  | Order: room, close date or due date.                                                                 |
+| `dir`  | `asc`, `desc`          | `desc`  | Direction: every sort defaults to `desc` (most room, longest to close, latest due).                  |
+| `card` | card id                | none    | Opens the card's panel (a tile). An invalid id or a card not stored opens nothing, and the key goes. |
+
+A sort change rewrites the address (`replaceState`), keeping `card`; a tile pushes `card`.
+Example: `/ready?sort=close&card=7`.
 
 ## Transactions
 
 Two tabs, each its own page (RD-22): _Ledger_ at `/transactions` and _Lists_ at
 `/transactions/lists`, under the page title on every width. The tab bar lights Transactions for
 both, and for the list pages under `/transactions/lists/`. A filter takes `f.` (RD-29). What each
-card owes is no longer on Transactions (it moves to Home's _Owed_, `/owed`, next).
+card owes is no longer on Transactions: it is Home's _Owed_, `/owed`.
 
 ### `/transactions`
 
@@ -130,7 +176,8 @@ the draft or cancelling the waiting list, for `/transactions/lists`. ‹ leads t
 - `/pay?card=<id>&amount=<satang>` -- sheet with the amount prefilled.
 
 Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/transactions`.
-Still served until it retires; payments move to Home's _Owed_ and the card panel.
+Still served until it retires; nothing on Home links here any more (_Pay_ on a bill opens the
+card's panel on its pay form), but the floating _+ New_ menu and `/card` still do.
 
 ## Cards
 
