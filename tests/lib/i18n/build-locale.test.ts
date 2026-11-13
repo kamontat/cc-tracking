@@ -22,6 +22,7 @@ test("an island's built frame reads English, like the static copy beside it", as
 	expect([...doc.querySelectorAll("section.set-section > h2")].map((h) => h.textContent?.trim())).toEqual([
 		"Display",
 		"Locations",
+		"Owners",
 		"Backup",
 		"Reset",
 		"About",

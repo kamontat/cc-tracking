@@ -1,9 +1,9 @@
+import type { Owner } from "#lib/domain/owner"
 import type { Card, CycleRule, LimitGroup, LocationRecord } from "#lib/domain/types"
 import type { MessageKey } from "#lib/i18n/catalog"
 
 import { isCardId } from "#lib/domain/card"
 import { DEFAULT_LOCATION } from "#lib/domain/location"
-import { type Owner, toOwner } from "#lib/domain/owner"
 import { sortLocations } from "#lib/i18n/format"
 
 /** The card form's typed fields, by input name. */
@@ -42,7 +42,7 @@ export function draftOf(card: Card | null): CardDraft {
 		groupId: card?.limitGroupId ?? "",
 		kind: rule?.kind ?? "offset",
 		supplementary: card?.supplementary ?? false,
-		owner: toOwner(card?.owner) ?? "",
+		owner: card?.owner ?? "",
 	}
 }
 
@@ -103,7 +103,7 @@ export function readCardDraft(
 	}
 
 	if (!groups.some((group) => group.id === draft.groupId)) return { ok: false, key: "form.error.limitGroup" }
-	const owner = draft.supplementary ? toOwner(draft.owner) : null
+	const owner = draft.supplementary ? draft.owner || null : null
 	if (draft.supplementary && !owner) return { ok: false, key: "form.error.owner" }
 
 	return {

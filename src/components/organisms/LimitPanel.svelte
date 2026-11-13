@@ -15,7 +15,7 @@
 	import { today } from "#lib/domain/date"
 	import { toGroupColor } from "#lib/domain/group-color"
 	import { formatAmount } from "#lib/domain/money"
-	import { ownerOf } from "#lib/domain/owner"
+	import { ownerName, ownerOf } from "#lib/domain/owner"
 	import { groupRoom } from "#lib/domain/room"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { cardLine, groupColor } from "#lib/ui/card-label"
@@ -221,7 +221,7 @@
 		if (form) return { title: t("limits.panel.edit"), detail: name, back: true }
 		const count = cards.length
 		const many = t(count === 1 ? "cards.page.count.one" : "cards.page.count.many", { count })
-		return { title: name, detail: group ? `${ownerOf(group)} · ${many}` : "", back: false }
+		return { title: name, detail: group ? `${ownerName(ownerOf(group), data?.owners)} · ${many}` : "", back: false }
 	})
 
 	const onRetry = () => {
@@ -266,6 +266,7 @@
 					<GroupForm
 						group={null}
 						groups={data.groups}
+						owners={data.owners}
 						inUse={false}
 						error={formFailed ? error : ""}
 						{busy}
@@ -275,6 +276,7 @@
 					<GroupForm
 						{group}
 						groups={data.groups}
+						owners={data.owners}
 						inUse={cards.length > 0}
 						error={formFailed ? error : ""}
 						{busy}

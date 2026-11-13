@@ -604,17 +604,18 @@ a:any-link:hover {
 }
 
 /*
- * The Locations page (prototype `vLocations`, RD-17): one `.set` panel with a block per place
- * -- its name and count beside *Rename* and *Delete* (or the name field, or the delete
- * question), and *Takes purchases* under them -- then the notes and *Add a location*.
+ * The Locations and Owners pages (prototype `vLocations`, RD-17, RD-30): one `.set` panel with
+ * a block per record -- its name and count beside *Rename* and *Delete* (or the name field, or
+ * the delete question), and on Locations *Takes purchases* under them -- then the notes and the
+ * add field.
  */
-.locations {
+.records {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-3);
 }
 
-.location-row {
+.record-row {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-2);
@@ -622,8 +623,8 @@ a:any-link:hover {
 }
 
 /* A row, said outright: the reset makes every div a column (`@kcstyles/reset.css`). */
-.location-row__line,
-.location-add__control {
+.record-row__line,
+.record-add__control {
 	display: flex;
 	flex-direction: row;
 	gap: var(--cc-space-2);
@@ -631,29 +632,29 @@ a:any-link:hover {
 }
 
 /* `.page button` sits buttons at the start of a column; in these rows all centre on the line. */
-.page .location-row__line > *,
-.page .location-add__control > * {
+.page .record-row__line > *,
+.page .record-add__control > * {
 	align-self: center;
 }
 
-.location-row__text,
-.location-row__field,
-.location-add__control > input {
+.record-row__text,
+.record-row__field,
+.record-add__control > input {
 	flex: 1;
 	min-inline-size: 0;
 }
 
-.location-row__text {
+.record-row__text {
 	display: flex;
 	flex-direction: column;
 	overflow-wrap: anywhere;
 }
 
-.page .location-row__text small {
+.page .record-row__text small {
 	font-size: var(--cc-text-xs);
 }
 
-.page .location-row__takes {
+.page .record-row__takes {
 	flex-direction: row;
 	align-items: center;
 	gap: var(--cc-space-2);
@@ -661,27 +662,27 @@ a:any-link:hover {
 	cursor: pointer;
 }
 
-.page .location-row__takes small {
+.page .record-row__takes small {
 	font-size: var(--cc-text-xs);
 }
 
-.page .location-row__takes input {
+.page .record-row__takes input {
 	padding: 0;
 	accent-color: var(--cc-accent);
 }
 
-.location-add {
+.record-add {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-1);
 }
 
-.location-error {
+.record-error {
 	font-size: var(--cc-text-sm);
 	color: var(--cc-danger);
 }
 
-.location-warning {
+.record-warning {
 	padding: var(--cc-space-2) var(--cc-space-3);
 	font-size: var(--cc-text-sm);
 	color: var(--cc-text);

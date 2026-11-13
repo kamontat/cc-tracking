@@ -16,6 +16,7 @@
 	import ReadyList from "#components/organisms/ReadyList.svelte"
 	import { today } from "#lib/domain/date"
 	import { DEFAULT_READY_VIEW, READY_DIRS, READY_SORTS, readyResults, readyRows } from "#lib/domain/home"
+	import { ownerName, sortOwners } from "#lib/domain/owner"
 	import { nameOfLocation, placeOrder, purchasePlaces } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
@@ -83,12 +84,13 @@
 	let painted = $state(0)
 
 	const locationIds = (money: MoneyData) => money.locations.map((record) => record.id)
+	const ownerIds = (money: MoneyData) => money.owners.map((record) => record.id)
 
 	const page = createPageState({
 		fetch: async () => {
 			if (!repo) return
 			const money = await loadMoneyData(repo, now)
-			view = readReadyView(address.search(), locationIds(money))
+			view = readReadyView(address.search(), locationIds(money), ownerIds(money))
 			data = money
 		},
 		fallbackKey: "home.error.read",
@@ -110,6 +112,9 @@
 		return data ? purchasePlaces(data.locations) : []
 	})
 
+	// A holder section per owner A to Z by name.
+	const ownerOrder = $derived(data ? sortOwners(data.owners).map((owner) => owner.id) : [])
+
 	// Sorted on every paint, so the place sections follow a language switch.
 	const order = $derived.by(() => {
 		void lang
@@ -121,10 +126,10 @@
 			: []
 	})
 
-	const results = $derived(data ? readyResults(rows, data.groups, view, order) : null)
+	const results = $derived(data ? readyResults(rows, data.groups, view, order, ownerOrder) : null)
 
 	/** How many cards a draft view would show, for the sheet's apply button. */
-	const countFor = (draft: ReadyView) => (data ? readyResults(rows, data.groups, draft, order).count : 0)
+	const countFor = (draft: ReadyView) => (data ? readyResults(rows, data.groups, draft, order, ownerOrder).count : 0)
 
 	/** The active filters as removable chips; each clears only itself. */
 	const chips = $derived.by(() => {
@@ -138,7 +143,7 @@
 			})),
 			...view.owners.map((owner) => ({
 				key: `owner:${owner}`,
-				label: owner,
+				label: ownerName(owner, data?.owners),
 				clear: () => change({ owners: view.owners.filter((o) => o !== owner) }),
 			})),
 		]
@@ -170,7 +175,7 @@
 		})
 		const stopPanel = panel.start()
 		const removePop = address.onPop(() => {
-			view = readReadyView(address.search(), data ? locationIds(data) : [])
+			view = readReadyView(address.search(), data ? locationIds(data) : [], data ? ownerIds(data) : undefined)
 		})
 		void (async () => {
 			const opened = await openOnce()
@@ -213,6 +218,7 @@
 				{places}
 				groups={data.groups}
 				locations={data.locations}
+				owners={data.owners}
 				today={now}
 				current={panel.record?.kind === "card" ? panel.record.id : null}
 				onopencard={(id) => panel.show({ kind: "card", id })} />
@@ -225,6 +231,7 @@
 					fields={READY_SORTS}
 					dirs={READY_DIRS}
 					locations={data.locations}
+					owners={data.owners}
 					count={countFor}
 					onapply={(next: ReadyView) => {
 						filterOpen = false

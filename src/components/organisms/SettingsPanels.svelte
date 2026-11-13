@@ -1,9 +1,9 @@
 <script lang="ts">
 	import type { Snippet } from "svelte"
-	import type { LocationRecord } from "#lib/domain/types"
+	import type { LocationRecord, OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
-	import type { V3Counts } from "#lib/storage/transfer-v3"
+	import type { V4Counts } from "#lib/storage/transfer-v4"
 	import type { PurgedDetail } from "#lib/ui/purge"
 	import type { RestoredDetail } from "#lib/ui/restore"
 	import type { Opened } from "#lib/ui/startup"
@@ -16,10 +16,11 @@
 	import { today } from "#lib/domain/date"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
-	import { countRecordsV3, exportBackupV3 } from "#lib/storage/transfer-v3"
+	import { OWNERS_SEED_KEY, seedOwners } from "#lib/storage/seed-owners"
+	import { countRecordsV4, exportBackupV4 } from "#lib/storage/transfer-v4"
 	import { createPageState } from "#lib/ui/page-state"
 	import { countsText } from "#lib/ui/record-counts"
-	import { backupFilename, locationsSummary, prepareBackupFile } from "#lib/ui/settings"
+	import { backupFilename, locationsSummary, ownersSummary, prepareBackupFile } from "#lib/ui/settings"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
@@ -53,6 +54,7 @@
 
 	let repo = $state<Repository | null>(null)
 	let locations = $state<LocationRecord[]>([])
+	let owners = $state<OwnerRecord[]>([])
 	/** Why the store would not open, re-read in the reader's language. */
 	let startupFailure = $state<(() => string) | null>(null)
 	/** Bumped after every load, so the banner re-reads the page state's error. */
@@ -63,13 +65,13 @@
 	let copied = $state(false)
 	// Counts and names rather than sentences, so each message follows a language switch.
 	let imported = $state<RestoredDetail | null>(null)
-	let resetCounts = $state<V3Counts | null>(null)
+	let resetCounts = $state<V4Counts | null>(null)
 	let resetDone = $state(false)
 	let purged = $state<PurgedDetail | null>(null)
 
 	const page = createPageState({
 		fetch: async () => {
-			if (repo) locations = await repo.listLocations()
+			if (repo) [locations, owners] = await Promise.all([repo.listLocations(), repo.listOwners()])
 		},
 		fallbackKey: "settings.error.read",
 		paint: () => {
@@ -106,7 +108,7 @@
 		copied = false
 		return guard(async (store) => {
 			// Compact, unlike the file: pasted text is carried around, not read, so skip the indent.
-			await navigator.clipboard.writeText(JSON.stringify(await exportBackupV3(store, new Date())))
+			await navigator.clipboard.writeText(JSON.stringify(await exportBackupV4(store, new Date())))
 			copied = true
 		}, "backup.error.copy")
 	}
@@ -138,7 +140,7 @@
 		resetDone = false
 		purged = null
 		return guard(async (store) => {
-			resetCounts = await countRecordsV3(store)
+			resetCounts = await countRecordsV4(store)
 		}, "reset.error")
 	}
 
@@ -152,6 +154,10 @@
 			// marker goes first: an in-memory repository's clearAll leaves storage alone.
 			storage.removeItem(SEED_KEY)
 			await seedLocations(store, storage)
+			// Likewise the starting owners, so a new limit group has someone to belong to.
+			storage.removeItem(OWNERS_SEED_KEY)
+			await seedOwners(store, storage)
+			owners = await store.listOwners()
 			resetDone = true
 		}, "reset.error")
 	}
@@ -175,7 +181,7 @@
 	})
 
 	/** What *Delete all data* would delete, kind by kind, following a language switch. */
-	const askText = (counts: V3Counts) => {
+	const askText = (counts: V4Counts) => {
 		void lang
 		return t("reset.ask", { counts: countsText(counts) })
 	}
@@ -184,6 +190,8 @@
 		void lang
 		return locationsSummary(locations)
 	})
+
+	const ownersLine = $derived(ownersSummary(owners))
 
 	const onRetry = () => {
 		if (startupFailure) location.reload()
@@ -220,6 +228,17 @@
 				<a class="set-row" data-row="locations" href="/settings/locations">
 					<span class="set-row__text"
 						>{tr("settings.locations.manage")}<small class="set-row__sub">{summary}</small></span
+					>
+					<span class="set-row__chev" aria-hidden="true">›</span>
+				</a>
+			</div>
+		</section>
+		<section class="set-section" data-section="owners">
+			<h2>{tr("settings.owners.title")}</h2>
+			<div class="set">
+				<a class="set-row" data-row="owners" href="/settings/owners">
+					<span class="set-row__text"
+						>{tr("settings.owners.manage")}<small class="set-row__sub">{ownersLine}</small></span
 					>
 					<span class="set-row__chev" aria-hidden="true">›</span>
 				</a>

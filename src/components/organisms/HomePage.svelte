@@ -152,6 +152,7 @@
 			{items}
 			cards={data?.cards ?? []}
 			groups={data?.groups ?? []}
+			owners={data?.owners ?? []}
 			today={now}
 			current={panel.record?.kind === "list" ? panel.record.id : null}
 			onmarkpaid={mark}

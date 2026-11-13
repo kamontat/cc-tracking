@@ -1,4 +1,4 @@
-import type { Card, CardPayment, LimitGroup, PurchaseList } from "#lib/domain/types"
+import type { Card, CardPayment, LimitGroup, OwnerRecord, PurchaseList } from "#lib/domain/types"
 
 import { dayMonth, daysBetween, displayDate, today as plainToday } from "#lib/domain/date"
 import { formatAmount } from "#lib/domain/money"
@@ -57,10 +57,15 @@ export const sayText = (sentence: Say): string =>
 	sentence.map((piece) => (typeof piece === "string" ? piece : "money" in piece ? piece.money : piece.late)).join("")
 
 /** A list's cards as `name (owner)` when three or fewer, else "N cards" (DD-110). */
-export function cardsOrCount(ids: string[], cards: Card[], groups: LimitGroup[]): string {
+export function cardsOrCount(
+	ids: string[],
+	cards: Card[],
+	groups: LimitGroup[],
+	owners: readonly OwnerRecord[] = [],
+): string {
 	const byId = new Map(cards.map((card) => [card.id, card]))
 	return ids.length <= 3
-		? ids.map((id) => cardOwnerName(id, byId.get(id), groups)).join(", ")
+		? ids.map((id) => cardOwnerName(id, byId.get(id), groups, owners)).join(", ")
 		: t("row.cards", { count: ids.length })
 }
 
@@ -81,27 +86,29 @@ export function whenWords(date: string, today: string): string {
 
 const listDate = (list: PurchaseList) => displayDate(list.date, getLocale())
 
-const listCards = (list: PurchaseList, cards: Card[], groups: LimitGroup[]) =>
-	cardsOrCount([...new Set(list.lines.map((l) => l.cardId))], cards, groups)
+type Owners = readonly OwnerRecord[]
+
+const listCards = (list: PurchaseList, cards: Card[], groups: LimitGroup[], owners: Owners) =>
+	cardsOrCount([...new Set(list.lines.map((l) => l.cardId))], cards, groups, owners)
 
 /** A waiting list; the total is the row's amount on the right (DD-108), not in the subtitle. */
-export const waitingText = (list: PurchaseList, cards: Card[], groups: LimitGroup[]): RowText => ({
+export const waitingText = (list: PurchaseList, cards: Card[], groups: LimitGroup[], owners: Owners = []): RowText => ({
 	kind: "waiting",
 	title: t("row.waiting", { date: listDate(list) }),
-	subtitle: listCards(list, cards, groups),
+	subtitle: listCards(list, cards, groups, owners),
 })
 
-export const draftText = (list: PurchaseList, cards: Card[], groups: LimitGroup[]): RowText => ({
+export const draftText = (list: PurchaseList, cards: Card[], groups: LimitGroup[], owners: Owners = []): RowText => ({
 	kind: "draft",
 	title: t("row.draft", { date: listDate(list) }),
-	subtitle: listCards(list, cards, groups),
+	subtitle: listCards(list, cards, groups, owners),
 })
 
 /** A saved list; its total (the made lines) is the row's amount. */
-export const savedText = (list: PurchaseList, cards: Card[], groups: LimitGroup[]): RowText => ({
+export const savedText = (list: PurchaseList, cards: Card[], groups: LimitGroup[], owners: Owners = []): RowText => ({
 	kind: "saved",
 	title: t("row.saved", { date: listDate(list) }),
-	subtitle: listCards(list, cards, groups),
+	subtitle: listCards(list, cards, groups, owners),
 })
 
 /**
@@ -114,11 +121,12 @@ export function plannedText(
 	card: Card | undefined,
 	groups: LimitGroup[],
 	today: string,
+	owners: readonly OwnerRecord[] = [],
 ): RowText {
 	const date = displayDate(payment.date, getLocale())
 	return {
 		kind: "planned",
-		title: t("row.plannedPay", { card: cardOwnerName(payment.cardId, card, groups) }),
+		title: t("row.plannedPay", { card: cardOwnerName(payment.cardId, card, groups, owners) }),
 		subtitle: `${date} · ${whenWords(payment.date, today)}`,
 	}
 }
@@ -130,9 +138,14 @@ export const plannedSay = (payment: CardPayment): string =>
 	)
 
 /** A bill past its due date: `days` is how many days past it. */
-export const overdueText = (card: Card, groups: LimitGroup[], days: number): RowText => ({
+export const overdueText = (
+	card: Card,
+	groups: LimitGroup[],
+	days: number,
+	owners: readonly OwnerRecord[] = [],
+): RowText => ({
 	kind: "overdue",
-	title: t("row.overdue", { card: cardOwnerName(card.id, card, groups) }),
+	title: t("row.overdue", { card: cardOwnerName(card.id, card, groups, owners) }),
 	subtitle: forWords(days),
 })
 

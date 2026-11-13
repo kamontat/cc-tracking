@@ -511,6 +511,7 @@
 		cards={amounts.cards}
 		allCards={data.cards}
 		groups={data.groups}
+		owners={data.owners}
 		planned={plannedOf(data.payments)}
 		ready={amounts.rows}
 		rooms={amounts.rooms}

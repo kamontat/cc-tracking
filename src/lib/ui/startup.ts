@@ -5,8 +5,10 @@ import { t } from "#lib/i18n/index"
 import { migrateGroupColors } from "#lib/storage/assign-group-colors"
 import { createRepository } from "#lib/storage/index"
 import { migrateLocations } from "#lib/storage/migrate-locations"
+import { migrateOwners } from "#lib/storage/migrate-owners"
 import { migratePayments } from "#lib/storage/migrate-payments"
 import { seedLocations } from "#lib/storage/seed-locations"
+import { seedOwners } from "#lib/storage/seed-owners"
 
 export type StartupOptions = {
 	storage?: Storage
@@ -41,6 +43,14 @@ export async function openRepository(options: StartupOptions = {}): Promise<Open
 	try {
 		await seedLocations(repo, storage)
 		await migrateLocations(repo, storage)
+	} catch (failure) {
+		console.error(failure)
+	}
+
+	// Likewise an owner: the worst it leaves is a group labelled with an id.
+	try {
+		await seedOwners(repo, storage)
+		await migrateOwners(repo)
 	} catch (failure) {
 		console.error(failure)
 	}

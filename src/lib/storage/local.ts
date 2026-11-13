@@ -3,12 +3,14 @@ import type {
 	CardPayment,
 	LimitGroup,
 	LocationRecord,
+	OwnerRecord,
 	Purchase,
 	PurchaseList,
 	StatementDates,
 	StatementPayment,
 } from "#lib/domain/types"
 
+import { canDeleteOwner } from "#lib/domain/owner"
 import { type Settings, toSettings } from "#lib/domain/settings"
 import { MessageError } from "#lib/i18n/error"
 import { type Repository, StorageError } from "#lib/storage/repository"
@@ -22,6 +24,7 @@ const CARD_PAYMENT = `${PREFIX}cardpayment:`
 const STATEMENT_DATES = `${PREFIX}statementdates:`
 const LIST = `${PREFIX}list:`
 const LOCATION = `${PREFIX}location:`
+const OWNER = `${PREFIX}owner:`
 const SETTINGS = `${PREFIX}settings`
 /** The old dashboard's batch start. Nothing reads or writes it now (DD-14); a reset still clears a leftover. */
 const BATCH_START = `${PREFIX}batch-start`
@@ -41,6 +44,7 @@ export const statementDatesKey = (cardId: string, period: string): string =>
 	`${STATEMENT_DATES}${encodeURIComponent(cardId)}:${encodeURIComponent(period)}`
 export const listKey = (id: string): string => `${LIST}${encodeURIComponent(id)}`
 export const locationKey = (id: string): string => `${LOCATION}${encodeURIComponent(id)}`
+export const ownerKey = (id: string): string => `${OWNER}${encodeURIComponent(id)}`
 
 /** Phase 1 store. Key shapes match the Cloudflare KV layout so phase 2 is a drop-in. */
 export class LocalStorageRepository implements Repository {
@@ -217,6 +221,21 @@ export class LocalStorageRepository implements Repository {
 		this.storage.removeItem(locationKey(id))
 	}
 
+	async listOwners(): Promise<OwnerRecord[]> {
+		return this.readAll<OwnerRecord>(OWNER)
+	}
+
+	async saveOwner(owner: OwnerRecord): Promise<void> {
+		this.write(ownerKey(owner.id), owner)
+	}
+
+	async deleteOwner(id: string): Promise<void> {
+		if (!canDeleteOwner(id, await this.listLimitGroups(), await this.listCards())) {
+			throw new MessageError("guard.ownerInUse")
+		}
+		this.storage.removeItem(ownerKey(id))
+	}
+
 	async getSettings(): Promise<Settings> {
 		// Narrowed rather than trusted: this key can hold anything a past version wrote, and
 		// an unrecognised location in it must not reach the rest of the app as a `Location`.
@@ -243,6 +262,7 @@ export class LocalStorageRepository implements Repository {
 			STATEMENT_DATES,
 			LIST,
 			LOCATION,
+			OWNER,
 			MIGRATION,
 		]) {
 			for (const key of this.keysWithPrefix(prefix)) {

@@ -5,7 +5,7 @@ import { expect, test } from "vitest"
 import { defaultLocations } from "#lib/domain/locations"
 import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { InMemoryRepository } from "#lib/storage/repository"
-import { parseAnyBackup } from "#lib/storage/transfer-v3"
+import { parseAnyBackup } from "#lib/storage/transfer-v4"
 import { backupFilename, locationsSummary, prepareBackupFile } from "#lib/ui/settings"
 
 const sampleCard: Card = {
@@ -46,7 +46,7 @@ test("prepareBackupFile produces text that parseAnyBackup accepts and that round
 	expect(backup.payments).toEqual(await repo.listCardPayments("k1"))
 })
 
-test("the downloaded file is version 3 and carries lists", async () => {
+test("the downloaded file is version 4 and carries lists and owners", async () => {
 	const repo = await seeded()
 	await repo.saveCard(sampleCard)
 	await repo.savePurchaseList({
@@ -56,7 +56,8 @@ test("the downloaded file is version 3 and carries lists", async () => {
 		lines: [{ cardId: "k1", amount: 1_000 }],
 	})
 	const parsed = JSON.parse((await prepareBackupFile(repo, new Date("2026-09-21T03:00:00Z"))).text)
-	expect(parsed.version).toBe(3)
+	expect(parsed.version).toBe(4)
+	expect(parsed.owners.length).toBeGreaterThan(0)
 	expect(parsed.lists).toHaveLength(1)
 	expect(parsed.locations.length).toBeGreaterThan(0)
 })

@@ -1,9 +1,8 @@
 <script lang="ts" generics="F extends SortField, V extends CardListView<F>">
 	import type { Snippet } from "svelte"
 	import type { CardsGroup } from "#lib/domain/cards-view"
-	import type { Owner } from "#lib/domain/owner"
 	import type { SortDir } from "#lib/domain/sort"
-	import type { LocationRecord } from "#lib/domain/types"
+	import type { LocationRecord, OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 
@@ -13,7 +12,7 @@
 	import SortChoices from "#components/molecules/SortChoices.svelte"
 	import FilterSheet from "#components/organisms/FilterSheet.svelte"
 	import { CARDS_GROUPS } from "#lib/domain/cards-view"
-	import { OWNERS } from "#lib/domain/owner"
+	import { DEFAULT_OWNERS, sortOwners } from "#lib/domain/owner"
 	import { locationName, sortLocations } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { groupingLabel } from "#lib/ui/group-label"
@@ -40,6 +39,8 @@
 		dirs: Record<F, SortDir>
 		/** The stored locations, every one offered, A to Z by shown name. */
 		locations: LocationRecord[]
+		/** The stored owners, every one offered, A to Z by name; the starting three when not given. */
+		owners?: readonly OwnerRecord[]
 		/** How many cards a view would show. */
 		count: (view: V) => number
 		/** The draft view, once the sheet has slid away; the page takes the sheet off screen. */
@@ -52,8 +53,21 @@
 		filters?: Snippet<[draft: V, set: (patch: Partial<V>) => void]>
 	}
 
-	const { heading, tab, view, defaults, fields, dirs, locations, count, onapply, onclose, holders, filters }: Props =
-		$props()
+	const {
+		heading,
+		tab,
+		view,
+		defaults,
+		fields,
+		dirs,
+		locations,
+		owners = DEFAULT_OWNERS,
+		count,
+		onapply,
+		onclose,
+		holders,
+		filters,
+	}: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -71,7 +85,7 @@
 		void lang
 		return sortLocations(locations).map((record) => ({ value: record.id, label: locationName(record) }))
 	})
-	const ownerOptions = OWNERS.map((owner) => ({ value: owner, label: owner }))
+	const ownerOptions = $derived(sortOwners(owners).map((owner) => ({ value: owner.id, label: owner.name })))
 	const showLabel = $derived.by(() => {
 		void lang
 		if (shown === 0) return t("tx.filter.nothing")
@@ -116,7 +130,7 @@
 			name="owner"
 			options={ownerOptions}
 			selected={draft.owners}
-			ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner as Owner) } as Partial<V>)}>
+			ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner) } as Partial<V>)}>
 			{@render holders?.(draft, set)}
 		</FilterChips>
 		{@render filters?.(draft, set)}

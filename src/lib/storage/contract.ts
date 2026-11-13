@@ -4,6 +4,7 @@ import type {
 	CardPayment,
 	LimitGroup,
 	LocationRecord,
+	OwnerRecord,
 	Purchase,
 	PurchaseList,
 	StatementDates,
@@ -83,6 +84,18 @@ export const sampleLocation = (overrides: Partial<LocationRecord> = {}): Locatio
 	id: "krabi",
 	name: "Krabi",
 	takesPurchases: true,
+	...overrides,
+})
+
+/** A limit group saved before the owner field existed. */
+const ownerless = (): LimitGroup => {
+	const { owner: _, ...group } = sampleLimitGroup()
+	return group
+}
+
+export const sampleOwner = (overrides: Partial<OwnerRecord> = {}): OwnerRecord => ({
+	id: "KC",
+	name: "KC",
 	...overrides,
 })
 
@@ -590,6 +603,45 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.saveCard(sampleCard({ location: "bangkok" }))
 			await repo.deleteLocation("krabi")
 			expect(await repo.listLocations()).toEqual([])
+		})
+
+		test("owners: save, replace, list by id, delete", async () => {
+			await repo.saveOwner(sampleOwner({ id: "pim", name: "Pim" }))
+			await repo.saveOwner(sampleOwner())
+			expect((await repo.listOwners()).map((o) => o.id)).toEqual(["KC", "pim"])
+			await repo.saveOwner(sampleOwner({ name: "Kamontat" }))
+			expect((await repo.listOwners())[0]).toEqual({ id: "KC", name: "Kamontat" })
+			await repo.deleteOwner("pim")
+			expect(await repo.listOwners()).toEqual([{ id: "KC", name: "Kamontat" }])
+		})
+
+		test("clearAll removes the owners", async () => {
+			await repo.saveOwner(sampleOwner())
+			await repo.clearAll()
+			expect(await repo.listOwners()).toEqual([])
+		})
+
+		test("refuses to delete an owner a limit group names", async () => {
+			await repo.saveOwner(sampleOwner())
+			await repo.saveLimitGroup(sampleLimitGroup({ owner: "KC" }))
+			expect(await guardKey(repo.deleteOwner("KC"))).toBe("guard.ownerInUse")
+			expect(await repo.listOwners()).toHaveLength(1)
+		})
+
+		test("a group with no owner holds KC, the default", async () => {
+			await repo.saveOwner(sampleOwner())
+			await repo.saveLimitGroup(ownerless())
+			expect(await guardKey(repo.deleteOwner("KC"))).toBe("guard.ownerInUse")
+		})
+
+		test("refuses to delete an owner a supplementary card names, not a stale one on another card", async () => {
+			await repo.saveOwner(sampleOwner({ id: "pim", name: "Pim" }))
+			await repo.saveCard(sampleCard({ id: "a", owner: "pim" }))
+			await repo.saveCard(sampleCard({ id: "b", supplementary: true, owner: "pim" }))
+			expect(await guardKey(repo.deleteOwner("pim"))).toBe("guard.ownerInUse")
+			await repo.saveCard(sampleCard({ id: "b", supplementary: false, owner: "pim" }))
+			await repo.deleteOwner("pim")
+			expect(await repo.listOwners()).toEqual([])
 		})
 	})
 }

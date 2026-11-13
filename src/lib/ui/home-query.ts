@@ -44,11 +44,11 @@ const query = (p: URLSearchParams): string => {
  * unknown values read as defaults (`DEFAULT_OWED_VIEW`), and an `f.locations` is kept only when it
  * is one of `locationIds`, the stored records' ids.
  */
-export function readOwedView(search: string, locationIds: readonly string[]): OwedView {
+export function readOwedView(search: string, locationIds: readonly string[], ownerIds?: readonly string[]): OwedView {
 	const p = new URLSearchParams(search)
 	const states = p.getAll("f.states")
 	return {
-		...readCardFilter(p, locationIds),
+		...readCardFilter(p, locationIds, ownerIds),
 		states: OWED_STATES.filter((state) => states.includes(state)),
 		...readOrder(p, OWED_SORTS, OWED_DIRS, DEFAULT_OWED_VIEW),
 	}
@@ -67,9 +67,9 @@ export function writeOwedView(view: OwedView): string {
  * The _Ready to use_ tab's view from `/ready?q=&f.locations=&f.owners=&sort=&dir=&by=` (RD-29);
  * unknown values read as defaults (`DEFAULT_READY_VIEW`).
  */
-export function readReadyView(search: string, locationIds: readonly string[]): ReadyView {
+export function readReadyView(search: string, locationIds: readonly string[], ownerIds?: readonly string[]): ReadyView {
 	const p = new URLSearchParams(search)
-	return { ...readCardFilter(p, locationIds), ...readOrder(p, READY_SORTS, READY_DIRS, DEFAULT_READY_VIEW) }
+	return { ...readCardFilter(p, locationIds, ownerIds), ...readOrder(p, READY_SORTS, READY_DIRS, DEFAULT_READY_VIEW) }
 }
 
 /** `""` for the defaults, else `?` and the keys that differ, the `f.` keys repeated. */

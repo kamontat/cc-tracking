@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Card, LimitGroup, PlainDate, PurchaseList } from "#lib/domain/types"
+	import type { Card, LimitGroup, OwnerRecord, PlainDate, PurchaseList } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { RowText } from "#lib/ui/row-text"
 
@@ -31,6 +31,8 @@
 		lists?: PurchaseList[]
 		cards?: Card[]
 		groups?: LimitGroup[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: OwnerRecord[]
 		/** The page's search and filters; the default shows every list. */
 		filter?: ListsFilter
 		/** What the lists are sectioned by: status (DD-188), month, or not at all (DD-192). */
@@ -47,6 +49,7 @@
 		lists = [],
 		cards = [],
 		groups = [],
+		owners = [],
 		filter = DEFAULT_LISTS_FILTER,
 		by = "status",
 		today = "",
@@ -80,9 +83,9 @@
 
 	const text = (list: PurchaseList): RowText => {
 		void lang
-		if (list.status === "draft") return draftText(list, cards, groups)
-		if (list.status === "sent") return waitingText(list, cards, groups)
-		return savedText(list, cards, groups)
+		if (list.status === "draft") return draftText(list, cards, groups, owners)
+		if (list.status === "sent") return waitingText(list, cards, groups, owners)
+		return savedText(list, cards, groups, owners)
 	}
 
 	/** A saved list is money out like a ledger purchase; a total of nothing (a draft with no amounts yet too) has no sign. */

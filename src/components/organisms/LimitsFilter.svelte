@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { LimitsSort, LimitsView } from "#lib/domain/limits-view"
-	import type { Owner } from "#lib/domain/owner"
 	import type { SortDir } from "#lib/domain/sort"
+	import type { OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 
@@ -11,7 +11,7 @@
 	import SortChoices from "#components/molecules/SortChoices.svelte"
 	import FilterSheet from "#components/organisms/FilterSheet.svelte"
 	import { DEFAULT_LIMITS_VIEW, LIMITS_DIRS, LIMITS_SORTS } from "#lib/domain/limits-view"
-	import { OWNERS } from "#lib/domain/owner"
+	import { DEFAULT_OWNERS, sortOwners } from "#lib/domain/owner"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { toggled } from "#lib/ui/toggle"
 
@@ -26,13 +26,15 @@
 		/** The tab to open on: the control that opened the sheet. */
 		tab?: SheetTab
 		view: LimitsView
+		/** The stored owners, every one offered, A to Z by name; the starting three when not given. */
+		owners?: readonly OwnerRecord[]
 		/** How many groups a view would show. */
 		count: (view: LimitsView) => number
 		onapply: (view: LimitsView) => void
 		onclose: () => void
 	}
 
-	const { view, count, onapply, onclose, tab }: Props = $props()
+	const { view, owners = DEFAULT_OWNERS, count, onapply, onclose, tab }: Props = $props()
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -44,7 +46,7 @@
 	let draft = $state.raw<LimitsView>({ ...view })
 
 	const shown = $derived(count(draft))
-	const ownerOptions = OWNERS.map((owner) => ({ value: owner, label: owner }))
+	const ownerOptions = $derived(sortOwners(owners).map((owner) => ({ value: owner.id, label: owner.name })))
 	const showLabel = $derived.by(() => {
 		void lang
 		if (shown === 0) return t("tx.filter.nothing")
@@ -78,7 +80,7 @@
 			name="owner"
 			options={ownerOptions}
 			selected={draft.owners}
-			ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner as Owner) })} />
+			ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner) })} />
 	{/snippet}
 	{#snippet sortPart()}
 		<SortChoices

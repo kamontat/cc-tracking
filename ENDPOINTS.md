@@ -241,6 +241,11 @@ No query.
 
 No query.
 
+### `/settings/owners`
+
+No query. The stored owners (RD-30): add, rename, and delete one no limit group or
+supplementary card names.
+
 ## Trailing slash
 
 One trailing slash is ignored when picking the active tab, so `/cards/` highlights Cards.

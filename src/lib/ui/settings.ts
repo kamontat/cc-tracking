@@ -1,9 +1,10 @@
-import type { LocationRecord } from "#lib/domain/types"
+import type { LocationRecord, OwnerRecord } from "#lib/domain/types"
 import type { Repository } from "#lib/storage/repository"
 
+import { sortOwners } from "#lib/domain/owner"
 import { purchasePlaces } from "#lib/i18n/format"
 import { t } from "#lib/i18n/index"
-import { exportBackupV3 } from "#lib/storage/transfer-v3"
+import { exportBackupV4 } from "#lib/storage/transfer-v4"
 
 /** The name a backup file saved at `now` gets: the UTC date it was exported on. */
 export const backupFilename = (now: Date): string => `cc-tracking-${now.toISOString().slice(0, 10)}.json`
@@ -17,7 +18,7 @@ export async function prepareBackupFile(
 	repo: Repository,
 	now: Date = new Date(),
 ): Promise<{ filename: string; text: string }> {
-	const backup = await exportBackupV3(repo, now)
+	const backup = await exportBackupV4(repo, now)
 	return {
 		text: JSON.stringify(backup, null, 2),
 		filename: backupFilename(new Date(backup.exportedAt)),
@@ -39,3 +40,9 @@ export function locationsSummary(records: LocationRecord[]): string {
 				})
 	return t("settings.locations.summary", { count, takers })
 }
+
+/** The Owners row's muted line: every owner's name, A to Z. */
+export const ownersSummary = (records: readonly OwnerRecord[]): string =>
+	sortOwners(records)
+		.map((record) => record.name)
+		.join(", ")

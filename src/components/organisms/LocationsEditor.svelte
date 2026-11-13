@@ -184,18 +184,18 @@
 
 <ErrorBanner message={bannerMessage} retryLabel={tr("common.reload")} onretry={onRetry} />
 {#if !startupFailure}
-	<div class="locations">
+	<div class="records">
 		{#if sorted.length > 0}
 			<div class="set">
 				{#each sorted as record (record.id)}
 					{@const name = nameOf(record)}
 					{@const count = countAt(record.id)}
-					<div class="location-row" data-location={record.id}>
+					<div class="record-row" data-location={record.id}>
 						{#if renaming?.id === record.id}
-							{@const errorId = `location-error-${record.id}`}
-							<div class="location-row__line">
+							{@const errorId = `record-error-${record.id}`}
+							<div class="record-row__line">
 								<input
-									class="location-row__field"
+									class="record-row__field"
 									value={renaming.text}
 									oninput={(event) => {
 										if (renaming) renaming.text = event.currentTarget.value
@@ -210,7 +210,7 @@
 								</button>
 							</div>
 							{#if renaming.problem}
-								<p class="location-error" id={errorId} role="alert">{why(renaming.problem)}</p>
+								<p class="record-error" id={errorId} role="alert">{why(renaming.problem)}</p>
 							{/if}
 						{:else if deleting === record.id}
 							<div class="set-ask">
@@ -235,8 +235,8 @@
 								</div>
 							</div>
 						{:else}
-							<div class="location-row__line">
-								<span class="location-row__text">
+							<div class="record-row__line">
+								<span class="record-row__text">
 									<strong>{name}</strong>
 									<small>{count === 1 ? tr("cards.page.count.one") : tr("cards.page.count.many", { count })}</small>
 								</span>
@@ -250,7 +250,7 @@
 								{/if}
 							</div>
 						{/if}
-						<label class="location-row__takes">
+						<label class="record-row__takes">
 							<input
 								type="checkbox"
 								data-action="takes-purchases"
@@ -263,24 +263,24 @@
 			</div>
 		{/if}
 		{#if noneTake}
-			<p class="location-warning" role="status">{tr("locations.noneTake")}</p>
+			<p class="record-warning" role="status">{tr("locations.noneTake")}</p>
 		{/if}
 		<p class="set-note">{tr("locations.deleteNote")}</p>
-		<form class="location-add" data-action="add-location" onsubmit={onAdd}>
+		<form class="record-add" data-action="add-location" onsubmit={onAdd}>
 			<label>
 				{tr("locations.add")}
-				<span class="location-add__control">
+				<span class="record-add__control">
 					<input
 						name="name"
 						bind:value={addText}
 						placeholder={tr("locations.addPlaceholder")}
 						aria-invalid={addProblem ? "true" : "false"}
-						aria-describedby={addProblem ? "location-add-error" : undefined}>
+						aria-describedby={addProblem ? "record-add-error" : undefined}>
 					<button type="submit">{tr("locations.addAction")}</button>
 				</span>
 			</label>
 			{#if addProblem}
-				<p class="location-error" id="location-add-error" role="alert">{why(addProblem)}</p>
+				<p class="record-error" id="record-add-error" role="alert">{why(addProblem)}</p>
 			{/if}
 		</form>
 	</div>

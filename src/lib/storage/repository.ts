@@ -3,12 +3,14 @@ import type {
 	CardPayment,
 	LimitGroup,
 	LocationRecord,
+	OwnerRecord,
 	Purchase,
 	PurchaseList,
 	StatementDates,
 	StatementPayment,
 } from "#lib/domain/types"
 
+import { canDeleteOwner } from "#lib/domain/owner"
 import { defaultSettings, type Settings } from "#lib/domain/settings"
 import { MessageError } from "#lib/i18n/error"
 
@@ -62,6 +64,12 @@ export interface Repository {
 	/** Throws `guard.locationInUse` while a card is kept there. */
 	deleteLocation(id: string): Promise<void>
 
+	/** In stored order, by id. */
+	listOwners(): Promise<OwnerRecord[]>
+	saveOwner(owner: OwnerRecord): Promise<void>
+	/** Throws `guard.ownerInUse` while a limit group (by `ownerOf`) or a supplementary card names it. */
+	deleteOwner(id: string): Promise<void>
+
 	/** The stored settings, or `DEFAULT_SETTINGS` when nothing has been saved yet. */
 	getSettings(): Promise<Settings>
 	saveSettings(settings: Settings): Promise<void>
@@ -91,6 +99,7 @@ export class InMemoryRepository implements Repository {
 	private statementDates = new Map<string, StatementDates>()
 	private purchaseLists = new Map<string, PurchaseList>()
 	private locations = new Map<string, LocationRecord>()
+	private owners = new Map<string, OwnerRecord>()
 	private settings: Settings | null = null
 
 	async listCards(): Promise<Card[]> {
@@ -236,6 +245,21 @@ export class InMemoryRepository implements Repository {
 		this.locations.delete(id)
 	}
 
+	async listOwners(): Promise<OwnerRecord[]> {
+		return [...this.owners.values()].map(clone).sort((a, b) => (a.id < b.id ? -1 : 1))
+	}
+
+	async saveOwner(owner: OwnerRecord): Promise<void> {
+		this.owners.set(owner.id, clone(owner))
+	}
+
+	async deleteOwner(id: string): Promise<void> {
+		if (!canDeleteOwner(id, [...this.limitGroups.values()], [...this.cards.values()])) {
+			throw new MessageError("guard.ownerInUse")
+		}
+		this.owners.delete(id)
+	}
+
 	async getSettings(): Promise<Settings> {
 		return this.settings ? clone(this.settings) : defaultSettings()
 	}
@@ -253,6 +277,7 @@ export class InMemoryRepository implements Repository {
 		this.statementDates.clear()
 		this.purchaseLists.clear()
 		this.locations.clear()
+		this.owners.clear()
 		this.settings = null
 	}
 }

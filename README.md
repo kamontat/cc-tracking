@@ -94,9 +94,13 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
   sortable; a group opens in its panel (`?limit=<id>`), where it is edited, and
   _+ Add limit_ adds one; each group has a colour, one of 12 swatches or _Random_.
 - `/settings` — sections for _Display_ (language and theme), _Locations_,
-  _Backup_, _Reset_ (_Delete old purchases_ and _Delete all data_) and _About_.
+  _Owners_, _Backup_, _Reset_ (_Delete old purchases_ and _Delete all data_) and
+  _About_.
 - `/settings/locations` — the stored locations: add, rename, delete (only one no
   card is kept at), and tick _Takes purchases_.
+- `/settings/owners` — the stored owners, who a limit group's account or a
+  supplementary card belongs to: add, rename, delete (only one no group or
+  supplementary card names).
 
 ## Which cards can take a purchase
 
@@ -178,7 +182,7 @@ next one.
 Everything lives in this browser's `localStorage`, under keys shaped like
 `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`, `cc:limitgroup:<id>`,
 `cc:cardpayment:<cardId>:<id>`, `cc:statementdates:<cardId>:<period>`,
-`cc:location:<id>` and `cc:list:<id>` (a purchase list, with its lines and status;
+`cc:location:<id>`, `cc:owner:<id>` and `cc:list:<id>` (a purchase list, with its lines and status;
 `/transactions/lists/edit?list=<id>` works on a draft or a waiting list, and
 `/transactions/lists?list=<id>` shows any list in its panel). One-off
 markers and notices from data migrations sit under `cc:migration:*`, and which
@@ -202,6 +206,13 @@ three starting places have the ids `bangkok`, `phichit` and `krabi`; a location
 added later takes a slug of its name. A card stores the id, so renaming a location
 changes nothing on its cards.
 
+An owner is a stored record too: an id and a name. The three starting owners have
+the ids and names `KC`, `NT` and `RI`; one added later takes a slug of its name. A
+limit group, and a supplementary card, stores the owner's id, so a rename shows
+everywhere at once. At every load (and after a restore) a group with no owner is
+given KC, a starting owner whose record has gone comes back, and any other owner
+nobody stores moves to the first owner A to Z.
+
 The _Backup_ section on `/settings` is how you keep a copy: _Download a copy_
 saves indented JSON, and _Copy as text_ puts the same backup on the clipboard as
 compact JSON. _Restore…_ opens a sheet that offers the clipboard first, then a
@@ -217,17 +228,19 @@ the same time, so what each card owes, its credit and its room stay the same.
 _Delete all data_ deletes every record after showing how many of each will go;
 language and theme stay.
 
-Backups are version 3 and carry limit groups (with their colours), cards,
-purchases, card payments, statement dates, purchase lists and locations. A
+Backups are version 4 and carry limit groups (with their colours), cards,
+purchases, card payments, statement dates, purchase lists, locations and owners. A
+version 3 file still restores, with the starting owners KC, NT and RI. A
 version 2 file is converted on the way in: its payments become card payments, its
 locations come from its settings, and it has no lists. A version 1 file is
 rejected outright. A file that is not valid JSON, is missing its expected lists,
 has a record with the wrong shape, or was written by another backup version is
 rejected with a message naming what was wrong, and nothing is imported. In a
-version 3 file each card must name one of the file's own locations; one that does
+version 3 or 4 file each card must name one of the file's own locations, and in a
+version 4 file each group and supplementary card one of its own owners; one that does
 not is rejected by its position in the file — for instance `That backup's card #1
 …` — and nothing is imported. Import itself is not atomic, though: it writes limit
-groups, then locations, cards, purchases, card payments, statement dates and lists
+groups, then locations, owners, cards, purchases, card payments, statement dates and lists
 one at a time — groups and locations before cards, so a card always has something
 to point at — and then gives a colour to any group without one. A failure partway
 through (for instance, storage filling up) can leave some records imported and

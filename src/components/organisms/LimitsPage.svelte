@@ -20,6 +20,7 @@
 	import { groupPanels } from "#lib/domain/cards-view"
 	import { today } from "#lib/domain/date"
 	import { limitsResults } from "#lib/domain/limits-view"
+	import { ownerName } from "#lib/domain/owner"
 	import { groupRoom } from "#lib/domain/room"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
@@ -86,6 +87,8 @@
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
 
+	const ownerIds = (money: MoneyData) => money.owners.map((record) => record.id)
+
 	const page = createPageState({
 		fetch: async () => {
 			if (!repo) return
@@ -93,6 +96,7 @@
 			const rooms: CardsRooms = new Map(
 				money.groups.map((group) => [group.id, groupRoom(group, money.cards, money.ledgers, money.lists, "")]),
 			)
+			view = readLimitsView(address.search(), ownerIds(money))
 			data = { money, panels: groupPanels(money.groups, money.cards, rooms) }
 		},
 		fallbackKey: "cards.error.read",
@@ -115,7 +119,7 @@
 	const chips = $derived(
 		view.owners.map((owner) => ({
 			key: `owner:${owner}`,
-			label: owner,
+			label: ownerName(owner, data?.money.owners),
 			clear: () => change({ owners: view.owners.filter((o) => o !== owner) }),
 		})),
 	)
@@ -145,7 +149,7 @@
 		})
 		const stopPanel = panel.start()
 		const removePop = address.onPop(() => {
-			view = readLimitsView(address.search())
+			view = readLimitsView(address.search(), data ? ownerIds(data.money) : undefined)
 		})
 		void (async () => {
 			const opened = await openOnce()
@@ -192,6 +196,7 @@
 			</FilterControls>
 			<GroupPanels
 				panels={results}
+				owners={data.money.owners}
 				empty={emptyText}
 				current={panel.record?.kind === "limit" ? panel.record.id : null}
 				onopengroup={(id: string) => panel.show({ kind: "limit", id })} />
@@ -199,6 +204,7 @@
 				<LimitsFilter
 					tab={sheetTab}
 					view={{ ...view }}
+					owners={data.money.owners}
 					count={countFor}
 					onapply={(next: LimitsView) => {
 						filterOpen = false

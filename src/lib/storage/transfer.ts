@@ -2,7 +2,7 @@ import type { MessageKey } from "#lib/i18n/catalog"
 
 import { isValidDate } from "#lib/domain/date"
 import { toLocation } from "#lib/domain/location"
-import { toOwner } from "#lib/domain/owner"
+import { isStartingOwner } from "#lib/domain/owner"
 
 export const isList = (value: unknown): value is unknown[] => Array.isArray(value)
 
@@ -36,11 +36,29 @@ function cycleProblem(value: unknown): MessageKey | null {
 }
 
 /**
- * `null` when the card is well-formed, otherwise which catalog key names what's wrong. A card's
- * location is checked against `locationIds` when given (a version 3 file's own locations),
- * otherwise against the closed set a version 2 file was written with (DC-06).
+ * An owner checked against `ownerIds` when given (a version 4 file's own owners), otherwise
+ * against the closed set a version 2 or 3 file was written with (DC-06). Absent is a record
+ * from before the field; present but unknown is a claim about whose it is that the file
+ * cannot back, and silently rewriting it would lose whose account it is.
  */
-export function cardProblem(value: unknown, locationIds?: ReadonlySet<string>): MessageKey | null {
+function ownerProblem(owner: unknown, ownerIds?: ReadonlySet<string>): MessageKey | null {
+	if (owner === undefined) return null
+	if (ownerIds) return typeof owner === "string" && ownerIds.has(owner) ? null : "backup.problem.unknownOwner"
+	return isStartingOwner(owner) ? null : "backup.problem.badOwner"
+}
+
+/**
+ * `null` when the card is well-formed, otherwise which catalog key names what's wrong. A card's
+ * location is checked against `locationIds` when given (a version 3 or 4 file's own locations),
+ * otherwise against the closed set a version 2 file was written with; its owner by
+ * `ownerProblem`, and in a version 4 file only on a supplementary card, the one card it is read
+ * on (DC-06, DC-09).
+ */
+export function cardProblem(
+	value: unknown,
+	locationIds?: ReadonlySet<string>,
+	ownerIds?: ReadonlySet<string>,
+): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject"
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId"
 	if (!isNonEmptyString(prop(value, "name"))) return "backup.problem.missingName"
@@ -49,10 +67,10 @@ export function cardProblem(value: unknown, locationIds?: ReadonlySet<string>): 
 	if (locationIds) {
 		if (typeof location !== "string" || !locationIds.has(location)) return "backup.problem.unknownLocation"
 	} else if (toLocation(location) === null) return "backup.problem.badLocation"
-	// The same rule a limit group's owner follows: absent is a card from before the field, and
-	// present-but-unknown is a claim about whose card it is that the closed set cannot keep.
-	const owner = prop(value, "owner")
-	if (owner !== undefined && toOwner(owner) === null) return "backup.problem.badOwner"
+	if (!ownerIds || prop(value, "supplementary") === true) {
+		const problem = ownerProblem(prop(value, "owner"), ownerIds)
+		if (problem) return problem
+	}
 	return cycleProblem(prop(value, "cycle"))
 }
 
@@ -97,16 +115,14 @@ export function paymentProblem(value: unknown): MessageKey | null {
 	return null
 }
 
-/** `null` when the limit group is well-formed, otherwise which catalog key names what's wrong. */
-export function limitGroupProblem(value: unknown): MessageKey | null {
+/**
+ * `null` when the limit group is well-formed, otherwise which catalog key names what's wrong;
+ * its owner by `ownerProblem`, against `ownerIds` when given.
+ */
+export function limitGroupProblem(value: unknown, ownerIds?: ReadonlySet<string>): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject"
 	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId"
 	if (!isNonEmptyString(prop(value, "name"))) return "backup.problem.missingName"
 	if (!isInteger(prop(value, "limit"))) return "backup.problem.badLimit"
-	// Absent is fine -- groups written before the field existed read as the default owner.
-	// A value that is present but unknown is not: that is a file claiming something the
-	// closed set cannot honour, and silently rewriting it would lose whose account it is.
-	const owner = prop(value, "owner")
-	if (owner !== undefined && toOwner(owner) === null) return "backup.problem.badOwner"
-	return null
+	return ownerProblem(prop(value, "owner"), ownerIds)
 }

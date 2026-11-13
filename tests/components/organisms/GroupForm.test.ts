@@ -1,4 +1,4 @@
-import type { LimitGroup } from "#lib/domain/types"
+import type { LimitGroup, OwnerRecord } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
@@ -6,6 +6,7 @@ import { afterEach, expect, test } from "vitest"
 
 import GroupForm from "#components/organisms/GroupForm.svelte"
 import { GROUP_COLORS, type GroupColor } from "#lib/domain/group-color"
+import { DEFAULT_OWNERS } from "#lib/domain/owner"
 import { setLocale, t } from "#lib/i18n/index"
 
 /**
@@ -40,6 +41,7 @@ const scb: LimitGroup = {
 interface Shown {
 	group?: LimitGroup | null
 	groups?: LimitGroup[]
+	owners?: OwnerRecord[]
 	inUse?: boolean
 	error?: string
 	busy?: boolean
@@ -64,6 +66,9 @@ const show = async (initial: Shown = {}) => {
 			},
 			get groups() {
 				return (values.get("groups") as LimitGroup[] | undefined) ?? []
+			},
+			get owners() {
+				return (values.get("owners") as OwnerRecord[] | undefined) ?? DEFAULT_OWNERS
 			},
 			get inUse() {
 				return (values.get("inUse") as boolean | undefined) ?? false
@@ -132,6 +137,25 @@ test("a blank group has its fields, no holder chosen and Add limit group", async
 		["RI", "false"],
 	])
 	expect(root.querySelector("[data-action=delete-group]")).toBeNull()
+})
+
+test("offers the stored owners A to Z by name and saves the chosen one's id", async () => {
+	const owners = [
+		{ id: "KC", name: "Kamontat" },
+		{ id: "pim", name: "Pim" },
+		{ id: "ann", name: "Ann" },
+	]
+	const { root, saved } = await show({ owners })
+	expect([...root.querySelectorAll("[data-owner]")].map((b) => [b.getAttribute("data-owner"), text(b)])).toEqual([
+		["ann", "Ann"],
+		["KC", "Kamontat"],
+		["pim", "Pim"],
+	])
+	await type("name", "Pool")
+	await type("limit", "100")
+	await click('[data-owner="pim"]')
+	await submit()
+	expect(saved[0]?.owner).toBe("pim")
 })
 
 test("checks the name, a limit above zero and the holder", async () => {

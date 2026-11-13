@@ -3,6 +3,7 @@ import type {
 	CardPayment,
 	LimitGroup,
 	LocationRecord,
+	OwnerRecord,
 	Purchase,
 	PurchaseList,
 	StatementDates,
@@ -14,6 +15,7 @@ import type { Repository } from "#lib/storage/repository"
 import { isCardId } from "#lib/domain/card"
 import { toGroupColor } from "#lib/domain/group-color"
 import { defaultLocations } from "#lib/domain/locations"
+import { canDeleteOwner, DEFAULT_OWNERS } from "#lib/domain/owner"
 import { toSettings } from "#lib/domain/settings"
 import { MessageError } from "#lib/i18n/error"
 import { assignGroupColors } from "#lib/storage/assign-group-colors"
@@ -31,10 +33,13 @@ import {
 	purchaseProblem,
 } from "#lib/storage/transfer"
 
-export const BACKUP_V3 = 3
+export const BACKUP_V4 = 4
 
-export type BackupV3 = {
-	version: 3
+/** The starting owners, fresh each time, so a caller's edit can't reach the constant. */
+const startingOwners = (): OwnerRecord[] => DEFAULT_OWNERS.map((owner) => ({ ...owner }))
+
+export type BackupV4 = {
+	version: 4
 	exportedAt: string
 	limitGroups: LimitGroup[]
 	cards: Card[]
@@ -43,21 +48,24 @@ export type BackupV3 = {
 	statementDates: StatementDates[]
 	lists: PurchaseList[]
 	locations: LocationRecord[]
+	/** Version 4 on (RD-30); a version 2 or 3 file carries the starting three, its closed set. */
+	owners: OwnerRecord[]
 	/**
 	 * Set by `parseAnyBackup` on a file converted from version 2 during this import, never
-	 * written by `exportBackupV3`. Only then does an import clear a card's stale converted
+	 * written by `exportBackupV4`. Only then does an import clear a card's stale converted
 	 * payment parts (DD-95).
 	 */
 	converted?: true
 }
 
-export async function exportBackupV3(repo: Repository, now: Date): Promise<BackupV3> {
+export async function exportBackupV4(repo: Repository, now: Date): Promise<BackupV4> {
 	const limitGroups = await repo.listLimitGroups()
 	const cards = await repo.listCards()
 	// Never a file its own parser refuses: with no records stored yet (before the seed ran),
 	// the cards still name one of the starting places, so those travel instead.
 	const stored = await repo.listLocations()
 	const locations = stored.length > 0 ? stored : defaultLocations(await repo.getSettings())
+	const owners = await repo.listOwners()
 	const purchases: Purchase[] = []
 	const payments: CardPayment[] = []
 	const statementDates: StatementDates[] = []
@@ -67,7 +75,7 @@ export async function exportBackupV3(repo: Repository, now: Date): Promise<Backu
 		statementDates.push(...(await repo.listStatementDates(card.id)))
 	}
 	return {
-		version: BACKUP_V3,
+		version: BACKUP_V4,
 		exportedAt: now.toISOString(),
 		limitGroups,
 		cards,
@@ -76,11 +84,12 @@ export async function exportBackupV3(repo: Repository, now: Date): Promise<Backu
 		statementDates,
 		lists: await repo.listPurchaseLists(),
 		locations,
+		owners: owners.length > 0 ? owners : startingOwners(),
 	}
 }
 
 /** How many of each record a backup holds, or a repository holds now. */
-export type V3Counts = {
+export type V4Counts = {
 	cards: number
 	purchases: number
 	payments: number
@@ -88,7 +97,7 @@ export type V3Counts = {
 	lists: number
 }
 
-export const backupCounts = (backup: BackupV3): V3Counts => ({
+export const backupCounts = (backup: BackupV4): V4Counts => ({
 	cards: backup.cards.length,
 	purchases: backup.purchases.length,
 	payments: backup.payments.length,
@@ -96,8 +105,8 @@ export const backupCounts = (backup: BackupV3): V3Counts => ({
 	lists: backup.lists.length,
 })
 
-export async function countRecordsV3(repo: Repository): Promise<V3Counts> {
-	return backupCounts(await exportBackupV3(repo, new Date()))
+export async function countRecordsV4(repo: Repository): Promise<V4Counts> {
+	return backupCounts(await exportBackupV4(repo, new Date()))
 }
 
 /** A positive whole number of satang (DR-01). */
@@ -119,14 +128,15 @@ function cardRangeProblem(card: Record<string, unknown>): MessageKey | null {
 }
 
 /**
- * A card's problem, checking its location against `locationIds` when given (version 3). In
+ * A card's problem, checking its location against `locationIds` when given (version 3 on) and
+ * its owner against `ownerIds` when given (version 4). In
  * either version its id must be in the card id form (RD-28) and it must name one of the file's
  * `groupIds` (RD-27): a card without a limit group is invalid data.
  */
 const cardAllProblem =
-	(groupIds: ReadonlySet<string>, locationIds?: ReadonlySet<string>) =>
+	(groupIds: ReadonlySet<string>, locationIds?: ReadonlySet<string>, ownerIds?: ReadonlySet<string>) =>
 	(value: unknown): MessageKey | null => {
-		const problem = cardProblem(value, locationIds)
+		const problem = cardProblem(value, locationIds, ownerIds)
 		if (problem) return problem
 		const card = value as Record<string, unknown>
 		if (!isCardId(prop(card, "id") as string)) return "backup.problem.badCardId"
@@ -142,11 +152,14 @@ function purchaseAllProblem(value: unknown): MessageKey | null {
 	return isPositiveAmount(prop(value as Record<string, unknown>, "amount")) ? null : "backup.problem.badAmountRange"
 }
 
-function limitGroupAllProblem(value: unknown): MessageKey | null {
-	const problem = limitGroupProblem(value)
-	if (problem) return problem
-	return isPositiveAmount(prop(value as Record<string, unknown>, "limit")) ? null : "backup.problem.badLimitRange"
-}
+/** A limit group's problem, checking its owner against `ownerIds` when given (version 4). */
+const limitGroupAllProblem =
+	(ownerIds?: ReadonlySet<string>) =>
+	(value: unknown): MessageKey | null => {
+		const problem = limitGroupProblem(value, ownerIds)
+		if (problem) return problem
+		return isPositiveAmount(prop(value as Record<string, unknown>, "limit")) ? null : "backup.problem.badLimitRange"
+	}
 
 function cardPaymentProblem(value: unknown): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject"
@@ -203,6 +216,13 @@ function locationProblem(value: unknown): MessageKey | null {
 	return null
 }
 
+function ownerRecordProblem(value: unknown): MessageKey | null {
+	if (!isPlainObject(value)) return "backup.problem.notObject"
+	if (!isNonEmptyString(prop(value, "id"))) return "backup.problem.missingId"
+	if (!isNonEmptyString(prop(value, "name"))) return "backup.problem.missingName"
+	return null
+}
+
 function check(records: unknown[], key: MessageKey, problemOf: (value: unknown) => MessageKey | null): void {
 	for (const [index, record] of records.entries()) {
 		const problem = problemOf(record)
@@ -219,14 +239,16 @@ function trimmedNote<T extends { note?: string }>(record: T): T {
 }
 
 /**
- * Reads a version 2 or version 3 file as version 3, rejecting the whole file before
- * anything is written when any record breaks a shape or range rule (RD-06). A version 2
- * file's payments convert to card payments, its locations come from its settings (none when
- * it has no settings, so stored locations are left alone, DC-05), it has no lists, and it is
- * marked `converted`. A version 3 file's cards must each name one of its own locations; a
- * version 2 file's cards keep the closed set (DC-06).
+ * Reads a version 2, 3 or 4 file as version 4, rejecting the whole file before anything is
+ * written when any record breaks a shape or range rule (RD-06). A version 2 file's payments
+ * convert to card payments, its locations come from its settings (none when it has no
+ * settings, so stored locations are left alone, DC-05), it has no lists, and it is marked
+ * `converted`. A version 3 or 4 file's cards must each name one of its own locations; a
+ * version 2 file's cards keep the closed set. A version 4 file's groups and supplementary
+ * cards must each name one of its own owners; a version 2 or 3 file keeps the closed set of
+ * owners and carries the starting three (DC-06).
  */
-export function parseAnyBackup(text: string): BackupV3 {
+export function parseAnyBackup(text: string): BackupV4 {
 	let value: unknown
 	try {
 		value = JSON.parse(text)
@@ -238,10 +260,10 @@ export function parseAnyBackup(text: string): BackupV3 {
 	if (!isPlainObject(value)) throw new MessageError("backup.unreadable")
 
 	const version = prop(value, "version")
-	if (version !== 2 && version !== BACKUP_V3) {
+	if (version !== 2 && version !== 3 && version !== BACKUP_V4) {
 		throw new MessageError("backup.version", {
 			found: JSON.stringify(version),
-			expected: BACKUP_V3,
+			expected: BACKUP_V4,
 		})
 	}
 
@@ -255,7 +277,18 @@ export function parseAnyBackup(text: string): BackupV3 {
 	const stamp = prop(value, "exportedAt")
 	const exportedAt = isNonEmptyString(stamp) ? stamp : new Date(0).toISOString()
 
-	check(limitGroups, "backup.limitGroup", limitGroupAllProblem)
+	// Owners first: in a version 4 file each group and supplementary card names one of them.
+	let owners = startingOwners()
+	let ownerIds: ReadonlySet<string> | undefined
+	if (version === BACKUP_V4) {
+		const listed = prop(value, "owners")
+		if (!isList(listed)) throw new MessageError("backup.unreadable")
+		check(listed, "backup.owner", ownerRecordProblem)
+		owners = listed as OwnerRecord[]
+		ownerIds = new Set(owners.map((owner) => owner.id))
+	}
+
+	check(limitGroups, "backup.limitGroup", limitGroupAllProblem(ownerIds))
 	const groupIds = new Set((limitGroups as LimitGroup[]).map((group) => group.id))
 
 	if (version === 2) {
@@ -268,7 +301,7 @@ export function parseAnyBackup(text: string): BackupV3 {
 		const locations = isPlainObject(settings) ? defaultLocations(toSettings(settings)) : []
 		const converted = convertPayments(cards as Card[], purchases as Purchase[], payments as StatementPayment[])
 		return {
-			version: BACKUP_V3,
+			version: BACKUP_V4,
 			exportedAt,
 			limitGroups: limitGroups as LimitGroup[],
 			cards: cards as Card[],
@@ -277,6 +310,7 @@ export function parseAnyBackup(text: string): BackupV3 {
 			statementDates: converted.dates,
 			lists: [],
 			locations,
+			owners,
 			converted: true,
 		}
 	}
@@ -290,14 +324,14 @@ export function parseAnyBackup(text: string): BackupV3 {
 	// Locations first: each card must name one of the file's own locations.
 	check(locations, "backup.location", locationProblem)
 	const locationIds = new Set((locations as LocationRecord[]).map((location) => location.id))
-	check(cards, "backup.card", cardAllProblem(groupIds, locationIds))
+	check(cards, "backup.card", cardAllProblem(groupIds, locationIds, ownerIds))
 	check(purchases, "backup.purchase", purchaseAllProblem)
 	check(payments, "backup.cardPayment", cardPaymentProblem)
 	check(statementDates, "backup.statementDates", statementDatesProblem)
 	check(lists, "backup.list", listProblem)
 
 	return {
-		version: BACKUP_V3,
+		version: BACKUP_V4,
 		exportedAt,
 		limitGroups: limitGroups as LimitGroup[],
 		cards: cards as Card[],
@@ -309,6 +343,7 @@ export function parseAnyBackup(text: string): BackupV3 {
 			lines: list.lines.map(trimmedNote),
 		})),
 		locations: locations as LocationRecord[],
+		owners,
 	}
 }
 
@@ -322,28 +357,38 @@ export function onlySeededDefaults(records: LocationRecord[]): boolean {
 	return records.every((record) => defaults.some((seed) => seed.id === record.id && seed.name === record.name))
 }
 
-/** How `importBackupV3` treats the stored locations. */
+/**
+ * True when every stored owner is one of the three starting owners under its own initials:
+ * what a new or reset browser holds once seeded, before the reader renamed or added one. An
+ * empty list counts too.
+ */
+export function onlySeededOwners(records: OwnerRecord[]): boolean {
+	return records.every((record) => DEFAULT_OWNERS.some((seed) => seed.id === record.id && seed.name === record.name))
+}
+
+/** How `importBackupV4` treats the stored locations and owners. */
 export type ImportOptions = {
 	/**
 	 * Restoring into a browser with nothing in it yet: when the stored locations are only
 	 * untouched starting places (`onlySeededDefaults`), the file's locations are written over
 	 * them, and a starting place the file lacks that no card uses goes. A file with no locations
 	 * (a version 2 file without settings) leaves them alone. Over any other stored location the
-	 * keep-local rule holds as without this option.
+	 * keep-local rule holds as without this option. Owners follow the same rule
+	 * (`onlySeededOwners`): a starting owner the file lacks goes while nothing names it.
 	 */
 	overSeeded?: boolean
 }
 
 /**
- * Additive: writes every record over whatever shares its key, except locations: a file's
- * location whose id is already stored is skipped, so an old backup cannot undo a rename or a
- * *Takes purchases* tick (see `ImportOptions.overSeeded` for the one exception). Settings are
+ * Additive: writes every record over whatever shares its key, except locations and owners: a
+ * file's location or owner whose id is already stored is skipped, so an old backup cannot undo
+ * a rename or a *Takes purchases* tick (see `ImportOptions.overSeeded` for the one exception). Settings are
  * never touched. Otherwise the one deletion is a converted version 2 file's stale parts
  * (DD-95): before writing an `m:` payment with a period, the card's stored
  * `m:<card>:<period>:` payments go, so a record that now converts to fewer parts leaves none
  * behind. A version 3 file deletes nothing else.
  */
-export async function importBackupV3(repo: Repository, backup: BackupV3, options: ImportOptions = {}): Promise<void> {
+export async function importBackupV4(repo: Repository, backup: BackupV4, options: ImportOptions = {}): Promise<void> {
 	// A file's colour wins when it is a valid one; otherwise the stored group keeps its own,
 	// and a group new to the device gets one below. A colour never makes a restore refuse.
 	const storedGroups = new Map((await repo.listLimitGroups()).map((group) => [group.id, group]))
@@ -356,6 +401,12 @@ export async function importBackupV3(repo: Repository, backup: BackupV3, options
 	const storedLocations = new Set(stored.map((location) => location.id))
 	for (const location of backup.locations) {
 		if (overwrite || !storedLocations.has(location.id)) await repo.saveLocation(location)
+	}
+	const storedOwners = await repo.listOwners()
+	const overwriteOwners = options.overSeeded === true && backup.owners.length > 0 && onlySeededOwners(storedOwners)
+	const storedOwnerIds = new Set(storedOwners.map((owner) => owner.id))
+	for (const owner of backup.owners) {
+		if (overwriteOwners || !storedOwnerIds.has(owner.id)) await repo.saveOwner(owner)
 	}
 	for (const card of backup.cards) await repo.saveCard(card)
 	for (const purchase of backup.purchases) await repo.savePurchase(purchase)
@@ -384,6 +435,14 @@ export async function importBackupV3(repo: Repository, backup: BackupV3, options
 			await repo.deleteLocation(seed.id)
 		}
 	}
+	if (overwriteOwners) {
+		// Likewise a starting owner the file does without, unless a group or card still names it.
+		const kept = new Set(backup.owners.map((owner) => owner.id))
+		const [groups, cards] = await Promise.all([repo.listLimitGroups(), repo.listCards()])
+		for (const seed of storedOwners) {
+			if (!kept.has(seed.id) && canDeleteOwner(seed.id, groups, cards)) await repo.deleteOwner(seed.id)
+		}
+	}
 	// The data has landed; a colour that cannot be stored must not report the restore as failed.
 	try {
 		await assignGroupColors(repo)
@@ -393,18 +452,18 @@ export async function importBackupV3(repo: Repository, backup: BackupV3, options
 }
 
 /**
- * Destructive: forgets everything stored, then writes the backup, so the file's location
- * records are the ones kept. The payments marker is
+ * Destructive: forgets everything stored, then writes the backup, so the file's location and
+ * owner records are the ones kept. The payments marker is
  * set again afterwards, so the startup conversion does not run over the restored data. Every
- * group leaves with a colour (`importBackupV3` assigns them), so the colours marker is not
+ * group leaves with a colour (`importBackupV4` assigns them), so the colours marker is not
  * needed and `clearAll` having removed it is harmless.
  */
-export async function replaceWithBackupV3(
+export async function replaceWithBackupV4(
 	repo: Repository,
-	backup: BackupV3,
+	backup: BackupV4,
 	storage: Pick<Storage, "setItem">,
 ): Promise<void> {
 	await repo.clearAll()
-	await importBackupV3(repo, backup)
+	await importBackupV4(repo, backup)
 	storage.setItem(PAYMENTS_MIGRATION_KEY, "done")
 }

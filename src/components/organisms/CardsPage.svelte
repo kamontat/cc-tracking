@@ -17,6 +17,7 @@
 	import CardsList from "#components/organisms/CardsList.svelte"
 	import { cardsResults } from "#lib/domain/cards-view"
 	import { today } from "#lib/domain/date"
+	import { ownerName, sortOwners } from "#lib/domain/owner"
 	import { groupRoom } from "#lib/domain/room"
 	import { nameOfLocation, placeOrder } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
@@ -97,6 +98,7 @@
 	let painted = $state(0)
 
 	const locationIds = (money: MoneyData) => money.locations.map((record) => record.id)
+	const ownerIds = (money: MoneyData) => money.owners.map((record) => record.id)
 
 	const page = createPageState({
 		fetch: async () => {
@@ -106,7 +108,7 @@
 				money.groups.map((group) => [group.id, groupRoom(group, money.cards, money.ledgers, money.lists, "")]),
 			)
 			const credits = new Map(money.cards.map((c) => [c.id, money.ledgers.get(c.id)?.credit ?? 0]))
-			view = readCardsView(address.search(), locationIds(money))
+			view = readCardsView(address.search(), locationIds(money), ownerIds(money))
 			data = { money, rooms, credits }
 		},
 		fallbackKey: "cards.error.read",
@@ -138,7 +140,7 @@
 			})),
 			...view.owners.map((owner) => ({
 				key: `owner:${owner}`,
-				label: owner,
+				label: ownerName(owner, data?.money.owners),
 				clear: () => change({ owners: view.owners.filter((o) => o !== owner) }),
 			})),
 		]
@@ -155,13 +157,19 @@
 			: []
 	})
 
+	// A holder section per owner A to Z by name; renamed owners move with their name.
+	const ownerOrder = $derived(data ? sortOwners(data.money.owners).map((owner) => owner.id) : [])
+
 	const results = $derived(
-		data ? cardsResults(data.money.cards, data.money.groups, data.rooms, view, order, now, data.money.ledgers) : null,
+		data
+			? cardsResults(data.money.cards, data.money.groups, data.rooms, view, order, now, data.money.ledgers, ownerOrder)
+			: null,
 	)
 
 	const countFor = (draft: CardsView) =>
 		data
-			? cardsResults(data.money.cards, data.money.groups, data.rooms, draft, order, now, data.money.ledgers).count
+			? cardsResults(data.money.cards, data.money.groups, data.rooms, draft, order, now, data.money.ledgers, ownerOrder)
+					.count
 			: 0
 
 	const groupLabel = $derived.by(() => {
@@ -186,7 +194,9 @@
 		})
 		const stopPanel = panel.start()
 		const removePop = address.onPop(() => {
-			view = readCardsView(address.search(), data ? locationIds(data.money) : [])
+			view = data
+				? readCardsView(address.search(), locationIds(data.money), ownerIds(data.money))
+				: readCardsView(address.search(), [])
 		})
 		void (async () => {
 			const opened = await openOnce()
@@ -253,6 +263,7 @@
 					credits={data.credits}
 					ledgers={data.money.ledgers}
 					locations={data.money.locations}
+					owners={data.money.owners}
 					total={data.money.cards.length}
 					today={now}
 					current={panel.record?.id ?? null}
@@ -262,6 +273,7 @@
 						tab={sheetTab}
 						view={{ ...view }}
 						locations={data.money.locations}
+						owners={data.money.owners}
 						count={countFor}
 						onapply={(next: CardsView) => {
 							filterOpen = false

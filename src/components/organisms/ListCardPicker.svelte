@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ReadyRow } from "#lib/domain/home"
-	import type { LimitGroup } from "#lib/domain/types"
+	import type { LimitGroup, OwnerRecord } from "#lib/domain/types"
 	import type { CardUsage, PickSort } from "#lib/domain/usage"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
@@ -11,7 +11,7 @@
 	import FilterControls from "#components/molecules/FilterControls.svelte"
 	import { dayMonth } from "#lib/domain/date"
 	import { formatAmount } from "#lib/domain/money"
-	import { cardOwnerOf, ownerOf } from "#lib/domain/owner"
+	import { cardOwnerOf, ownerName, ownerOf } from "#lib/domain/owner"
 	import { matchesCard, PICK_SORTS, sortPick } from "#lib/domain/usage"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { cardName } from "#lib/ui/card-label"
@@ -31,12 +31,14 @@
 		usage: Map<string, CardUsage>
 		/** The stored limit groups, in order: a tile takes its group's colour. */
 		groups: LimitGroup[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: readonly OwnerRecord[]
 		/** The cards on the list: what their orders add up to, and how many there are. */
 		onList: Map<string, { amount: number; orders: number }>
 		onpick: (cardId: string) => void
 	}
 
-	const { rows, usage, groups, onList, onpick }: Props = $props()
+	const { rows, usage, groups, owners = [], onList, onpick }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -57,9 +59,10 @@
 
 	/** Line 1's corner: the cardholder, and whose account a supplementary card draws on. */
 	const holders = (row: ReadyRow): string => {
-		const account = ownerOf(row.room.group)
+		const account = ownerName(ownerOf(row.room.group), owners)
 		if (!row.card.supplementary) return account
-		const holder = cardOwnerOf(row.card, row.room.group) ?? account
+		const own = cardOwnerOf(row.card, row.room.group)
+		const holder = own ? ownerName(own, owners) : account
 		return tr("tile.subAccount", { holder, owner: account })
 	}
 

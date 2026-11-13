@@ -1,3 +1,5 @@
+import type { LimitGroup } from "#lib/domain/types"
+
 import { describe, expect, test } from "vitest"
 
 import { MessageError } from "#lib/i18n/error"
@@ -6,6 +8,7 @@ import {
 	sampleCardPayment,
 	sampleLimitGroup,
 	sampleLocation,
+	sampleOwner,
 	samplePayment,
 	samplePurchase,
 	samplePurchaseList,
@@ -14,16 +17,24 @@ import {
 import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments"
 import { InMemoryRepository } from "#lib/storage/repository"
 import { seedLocations } from "#lib/storage/seed-locations"
+import { seedOwners } from "#lib/storage/seed-owners"
 import {
-	BACKUP_V3,
-	type BackupV3,
-	countRecordsV3,
-	exportBackupV3,
-	importBackupV3,
+	BACKUP_V4,
+	type BackupV4,
+	countRecordsV4,
+	exportBackupV4,
+	importBackupV4,
 	onlySeededDefaults,
+	onlySeededOwners,
 	parseAnyBackup,
-	replaceWithBackupV3,
-} from "#lib/storage/transfer-v3"
+	replaceWithBackupV4,
+} from "#lib/storage/transfer-v4"
+
+/** A limit group saved before the owner field existed. */
+const ownerless = (): LimitGroup => {
+	const { owner: _, ...group } = sampleLimitGroup()
+	return group
+}
 
 const NOW = new Date("2026-10-30T00:00:00.000Z")
 
@@ -61,6 +72,9 @@ const v2 = (patch: Record<string, unknown> = {}): string =>
 		...patch,
 	})
 
+const v4 = (patch: Record<string, unknown> = {}): string =>
+	JSON.stringify({ ...JSON.parse(v3()), version: 4, owners: [sampleOwner()], ...patch })
+
 const rejects = (text: string, key: string, index?: number): void => {
 	const failure = captureThrow(() => parseAnyBackup(text))
 	expect(failure).toBeInstanceOf(MessageError)
@@ -74,9 +88,9 @@ const cycleCard = (cycle: unknown) => v3({ cards: [sampleCard({ cycle: cycle as 
 describe("backup version 3", () => {
 	test("round trip keeps every record", async () => {
 		const repo = new InMemoryRepository()
-		await importBackupV3(repo, parseAnyBackup(v3()))
-		const out = await exportBackupV3(repo, NOW)
-		expect(out.version).toBe(BACKUP_V3)
+		await importBackupV4(repo, parseAnyBackup(v3()))
+		const out = await exportBackupV4(repo, NOW)
+		expect(out.version).toBe(BACKUP_V4)
 		expect(out.exportedAt).toBe(NOW.toISOString())
 		expect(out.limitGroups).toEqual([sampleLimitGroup({ color: "blue" })])
 		expect(out.cards).toEqual([sampleCard()])
@@ -87,23 +101,23 @@ describe("backup version 3", () => {
 		expect(out.locations).toEqual([sampleLocation()])
 
 		const again = new InMemoryRepository()
-		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)))
-		expect(await exportBackupV3(again, NOW)).toEqual(out)
+		await importBackupV4(again, parseAnyBackup(JSON.stringify(out)))
+		expect(await exportBackupV4(again, NOW)).toEqual(out)
 	})
 
 	test("a payment's note survives export and import; a payment without one stays without", async () => {
 		const noted = sampleCardPayment({ id: "n1", note: "From savings" })
 		const plain = sampleCardPayment({ id: "n2" })
 		const repo = new InMemoryRepository()
-		await importBackupV3(repo, parseAnyBackup(v3({ payments: [noted, plain] })))
-		const out = await exportBackupV3(repo, NOW)
+		await importBackupV4(repo, parseAnyBackup(v3({ payments: [noted, plain] })))
+		const out = await exportBackupV4(repo, NOW)
 		const byId = new Map(out.payments.map((p) => [p.id, p]))
 		expect(byId.get("n1")?.note).toBe("From savings")
 		expect(byId.get("n2")).toBeDefined()
 		expect(byId.get("n2")).not.toHaveProperty("note")
 		const again = new InMemoryRepository()
-		await importBackupV3(again, parseAnyBackup(JSON.stringify(out)))
-		expect(await exportBackupV3(again, NOW)).toEqual(out)
+		await importBackupV4(again, parseAnyBackup(JSON.stringify(out)))
+		expect(await exportBackupV4(again, NOW)).toEqual(out)
 	})
 
 	test("notes are trimmed on import, and a blank note is dropped (DC-07)", () => {
@@ -132,8 +146,8 @@ describe("backup version 3", () => {
 	})
 
 	test("a version 2 file converts", () => {
-		const parsed: BackupV3 = parseAnyBackup(v2())
-		expect(parsed.version).toBe(3)
+		const parsed: BackupV4 = parseAnyBackup(v2())
+		expect(parsed.version).toBe(4)
 		expect(parsed.lists).toEqual([])
 		expect(parsed.payments.length).toBe(1)
 		expect(parsed.payments[0]?.status).toBe("paid")
@@ -155,7 +169,7 @@ describe("backup version 3", () => {
 		await repo.saveLocation(sampleLocation({ id: "krabi", takesPurchases: false }))
 		await repo.saveLocation(sampleLocation({ id: "bangkok", takesPurchases: true }))
 		const before = await repo.listLocations()
-		await importBackupV3(repo, parseAnyBackup(v2()))
+		await importBackupV4(repo, parseAnyBackup(v2()))
 		expect(await repo.listLocations()).toEqual(before)
 	})
 
@@ -185,7 +199,7 @@ describe("backup version 3", () => {
 		await repo.saveSettings({ purchaseLocations: ["bangkok"] })
 		await repo.saveLocation(sampleLocation({ id: "krabi", name: "Ao Nang", takesPurchases: true }))
 		await repo.saveLocation(sampleLocation({ id: "bangkok", name: "Bangkok", takesPurchases: false }))
-		const out = await exportBackupV3(repo, NOW)
+		const out = await exportBackupV4(repo, NOW)
 		expect(out.locations).toEqual(await repo.listLocations())
 		expect(out.locations.find((l) => l.id === "krabi")).toEqual({
 			id: "krabi",
@@ -198,7 +212,7 @@ describe("backup version 3", () => {
 	test("export writes the starting locations, ticked from the settings, while none are stored", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveSettings({ purchaseLocations: ["bangkok"] })
-		expect((await exportBackupV3(repo, NOW)).locations).toEqual([
+		expect((await exportBackupV4(repo, NOW)).locations).toEqual([
 			{ id: "bangkok", name: "Bangkok", takesPurchases: true },
 			{ id: "phichit", name: "Phichit", takesPurchases: false },
 			{ id: "krabi", name: "Krabi", takesPurchases: false },
@@ -209,7 +223,7 @@ describe("backup version 3", () => {
 		const repo = new InMemoryRepository()
 		await repo.saveLimitGroup(sampleLimitGroup())
 		await repo.saveCard(sampleCard({ location: "krabi" }))
-		const text = JSON.stringify(await exportBackupV3(repo, NOW))
+		const text = JSON.stringify(await exportBackupV4(repo, NOW))
 		expect(parseAnyBackup(text).cards).toEqual(await repo.listCards())
 	})
 
@@ -221,7 +235,7 @@ describe("backup version 3", () => {
 			takesPurchases: true,
 		})
 		await repo.saveLocation(stored)
-		await importBackupV3(
+		await importBackupV4(
 			repo,
 			parseAnyBackup(
 				v3({
@@ -265,7 +279,7 @@ describe("backup version 3", () => {
 			sampleLocation({ id: "phichit", name: "Phichit", takesPurchases: true }),
 			sampleLocation({ id: "chiang-mai", name: "Chiang Mai" }),
 		]
-		await importBackupV3(repo, parseAnyBackup(v3({ locations: fromFile })), {
+		await importBackupV4(repo, parseAnyBackup(v3({ locations: fromFile })), {
 			overSeeded: true,
 		})
 		const stored = await repo.listLocations()
@@ -285,7 +299,7 @@ describe("backup version 3", () => {
 			}),
 		)
 		backup.cards.push(sampleCard({ id: "scb", location: "bangkok" }))
-		await importBackupV3(repo, backup, { overSeeded: true })
+		await importBackupV4(repo, backup, { overSeeded: true })
 		expect((await repo.listLocations()).map((r) => [r.id, r.name])).toEqual(
 			expect.arrayContaining([
 				["krabi", "Ao Nang"],
@@ -299,7 +313,7 @@ describe("backup version 3", () => {
 		const repo = new InMemoryRepository()
 		const stored = sampleLocation({ name: "Ao Nang" })
 		await repo.saveLocation(stored)
-		await importBackupV3(repo, parseAnyBackup(v3({ locations: [sampleLocation({ takesPurchases: false })] })), {
+		await importBackupV4(repo, parseAnyBackup(v3({ locations: [sampleLocation({ takesPurchases: false })] })), {
 			overSeeded: true,
 		})
 		expect(await repo.listLocations()).toEqual([stored])
@@ -308,7 +322,7 @@ describe("backup version 3", () => {
 	test("over only seeded defaults, a file with no locations leaves them alone", async () => {
 		const repo = new InMemoryRepository()
 		await seedLocations(repo, { getItem: () => null, setItem: () => {} })
-		await importBackupV3(repo, parseAnyBackup(v2({ cards: [], purchases: [], payments: [] })), {
+		await importBackupV4(repo, parseAnyBackup(v2({ cards: [], purchases: [], payments: [] })), {
 			overSeeded: true,
 		})
 		expect(await repo.listLocations()).toHaveLength(3)
@@ -322,7 +336,7 @@ describe("backup version 3", () => {
 			name: "Phuket",
 			takesPurchases: false,
 		})
-		await importBackupV3(repo, parseAnyBackup(v3({ locations: [sampleLocation(), phuket] })))
+		await importBackupV4(repo, parseAnyBackup(v3({ locations: [sampleLocation(), phuket] })))
 		expect(await repo.listLocations()).toEqual([sampleLocation(), phuket])
 	})
 
@@ -334,14 +348,14 @@ describe("backup version 3", () => {
 			name: "Krabi",
 			takesPurchases: false,
 		})
-		await replaceWithBackupV3(repo, parseAnyBackup(v3({ locations: [fromFile] })), { setItem: () => {} })
+		await replaceWithBackupV4(repo, parseAnyBackup(v3({ locations: [fromFile] })), { setItem: () => {} })
 		expect(await repo.listLocations()).toEqual([fromFile])
 	})
 
 	test("importing a file leaves settings alone", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveSettings({ purchaseLocations: ["bangkok"] })
-		await importBackupV3(
+		await importBackupV4(
 			repo,
 			parseAnyBackup(
 				v3({
@@ -352,7 +366,7 @@ describe("backup version 3", () => {
 				}),
 			),
 		)
-		await importBackupV3(repo, parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })))
+		await importBackupV4(repo, parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })))
 		expect(await repo.getSettings()).toEqual({
 			purchaseLocations: ["bangkok"],
 		})
@@ -360,7 +374,7 @@ describe("backup version 3", () => {
 
 	test("a version 2 file with settings brings its locations as records", async () => {
 		const repo = new InMemoryRepository()
-		await importBackupV3(repo, parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })))
+		await importBackupV4(repo, parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })))
 		expect((await repo.listLocations()).map((l) => [l.id, l.takesPurchases])).toEqual([
 			["bangkok", false],
 			["krabi", false],
@@ -377,7 +391,7 @@ describe("backup version 3", () => {
 		const repo = new InMemoryRepository()
 		await repo.saveCard(sampleCard())
 		await repo.saveCardPayment(sampleCardPayment({ id: "m:k1:2026-09:1", period: "2026-09" }))
-		await importBackupV3(
+		await importBackupV4(
 			repo,
 			parseAnyBackup(
 				v3({
@@ -452,7 +466,7 @@ describe("backup version 3", () => {
 				}),
 			)
 		await repo.saveCardPayment(sampleCardPayment({ id: "keep" }))
-		await importBackupV3(repo, parseAnyBackup(v2()))
+		await importBackupV4(repo, parseAnyBackup(v2()))
 		const ids = (await repo.listCardPayments("k1")).map((p) => p.id).sort()
 		expect(ids).toEqual(["keep", "m:k1:2026-09:0"])
 	})
@@ -461,7 +475,7 @@ describe("backup version 3", () => {
 		const repo = new InMemoryRepository()
 		await repo.saveCard(sampleCard({ id: "old" }))
 		const items = new Map<string, string>()
-		await replaceWithBackupV3(repo, parseAnyBackup(v3()), {
+		await replaceWithBackupV4(repo, parseAnyBackup(v3()), {
 			setItem: (key, value) => void items.set(key, value),
 		})
 		expect(items.get(PAYMENTS_MIGRATION_KEY)).toBe("done")
@@ -470,8 +484,8 @@ describe("backup version 3", () => {
 
 	test("counts include lists", async () => {
 		const repo = new InMemoryRepository()
-		await importBackupV3(repo, parseAnyBackup(v3()))
-		expect(await countRecordsV3(repo)).toEqual({
+		await importBackupV4(repo, parseAnyBackup(v3()))
+		expect(await countRecordsV4(repo)).toEqual({
 			cards: 1,
 			purchases: 1,
 			payments: 1,
@@ -482,7 +496,7 @@ describe("backup version 3", () => {
 
 	test("a version 1 file is rejected", () => {
 		rejects(JSON.stringify({ version: 1 }), "backup.version")
-		rejects(v3({ version: 4 }), "backup.version")
+		rejects(v3({ version: 5 }), "backup.version")
 	})
 
 	test("an unreadable file is rejected", () => {
@@ -595,10 +609,125 @@ describe("backup version 3", () => {
 		const text = v3({
 			lists: [samplePurchaseList({ status: "done" as never })],
 		})
-		expect(() => importBackupV3(repo, parseAnyBackup(text))).toThrow(MessageError)
-		const out = await exportBackupV3(repo, NOW)
+		expect(() => importBackupV4(repo, parseAnyBackup(text))).toThrow(MessageError)
+		const out = await exportBackupV4(repo, NOW)
 		expect(out.cards).toEqual([])
 		expect(await repo.listLocations()).toEqual([])
 		expect(out.limitGroups).toEqual([])
+	})
+})
+
+describe("backup version 4", () => {
+	const kc = sampleOwner()
+	const pim = sampleOwner({ id: "pim", name: "Pim" })
+	const problemOf = (text: string): unknown =>
+		Reflect.get((captureThrow(() => parseAnyBackup(text)) as MessageError).params ?? {}, "problem")
+
+	test("export writes version 4 with the owner records as stored", async () => {
+		const repo = new InMemoryRepository()
+		await repo.saveOwner({ id: "KC", name: "Kamontat" })
+		await repo.saveOwner(pim)
+		const out = await exportBackupV4(repo, NOW)
+		expect(out.version).toBe(4)
+		expect(out.owners).toEqual([{ id: "KC", name: "Kamontat" }, pim])
+	})
+
+	test("export writes the starting owners while none are stored", async () => {
+		expect((await exportBackupV4(new InMemoryRepository(), NOW)).owners).toEqual([
+			{ id: "KC", name: "KC" },
+			{ id: "NT", name: "NT" },
+			{ id: "RI", name: "RI" },
+		])
+	})
+
+	test("round trip keeps the owners, and a group and a supplementary card of a new owner", async () => {
+		const text = v4({
+			owners: [kc, pim],
+			limitGroups: [sampleLimitGroup({ owner: "pim" })],
+			cards: [sampleCard({ supplementary: true, owner: "KC" })],
+		})
+		const repo = new InMemoryRepository()
+		await importBackupV4(repo, parseAnyBackup(text))
+		const out = await exportBackupV4(repo, NOW)
+		expect(out.owners).toEqual([kc, pim])
+		expect(out.limitGroups[0]?.owner).toBe("pim")
+		const again = new InMemoryRepository()
+		await importBackupV4(again, parseAnyBackup(JSON.stringify(out)))
+		expect(await exportBackupV4(again, NOW)).toEqual(out)
+	})
+
+	test("a version 2 or 3 file carries the starting owners", () => {
+		const starting = [
+			{ id: "KC", name: "KC" },
+			{ id: "NT", name: "NT" },
+			{ id: "RI", name: "RI" },
+		]
+		expect(parseAnyBackup(v3()).owners).toEqual(starting)
+		expect(parseAnyBackup(v2()).owners).toEqual(starting)
+	})
+
+	test("a version 3 file keeps the closed set of owners (DC-06)", () => {
+		const text = v3({ limitGroups: [sampleLimitGroup({ owner: "pim" })] })
+		rejects(text, "backup.limitGroup", 1)
+		expect(problemOf(text)).toBe("backup.problem.badOwner")
+	})
+
+	test("a version 4 file needs its owners", () => {
+		rejects(v4({ owners: undefined }), "backup.unreadable")
+		rejects(v4({ owners: [{ id: "x" }] }), "backup.owner", 1)
+		rejects(v4({ owners: [{ name: "X" }] }), "backup.owner", 1)
+	})
+
+	test("a version 4 group must name one of the file's owners", () => {
+		const text = v4({ limitGroups: [sampleLimitGroup({ owner: "NT" })] })
+		rejects(text, "backup.limitGroup", 1)
+		expect(problemOf(text)).toBe("backup.problem.unknownOwner")
+		// Absent is a group from before the field: it reads as KC.
+		expect(parseAnyBackup(v4({ limitGroups: [ownerless()] })).limitGroups).toHaveLength(1)
+	})
+
+	test("a version 4 supplementary card must name one of the file's owners; a stale owner elsewhere is ignored", () => {
+		const text = v4({ cards: [sampleCard({ supplementary: true, owner: "NT" })] })
+		rejects(text, "backup.card", 1)
+		expect(problemOf(text)).toBe("backup.problem.unknownOwner")
+		expect(parseAnyBackup(v4({ cards: [sampleCard({ owner: "NT" })] })).cards).toHaveLength(1)
+	})
+
+	test("merge keeps a stored owner over the file's record with the same id, and adds the rest", async () => {
+		const repo = new InMemoryRepository()
+		await repo.saveOwner({ id: "KC", name: "Kamontat" })
+		await importBackupV4(repo, parseAnyBackup(v4({ owners: [kc, pim] })))
+		expect(await repo.listOwners()).toEqual([{ id: "KC", name: "Kamontat" }, pim])
+	})
+
+	test("only the untouched starting owners count as seeded", () => {
+		expect(onlySeededOwners([])).toBe(true)
+		expect(onlySeededOwners([kc, sampleOwner({ id: "RI", name: "RI" })])).toBe(true)
+		expect(onlySeededOwners([{ id: "KC", name: "Kamontat" }])).toBe(false)
+		expect(onlySeededOwners([kc, pim])).toBe(false)
+	})
+
+	test("over only seeded owners, the file's owners win and an unused starting owner it lacks goes", async () => {
+		const repo = new InMemoryRepository()
+		await seedOwners(repo, { getItem: () => null, setItem: () => {} })
+		await importBackupV4(repo, parseAnyBackup(v4({ owners: [{ id: "KC", name: "Kamontat" }, pim] })), {
+			overSeeded: true,
+		})
+		expect(await repo.listOwners()).toEqual([{ id: "KC", name: "Kamontat" }, pim])
+	})
+
+	test("replace takes the file's owners", async () => {
+		const repo = new InMemoryRepository()
+		await repo.saveOwner({ id: "KC", name: "Kamontat" })
+		await repo.saveOwner(sampleOwner({ id: "zed", name: "Zed" }))
+		await replaceWithBackupV4(repo, parseAnyBackup(v4({ owners: [kc, pim] })), { setItem: () => {} })
+		expect(await repo.listOwners()).toEqual([kc, pim])
+	})
+
+	test("replace with a version 3 file gives the starting owners", async () => {
+		const repo = new InMemoryRepository()
+		await repo.saveOwner(pim)
+		await replaceWithBackupV4(repo, parseAnyBackup(v3()), { setItem: () => {} })
+		expect((await repo.listOwners()).map((o) => o.id)).toEqual(["KC", "NT", "RI"])
 	})
 })

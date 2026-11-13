@@ -4,16 +4,16 @@ import { assignGroupColors, GROUP_COLORS_MIGRATION_KEY, migrateGroupColors } fro
 import { memoryStorage, sampleLimitGroup } from "#lib/storage/contract"
 import { InMemoryRepository } from "#lib/storage/repository"
 import {
-	type BackupV3,
-	exportBackupV3,
-	importBackupV3,
+	type BackupV4,
+	exportBackupV4,
+	importBackupV4,
 	parseAnyBackup,
-	replaceWithBackupV3,
-} from "#lib/storage/transfer-v3"
+	replaceWithBackupV4,
+} from "#lib/storage/transfer-v4"
 
 const NOW = new Date("2026-11-03T00:00:00.000Z")
 
-const backupOf = (limitGroups: unknown[]): BackupV3 =>
+const backupOf = (limitGroups: unknown[]): BackupV4 =>
 	parseAnyBackup(
 		JSON.stringify({
 			version: 3,
@@ -65,7 +65,7 @@ describe("restoring colours", () => {
 		const repo = new InMemoryRepository()
 		await repo.saveLimitGroup(sampleLimitGroup({ id: "g1", color: "teal" }))
 		await repo.saveLimitGroup(sampleLimitGroup({ id: "g2", color: "plum" }))
-		await importBackupV3(repo, backupOf([group("g1"), group("g2", "nope"), group("g3")]))
+		await importBackupV4(repo, backupOf([group("g1"), group("g2", "nope"), group("g3")]))
 		const after = await colours(repo)
 		expect(after["g1"]).toBe("teal")
 		expect(after["g2"]).toBe("plum")
@@ -87,7 +87,7 @@ describe("restoring colours", () => {
 			logged.push(args)
 		}
 		try {
-			await importBackupV3(new Flaky(), backupOf([group("g1")]))
+			await importBackupV4(new Flaky(), backupOf([group("g1")]))
 		} finally {
 			console.error = original
 		}
@@ -97,18 +97,18 @@ describe("restoring colours", () => {
 	test("a colour in the file wins on Merge and on Replace", async () => {
 		const merged = new InMemoryRepository()
 		await merged.saveLimitGroup(sampleLimitGroup({ id: "g1", color: "teal" }))
-		await importBackupV3(merged, backupOf([group("g1", "rose")]))
+		await importBackupV4(merged, backupOf([group("g1", "rose")]))
 		expect((await colours(merged))["g1"]).toBe("rose")
 
 		const replaced = new InMemoryRepository()
-		await replaceWithBackupV3(replaced, backupOf([group("g1", "rose")]), memoryStorage())
+		await replaceWithBackupV4(replaced, backupOf([group("g1", "rose")]), memoryStorage())
 		expect((await colours(replaced))["g1"]).toBe("rose")
 	})
 
 	test("Replace colours a colourless file in order and leaves nothing for the marker", async () => {
 		const repo = new InMemoryRepository()
 		const storage = memoryStorage()
-		await replaceWithBackupV3(repo, backupOf([group("g1"), group("g2"), group("g3"), group("g4")]), storage)
+		await replaceWithBackupV4(repo, backupOf([group("g1"), group("g2"), group("g3"), group("g4")]), storage)
 		const after = await colours(repo)
 		expect(["g1", "g2", "g3", "g4"].map((id) => after[id])).toEqual(["blue", "green", "purple", "orange"])
 		expect(await migrateGroupColors(repo, storage)).toBe(0)
@@ -117,7 +117,7 @@ describe("restoring colours", () => {
 	test("the export writes the stored colour", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveLimitGroup(sampleLimitGroup({ id: "g1", color: "plum" }))
-		const exported = await exportBackupV3(repo, NOW)
+		const exported = await exportBackupV4(repo, NOW)
 		expect(exported.limitGroups[0]?.color).toBe("plum")
 	})
 })

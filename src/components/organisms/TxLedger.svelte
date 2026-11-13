@@ -3,7 +3,15 @@
 </script>
 
 <script lang="ts">
-	import type { Card, CardLedger, CardPayment, LimitGroup, PlainDate, PurchaseList } from "#lib/domain/types"
+	import type {
+		Card,
+		CardLedger,
+		CardPayment,
+		LimitGroup,
+		OwnerRecord,
+		PlainDate,
+		PurchaseList,
+	} from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Drawer, LedgerSection, Upcoming } from "#lib/ui/ledger-drawer"
 
@@ -49,6 +57,8 @@
 		ledgers?: Map<string, CardLedger>
 		/** The stored limit groups, in order: a row's chip takes its group's colour. */
 		limitGroups?: LimitGroup[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: OwnerRecord[]
 		upcoming?: Upcoming | null
 		today?: PlainDate
 		filtered?: boolean
@@ -72,6 +82,7 @@
 		lists = [],
 		ledgers = new Map(),
 		limitGroups = [],
+		owners = [],
 		upcoming = null,
 		today = "",
 		filtered = false,
@@ -146,7 +157,7 @@
 	const waitingOf = (list: PurchaseList, cards: Card[]) => {
 		void lang
 		return {
-			text: waitingText(list, cards, limitGroups),
+			text: waitingText(list, cards, limitGroups, owners),
 			parts: listParts(list, cards),
 			say: say("row.say.sent", { date: sentWords(list) }),
 		}
@@ -154,7 +165,7 @@
 
 	const plannedOf = (payment: CardPayment, card: Card | undefined) => {
 		void lang
-		return { text: plannedText(payment, card, limitGroups, today), say: plannedSay(payment) }
+		return { text: plannedText(payment, card, limitGroups, today, owners), say: plannedSay(payment) }
 	}
 
 	/** A section's heading: its day (*Today · …* for today), or its card in the line form. */

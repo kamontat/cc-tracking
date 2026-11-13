@@ -4,6 +4,7 @@ import { setLocale } from "#lib/i18n/index"
 import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments"
 import { InMemoryRepository } from "#lib/storage/repository"
 import { SEED_KEY } from "#lib/storage/seed-locations"
+import { OWNERS_SEED_KEY } from "#lib/storage/seed-owners"
 import { openRepository } from "#lib/ui/startup"
 
 /**
@@ -18,6 +19,17 @@ test("opens the store and seeds the three locations on a fresh one", async () =>
 	const opened = await openRepository({ storage, createRepo: () => repo })
 	expect(opened).toEqual({ ok: true, repo })
 	expect((await repo.listLocations()).map((r) => r.id).sort()).toEqual(["bangkok", "krabi", "phichit"])
+})
+
+test("opens the store, seeds the three owners and points every group at one", async () => {
+	const storage = globalThis.localStorage
+	storage.removeItem(OWNERS_SEED_KEY)
+	storage.setItem(PAYMENTS_MIGRATION_KEY, "done")
+	const repo = new InMemoryRepository()
+	await repo.saveLimitGroup({ id: "g1", name: "Pool", limit: 1_00, owner: "gone" })
+	await openRepository({ storage, createRepo: () => repo })
+	expect((await repo.listOwners()).map((r) => r.id)).toEqual(["KC", "NT", "RI"])
+	expect((await repo.listLimitGroups())[0]?.owner).toBe("KC")
 })
 
 test("a store the browser refuses gives the reason, in the reader's language", async () => {

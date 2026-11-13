@@ -36,6 +36,14 @@ export type Card = {
 	limitGroupId?: string
 }
 
+/** Someone an account or a supplementary card can belong to (RD-30). */
+export type OwnerRecord = {
+	/** What groups and cards store; never changes, so a rename keeps them pointing here. */
+	id: Owner
+	/** Shown wherever the owner is, untranslated. */
+	name: string
+}
+
 /** A pool of credit. A card that shares its limit with nothing else still has one of these. */
 export type LimitGroup = {
 	id: string

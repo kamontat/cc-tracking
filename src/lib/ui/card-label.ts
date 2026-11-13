@@ -1,7 +1,7 @@
-import type { Card, LimitGroup } from "#lib/domain/types"
+import type { Card, LimitGroup, OwnerRecord } from "#lib/domain/types"
 
 import { type GroupColor, toGroupColor } from "#lib/domain/group-color"
-import { cardOwnerOf } from "#lib/domain/owner"
+import { cardOwnerOf, ownerName } from "#lib/domain/owner"
 import { t } from "#lib/i18n/index"
 
 /*
@@ -47,11 +47,16 @@ export function groupColor(card: Card | undefined, groups: LimitGroup[]): GroupC
  * `Krungsri Bangkok (RI)`. The holder is `cardOwnerOf` (DR-13); with none it is just the name.
  * A card no longer stored is `c-[id]`.
  */
-export function cardOwnerName(id: string, card: Card | undefined, groups: LimitGroup[]): string {
+export function cardOwnerName(
+	id: string,
+	card: Card | undefined,
+	groups: LimitGroup[],
+	owners: readonly OwnerRecord[] = [],
+): string {
 	if (!card) return cardShort(id)
 	const group = groups.find((g) => g.id === card.limitGroupId) ?? null
 	const owner = cardOwnerOf(card, group)
-	return owner ? `${card.name} (${owner})` : card.name
+	return owner ? `${card.name} (${ownerName(owner, owners)})` : card.name
 }
 
 /**
@@ -59,13 +64,14 @@ export function cardOwnerName(id: string, card: Card | undefined, groups: LimitG
  * `Krungsri Bangkok · RI (4412)`. The holder is `cardOwnerOf` (DR-13) and is left out, with its
  * `·`, when unknown; `(last4)` is left out when the card has none.
  */
-export function cardTitle(card: Card, groups: LimitGroup[]): string {
+export function cardTitle(card: Card, groups: LimitGroup[], owners: readonly OwnerRecord[] = []): string {
 	const group = groups.find((g) => g.id === card.limitGroupId) ?? null
 	const owner = cardOwnerOf(card, group)
-	const holder = owner ? ` · ${owner}` : ""
+	const holder = owner ? ` · ${ownerName(owner, owners)}` : ""
 	const digits = card.last4 ? ` (${card.last4})` : ""
 	return `${card.name}${holder}${digits}`
 }
 
 /** The Cards page row's title: `10) Krungsri Bangkok · RI (4412)`. */
-export const cardRowTitle = (card: Card, groups: LimitGroup[]): string => `${card.id}) ${cardTitle(card, groups)}`
+export const cardRowTitle = (card: Card, groups: LimitGroup[], owners: readonly OwnerRecord[] = []): string =>
+	`${card.id}) ${cardTitle(card, groups, owners)}`

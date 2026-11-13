@@ -11,7 +11,8 @@ import { setLocale } from "#lib/i18n/index"
 import { memoryStorage } from "#lib/storage/contract"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
-import { exportBackupV3, type V3Counts } from "#lib/storage/transfer-v3"
+import { seedOwners } from "#lib/storage/seed-owners"
+import { exportBackupV4, type V4Counts } from "#lib/storage/transfer-v4"
 
 /**
  * *Restore a copy*, clipboard first, in a sheet: an empty browser takes the copy at once, one
@@ -67,7 +68,7 @@ const oneCardBackup = async (): Promise<string> => {
 	await source.saveLimitGroup({ id: "scb", name: "SCB account", limit: 1 })
 	await source.saveCard({ ...sampleCard, id: "s1", name: "SCB", limitGroupId: "scb" })
 	await source.savePurchase({ id: "s1", cardId: "s1", date: "2026-09-05", amount: 10_000, note: "fuel" })
-	return JSON.stringify(await exportBackupV3(source, new Date()))
+	return JSON.stringify(await exportBackupV4(source, new Date()))
 }
 
 /** Swaps in a stub `navigator.clipboard` (or none) for the length of `run`. */
@@ -130,7 +131,7 @@ const chooseFile = async (root: HTMLElement, file: File) => {
 	await settle()
 }
 
-const oneCardCounts: V3Counts = { cards: 1, purchases: 1, payments: 0, limitGroups: 1, lists: 0 }
+const oneCardCounts: V4Counts = { cards: 1, purchases: 1, payments: 0, limitGroups: 1, lists: 0 }
 
 test("sits in a sheet headed Restore a copy, opening on the clipboard, a file and paste by hand", async () => {
 	await withClipboard({ readText: async () => "" }, async () => {
@@ -171,7 +172,7 @@ test("into a new browser, the copy's renames and ticks replace the seeded starti
 	await source.saveLocation({ id: "phichit", name: "Phichit", takesPurchases: true })
 	await source.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await source.saveCard({ ...sampleCard, location: "krabi" })
-	const text = JSON.stringify(await exportBackupV3(source, new Date()))
+	const text = JSON.stringify(await exportBackupV4(source, new Date()))
 	await withClipboard({ readText: async () => text }, async () => {
 		const { repo, storage } = await freshBrowser()
 		const sheet = await show(repo, storage)
@@ -401,6 +402,62 @@ test("after a restore into a browser never seeded, the starting places are store
 
 		expect(sheet.restored).toHaveLength(1)
 		expect(await repo.listLocations()).toHaveLength(3)
+	})
+})
+
+test("into a new browser, the copy's owners replace the seeded ones, and its groups keep theirs", async () => {
+	const source = new InMemoryRepository()
+	await source.saveOwner({ id: "KC", name: "Kamontat" })
+	await source.saveOwner({ id: "pim", name: "Pim" })
+	await source.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1, owner: "pim" })
+	await source.saveCard(sampleCard)
+	const text = JSON.stringify(await exportBackupV4(source, new Date()))
+	await withClipboard({ readText: async () => text }, async () => {
+		const { repo, storage } = await freshBrowser()
+		await seedOwners(repo, storage)
+		const sheet = await show(repo, storage)
+		await sheet.click("paste-clipboard")
+
+		expect(sheet.step()).not.toBe("question")
+		expect(await repo.listOwners()).toEqual([
+			{ id: "KC", name: "Kamontat" },
+			{ id: "pim", name: "Pim" },
+		])
+		expect((await repo.listLimitGroups())[0]?.owner).toBe("pim")
+	})
+})
+
+test("with no cards but a renamed owner here, the sheet asks merge or replace", async () => {
+	const text = await oneCardBackup()
+	await withClipboard({ readText: async () => text }, async () => {
+		const { repo, storage } = await freshBrowser()
+		await repo.saveOwner({ id: "KC", name: "Kamontat" })
+		const sheet = await show(repo, storage)
+		await sheet.click("paste-clipboard")
+		expect(sheet.step()).toBe("question")
+	})
+})
+
+test("after a restore, the starting owners are stored and every group names one", async () => {
+	const old = JSON.stringify({
+		version: 3,
+		exportedAt: "2026-09-21T00:00:00.000Z",
+		limitGroups: [{ id: "pool", name: "KBank account", limit: 1 }],
+		cards: [sampleCard],
+		purchases: [],
+		payments: [],
+		statementDates: [],
+		lists: [],
+		locations: [{ id: "krabi", name: "Krabi", takesPurchases: true }],
+	})
+	await withClipboard({ readText: async () => old }, async () => {
+		const repo = new InMemoryRepository()
+		const sheet = await show(repo, memoryStorage())
+		await sheet.click("paste-clipboard")
+
+		expect(sheet.restored).toHaveLength(1)
+		expect((await repo.listOwners()).map((owner) => owner.id)).toEqual(["KC", "NT", "RI"])
+		expect((await repo.listLimitGroups())[0]?.owner).toBe("KC")
 	})
 })
 

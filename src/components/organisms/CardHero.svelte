@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { GroupRoom } from "#lib/domain/room"
-	import type { Card, LedgerStatement, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
+	import type { Card, LedgerStatement, LimitGroup, LocationRecord, OwnerRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
@@ -11,7 +11,7 @@
 	import { ledgerUrgency } from "#lib/domain/ledger"
 	import { usageLevel } from "#lib/domain/limit"
 	import { formatAmount } from "#lib/domain/money"
-	import { cardOwnerOf } from "#lib/domain/owner"
+	import { cardOwnerOf, ownerName } from "#lib/domain/owner"
 	import { openPeriod } from "#lib/domain/statement"
 	import { nameOfLocation } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
@@ -31,6 +31,8 @@
 		cards?: Card[]
 		/** Every stored group, in order, for the group's pastel. */
 		groups?: LimitGroup[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: OwnerRecord[]
 		/** The card's group room, from `roomFor`; null when it draws on no group. */
 		room?: GroupRoom | null
 		/** What this card alone still owes, from its ledger. */
@@ -48,6 +50,7 @@
 		card,
 		cards = [],
 		groups = [],
+		owners = [],
 		room = null,
 		owed = 0,
 		credit = 0,
@@ -69,7 +72,8 @@
 	const hero = $derived.by(() => {
 		if (!card || !room) return null
 		const { group } = room
-		const holder = cardOwnerOf(card, group)
+		const id = cardOwnerOf(card, group)
+		const holder = id ? ownerName(id, owners) : ""
 		const others = cards.filter((c) => c.limitGroupId === group.id && c.id !== card.id).map((c) => c.id)
 		const who = [group.name, holder, others.length > 0 ? tr("card.hero.shared", { cards: others.join(", ") }) : ""]
 			.filter(Boolean)

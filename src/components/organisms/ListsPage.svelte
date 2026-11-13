@@ -194,6 +194,7 @@
 				lists={data.lists}
 				cards={data.cards}
 				groups={data.groups}
+				owners={data.owners}
 				filter={view.filter}
 				by={view.by}
 				today={now}

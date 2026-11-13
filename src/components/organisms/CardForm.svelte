@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Card, CycleRule, LimitGroup, LocationRecord } from "#lib/domain/types"
+	import type { Card, CycleRule, LimitGroup, LocationRecord, OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { CardDraft, TextField } from "#lib/ui/card-form"
 
@@ -8,7 +8,15 @@
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import { byGroupName } from "#lib/domain/list-view"
 	import { formatAmount } from "#lib/domain/money"
-	import { DEFAULT_OWNER, groupLabel, OWNERS, type Owner, ownerOf, toOwner } from "#lib/domain/owner"
+	import {
+		DEFAULT_OWNER,
+		DEFAULT_OWNERS,
+		groupLabel,
+		type Owner,
+		ownerName,
+		ownerOf,
+		sortOwners,
+	} from "#lib/domain/owner"
 	import { locationName, sortLocations } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { draftOf, keptIn, readCardDraft } from "#lib/ui/card-form"
@@ -31,6 +39,8 @@
 		/** The card to edit; null for a new one. */
 		card: Card | null
 		groups: LimitGroup[]
+		/** The stored owners: a supplementary card's holder is one of them, A to Z by name. */
+		owners?: readonly OwnerRecord[]
 		/** The stored locations, every one offered under *Kept in*. */
 		locations: LocationRecord[]
 		/** Why the page's last write failed, already in the reader's language; typing is kept. */
@@ -42,7 +52,16 @@
 		oncancel?: (() => void) | undefined
 	}
 
-	const { card, groups, locations, error = "", busy = false, onsave, oncancel }: Props = $props()
+	const {
+		card,
+		groups,
+		owners = DEFAULT_OWNERS,
+		locations,
+		error = "",
+		busy = false,
+		onsave,
+		oncancel,
+	}: Props = $props()
 
 	const uid = $props.id()
 	const headingId = (section: string) => `${uid}-section-${section}`
@@ -214,7 +233,7 @@
 						<!-- Shown until a group is picked, never picked back (RD-27). -->
 						<option value="" disabled>{tr("form.limitGroupNone")}</option>
 						{#each sortedGroups as group (group.id)}
-							<option value={group.id}>{groupLabel(group)} · {formatAmount(group.limit)}</option>
+							<option value={group.id}>{groupLabel(group, owners)} · {formatAmount(group.limit)}</option>
 						{/each}
 					</select>
 				</label>
@@ -229,7 +248,7 @@
 						onchange={(event) => {
 							draft.supplementary = picked(event) === "supplementary"
 						}}>
-						<option value="account">{tr("form.holderAccount", { owner: holder })}</option>
+						<option value="account">{tr("form.holderAccount", { owner: ownerName(holder, owners) })}</option>
 						<option value="supplementary">{tr("form.supplementary")}</option>
 					</select>
 				</label>
@@ -240,11 +259,11 @@
 							name="owner"
 							value={draft.owner}
 							onchange={(event) => {
-								draft.owner = toOwner(picked(event)) ?? ""
+								draft.owner = picked(event)
 							}}>
 							<option value="">{tr("form.ownerNone")}</option>
-							{#each OWNERS as value (value)}
-								<option {value}>{value}</option>
+							{#each sortOwners(owners) as choice (choice.id)}
+								<option value={choice.id}>{choice.name}</option>
 							{/each}
 						</select>
 					</label>

@@ -111,6 +111,10 @@ test("lists, locations and archived cards come back", async () => {
 	expect(data.lists).toEqual([draft])
 	expect(data.locations).toEqual(expect.arrayContaining([bangkok, krabi, phichit]))
 	expect(data.locations).toHaveLength(3)
+	// None stored yet (before the seed ran): the starting three, as export writes them.
+	expect(data.owners.map((o) => o.id)).toEqual(["KC", "NT", "RI"])
+	await repo.saveOwner({ id: "pim", name: "Pim" })
+	expect((await loadMoneyData(repo, TODAY)).owners).toEqual([{ id: "pim", name: "Pim" }])
 	expect(data.groups.map((g) => g.id)).toEqual(["g1"])
 	expect(data.cards.map((c) => c.id).sort()).toEqual(["A", "Z"])
 	expect(data.ledgers.has("Z")).toBe(true)

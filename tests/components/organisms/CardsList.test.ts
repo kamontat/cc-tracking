@@ -1,5 +1,5 @@
 import type { GroupRoom } from "#lib/domain/room"
-import type { Card, CardLedger, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
+import type { Card, CardLedger, LimitGroup, LocationRecord, OwnerRecord, PlainDate } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
 import { afterEach, beforeEach, expect, test } from "vitest"
@@ -61,6 +61,7 @@ type Props = {
 	credits: Map<string, number>
 	ledgers: Map<string, CardLedger>
 	locations: LocationRecord[]
+	owners: OwnerRecord[]
 	total: number
 	today: PlainDate
 	onopen: (id: string) => void
@@ -139,6 +140,18 @@ test("tiles link to the card's panel on Cards, encoded, in the group's colour", 
 	expect(links.map((a) => a.getAttribute("href"))).toEqual(["/cards?card=A", "/cards?card=B%2F2", "/cards?card=C"])
 	expect(links.map((a) => a.dataset["g"])).toEqual(["blue", "rose", "blue"])
 	expect(root.querySelectorAll("section .tiles")).toHaveLength(2)
+})
+
+test("holders show by their owner record's name, in sections and on tiles", () => {
+	const owners = [
+		{ id: "KC", name: "Kamontat" },
+		{ id: "NT", name: "Nat" },
+	]
+	const list = [card("A"), card("S", { supplementary: true, owner: "NT" })]
+	const { root } = show({ by: "holder" }, { owners }, list)
+	expect(text(root.querySelector('section[data-section="holder:KC"] .place'))).toMatch(/^Kamontat /)
+	expect(text(root.querySelector('a[data-card="A"] .aside'))).toBe("Kamontat")
+	expect(text(root.querySelector('a[data-card="S"] .aside'))).toBe("Nat · Sub")
 })
 
 test("a tile: id) name and the last 4, the room and its word with the cardholder, then the open period's dates", () => {

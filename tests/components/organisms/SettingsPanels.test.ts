@@ -11,7 +11,7 @@ import { memoryStorage } from "#lib/storage/contract"
 import { LocalStorageRepository } from "#lib/storage/local"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { SEED_KEY } from "#lib/storage/seed-locations"
-import { exportBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
+import { exportBackupV4, parseAnyBackup } from "#lib/storage/transfer-v4"
 
 /**
  * The Settings page's island (RD-19): Display, Locations and Backup in the main column, Reset
@@ -127,10 +127,10 @@ const sectionsIn = (root: HTMLElement, column: string) =>
 		section.getAttribute("data-section"),
 	)
 
-test("lays the sections out in two columns: display, locations and backup, then reset and about", async () => {
+test("lays the sections out in two columns: display, locations, owners and backup, then reset and about", async () => {
 	const root = await show()
 
-	expect(sectionsIn(root, "main")).toEqual(["display", "locations", "backup"])
+	expect(sectionsIn(root, "main")).toEqual(["display", "locations", "owners", "backup"])
 	expect(sectionsIn(root, "side")).toEqual(["reset", "about"])
 	for (const section of root.querySelectorAll("section.set-section")) {
 		expect(section.querySelector(":scope > h2")).not.toBeNull()
@@ -144,7 +144,7 @@ test("names each section in the chosen language", async () => {
 	const root = await show()
 
 	const headings = () => [...root.querySelectorAll("section.set-section > h2")].map((h) => h.textContent?.trim())
-	expect(headings()).toEqual(["Display", "Locations", "Backup", "Reset", "About"])
+	expect(headings()).toEqual(["Display", "Locations", "Owners", "Backup", "Reset", "About"])
 	setLocale("th")
 	flushSync()
 	expect(headings()).not.toContain("Backup")
@@ -334,6 +334,20 @@ test("confirming a reset deletes every record and setting, and says so", async (
 	])
 	expect(root.querySelector('[data-row="delete-all"]')).not.toBeNull()
 	expect(flat(row(root, "locations"))).toContain("3 places")
+	// And the starting owners, so a new limit group has someone to belong to.
+	expect((await repo.listOwners()).map((owner) => owner.id)).toEqual(["KC", "NT", "RI"])
+	expect(flat(row(root, "owners"))).toContain("KC, NT, RI")
+})
+
+test("the Owners row opens /settings/owners and names every owner A to Z", async () => {
+	const repo = await populated(new InMemoryRepository())
+	await repo.saveOwner({ id: "pim", name: "Pim" })
+	await repo.saveOwner({ id: "KC", name: "Kamontat" })
+	const root = await show(repo)
+	const owners = row(root, "owners") as HTMLAnchorElement
+	expect(owners.getAttribute("href")).toBe("/settings/owners")
+	expect(flat(owners)).toContain("Manage owners")
+	expect(flat(owners)).toContain("Kamontat, Pim")
 })
 
 test("a reset keeps the reader's language", async () => {
@@ -431,7 +445,7 @@ const oneCardBackup = async () => {
 	await source.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await source.saveCard(sampleCard)
 	await source.savePurchase({ id: "p1", cardId: "k1", date: "2026-09-05", amount: 10_000, note: "fuel" })
-	return JSON.stringify(await exportBackupV3(source, new Date()))
+	return JSON.stringify(await exportBackupV4(source, new Date()))
 }
 
 test("the Restore row opens the restore sheet, and closing it forgets its steps", async () => {
