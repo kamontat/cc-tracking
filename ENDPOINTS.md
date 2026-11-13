@@ -1,34 +1,33 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: Home's tabs, `/`, `/owed` and `/ready`, with Cards' search, filters and grouping on `/owed` and `/ready`, 2026-11-13, PRD DD-199). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: `/card`, `/pay`, `/list/*` and the `/backup` redirect retired, 2026-11-13, PRD DD-200). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
 Unknown query keys are ignored, and a value the page does not know reads as the default.
 A sort's direction (`dir`) defaults to that sort's own, so it is written only when it
 runs the other way.
-Keys marked _repeated_ may appear more than once (`?card=a&card=b`). Pages that rewrite their
+Keys marked _repeated_ may appear more than once (`?f.cards=a&f.cards=b`). Pages that rewrite their
 own address leave a key out while it holds its default, so the bare path is the default view.
 
-**Planned (PRD RD-22 to RD-29, settled 2026-11-13, not built yet).** Every address below is
-replaced by the tabs-and-panel plan: tabs as paths (`/owed`, `/ready`, `/transactions/lists`,
-`/cards/limits`), the open record in the query (`card`, `limit`, `list`), filters prefixed `f.`,
-and `/card`, `/pay`, `/list/*` and the `/backup` redirect retired. The full list is in
-`docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`. This file stays in step with the
-code: each part of the plan rewrites the addresses it changes here as it ships. Shipped so far:
-`card` on `/cards` (part 2, DD-196); Cards' tabs, `/cards` and `/cards/limits`, with `f.`
-filters and the `limit` key (part 3, DD-197); Transactions' tabs, `/transactions` and
-`/transactions/lists`, with `f.` filters and the `card` and `list` keys, and the list pages
-`/transactions/lists/new` and `/transactions/lists/edit` (part 4, DD-198); Home's tabs, `/`,
-`/owed` and `/ready`, with the `card` and `list` keys and, on `/owed` and `/ready`, Cards' `q`,
-`f.` filters, `sort`, `dir` and `by` (part 5, DD-199).
+The addresses follow the tabs-and-panel plan (PRD RD-22 to RD-29, settled and built 2026-11-13,
+spec `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`): tabs as paths, the open
+record in the query (`card`, `limit`, `list`), filters prefixed `f.`, search `q`.
 
-## Redirects
+## Retired addresses
 
-| From      | To          | Status | Source              |
-| --------- | ----------- | ------ | ------------------- |
-| `/backup` | `/settings` | 301    | `public/_redirects` |
+No retired address redirects (RD-29): each is a 404 now, and `public/_redirects` is gone.
+
+| Was                                      | Now                                                     |
+| ---------------------------------------- | ------------------------------------------------------- |
+| `/card?id=<id>`                          | `/cards?card=<id>`                                      |
+| `/card/new`, `/card/edit?id=<id>`        | none: the card form is in the card's panel, no address  |
+| `/pay`, `/pay?card=<id>&amount=<satang>` | `/owed`; the pay form is _Pay_ on the bill (no address) |
+| `/list/new?card=<id>`                    | `/transactions/lists/new?cards=<id>`                    |
+| `/list/draft?id=`, `/list/reply?id=`     | `/transactions/lists/edit?list=`                        |
+| `/list/view?id=`                         | `/transactions/lists?list=`                             |
+| `/backup` (was a 301 to `/settings`)     | gone                                                    |
 
 ## Home
 
@@ -178,21 +177,6 @@ The add-a-card sheet works as on `/transactions/lists/new`; a draft's cards come
 draft, so the address stays as it is. A save leaves for `/transactions/lists?list=<id>`; deleting
 the draft or cancelling the waiting list, for `/transactions/lists`. ‹ leads to the Lists tab.
 
-### `/pay`
-
-| Key      | Values                     | Default | Notes                                                                                                                      |
-| -------- | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `card`   | card id                    | none    | Opens the payment sheet for that card over the picker.                                                                     |
-| `amount` | whole number of satang > 0 | none    | Prefills the sheet's amount; only read with `card`. Anything else is dropped and the sheet starts at the card's next bill. |
-
-- `/pay` -- the card picker.
-- `/pay?card=<id>` -- picker with the payment sheet open.
-- `/pay?card=<id>&amount=<satang>` -- sheet with the amount prefilled.
-
-Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/transactions`.
-Still served until it retires; nothing on Home links here any more (_Pay_ on a bill opens the
-card's panel on its pay form), but the floating _+ New_ menu and `/card` still do.
-
 ## Cards
 
 Two tabs, each its own page (RD-22): _Cards_ at `/cards` and _Limits_ at `/cards/limits`, under
@@ -246,88 +230,6 @@ the group form there, pushing an entry with the address unchanged; _+ Add limit_
 the search row) opens a blank group form with the address unchanged, and adding the group writes
 `limit=<new id>` over its entry. Deleting a group (from its form, when no card uses it) closes
 the panel. Example: `/cards/limits?f.owners=KC&sort=room&limit=<id>`.
-
-### `/card`
-
-| Key  | Values  | Notes                                                     |
-| ---- | ------- | --------------------------------------------------------- |
-| `id` | card id | Required. A missing or unknown id shows "card not found". |
-
-- `/card?id=<id>` -- the card's page. Still served; the Cards page opens a card in its panel
-  instead (`/cards?card=<id>`), and this page retires with the rest of the plan.
-
-### `/card/new`
-
-No query. The add-card form.
-
-### `/card/edit`
-
-| Key  | Values  | Notes                                                     |
-| ---- | ------- | --------------------------------------------------------- |
-| `id` | card id | Required. A missing or unknown id shows "card not found". |
-
-- `/card/edit?id=<id>` -- the edit form; its back link leads to `/card?id=<id>`.
-
-## Purchase lists (old pages)
-
-Still served, on their old keys, until they retire (RD-26): every link in the app now goes to the
-pages under `/transactions/lists` instead (a draft or a waiting list to
-`/transactions/lists/edit?list=<id>`, a saved list to `/transactions/lists?list=<id>`), and a
-write on an old page still goes Home. A page opened on a list in another status says so and links
-to where it is worked on now; an unknown id links to the Lists tab.
-
-### `/list/new`
-
-The new list itself, empty or holding the cards named (DD-195). Cards are added from its
-add-a-card sheet; there is no picker step. Nothing links here any more (the _+ New_ menu and _Use
-on a list_ go to `/transactions/lists/new`). An `id` is ignored: a stored draft opens at
-`/list/draft`.
-
-| Key    | Values             | Notes                                                                                                                                                                                  |
-| ------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `card` | card id (repeated) | Cards on the new list, in order, each once. Cards that cannot take purchases are dropped. Other keys are kept ahead of the cards.                                                      |
-| `add`  | `1`                | The add-a-card sheet, on its picker. Written as `1`; any value, even empty, opens it.                                                                                                  |
-| `open` | card id            | The add-a-card sheet, on that card: its orders when it is on the list, else ready to add it. Wins over `add`. Empty reads as none; a card neither on the list nor ready opens nothing. |
-
-The sheet follows `/pay`'s pattern (DD-76): opening it from the list pushes an entry, so Back
-closes it; moving within it (picking a card, _All cards_, the card before or after) rewrites that
-entry; closing it (_Done_, _Add to list_, _Remove from list_, Close, Escape, the backdrop) steps
-back over that entry, or, when the page was opened with `add` or `open` already in its address,
-rewrites the address without them. Adding or removing a card rewrites `card` in place, never
-pushing, and Back rewrites the current cards into the entry it lands on. The picker's old keys
-(`q`, `loc`, `owner`, `sort`, `dir`, `by`) are no longer read; an old link keeps them in the
-address, where they do nothing.
-
-- `/list/new` -- an empty new list.
-- `/list/new?card=<id>&card=<id>` -- a new list holding those cards.
-- `/list/new?card=<id>&add=1` -- the list with the add-a-card sheet's picker open.
-- `/list/new?card=<id>&open=<id>` -- the list with that card's sheet open.
-
-### `/list/draft`
-
-| Key    | Values  | Notes                                    |
-| ------ | ------- | ---------------------------------------- |
-| `id`   | list id | Required. Edits a draft list.            |
-| `add`  | `1`     | The add-a-card sheet, as on `/list/new`. |
-| `open` | card id | That card's sheet, as on `/list/new`.    |
-
-The draft's cards come from the stored draft, never the address, so the page leaves `id` and
-any other key as they are; only `add` and `open` change, as on `/list/new`.
-
-- `/list/draft?id=<id>` -- the draft.
-- `/list/draft?id=<id>&open=<card id>` -- the draft with that card's sheet open.
-
-### `/list/reply`
-
-| Key  | Values  | Notes                                                   |
-| ---- | ------- | ------------------------------------------------------- |
-| `id` | list id | Required. The spender's reply to a sent (waiting) list. |
-
-### `/list/view`
-
-| Key  | Values  | Notes                   |
-| ---- | ------- | ----------------------- |
-| `id` | list id | Required. A saved list. |
 
 ## Settings
 

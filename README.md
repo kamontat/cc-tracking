@@ -38,30 +38,31 @@ them, so About there reads as a development build with no build time, marked
 The site is static assets on Cloudflare (`wrangler.jsonc` serves `dist/`). A push
 to `main` deploys production at https://cc-tracking.kc.in.th, and each pull request
 gets a preview at `https://pr-<n>-cc-tracking.kcinth.workers.dev`.
-`public/_redirects` sends the old `/backup` address to `/settings` with a 301.
+No old address redirects: a retired page is a 404.
 Google Tag Manager loads only on production, where the deploy sets `PUBLIC_GTM_ID`.
 
 ## Pages
 
 Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
 
-- `/` — Home. _Needs you_ comes first: overdue bills, planned payments that are
+- `/`, `/owed` and `/ready` — Home's three tabs, one at a time on every screen.
+  _Needs you_ (`/`) comes first: overdue bills, planned payments that are
   late, purchase lists waiting for the spender's reply, planned payments due in
   the next three days, and draft lists, or _All caught up_ when there are none.
   Each row opens in place with what it needs: _Pay_ and _Open card_ on an overdue
   bill, _Paid_ and _Delete_ on a planned payment, _Record reply_ and a two-step
-  _Confirm_ on a waiting list, _Continue_ and _Delete_ on a draft. Under it,
-  _Ready to use_ shows the four cards with the most room (see _Which cards can
-  take a purchase_ below), sorted by room, each opening its card page, then _See
-  more_ for the rest.
+  _Confirm_ on a waiting list, _Continue_ and _Delete_ on a draft. _Owed_
+  (`/owed`) lists every card that owes, with _Pay_ on each bill, which opens the
+  card's panel on its pay form. _Ready to use_ (`/ready`) lists every card that
+  can take a purchase (see _Which cards can take a purchase_ below), sorted by
+  room. A card opens in its panel over the tab (`?card=<id>`).
 - `/transactions` and `/transactions/lists` — Transactions' two tabs, _Ledger_ and
   _Lists_, one at a time on every screen. The ledger lists purchases and payments,
   with an _Upcoming_ section above it for planned payments and waiting lists; a
   purchase's _Open card_ opens the card's panel (`?card=<id>`). _Lists_ holds
   every purchase list; a list opens in its panel (`?list=<id>`) with its lines,
   _Continue_ or _Record reply_, _Merge_, _Delete_ or _Confirm_, and _+ Add list_
-  starts a new one. The _+ New_ menu offers _New purchase list_ and _Make a
-  payment_.
+  starts a new one.
 - `/transactions/lists/new?cards=<id>` (once per card) — a new purchase list:
   each card's amounts in its add-a-card sheet, with warnings that never block
   (over the group's room, with _Lower to_ the room left; room held by lists
@@ -77,29 +78,23 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
   not-made lines to a draft for the next day, and save. _Cancel list_ deletes the
   waiting list at once, so it stops holding room; nothing is bought. A saved list
   has no edit page: it says so and links to its panel.
-- `/list/new`, `/list/draft`, `/list/reply` and `/list/view` — the old list pages,
-  still served on their old keys (`card`, `id`) until they retire.
-- `/pay` — _Make a payment_: pick a card, then a sheet takes the amount, the date
-  and a note. A date after today saves it as a planned payment.
 - `/cards` and `/cards/limits` — Cards' two tabs, _Cards_ and _Limits_, one at a
   time on every screen. The cards are searchable, filterable and sortable, and a
   card opens in its panel
-  (`?card=<id>`). The limit groups are searchable, filterable by holder and
+  (`?card=<id>`): a hero with the room left in its group, what it owes, the next
+  bill and any credit, then its statements, which open to the purchases on them
+  and the payment parts that paid them; each purchase can be edited (date, amount
+  and note; the card stays fixed) or deleted. _Add purchase_, _Pay_ and _Edit_
+  (the card form: name, id, last 4, cycle, limit group, where it is kept, and
+  whether it is a supplementary card (บัตรเสริม) with its own cardholder) open in
+  the panel, and _+ Add card_ opens a blank card form there. A payment dated after
+  today is a planned payment. The ⋯ menu holds _Archive card_ (or _Unarchive
+  card_) and, while the card has no purchases and is on no open list, _Delete
+  card_. The limit groups are searchable, filterable by holder and
   sortable; a group opens in its panel (`?limit=<id>`), where it is edited, and
   _+ Add limit_ adds one; each group has a colour, one of 12 swatches or _Random_.
-- `/card/new` and `/card/edit?id=<cardId>` — the full-page card form: name, id,
-  last 4, cycle, limit group, where it is kept (one of the stored locations), and whether
-  it is a supplementary card (บัตรเสริม) with its own cardholder.
-- `/card?id=<cardId>` — one card. A hero gives the room left in its group, what
-  it owes, the next bill and any credit. Its statements open to the purchases on
-  them and the payment parts that paid them; each purchase can be edited in place
-  (date, amount and note; the card stays fixed) or deleted. _Add purchase_ opens a
-  sheet. _Edit_ leads to `/card/edit`, and the ⋯ menu holds _Archive card_ (or
-  _Unarchive card_) and, while the card has no purchases and is on no open list,
-  _Delete card_.
 - `/settings` — sections for _Display_ (language and theme), _Locations_,
   _Backup_, _Reset_ (_Delete old purchases_ and _Delete all data_) and _About_.
-  The old `/backup` address redirects here.
 - `/settings/locations` — the stored locations: add, rename, delete (only one no
   card is kept at), and tick _Takes purchases_.
 
@@ -135,8 +130,8 @@ A group's available credit is its limit less what its cards owe, less any credit
 they hold, counting the open period — the cycle still being spent on right now.
 Money spent this cycle leaves the limit the moment it is spent. Payments belong to
 a card, not to a statement: they settle the card's oldest unpaid statement first,
-the open period included, and whatever is left over stays as credit. Pay at
-`/pay`, from a card's page, or from an overdue bill in _Needs you_; a payment dated
+the open period included, and whatever is left over stays as credit. Pay from a
+bill in Home's _Owed_ or _Needs you_, or from any card's panel; a payment dated
 after today is a planned payment, which counts only once it is marked paid.
 
 An archived card still weighs on the group it shares. Archiving a card retires
@@ -156,7 +151,7 @@ A purchase entered for more than a group's remaining room is still saved.
 The app is a record of what happened, not a gate on what is allowed, and a
 stored limit can itself be stale or wrong; refusing the entry would just mean
 a real purchase goes unrecorded. While amounts are entered on a list, going over
-is a warning with _Lower to_ the room left; a purchase added on the card page
+is a warning with _Lower to_ the room left; a purchase added in a card's panel
 that goes over says by how much, once, under the card's hero.
 
 Every card has a limit group: the card form will not save a card without one,
