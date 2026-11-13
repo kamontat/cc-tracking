@@ -163,7 +163,6 @@ test("apply lets the sheet go, then hands back the draft view", async () => {
 			q: "kb",
 			locations: ["krabi"],
 			owners: ["RI"],
-			ungrouped: false,
 			sort: "room",
 			dir: "desc",
 			by: "limit",
@@ -185,7 +184,6 @@ test("Clear all resets the draft but keeps the search", async () => {
 			q: "kb",
 			locations: ["krabi"],
 			owners: ["KC"],
-			ungrouped: false,
 			sort: "name",
 			dir: "desc",
 			by: "holder",
@@ -205,14 +203,7 @@ test("Close calls onclose and applies nothing", async () => {
 	expect(applied).toEqual([])
 })
 
-test("a Not in a group chip toggles the draft and is handed back on apply", async () => {
-	const { root, click, applied } = show()
-	const chip = () => root.querySelector<HTMLElement>("[data-ungrouped]") as HTMLElement
-	expect(text(chip())).toBe("Not in a group")
-	expect(chip().getAttribute("aria-pressed")).toBe("false")
-	click("[data-ungrouped]")
-	expect(chip().getAttribute("aria-pressed")).toBe("true")
-	click("[data-action=apply]")
-	await settle()
-	expect(applied[0]?.ungrouped).toBe(true)
+test("there is no Not in a group chip: every card has a limit group (RD-27)", () => {
+	const { root } = show()
+	expect(root.querySelector("[data-ungrouped]")).toBeNull()
 })

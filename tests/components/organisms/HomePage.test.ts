@@ -93,6 +93,18 @@ test("needs you comes before ready to use", async () => {
 	expect(grid?.querySelector(".home-ready h2")).not.toBeNull()
 })
 
+test("a card in no stored group is left out of Ready to use, and nothing counts it (RD-27)", async () => {
+	const repo = new InMemoryRepository()
+	await seed(repo)
+	const { limitGroupId: _, ...loose } = card("N")
+	await repo.saveCard(loose)
+	await repo.saveCard(card("O", { limitGroupId: "gone" }))
+	await setup(repo, { seeded: true })
+	expect(readyCards()).toEqual(["A", "B"])
+	expect(document.body.textContent).not.toContain("no limit group")
+	expect($('a[href^="/cards?ungrouped"]')).toBeNull()
+})
+
 test("the batch start is never touched", async () => {
 	localStorage.clear()
 	await setup(new LocalStorageRepository(localStorage))

@@ -70,13 +70,8 @@ describe("matchesCard", () => {
 		const sup = card("b", { supplementary: true, owner: "NT" })
 		expect(matchesCard(sup, g, view({ owners: ["NT"] }))).toBe(true)
 	})
-	test("ungrouped keeps cards with no group, or one that is not stored", () => {
-		const f = view({ ungrouped: true })
-		expect(matchesCard(card("a"), g, f)).toBe(false)
-		expect(matchesCard(card("a"), null, f)).toBe(true)
-		const { limitGroupId: _, ...bare } = card("b")
-		expect(matchesCard(bare, null, f)).toBe(true)
-		expect(cardsResults([card("a"), bare, card("c", { limitGroupId: "gone" })], [g], rooms, f, order).count).toBe(2)
+	test("the filter has no ungrouped: every card has a limit group (RD-27)", () => {
+		expect("ungrouped" in DEFAULT_CARDS_VIEW).toBe(false)
 	})
 	test("unknown group has no holder, so an owner filter drops it", () => {
 		expect(matchesCard(card("a"), null, view({ owners: ["KC"] }))).toBe(false)
@@ -102,22 +97,31 @@ describe("cardsResults", () => {
 		expect(r.archived.map((c) => c.id)).toEqual(["x"])
 		expect(r.count).toBe(3)
 	})
-	test("room: most first, ties by id, unknown group counts as 0", () => {
+	test("a card in no stored group is invalid data, left out of every list and the count (RD-27)", () => {
+		const { limitGroupId: _, ...bare } = card("b")
+		const cs = [
+			card("a"),
+			bare,
+			card("c", { limitGroupId: "gone" }),
+			card("d", { limitGroupId: "gone", archived: true }),
+		]
+		for (const by of CARDS_GROUPS) {
+			const r = cardsResults(cs, [g], rooms, view({ by }), order)
+			const shown = [...(r.flat ?? r.sections?.flatMap((s) => s.cards) ?? []), ...r.archived].map((c) => c.id)
+			expect(shown).toEqual(["a"])
+			expect(r.count).toBe(1)
+		}
+	})
+	test("room: most first, ties by id", () => {
 		const g2 = group("g2")
 		const rs = new Map([
 			["g", room(g, 50_000)],
 			["g2", room(g2, 0)],
 		])
-		const cs = [
-			card("a", { limitGroupId: "g" }),
-			card("b", { limitGroupId: "g2" }),
-			card("c", { limitGroupId: "g" }),
-			card("d", { limitGroupId: "nope" }),
-			(({ limitGroupId: _, ...rest }) => rest)(card("e")),
-		]
+		const cs = [card("a", { limitGroupId: "g" }), card("b", { limitGroupId: "g2" }), card("c", { limitGroupId: "g" })]
 		const r = cardsResults(cs, [g, g2], rs, view({ sort: "room", by: "none" }), order)
 		expect(r.sections).toBeNull()
-		expect(r.flat?.map((c) => c.id)).toEqual(["b", "a", "c", "d", "e"])
+		expect(r.flat?.map((c) => c.id)).toEqual(["b", "a", "c"])
 	})
 	test("each sort has its default direction; the default view is by card, grouped by place", () => {
 		expect(DEFAULT_CARDS_VIEW).toMatchObject({ sort: "card", dir: "asc", by: "place" })
@@ -132,7 +136,7 @@ describe("cardsResults", () => {
 			["place:krabi", ["b"]],
 		])
 	})
-	test("holder: a section per account holder in KC, NT, RI order, then cards with none", () => {
+	test("holder: a section per account holder in KC, NT, RI order", () => {
 		const nt = group("g2", { owner: "NT" })
 		const cs = [
 			card("a", { limitGroupId: "g2" }),
@@ -145,12 +149,11 @@ describe("cardsResults", () => {
 			["holder:KC", ["b"]],
 			["holder:NT", ["a"]],
 			["holder:RI", ["c"]],
-			["holder:none", ["d"]],
 		])
-		expect(r.sections?.[3]).toMatchObject({ kind: "holder", owner: null })
-		expect(r.count).toBe(4)
+		expect(r.sections?.[2]).toMatchObject({ kind: "holder", owner: "RI" })
+		expect(r.count).toBe(3)
 	})
-	test("limit: a section per limit group A to Z, then cards in no stored group", () => {
+	test("limit: a section per limit group A to Z", () => {
 		const zed = group("g2", { name: "Zed" })
 		const amy = group("g3", { name: "Amy" })
 		const cs = [card("a", { limitGroupId: "g2" }), card("b", { limitGroupId: "g3" }), card("c", { limitGroupId: "x" })]
@@ -158,7 +161,6 @@ describe("cardsResults", () => {
 		expect(r.sections?.map((s) => [s.key, s.cards.map((c) => c.id)])).toEqual([
 			["limit:g3", ["b"]],
 			["limit:g2", ["a"]],
-			["limit:none", ["c"]],
 		])
 		expect(r.sections?.[0]).toMatchObject({ kind: "limit", group: amy })
 	})

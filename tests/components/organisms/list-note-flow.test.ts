@@ -5,7 +5,7 @@ import ListReplyPage from "#components/organisms/ListReplyPage.svelte"
 import ListViewPage from "#components/organisms/ListViewPage.svelte"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
+import { type BackupV3, exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
 import { cleanup, click, closeCard, fieldsOf, settle, setupPage, stored, typeField } from "./list-support"
 
 /** A line's note across every list page and a backup. Ported from the legacy `note-flow` test. */
@@ -25,6 +25,26 @@ const press = async (selector: string) => {
 	if (!button) throw new Error(`no ${selector}`)
 	button.click()
 	await settle()
+}
+
+/**
+ * The backup's text with the seeded cards A, B and Z renamed 1, 2 and 9, since restore refuses
+ * an id outside the card id form (RD-28).
+ */
+const restorable = (backup: BackupV3): string => {
+	const renamed: Record<string, string> = { A: "1", B: "2", Z: "9" }
+	const id = (cardId: string) => renamed[cardId] ?? cardId
+	return JSON.stringify({
+		...backup,
+		cards: backup.cards.map((card) => ({ ...card, id: id(card.id) })),
+		purchases: backup.purchases.map((purchase) => ({ ...purchase, cardId: id(purchase.cardId) })),
+		payments: backup.payments.map((payment) => ({ ...payment, cardId: id(payment.cardId) })),
+		statementDates: backup.statementDates.map((dates) => ({ ...dates, cardId: id(dates.cardId) })),
+		lists: backup.lists.map((list) => ({
+			...list,
+			lines: list.lines.map((line) => ({ ...line, cardId: id(line.cardId) })),
+		})),
+	})
 }
 
 const entryPage = (repo: Repository, mode: "new" | "draft", search: string) =>
@@ -85,9 +105,9 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 
 	// A backup carries the notes on list lines.
 	const copy = new InMemoryRepository()
-	await importBackupV3(copy, parseAnyBackup(JSON.stringify(await exportBackupV3(repo, new Date()))))
+	await importBackupV3(copy, parseAnyBackup(restorable(await exportBackupV3(repo, new Date()))))
 	expect((await copy.listPurchaseLists()).find((l) => l.id === "l1")?.lines).toEqual([
-		{ cardId: "A", amount: 125_00, made: true, note: "diesel for the van" },
-		{ cardId: "B", amount: 50_00, made: false, note: "stamps" },
+		{ cardId: "1", amount: 125_00, made: true, note: "diesel for the van" },
+		{ cardId: "2", amount: 50_00, made: false, note: "stamps" },
 	])
 })

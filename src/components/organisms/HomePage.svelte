@@ -10,10 +10,8 @@
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import NeedsYou from "#components/organisms/NeedsYou.svelte"
 	import ReadyPanel from "#components/organisms/ReadyPanel.svelte"
-	import { canPurchase } from "#lib/domain/card"
 	import { today } from "#lib/domain/date"
 	import { needsYou, readyRows } from "#lib/domain/home"
-	import { unassignedCards } from "#lib/domain/limit"
 	import { plannedOf } from "#lib/domain/pay"
 	import { purchasePlaces } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
@@ -104,11 +102,6 @@
 		void lang
 		return data ? purchasePlaces(data.locations) : []
 	})
-	const unassigned = $derived(
-		data
-			? unassignedCards(data.cards, data.groups).filter((card) => canPurchase(card, data?.locations ?? [])).length
-			: 0,
-	)
 
 	onMount(() => {
 		const unsubscribe = subscribe(() => {
@@ -153,6 +146,6 @@
 			onmergelists={mergeLists} />
 	</div>
 	<div class="home-ready">
-		<ReadyPanel {rows} {places} groups={data?.groups ?? []} today={now} {unassigned} />
+		<ReadyPanel {rows} {places} groups={data?.groups ?? []} today={now} />
 	</div>
 </div>

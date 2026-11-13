@@ -118,18 +118,17 @@ test("places are named by their records; one with no record by its id", () => {
 test("by holder: a section per account holder, headed by it and its count, tiles saying the place", () => {
 	const { root } = show({ by: "holder" }, {}, [...cards, card("D", { limitGroupId: "gone" })])
 	const sections = [...root.querySelectorAll("section[data-section]")]
-	expect(sections.map((s) => s.getAttribute("data-section"))).toEqual(["holder:KC", "holder:NT", "holder:none"])
+	expect(sections.map((s) => s.getAttribute("data-section"))).toEqual(["holder:KC", "holder:NT"])
 	expect(text(sections[0]?.querySelector(".place"))).toBe("KC 2 cards")
-	expect(text(sections[2]?.querySelector(".place"))).toBe("No account holder 1 card")
 	expect(text(root.querySelector('a[data-card="B/2"] .facts'))).toMatch(/ · Krabi$/)
 })
 
-test("by limit group: a section per group A to Z, then cards in none", () => {
+test("by limit group: a section per group A to Z, and no section for a card in none (RD-27)", () => {
 	const { root } = show({ by: "limit" }, {}, [...cards, card("D", { limitGroupId: "gone" })])
 	const sections = [...root.querySelectorAll("section[data-section]")]
-	expect(sections.map((s) => s.getAttribute("data-section"))).toEqual(["limit:g1", "limit:g2", "limit:none"])
+	expect(sections.map((s) => s.getAttribute("data-section"))).toEqual(["limit:g1", "limit:g2"])
 	expect(text(sections[0]?.querySelector(".place"))).toBe("SCB 2 cards")
-	expect(text(sections[2]?.querySelector(".place"))).toBe("Not in a group 1 card")
+	expect(root.querySelector('a[data-card="D"]')).toBeNull()
 })
 
 test("tiles link to the card page, encoded, in the group's colour", () => {
@@ -141,8 +140,7 @@ test("tiles link to the card page, encoded, in the group's colour", () => {
 })
 
 test("a tile: id) name and the last 4, the room and its word with the cardholder, then the open period's dates", () => {
-	const { limitGroupId: _unused, ...bare } = card("N", { last4: "" })
-	const list = [card("A"), card("S", { supplementary: true, owner: "NT" }), bare]
+	const list = [card("A"), card("S", { supplementary: true, owner: "NT" }), card("N", { last4: "" })]
 	const { root } = show({}, { today: "2026-10-30" }, list)
 	const tile = (id: string) => root.querySelector(`a[data-card="${id}"]`)
 	expect(text(tile("A")?.querySelector(".name"))).toBe("A) Card A")
@@ -196,18 +194,14 @@ test("line 2: room, N% used from 80% in the warn tone, over limit in red, or cre
 	expect(rail(red.root, "B/2")).toBe("over")
 })
 
-test("a card with no limit group, or a deleted one, says so, with no colour and no rail", () => {
+test("a card with no limit group, or a deleted one, is invalid data and left out (RD-27)", () => {
 	const { root } = show({}, {}, [
+		card("A"),
 		(({ limitGroupId: _, ...rest }) => rest)(card("N")),
 		card("D", { limitGroupId: "gone" }),
 	])
-	for (const id of ["N", "D"]) {
-		const tile = root.querySelector<HTMLElement>(`a[data-card="${id}"]`)
-		expect(text(tile?.querySelector(".room"))).toBe("No limit group")
-		expect(tile?.querySelector("[data-numeric]")).toBeNull()
-		expect(tile?.querySelector(".rail")).toBeNull()
-		expect(tile?.dataset["g"]).toBeUndefined()
-	}
+	expect([...root.querySelectorAll("a[data-card]")].map((a) => a.getAttribute("data-card"))).toEqual(["A"])
+	expect(root.textContent).not.toContain("No limit group")
 })
 
 test("not grouped is one flat list headed N cards, line 3 adding the place", () => {

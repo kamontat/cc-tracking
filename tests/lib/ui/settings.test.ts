@@ -9,13 +9,14 @@ import { parseAnyBackup } from "#lib/storage/transfer-v3"
 import { backupFilename, locationsSummary, prepareBackupFile } from "#lib/ui/settings"
 
 const sampleCard: Card = {
-	id: "kbank",
+	id: "k1",
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	comment: "",
 	archived: false,
+	limitGroupId: "pool",
 }
 
 const seeded = async () => {
@@ -30,18 +31,19 @@ test("a backup file is named for the UTC day it was exported", () => {
 
 test("prepareBackupFile produces text that parseAnyBackup accepts and that round-trips every card, purchase, and payment", async () => {
 	const repo = await seeded()
+	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await repo.saveCard(sampleCard)
-	await repo.saveCard({ ...sampleCard, id: "scb", name: "SCB Mastercard", location: "bangkok" })
-	await repo.savePurchase({ id: "p1", cardId: "kbank", date: "2026-09-05", amount: 10_000, note: "fuel" })
-	await repo.saveCardPayment({ id: "cp1", cardId: "kbank", date: "2026-10-01", amount: 5_000, status: "paid" })
+	await repo.saveCard({ ...sampleCard, id: "s1", name: "SCB Mastercard", location: "bangkok" })
+	await repo.savePurchase({ id: "p1", cardId: "k1", date: "2026-09-05", amount: 10_000, note: "fuel" })
+	await repo.saveCardPayment({ id: "cp1", cardId: "k1", date: "2026-10-01", amount: 5_000, status: "paid" })
 
 	const { filename, text } = await prepareBackupFile(repo, new Date("2026-09-21T03:00:00Z"))
 	expect(filename).toBe("cc-tracking-2026-09-21.json")
 
 	const backup = parseAnyBackup(text)
 	expect(backup.cards).toEqual(await repo.listCards())
-	expect(backup.purchases).toEqual(await repo.listPurchases("kbank"))
-	expect(backup.payments).toEqual(await repo.listCardPayments("kbank"))
+	expect(backup.purchases).toEqual(await repo.listPurchases("k1"))
+	expect(backup.payments).toEqual(await repo.listCardPayments("k1"))
 })
 
 test("the downloaded file is version 3 and carries lists", async () => {
@@ -51,7 +53,7 @@ test("the downloaded file is version 3 and carries lists", async () => {
 		id: "l1",
 		date: "2026-10-01",
 		status: "draft",
-		lines: [{ cardId: "kbank", amount: 1_000 }],
+		lines: [{ cardId: "k1", amount: 1_000 }],
 	})
 	const parsed = JSON.parse((await prepareBackupFile(repo, new Date("2026-09-21T03:00:00Z"))).text)
 	expect(parsed.version).toBe(3)

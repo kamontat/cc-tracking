@@ -30,16 +30,16 @@ test("one payment per part", () => {
 
 	expect(payments).toEqual([
 		{
-			id: "m:kbank:2026-09:0",
-			cardId: "kbank",
+			id: "m:k1:2026-09:0",
+			cardId: "k1",
 			date: "2026-09-25",
 			amount: 4_000,
 			status: "paid",
 			period: "2026-09",
 		},
 		{
-			id: "m:kbank:2026-09:1",
-			cardId: "kbank",
+			id: "m:k1:2026-09:1",
+			cardId: "k1",
 			date: "2026-10-01",
 			amount: 6_000,
 			status: "paid",
@@ -59,8 +59,8 @@ test("a record without parts pays the current total", () => {
 
 	expect(payments).toEqual([
 		{
-			id: "m:kbank:2026-09:0",
-			cardId: "kbank",
+			id: "m:k1:2026-09:0",
+			cardId: "k1",
 			date: "2026-10-01",
 			amount: 12_550,
 			status: "paid",
@@ -97,13 +97,13 @@ test("frozen dates come from the old record", () => {
 
 	expect(dates).toEqual([
 		{
-			cardId: "kbank",
+			cardId: "k1",
 			period: "2026-09",
 			closeDate: "2026-09-20",
 			dueDate: "2026-10-07",
 		},
 		{
-			cardId: "kbank",
+			cardId: "k1",
 			period: "2026-08",
 			closeDate: "2026-08-20",
 			dueDate: "2026-09-07",
@@ -188,8 +188,8 @@ test("an overpaid record converts to exactly the total and leaves no credit", ()
 
 	// The excess goes from the latest parts first; a part left at zero is dropped.
 	expect(payments.map((p) => [p.id, p.date, p.amount])).toEqual([
-		["m:kbank:2026-09:0", "2026-09-25", 7_000],
-		["m:kbank:2026-09:1", "2026-10-01", 3_000],
+		["m:k1:2026-09:0", "2026-09-25", 7_000],
+		["m:k1:2026-09:1", "2026-10-01", 3_000],
 	])
 	expect(payments.reduce((sum, p) => sum + p.amount, 0)).toBe(10_000)
 
@@ -241,22 +241,22 @@ test("running twice converts once", async () => {
 	expect(storage.getItem(PAYMENTS_MIGRATION_KEY)).toBe("done")
 	expect(await migratePayments(repo, storage)).toBe(0)
 
-	const kbank = await repo.listCardPayments("kbank")
-	expect(kbank.map((p) => [p.id, p.amount])).toEqual([
-		["m:kbank:2026-09:0", 4_000],
-		["m:kbank:2026-09:1", 6_000],
+	const k1 = await repo.listCardPayments("k1")
+	expect(k1.map((p) => [p.id, p.amount])).toEqual([
+		["m:k1:2026-09:0", 4_000],
+		["m:k1:2026-09:1", 6_000],
 	])
 	expect((await repo.listCardPayments("scb")).map((p) => p.amount)).toEqual([3_000])
-	expect(await repo.listStatementDates("kbank")).toEqual([
+	expect(await repo.listStatementDates("k1")).toEqual([
 		{
-			cardId: "kbank",
+			cardId: "k1",
 			period: "2026-09",
 			closeDate: "2026-09-18",
 			dueDate: "2026-10-03",
 		},
 	])
 	// The old records stay on disk.
-	expect(await repo.listPayments("kbank")).toHaveLength(1)
+	expect(await repo.listPayments("k1")).toHaveLength(1)
 })
 
 test("does nothing, reading nothing, once the marker is set", async () => {
@@ -268,7 +268,7 @@ test("does nothing, reading nothing, once the marker is set", async () => {
 	}
 
 	expect(await migratePayments(repo, storage)).toBe(0)
-	expect(await repo.listCardPayments("kbank")).toEqual([])
+	expect(await repo.listCardPayments("k1")).toEqual([])
 })
 
 test("a failed write leaves no marker, and the rerun finishes without duplicates", async () => {
@@ -287,13 +287,13 @@ test("a failed write leaves no marker, and the rerun finishes without duplicates
 	}
 
 	await expect(migratePayments(repo, storage)).rejects.toThrow("storage full")
-	expect(await repo.listCardPayments("kbank")).toHaveLength(1)
+	expect(await repo.listCardPayments("k1")).toHaveLength(1)
 	expect(storage.getItem(PAYMENTS_MIGRATION_KEY)).toBeNull()
 
 	expect(await migratePayments(repo, storage)).toBe(3)
 	expect(storage.getItem(PAYMENTS_MIGRATION_KEY)).toBe("done")
 
-	const saved = await repo.listCardPayments("kbank")
+	const saved = await repo.listCardPayments("k1")
 	expect(saved).toHaveLength(3)
 	expectSameAsOldModel(saved)
 })
@@ -303,14 +303,14 @@ test("deleted card payments do not come back", async () => {
 	const storage = freshStorage()
 
 	expect(await migratePayments(repo, storage)).toBe(3)
-	for (const cardId of ["kbank", "scb"]) {
+	for (const cardId of ["k1", "scb"]) {
 		for (const payment of await repo.listCardPayments(cardId)) {
 			await repo.deleteCardPayment(cardId, payment.id)
 		}
 	}
 
 	expect(await migratePayments(repo, storage)).toBe(0)
-	expect(await repo.listCardPayments("kbank")).toEqual([])
+	expect(await repo.listCardPayments("k1")).toEqual([])
 	expect(await repo.listCardPayments("scb")).toEqual([])
 })
 
@@ -323,7 +323,7 @@ test("old records that give no payments still finish once", async () => {
 	expect(await migratePayments(repo, storage)).toBe(0)
 	expect(storage.getItem(PAYMENTS_MIGRATION_KEY)).toBe("done")
 
-	await repo.deleteStatementDates("kbank", "2026-08")
+	await repo.deleteStatementDates("k1", "2026-08")
 	expect(await migratePayments(repo, storage)).toBe(0)
-	expect(await repo.listStatementDates("kbank")).toEqual([])
+	expect(await repo.listStatementDates("k1")).toEqual([])
 })

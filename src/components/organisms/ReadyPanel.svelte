@@ -30,11 +30,9 @@
 		groups: LimitGroup[]
 		/** Kept for the page's clock; the tiles' dates come with the rows. */
 		today: PlainDate
-		/** How many unarchived cards that could take a purchase point at no limit group. */
-		unassigned: number
 	}
 
-	const { rows, places, groups, unassigned }: Props = $props()
+	const { rows, places, groups }: Props = $props()
 
 	/** Whether the cards past the first `READY_TOP` are open. */
 	let expanded = $state(false)
@@ -104,12 +102,6 @@
 				{expanded ? tr("common.showLess") : tr("common.seeMore", { count: count - READY_TOP })}
 			</button>
 		{/if}
-	{/if}
-	{#if unassigned > 0}
-		<p class="sub" data-testid="unassigned">
-			{tr(unassigned === 1 ? "spendable.unassigned.one" : "spendable.unassigned.many", { count: unassigned })}
-			<a href="/cards?ungrouped=1">{tr("spendable.unassignedAction")}</a>
-		</p>
 	{/if}
 </div>
 

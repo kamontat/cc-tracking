@@ -101,16 +101,7 @@
 			name="owner"
 			options={ownerOptions}
 			selected={draft.owners}
-			ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner as Owner) })}>
-			<button
-				type="button"
-				data-variant="quiet"
-				data-ungrouped=""
-				aria-pressed={draft.ungrouped ? "true" : "false"}
-				onclick={() => set({ ungrouped: !draft.ungrouped })}>
-				{tr("cards.filter.ungrouped")}
-			</button>
-		</FilterChips>
+			ontoggle={(owner: string) => set({ owners: toggled(draft.owners, owner as Owner) })} />
 	{/snippet}
 	{#snippet sortPart()}
 		<SortChoices

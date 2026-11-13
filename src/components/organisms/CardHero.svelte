@@ -65,7 +65,7 @@
 
 	const tone = $derived(card ? groupColor(card, groups) : null)
 
-	/** The hero's figures, or null for a card on no group. */
+	/** The hero's figures, or null for a card on no stored group: invalid data, left out (RD-27). */
 	const hero = $derived.by(() => {
 		if (!card || !room) return null
 		const { group } = room
@@ -119,8 +119,6 @@
 				</span>
 				<span class="used">{hero.used}</span>
 			</section>
-		{:else}
-			<section class="hero"><p>{tr("card.hero.noGroup")}</p></section>
 		{/if}
 		<div class="stats">
 			<div class="stat">

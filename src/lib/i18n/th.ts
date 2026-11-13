@@ -134,7 +134,6 @@ export const th: Catalog = {
 	"group.status": "สถานะ",
 	"group.month": "เดือน",
 	groupChip: "จัดกลุ่ม: {group}",
-	"group.noHolder": "ไม่มีเจ้าของบัตร",
 	"tx.lists.group.all": "ใบรายการทั้งหมด",
 	"sort.field.date": "วันที่",
 	"sort.order.date.asc": "เก่าสุดก่อน",
@@ -285,9 +284,7 @@ export const th: Catalog = {
 	// FLAG FOR OWNER REVIEW: "billing cycle" -- รอบบิล (also form.cycle and the
 	// backup.problem.*Cycle fragments below).
 	"cards.archived": "เก็บเข้าคลังแล้ว",
-	"cards.filter.ungrouped": "ยังไม่อยู่ในกลุ่ม",
 	"cards.archivedList": "เก็บเข้าคลังแล้ว ({count})",
-	"cards.page.noGroup": "ไม่มีกลุ่มวงเงิน",
 	"cards.page.dates": "สรุปยอด {close} · ครบกำหนด {due}",
 	"cards.locationReset":
 		"บัตรเหล่านี้เคยเก็บไว้ในสถานที่ที่แอปไม่รู้จักแล้ว จึงตั้งสถานที่เป็นกรุงเทพฯ: {names} แก้ไขแต่ละใบเพื่อเลือกสถานที่ที่ถูกต้อง",
@@ -313,6 +310,8 @@ export const th: Catalog = {
 	"form.error.owner": "เลือกผู้ถือบัตรเสริมใบนี้",
 	"form.limitGroup": "กลุ่มวงเงิน",
 	"form.limitGroupNone": "เลือกกลุ่มวงเงิน",
+	"form.noGroups": "ยังไม่มีกลุ่มวงเงิน และบัตรทุกใบต้องใช้กลุ่มวงเงิน เพิ่มกลุ่มก่อน",
+	"form.noGroupsAction": "ไปที่กลุ่มวงเงิน",
 	"form.cycle": "รอบบิล",
 	"form.cycleOffset": "กี่วันหลังสรุปยอด",
 	"form.cycleFixed": "วันที่แน่นอน",
@@ -330,6 +329,7 @@ export const th: Catalog = {
 	"form.save": "บันทึกการแก้ไข",
 	"form.add": "เพิ่มบัตร",
 	"form.error.id": "ตั้งรหัสบัตรที่จำได้",
+	"form.error.idFormat": "รหัสบัตรเป็นตัวเลขคั่นด้วยจุด นำหน้าด้วยอักษรอังกฤษตัวเล็กได้หนึ่งตัว เช่น 5, 12.3 หรือ k1.2",
 	"form.error.name": "ตั้งชื่อบัตร",
 	"form.error.last4": "เลข 4 ตัวท้ายต้องเป็นตัวเลขสี่หลัก",
 	"form.error.limitGroup": "เลือกกลุ่มวงเงินที่บัตรใบนี้ใช้",
@@ -348,14 +348,12 @@ export const th: Catalog = {
 	"card.hero.shared": "ใช้ร่วมกับ {cards}",
 	"card.hero.roomOf": "วงเงินเหลือจาก {limit}",
 	"card.hero.used": "ใช้ไป {pct}% · ซื้อวันนี้: สรุปยอด {close} ครบกำหนด {due}",
-	"card.hero.noGroup": "บัตรใบนี้ยังไม่ผูกกลุ่มวงเงิน",
 	"card.stat.owed": "ยอดค้าง",
 	"card.stat.next": "บิลถัดไป",
 	"card.stat.credit": "เครดิต",
 	"card.stat.keptIn": "สถานที่เก็บบัตร",
 	"card.useOnList": "ใช้ในใบรายการซื้อ",
 	"card.pay": "ชำระเงิน",
-	"card.noGroupNote": "กำหนดกลุ่มวงเงินให้บัตรใบนี้ (แก้ไข) เพื่อใช้ในใบรายการซื้อ",
 	"card.archivedNote": "บัตรใบนี้เก็บเข้าคลังแล้ว จึงไม่แสดงในใบรายการซื้อ",
 	"card.statements": "ใบแจ้งยอด",
 	"card.subtitle": "{id} · เก็บไว้ที่ {location}",
@@ -513,6 +511,9 @@ export const th: Catalog = {
 	"backup.problem.missingLast4": "ไม่มีเลข 4 ตัวท้าย",
 	"backup.problem.badLocation": "มีสถานที่ที่ไม่ใช่ bangkok, phichit หรือ krabi",
 	"backup.problem.unknownLocation": "มีสถานที่ที่ไม่อยู่ในรายการสถานที่ของไฟล์สำรอง",
+	"backup.problem.badCardId": "มีรหัสที่ไม่ใช่ตัวเลขคั่นด้วยจุด นำหน้าด้วยอักษรอังกฤษตัวเล็กได้หนึ่งตัว (เช่น 5, 12.3 หรือ k1.2)",
+	"backup.problem.missingLimitGroup": "ไม่มีกลุ่มวงเงิน",
+	"backup.problem.unknownLimitGroup": "มีกลุ่มวงเงินที่ไม่อยู่ในรายการกลุ่มวงเงินของไฟล์สำรอง",
 	"backup.problem.badOwner": "มีเจ้าของที่ไม่ใช่ KC, NT หรือ RI",
 	// FLAG FOR OWNER REVIEW: noCycle and missingPeriod below both render as "ไม่มีรอบบิล"
 	// ("has no cycle" vs. "is missing a period" in English -- two different problems).
@@ -584,10 +585,6 @@ export const th: Catalog = {
 	"theme.light": "สว่าง",
 	"theme.dark": "มืด",
 	"settings.error.read": "อ่านการตั้งค่าไม่สำเร็จ",
-
-	"spendable.unassigned.one": "มีบัตร 1 ใบยังไม่ผูกกลุ่มวงเงิน",
-	"spendable.unassigned.many": "มีบัตร {count} ใบยังไม่ผูกกลุ่มวงเงิน",
-	"spendable.unassignedAction": "ไปผูกกลุ่ม",
 
 	"guard.cardHasPurchases": "บัตรนี้มีรายการซื้อ จึงลบไม่ได้ เก็บเข้าคลังแทน",
 	"guard.cardOnList": "บัตรนี้อยู่ในรายการที่ยังไม่บันทึก จึงลบไม่ได้ ลบบัตรออกจากรายการก่อน",

@@ -18,8 +18,8 @@ describe("LocalStorageRepository key layout", () => {
 		await repo.saveCard(sampleCard())
 		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }))
 
-		expect(localStorage.getItem("cc:card:kbank")).not.toBeNull()
-		expect(localStorage.getItem("cc:purchase:kbank:2026-09-05:p1")).not.toBeNull()
+		expect(localStorage.getItem("cc:card:k1")).not.toBeNull()
+		expect(localStorage.getItem("cc:purchase:k1:2026-09-05:p1")).not.toBeNull()
 	})
 
 	test("reset still removes a leftover batch start", async () => {
@@ -67,10 +67,10 @@ describe("LocalStorageRepository key layout", () => {
 	test("moves the key when a purchase date is edited", async () => {
 		const repo = new LocalStorageRepository(freshStorage())
 		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }))
-		await repo.deletePurchase("kbank", "p1")
+		await repo.deletePurchase("k1", "p1")
 		await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-25" }))
 
-		const purchases = await repo.listPurchases("kbank")
+		const purchases = await repo.listPurchases("k1")
 		expect(purchases).toHaveLength(1)
 		expect(purchases[0]?.date).toBe("2026-09-25")
 	})

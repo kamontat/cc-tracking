@@ -27,7 +27,7 @@ const stored = (extra: Partial<Card> = {}): Card => ({
 const valid = (extra: Partial<CardDraft> = {}): CardDraft => ({
 	...draftOf(null),
 	text: {
-		id: "kbank",
+		id: "12.3",
 		name: "KBank Visa",
 		last4: "4821",
 		closeDay: "18",
@@ -87,7 +87,7 @@ test("reads a complete card with an offset rule", () => {
 	expect(readCardDraft(valid(), null, groups, places)).toEqual({
 		ok: true,
 		card: {
-			id: "kbank",
+			id: "12.3",
 			name: "KBank Visa",
 			last4: "4821",
 			location: "krabi",
@@ -117,6 +117,19 @@ test.each([
 	const draft = valid()
 	draft.text = { ...draft.text, ...text }
 	expect(readCardDraft(draft, null, groups, places)).toEqual({ ok: false, key })
+})
+
+test.each(["5.", ".5", "1..2", "K1", "kbank"])("refuses a new card id %j outside the card id form (RD-28)", (id) => {
+	const draft = valid()
+	draft.text.id = id
+	expect(readCardDraft(draft, null, groups, places)).toEqual({ ok: false, key: "form.error.idFormat" })
+})
+
+test("a new card id is read trimmed, then checked", () => {
+	const draft = valid()
+	draft.text.id = " k1.2 "
+	const read = readCardDraft(draft, null, groups, places)
+	expect(read.ok && read.card.id).toBe("k1.2")
 })
 
 test("refuses a bad due day on the fixed rule", () => {

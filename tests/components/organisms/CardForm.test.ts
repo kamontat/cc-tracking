@@ -117,7 +117,7 @@ const pickLocation = (location: string) => press(`[data-location="${location}"]`
 
 /** Every field a valid offset-rule card needs, except the limit group. */
 const fillCard = async () => {
-	await fill("id", "kbank")
+	await fill("id", "12.3")
 	await fill("name", "KBank Visa")
 	await fill("last4", "4821")
 	await pickLocation("krabi")
@@ -176,9 +176,29 @@ test("keeps the chosen limit group in place when the group list reshapes under t
 	expect($<HTMLSelectElement>('[name="limitGroupId"]')?.value).toBe("")
 })
 
-test("disables the group select when no group exists", async () => {
+test("with no group stored, says to add one first and links to Limits instead of a select (RD-27)", async () => {
 	await show(null, [])
-	expect($<HTMLSelectElement>('[name="limitGroupId"]')?.disabled).toBe(true)
+	expect($('[name="limitGroupId"]')).toBeNull()
+	expect($("[data-no-groups]")?.textContent).toContain("Add one first")
+	expect($<HTMLAnchorElement>("[data-no-groups] a")?.getAttribute("href")).toBe("/cards?view=groups")
+})
+
+test("the placeholder cannot be picked: the group is required (RD-27)", async () => {
+	await show()
+	const select = $<HTMLSelectElement>('[name="limitGroupId"]')
+	expect(select?.required).toBe(true)
+	const placeholder = $<HTMLOptionElement>('[name="limitGroupId"] option[value=""]')
+	expect(placeholder?.disabled).toBe(true)
+})
+
+test("refuses a new card id outside the card id form (RD-28)", async () => {
+	const { saves } = await show()
+	await fillCard()
+	await fill("limitGroupId", "pool")
+	await fill("id", "K1")
+	await submit()
+	expect(saves).toHaveLength(0)
+	expect(text()).toContain("A card id is numbers joined by dots")
 })
 
 test("names each group as name (holder) · limit, A to Z by name", async () => {
@@ -199,7 +219,7 @@ test("emits a complete card with an offset rule", async () => {
 	await fill("limitGroupId", "pool")
 	await submit()
 	expect(saves[0]).toEqual({
-		id: "kbank",
+		id: "12.3",
 		name: "KBank Visa",
 		last4: "4821",
 		location: "krabi",
@@ -215,7 +235,7 @@ test("emits a fixed rule when that kind is chosen", async () => {
 	const { saves } = await show()
 	await press('[data-kind="fixed"]')
 	expect($('[data-kind="fixed"]')?.getAttribute("aria-pressed")).toBe("true")
-	await fill("id", "scb")
+	await fill("id", "7")
 	await fill("name", "SCB Mastercard")
 	await fill("last4", "1234")
 	await fill("closeDay", "18")
@@ -376,7 +396,7 @@ test("a new card defaults to the first location A to Z when Bangkok is gone", as
 	})
 	expect($('[data-location="chiang-mai"]')?.getAttribute("aria-pressed")).toBe("true")
 
-	await fill("id", "kbank")
+	await fill("id", "12.3")
 	await fill("name", "KBank Visa")
 	await fill("last4", "4821")
 	await fill("closeDay", "18")
@@ -388,7 +408,7 @@ test("a new card defaults to the first location A to Z when Bangkok is gone", as
 
 test("defaults a new card to Bangkok without the user touching the field", async () => {
 	const { saves } = await show()
-	await fill("id", "kbank")
+	await fill("id", "12.3")
 	await fill("name", "KBank Visa")
 	await fill("last4", "4821")
 	await fill("closeDay", "18")

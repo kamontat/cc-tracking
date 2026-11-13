@@ -281,8 +281,6 @@
 		// An archived card takes no purchases wherever it is kept, so naming the place as the
 		// reason would send the reader to the wrong setting.
 		if (card.archived) return { text: t("card.archivedNote") }
-		// A list needs the card's group (DR-20), so without one *Use on a list* is a dead end.
-		if (data && !roomFor(card, data)) return { text: t("card.noGroupNote") }
 		if (data && !canPurchase(card, data.locations))
 			return {
 				text: t("card.noPurchases", { location: nameOfLocation(data.locations, card.location) }),

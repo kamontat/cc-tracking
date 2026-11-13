@@ -1,49 +1,10 @@
-import type { Card, LimitGroup } from "#lib/domain/types"
-
 import { expect, test } from "vitest"
 
-import { unassignedCards, usageLevel, usageShare } from "#lib/domain/limit"
+import * as limit from "#lib/domain/limit"
+import { usageLevel, usageShare } from "#lib/domain/limit"
 
-const card = (overrides: Partial<Card> = {}): Card => ({
-	id: "kbank",
-	name: "KBank Visa",
-	last4: "4821",
-	location: "krabi",
-	supplementary: false,
-	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-	archived: false,
-	limitGroupId: "pool",
-	...overrides,
-})
-
-const group = (overrides: Partial<LimitGroup> = {}): LimitGroup => ({
-	id: "pool",
-	name: "KBank account",
-	limit: 500_000,
-	...overrides,
-})
-
-test("unassigned names the unarchived cards with no group of their own", () => {
-	const noGroupCard: Card = {
-		id: "nogroup",
-		name: "Card",
-		last4: "0000",
-		location: "krabi",
-		supplementary: false,
-		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-		archived: false,
-	}
-	const oldCard: Card = {
-		id: "old",
-		name: "Card",
-		last4: "0000",
-		location: "krabi",
-		supplementary: false,
-		cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-		archived: true,
-	}
-	const cards = [card(), noGroupCard, card({ id: "ghost", limitGroupId: "deleted" }), oldCard]
-	expect(unassignedCards(cards, [group()]).map((c) => c.id)).toEqual(["nogroup", "ghost"])
+test("no card goes unassigned: every card has a limit group (RD-27)", () => {
+	expect("unassignedCards" in limit).toBe(false)
 })
 
 test("usage level reads within, high from 80% used, and over past the limit", () => {

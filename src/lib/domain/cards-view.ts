@@ -28,8 +28,6 @@ export type CardsFilter = {
 	q: string
 	locations: string[]
 	owners: Owner[]
-	/** Only cards in no stored limit group (none set, or one that no longer exists). */
-	ungrouped: boolean
 }
 
 /** What the Cards page sections its cards by: place (the default), account holder, limit group, or not at all. */
@@ -43,7 +41,6 @@ export const DEFAULT_CARDS_VIEW: CardsView = {
 	q: "",
 	locations: [],
 	owners: [],
-	ungrouped: false,
 	sort: "card",
 	dir: "asc",
 	by: "place",
@@ -76,7 +73,6 @@ function matchesQuery(card: Card, query: string): boolean {
 
 export function matchesCard(card: Card, group: LimitGroup | null, filter: CardsFilter): boolean {
 	if (filter.locations.length > 0 && !filter.locations.includes(card.location)) return false
-	if (filter.ungrouped && group !== null) return false
 	if (filter.owners.length > 0) {
 		const owner = cardOwnerOf(card, group)
 		if (!owner || !filter.owners.includes(owner)) return false
@@ -84,11 +80,11 @@ export function matchesCard(card: Card, group: LimitGroup | null, filter: CardsF
 	return matchesQuery(card, filter.q)
 }
 
-/** One section of the Cards results: a place, an account holder (none: no holder), or a limit group (none: in no stored group). */
+/** One section of the Cards results: a place, an account holder, or a limit group. */
 export type CardsSection =
 	| { key: `place:${string}`; kind: "place"; location: string; cards: Card[] }
-	| { key: `holder:${string}`; kind: "holder"; owner: Owner | null; cards: Card[] }
-	| { key: `limit:${string}`; kind: "limit"; group: LimitGroup | null; cards: Card[] }
+	| { key: `holder:${string}`; kind: "holder"; owner: Owner; cards: Card[] }
+	| { key: `limit:${string}`; kind: "limit"; group: LimitGroup; cards: Card[] }
 
 export type CardsResults = {
 	/** The sections in order, empty ones left out; null when the view is not grouped (`none`). */
@@ -142,7 +138,7 @@ function sortKey(
 
 /**
  * The live cards in sections: places in `locationOrder` (a card kept elsewhere is left out, as
- * before), holders in `OWNERS` order then none, limit groups A to Z (`byGroupName`) then none.
+ * before), holders in `OWNERS` order, limit groups A to Z (`byGroupName`).
  */
 function sectionsOf(
 	by: Exclude<CardsGroup, "none">,
@@ -161,18 +157,18 @@ function sectionsOf(
 			cards: live.filter((c) => c.location === location),
 		}))
 	} else if (by === "holder") {
-		sections = [...OWNERS, null].map((owner) => ({
-			key: `holder:${owner ?? "none"}` as const,
+		sections = OWNERS.map((owner) => ({
+			key: `holder:${owner}` as const,
 			kind: "holder" as const,
 			owner,
 			cards: live.filter((c) => cardOwnerOf(c, groupOf(c)) === owner),
 		}))
 	} else {
-		sections = [...[...groups].sort(byGroupName), null].map((group) => ({
-			key: `limit:${group?.id ?? "none"}` as const,
+		sections = [...groups].sort(byGroupName).map((group) => ({
+			key: `limit:${group.id}` as const,
 			kind: "limit" as const,
 			group,
-			cards: live.filter((c) => (groupOf(c)?.id ?? null) === (group?.id ?? null)),
+			cards: live.filter((c) => c.limitGroupId === group.id),
 		}))
 	}
 	return sections.filter((s) => s.cards.length > 0)
@@ -188,9 +184,11 @@ export function cardsResults(
 	ledgers: ReadonlyMap<string, CardLedger> = new Map(),
 ): CardsResults {
 	const groupById = new Map(groups.map((g) => [g.id, g]))
-	const matches = cards.filter((c) =>
-		matchesCard(c, c.limitGroupId ? (groupById.get(c.limitGroupId) ?? null) : null, view),
-	)
+	// A card in no stored group is invalid data (RD-27): left out, like one kept at no stored place.
+	const matches = cards.flatMap((c) => {
+		const group = c.limitGroupId ? groupById.get(c.limitGroupId) : undefined
+		return group && matchesCard(c, group, view) ? [c] : []
+	})
 	const live = matches.filter((c) => !c.archived)
 	const compare = directed(sortKey(view.sort, rooms, today, ledgers), view.dir, byId)
 	const archived = matches.filter((c) => c.archived).sort(compare)

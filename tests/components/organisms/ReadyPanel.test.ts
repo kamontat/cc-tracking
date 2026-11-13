@@ -26,7 +26,6 @@ type Props = {
 	places: string[]
 	groups: LimitGroup[]
 	today: PlainDate
-	unassigned: number
 }
 
 const show = (props: Partial<Props> = {}) => {
@@ -39,7 +38,6 @@ const show = (props: Partial<Props> = {}) => {
 			groups: [testGroup],
 			places: ["Bangkok", "Krabi"],
 			today: "2026-10-31",
-			unassigned: 0,
 			...props,
 		},
 	})
@@ -123,16 +121,11 @@ test("nothing ready names the next step and offers no list", () => {
 	expect(flat(root.querySelector(".head small"))).toBe("0 cards in Bangkok, Krabi")
 })
 
-test("not-assigned cards are counted", () => {
-	const root = show({ unassigned: 2 })
-	expect(flat(root.querySelector('[data-testid="unassigned"]'))).toContain("2 cards have no limit group yet.")
-	expect(root.querySelector('a[href="/cards?ungrouped=1"]')).not.toBeNull()
-	const one = show({ unassigned: 1 })
-	expect(flat(one)).toContain("1 card has no limit group yet.")
-	const none = show({ unassigned: 0 })
-	expect(none.querySelector('[data-testid="unassigned"]')).toBeNull()
-	const empty = show({ rows: [], unassigned: 3 })
-	expect(flat(empty.querySelector('[data-testid="unassigned"]'))).toContain("3 cards have no limit group yet.")
+test("no line counts cards without a limit group, nor links to assign them (RD-27)", () => {
+	const root = show()
+	expect(root.querySelector('[data-testid="unassigned"]')).toBeNull()
+	expect(root.querySelector('a[href^="/cards?ungrouped"]')).toBeNull()
+	expect(flat(root)).not.toContain("no limit group")
 })
 
 test("reads in Thai", () => {

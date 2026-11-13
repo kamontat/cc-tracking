@@ -17,7 +17,7 @@ const known = (ids: readonly string[], values: string[]): string[] =>
 	[...new Set(values)].filter((value) => ids.includes(value))
 
 /**
- * The Cards page's state from `/cards?q=&loc=&owner=&ungrouped=&sort=&dir=&by=`; unknown values read as
+ * The Cards page's state from `/cards?q=&loc=&owner=&sort=&dir=&by=`; unknown values read as
  * defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`).
  * A `loc` is kept only when it is one of `locationIds`, the stored records' ids.
  */
@@ -29,12 +29,14 @@ export function readCardsView(search: string, locationIds: readonly string[]): C
 		q: p.get("q") ?? "",
 		locations: known(locationIds, p.getAll("loc")),
 		owners: manyOf(OWNERS, p.getAll("owner")),
-		ungrouped: p.get("ungrouped") === "1",
 		sort: field,
 		dir: readDir(p.get("dir"), field, CARDS_DIRS),
 		by: CARDS_GROUPS.includes(p.get("by") as CardsGroup) ? (p.get("by") as CardsGroup) : DEFAULT_CARDS_VIEW.by,
 	}
 }
+
+/** Where the limit groups are listed: the Cards page's groups view. */
+export const LIMITS_ADDRESS = "/cards?view=groups"
 
 /** What the Cards page shows below 900px: the cards, or the limit groups (`?view=groups`). */
 export type CardsShow = "cards" | "groups"
@@ -54,7 +56,6 @@ export function writeCardsView(view: CardsView, show: CardsShow = "cards"): stri
 	if (view.q) p.set("q", view.q)
 	for (const l of view.locations) p.append("loc", l)
 	for (const o of view.owners) p.append("owner", o)
-	if (view.ungrouped) p.set("ungrouped", "1")
 	if (view.sort !== DEFAULT_CARDS_VIEW.sort) p.set("sort", view.sort)
 	if (view.dir !== CARDS_DIRS[view.sort]) p.set("dir", view.dir)
 	if (view.by !== DEFAULT_CARDS_VIEW.by) p.set("by", view.by)

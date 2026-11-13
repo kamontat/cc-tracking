@@ -16,11 +16,11 @@ const freshStorage = memoryStorage
 
 test("rewrites an unrecognised location to the default and names the card", async () => {
 	const repo = new InMemoryRepository()
-	await repo.saveCard(legacyCard("Chiang Mai", { id: "kbank", name: "KBank Visa" }))
+	await repo.saveCard(legacyCard("Chiang Mai", { id: "k1", name: "KBank Visa" }))
 	const storage = freshStorage()
 
 	expect(await migrateLocations(repo, storage)).toEqual(["KBank Visa"])
-	expect((await repo.getCard("kbank"))?.location).toBe("bangkok")
+	expect((await repo.getCard("k1"))?.location).toBe("bangkok")
 })
 
 test("leaves a card that already holds a known location alone", async () => {
@@ -35,7 +35,7 @@ test("leaves a card that already holds a known location alone", async () => {
 
 test("is idempotent: a second run finds nothing", async () => {
 	const repo = new InMemoryRepository()
-	await repo.saveCard(legacyCard("office", { id: "kbank", name: "KBank Visa" }))
+	await repo.saveCard(legacyCard("office", { id: "k1", name: "KBank Visa" }))
 	const storage = freshStorage()
 
 	await migrateLocations(repo, storage)
@@ -103,11 +103,11 @@ test("any other unknown location moves the card to the default record when store
 		name: "Zz Bangkok",
 		takesPurchases: true,
 	})
-	await repo.saveCard(legacyCard("Somewhere", { id: "kbank", name: "KBank Visa" }))
+	await repo.saveCard(legacyCard("Somewhere", { id: "k1", name: "KBank Visa" }))
 	const storage = freshStorage()
 
 	expect(await migrateLocations(repo, storage)).toEqual(["KBank Visa"])
-	expect((await repo.getCard("kbank"))?.location).toBe("bangkok")
+	expect((await repo.getCard("k1"))?.location).toBe("bangkok")
 	expect(JSON.parse(storage.getItem(MIGRATION_KEY) ?? "[]")).toEqual(["KBank Visa"])
 })
 
@@ -126,10 +126,10 @@ test("without the default record, an unknown location moves to the first record 
 			takesPurchases: false,
 		})
 		await repo.saveLocation({ id: "c-loc", name: "ก", takesPurchases: false })
-		await repo.saveCard(legacyCard("Somewhere", { id: "kbank" }))
+		await repo.saveCard(legacyCard("Somewhere", { id: "k1" }))
 
 		await migrateLocations(repo, freshStorage())
-		expect((await repo.getCard("kbank"))?.location).toBe("a-loc")
+		expect((await repo.getCard("k1"))?.location).toBe("a-loc")
 	}
 	setLocale("en")
 })
