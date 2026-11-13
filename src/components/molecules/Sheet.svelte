@@ -238,11 +238,11 @@
 		}
 	}
 
-	dialog[open][data-closing] {
+	dialog[open]:global([data-closing]) {
 		animation: sheet-fall var(--cc-sheet-motion) var(--cc-sheet-ease) forwards;
 	}
 
-	dialog[open][data-closing]::backdrop {
+	dialog[open]:global([data-closing])::backdrop {
 		animation: backdrop-out var(--cc-sheet-motion) var(--cc-sheet-ease) forwards;
 	}
 
@@ -271,7 +271,7 @@
 			animation-name: sheet-grow;
 		}
 
-		dialog[open][data-closing] {
+		dialog[open]:global([data-closing]) {
 			animation-name: sheet-shrink;
 		}
 	}
@@ -279,8 +279,8 @@
 	@media (prefers-reduced-motion: reduce) {
 		dialog[open],
 		dialog[open]::backdrop,
-		dialog[open][data-closing],
-		dialog[open][data-closing]::backdrop {
+		dialog[open]:global([data-closing]),
+		dialog[open]:global([data-closing])::backdrop {
 			animation: none;
 		}
 	}

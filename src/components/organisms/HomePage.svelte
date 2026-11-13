@@ -6,7 +6,7 @@
 	import type { MoneyData } from "#lib/ui/money-data"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
@@ -63,7 +63,7 @@
 	}
 
 	/** The open list, or a bill's card, in the address and history (RD-23). */
-	const panel = new RecordPanel({ address, path: NEEDS_ADDRESS, kinds: ["card", "list"] })
+	const panel = untrack(() => new RecordPanel({ address, path: NEEDS_ADDRESS, kinds: ["card", "list"] }))
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -71,7 +71,7 @@
 		return t(key, params)
 	}
 
-	let now = $state(today(clock()))
+	let now = $state(untrack(() => today(clock())))
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
 	let startupFailure = $state<(() => string) | null>(null)

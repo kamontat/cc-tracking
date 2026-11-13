@@ -5,7 +5,7 @@
 	import type { ShareApi } from "#lib/ui/list-share"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import ListElsewhere from "#components/organisms/ListElsewhere.svelte"
@@ -59,7 +59,7 @@
 		return t(key, params)
 	}
 
-	const id = listKey(address.search())
+	const id = untrack(() => listKey(address.search()))
 	/** The stored list, once read; null when there is none by that id. */
 	let list = $state.raw<PurchaseList | null | undefined>(undefined)
 	let startupFailure = $state<(() => string) | null>(null)

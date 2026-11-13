@@ -7,7 +7,7 @@
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, untrack } from "svelte"
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
@@ -58,7 +58,7 @@
 	}
 
 	/** The open list, or a line's card, in the address and history (RD-23). */
-	const panel = new RecordPanel({ address, path: LISTS_ADDRESS, kinds: ["card", "list"] })
+	const panel = untrack(() => new RecordPanel({ address, path: LISTS_ADDRESS, kinds: ["card", "list"] }))
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -66,10 +66,10 @@
 		return t(key, params)
 	}
 
-	const now = today(clock())
+	const now = untrack(() => today(clock()))
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
-	let view = $state.raw<ListsView>(readListsView(address.search()))
+	let view = $state.raw<ListsView>(untrack(() => readListsView(address.search())))
 	let sheetOpen = $state(false)
 	let sheetTab = $state<SheetTab>("filter")
 	/** Why the store would not open, re-read in the reader's language. */

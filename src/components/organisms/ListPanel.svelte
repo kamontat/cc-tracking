@@ -56,7 +56,7 @@
 		return t(key, params)
 	}
 
-	const now = today(clock())
+	const now = untrack(() => today(clock()))
 	let repo = $state.raw<Repository | null>(null)
 	const view = $derived(panel.view?.kind === "list" ? panel.view : null)
 	const wanted = $derived(view?.id ?? null)

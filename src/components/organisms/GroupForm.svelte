@@ -219,6 +219,7 @@
 	</label>
 	<fieldset>
 		<legend id={ownerLegend}>{tr("limits.owner")}</legend>
+		<!-- svelte-ignore a11y_interactive_supports_focus -- roving tabindex: the checked radio takes the tab stop, not the group -->
 		<div
 			class="seg"
 			role="radiogroup"
@@ -246,6 +247,7 @@
 	<fieldset>
 		<legend id={colorLegend}>{tr("limits.color")}</legend>
 		<div class="swatch-row">
+			<!-- svelte-ignore a11y_interactive_supports_focus -- roving tabindex: the checked radio takes the tab stop, not the group -->
 			<div
 				class="swatches"
 				role="radiogroup"

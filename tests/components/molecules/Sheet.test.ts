@@ -165,7 +165,8 @@ test("a held sheet that the browser closes anyway opens again", async () => {
 
 test("the closing slide and fade are in its styles, and stand down under reduced motion", async () => {
 	const source = await Bun.file("src/components/molecules/Sheet.svelte").text()
-	expect(source).toMatch(/dialog\[open\]\[data-closing\]/)
+	// `data-closing` is set from script, so the selector marks it global for Svelte to keep it.
+	expect(source).toMatch(/dialog\[open\]:global\(\[data-closing\]\)/)
 	expect(source).toMatch(/@keyframes sheet-fall/)
 	expect(source).toMatch(/@keyframes backdrop-out/)
 	expect(source).toMatch(/prefers-reduced-motion[\s\S]*data-closing/)
