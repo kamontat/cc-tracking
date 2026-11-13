@@ -217,6 +217,9 @@ export const th: Catalog = {
 	"about.commit": "commit",
 	"about.changelog": "บันทึกการเปลี่ยนแปลง",
 	"about.whatsNew": "มีอะไรใหม่",
+	"about.refresh": "บังคับรีเฟรช",
+	"about.refreshHint": "โหลดเวอร์ชันล่าสุดแล้วรีเฟรช ข้อมูลของคุณยังอยู่ครบ",
+	"about.refreshAction": "รีเฟรช",
 
 	"relative.today": "วันนี้",
 	"relative.inDays": "อีก {days} วัน",

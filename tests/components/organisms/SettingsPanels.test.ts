@@ -786,3 +786,32 @@ describe("the locations and owners panels (RD-17, RD-30)", () => {
 		expect(root.querySelectorAll(".detail-panel .record-row[data-owner]")).toHaveLength(3)
 	})
 })
+
+test("About ends in a Force refresh row that fetches the newest version and reloads", async () => {
+	let refreshes = 0
+	document.body.innerHTML = ""
+	history = fakeHistory("/settings")
+	mounted = mount(SettingsPanels, {
+		target: document.body,
+		props: {
+			open: async () => ({ ok: true as const, repo: new InMemoryRepository() }),
+			address: history.bar,
+			about: slot('<dl data-slot="about"></dl>'),
+			refresh: () => {
+				refreshes += 1
+			},
+		},
+	})
+	await settle()
+	const root = document.body
+	const panelRows = [...root.querySelectorAll('[data-section="about"] .set > *')]
+	expect(panelRows.at(-1)?.getAttribute("data-row")).toBe("refresh")
+	expect(flat(row(root, "refresh"))).toContain("Force refresh")
+	expect(flat(row(root, "refresh"))).toContain("Get the newest version and reload. Your data stays.")
+	expect(row(root, "refresh").tagName).toBe("BUTTON")
+	await press(row(root, "refresh"))
+	expect(refreshes).toBe(1)
+	setLocale("th")
+	await settle()
+	expect(flat(row(root, "refresh"))).not.toContain("Force refresh")
+})

@@ -208,6 +208,9 @@ export const en = {
 	"about.commit": "Commit",
 	"about.changelog": "Changelog",
 	"about.whatsNew": "What's new",
+	"about.refresh": "Force refresh",
+	"about.refreshHint": "Get the newest version and reload. Your data stays.",
+	"about.refreshAction": "Refresh",
 
 	"relative.today": "today",
 	"relative.inDays": "in {days} days",

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest"
 
-import { watchForUpdates } from "#lib/offline/register"
+import { forceRefresh, watchForUpdates } from "#lib/offline/register"
 
 /** A service worker in a given state, which can move on and announce it as the browser's does. */
 class FakeWorker extends EventTarget {
@@ -118,4 +118,42 @@ test("looks for a new version on each page the reader opens", async () => {
 	const { events } = await watch(container)
 	events.dispatchEvent(new Event("astro:page-load"))
 	expect(container.registration.update).toHaveBeenCalledTimes(1)
+})
+
+describe("force refresh", () => {
+	test("drops every worker and cached file, then reloads", async () => {
+		const done: string[] = []
+		const registrations = ["a", "b"].map((name) => ({
+			unregister: vi.fn(async () => {
+				done.push(`unregister ${name}`)
+				return true
+			}),
+		}))
+		const container = { getRegistrations: vi.fn(async () => registrations) }
+		const caches = {
+			keys: vi.fn(async () => ["v1", "v2"]),
+			delete: vi.fn(async (key: string) => {
+				done.push(`delete ${key}`)
+				return true
+			}),
+		}
+		const reload = vi.fn(() => done.push("reload"))
+		await forceRefresh({ container, caches, reload })
+		expect(done.slice(0, -1).sort()).toEqual(["delete v1", "delete v2", "unregister a", "unregister b"])
+		expect(done.at(-1)).toBe("reload")
+	})
+
+	test("reloads in a browser with no service workers or caches", async () => {
+		const reload = vi.fn()
+		await forceRefresh({ container: undefined, caches: undefined, reload })
+		expect(reload).toHaveBeenCalledTimes(1)
+	})
+
+	test("still reloads when clearing fails", async () => {
+		const reload = vi.fn()
+		const container = { getRegistrations: vi.fn(async () => Promise.reject(new Error("blocked"))) }
+		const caches = { keys: vi.fn(async () => Promise.reject(new Error("blocked"))), delete: vi.fn() }
+		await forceRefresh({ container, caches, reload })
+		expect(reload).toHaveBeenCalledTimes(1)
+	})
 })
