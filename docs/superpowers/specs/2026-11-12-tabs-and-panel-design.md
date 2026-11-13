@@ -72,6 +72,28 @@ is open, and the save button stays in view at its foot.
 record, ×, Escape or the backdrop asks first (_Discard your changes?_) once a field has changed.
 Back leaves without asking, as leaving a page does today (no page guards a form now).
 
+### _+ New_ and the list pages
+
+- The floating _+ New_ (DD-104) stays on every tab, with two items: _New list_ and _Pay a card_.
+  It is hidden on the list pages, which are a task of their own with a footer of their own.
+- **_New list_** goes to `/lists/new`, a full page (not a panel), and the tab bar lights
+  Transactions, whose _Lists_ tab holds every list. The page is today's builder (DD-195): a
+  sub-header with ‹ (Back), the lines, _+ Add a card_, and a footer with the total, _Save as
+  draft_ and _Review_. Its add-a-card sheet keeps DD-195's keys: _+ Add a card_ pushes `add=1`
+  (the picker), picking a card rewrites it to `open=<card id>`, and _Add to list_, _Remove from
+  list_, _Done_ or × close it by stepping back over its entry, writing the cards into `cards`.
+  On a desktop the sheet is a dialog in the middle, as today.
+- A card's _Use on a list_ starts one with that card: `/lists/new?cards=<id>`.
+- A draft's _Continue_ and a waiting list's _Enter reply_ (in the list's panel) go to
+  `/lists/edit?list=<id>`: the builder on the draft, or the reply. A saved list has no edit page;
+  its panel is all there is.
+- Saving leaves with `location.replace`, as today, but for `/?list=<id>`: Home's _Needs you_ with
+  the list just written open in the panel (today it is `/` alone), so the reader sees what was
+  saved, and Back does not reopen the builder.
+- **_Pay a card_** goes to Home's _Owed_ tab (`/owed`, decision 6), where each bill has _Pay_,
+  which opens the card's pay form in the panel. A card that owes nothing is paid from its
+  panel's _Pay_.
+
 ## Decisions to settle
 
 Each has a recommendation, drawn in the mockup.
