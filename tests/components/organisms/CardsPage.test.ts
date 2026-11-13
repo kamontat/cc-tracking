@@ -2,7 +2,7 @@ import type { Card, LimitGroup } from "#lib/domain/types"
 import type { AddressBar } from "#lib/ui/address-bar"
 
 import { flushSync, mount, unmount } from "svelte"
-import { afterEach, expect, test } from "vitest"
+import { afterEach, describe, expect, test } from "vitest"
 
 import CardsPage from "#components/organisms/CardsPage.svelte"
 import { toGroupColor } from "#lib/domain/group-color"
@@ -47,7 +47,11 @@ const fakeBar = (start: string) => {
 	const entries = [start]
 	let at = 0
 	const calls: string[] = []
-	let pop = () => {}
+	// Every listener hears each pop, as `popstate` reaches each: the page's and its panel's.
+	const listeners = new Set<() => void>()
+	const pop = () => {
+		for (const listener of [...listeners]) listener()
+	}
 	const bar: AddressBar = {
 		search: () => {
 			const entry = entries[at] ?? ""
@@ -64,9 +68,9 @@ const fakeBar = (start: string) => {
 			entries[at] = url
 		},
 		onPop: (listener) => {
-			pop = listener
+			listeners.add(listener)
 			return () => {
-				pop = () => {}
+				listeners.delete(listener)
 			}
 		},
 		length: () => entries.length,
@@ -240,6 +244,85 @@ test("the heading names the page and links Add card to the new card form", async
 	const add = $<HTMLAnchorElement>('a[data-action="add-card"]')
 	expect(add?.getAttribute("href")).toBe("/card/new")
 	expect(flat(add)).toBe("Add card")
+})
+
+describe("the card panel (RD-23, RD-24)", () => {
+	const panel = () => $("aside.detail-panel")
+	const panelTitle = () => flat($(".detail-panel__head h2"))
+	const tile = (id: string) => `.cards-body a.tile[data-card="${id}"]`
+	// Card ids in their format (RD-28), which the address reads.
+	const withPanelCards = {
+		before: async (repo: Repository) => {
+			await repo.saveCard(card("12.3"))
+			await repo.saveCard(card("7", { location: "bangkok", limitGroupId: "g2" }))
+		},
+	}
+
+	test("a tile opens its card's panel beside the list, pushing the address", async () => {
+		const { address } = await setup("/cards?q=card", withPanelCards)
+		expect(panel()).toBeNull()
+		expect($(".panel-layout")?.hasAttribute("data-panel")).toBe(false)
+		await press(tile("12.3"))
+		expect(address.calls).toEqual(["push /cards?q=card&card=12.3"])
+		expect(panelTitle()).toBe("12.3 card · KC (1234)")
+		expect($(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+		expect($(tile("12.3"))?.getAttribute("aria-current")).toBe("true")
+	})
+
+	test("another tile swaps the panel in place, and Back closes it", async () => {
+		const { address } = await setup("/cards", withPanelCards)
+		await press(tile("12.3"))
+		await press(tile("7"))
+		expect(address.calls).toEqual(["push /cards?card=12.3", "replace /cards?card=7"])
+		expect(panelTitle()).toBe("7 card · NT (1234)")
+		address.bar.back()
+		await settle()
+		expect(panel()).toBeNull()
+		expect(address.now()).toBe("/cards")
+	})
+
+	test("× closes it by stepping back over its entry", async () => {
+		const { address } = await setup("/cards", withPanelCards)
+		await press(tile("12.3"))
+		await press('[data-action="close-panel"]')
+		expect(address.calls.at(-1)).toBe("back")
+		expect(panel()).toBeNull()
+	})
+
+	test("a pasted address opens the panel at once; an unknown card opens nothing", async () => {
+		await setup("/cards?card=7", withPanelCards)
+		expect(panelTitle()).toBe("7 card · NT (1234)")
+		const { address } = await setup("/cards?sort=room&card=99", withPanelCards)
+		expect(panel()).toBeNull()
+		expect(address.now()).toBe("/cards?sort=room")
+	})
+
+	test("a search typed with the panel open keeps the card in the address", async () => {
+		const { address } = await setup("/cards?card=12.3", withPanelCards)
+		const search = $<HTMLInputElement>('.cards-body input[type="search"]')
+		if (!search) throw new Error("no search")
+		search.value = "B"
+		search.dispatchEvent(new Event("input", { bubbles: true }))
+		await settle()
+		expect(address.now()).toBe("/cards?q=B&card=12.3")
+		expect(panel()).not.toBeNull()
+	})
+
+	test("Add card opens a blank card form in the panel, the address unchanged", async () => {
+		const { address } = await setup("/cards?q=card", withPanelCards)
+		await press('a[data-action="add-card"]')
+		expect(address.calls).toEqual(["push /cards?q=card"])
+		expect(panelTitle()).toBe("New card")
+		expect($(".detail-panel form.card-form")).not.toBeNull()
+	})
+
+	test("a write in the panel reads the list again", async () => {
+		const { repo } = await setup("/cards?card=12.3", withPanelCards)
+		await press(".detail-panel__head button.more")
+		await press('.detail-panel__head [data-action="archive"]')
+		expect((await repo.getCard("12.3"))?.archived).toBe(true)
+		expect($('details.archive a[data-card="12.3"]')).not.toBeNull()
+	})
 })
 
 test("the header: title and switch on one row, the add button for the view under them", async () => {

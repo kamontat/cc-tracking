@@ -27,13 +27,15 @@
 		credit: number
 		/** The group's colour name (`tileTone`); left out, the tile wears none. */
 		tone?: GroupColor | undefined
-		/** The card page to open; left out, the tile is a button. */
+		/** The card's panel to open; left out, the tile is a button. */
 		href?: string | undefined
+		/** The card open in the detail panel now (`aria-current`). */
+		current?: boolean | undefined
 		/** The picker's toggle state, as `aria-pressed`; only on the button form. */
 		pressed?: boolean | undefined
 		/** The tile's accessible name, when its text alone does not say enough. */
 		label?: string | undefined
-		onclick?: (() => void) | undefined
+		onclick?: ((event: MouseEvent) => void) | undefined
 		/** Line 1, before `id) name`: the picker's tick. */
 		lead?: Snippet | undefined
 		/** Line 1, at the right: the last 4 (`mono`) or who holds the card. */
@@ -64,6 +66,7 @@
 		credit,
 		tone,
 		href,
+		current,
 		pressed,
 		label,
 		onclick,
@@ -142,7 +145,16 @@
 {/snippet}
 
 {#if href !== undefined}
-	<a class="tile" data-g={tone} data-card={card.id} aria-label={label} {href} {onclick}>{@render body()}</a>
+	<a
+		class="tile"
+		data-g={tone}
+		data-card={card.id}
+		aria-label={label}
+		aria-current={current ? "true" : undefined}
+		{href}
+		{onclick}
+		>{@render body()}</a
+	>
 {:else}
 	<button
 		type="button"

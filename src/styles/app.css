@@ -1998,6 +1998,34 @@ a:any-link:hover {
 }
 
 /*
+ * A page with a detail panel (RD-23, `DetailPanel`): the list alone, and from 900px, while a
+ * record is open, the list narrowed beside the panel's column. Below 900px the panel is a sheet
+ * over the list, so the list keeps the width.
+ */
+.panel-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+	gap: var(--cc-space-5);
+	align-items: start;
+}
+
+@media (min-width: 900px) {
+	.panel-layout[data-panel] {
+		grid-template-columns: minmax(0, 1fr) var(--cc-detail-panel);
+	}
+
+	/* Until Limits is its own tab, the groups step aside while a card's panel is open, so the
+	   cards keep their room. */
+	.panel-layout[data-panel] .cards-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.panel-layout[data-panel] .cards-grid[data-show] > .cards-groups {
+		display: none;
+	}
+}
+
+/*
  * The card page (prototype `vCard`): one narrow column -- the sub-header with *Edit*, badges,
  * the hero and stats (CardHero), the comment, the two actions side by side, then the
  * statements and *Show older statements*.
@@ -2007,7 +2035,8 @@ a:any-link:hover {
 	gap: var(--cc-space-4);
 }
 
-.card-page a.btn {
+.card-page a.btn,
+.card-detail a.btn {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -2023,18 +2052,21 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-sm);
 }
 
-.card-page a.btn:hover {
+.card-page a.btn:hover,
+.card-detail a.btn:hover {
 	text-decoration: none;
 	background: var(--cc-accent-hover);
 }
 
-.card-page a.btn[data-variant="quiet"] {
+.card-page a.btn[data-variant="quiet"],
+.card-detail a.btn[data-variant="quiet"] {
 	color: var(--cc-text);
 	background: var(--cc-surface-sunken);
 	border-color: var(--cc-border);
 }
 
-.card-page a.btn[data-variant="quiet"]:hover {
+.card-page a.btn[data-variant="quiet"]:hover,
+.card-detail a.btn[data-variant="quiet"]:hover {
 	background: var(--cc-border);
 }
 
@@ -2117,9 +2149,46 @@ a:any-link:hover {
 	margin-block-start: var(--cc-space-2);
 }
 
-.card-page .card-statements h2 {
+.card-page .card-statements h2,
+.card-detail .card-statements h2 {
 	font-size: var(--cc-text-md);
 	font-weight: 700;
+}
+
+/* A form in the detail panel (RD-24): its save stays in view at the panel's foot. */
+.detail-panel__body .card-form .actions,
+.detail-panel__body .purchase-form .actions,
+.detail-panel__body .pay-actions {
+	position: sticky;
+	bottom: 0;
+	padding-block: var(--cc-space-3) calc(var(--cc-space-3) + env(safe-area-inset-bottom, 0px));
+	background: var(--cc-bg);
+}
+
+@media (min-width: 900px) {
+	.detail-panel__body .card-form .actions,
+	.detail-panel__body .purchase-form .actions,
+	.detail-panel__body .pay-actions {
+		background: var(--cc-surface);
+	}
+}
+
+/* The card's panel (RD-23): the card page's sections in the panel's column, which is a phone's
+   width at every size, so the actions keep the phone's two rows. */
+.card-detail {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cc-space-4);
+	min-inline-size: 0;
+}
+
+.card-detail .card-actions {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card-detail .card-actions > :first-child,
+.card-detail .card-actions > :last-child:nth-child(2) {
+	grid-column: 1 / -1;
 }
 
 .card-statements button[data-action="show-older"] {

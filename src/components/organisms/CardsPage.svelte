@@ -13,6 +13,7 @@
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
+	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import CardsFilter from "#components/organisms/CardsFilter.svelte"
 	import CardsList from "#components/organisms/CardsList.svelte"
 	import GroupPanels from "#components/organisms/GroupPanels.svelte"
@@ -36,6 +37,7 @@
 	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
+	import { RecordPanel } from "#lib/ui/record-panel.svelte"
 	import { sortOrderLabel } from "#lib/ui/sort-label"
 	import { openRepository } from "#lib/ui/startup"
 
@@ -49,6 +51,13 @@
 	 * Close steps back over an entry the page pushed, else rewrites the address without the group
 	 * (DD-102). A save or delete closes the sheet only once written; a failed one keeps it, and
 	 * what was typed, with the reason. Everything here is the reader's data (PRD DD-172).
+	 *
+	 * A card opens in its detail panel (RD-23, `CardPanel`) at `?card=<id>`, beside the list from
+	 * 900px and over it below: a tile's click shows it (pushing from nothing, else rewriting the
+	 * entry), and *Add card* opens a blank card form there with the address unchanged. Every
+	 * address the page writes keeps the open card (`panel.keep`); a write in the panel reads the
+	 * list again. While the panel is open from 900px, *Limit groups* steps aside so the cards keep
+	 * their room (until Limits is its own tab).
 	 */
 	interface Props {
 		/** Opens the store; tests pass one over an in-memory repository. */
@@ -72,6 +81,16 @@
 	}: Props = $props()
 
 	const SHOWS: readonly CardsShow[] = ["cards", "groups"]
+
+	/** The store, opened once for the page and its card panel. */
+	let opening: Promise<Opened> | null = null
+	const openOnce = () => {
+		opening ??= open()
+		return opening
+	}
+
+	/** The card panel's place in the address and history (RD-23). */
+	const panel = new RecordPanel({ address, path: "/cards", kinds: ["card"] })
 
 	/** Everything the page draws from, read once per load. */
 	type CardsData = { money: MoneyData; rooms: CardsRooms; credits: Map<string, number> }
@@ -142,7 +161,7 @@
 	})
 
 	const sheetAddress = (group: string | typeof NEW_GROUP | null) =>
-		`/cards${groupSheetAddress(writeCardsView(view, show), group)}`
+		panel.keep(`/cards${groupSheetAddress(writeCardsView(view, show), group)}`)
 
 	/** Reads the address after it changed under the page. */
 	const readAddress = () => {
@@ -284,6 +303,7 @@
 		const unsubscribe = subscribe(() => {
 			lang = getLocale()
 		})
+		const stopPanel = panel.start()
 		const removePop = address.onPop(() => {
 			// Read the new entry even while a write is under way, so the write's close knows what is
 			// still open and never steps back past this page.
@@ -295,7 +315,7 @@
 			pushed = openedOnce && sheetId !== null
 		})
 		void (async () => {
-			const opened = await open()
+			const opened = await openOnce()
 			if (!opened.ok) {
 				startupFailure = opened.message
 				return
@@ -306,104 +326,120 @@
 		return () => {
 			unsubscribe()
 			removePop()
+			stopPanel()
 		}
 	})
 </script>
 
-<div class="cards-grid" data-show={show}>
-	<div class="cards-main">
-		<div class="cards-head">
-			<h1>{tr("cards.title")}</h1>
-			<fieldset class="tx-switch cards-switch">
-				{#each SHOWS as name (name)}
-					<button
-						type="button"
-						data-view={name}
-						data-variant="quiet"
-						aria-pressed={show === name}
-						onclick={() => choose(name)}>
-						{tr(`cards.view.${name}`)}
-					</button>
-				{/each}
-			</fieldset>
-			<div class="cards-adds">
-				<a class="cards-add" data-action="add-card" href="/card/new"><SvgIcon name="plus" />{tr("cards.page.add")}</a>
-				{#if show === "groups"}
-					<button
-						type="button"
-						class="cards-add-group"
-						data-variant="quiet"
-						data-action="add-group"
-						onclick={() => openSheet(NEW_GROUP)}>
-						<SvgIcon name="plus" />{tr("cards.group.add")}
-					</button>
-				{/if}
-			</div>
-		</div>
-		{#if !sheetFailed && !busy}
-			<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
-		{/if}
-		{#if resetNames.length > 0}
-			<article data-testid="location-reset">
-				<p>{tr("cards.locationReset", { names: resetNames.join(", ") })}</p>
-				<button
-					data-variant="quiet"
-					type="button"
-					onclick={() => {
-						resetNames = []
-					}}>
-					{tr("common.dismiss")}
-				</button>
-			</article>
-		{/if}
-		{#if data && results}
-			<div class="cards-body">
-				<FilterControls
-					q={view.q}
-					placeholder={tr("cards.searchPlaceholder")}
-					onsearch={(q: string) => change({ q })}
-					onopen={(tab: SheetTab) => {
-						sheetTab = tab
-						filterOpen = true
-					}}
-					count={chips.length}
-					sort={sortLabel}
-					group={groupLabel}
-					{chips} />
-				<CardsList
-					{results}
-					groups={data.money.groups}
-					rooms={data.rooms}
-					credits={data.credits}
-					ledgers={data.money.ledgers}
-					locations={data.money.locations}
-					total={data.money.cards.length}
-					today={now} />
-				{#if filterOpen}
-					<CardsFilter
-						tab={sheetTab}
-						view={{ ...view }}
-						locations={data.money.locations}
-						count={countFor}
-						onapply={(next: CardsView) => {
-							filterOpen = false
-							change({ ...next })
+<div class="panel-layout" data-panel={panel.open ? "" : undefined}>
+	<div class="cards-grid" data-show={show}>
+		<div class="cards-main">
+			<div class="cards-head">
+				<h1>{tr("cards.title")}</h1>
+				<fieldset class="tx-switch cards-switch">
+					{#each SHOWS as name (name)}
+						<button
+							type="button"
+							data-view={name}
+							data-variant="quiet"
+							aria-pressed={show === name}
+							onclick={() => choose(name)}>
+							{tr(`cards.view.${name}`)}
+						</button>
+					{/each}
+				</fieldset>
+				<div class="cards-adds">
+					<a
+						class="cards-add"
+						data-action="add-card"
+						href="/card/new"
+						onclick={(event: MouseEvent) => {
+							if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+							event.preventDefault()
+							panel.blank("card")
 						}}
-						onclose={() => {
-							filterOpen = false
-						}} />
-				{/if}
+						><SvgIcon name="plus" />{tr("cards.page.add")}</a
+					>
+					{#if show === "groups"}
+						<button
+							type="button"
+							class="cards-add-group"
+							data-variant="quiet"
+							data-action="add-group"
+							onclick={() => openSheet(NEW_GROUP)}>
+							<SvgIcon name="plus" />{tr("cards.group.add")}
+						</button>
+					{/if}
+				</div>
 			</div>
+			{#if !sheetFailed && !busy}
+				<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
+			{/if}
+			{#if resetNames.length > 0}
+				<article data-testid="location-reset">
+					<p>{tr("cards.locationReset", { names: resetNames.join(", ") })}</p>
+					<button
+						data-variant="quiet"
+						type="button"
+						onclick={() => {
+							resetNames = []
+						}}>
+						{tr("common.dismiss")}
+					</button>
+				</article>
+			{/if}
+			{#if data && results}
+				<div class="cards-body">
+					<FilterControls
+						q={view.q}
+						placeholder={tr("cards.searchPlaceholder")}
+						onsearch={(q: string) => change({ q })}
+						onopen={(tab: SheetTab) => {
+							sheetTab = tab
+							filterOpen = true
+						}}
+						count={chips.length}
+						sort={sortLabel}
+						group={groupLabel}
+						{chips} />
+					<CardsList
+						{results}
+						groups={data.money.groups}
+						rooms={data.rooms}
+						credits={data.credits}
+						ledgers={data.money.ledgers}
+						locations={data.money.locations}
+						total={data.money.cards.length}
+						today={now}
+						current={panel.record?.id ?? null}
+						onopen={(id: string) => panel.show({ kind: "card", id })} />
+					{#if filterOpen}
+						<CardsFilter
+							tab={sheetTab}
+							view={{ ...view }}
+							locations={data.money.locations}
+							count={countFor}
+							onapply={(next: CardsView) => {
+								filterOpen = false
+								change({ ...next })
+							}}
+							onclose={() => {
+								filterOpen = false
+							}} />
+					{/if}
+				</div>
+			{/if}
+		</div>
+		{#if data}
+			<aside class="cards-groups">
+				<GroupPanels
+					panels={groupPanels(data.money.groups, data.money.cards, data.rooms)}
+					onopengroup={(id: string) => openSheet(id)}
+					onaddgroup={() => openSheet(NEW_GROUP)} />
+			</aside>
 		{/if}
 	</div>
-	{#if data}
-		<aside class="cards-groups">
-			<GroupPanels
-				panels={groupPanels(data.money.groups, data.money.cards, data.rooms)}
-				onopengroup={(id: string) => openSheet(id)}
-				onaddgroup={() => openSheet(NEW_GROUP)} />
-		</aside>
-	{/if}
+	<CardPanel {panel} open={openOnce} {clock} onchange={() => void page.load()} />
 </div>
 {#if data && sheetGroup !== undefined}
 	{@const group = sheetGroup}

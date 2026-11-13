@@ -165,3 +165,8 @@ test("a foot adds a last line under the facts, across the tile", () => {
 	expect(tile.querySelector(".facts + .foot")).toBe(foot)
 	expect(show({}).querySelector(".foot")).toBeNull()
 })
+
+test("the card open in the detail panel is marked current", () => {
+	expect(show({ href: "/cards?card=A", current: true }).getAttribute("aria-current")).toBe("true")
+	expect(show({ href: "/cards?card=A" }).hasAttribute("aria-current")).toBe(false)
+})

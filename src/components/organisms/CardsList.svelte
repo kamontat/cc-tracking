@@ -14,13 +14,14 @@
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { lastFour, tileTone } from "#lib/ui/card-tile"
 	import { panelOpen, rememberPanel } from "#lib/ui/panel"
+	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
 	 * The Cards page's results (DD prototype `cardResults`), in sections (DD-192): by place, a
 	 * section per location headed by its name, its count and whether it takes purchases; by account
 	 * holder or limit group, a section per holder or group headed by it and its count; not grouped,
 	 * one flat list headed by its count. Outside the place sections the tiles also say the place. Archived matches fold at the end
-	 * (`cc:panel:cards-archive`). Each card is a card tile (DD-151) that opens its card page: the
+	 * (`cc:panel:cards-archive`). Each card is a card tile (DD-151) that opens its card's panel (RD-23): the
 	 * last 4, the group's room and its word, the cardholder (`· Sub` for a supplementary card),
 	 * and the open period's dates.
 	 */
@@ -39,6 +40,13 @@
 		total?: number
 		/** Today, which picks each card's open period for the tile's close and due dates. */
 		today?: PlainDate
+		/**
+		 * Opens a card's panel in place (RD-23): a plain click on a tile calls it instead of
+		 * following the link; a click with a modifier (a new tab) is left to the browser.
+		 */
+		onopen?: ((id: string) => void) | undefined
+		/** The card open in the panel now, marked on its tile. */
+		current?: string | null | undefined
 	}
 
 	const {
@@ -50,6 +58,8 @@
 		locations = [],
 		total = 0,
 		today = todayOf(new Date()),
+		onopen,
+		current = null,
 	}: Props = $props()
 
 	const ARCHIVE_PANEL = "cards-archive"
@@ -102,6 +112,13 @@
 		return place ? `${dates(card)} · ${place}` : dates(card)
 	}
 
+	/** A tile's click: the panel opens in place, unless the reader asked the browser for a new tab. */
+	const opener = (id: string) => (event: MouseEvent) => {
+		if (!onopen || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+		event.preventDefault()
+		onopen(id)
+	}
+
 	onMount(() =>
 		subscribe(() => {
 			lang = getLocale()
@@ -114,7 +131,9 @@
 		{#each cards as card (card.id)}
 			<CardTile
 				{card}
-				href={`/card?id=${encodeURIComponent(card.id)}`}
+				href={withRecord("/cards", { kind: "card", id: card.id })}
+				current={card.id === current}
+				onclick={opener(card.id)}
 				tone={tileTone(card, groups)}
 				room={(card.limitGroupId ? rooms.get(card.limitGroupId) : null) ?? null}
 				credit={credits.get(card.id) ?? 0}
