@@ -5,7 +5,7 @@
 	import type { NameProblem } from "#lib/ui/location-names"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, tick } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import { canDeleteLocation, locationId, renameLocation } from "#lib/domain/locations"
@@ -135,9 +135,24 @@
 		} else if (event.key === "Escape") onCancelName()
 	}
 
+	/** Focuses the button `action` on record `id`'s row once the swap has drawn (UI-09). */
+	const focusOn = async (id: string, action: string) => {
+		await tick()
+		document
+			.querySelector<HTMLElement>(`.record-row[data-location="${CSS.escape(id)}"] [data-action="${action}"]`)
+			?.focus()
+	}
+
+	/** *Delete* swaps in place for the asking *Delete* and *Cancel*, focus following. */
 	const onDelete = (id: string) => {
 		deleting = id
 		renaming = null
+		void focusOn(id, "confirm-delete")
+	}
+
+	const onCancelDelete = (id: string) => {
+		deleting = null
+		void focusOn(id, "delete")
 	}
 
 	/** The question stays open until the delete goes through. */
@@ -212,41 +227,41 @@
 							{#if renaming.problem}
 								<p class="record-error" id={errorId} role="alert">{why(renaming.problem)}</p>
 							{/if}
-						{:else if deleting === record.id}
-							<div class="set-ask">
-								<p class="set-ask__note">{tr("locations.deleteAsk", { name })}</p>
-								<div class="set-ask__actions">
-									<button
-										type="button"
-										data-variant="quiet"
-										data-action="cancel-delete"
-										onclick={() => {
-											deleting = null
-										}}>
-										{tr("common.cancel")}
-									</button>
-									<button
-										type="button"
-										data-variant="danger"
-										data-action="confirm-delete"
-										onclick={() => onConfirmDelete(record.id)}>
-										{tr("common.delete")}
-									</button>
-								</div>
-							</div>
 						{:else}
 							<div class="record-row__line">
 								<span class="record-row__text">
 									<strong>{name}</strong>
 									<small>{count === 1 ? tr("cards.page.count.one") : tr("cards.page.count.many", { count })}</small>
 								</span>
-								<button type="button" data-variant="quiet" data-action="rename" onclick={() => onRename(record)}>
-									{tr("locations.rename")}
-								</button>
-								{#if locations.length > 1 && canDeleteLocation(record.id, cards)}
-									<button type="button" data-variant="danger" data-action="delete" onclick={() => onDelete(record.id)}>
+								{#if deleting === record.id}
+									<button
+										type="button"
+										data-variant="danger"
+										data-action="confirm-delete"
+										aria-label={tr("locations.deleteAsk", { name })}
+										onclick={() => onConfirmDelete(record.id)}>
 										{tr("common.delete")}
 									</button>
+									<button
+										type="button"
+										data-variant="quiet"
+										data-action="cancel-delete"
+										onclick={() => onCancelDelete(record.id)}>
+										{tr("common.cancel")}
+									</button>
+								{:else}
+									<button type="button" data-variant="quiet" data-action="rename" onclick={() => onRename(record)}>
+										{tr("locations.rename")}
+									</button>
+									{#if locations.length > 1 && canDeleteLocation(record.id, cards)}
+										<button
+											type="button"
+											data-variant="danger"
+											data-action="delete"
+											onclick={() => onDelete(record.id)}>
+											{tr("common.delete")}
+										</button>
+									{/if}
 								{/if}
 							</div>
 						{/if}

@@ -137,11 +137,26 @@ test("the last owner has no Delete", async () => {
 	expect(action(row(root, "KC"), "delete")).toBeNull()
 })
 
-test("Delete asks once inline; Cancel keeps it, Delete removes it", async () => {
+test("Delete swaps in place for Delete and Cancel on the row's line, focus following; Cancel keeps it, Delete removes it", async () => {
 	const { repo, root } = await setup()
 	await click(row(root, "RI"), "delete")
-	expect(flat(row(root, "RI"))).toContain("Delete RI?")
+	const line = row(root, "RI").querySelector(".record-row__line")
+	// The name and its count stay; the row's buttons are now the asking pair, and nothing else.
+	expect(flat(line?.querySelector(".record-row__text"))).toContain("RI")
+	expect([...(line?.querySelectorAll("button") ?? [])].map((b) => b.getAttribute("data-action"))).toEqual([
+		"confirm-delete",
+		"cancel-delete",
+	])
+	expect(root.querySelector(".set-ask")).toBeNull()
+	const confirm = action(row(root, "RI"), "confirm-delete")
+	expect(confirm?.getAttribute("data-variant")).toBe("danger")
+	expect(confirm?.getAttribute("aria-label")).toBe("Delete RI?")
+	expect(document.activeElement).toBe(confirm)
+	expect(await stored(repo, "RI")).toBeDefined()
+
 	await click(row(root, "RI"), "cancel-delete")
+	expect(action(row(root, "RI"), "confirm-delete")).toBeNull()
+	expect(document.activeElement).toBe(action(row(root, "RI"), "delete"))
 	expect(await stored(repo, "RI")).toBeDefined()
 
 	await click(row(root, "RI"), "delete")

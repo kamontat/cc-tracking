@@ -606,8 +606,8 @@ a:any-link:hover {
 /*
  * The Locations and Owners pages (prototype `vLocations`, RD-17, RD-30): one `.set` panel with
  * a block per record -- its name and count beside *Rename* and *Delete* (or the name field, or
- * the delete question), and on Locations *Takes purchases* under them -- then the notes and the
- * add field.
+ * the asking *Delete* and *Cancel* on the same line), and on Locations *Takes purchases* under
+ * them -- then the notes and the add field.
  */
 .records {
 	display: flex;
