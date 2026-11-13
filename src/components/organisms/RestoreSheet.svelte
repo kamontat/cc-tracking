@@ -310,6 +310,9 @@
 	.file {
 		position: relative;
 		display: block;
+		/* A label takes the body's leading; a button's is tighter, so match it or the file
+		   choice stands taller than the buttons around it. */
+		line-height: 1.2;
 		color: var(--cc-text);
 		cursor: pointer;
 		background: var(--cc-surface-sunken);
