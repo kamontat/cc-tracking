@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from "svelte"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 
@@ -30,9 +31,11 @@
 		 * card's chip also passes its `short` form, which app.css shows in its place on a phone (UI-14).
 		 */
 		chips: { key: string; label: string; short?: string; clear: () => void }[]
+		/** At the end of the search row, after Filter: the tab's add button (_+ Add card_). */
+		end?: Snippet | undefined
 	}
 
-	const { q, placeholder, onsearch, onopen, count, sort, group, chips }: Props = $props()
+	const { q, placeholder, onsearch, onopen, count, sort, group, chips, end }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -78,6 +81,7 @@
 				<b class="tx-count">{count}</b>
 			{/if}
 		</button>
+		{@render end?.()}
 	</div>
 	<div class="tx-chips">
 		{#if sort !== undefined}

@@ -5,7 +5,6 @@ import { flushSync, mount, unmount } from "svelte"
 import { afterEach, describe, expect, test } from "vitest"
 
 import CardsPage from "#components/organisms/CardsPage.svelte"
-import { toGroupColor } from "#lib/domain/group-color"
 import { defaultLocations } from "#lib/domain/locations"
 import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { setLocale } from "#lib/i18n/index"
@@ -14,9 +13,9 @@ import { MIGRATION_KEY } from "#lib/storage/migrate-locations"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 
 /**
- * The Cards page's island (prototype `vCards`): the view in the address, the cards and the
- * limit groups, and a group's sheet on its own address (DD-102). Ported from the legacy route's
- * tests; where those read a child element's properties, these read what the child draws.
+ * The Cards tab's island (`/cards`, RD-22): the view in the address, the cards, and a card's
+ * panel (RD-23). The limit groups are the Limits tab's (`LimitsPage`). Ported from the legacy
+ * route's tests; where those read a child element's properties, these read what the child draws.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -202,48 +201,29 @@ test("due sort can be applied from the filter and restored from the address", as
 	expect(flat($('[data-action="sort"]'))).toContain("Soonest due")
 })
 
-const groupSheet = () => $("dialog input[name=limit]")?.closest("dialog") ?? null
-
-const sheetHeading = () => flat(groupSheet()?.querySelector("h2"))
-
 const filterSheet = () => $("dialog [data-action=apply]")?.closest("dialog") ?? null
 
 const banner = () => flat($(".cards-main > .error-banner p"))
 
-const openGroup = (id: string) => press(`.cards-groups .gpanel[data-group="${id}"]`)
-
-const type = async (name: string, value: string) => {
-	const input = $<HTMLInputElement>(`dialog input[name=${name}]`)
-	if (!input) throw new Error(`no ${name}`)
-	input.value = value
-	input.dispatchEvent(new Event("input", { bubbles: true }))
-	await settle()
-}
-
-const submit = async () => {
-	$("dialog form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
-	await settle()
-}
-
-/** Fills and saves the open group sheet. */
-const saveSheet = async (fields: { name?: string; limit?: string; owner?: string }) => {
-	if (fields.name !== undefined) await type("name", fields.name)
-	if (fields.limit !== undefined) await type("limit", fields.limit)
-	if (fields.owner) await press(`dialog [data-owner="${fields.owner}"]`)
-	await submit()
-}
-
-const closeSheet = async () => {
-	await press("dialog [data-action=close]")
-	await exit()
-}
-
-test("the heading names the page and links Add card to the new card form", async () => {
+test("+ Add card sits at the end of the search row, a quiet button, and no title or switch of its own", async () => {
 	await setup()
-	expect(flat($("h1"))).toBe("Cards")
-	const add = $<HTMLAnchorElement>('a[data-action="add-card"]')
-	expect(add?.getAttribute("href")).toBe("/card/new")
+	const row = [...($(".tx-ctl")?.children ?? [])].map((el) => el.getAttribute("data-action") ?? el.tagName)
+	expect(row).toEqual(["LABEL", "filter", "add-card"])
+	const add = $<HTMLButtonElement>('button[data-action="add-card"]')
+	expect(add?.getAttribute("data-variant")).toBe("quiet")
 	expect(flat(add)).toBe("Add card")
+	// The page's static head holds the title and the tabs (PageTabs); the island holds neither.
+	expect($("h1")).toBeNull()
+	expect($(".cards-switch")).toBeNull()
+	expect($(".cards-groups")).toBeNull()
+	expect($(".gpanel")).toBeNull()
+})
+
+test("the retired view and group keys open nothing", async () => {
+	await setup("/cards?view=groups&group=g1&newGroup=1")
+	expect($("dialog")).toBeNull()
+	expect($(".detail-panel")).toBeNull()
+	expect(shownTiles().sort()).toEqual(["A", "B"])
 })
 
 describe("the card panel (RD-23, RD-24)", () => {
@@ -310,7 +290,7 @@ describe("the card panel (RD-23, RD-24)", () => {
 
 	test("Add card opens a blank card form in the panel, the address unchanged", async () => {
 		const { address } = await setup("/cards?q=card", withPanelCards)
-		await press('a[data-action="add-card"]')
+		await press('button[data-action="add-card"]')
 		expect(address.calls).toEqual(["push /cards?q=card"])
 		expect(panelTitle()).toBe("New card")
 		expect($(".detail-panel form.card-form")).not.toBeNull()
@@ -323,23 +303,6 @@ describe("the card panel (RD-23, RD-24)", () => {
 		expect((await repo.getCard("12.3"))?.archived).toBe(true)
 		expect($('details.archive a[data-card="12.3"]')).not.toBeNull()
 	})
-})
-
-test("the header: title and switch on one row, the add button for the view under them", async () => {
-	const { address } = await setup()
-	const head = $(".cards-main > .cards-head")
-	expect(head?.querySelector(":scope > h1")).not.toBeNull()
-	expect(head?.querySelector(":scope > .cards-switch")).not.toBeNull()
-	const adds = head?.querySelector(":scope > .cards-adds")
-	expect(adds?.querySelector('a[data-action="add-card"]')).not.toBeNull()
-	expect(adds?.querySelector('[data-action="add-group"]')).toBeNull()
-	await press('.cards-switch [data-view="groups"]')
-	const group = $<HTMLButtonElement>('.cards-head .cards-adds button[data-action="add-group"]')
-	expect(flat(group)).toBe("Add group")
-	expect(group?.getAttribute("data-variant")).toBe("quiet")
-	await press('.cards-head .cards-adds button[data-action="add-group"]')
-	expect(address.calls.at(-1)).toBe("push /cards?view=groups&newGroup=1")
-	expect(sheetHeading()).toBe("Add limit group")
 })
 
 test("by place, sections run A to Z by shown name; a place with no record comes last", async () => {
@@ -377,23 +340,6 @@ test("the place order follows the language", async () => {
 	expect(places()).toEqual(["bangkok", "krabi", "zebra"])
 })
 
-test("every group gets a room, computed from its cards' ledgers", async () => {
-	await setup("/cards", {
-		before: async (repo) => {
-			await repo.savePurchase({ id: "p1", cardId: "A", date: "2026-10-10", amount: 10_000_00, note: "fuel" })
-		},
-	})
-	const panel = (id: string) => flat($(`.cards-groups .gpanel[data-group="${id}"]`))
-	expect(panel("g1")).toContain("90,000")
-	expect(panel("g1")).toContain("10%")
-	expect(panel("g2")).toContain("50,000")
-	expect(panel("g2")).toContain("0%")
-	expect([...document.querySelectorAll(".cards-groups .gpanel")].map((p) => p.getAttribute("data-group"))).toEqual([
-		"g1",
-		"g2",
-	])
-})
-
 test("a card holding credit shows it on its tile", async () => {
 	await setup("/cards", {
 		before: async (repo) => {
@@ -404,40 +350,15 @@ test("a card holding credit shows it on its tile", async () => {
 	expect(flat($('a[data-card="A"]'))).not.toContain("500")
 })
 
-test("a phone switch picks Cards or Limit groups, kept in the address", async () => {
-	const { address } = await setup("/cards?sort=name")
-	const grid = $(".cards-grid")
-	const button = (name: string) => $(`.cards-switch [data-view="${name}"]`)
-	expect(flat(button("cards"))).toBe("Cards")
-	expect(flat(button("groups"))).toBe("Limit groups")
-	expect(button("cards")?.getAttribute("aria-pressed")).toBe("true")
-	expect(button("groups")?.getAttribute("aria-pressed")).toBe("false")
-	expect(grid?.getAttribute("data-show")).toBe("cards")
-	await press('.cards-switch [data-view="groups"]')
-	expect(address.calls.at(-1)).toBe("replace /cards?view=groups&sort=name")
-	expect(grid?.getAttribute("data-show")).toBe("groups")
-	expect(button("groups")?.getAttribute("aria-pressed")).toBe("true")
-	await press('.cards-switch [data-view="cards"]')
-	expect(address.calls.at(-1)).toBe("replace /cards?sort=name")
-})
-
-test("a reload on ?view=groups keeps the groups shown, and opening a group keeps it", async () => {
-	const { address } = await setup("/cards?view=groups")
-	expect($(".cards-grid")?.getAttribute("data-show")).toBe("groups")
-	expect($('.cards-switch [data-view="groups"]')?.getAttribute("aria-pressed")).toBe("true")
-	await openGroup("g1")
-	expect(address.calls.at(-1)).toBe("push /cards?view=groups&group=g1")
-})
-
 test("the address seeds the view; typing a search replaces it", async () => {
-	const { address } = await setup("/cards?sort=name&owner=NT")
+	const { address } = await setup("/cards?sort=name&f.owners=NT")
 	expect(shownTiles()).toEqual(["B"])
 	const input = $<HTMLInputElement>('input[name="q"]')
 	if (!input) throw new Error("no search")
 	input.value = "zzz"
 	input.dispatchEvent(new Event("input", { bubbles: true }))
 	await settle()
-	expect(address.calls.at(-1)).toBe("replace /cards?q=zzz&owner=NT&sort=name")
+	expect(address.calls.at(-1)).toBe("replace /cards?q=zzz&f.owners=NT&sort=name")
 	expect(shownTiles()).toEqual([])
 	expect(flat($(".cards-body .empty"))).not.toBe("")
 })
@@ -455,7 +376,7 @@ test("the filter sheet applies a whole view, shown as chips that clear one at a 
 	await press("dialog [data-action=apply]")
 	await exit()
 	expect(filterSheet()).toBeNull()
-	expect(address.now()).toBe("/cards?loc=krabi&sort=room")
+	expect(address.now()).toBe("/cards?f.locations=krabi&sort=room")
 	expect(shownTiles()).toEqual(["A"])
 	expect(flat($(".tx-count"))).toBe("1")
 	expect(flat($('[data-chip="loc:krabi"]'))).toBe("Krabi ×")
@@ -506,7 +427,7 @@ test("the filter offers every stored place A to Z, and a custom choice survives 
 	await press("dialog [data-action=apply]")
 	await exit()
 	const url = address.now() ?? ""
-	expect(url).toBe("/cards?loc=chiang-mai&loc=bangkok")
+	expect(url).toBe("/cards?f.locations=chiang-mai&f.locations=bangkok")
 
 	await setup(url, { before })
 	expect(places()).toEqual(["bangkok", "chiang-mai"])
@@ -520,7 +441,7 @@ test("the filter offers every stored place A to Z, and a custom choice survives 
 })
 
 test("a place in the address with no record is dropped", async () => {
-	await setup("/cards?loc=mars&loc=krabi")
+	await setup("/cards?f.locations=mars&f.locations=krabi")
 	expect(places()).toEqual(["krabi"])
 	expect($('[data-chip="loc:mars"]')).toBeNull()
 })
@@ -538,179 +459,6 @@ test("no cards at all tells the list so", async () => {
 	await setup("/cards", { skipSeed: true })
 	expect(tiles()).toEqual([])
 	expect(flat($(".cards-body .empty"))).toBe("No cards yet. Add one with Add card.")
-	expect($(".cards-groups .gpanel")).toBeNull()
-	expect($(".cards-groups .empty")).not.toBeNull()
-})
-
-test("tapping a group pushes its address and opens the sheet; Close steps back", async () => {
-	const { address } = await setup("/cards?sort=name")
-	expect(groupSheet()).toBeNull()
-	await openGroup("g1")
-	expect(address.calls).toEqual(["push /cards?sort=name&group=g1"])
-	expect(sheetHeading()).toBe("Edit KBank")
-	// A card uses it, so it can't be deleted.
-	expect($("dialog [data-action=delete-group]")).toBeNull()
-	await closeSheet()
-	expect(address.calls.at(-1)).toBe("back")
-	expect(address.now()).toBe("/cards?sort=name")
-	expect(groupSheet()).toBeNull()
-})
-
-test("Back closes a pushed sheet, and Forward reopens it", async () => {
-	const { address } = await setup()
-	await openGroup("g2")
-	address.bar.back()
-	await settle()
-	expect(groupSheet()).toBeNull()
-	address.forward()
-	await settle()
-	expect(sheetHeading()).toBe("Edit SCB")
-	await closeSheet()
-	expect(address.calls.at(-1)).toBe("back")
-})
-
-test("a sheet opened from the address closes by replacing it without the group", async () => {
-	const { address } = await setup("/cards?q=A&group=g2")
-	expect(sheetHeading()).toBe("Edit SCB")
-	await closeSheet()
-	expect(address.calls).toEqual(["replace /cards?q=A"])
-	expect(groupSheet()).toBeNull()
-})
-
-test("an unknown group in the address opens no sheet", async () => {
-	await setup("/cards?group=nope")
-	expect(groupSheet()).toBeNull()
-})
-
-test("a group no card uses can be deleted; the sheet closes once it is gone", async () => {
-	const { repo, address } = await setup("/cards?group=g3", {
-		before: async (r) => {
-			await r.saveLimitGroup({ id: "g3", name: "Spare", limit: 1_000_00, owner: "RI" })
-		},
-	})
-	await press("dialog [data-action=delete-group]")
-	await press("dialog [data-action=confirm-delete]")
-	expect((await repo.listLimitGroups()).map((g) => g.id)).toEqual(["g1", "g2"])
-	expect(groupSheet()).toBeNull()
-	expect(address.calls).toEqual(["replace /cards"])
-})
-
-test("Add group pushes ?newGroup=1 and saves the new group with a valid colour, then closes", async () => {
-	const { repo, address } = await setup()
-	await press('.cards-groups [data-action="add-group"]')
-	expect(address.calls).toEqual(["push /cards?newGroup=1"])
-	expect(sheetHeading()).toBe("Add limit group")
-	await saveSheet({ name: "New", limit: "20000", owner: "RI" })
-	const saved = (await repo.listLimitGroups()).find((g) => g.name === "New")
-	expect(saved?.limit).toBe(20_000_00)
-	expect(toGroupColor(saved?.color)).not.toBeNull()
-	expect(address.calls.at(-1)).toBe("back")
-	expect(groupSheet()).toBeNull()
-	expect(document.querySelectorAll(".cards-groups .gpanel")).toHaveLength(3)
-})
-
-class FlakyGroupRepository extends InMemoryRepository {
-	failures = 0
-	tried: string[] = []
-	override async saveLimitGroup(group: LimitGroup): Promise<void> {
-		this.tried.push(group.id)
-		if (this.failures > 0) {
-			this.failures--
-			throw new Error("disk is full")
-		}
-		return super.saveLimitGroup(group)
-	}
-}
-
-test("a failed save keeps the sheet open with the reason, and a retry keeps the new group's id", async () => {
-	const repo = new FlakyGroupRepository()
-	await seed(repo)
-	repo.failures = 1
-	repo.tried = []
-	const { address } = await setup("/cards?newGroup=1", { repo, skipSeed: true })
-	await saveSheet({ name: "New", limit: "20000", owner: "RI" })
-	expect(groupSheet()).not.toBeNull()
-	expect(sheetHeading()).toBe("Add limit group")
-	expect(flat($("dialog .error-banner"))).toContain("Could not save that limit group.")
-	expect($<HTMLButtonElement>("dialog button[type=submit]")?.disabled).toBe(false)
-	expect(address.calls).toEqual([])
-	// The page's banner leaves the reason to the sheet it failed in.
-	expect(banner()).toBe("")
-	await submit()
-	expect(repo.tried).toHaveLength(2)
-	expect(repo.tried[0]).toBe(repo.tried[1])
-	expect(groupSheet()).toBeNull()
-	expect(address.calls).toEqual(["replace /cards"])
-})
-
-test("closing the sheet after a failed save leaves the banner empty", async () => {
-	const repo = new FlakyGroupRepository()
-	await seed(repo)
-	repo.failures = 1
-	await setup("/cards?newGroup=1", { repo, skipSeed: true })
-	await saveSheet({ name: "New", limit: "20000", owner: "RI" })
-	expect(flat($("dialog .error-banner"))).toContain("disk is full")
-	await closeSheet()
-	expect(groupSheet()).toBeNull()
-	expect(banner()).toBe("")
-})
-
-class FailThenHoldRepository extends InMemoryRepository {
-	armed = false
-	calls = 0
-	release = () => {}
-	override async saveLimitGroup(group: LimitGroup): Promise<void> {
-		if (!this.armed) return super.saveLimitGroup(group)
-		this.calls++
-		if (this.calls === 1) throw new Error("disk is full")
-		await new Promise<void>((resolve) => {
-			this.release = resolve
-		})
-		return super.saveLimitGroup(group)
-	}
-}
-
-test("the page banner stays empty while a retry is under way", async () => {
-	const repo = new FailThenHoldRepository()
-	await seed(repo)
-	repo.armed = true
-	await setup("/cards?newGroup=1", { repo, skipSeed: true })
-	await saveSheet({ name: "New", limit: "20000", owner: "RI" })
-	await submit()
-	expect($<HTMLButtonElement>("dialog button[type=submit]")?.disabled).toBe(true)
-	expect(banner()).toBe("")
-	repo.release()
-	await settle()
-})
-
-class SlowGroupRepository extends InMemoryRepository {
-	release = () => {}
-	override async saveLimitGroup(group: LimitGroup): Promise<void> {
-		if (group.id === "g2" && group.name === "SCB 2")
-			await new Promise<void>((resolve) => {
-				this.release = resolve
-			})
-		return super.saveLimitGroup(group)
-	}
-}
-
-test("opening another group while a save is under way is ignored", async () => {
-	const repo = new SlowGroupRepository()
-	const { address } = await setup("/cards?group=g2", { repo })
-	await saveSheet({ name: "SCB 2" })
-	await openGroup("g1")
-	expect(address.calls).toEqual([])
-	repo.release()
-	await settle()
-	expect(groupSheet()).toBeNull()
-	expect(address.now()).toBe("/cards")
-})
-
-test("an edited group saves under its own id", async () => {
-	const { repo } = await setup("/cards?group=g2")
-	await saveSheet({ name: "SCB 2" })
-	expect((await repo.listLimitGroups()).find((g) => g.id === "g2")?.name).toBe("SCB 2")
-	expect(groupSheet()).toBeNull()
 })
 
 test("the location reset notice shows once and can be dismissed", async () => {
@@ -727,47 +475,7 @@ test("a language switch re-renders the page in place", async () => {
 	await setup()
 	setLocale("th")
 	await settle()
-	expect(flat($("h1"))).toBe("บัตร")
 	expect(flat($('[data-action="add-card"]'))).toBe("เพิ่มบัตร")
-})
-
-class HeldGroupRepository extends InMemoryRepository {
-	hold = false
-	release: () => void = () => {}
-	override saveLimitGroup(group: LimitGroup): Promise<void> {
-		if (!this.hold) return super.saveLimitGroup(group)
-		return new Promise((resolve) => {
-			this.release = () => resolve(super.saveLimitGroup(group))
-		})
-	}
-}
-
-test("Back during a pending save: the save closes nothing further once it lands", async () => {
-	const repo = new HeldGroupRepository()
-	const { address } = await setup("/cards", { repo })
-	repo.hold = true
-	await openGroup("g2")
-	await saveSheet({ name: "SCB 2" })
-	expect($<HTMLButtonElement>("dialog button[type=submit]")?.disabled).toBe(true)
-	address.bar.back() // the reader's Back while the write is pending
-	await settle()
-	repo.release()
-	await settle()
-	expect(address.calls.filter((c) => c === "back")).toHaveLength(1)
-	expect(address.now()).toBe("/cards")
-	expect(groupSheet()).toBeNull()
-	expect((await repo.listLimitGroups()).find((g) => g.id === "g2")?.name).toBe("SCB 2")
-})
-
-test("?group=new opens the group whose id is new; ?newGroup=1 opens the blank sheet", async () => {
-	await setup("/cards?group=new", {
-		before: async (r) => {
-			await r.saveLimitGroup({ id: "new", name: "Odd", limit: 1_00, owner: "RI" })
-		},
-	})
-	expect(sheetHeading()).toBe("Edit Odd")
-	await setup("/cards?newGroup=1")
-	expect(sheetHeading()).toBe("Add limit group")
 })
 
 test("a card in no stored group is left out, and ?ungrouped=1 is not read (RD-27)", async () => {

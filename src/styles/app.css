@@ -992,9 +992,12 @@ a:any-link:hover {
 	gap: var(--cc-space-2);
 }
 
+/* The search takes the room; Filter and a tab's add button (`end`) follow it on the same row. */
 .tx-ctl {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-columns: minmax(0, 1fr);
+	grid-auto-columns: auto;
+	grid-auto-flow: column;
 	gap: var(--cc-space-2);
 }
 
@@ -1881,115 +1884,14 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-md);
 }
 
-/*
- * Cards (prototype `vCards`): the heading, the controls and the results in one column. On a
- * phone the heading is two rows: the title with a switch (Transactions' `.tx-switch`) at its
- * end, then the shown view's add button at the right -- *Add card*, or *Add group* while
- * *Limit groups* shows, whose own heading row the switch stands in for. From 900px the switch
- * goes, *Add card* sits at the title's end and *Limit groups* sits beside the cards, its
- * heading the same height as the title's.
- */
-.cards-grid {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	gap: var(--cc-space-5);
-	align-items: start;
-}
-
+/* Cards (prototype `vCards`, RD-22): the controls and the results in one column, under the
+   page's title and tabs (`PageTabs`). */
 .cards-main,
-.cards-body,
-.cards-groups {
+.cards-body {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-4);
 	min-inline-size: 0;
-}
-
-.cards-head {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--cc-space-2) var(--cc-space-3);
-	min-block-size: var(--cc-page-head-height);
-}
-
-.cards-adds {
-	display: flex;
-	flex-direction: row;
-	flex: 1 0 100%;
-	justify-content: flex-end;
-}
-
-/* A link drawn as the primary button, as `.page button` draws it. */
-.cards-head a.cards-add {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--cc-space-1);
-	padding: var(--cc-space-2) var(--cc-space-3);
-	font-size: var(--cc-text-sm);
-	font-weight: 550;
-	line-height: 1.2;
-	color: var(--cc-accent-text);
-	text-decoration: none;
-	background: var(--cc-accent);
-	border: var(--cc-border-width) solid transparent;
-	border-radius: var(--cc-radius-sm);
-}
-
-.cards-head a.cards-add:hover {
-	text-decoration: none;
-	background: var(--cc-accent-hover);
-}
-
-.cards-head .cards-add-group {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--cc-space-1);
-}
-
-.cards-head a.cards-add .icon,
-.cards-head button.cards-add-group .icon {
-	inline-size: var(--cc-icon-size-sm);
-	block-size: var(--cc-icon-size-sm);
-}
-
-.cards-grid[data-show="cards"] > .cards-groups,
-.cards-grid[data-show="groups"] .cards-body,
-.cards-grid[data-show="groups"] .cards-head a.cards-add,
-.cards-groups .group-panels .sec-head {
-	display: none;
-}
-
-@media (min-width: 900px) {
-	.cards-grid {
-		grid-template-columns: minmax(0, 1fr) var(--cc-side-panel);
-		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
-	}
-
-	.cards-switch,
-	.cards-head .cards-add-group {
-		display: none;
-	}
-
-	.cards-adds {
-		flex: 0 0 auto;
-	}
-
-	.cards-grid[data-show] .cards-body,
-	.cards-grid[data-show] > .cards-groups {
-		display: flex;
-	}
-
-	.cards-grid[data-show] .cards-head a.cards-add {
-		display: inline-flex;
-	}
-
-	.cards-groups .group-panels .sec-head {
-		display: flex;
-		min-block-size: var(--cc-page-head-height);
-	}
 }
 
 /*
@@ -2015,16 +1917,6 @@ a:any-link:hover {
 @media (min-width: 900px) {
 	.page:has(.panel-layout[data-panel]) {
 		padding-inline-end: calc(var(--cc-space-4) + var(--cc-detail-panel) + var(--cc-space-5));
-	}
-
-	/* Until Limits is its own tab, the groups step aside while a card's panel is open, so the
-	   cards keep their room. */
-	.panel-layout[data-panel] .cards-grid {
-		grid-template-columns: minmax(0, 1fr);
-	}
-
-	.panel-layout[data-panel] .cards-grid[data-show] > .cards-groups {
-		display: none;
 	}
 }
 
@@ -2162,6 +2054,7 @@ a:any-link:hover {
    the scroller, and a sticky bottom counts from inside its padding, so it sinks through that. */
 .detail-panel__body .card-form .actions,
 .detail-panel__body .purchase-form .actions,
+.detail-panel__body .group-form .actions,
 .detail-panel__body .pay-actions {
 	position: sticky;
 	bottom: calc(-1 * var(--cc-detail-body-end));
@@ -2172,6 +2065,7 @@ a:any-link:hover {
 @media (min-width: 900px) {
 	.detail-panel__body .card-form .actions,
 	.detail-panel__body .purchase-form .actions,
+	.detail-panel__body .group-form .actions,
 	.detail-panel__body .pay-actions {
 		background: var(--cc-surface);
 	}

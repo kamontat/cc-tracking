@@ -1,14 +1,15 @@
 import { expect, test } from "vitest"
 
 import { type CardsView, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
+import { DEFAULT_LIMITS_VIEW, type LimitsView } from "#lib/domain/limits-view"
 import { setLocale } from "#lib/i18n/index"
 import {
-	groupSheetAddress,
-	NEW_GROUP,
-	readCardsShow,
+	LIMITS_ADDRESS,
+	limitAddress,
 	readCardsView,
-	readGroupSheet,
+	readLimitsView,
 	writeCardsView,
+	writeLimitsView,
 } from "#lib/ui/cards-query"
 
 test("an empty address reads as the defaults and writes as nothing", () => {
@@ -22,7 +23,7 @@ test("due sort survives an address round trip", () => {
 	expect(readCardsView("?sort=due", [])).toEqual(view)
 })
 
-test("round trip with repeated loc and owner", () => {
+test("round trip with repeated f.locations and f.owners", () => {
 	const view: CardsView = {
 		q: "kb x",
 		locations: ["bangkok", "krabi"],
@@ -32,12 +33,14 @@ test("round trip with repeated loc and owner", () => {
 		by: "holder",
 	}
 	const text = writeCardsView(view)
-	expect(text).toBe("?q=kb+x&loc=bangkok&loc=krabi&owner=KC&owner=RI&sort=close&dir=desc&by=holder")
+	expect(text).toBe(
+		"?q=kb+x&f.locations=bangkok&f.locations=krabi&f.owners=KC&f.owners=RI&sort=close&dir=desc&by=holder",
+	)
 	expect(readCardsView(text, ["bangkok", "krabi"])).toEqual(view)
 })
 
 test("unknown sort, owner and place are ignored, as are the retired keys", () => {
-	expect(readCardsView("?sort=zzz&owner=XX&loc=mars&dir=up&gq=a&gowner=KC&edit=1", ["bangkok"])).toEqual(
+	expect(readCardsView("?sort=zzz&f.owners=XX&f.locations=mars&dir=up&gq=a&gowner=KC&edit=1", ["bangkok"])).toEqual(
 		DEFAULT_CARDS_VIEW,
 	)
 	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, sort: "room", dir: "desc" })).toBe("?sort=room")
@@ -53,46 +56,22 @@ test("dir is written only when it is not the sort's own default, and read agains
 
 test("a place is read when a stored record has its id, in the address's order", () => {
 	setLocale("en")
-	expect(readCardsView("?loc=mars&loc=chiang-mai&loc=bangkok", ["bangkok", "chiang-mai"]).locations).toEqual([
-		"chiang-mai",
-		"bangkok",
-	])
-	expect(readCardsView("?loc=chiang-mai", ["chiang-mai"]).locations).toEqual(["chiang-mai"])
-	expect(readCardsView("?loc=bangkok", []).locations).toEqual([])
+	expect(
+		readCardsView("?f.locations=mars&f.locations=chiang-mai&f.locations=bangkok", ["bangkok", "chiang-mai"]).locations,
+	).toEqual(["chiang-mai", "bangkok"])
+	expect(readCardsView("?f.locations=chiang-mai", ["chiang-mai"]).locations).toEqual(["chiang-mai"])
+	expect(readCardsView("?f.locations=bangkok", []).locations).toEqual([])
 })
 
-test("readGroupSheet", () => {
-	expect(readGroupSheet("")).toBeNull()
-	expect(readGroupSheet("?group=")).toBeNull()
-	expect(readGroupSheet("?newGroup=1")).toBe(NEW_GROUP)
-	expect(readGroupSheet("?newGroup=1&group=pool")).toBe(NEW_GROUP)
-	expect(readGroupSheet("?q=a&group=pool")).toBe("pool")
-})
-
-test("groupSheetAddress opens and closes, keeping the rest", () => {
-	expect(groupSheetAddress("", "pool")).toBe("?group=pool")
-	expect(groupSheetAddress("", null)).toBe("")
-	expect(groupSheetAddress("?q=a&group=x", NEW_GROUP)).toBe("?q=a&newGroup=1")
-	expect(groupSheetAddress("?q=a&newGroup=1", "pool")).toBe("?q=a&group=pool")
-	expect(groupSheetAddress("?q=a&newGroup=1", null)).toBe("?q=a")
-	expect(groupSheetAddress("?q=a&group=x", null)).toBe("?q=a")
-	expect(groupSheetAddress("", "a b")).toBe("?group=a+b")
-})
-
-test("?group=new is a group whose id is new; ?ungrouped=1 is no longer read (RD-27)", () => {
-	expect(readGroupSheet("?group=new")).toBe("new")
-	expect(groupSheetAddress("", NEW_GROUP)).toBe("?newGroup=1")
-	expect(groupSheetAddress("", "new")).toBe("?group=new")
+test("?ungrouped=1 is no longer read (RD-27)", () => {
 	expect(readCardsView("?ungrouped=1", [])).toEqual(DEFAULT_CARDS_VIEW)
 })
 
-test("the phone view: ?view=groups shows the groups, anything else the cards", () => {
-	expect(readCardsShow("")).toBe("cards")
-	expect(readCardsShow("?view=groups")).toBe("groups")
-	expect(readCardsShow("?view=zzz")).toBe("cards")
-	expect(writeCardsView(DEFAULT_CARDS_VIEW, "cards")).toBe("")
-	expect(writeCardsView(DEFAULT_CARDS_VIEW, "groups")).toBe("?view=groups")
-	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, q: "a" }, "groups")).toBe("?view=groups&q=a")
+test("the retired view, group and newGroup keys, and the old loc and owner, are ignored and never written", () => {
+	expect(readCardsView("?view=groups&group=g1&newGroup=1&loc=bangkok&owner=KC", ["bangkok"])).toEqual(
+		DEFAULT_CARDS_VIEW,
+	)
+	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, q: "a" })).toBe("?q=a")
 })
 
 test("by groups the cards, place by default; the retired place sort reads as the default", () => {
@@ -100,4 +79,34 @@ test("by groups the cards, place by default; the retired place sort reads as the
 	expect(readCardsView("?by=zzz", [])).toMatchObject({ by: "place" })
 	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, by: "none" })).toBe("?by=none")
 	expect(readCardsView("?sort=place", [])).toEqual(DEFAULT_CARDS_VIEW)
+})
+
+test("the Limits tab's address, and a group's panel on it", () => {
+	expect(LIMITS_ADDRESS).toBe("/cards/limits")
+	expect(limitAddress("2f1c")).toBe("/cards/limits?limit=2f1c")
+})
+
+test("the Limits view: the defaults read from nothing and write as nothing", () => {
+	expect(readLimitsView("")).toEqual(DEFAULT_LIMITS_VIEW)
+	expect(writeLimitsView(DEFAULT_LIMITS_VIEW)).toBe("")
+})
+
+test("the Limits view round trips q, repeated f.owners, sort and dir", () => {
+	const view: LimitsView = { q: "kb x", owners: ["KC", "RI"], sort: "used", dir: "asc" }
+	const text = writeLimitsView(view)
+	expect(text).toBe("?q=kb+x&f.owners=KC&f.owners=RI&sort=used&dir=asc")
+	expect(readLimitsView(text)).toEqual(view)
+})
+
+test("the Limits view writes dir only off the sort's own, room and used running most first", () => {
+	expect(readLimitsView("?sort=room")).toMatchObject({ sort: "room", dir: "desc" })
+	expect(readLimitsView("?sort=used")).toMatchObject({ sort: "used", dir: "desc" })
+	expect(writeLimitsView({ ...DEFAULT_LIMITS_VIEW, sort: "room", dir: "desc" })).toBe("?sort=room")
+	expect(writeLimitsView({ ...DEFAULT_LIMITS_VIEW, dir: "desc" })).toBe("?dir=desc")
+})
+
+test("the Limits view ignores unknown values and the Cards tab's keys", () => {
+	expect(readLimitsView("?sort=card&dir=up&f.owners=XX&f.locations=krabi&by=none&limit=g1")).toEqual(
+		DEFAULT_LIMITS_VIEW,
+	)
 })

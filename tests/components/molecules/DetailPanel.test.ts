@@ -150,6 +150,20 @@ test("a pressed choice in a form counts as a change too", () => {
 	expect(touched).toBe(1)
 })
 
+test("a picked radio in a form counts as a change too (a group's holder or colour)", () => {
+	let touched = 0
+	show({
+		ontouch: () => {
+			touched++
+		},
+		children: raw(
+			'<form><div role="radiogroup"><button type="button" role="radio" aria-checked="false" data-owner="NT">NT</button></div></form>',
+		),
+	})
+	$('[data-owner="NT"]')?.click()
+	expect(touched).toBe(1)
+})
+
 test("the panel takes focus when it opens", () => {
 	show()
 	expect(document.activeElement).toBe($("aside.detail-panel"))

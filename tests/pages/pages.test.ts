@@ -31,6 +31,7 @@ test("src/pages has every page", () => {
 		"card/edit.astro",
 		"card/new.astro",
 		"cards.astro",
+		"cards/limits.astro",
 		"index.astro",
 		"list/draft.astro",
 		"list/new.astro",
@@ -122,6 +123,7 @@ test("each page keeps the width it asks for", async () => {
 		"card/edit.astro": "page page--form",
 		"card/new.astro": "page page--form",
 		"cards.astro": "page",
+		"cards/limits.astro": "page",
 		"index.astro": "page",
 		"list/draft.astro": "page page--narrow",
 		"list/new.astro": "page page--narrow",
@@ -151,6 +153,7 @@ test("each page marks its place in both navs, and steps + New aside when mid-tas
 		"card/edit.astro": "cards",
 		"card/new.astro": "cards",
 		"cards.astro": "cards +new",
+		"cards/limits.astro": "cards +new",
 		"index.astro": "home +new",
 		"list/draft.astro": "home",
 		"list/new.astro": "home",
@@ -161,4 +164,20 @@ test("each page marks its place in both navs, and steps + New aside when mid-tas
 		"settings/locations.astro": "settings +new",
 		"transactions.astro": "transactions +new",
 	})
+})
+
+test("Cards and Limits head the page with the title and the Cards · Limits tabs, the one on show marked", async () => {
+	for (const [page, current] of [
+		["cards.astro", "/cards"],
+		["cards/limits.astro", "/cards/limits"],
+	] as const) {
+		const doc = parseHtml(await render(page))
+		const main = doc.querySelector("main#page")
+		expect(main?.querySelector(".page-tabs h1")?.getAttribute("data-i18n"), page).toBe("cards.title")
+		const links = [...(main?.querySelectorAll(".page-tabs nav a") ?? [])]
+		expect(links.map((a) => a.getAttribute("href"))).toEqual(["/cards", "/cards/limits"])
+		expect(main?.querySelector('.page-tabs nav a[aria-current="page"]')?.getAttribute("href"), page).toBe(current)
+		// The tabs come before the island.
+		expect(main?.firstElementChild?.classList.contains("page-tabs")).toBe(true)
+	}
 })

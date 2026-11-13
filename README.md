@@ -82,11 +82,12 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
   _Make a payment_.
 - `/pay` — _Make a payment_: pick a card, then a sheet takes the amount, the date
   and a note. A date after today saves it as a planned payment.
-- `/cards` — the card list and the limit groups, side by side from 900px and
-  switched between _Cards_ and _Limit groups_ on a phone. Each is searchable,
-  filterable (including _Not in a group_, `/cards?ungrouped=1`) and sortable.
-  Limit groups are added and edited in a sheet (`?group=<id>`, or `?newGroup=1`
-  for a new one); each group has a colour, one of 12 swatches or _Random_.
+- `/cards` and `/cards/limits` — Cards' two tabs, _Cards_ and _Limits_, one at a
+  time on every screen. The cards are searchable, filterable (including _Not in a
+  group_, `/cards?ungrouped=1`) and sortable, and a card opens in its panel
+  (`?card=<id>`). The limit groups are searchable, filterable by holder and
+  sortable; a group opens in its panel (`?limit=<id>`), where it is edited, and
+  _+ Add limit_ adds one; each group has a colour, one of 12 swatches or _Random_.
 - `/card/new` and `/card/edit?id=<cardId>` — the full-page card form: name, id,
   last 4, cycle, limit group, where it is kept (one of the stored locations), and whether
   it is a supplementary card (บัตรเสริม) with its own cardholder.

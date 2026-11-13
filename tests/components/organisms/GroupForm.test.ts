@@ -4,14 +4,14 @@ import { flushSync, mount, unmount } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
 import { afterEach, expect, test } from "vitest"
 
-import GroupSheet from "#components/organisms/GroupSheet.svelte"
+import GroupForm from "#components/organisms/GroupForm.svelte"
 import { GROUP_COLORS, type GroupColor } from "#lib/domain/group-color"
 import { setLocale, t } from "#lib/i18n/index"
 
 /**
- * A limit group in a sheet over Cards: name, limit, holder and colour, then *Save*, with a
- * two-step *Delete group* for a group no card uses. Ported from the legacy `cc-group-sheet`
- * tests, against the same markup.
+ * The limit group form (in the limit panel, RD-24): name, limit, holder and colour, then *Save*,
+ * with a two-step *Delete group* for a group no card uses. Ported from the group sheet's tests,
+ * against the same markup.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -55,8 +55,8 @@ const show = async (initial: Shown = {}) => {
 	const values = new SvelteMap<string, unknown>(Object.entries(initial))
 	const saved: LimitGroup[] = []
 	const deleted: LimitGroup[] = []
-	let closed = 0
-	mounted = mount(GroupSheet, {
+	let cancelled = 0
+	mounted = mount(GroupForm, {
 		target: document.body,
 		props: {
 			get group() {
@@ -79,8 +79,8 @@ const show = async (initial: Shown = {}) => {
 			},
 			onsave: (group: LimitGroup) => saved.push(group),
 			ondelete: (group: LimitGroup) => deleted.push(group),
-			onclose: () => {
-				closed += 1
+			oncancel: () => {
+				cancelled += 1
 			},
 		},
 	})
@@ -90,7 +90,7 @@ const show = async (initial: Shown = {}) => {
 		root,
 		saved,
 		deleted,
-		closed: () => closed,
+		cancelled: () => cancelled,
 		set: async (changes: Shown) => {
 			for (const [key, value] of Object.entries(changes)) values.set(key, value)
 			await settle()
@@ -99,8 +99,6 @@ const show = async (initial: Shown = {}) => {
 }
 
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
-
-const heading = () => text(document.querySelector("dialog h2"))
 
 const type = async (name: string, value: string) => {
 	const input = document.querySelector(`input[name=${name}]`) as HTMLInputElement
@@ -123,10 +121,10 @@ const submit = async () => {
 
 const focused = (attr: string) => document.activeElement?.getAttribute(attr)
 
-test("a blank group sits in a sheet with its fields and no holder chosen", async () => {
+test("a blank group has its fields, no holder chosen and Add limit group", async () => {
 	const { root } = await show()
-	expect(root.querySelector("dialog")?.hasAttribute("open")).toBe(true)
-	expect(heading()).toBe("Add limit group")
+	expect(root.querySelector("dialog")).toBeNull()
+	expect(text(root.querySelector("button[type=submit]"))).toBe("Add limit group")
 	expect((root.querySelector("input[name=name]") as HTMLInputElement).value).toBe("")
 	expect([...root.querySelectorAll("[data-owner]")].map((b) => [text(b), b.getAttribute("aria-checked")])).toEqual([
 		["KC", "false"],
@@ -166,7 +164,7 @@ test("checks the name, a limit above zero and the holder", async () => {
 
 test("an existing group fills the fields and keeps its id", async () => {
 	const { root, saved } = await show({ group: scb })
-	expect(heading()).toBe("Edit SCB")
+	expect(text(root.querySelector("button[type=submit]"))).toBe("Save changes")
 	expect((root.querySelector("input[name=limit]") as HTMLInputElement).value).toBe("200000")
 	expect(root.querySelector("[data-owner=KC]")?.getAttribute("aria-checked")).toBe("true")
 	await type("name", "SCB Biz")
@@ -195,17 +193,13 @@ test("a group a card uses has no Delete", async () => {
 })
 
 test("shows why a save failed and waits while busy", async () => {
-	const { root, closed } = await show({ group: scb, error: "Disk full", busy: true })
+	const { root } = await show({ group: scb, error: "Disk full", busy: true })
 	const banner = root.querySelector(".error-banner")
 	expect(banner?.getAttribute("role")).toBe("alert")
 	expect(text(banner)).toBe("Disk full")
 	// No retry: there is nothing to retry from here.
 	expect(banner?.querySelector("button")).toBeNull()
 	expect((root.querySelector("button[type=submit]") as HTMLButtonElement).disabled).toBe(true)
-	// Held: Close does nothing while the save is under way.
-	await click("[data-action=close]")
-	expect(closed()).toBe(0)
-	expect(root.querySelector("dialog")?.hasAttribute("data-closing")).toBe(false)
 })
 
 test("no banner while there is no error", async () => {
@@ -213,10 +207,27 @@ test("no banner while there is no error", async () => {
 	expect(root.querySelector(".error-banner")).toBeNull()
 })
 
-test("Close asks the page to close it", async () => {
-	const { closed } = await show()
-	await click("[data-action=close]")
-	expect(closed()).toBe(1)
+test("Cancel asks the page to go back, beside the submit", async () => {
+	const { root, cancelled } = await show({ group: scb })
+	const actions = root.querySelector(".actions")
+	expect(actions?.hasAttribute("data-twin")).toBe(true)
+	expect([...(actions?.children ?? [])].map((b) => b.getAttribute("data-action") ?? b.getAttribute("type"))).toEqual([
+		"cancel",
+		"submit",
+	])
+	await click("[data-action=cancel]")
+	expect(cancelled()).toBe(1)
+})
+
+test("without oncancel there is no Cancel", async () => {
+	document.body.innerHTML = ""
+	mounted = mount(GroupForm, {
+		target: document.body,
+		props: { group: null, groups: [], inUse: false, error: "", busy: false, onsave: () => {}, ondelete: () => {} },
+	})
+	await settle()
+	expect(document.querySelector("[data-action=cancel]")).toBeNull()
+	expect(document.querySelector(".actions")?.hasAttribute("data-twin")).toBe(false)
 })
 
 test("typing survives a language switch", async () => {
@@ -225,8 +236,8 @@ test("typing survives a language switch", async () => {
 	setLocale("th")
 	await settle()
 	expect((root.querySelector("input[name=name]") as HTMLInputElement).value).toBe("Draft")
-	expect(heading()).toBe(t("limits.add"))
-	expect(heading()).not.toBe("Add limit group")
+	expect(text(root.querySelector("button[type=submit]"))).toBe(t("limits.add"))
+	expect(t("limits.add")).not.toBe("Add limit group")
 })
 
 test("a reload of the same group keeps the typing; another group resets it", async () => {
@@ -341,7 +352,7 @@ test("a chosen colour survives a fresh copy of the same group", async () => {
 })
 
 test("the swatches lay out as a wrapping row with a visible edge", async () => {
-	const source = await Bun.file("src/components/organisms/GroupSheet.svelte").text()
+	const source = await Bun.file("src/components/organisms/GroupForm.svelte").text()
 	const css = source.match(/<style>([\s\S]*)<\/style>/)?.[1] ?? ""
 	const rule = css.match(/\.swatches\s*\{[^}]*\}/)?.[0] ?? ""
 	expect(rule).toMatch(/flex-direction:\s*row/)

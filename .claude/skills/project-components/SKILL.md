@@ -102,7 +102,14 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   `close`, `created(ref)`. `DetailPanel.svelte` (molecule) draws the column or sheet and its
   head; the page wraps its list and the panel in `.panel-layout` (`data-panel` while open,
   app.css). A kind's content is an organism that reads the store itself, as `CardPanel.svelte`
-  does, so any page can hold it. `PurchaseForm.svelte` is the purchase form without a sheet.
+  and `LimitPanel.svelte` do, so any page can hold it. `PurchaseForm.svelte` and
+  `GroupForm.svelte` are the purchase and group forms without a sheet.
+- A page with tabs (PRD RD-22) heads its `main` slot with `PageTabs.astro` (molecule, static):
+  the title and one link per tab, each tab its own page, the one on show marked
+  `aria-current="page"` (`<PageTabs title="cards.title" label="cards.tabs" tabs={CARDS_TABS}
+  current="/cards" />`). A tab list is a `PageTab[]` in `#lib/ui/page-tabs`. A tab's add button
+  goes at the end of its search row, through `FilterControls`' `end` snippet, as a quiet
+  `button.tx-fbtn` (_+ Add card_, _+ Add limit_).
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.

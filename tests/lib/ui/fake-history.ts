@@ -8,7 +8,11 @@ export function fakeHistory(start = "/cards") {
 	const entries = [start]
 	let at = 0
 	const calls: string[] = []
-	let pop: () => void = () => {}
+	// Every listener hears each pop, as `popstate` reaches each: a page's and its panel's.
+	const listeners = new Set<() => void>()
+	const pop = () => {
+		for (const listener of [...listeners]) listener()
+	}
 	const move = (delta: number) => {
 		const next = Math.min(entries.length - 1, Math.max(0, at + delta))
 		if (next === at) return
@@ -31,9 +35,9 @@ export function fakeHistory(start = "/cards") {
 			entries[at] = url
 		},
 		onPop: (listener) => {
-			pop = listener
+			listeners.add(listener)
 			return () => {
-				pop = () => {}
+				listeners.delete(listener)
 			}
 		},
 		length: () => entries.length,

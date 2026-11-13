@@ -16,10 +16,10 @@
 	 * The panel opens and closes by being rendered: it never closes itself. ×, Escape, the backdrop
 	 * and a swipe down on the head each call `onclose`, and the page decides (`RecordPanel.close`,
 	 * which asks first about a changed form). Escape is left alone while a sheet or a menu is open
-	 * over the panel. Typing or picking in the body (`input`, `change`, a pressed choice in a form)
-	 * calls `ontouch`, so the page knows a form changed. The panel takes focus as it opens, and again
-	 * when its head changes and takes the focused button with it. Every head button is one size. With
-	 * `full` (a form is open) the phone's sheet takes the whole height.
+	 * over the panel. Typing or picking in the body (`input`, `change`, a pressed choice or a picked
+	 * radio in a form) calls `ontouch`, so the page knows a form changed. The panel takes focus as it
+	 * opens, and again when its head changes and takes the focused button with it. Every head button
+	 * is one size. With `full` (a form is open) the phone's sheet takes the whole height.
 	 */
 	interface Props {
 		/** The record's name, or the form's; it names the panel. */
@@ -71,7 +71,8 @@
 
 	const onTouch = (event: Event) => {
 		if (event.type === "click") {
-			const target = event.target instanceof Element ? event.target.closest("button[aria-pressed]") : null
+			const target =
+				event.target instanceof Element ? event.target.closest('button[aria-pressed], [role="radio"]') : null
 			if (!target?.closest("form")) return
 		}
 		ontouch?.()

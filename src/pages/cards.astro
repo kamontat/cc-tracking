@@ -1,11 +1,14 @@
 ---
+import PageTabs from "#components/molecules/PageTabs.astro"
 import CardsPage from "#components/organisms/CardsPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
+import { CARDS_TABS } from "#lib/ui/page-tabs"
 ---
 
-<!-- Cards (prototype `vCards`): every card and limit group is the reader's data, so the page is an island. -->
+<!-- Cards, its first tab (RD-22): the title and the Cards · Limits tabs are the same for every reader; the cards are the reader's data, so they are an island. -->
 <AppLayout title="Cards" titleKey="title.cards" tab="cards">
 	<Fragment slot="main">
+		<PageTabs title="cards.title" label="cards.tabs" tabs={CARDS_TABS} current="/cards" />
 		<CardsPage client:load />
 	</Fragment>
 </AppLayout>

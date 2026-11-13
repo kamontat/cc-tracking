@@ -157,3 +157,28 @@ test("with no sort given, there is no sort chip", () => {
 	expect(document.querySelector('[data-action="sort"]')).toBeNull()
 	expect(document.querySelector('[data-action="filter"]')).not.toBeNull()
 })
+
+test("an end snippet sits at the end of the search row, after Filter", async () => {
+	const { createRawSnippet } = await import("svelte")
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	mounted = mount(FilterControls, {
+		target: document.body,
+		props: {
+			q: "",
+			placeholder: "Search cards",
+			onsearch: () => {},
+			onopen: () => {},
+			count: 0,
+			chips: [],
+			end: createRawSnippet(() => ({ render: () => '<button type="button" data-action="add">Add card</button>' })),
+		},
+	})
+	flushSync()
+	const row = [...(document.querySelector(".tx-ctl")?.children ?? [])]
+	expect(row.map((el) => el.getAttribute("data-action") ?? el.tagName.toLowerCase())).toEqual([
+		"label",
+		"filter",
+		"add",
+	])
+})

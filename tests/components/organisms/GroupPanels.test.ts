@@ -9,8 +9,8 @@ import GroupPanels from "#components/organisms/GroupPanels.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * The Cards page's *Limit groups*: a heading with the count and Add group, then a panel per
- * group that opens it. Ported from the legacy `cc-group-panels` tests, against the same markup.
+ * The Limits tab's groups (RD-22): a panel per group that opens it, the open one marked. Ported
+ * from the legacy `cc-group-panels` tests, against the same markup.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -41,39 +41,38 @@ const panels: GroupPanel[] = [
 	},
 ]
 
-const show = (list: GroupPanel[] = panels) => {
+const show = (list: GroupPanel[] = panels, current: string | null = null) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
 	const opened: string[] = []
-	let added = 0
 	mounted = mount(GroupPanels, {
 		target: document.body,
 		props: {
 			panels: list,
+			empty: "No limit groups yet. Add one.",
+			current,
 			onopengroup: (id: string) => opened.push(id),
-			onaddgroup: () => {
-				added += 1
-			},
 		},
 	})
 	flushSync()
-	return { root: document.body.querySelector(".group-panels") as HTMLElement, opened, added: () => added }
+	return { root: document.body.querySelector(".group-panels") as HTMLElement, opened }
 }
 
 const source = () => Bun.file("src/components/organisms/GroupPanels.svelte").text()
 
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
-test("heading with the count and Add group", () => {
-	const { root, added } = show()
-	expect(text(root.querySelector("h2"))).toBe("Limit groups")
-	expect(text(root.querySelector(".sec-head small"))).toBe("2")
-	// One row the page can hide on a phone, with Add group at its end.
-	expect(root.querySelector(".sec-head")?.getAttribute("part")).toBe("head")
-	expect(root.querySelector(".sec-head > :last-child")?.getAttribute("data-action")).toBe("add-group")
-	expect(root.querySelector("[data-action=add-group] svg.icon")).not.toBeNull()
-	root.querySelector<HTMLElement>("[data-action=add-group]")?.click()
-	expect(added()).toBe(1)
+test("no heading and no Add of its own: the tab names it, and + Add limit is in the search row", () => {
+	const { root } = show()
+	expect(root.querySelector("h2")).toBeNull()
+	expect(root.querySelector(".sec-head")).toBeNull()
+	expect(root.querySelector("[data-action=add-group]")).toBeNull()
+})
+
+test("the group open in the panel is marked", () => {
+	const { root } = show(panels, "g/2")
+	expect(root.querySelector('button[data-group="g/2"]')?.getAttribute("aria-current")).toBe("true")
+	expect(root.querySelector('button[data-group="g1"]')?.hasAttribute("aria-current")).toBe(false)
 })
 
 test("a panel: name (holder), room of limit, the bar, ids and use", () => {
@@ -116,10 +115,9 @@ test("tapping a panel calls onopengroup with its id", () => {
 	expect(opened).toEqual(["g/2"])
 })
 
-test("no groups names the next step", () => {
+test("no groups says what the page passes", () => {
 	const { root } = show([])
 	expect(text(root.querySelector(".empty"))).toBe("No limit groups yet. Add one.")
-	expect(text(root.querySelector(".sec-head small"))).toBe("0")
 })
 
 test("a panel wears its group's colour; none or a bad one wears none", async () => {
@@ -140,6 +138,5 @@ test("a language switch re-renders in place", () => {
 	const { root } = show()
 	setLocale("th")
 	flushSync()
-	expect(text(root.querySelector("h2"))).not.toBe("Limit groups")
 	expect(text(root.querySelector('button[data-group="g1"] .gnote'))).not.toMatch(/used/)
 })

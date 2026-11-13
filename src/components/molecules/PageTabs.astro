@@ -1,0 +1,93 @@
+---
+import type { MessageKey } from "#lib/i18n/catalog"
+import type { PageTab } from "#lib/ui/page-tabs"
+
+import { en } from "#lib/i18n/en"
+
+/**
+ * A page's title and its tabs (PRD RD-22): the title, then a row of underlined labels under it
+ * that scrolls sideways when it must, the same on every width. Each tab is a link to its own
+ * address (RD-29), so Back, a bookmark or a pasted link reaches it; the one on show is marked
+ * `aria-current="page"`. Static: every tab is its own page, so which one shows is known when the
+ * page is built. Cards' (`CARDS_TABS`), Transactions' and Home's tabs all go through it.
+ */
+interface Props {
+	/** The page's title, a catalog key. */
+	title: MessageKey
+	/** The tabs' nav name, a catalog key (_Card views_). */
+	label: MessageKey
+	/** The tabs, in order. */
+	tabs: readonly PageTab[]
+	/** The address of the tab on show, as one of `tabs` gives it. */
+	current: string
+}
+
+const { title, label, tabs, current } = Astro.props
+---
+
+<div class="page-tabs">
+	<h1 data-i18n={title}>{en[title]}</h1>
+	<nav class="page-tabs__nav" aria-label={en[label]} data-i18n-aria-label={label}>
+		{tabs.map((tab) => (
+			<a href={tab.href} aria-current={tab.href === current ? "page" : undefined}>
+				<span data-i18n={tab.label}>{en[tab.label]}</span>
+			</a>
+		))}
+	</nav>
+</div>
+
+<style>
+	.page-tabs {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-2);
+		min-inline-size: 0;
+	}
+
+	h1 {
+		margin: 0;
+	}
+
+	/* A row of underlined labels on a rule, scrolling sideways rather than wrapping. */
+	nav {
+		display: flex;
+		flex-direction: row;
+		gap: var(--cc-space-1);
+		overflow-x: auto;
+		scrollbar-width: none;
+		border-block-end: var(--cc-border-width) solid var(--cc-border);
+	}
+
+	/* `:any-link`, to outweigh app.css's own `a:any-link` colour and underline. */
+	a:any-link {
+		flex: 0 0 auto;
+		margin-block-end: calc(-1 * var(--cc-border-width));
+		padding: var(--cc-space-2) var(--cc-space-3);
+		font-size: var(--cc-text-md);
+		font-weight: 650;
+		color: var(--cc-text-muted);
+		white-space: nowrap;
+		text-decoration: none;
+		border-block-end: var(--cc-rule-width) solid transparent;
+	}
+
+	a:any-link:hover {
+		color: var(--cc-text);
+		text-decoration: none;
+	}
+
+	a[aria-current="page"]:any-link {
+		color: var(--cc-text);
+		border-block-end-color: var(--cc-accent);
+	}
+
+	a:focus-visible {
+		outline-offset: calc(-1 * var(--cc-ring-width));
+	}
+
+	@media (forced-colors: active) {
+		a[aria-current="page"] {
+			border-block-end-color: Highlight;
+		}
+	}
+</style>

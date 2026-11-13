@@ -1,7 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: `card` on `/cards`, 2026-11-13, PRD DD-196). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: Cards' tabs, `/cards` and `/cards/limits`, 2026-11-13, PRD DD-197). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -17,7 +17,8 @@ replaced by the tabs-and-panel plan: tabs as paths (`/owed`, `/ready`, `/transac
 and `/card`, `/pay`, `/list/*` and the `/backup` redirect retired. The full list is in
 `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`. This file stays in step with the
 code: each part of the plan rewrites the addresses it changes here as it ships. Shipped so far:
-`card` on `/cards` (part 2, DD-196).
+`card` on `/cards` (part 2, DD-196); Cards' tabs, `/cards` and `/cards/limits`, with `f.`
+filters and the `limit` key (part 3, DD-197).
 
 ## Redirects
 
@@ -76,34 +77,57 @@ Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/
 
 ## Cards
 
+Two tabs, each its own page (RD-22): _Cards_ at `/cards` and _Limits_ at `/cards/limits`, under
+the page title on every width. The tab bar lights Cards for both. A filter takes `f.` (RD-29).
+
 ### `/cards`
 
-| Key        | Values                                 | Default        | Notes                                                                                                                                                                                    |
-| ---------- | -------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`     | `cards`, `groups`                      | `cards`        | Which view shows below 900px: the card list or the limit groups. Written only as `groups`; anything else reads as `cards`. From 900px both sit side by side and the key changes nothing. |
-| `q`        | any text                               | empty          | Search.                                                                                                                                                                                  |
-| `loc`      | location id (repeated)                 | any            | Kept only when the id is a stored location.                                                                                                                                              |
-| `owner`    | `KC`, `NT`, `RI` (repeated)            | any            | Card owner.                                                                                                                                                                              |
-| `sort`     | `card`, `room`, `name`, `close`, `due` | `card`         | Order within each section. `close` and `due` put the soonest full date shown on the card first. The retired `place` reads as `card`.                                                     |
-| `dir`      | `asc`, `desc`                          | the sort's own | Direction. `room` defaults to `desc` (most room first), the others to `asc`.                                                                                                             |
-| `by`       | `place`, `holder`, `limit`, `none`     | `place`        | Sections: each place, each account holder, each limit group (A to Z), or one flat list.                                                                                                  |
-| `group`    | limit group id                         | none           | Opens the limit group sheet on that group.                                                                                                                                               |
-| `newGroup` | `1`                                    | none           | Opens a blank limit group sheet; wins over `group`.                                                                                                                                      |
-| `card`     | card id                                | none           | Opens the card's detail panel (RD-23). An empty id, an id not in the card id format (RD-28) or a card not stored opens nothing, and the key is taken out of the address.                 |
+| Key           | Values                                 | Default        | Notes                                                                                                                                                                    |
+| ------------- | -------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `q`           | any text                               | empty          | Search: a card's id, name, last 4 or comment.                                                                                                                            |
+| `f.locations` | location id (repeated)                 | any            | Kept only when the id is a stored location.                                                                                                                              |
+| `f.owners`    | `KC`, `NT`, `RI` (repeated)            | any            | Card owner.                                                                                                                                                              |
+| `sort`        | `card`, `room`, `name`, `close`, `due` | `card`         | Order within each section. `close` and `due` put the soonest full date shown on the card first. The retired `place` reads as `card`.                                     |
+| `dir`         | `asc`, `desc`                          | the sort's own | Direction. `room` defaults to `desc` (most room first), the others to `asc`.                                                                                             |
+| `by`          | `place`, `holder`, `limit`, `none`     | `place`        | Sections: each place, each account holder, each limit group (A to Z), or one flat list.                                                                                  |
+| `card`        | card id                                | none           | Opens the card's detail panel (RD-23). An empty id, an id not in the card id format (RD-28) or a card not stored opens nothing, and the key is taken out of the address. |
 
-Switching the view, filter and sort changes rewrite the address (`replaceState`); opening a group sheet pushes
-one (`pushState`), keeping the other keys. Example: `/cards?owner=KC&sort=room&group=<id>`.
+Search, filter and sort changes rewrite the address (`replaceState`), keeping `card`. Example:
+`/cards?f.owners=KC&sort=room&card=12.3`. The retired `view`, `loc`, `owner`, `group` and
+`newGroup` are ignored like any unknown key.
 
 The card panel (DD-196): a tile's click opens it, pushing `card` when no panel is open and
 rewriting the entry when one is, so Back closes it rather than walking through every card seen.
 Every address the page rewrites keeps `card`. No form in the panel is in the address: _Edit_,
 _Add purchase_, a purchase's _Edit_ and _Make a payment_ push an entry with the address unchanged
-(Back returns to the card, and a reload shows the card); _Add card_ opens a blank card form with
-the address unchanged (pushed when no panel is open, else over the open card's entry without
-`card`), and adding the card writes `card=<new id>` over that entry. Closing (×, Escape, the
-backdrop) steps back over every entry the panel pushed, or, on an address opened with `card`
-already in it, rewrites it without `card`. A tile links to `/cards?card=<id>`, which a new tab
-opens. Example: `/cards?q=kbank&card=12.3`.
+(Back returns to the card, and a reload shows the card); _+ Add card_ (at the end of the search
+row) opens a blank card form with the address unchanged (pushed when no panel is open, else over
+the open card's entry without `card`), and adding the card writes `card=<new id>` over that
+entry. Closing (×, Escape, the backdrop) steps back over every entry the panel pushed, or, on an
+address opened with `card` already in it, rewrites it without `card`. A tile links to
+`/cards?card=<id>`, which a new tab opens. Example: `/cards?q=kbank&card=12.3`.
+
+### `/cards/limits`
+
+Every limit group, one panel each (DD-197).
+
+| Key        | Values                      | Default                                  | Notes                                                                                                                    |
+| ---------- | --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `q`        | any text                    | empty                                    | Search: a group's name, or the name of one of its cards.                                                                 |
+| `f.owners` | `KC`, `NT`, `RI` (repeated) | any                                      | The group's account holder.                                                                                              |
+| `sort`     | `name`, `room`, `used`      | `name`                                   | A to Z by name; by room left; by the share of the limit used. Ties A to Z.                                               |
+| `dir`      | `asc`, `desc`               | `desc` for `room` and `used`, else `asc` | Direction.                                                                                                               |
+| `limit`    | limit group id              | none                                     | Opens the group's limit panel. An empty id or a group not stored opens nothing, and the key is taken out of the address. |
+| `card`     | card id                     | none                                     | Opens the card's panel (a group's card), as on `/cards`; wins over `limit`.                                              |
+
+Search, filter and sort changes rewrite the address (`replaceState`), keeping the open record.
+A group's tile opens its panel the way a card's tile does on `/cards` (push from nothing, rewrite
+when one is open). A card in the limit panel opens the card's panel a step deeper: it pushes
+`?card=<id>` (in place of `limit`), so Back returns to the group. _Edit_ in the limit panel puts
+the group form there, pushing an entry with the address unchanged; _+ Add limit_ (at the end of
+the search row) opens a blank group form with the address unchanged, and adding the group writes
+`limit=<new id>` over its entry. Deleting a group (from its form, when no card uses it) closes
+the panel. Example: `/cards/limits?f.owners=KC&sort=room&limit=<id>`.
 
 ### `/card`
 

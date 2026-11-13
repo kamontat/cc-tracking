@@ -6,19 +6,18 @@
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
-	import Sheet from "#components/molecules/Sheet.svelte"
 	import { GROUP_COLORS, type GroupColor, pickColor, toGroupColor } from "#lib/domain/group-color"
 	import { amountOf, formatAmountInput } from "#lib/domain/money"
 	import { OWNERS, type Owner, ownerOf } from "#lib/domain/owner"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 
 	/**
-	 * A limit group in a sheet over Cards: name, limit and account holder (a segmented control),
-	 * a colour, then *Save*. An existing group no card uses also has *Delete group*, which swaps in
-	 * place for *Delete NAME?* with *Delete* and *Keep* (UI-09); focus follows the swap. *Save*
-	 * calls `onsave` with the group and *Delete* `ondelete`, both at once, the sheet staying up
-	 * until the page takes it away; Close, Escape and the backdrop call `onclose` once the exit has
-	 * played. `error` says why a save or delete failed; what was typed stays.
+	 * The limit group form, in the limit panel (RD-24, `LimitPanel`): name, limit and account
+	 * holder (a segmented control), a colour, then *Save* (with `oncancel`, a quiet *Cancel* beside
+	 * it). An existing group no card uses also has *Delete group*, which swaps in place for *Delete
+	 * NAME?* with *Delete* and *Keep* (UI-09); focus follows the swap. *Save* calls `onsave` with the
+	 * group and *Delete* `ondelete`, both at once; the panel goes back once written. `error` says
+	 * why a save or delete failed; what was typed stays.
 	 */
 	interface Props {
 		/** The group to edit; null for a new one. */
@@ -35,10 +34,11 @@
 		random?: () => number
 		onsave: (group: LimitGroup) => void
 		ondelete: (group: LimitGroup) => void
-		onclose: () => void
+		/** Shows *Cancel* beside the submit, which runs it: back to the group. */
+		oncancel?: (() => void) | undefined
 	}
 
-	const { group, groups, inUse, error, busy, random = Math.random, onsave, ondelete, onclose }: Props = $props()
+	const { group, groups, inUse, error, busy, random = Math.random, onsave, ondelete, oncancel }: Props = $props()
 
 	const uid = $props.id()
 	const ownerLegend = `${uid}-owner`
@@ -188,124 +188,129 @@
 	)
 </script>
 
-<Sheet heading={group ? tr("limits.edit", { name: group.name }) : tr("limits.add")} held={busy} {onclose}>
+<form class="group-form" bind:this={form} onsubmit={onSubmit} novalidate>
 	<ErrorBanner message={error} />
-	<form bind:this={form} onsubmit={onSubmit} novalidate>
-		{#if errorKey}
-			<p role="alert">{tr(errorKey)}</p>
-		{/if}
-		<label>
-			{tr("limits.name")}
-			<input name="name" bind:value={name} autocomplete="off" placeholder={tr("limits.namePlaceholder")}>
-		</label>
-		<label>
-			{tr("limits.limit")}
-			<input name="limit" inputmode="decimal" bind:value={limit} placeholder={tr("limits.limitPlaceholder")}>
-		</label>
-		<fieldset>
-			<legend id={ownerLegend}>{tr("limits.owner")}</legend>
+	{#if errorKey}
+		<p role="alert">{tr(errorKey)}</p>
+	{/if}
+	<label>
+		{tr("limits.name")}
+		<input name="name" bind:value={name} autocomplete="off" placeholder={tr("limits.namePlaceholder")}>
+	</label>
+	<label>
+		{tr("limits.limit")}
+		<input name="limit" inputmode="decimal" bind:value={limit} placeholder={tr("limits.limitPlaceholder")}>
+	</label>
+	<fieldset>
+		<legend id={ownerLegend}>{tr("limits.owner")}</legend>
+		<div
+			class="seg"
+			role="radiogroup"
+			aria-labelledby={ownerLegend}
+			onkeydown={(event) =>
+				arrow(event, OWNERS, owner, "data-owner", (next) => {
+					owner = next
+				})}>
+			{#each OWNERS as choice (choice)}
+				<!-- biome-ignore lint/a11y/useSemanticElements: a segmented control of buttons, roving tabindex (WAI-ARIA radio group) -->
+				<button
+					type="button"
+					role="radio"
+					data-owner={choice}
+					aria-checked={owner === choice ? "true" : "false"}
+					tabindex={tabStop(OWNERS, owner, choice)}
+					onclick={() => {
+						owner = choice
+					}}>
+					{choice}
+				</button>
+			{/each}
+		</div>
+	</fieldset>
+	<fieldset>
+		<legend id={colorLegend}>{tr("limits.color")}</legend>
+		<div class="swatch-row">
 			<div
-				class="seg"
+				class="swatches"
 				role="radiogroup"
-				aria-labelledby={ownerLegend}
+				aria-labelledby={colorLegend}
 				onkeydown={(event) =>
-					arrow(event, OWNERS, owner, "data-owner", (next) => {
-						owner = next
+					arrow(event, GROUP_COLORS, color, "data-color", (next) => {
+						color = next
 					})}>
-				{#each OWNERS as choice (choice)}
-					<!-- biome-ignore lint/a11y/useSemanticElements: a segmented control of buttons, roving tabindex (WAI-ARIA radio group) -->
+				{#each GROUP_COLORS as choice (choice)}
+					<!-- biome-ignore lint/a11y/useSemanticElements: swatch buttons, roving tabindex (WAI-ARIA radio group) -->
 					<button
 						type="button"
 						role="radio"
-						data-owner={choice}
-						aria-checked={owner === choice ? "true" : "false"}
-						tabindex={tabStop(OWNERS, owner, choice)}
+						data-color={choice}
+						data-g={choice}
+						aria-label={tr(`color.${choice}`)}
+						aria-checked={color === choice ? "true" : "false"}
+						tabindex={tabStop(GROUP_COLORS, color, choice)}
 						onclick={() => {
-							owner = choice
+							color = choice
 						}}>
-						{choice}
+						{#if color === choice}
+							<SvgIcon name="check" />
+						{/if}
 					</button>
 				{/each}
 			</div>
-		</fieldset>
-		<fieldset>
-			<legend id={colorLegend}>{tr("limits.color")}</legend>
-			<div class="swatch-row">
-				<div
-					class="swatches"
-					role="radiogroup"
-					aria-labelledby={colorLegend}
-					onkeydown={(event) =>
-						arrow(event, GROUP_COLORS, color, "data-color", (next) => {
-							color = next
-						})}>
-					{#each GROUP_COLORS as choice (choice)}
-						<!-- biome-ignore lint/a11y/useSemanticElements: swatch buttons, roving tabindex (WAI-ARIA radio group) -->
-						<button
-							type="button"
-							role="radio"
-							data-color={choice}
-							data-g={choice}
-							aria-label={tr(`color.${choice}`)}
-							aria-checked={color === choice ? "true" : "false"}
-							tabindex={tabStop(GROUP_COLORS, color, choice)}
-							onclick={() => {
-								color = choice
-							}}>
-							{#if color === choice}
-								<SvgIcon name="check" />
-							{/if}
-						</button>
-					{/each}
-				</div>
+			<button
+				type="button"
+				data-variant="quiet"
+				data-action="random-color"
+				onclick={() => {
+					color = freeColor(color)
+				}}>
+				{tr("limits.color.random")}
+			</button>
+		</div>
+	</fieldset>
+	<div class="actions" data-twin={oncancel ? "" : undefined}>
+		{#if oncancel}
+			<button type="button" data-variant="quiet" data-action="cancel" onclick={() => oncancel()}>
+				{tr("common.cancel")}
+			</button>
+		{/if}
+		<button type="submit" disabled={busy}>{group ? tr("limits.save") : tr("limits.add")}</button>
+	</div>
+	{#if group && !inUse}
+		{@const current = group}
+		<div class="danger">
+			{#if asking}
+				<span class="ask">{tr("cards.group.deleteAsk", { name: current.name })}</span>
 				<button
 					type="button"
-					data-variant="quiet"
-					data-action="random-color"
+					data-variant="danger"
+					data-action="confirm-delete"
+					disabled={busy}
 					onclick={() => {
-						color = freeColor(color)
+						// The question stays until the write lands: a failed delete still shows it.
+						ondelete(current)
 					}}>
-					{tr("limits.color.random")}
+					{tr("common.delete")}
 				</button>
-			</div>
-		</fieldset>
-		<button type="submit" disabled={busy}>{group ? tr("limits.save") : tr("limits.add")}</button>
-		{#if group && !inUse}
-			{@const current = group}
-			<div class="danger">
-				{#if asking}
-					<span class="ask">{tr("cards.group.deleteAsk", { name: current.name })}</span>
-					<button
-						type="button"
-						data-variant="danger"
-						data-action="confirm-delete"
-						disabled={busy}
-						onclick={() => {
-							// The question stays until the write lands: a failed delete still shows it.
-							ondelete(current)
-						}}>
-						{tr("common.delete")}
-					</button>
-					<button type="button" data-variant="quiet" data-action="keep" onclick={() => swap(false, "delete-group")}>
-						{tr("cards.group.keep")}
-					</button>
-				{:else}
-					<button
-						type="button"
-						data-variant="danger"
-						data-action="delete-group"
-						disabled={busy}
-						onclick={() => swap(true, "confirm-delete")}>
-						{tr("cards.group.delete")}
-					</button>
-				{/if}
-			</div>
-		{/if}
-	</form>
-</Sheet>
+				<button type="button" data-variant="quiet" data-action="keep" onclick={() => swap(false, "delete-group")}>
+					{tr("cards.group.keep")}
+				</button>
+			{:else}
+				<button
+					type="button"
+					data-variant="danger"
+					data-action="delete-group"
+					disabled={busy}
+					onclick={() => swap(true, "confirm-delete")}>
+					{tr("cards.group.delete")}
+				</button>
+			{/if}
+		</div>
+	{/if}
+</form>
 
 <style>
-	form {
+	.group-form {
 		display: flex;
 		flex-direction: column;
 		gap: var(--cc-space-3);
@@ -414,11 +419,33 @@
 			0 0 0 calc(2 * var(--cc-rule-width)) var(--g-fg);
 	}
 
-	button[type="submit"] {
+	.actions {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.actions > button {
+		align-self: stretch;
 		padding: var(--cc-space-3) var(--cc-space-4);
 		font-size: var(--cc-text-md);
 		font-weight: 650;
 		border-radius: var(--cc-radius-sm);
+	}
+
+	/* With *Cancel*: the two side by side, the submit taking the room. */
+	.actions[data-twin] {
+		flex-direction: row;
+		gap: var(--cc-space-3);
+	}
+
+	.actions[data-twin] > button[type="submit"] {
+		flex: 1;
+	}
+
+	.actions > button[data-variant="quiet"] {
+		color: var(--cc-text);
+		background: var(--cc-surface-sunken);
+		border-color: var(--cc-border);
 	}
 
 	.danger {
