@@ -122,6 +122,8 @@ const typeText = (root: HTMLElement, value: string) => {
 	const area = root.querySelector("textarea") as HTMLTextAreaElement
 	area.value = value
 	area.dispatchEvent(new Event("input", { bubbles: true }))
+	// Restore follows what was typed, as it would before anyone could click it.
+	flushSync()
 }
 
 const chooseFile = async (root: HTMLElement, file: File) => {
@@ -139,10 +141,75 @@ test("sits in a sheet headed Restore a copy, opening on the clipboard, a file an
 		expect(root.querySelector("dialog")?.open).toBe(true)
 		expect(root.querySelector("dialog h2")?.textContent?.trim()).toBe("Restore a copy")
 		expect(step()).toBe("start")
-		// The clipboard is the primary choice; the file and paste by hand are quiet.
-		expect(action("paste-clipboard")?.hasAttribute("data-variant")).toBe(false)
+		expect(action("paste-clipboard")).not.toBeNull()
 		expect(action("choose-file")).not.toBeNull()
+		expect(action("from-link")).not.toBeNull()
 		expect(action("paste-by-hand")).not.toBeNull()
+	})
+})
+
+/** The sheet's buttons outside the question: what the reader picks and confirms the copy with. */
+const wayIn = (root: HTMLElement) => [
+	...root.querySelectorAll<HTMLElement>("[data-step] button, [data-step] label.file"),
+]
+
+/** Every icon in `root`'s ways in, by the action of the button it leads. */
+const leadingIcons = (root: HTMLElement) =>
+	wayIn(root).map((el) => [
+		el.getAttribute("data-action") ?? el.querySelector("input")?.getAttribute("data-action"),
+		el.firstElementChild?.matches("svg.icon") ?? false,
+	])
+
+test("every way in, Back and Restore look the same: quiet, each led by an icon", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		const sheet = await show(new InMemoryRepository())
+		const quiet = () =>
+			wayIn(sheet.root).map((el) => el.matches('[data-variant="quiet"]') || el.classList.contains("file"))
+		expect(leadingIcons(sheet.root)).toEqual([
+			["paste-clipboard", true],
+			["choose-file", true],
+			["from-link", true],
+			["paste-by-hand", true],
+		])
+		expect(quiet()).toEqual([true, true, true, true])
+		// Paste by hand is a button like the rest, not a text link.
+		expect(sheet.action("paste-by-hand")?.classList.contains("by-hand")).toBe(false)
+
+		await sheet.click("from-link")
+		expect(leadingIcons(sheet.root)).toEqual([
+			["back", true],
+			["import-link", true],
+		])
+		expect(quiet()).toEqual([true, true])
+
+		await sheet.click("back")
+		await sheet.click("paste-by-hand")
+		expect(leadingIcons(sheet.root)).toEqual([
+			["back", true],
+			["import-text", true],
+		])
+		expect(quiet()).toEqual([true, true])
+	})
+})
+
+test("without a readable clipboard, From a link under the text area is a quiet button with its icon", async () => {
+	await withClipboard(undefined, async () => {
+		const sheet = await show(new InMemoryRepository())
+		expect(leadingIcons(sheet.root)).toEqual([
+			["import-text", true],
+			["from-link", true],
+		])
+	})
+})
+
+test("on the question Merge stays primary, with no icons", async () => {
+	const text = await oneCardBackup()
+	await withClipboard({ readText: async () => text }, async () => {
+		const sheet = await show(await populated())
+		await sheet.click("paste-clipboard")
+		expect(sheet.step()).toBe("question")
+		expect(sheet.action("merge-import")?.hasAttribute("data-variant")).toBe(false)
+		expect(sheet.root.querySelector('[data-step="question"] svg.icon')).toBeNull()
 	})
 })
 
@@ -494,6 +561,7 @@ const typeLink = (root: HTMLElement, value: string) => {
 	const input = root.querySelector('input[type="url"]') as HTMLInputElement
 	input.value = value
 	input.dispatchEvent(new Event("input", { bubbles: true }))
+	flushSync()
 }
 
 test("from a link opens a step with the address field and Restore, quiet beside the clipboard", async () => {
@@ -580,6 +648,66 @@ test("a link is offered without a readable clipboard too", async () => {
 		expect(sheet.step()).toBe("paste")
 		await sheet.click("from-link")
 		expect(sheet.step()).toBe("link")
+	})
+})
+
+test("Back from the link and paste steps returns to the start, leaving the last failure behind", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		const sheet = await show(new InMemoryRepository())
+		await sheet.click("from-link")
+		expect(sheet.action("back")?.getAttribute("data-variant")).toBe("quiet")
+		await sheet.click("back")
+		expect(sheet.step()).toBe("start")
+
+		await sheet.click("paste-by-hand")
+		typeText(sheet.root, "{ not json")
+		await sheet.click("import-text")
+		expect(sheet.root.querySelector('[role="alert"]')).not.toBeNull()
+		await sheet.click("back")
+		expect(sheet.step()).toBe("start")
+		expect(sheet.root.querySelector('[role="alert"]')).toBeNull()
+	})
+})
+
+test("without a readable clipboard the text area has no Back, and Back from a link returns to it", async () => {
+	await withClipboard(undefined, async () => {
+		const sheet = await show(new InMemoryRepository())
+		expect(sheet.action("back")).toBeNull()
+		await sheet.click("from-link")
+		await sheet.click("back")
+		expect(sheet.step()).toBe("paste")
+	})
+})
+
+test("Restore waits for a web address on the link step", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		const sheet = await show(new InMemoryRepository())
+		await sheet.click("from-link")
+		const restore = () => sheet.action("import-link") as HTMLButtonElement
+		expect(restore().disabled).toBe(true)
+		for (const link of ["copy.json", "ftp://example.com/b.json", "   "]) {
+			typeLink(sheet.root, link)
+			await settle()
+			expect(restore().disabled).toBe(true)
+		}
+		typeLink(sheet.root, "https://example.com/b.json")
+		await settle()
+		expect(restore().disabled).toBe(false)
+	})
+})
+
+test("Restore waits for text on the paste step", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		const sheet = await show(new InMemoryRepository())
+		await sheet.click("paste-by-hand")
+		const restore = () => sheet.action("import-text") as HTMLButtonElement
+		expect(restore().disabled).toBe(true)
+		typeText(sheet.root, "  \n ")
+		await settle()
+		expect(restore().disabled).toBe(true)
+		typeText(sheet.root, "{}")
+		await settle()
+		expect(restore().disabled).toBe(false)
 	})
 })
 

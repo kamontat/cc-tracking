@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "vitest"
 
 import { messageOf } from "#lib/i18n/error"
 import { setLocale } from "#lib/i18n/index"
-import { fetchBackupText, linkName } from "#lib/ui/restore"
+import { fetchBackupText, isWebAddress, linkName } from "#lib/ui/restore"
 
 afterEach(() => setLocale("en"))
 
@@ -63,6 +63,13 @@ test("a link that answers with an error names the status", async () => {
 test("the failures read in Thai too", async () => {
 	setLocale("th")
 	expect(await failureOf(fetchBackupText("copy.json", answering("{}")))).not.toContain("web address")
+})
+
+test("only an http or https address counts as a web address", () => {
+	expect(isWebAddress(" https://example.com/b.json ")).toBe(true)
+	expect(isWebAddress("http://example.com")).toBe(true)
+	for (const link of ["", "   ", "b.json", "example.com/b.json", "ftp://example.com/b.json", "javascript:alert(1)"])
+		expect(isWebAddress(link)).toBe(false)
 })
 
 test("a link is named by its file, else its host", () => {

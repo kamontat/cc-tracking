@@ -23,6 +23,9 @@ const webAddress = (link: string): URL | undefined => {
 	}
 }
 
+/** Whether `link` is an http or https address, so *From a link* may fetch it. */
+export const isWebAddress = (link: string): boolean => webAddress(link) !== undefined
+
 /**
  * The text at `link`, for *From a link*. Refuses anything but an http or https address before
  * fetching. A fetch that never answers is most often a site that does not let other sites read

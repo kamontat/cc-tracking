@@ -6,6 +6,7 @@
 
 	import { onMount } from "svelte"
 
+	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import Sheet from "#components/molecules/Sheet.svelte"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { migrateLocations } from "#lib/storage/migrate-locations"
@@ -22,7 +23,7 @@
 		replaceWithBackupV4,
 	} from "#lib/storage/transfer-v4"
 	import { countsText } from "#lib/ui/record-counts"
-	import { canReadClipboard, fetchBackupText, linkName, restoreFailureText } from "#lib/ui/restore"
+	import { canReadClipboard, fetchBackupText, isWebAddress, linkName, restoreFailureText } from "#lib/ui/restore"
 
 	/**
 	 * *Restore a copy*, clipboard first, in a sheet. The start offers *Paste from clipboard*
@@ -233,17 +234,26 @@
 				{tr("backup.pasteLabel")}
 				<textarea rows="6" spellcheck="false" bind:value={text}></textarea>
 			</label>
-			<button type="button" data-action="import-text" disabled={busy} onclick={() => run(() => start(undefined, text))}>
-				{tr("backup.importText")}
-			</button>
-			{#if !clipboard}
+			<div class="foot">
+				{#if clipboard}
+					<button type="button" data-variant="quiet" data-action="back" disabled={busy} onclick={() => goTo("start")}>
+						<SvgIcon name="back" />
+						{tr("common.back")}
+					</button>
+				{/if}
 				<button
 					type="button"
-					class="by-hand"
 					data-variant="quiet"
-					data-action="from-link"
-					disabled={busy}
-					onclick={() => goTo("link")}>
+					data-action="import-text"
+					disabled={busy || text.trim() === ""}
+					onclick={() => run(() => start(undefined, text))}>
+					<SvgIcon name="restore" />
+					{tr("backup.importText")}
+				</button>
+			</div>
+			{#if !clipboard}
+				<button type="button" data-variant="quiet" data-action="from-link" disabled={busy} onclick={() => goTo("link")}>
+					<SvgIcon name="link" />
 					{tr("backup.fromLink")}
 				</button>
 			{/if}
@@ -255,34 +265,51 @@
 			novalidate
 			onsubmit={(event) => {
 				event.preventDefault()
-				onLink()
+				if (isWebAddress(link)) onLink()
 			}}>
 			<label>
 				{tr("backup.linkLabel")}
 				<input type="url" inputmode="url" autocomplete="off" spellcheck="false" bind:value={link}>
 			</label>
 			<p class="hint">{tr("backup.linkHint")}</p>
-			<button type="submit" data-action="import-link" disabled={busy}>{tr("backup.importText")}</button>
+			<div class="foot">
+				<button
+					type="button"
+					data-variant="quiet"
+					data-action="back"
+					disabled={busy}
+					onclick={() => goTo(clipboard ? "start" : "paste")}>
+					<SvgIcon name="back" />
+					{tr("common.back")}
+				</button>
+				<button type="submit" data-variant="quiet" data-action="import-link" disabled={busy || !isWebAddress(link)}>
+					<SvgIcon name="restore" />
+					{tr("backup.importText")}
+				</button>
+			</div>
 		</form>
 	{:else}
 		<div class="step" data-step="start">
-			<button type="button" data-action="paste-clipboard" disabled={busy} onclick={onClipboard}>
+			<button type="button" data-variant="quiet" data-action="paste-clipboard" disabled={busy} onclick={onClipboard}>
+				<SvgIcon name="clipboard" />
 				{tr("backup.fromClipboard")}
 			</button>
 			<label class="file">
+				<SvgIcon name="file" />
 				{tr("backup.import")}
 				<input type="file" accept="application/json" data-action="choose-file" disabled={busy} onchange={onFile}>
 			</label>
 			<button type="button" data-variant="quiet" data-action="from-link" disabled={busy} onclick={() => goTo("link")}>
+				<SvgIcon name="link" />
 				{tr("backup.fromLink")}
 			</button>
 			<button
 				type="button"
-				class="by-hand"
 				data-variant="quiet"
 				data-action="paste-by-hand"
 				disabled={busy}
 				onclick={() => goTo("paste")}>
+				<SvgIcon name="keyboard" />
 				{tr("backup.paste")}
 			</button>
 		</div>
@@ -296,8 +323,16 @@
 		gap: var(--cc-space-3);
 	}
 
+	/* Every way in, Back and Restore are the same quiet button, an icon before the words. */
 	.step > button,
+	.foot > button,
 	.file {
+		display: flex;
+		/* A label is a column app-wide; the icon sits before the words. */
+		flex-direction: row;
+		gap: var(--cc-space-2);
+		align-items: center;
+		justify-content: center;
 		align-self: stretch;
 		padding: var(--cc-space-3) var(--cc-space-4);
 		font-size: var(--cc-text-md);
@@ -309,7 +344,6 @@
 	   the layout and the tab order, so the label's focus ring follows the keyboard. */
 	.file {
 		position: relative;
-		display: block;
 		/* A label takes the body's leading; a button's is tighter, so match it or the file
 		   choice stands taller than the buttons around it. */
 		line-height: 1.2;
@@ -338,20 +372,22 @@
 		opacity: 0;
 	}
 
-	/* *Paste by hand* reads as a text link, the least of the three ways in. */
-	.step > .by-hand {
-		align-self: center;
-		padding: var(--cc-space-1);
-		font-size: var(--cc-text-sm);
-		font-weight: 400;
-		color: var(--cc-link);
-		text-decoration: underline;
-		background: transparent;
-		border-color: transparent;
+	/* Back and Restore share a line, Restore taking the room Back leaves. */
+	.foot {
+		display: flex;
+		/* The reset makes every div a column. */
+		flex-direction: row;
+		gap: var(--cc-space-2);
 	}
 
-	.step > .by-hand:hover {
-		background: transparent;
+	.foot > [data-action^="import"] {
+		flex: 1;
+	}
+
+	.step :global(.icon) {
+		flex: none;
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
 	}
 
 	.step textarea,
