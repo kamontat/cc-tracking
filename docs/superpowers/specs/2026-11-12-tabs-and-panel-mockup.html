@@ -198,7 +198,7 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 			</ul></div>
 			<div><h4>Starting a list or a payment</h4><ul>
 				<li>No floating <em>+ New</em>: things start where they live.</li>
-				<li>A list: <em>+ Add list</em> on the <em>Lists</em> tab, or a card's <em>Use on a list</em>. Both open the builder, <code>/transactions/lists/new</code>; <em>+ Add a card</em> opens its sheet (<code>add=1</code>, then <code>open=&lt;id&gt;</code>), <em>Add to list</em> writes <code>cards</code>.</li>
+				<li>A list: <em>+ Add list</em> on the <em>Lists</em> tab, or a card's <em>Use on a list</em>. Both open the builder, <code>/transactions/lists/new</code>; <em>+ Add a card</em> opens its sheet with the address unchanged (Back closes it); <em>Add to list</em> writes the card into <code>cards</code>.</li>
 				<li><em>Save as draft</em> leaves for the <em>Lists</em> tab with the list open in its panel (<code>/transactions/lists?list=…</code>). A draft's <em>Continue</em> and a waiting list's <em>Enter reply</em> open <code>/transactions/lists/edit?list=…</code>.</li>
 				<li>A payment: <em>Pay</em> on a bill in Home's <em>Owed</em>, or <em>Pay</em> in a card's panel (a card that owes nothing).</li>
 			</ul></div>
@@ -257,7 +257,8 @@ const urlOf = (s) => {
 	if (s.path === "/transactions/lists/new") for (const id of s.cards ?? []) q.append("cards", id)
 	// a blank form for a new card or group has nothing stored to come back to, so it is not in the address
 	// the address names the open record, never a form in its panel (edit, pay, purchase, a new record's)
-	for (const k of ["list", "add", "open", "card", "limit"]) if (s[k] != null && s[k] !== "new") q.set(k, s[k])
+	// nor the builder's add-a-card sheet (add, open): only the list's own cards are its data
+	for (const k of ["list", "card", "limit"]) if (s[k] != null && s[k] !== "new") q.set(k, s[k])
 	const t = q.toString()
 	return { path: s.path, query: t ? "?" + t : "" }
 }

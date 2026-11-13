@@ -87,10 +87,13 @@ Back leaves without asking, as leaving a page does today (no page guards a form 
 - `/transactions/lists/new` is a full page (not a panel) under the _Lists_ tab's path, and the
   tab bar lights Transactions. The page is today's builder (DD-195): a sub-header with ‹ (Back), the
   lines, _+ Add a card_, and a footer with the total, _Save as draft_ and _Review_. Its
-  add-a-card sheet keeps DD-195's keys: _+ Add a card_ pushes `add=1` (the picker), picking a
-  card rewrites it to `open=<card id>`, and _Add to list_, _Remove from list_, _Done_ or × close
-  it by stepping back over its entry, writing the cards into `cards`. On a desktop the sheet is a
-  dialog in the middle, as today.
+  add-a-card sheet is no longer in the address (amends DD-195; the user asked, 2026-11-13): `add`
+  and `open` go. Opening it pushes an entry with the address unchanged, so Back closes it;
+  picking a card in it, _All cards_ and the card before or after change nothing in the address;
+  _Add to list_, _Remove from list_, _Done_ or × close it by stepping back over its entry. A new
+  list's cards stay in `cards`, rewritten as cards are added or removed, so a reload keeps them
+  (nothing is stored until _Save as draft_). On a desktop the sheet is a dialog in the middle,
+  as today.
 - A draft's _Continue_ and a waiting list's _Enter reply_ (in the list's panel) go to
   `/transactions/lists/edit?list=<id>`: the builder on the draft, or the reply. A saved list has no edit page;
   its panel is all there is.
@@ -131,8 +134,7 @@ Each has a recommendation, drawn in the mockup.
    too big for a column: _Continue_ and _Enter reply_ go to `/transactions/lists/edit?list=<id>`, which
    picks the builder or the reply by status (as `/purchases/<id>` was to). Decided by the user,
    2026-11-13.
-5. **Record keys are named by kind and work on any tab.** Open: the user is not sure
-   (2026-11-13). Recommended: `card`, `limit` and
+5. **Record keys are named by kind and work on any tab.** Decided by the user, 2026-11-13: `card`, `limit` and
    `list`, not `id`, so a card's panel opens over the tab you are on: a ledger row
    (`/transactions?card=12.3`), a list's line, a limit group's card, Home's _Needs you_
    (`/?card=12.3`). You keep your place instead of jumping to the Cards tab. Each key is singular
@@ -152,10 +154,37 @@ Each has a recommendation, drawn in the mockup.
    them.
    Settings keeps its two columns (CD-11): it has no records to open.
 
+8. **Every card has a limit group** (the user asked, 2026-11-13). A card without one is invalid
+   data, so the code for it goes:
+   - the card form's limit group is required (no _Choose a limit group_ that saves as none); with
+     no group stored yet, the form says to add one first, from _Limits_;
+   - restore rejects a card with no `limitGroupId` or one naming a group not in the file
+     (amends DC-06, which did not check it), and writes nothing, as for any bad record;
+   - Cards loses its _Not in a group_ filter (`ungrouped`) and the _Not in a group_ section under
+     _Group by: Limit group_;
+   - _Ready to use_ loses "N cards have no limit group yet" and its _Assign them_ link
+     (`/cards?ungrouped=1`); the card panel loses "This card draws on no limit group" and "Give
+     this card a limit group (Edit) to use it on a list"; a tile loses _No limit group_
+     (`unassignedCards`, `card.hero.noGroup`, `card.noGroupNote`, `cards.page.noGroup`,
+     `spendable.unassigned.*`, `cards.filter.ungrouped`);
+   - deleting a group that has cards is already refused (`guard.groupInUse`), so no write can
+     leave a card without one.
+   Every card in the user's 2026-11-07 backup has a group that exists, so no stored data turns
+   invalid. Code that still meets a card without one (a hand-edited store) treats it as invalid
+   data, as it does a card at an unknown location: left out, never drawn as a special case.
+
 ## Addresses
 
 Rules: the path names the page and its tab; the query holds the tab's list settings and the
-open panel; nothing uses the fragment. A key at its default is left out. A key that repeats is
+open panel; nothing uses the fragment. Query keys come in three kinds, told apart by name (the
+user asked, 2026-11-13):
+
+- **Filters** start with `f`: they narrow which rows show (`fq`, `fcards`, `ffrom`, `fto`, …).
+- **View** keys have no prefix: `sort`, `dir` and `by` order the rows and cut them into sections.
+- **Data** keys have no prefix: they name a record (`card`, `limit`, `list`) or hold a page's
+  own content (the builder's `cards`). A filter can never be read as data: `fcards` filters,
+  `cards` is what a new list holds, `card` is the open card.
+ A key at its default is left out. A key that repeats is
 plural and repeats once per value (`?cards=12.3&cards=7`); a key naming one record is singular.
 One trailing slash is redirected away (301). No redirect from an old address; `/backup` goes.
 Every page is a static file, so no address needs a rewrite: `_redirects`, local dev, preview and
@@ -197,63 +226,64 @@ When a page takes more than one record key, `card` wins.
 
 **`/transactions`**, Transactions, _Ledger_. Panels: card (a row's _Open card_).
 
-| Key           | Values                                          | Default |
-| ------------- | ----------------------------------------------- | ------- |
-| `q`           | any text                                        | empty   |
-| `types`       | `purchase`, `payment` (repeats)                 | any     |
-| `cards`       | card id (repeats)                               | any     |
-| `range`       | `today`, `week`, `month`, `lastMonth`, `custom` | none    |
-| `from`, `to`  | `YYYY-MM-DD`; an invalid date is dropped        | none    |
-| `sort`        | `date`, `amount`                                | `date`  |
-| `dir`         | `asc`, `desc`                                   | `desc`  |
-| `by`          | `day`, `card`, `none`                           | `day`   |
+| Key       | Values                                          | Default |
+| --------- | ----------------------------------------------- | ------- |
+| `fq`      | any text                                        | empty   |
+| `ftypes`  | `purchase`, `payment` (repeats)                 | any     |
+| `fcards`  | card id (repeats)                               | any     |
+| `frange`  | `today`, `week`, `month`, `lastMonth`, `custom` | none    |
+| `ffrom`   | `YYYY-MM-DD`; an invalid date is dropped        | none    |
+| `fto`     | `YYYY-MM-DD`; an invalid date is dropped        | none    |
+| `sort`    | `date`, `amount`                                | `date`  |
+| `dir`     | `asc`, `desc`                                   | `desc`  |
+| `by`      | `day`, `card`, `none`                           | `day`   |
 
 **`/transactions/lists`**, Transactions, _Lists_. Panels: list, card (a list's line).
 
-| Key                   | Values                                 | Default  |
-| --------------------- | -------------------------------------- | -------- |
-| `q`                   | a line's card id, name, last 4 or note | empty    |
-| `statuses`            | `draft`, `sent`, `saved` (repeats)     | any      |
-| `cards`               | card id (repeats)                      | any      |
-| `range`, `from`, `to` | as on the ledger, on the list's date   | none     |
-| `by`                  | `status`, `month`, `none`              | `status` |
+| Key         | Values                                          | Default  |
+| ----------- | ----------------------------------------------- | -------- |
+| `fq`        | a line's card id, name, last 4 or note          | empty    |
+| `fstatuses` | `draft`, `sent`, `saved` (repeats)              | any      |
+| `fcards`    | card id (repeats)                               | any      |
+| `frange`    | `today`, `week`, `month`, `lastMonth`, `custom` | none     |
+| `ffrom`     | `YYYY-MM-DD`, on the list's date                | none     |
+| `fto`       | `YYYY-MM-DD`, on the list's date                | none     |
+| `by`        | `status`, `month`, `none`                       | `status` |
 
-**`/transactions/lists/new`**, Transactions: the builder, a full page. Panels: none.
+**`/transactions/lists/new`**, Transactions: the builder, a full page. Panels: none; its
+add-a-card sheet is not in the address.
 
-| Key     | Values            | Notes                                                                    |
-| ------- | ----------------- | ------------------------------------------------------------------------ |
-| `cards` | card id (repeats) | The cards on the list, in order, each once; ones that cannot buy dropped |
-| `add`   | `1`               | The add-a-card sheet, on its picker                                      |
-| `open`  | card id           | The add-a-card sheet, on that card; wins over `add`                      |
+| Key     | Values            | Notes                                                                                     |
+| ------- | ----------------- | ----------------------------------------------------------------------------------------- |
+| `cards` | card id (repeats) | The cards on the new list, in order, each once; cards that cannot take purchases are dropped |
 
-**`/transactions/lists/edit`**, Transactions: a full page. Panels: none.
+**`/transactions/lists/edit`**, Transactions: a full page. Panels: none; the add-a-card sheet is
+not in the address.
 
-| Key           | Values             | Notes                                                                                                                              |
-| ------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `list`        | list id, required  | The builder on a draft, the reply on a waiting list; a saved list or an unknown id says so and links to its panel or the Lists tab |
-| `add`, `open` | as on the builder  | Read for a draft only; its cards come from the stored draft, never the address                                                     |
+| Key    | Values            | Notes                                                                                                                              |
+| ------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `list` | list id, required | The builder on a draft, the reply on a waiting list; a saved list or an unknown id says so and links to its panel or the Lists tab |
 
 **`/cards`**, Cards, _Cards_. Panels: card.
 
-| Key         | Values                                 | Default                       |
-| ----------- | -------------------------------------- | ----------------------------- |
-| `q`         | any text                               | empty                         |
-| `locations` | stored location id (repeats)           | any                           |
-| `owners`    | `KC`, `NT`, `RI` (repeats)             | any                           |
-| `ungrouped` | `1`                                    | off                           |
-| `sort`      | `card`, `room`, `name`, `close`, `due` | `card`                        |
-| `dir`       | `asc`, `desc`                          | `desc` for `room`, else `asc` |
-| `by`        | `place`, `holder`, `limit`, `none`     | `place`                       |
+| Key          | Values                                 | Default                       |
+| ------------ | -------------------------------------- | ----------------------------- |
+| `fq`         | any text                               | empty                         |
+| `flocations` | stored location id (repeats)           | any                           |
+| `fowners`    | `KC`, `NT`, `RI` (repeats)             | any                           |
+| `sort`       | `card`, `room`, `name`, `close`, `due` | `card`                        |
+| `dir`        | `asc`, `desc`                          | `desc` for `room`, else `asc` |
+| `by`         | `place`, `holder`, `limit`, `none`     | `place`                       |
 
 **`/cards/limits`**, Cards, _Limits_. Panels: limit, card (a group's card). The search and sort
 are new: the group panels have none today.
 
-| Key      | Values                        | Default                                 |
-| -------- | ----------------------------- | --------------------------------------- |
-| `q`      | a group's or its cards' names | empty                                   |
-| `owners` | `KC`, `NT`, `RI` (repeats)    | any                                     |
-| `sort`   | `name`, `room`, `used`        | `name`                                  |
-| `dir`    | `asc`, `desc`                 | `desc` for `room` and `used`, else `asc` |
+| Key       | Values                        | Default                                  |
+| --------- | ----------------------------- | ---------------------------------------- |
+| `fq`      | a group's or its cards' names | empty                                    |
+| `fowners` | `KC`, `NT`, `RI` (repeats)    | any                                      |
+| `sort`    | `name`, `room`, `used`        | `name`                                   |
+| `dir`     | `asc`, `desc`                 | `desc` for `room` and `used`, else `asc` |
 
 **`/settings`** and **`/settings/locations`**, Settings. Query: none. Panels: none.
 
@@ -274,10 +304,12 @@ are new: the group panels have none today.
 | Home's _Ready to use_ (part of `/`)      | `/ready`                                                 |
 | `/backup`                                | gone                                                     |
 
-Renamed keys: `type` → `types`, the ledger's `card` → `cards`, `status` → `statuses`, `loc` →
-`locations`, `owner` → `owners`; `owed`, `odir` → `/owed`'s `sort`, `dir`; the Lists view's `lq`,
-`lcard`, `lrange`, `lfrom`, `lto`, `lby` → `q`, `cards`, `range`, `from`, `to`, `by`. Gone:
-`view`, `id`, `group`, `newGroup`.
+Renamed keys: the filters take `f`: `q` → `fq`, `type` → `ftypes`, the ledger's `card` →
+`fcards`, `range`/`from`/`to` → `frange`/`ffrom`/`fto`, `status` → `fstatuses`, `loc` →
+`flocations`, `owner` → `fowners`; the Lists view's `lq`, `lcard`, `lrange`, `lfrom`, `lto` →
+`fq`, `fcards`, `frange`, `ffrom`, `fto`, and `lby` → `by`; `owed`, `odir` → `/owed`'s `sort`,
+`dir`; the builder's `card` → `cards`. Gone: `view`, `id`, `group`, `newGroup`, `ungrouped`, and
+the builder's `add` and `open`.
 
 ## When it ships
 
