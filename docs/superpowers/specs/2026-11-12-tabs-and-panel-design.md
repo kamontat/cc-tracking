@@ -19,13 +19,14 @@ beside its list on a desktop and in a sheet that slides up on a phone.
 
 ### Tabs
 
-- **Transactions**: _Ledger · Owed · Lists_. **Cards**: _Cards · Limits_.
+- **Transactions**: _Ledger · Lists_, what happened. **Cards**: _Cards · Owed · Limits_, where
+  each card stands.
 - The tabs sit under the page title, a row of underlined labels that scrolls sideways if it
   must, the same on every width. They are links: each tab is its own address (below), so a
   tab is reached by Back, a bookmark or a pasted link.
 - Each tab has its own search, filter and sort, as today. Changing them rewrites the address in
   place (`replaceState`).
-- Owed no longer sits beside the ledger on a desktop: it is a tab like the others.
+- Owed no longer sits beside the ledger on a desktop: it is a tab on Cards (decision 1).
 
 ### The detail panel
 
@@ -74,9 +75,13 @@ Back leaves without asking, as leaving a page does today (no page guards a form 
 
 Each has a recommendation, drawn in the mockup.
 
-1. **Owed leaves the ledger's side (reverses RD-13's "On a desktop, what each card owes sits
-   beside the ledger", DD-79's two columns and DD-144's).** Recommended: accept. Owed is one
-   click away as a tab, and _Pay_ on an owed tile opens the card's pay panel right there.
+1. **Owed moves to Cards** (reverses RD-13's "On a desktop, what each card owes sits beside the
+   ledger", DD-79's two columns and DD-144's). Owed is a list of cards, each its bill, due date
+   and _Pay_: where each card stands, like _Cards_ and _Limits_, while the ledger and _Lists_ are
+   what happened. Its tiles open the card's panel, whose home is Cards. It sits second,
+   _Cards · Owed · Limits_. Lost: a payment landing in the ledger next to what is owed; the pay
+   form returns to the card's panel, which shows what is left. Decided by the user, 2026-11-13.
+   Not a Cards filter (`?owing=1`): an owed tile leads with the bill, a card tile with the room.
 2. **The card page and the card form become the card panel**, as the limit group's summary and
    form are. `/card`, `/card/new` and `/card/edit` go; the Cards tab is one page. Recommended:
    yes (the user asked, 2026-11-13). Cost: the unsaved-changes prompt above, which no page has
@@ -88,15 +93,15 @@ Each has a recommendation, drawn in the mockup.
    opens the card's panel. Writing a list stays a full page, as the builder and the reply are
    too big for a column: _Continue_ and _Enter reply_ go to `/lists/edit?list=<id>`, which
    picks the builder or the reply by status (as `/purchases/<id>` was to).
-5. **Record keys are named by kind and work on any tab.** Recommended: `card`, `limit` and `list`,
-   not `id`, so a card's panel opens over the tab you are on: an owed tile (`/transactions/owed?card=12.3`),
-   a ledger row, a limit group's card, Home's _Needs you_ (`/?card=12.3`). You keep your place
-   instead of jumping to the Cards tab. Each key is singular (one record); a filter that repeats
-   stays plural (`cards=`), so the two never read alike.
-6. **_+ New › Pay_ goes to the Owed tab** instead of its own picker page (`/pay` and `PayPicker`
-   retire): each owed tile has _Pay_. Trade-off: a card that owes nothing is not on Owed, so
-   paying ahead is from its panel (Cards tab, _Pay_). Recommended: yes; the alternative keeps a
-   picker at `/payments/new`.
+5. **Record keys are named by kind and work on any tab.** Recommended: `card`, `limit` and
+   `list`, not `id`, so a card's panel opens over the tab you are on: a ledger row
+   (`/transactions?card=12.3`), a list's line, a limit group's card, Home's _Needs you_
+   (`/?card=12.3`). You keep your place instead of jumping to the Cards tab. Each key is singular
+   (one record); a filter that repeats stays plural (`cards=`), so the two never read alike.
+6. **_+ New › Pay_ goes to the Owed tab** (`/cards/owed`) instead of its own picker page (`/pay`
+   and `PayPicker` retire): each owed tile has _Pay_. Trade-off: a card that owes nothing is not
+   on Owed, so paying ahead is from its panel (Cards tab, _Pay_). Recommended: yes; the
+   alternative keeps a picker at `/payments/new`.
 7. **Home and Settings keep their two columns** (DD-184, CD-11): they have no records to open
    beside a list. Out of scope; a card opened from Home uses the panel (decision 5).
 
@@ -133,11 +138,11 @@ needs escaping.
 | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/`                   | Home         | none                                                                                                                                                                                                                                                                                                                            |
 | `/transactions`       | Transactions | `q` (text); `types` (`purchase`, `payment`); `cards` (card id); `range` (`today`, `week`, `month`, `lastMonth`, `custom`); `from`, `to` (`YYYY-MM-DD`); `sort` (`date`, `amount`; default `date`); `dir` (`asc`, `desc`; default `desc`); `by` (`day`, `card`, `none`; default `day`)                                         |
-| `/transactions/owed`  | Transactions | `sort` (`urgency`, `card`, `due`, `left`; default `urgency`); `dir` (`asc`, `desc`; default `desc` for `left`, else `asc`). Its own page now, so `owed` and `odir` lose their prefix.                                                                                                                                         |
 | `/transactions/lists` | Transactions | `q` (a line's card id, name, last 4 or note); `statuses` (`draft`, `sent`, `saved`); `cards`; `range`, `from`, `to` (on the list's date); `by` (`status`, `month`, `none`; default `status`). Its own page now, so the `l` prefix goes.                                                                                       |
 | `/lists/new`          | Transactions | `cards` (card id, in order, each once; cards that cannot take purchases are dropped); `add` (`1`: the add-a-card sheet's picker); `open` (card id: that card in the sheet)                                                                                                                                                    |
 | `/lists/edit`         | Transactions | `list` (list id, required: the builder for a draft, the reply for a waiting list; a saved list or an unknown id says so and links to its panel or Home); `add`, `open` as on `/lists/new`, read for a draft only                                                                                                              |
 | `/cards`              | Cards        | `q` (text); `locations` (stored location id); `owners` (`KC`, `NT`, `RI`); `ungrouped` (`1`); `sort` (`card`, `room`, `name`, `close`, `due`; default `card`); `dir` (`asc`, `desc`; default `desc` for `room`, else `asc`); `by` (`place`, `holder`, `limit`, `none`; default `place`)                                       |
+| `/cards/owed`        | Cards        | `sort` (`urgency`, `card`, `due`, `left`; default `urgency`); `dir` (`asc`, `desc`; default `desc` for `left`, else `asc`). Its own page now, so `owed` and `odir` lose their prefix. Only cards that owe.                                                                                                                                         |
 | `/cards/limits`       | Cards        | `q` (a group's or its cards' names); `owners`; `sort` (`name`, `room`, `used`; default `name`); `dir` (default `desc` for `room` and `used`, else `asc`)                                                                                                                                                                        |
 | `/settings`           | Settings     | none                                                                                                                                                                                                                                                                                                                            |
 | `/settings/locations` | Settings     | none                                                                                                                                                                                                                                                                                                                            |
@@ -151,9 +156,9 @@ and the offline worker work as they are (the worker already ignores the query).
 
 | Was                                        | Now                                         |
 | ------------------------------------------ | ------------------------------------------- |
-| `/transactions?view=owed`                  | `/transactions/owed`                        |
+| `/transactions?view=owed`                  | `/cards/owed`                               |
 | `/transactions?view=lists`                 | `/transactions/lists`                       |
-| `/pay`, `/pay?card=<id>&amount=<satang>`   | `/transactions/owed`, `…?card=<id>&pay=1&amount=<satang>` |
+| `/pay`, `/pay?card=<id>&amount=<satang>`   | `/cards/owed`, `…?card=<id>&pay=1&amount=<satang>` |
 | `/list/new`                                | `/lists/new`                                |
 | `/list/draft?id=`, `/list/reply?id=`       | `/lists/edit?list=`                         |
 | `/list/view?id=`                           | `/transactions/lists?list=`                 |
@@ -171,5 +176,5 @@ amended. ENDPOINTS.md rewritten from the tables above. The `TODO.md` endpoint it
 by this spec.
 
 Suggested order, each its own pull request: (1) the card id check; (2) the panel molecule and
-the card panel on `/cards`; (3) tabs and paths for Cards; (4) the same for Transactions and
+the card panel on `/cards`; (3) tabs and paths for Cards, Owed among them; (4) the same for Transactions and
 lists; (5) Home's panel; (6) retire `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/*`.
