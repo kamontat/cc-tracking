@@ -17,19 +17,20 @@ import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { MessageError } from "#lib/i18n/error"
 
 export const sampleCard = (overrides: Partial<Card> = {}): Card => ({
-	id: "kbank",
+	id: "k1",
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
 	supplementary: false,
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	archived: false,
+	limitGroupId: "pool",
 	...overrides,
 })
 
 export const samplePurchase = (overrides: Partial<Purchase> = {}): Purchase => ({
 	id: "p1",
-	cardId: "kbank",
+	cardId: "k1",
 	date: "2026-09-05",
 	amount: 10_000,
 	note: "fuel",
@@ -37,7 +38,7 @@ export const samplePurchase = (overrides: Partial<Purchase> = {}): Purchase => (
 })
 
 export const samplePayment = (overrides: Partial<StatementPayment> = {}): StatementPayment => ({
-	cardId: "kbank",
+	cardId: "k1",
 	period: "2026-09",
 	paidAt: "2026-10-01",
 	closeDate: "2026-09-18",
@@ -55,7 +56,7 @@ export const sampleLimitGroup = (overrides: Partial<LimitGroup> = {}): LimitGrou
 
 export const sampleCardPayment = (overrides: Partial<CardPayment> = {}): CardPayment => ({
 	id: "cp1",
-	cardId: "kbank",
+	cardId: "k1",
 	date: "2026-10-01",
 	amount: 5_000,
 	status: "paid",
@@ -63,7 +64,7 @@ export const sampleCardPayment = (overrides: Partial<CardPayment> = {}): CardPay
 })
 
 export const sampleStatementDates = (overrides: Partial<StatementDates> = {}): StatementDates => ({
-	cardId: "kbank",
+	cardId: "k1",
 	period: "2026-09",
 	closeDate: "2026-09-18",
 	dueDate: "2026-10-03",
@@ -74,7 +75,7 @@ export const samplePurchaseList = (overrides: Partial<PurchaseList> = {}): Purch
 	id: "l1",
 	date: "2026-10-05",
 	status: "draft",
-	lines: [{ cardId: "kbank", amount: 10_000 }],
+	lines: [{ cardId: "k1", amount: 10_000 }],
 	...overrides,
 })
 
@@ -127,15 +128,15 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 		test("returns nothing before anything is saved", async () => {
 			expect(await repo.listCards()).toEqual([])
-			expect(await repo.getCard("kbank")).toBeNull()
-			expect(await repo.listPurchases("kbank")).toEqual([])
-			expect(await repo.listPayments("kbank")).toEqual([])
+			expect(await repo.getCard("k1")).toBeNull()
+			expect(await repo.listPurchases("k1")).toEqual([])
+			expect(await repo.listPayments("k1")).toEqual([])
 		})
 
 		test("saves and reads a card back whole", async () => {
 			const card = sampleCard({ comment: "company car fuel" })
 			await repo.saveCard(card)
-			expect(await repo.getCard("kbank")).toEqual(card)
+			expect(await repo.getCard("k1")).toEqual(card)
 			expect(await repo.listCards()).toEqual([card])
 		})
 
@@ -163,15 +164,15 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 		test("deletes a card", async () => {
 			await repo.saveCard(sampleCard())
-			await repo.deleteCard("kbank")
-			expect(await repo.getCard("kbank")).toBeNull()
+			await repo.deleteCard("k1")
+			expect(await repo.getCard("k1")).toBeNull()
 		})
 
 		test("deleting a card removes its payments once its purchases are gone", async () => {
 			// Save first card with purchase and payment
-			await repo.saveCard(sampleCard({ id: "kbank" }))
-			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank" }))
-			await repo.savePayment(samplePayment({ cardId: "kbank", period: "2026-09" }))
+			await repo.saveCard(sampleCard({ id: "k1" }))
+			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "k1" }))
+			await repo.savePayment(samplePayment({ cardId: "k1", period: "2026-09" }))
 
 			// Save second card with purchase and payment
 			await repo.saveCard(sampleCard({ id: "scb" }))
@@ -179,12 +180,12 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.savePayment(samplePayment({ cardId: "scb", period: "2026-09" }))
 
 			// A card with purchases cannot be deleted (RD-07); remove them first
-			await repo.deletePurchase("kbank", "p1")
-			await repo.deleteCard("kbank")
+			await repo.deletePurchase("k1", "p1")
+			await repo.deleteCard("k1")
 
 			// Verify first card's records are gone
-			expect(await repo.getCard("kbank")).toBeNull()
-			expect(await repo.listPayments("kbank")).toEqual([])
+			expect(await repo.getCard("k1")).toBeNull()
+			expect(await repo.listPayments("k1")).toEqual([])
 
 			// Verify second card's records remain untouched
 			expect(await repo.listPurchases("scb")).toHaveLength(1)
@@ -221,7 +222,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.saveCard(sampleCard())
 			const cards = await repo.listCards()
 			expect(cards).toHaveLength(2)
-			expect(cards[0]?.id).toBe("kbank")
+			expect(cards[0]?.id).toBe("k1")
 			expect(cards[1]?.id).toBe("scb")
 		})
 
@@ -230,7 +231,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-05" }))
 			await repo.savePurchase(samplePurchase({ id: "p3", cardId: "scb", date: "2026-09-06" }))
 
-			expect((await repo.listPurchases("kbank")).map((p) => p.id)).toEqual(["p1", "p2"])
+			expect((await repo.listPurchases("k1")).map((p) => p.id)).toEqual(["p1", "p2"])
 		})
 
 		test("limits purchases to a date range, inclusive at both ends", async () => {
@@ -239,23 +240,23 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.savePurchase(samplePurchase({ id: "p3", date: "2026-09-30" }))
 			await repo.savePurchase(samplePurchase({ id: "p4", date: "2026-10-01" }))
 
-			const inRange = await repo.listPurchases("kbank", "2026-09-01", "2026-09-30")
+			const inRange = await repo.listPurchases("k1", "2026-09-01", "2026-09-30")
 			expect(inRange.map((p) => p.id)).toEqual(["p2", "p3"])
 		})
 
 		test("saving the same purchase id replaces it", async () => {
 			await repo.savePurchase(samplePurchase({ amount: 10_000 }))
 			await repo.savePurchase(samplePurchase({ amount: 25_000 }))
-			const purchases = await repo.listPurchases("kbank")
+			const purchases = await repo.listPurchases("k1")
 			expect(purchases).toHaveLength(1)
 			expect(purchases[0]?.amount).toBe(25_000)
 		})
 
 		test("saves and lists purchases independently per card", async () => {
-			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "kbank" }))
+			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "k1" }))
 			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "scb", date: "2026-09-09" }))
 
-			const kbankPurchases = await repo.listPurchases("kbank")
+			const kbankPurchases = await repo.listPurchases("k1")
 			const scbPurchases = await repo.listPurchases("scb")
 
 			expect(kbankPurchases).toHaveLength(1)
@@ -267,8 +268,8 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 		test("deletes a purchase", async () => {
 			await repo.savePurchase(samplePurchase())
-			await repo.deletePurchase("kbank", "p1")
-			expect(await repo.listPurchases("kbank")).toEqual([])
+			await repo.deletePurchase("k1", "p1")
+			expect(await repo.listPurchases("k1")).toEqual([])
 		})
 
 		test("saves, lists, and deletes payments per card", async () => {
@@ -276,10 +277,10 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.savePayment(samplePayment({ period: "2026-08" }))
 			await repo.savePayment(samplePayment({ cardId: "scb", period: "2026-09" }))
 
-			expect((await repo.listPayments("kbank")).map((p) => p.period)).toEqual(["2026-08", "2026-09"])
+			expect((await repo.listPayments("k1")).map((p) => p.period)).toEqual(["2026-08", "2026-09"])
 
-			await repo.deletePayment("kbank", "2026-08")
-			expect((await repo.listPayments("kbank")).map((p) => p.period)).toEqual(["2026-09"])
+			await repo.deletePayment("k1", "2026-08")
+			expect((await repo.listPayments("k1")).map((p) => p.period)).toEqual(["2026-09"])
 		})
 
 		test("deleting something absent is not an error", async () => {
@@ -290,9 +291,9 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 		test("returned objects are copies, not live references", async () => {
 			await repo.saveCard(sampleCard())
-			const card = await repo.getCard("kbank")
+			const card = await repo.getCard("k1")
 			if (card) card.name = "mutated"
-			expect((await repo.getCard("kbank"))?.name).toBe("KBank Visa")
+			expect((await repo.getCard("k1"))?.name).toBe("KBank Visa")
 		})
 
 		test("saving a purchase with the same id but different date replaces it, not appends", async () => {
@@ -300,7 +301,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 			// Save the same purchase id with a different date WITHOUT deleting first.
 			await repo.savePurchase(samplePurchase({ id: "p1", date: "2026-09-25" }))
 
-			const purchases = await repo.listPurchases("kbank")
+			const purchases = await repo.listPurchases("k1")
 			expect(purchases).toHaveLength(1)
 			expect(purchases[0]?.date).toBe("2026-09-25")
 		})
@@ -325,8 +326,8 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 		test("lists limit groups sorted by id", async () => {
 			await repo.saveLimitGroup(sampleLimitGroup({ id: "scb" }))
-			await repo.saveLimitGroup(sampleLimitGroup({ id: "kbank" }))
-			expect((await repo.listLimitGroups()).map((g) => g.id)).toEqual(["kbank", "scb"])
+			await repo.saveLimitGroup(sampleLimitGroup({ id: "k1" }))
+			expect((await repo.listLimitGroups()).map((g) => g.id)).toEqual(["k1", "scb"])
 		})
 
 		test("deletes a limit group, and deleting an absent one is not an error", async () => {
@@ -339,7 +340,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 		test("deleting a card leaves its limit group alone", async () => {
 			await repo.saveLimitGroup(sampleLimitGroup())
 			await repo.saveCard(sampleCard({ limitGroupId: "pool" }))
-			await repo.deleteCard("kbank")
+			await repo.deleteCard("k1")
 			expect(await repo.listLimitGroups()).toHaveLength(1)
 		})
 
@@ -401,8 +402,8 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.clearAll()
 
 			expect(await repo.listCards()).toEqual([])
-			expect(await repo.listPurchases("kbank")).toEqual([])
-			expect(await repo.listPayments("kbank")).toEqual([])
+			expect(await repo.listPurchases("k1")).toEqual([])
+			expect(await repo.listPayments("k1")).toEqual([])
 			expect(await repo.listLimitGroups()).toEqual([])
 			expect(await repo.getSettings()).toEqual(DEFAULT_SETTINGS)
 		})
@@ -417,11 +418,11 @@ export function repositoryContract(name: string, create: () => Repository): void
 		test("keeps a purchase's entry time, through an edit too", async () => {
 			const entered = samplePurchase({ addedAt: "2026-10-27T03:00:00.000Z" })
 			await repo.savePurchase(entered)
-			expect(await repo.listPurchases("kbank")).toEqual([entered])
+			expect(await repo.listPurchases("k1")).toEqual([entered])
 
 			const edited = { ...entered, date: "2026-09-07", amount: 20_000 }
 			await repo.savePurchase(edited)
-			expect(await repo.listPurchases("kbank")).toEqual([edited])
+			expect(await repo.listPurchases("k1")).toEqual([edited])
 		})
 
 		test("card payments: save, replace, list one card only by date then id, delete", async () => {
@@ -429,7 +430,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.saveCardPayment(sampleCardPayment({ id: "c", date: "2026-10-01" }))
 			await repo.saveCardPayment(sampleCardPayment({ id: "a", date: "2026-10-02" }))
 			await repo.saveCardPayment(sampleCardPayment({ id: "z", cardId: "scb" }))
-			expect((await repo.listCardPayments("kbank")).map((p) => p.id)).toEqual(["c", "a", "b"])
+			expect((await repo.listCardPayments("k1")).map((p) => p.id)).toEqual(["c", "a", "b"])
 			const edited = sampleCardPayment({
 				id: "a",
 				date: "2026-10-02",
@@ -437,9 +438,9 @@ export function repositoryContract(name: string, create: () => Repository): void
 				period: "2026-09",
 			})
 			await repo.saveCardPayment(edited)
-			expect((await repo.listCardPayments("kbank"))[1]).toEqual(edited)
-			await repo.deleteCardPayment("kbank", "a")
-			expect((await repo.listCardPayments("kbank")).map((p) => p.id)).toEqual(["c", "b"])
+			expect((await repo.listCardPayments("k1"))[1]).toEqual(edited)
+			await repo.deleteCardPayment("k1", "a")
+			expect((await repo.listCardPayments("k1")).map((p) => p.id)).toEqual(["c", "b"])
 			expect(await repo.listCardPayments("scb")).toHaveLength(1)
 		})
 
@@ -447,10 +448,10 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.saveStatementDates(sampleStatementDates({ period: "2026-10" }))
 			await repo.saveStatementDates(sampleStatementDates({ period: "2026-09" }))
 			await repo.saveStatementDates(sampleStatementDates({ cardId: "scb" }))
-			const dates = await repo.listStatementDates("kbank")
+			const dates = await repo.listStatementDates("k1")
 			expect(dates.map((d) => d.period)).toEqual(["2026-09", "2026-10"])
-			await repo.deleteStatementDates("kbank", "2026-09")
-			expect((await repo.listStatementDates("kbank")).map((d) => d.period)).toEqual(["2026-10"])
+			await repo.deleteStatementDates("k1", "2026-09")
+			expect((await repo.listStatementDates("k1")).map((d) => d.period)).toEqual(["2026-10"])
 			expect(await repo.listStatementDates("scb")).toHaveLength(1)
 		})
 
@@ -486,15 +487,15 @@ export function repositoryContract(name: string, create: () => Repository): void
 		})
 
 		test("deleting a card removes its card payments and statement dates", async () => {
-			await repo.saveCard(sampleCard({ id: "kbank" }))
+			await repo.saveCard(sampleCard({ id: "k1" }))
 			await repo.saveCard(sampleCard({ id: "scb" }))
-			await repo.saveCardPayment(sampleCardPayment({ cardId: "kbank" }))
-			await repo.saveStatementDates(sampleStatementDates({ cardId: "kbank" }))
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "k1" }))
+			await repo.saveStatementDates(sampleStatementDates({ cardId: "k1" }))
 			await repo.saveCardPayment(sampleCardPayment({ cardId: "scb" }))
 			await repo.saveStatementDates(sampleStatementDates({ cardId: "scb" }))
-			await repo.deleteCard("kbank")
-			expect(await repo.listCardPayments("kbank")).toEqual([])
-			expect(await repo.listStatementDates("kbank")).toEqual([])
+			await repo.deleteCard("k1")
+			expect(await repo.listCardPayments("k1")).toEqual([])
+			expect(await repo.listStatementDates("k1")).toEqual([])
 			expect(await repo.listCardPayments("scb")).toHaveLength(1)
 			expect(await repo.listStatementDates("scb")).toHaveLength(1)
 		})
@@ -540,8 +541,8 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.savePurchaseList(samplePurchaseList())
 			await repo.saveLocation(sampleLocation())
 			await repo.clearAll()
-			expect(await repo.listCardPayments("kbank")).toEqual([])
-			expect(await repo.listStatementDates("kbank")).toEqual([])
+			expect(await repo.listCardPayments("k1")).toEqual([])
+			expect(await repo.listStatementDates("k1")).toEqual([])
 			expect(await repo.listPurchaseLists()).toEqual([])
 			expect(await repo.listLocations()).toEqual([])
 		})
@@ -549,21 +550,21 @@ export function repositoryContract(name: string, create: () => Repository): void
 		test("refuses to delete a card that has purchases", async () => {
 			await repo.saveCard(sampleCard())
 			await repo.savePurchase(samplePurchase())
-			expect(await guardKey(repo.deleteCard("kbank"))).toBe("guard.cardHasPurchases")
-			expect(await repo.getCard("kbank")).not.toBeNull()
-			expect(await repo.listPurchases("kbank")).toHaveLength(1)
+			expect(await guardKey(repo.deleteCard("k1"))).toBe("guard.cardHasPurchases")
+			expect(await repo.getCard("k1")).not.toBeNull()
+			expect(await repo.listPurchases("k1")).toHaveLength(1)
 		})
 
 		test("refuses to delete a card on a draft or sent list, not a saved one", async () => {
 			await repo.saveCard(sampleCard())
 			for (const status of ["draft", "sent"] as const) {
 				await repo.savePurchaseList(samplePurchaseList({ status }))
-				expect(await guardKey(repo.deleteCard("kbank"))).toBe("guard.cardOnList")
-				expect(await repo.getCard("kbank")).not.toBeNull()
+				expect(await guardKey(repo.deleteCard("k1"))).toBe("guard.cardOnList")
+				expect(await repo.getCard("k1")).not.toBeNull()
 			}
 			await repo.savePurchaseList(samplePurchaseList({ status: "saved" }))
-			await repo.deleteCard("kbank")
-			expect(await repo.getCard("kbank")).toBeNull()
+			await repo.deleteCard("k1")
+			expect(await repo.getCard("k1")).toBeNull()
 		})
 
 		test("refuses to delete a limit group a card uses", async () => {
@@ -571,7 +572,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.saveCard(sampleCard({ limitGroupId: "pool" }))
 			expect(await guardKey(repo.deleteLimitGroup("pool"))).toBe("guard.groupInUse")
 			expect(await repo.listLimitGroups()).toHaveLength(1)
-			await repo.saveCard(sampleCard())
+			await repo.saveCard(sampleCard({ limitGroupId: "other" }))
 			await repo.deleteLimitGroup("pool")
 			expect(await repo.listLimitGroups()).toEqual([])
 		})

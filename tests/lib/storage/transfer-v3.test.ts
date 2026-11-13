@@ -116,8 +116,8 @@ describe("backup version 3", () => {
 				lists: [
 					samplePurchaseList({
 						lines: [
-							{ cardId: "kbank", amount: 100, note: " gas " },
-							{ cardId: "kbank", amount: 200, note: "  " },
+							{ cardId: "k1", amount: 100, note: " gas " },
+							{ cardId: "k1", amount: 200, note: "  " },
 						],
 					}),
 				],
@@ -137,10 +137,10 @@ describe("backup version 3", () => {
 		expect(parsed.lists).toEqual([])
 		expect(parsed.payments.length).toBe(1)
 		expect(parsed.payments[0]?.status).toBe("paid")
-		expect(parsed.payments[0]?.id).toBe("m:kbank:2026-09:0")
+		expect(parsed.payments[0]?.id).toBe("m:k1:2026-09:0")
 		expect(parsed.statementDates).toEqual([
 			{
-				cardId: "kbank",
+				cardId: "k1",
 				period: "2026-09",
 				closeDate: "2026-09-18",
 				dueDate: "2026-10-03",
@@ -207,6 +207,7 @@ describe("backup version 3", () => {
 
 	test("a copy of cards with no location records stored still reads back", async () => {
 		const repo = new InMemoryRepository()
+		await repo.saveLimitGroup(sampleLimitGroup())
 		await repo.saveCard(sampleCard({ location: "krabi" }))
 		const text = JSON.stringify(await exportBackupV3(repo, NOW))
 		expect(parseAnyBackup(text).cards).toEqual(await repo.listCards())
@@ -375,17 +376,17 @@ describe("backup version 3", () => {
 	test("merging a version 3 file keeps a card's local converted parts (DD-95)", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveCard(sampleCard())
-		await repo.saveCardPayment(sampleCardPayment({ id: "m:kbank:2026-09:1", period: "2026-09" }))
+		await repo.saveCardPayment(sampleCardPayment({ id: "m:k1:2026-09:1", period: "2026-09" }))
 		await importBackupV3(
 			repo,
 			parseAnyBackup(
 				v3({
-					payments: [sampleCardPayment({ id: "m:kbank:2026-09:0", period: "2026-09" })],
+					payments: [sampleCardPayment({ id: "m:k1:2026-09:0", period: "2026-09" })],
 				}),
 			),
 		)
-		const ids = (await repo.listCardPayments("kbank")).map((p) => p.id).sort()
-		expect(ids).toEqual(["m:kbank:2026-09:0", "m:kbank:2026-09:1"])
+		const ids = (await repo.listCardPayments("k1")).map((p) => p.id).sort()
+		expect(ids).toEqual(["m:k1:2026-09:0", "m:k1:2026-09:1"])
 	})
 
 	test("a version 3 card at a location the file does not carry is refused", async () => {
@@ -393,6 +394,34 @@ describe("backup version 3", () => {
 		rejects(text, "backup.card", 1)
 		const error = captureThrow(() => parseAnyBackup(text)) as MessageError
 		expect(Reflect.get(error.params ?? {}, "problem")).toBe("backup.problem.unknownLocation")
+	})
+
+	const problemOf = (text: string): unknown =>
+		Reflect.get((captureThrow(() => parseAnyBackup(text)) as MessageError).params ?? {}, "problem")
+
+	test.each(["5.", ".5", "1..2", "K1", "kbank"])("a card id %j outside the card id form is refused (RD-28)", (id) => {
+		for (const text of [v3({ cards: [sampleCard({ id })] }), v2({ cards: [sampleCard({ id })] })]) {
+			rejects(text, "backup.card", 1)
+			expect(problemOf(text)).toBe("backup.problem.badCardId")
+		}
+	})
+
+	test("a card with no limit group is refused, and nothing is written (RD-27)", async () => {
+		const { limitGroupId: _, ...loose } = sampleCard()
+		for (const text of [v3({ cards: [sampleCard({ id: "2" }), loose] }), v2({ cards: [loose] })]) {
+			rejects(text, "backup.card", text.includes('"version":3') ? 2 : 1)
+			expect(problemOf(text)).toBe("backup.problem.missingLimitGroup")
+		}
+	})
+
+	test("a card naming a limit group not in the file is refused (RD-27)", () => {
+		for (const text of [
+			v3({ cards: [sampleCard({ limitGroupId: "gone" })] }),
+			v2({ cards: [sampleCard({ limitGroupId: "gone" })] }),
+		]) {
+			rejects(text, "backup.card", 1)
+			expect(problemOf(text)).toBe("backup.problem.unknownLimitGroup")
+		}
 	})
 
 	test("a version 3 card may sit at any location the file carries", () => {
@@ -418,14 +447,14 @@ describe("backup version 3", () => {
 		for (const index of [0, 1, 2])
 			await repo.saveCardPayment(
 				sampleCardPayment({
-					id: `m:kbank:2026-09:${index}`,
+					id: `m:k1:2026-09:${index}`,
 					period: "2026-09",
 				}),
 			)
 		await repo.saveCardPayment(sampleCardPayment({ id: "keep" }))
 		await importBackupV3(repo, parseAnyBackup(v2()))
-		const ids = (await repo.listCardPayments("kbank")).map((p) => p.id).sort()
-		expect(ids).toEqual(["keep", "m:kbank:2026-09:0"])
+		const ids = (await repo.listCardPayments("k1")).map((p) => p.id).sort()
+		expect(ids).toEqual(["keep", "m:k1:2026-09:0"])
 	})
 
 	test("replace sets the payments marker so startup does not convert again", async () => {
@@ -436,7 +465,7 @@ describe("backup version 3", () => {
 			setItem: (key, value) => void items.set(key, value),
 		})
 		expect(items.get(PAYMENTS_MIGRATION_KEY)).toBe("done")
-		expect((await repo.listCards()).map((c) => c.id)).toEqual(["kbank"])
+		expect((await repo.listCards()).map((c) => c.id)).toEqual(["k1"])
 	})
 
 	test("counts include lists", async () => {
@@ -487,7 +516,7 @@ describe("backup version 3", () => {
 					samplePurchaseList({
 						status: "sent",
 						sentAt: "2026-10-05T01:00:00.000Z",
-						lines: [{ cardId: "kbank", amount: 0 }],
+						lines: [{ cardId: "k1", amount: 0 }],
 					}),
 				],
 			}),
@@ -524,7 +553,7 @@ describe("backup version 3", () => {
 			const text = v3({
 				lists: [
 					samplePurchaseList({
-						lines: [{ cardId: "kbank", amount: 1_000, ...patch } as never],
+						lines: [{ cardId: "k1", amount: 1_000, ...patch } as never],
 					}),
 				],
 			})
@@ -536,19 +565,19 @@ describe("backup version 3", () => {
 
 	test("accepts list lines with a positive actual and a boolean made", () => {
 		const lines = [
-			{ cardId: "kbank", amount: 1_000, made: true, actual: 900 },
-			{ cardId: "kbank", amount: 2_000, made: false, note: "next week" },
-			{ cardId: "kbank", amount: 3_000, note: "" },
+			{ cardId: "k1", amount: 1_000, made: true, actual: 900 },
+			{ cardId: "k1", amount: 2_000, made: false, note: "next week" },
+			{ cardId: "k1", amount: 3_000, note: "" },
 		]
 		const parsed = parseAnyBackup(v3({ lists: [samplePurchaseList({ lines })] }))
 		// A blank note is accepted, then dropped (DC-07).
-		expect(parsed.lists[0]?.lines).toEqual([...lines.slice(0, 2), { cardId: "kbank", amount: 3_000 }])
+		expect(parsed.lists[0]?.lines).toEqual([...lines.slice(0, 2), { cardId: "k1", amount: 3_000 }])
 	})
 
 	test("accepts a draft line with no amount yet (0) and nothing below it", () => {
-		const lines = [{ cardId: "kbank", amount: 0 }]
+		const lines = [{ cardId: "k1", amount: 0 }]
 		expect(parseAnyBackup(v3({ lists: [samplePurchaseList({ lines })] })).lists[0]?.lines).toEqual(lines)
-		rejects(v3({ lists: [samplePurchaseList({ lines: [{ cardId: "kbank", amount: -1 }] })] }), "backup.list", 1)
+		rejects(v3({ lists: [samplePurchaseList({ lines: [{ cardId: "k1", amount: -1 }] })] }), "backup.list", 1)
 	})
 
 	test("the rejection names which record is wrong", () => {

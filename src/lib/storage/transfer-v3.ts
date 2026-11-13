@@ -11,6 +11,7 @@ import type {
 import type { MessageKey } from "#lib/i18n/catalog"
 import type { Repository } from "#lib/storage/repository"
 
+import { isCardId } from "#lib/domain/card"
 import { toGroupColor } from "#lib/domain/group-color"
 import { defaultLocations } from "#lib/domain/locations"
 import { toSettings } from "#lib/domain/settings"
@@ -117,13 +118,22 @@ function cardRangeProblem(card: Record<string, unknown>): MessageKey | null {
 	return inRange(prop(cycle, "dueOffsetDays"), 1, 60) ? null : "backup.problem.badDueOffset"
 }
 
-/** A card's problem, checking its location against `locationIds` when given (version 3). */
+/**
+ * A card's problem, checking its location against `locationIds` when given (version 3). In
+ * either version its id must be in the card id form (RD-28) and it must name one of the file's
+ * `groupIds` (RD-27): a card without a limit group is invalid data.
+ */
 const cardAllProblem =
-	(locationIds?: ReadonlySet<string>) =>
+	(groupIds: ReadonlySet<string>, locationIds?: ReadonlySet<string>) =>
 	(value: unknown): MessageKey | null => {
 		const problem = cardProblem(value, locationIds)
 		if (problem) return problem
-		return cardRangeProblem(value as Record<string, unknown>)
+		const card = value as Record<string, unknown>
+		if (!isCardId(prop(card, "id") as string)) return "backup.problem.badCardId"
+		const group = prop(card, "limitGroupId")
+		if (group === undefined || group === "") return "backup.problem.missingLimitGroup"
+		if (typeof group !== "string" || !groupIds.has(group)) return "backup.problem.unknownLimitGroup"
+		return cardRangeProblem(card)
 	}
 
 function purchaseAllProblem(value: unknown): MessageKey | null {
@@ -246,9 +256,10 @@ export function parseAnyBackup(text: string): BackupV3 {
 	const exportedAt = isNonEmptyString(stamp) ? stamp : new Date(0).toISOString()
 
 	check(limitGroups, "backup.limitGroup", limitGroupAllProblem)
+	const groupIds = new Set((limitGroups as LimitGroup[]).map((group) => group.id))
 
 	if (version === 2) {
-		check(cards, "backup.card", cardAllProblem())
+		check(cards, "backup.card", cardAllProblem(groupIds))
 		check(purchases, "backup.purchase", purchaseAllProblem)
 		check(payments, "backup.payment", paymentProblem)
 		// A file without settings leaves stored settings alone (DC-05), so it brings no
@@ -279,7 +290,7 @@ export function parseAnyBackup(text: string): BackupV3 {
 	// Locations first: each card must name one of the file's own locations.
 	check(locations, "backup.location", locationProblem)
 	const locationIds = new Set((locations as LocationRecord[]).map((location) => location.id))
-	check(cards, "backup.card", cardAllProblem(locationIds))
+	check(cards, "backup.card", cardAllProblem(groupIds, locationIds))
 	check(purchases, "backup.purchase", purchaseAllProblem)
 	check(payments, "backup.cardPayment", cardPaymentProblem)
 	check(statementDates, "backup.statementDates", statementDatesProblem)

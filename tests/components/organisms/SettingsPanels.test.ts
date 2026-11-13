@@ -85,13 +85,14 @@ const withClipboard = async (
 }
 
 const sampleCard: Card = {
-	id: "kbank",
+	id: "k1",
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	comment: "",
 	archived: false,
+	limitGroupId: "pool",
 }
 
 /** A repository holding the three starting location records, as startup seeds them. */
@@ -105,8 +106,8 @@ const populated = async <R extends Repository>(repo: R): Promise<R> => {
 	await seeded(repo)
 	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" })
-	await repo.savePurchase({ id: "p1", cardId: "kbank", date: "2026-09-05", amount: 100, note: "" })
-	await repo.savePurchase({ id: "p2", cardId: "kbank", date: "2026-09-06", amount: 100, note: "" })
+	await repo.savePurchase({ id: "p1", cardId: "k1", date: "2026-09-05", amount: 100, note: "" })
+	await repo.savePurchase({ id: "p2", cardId: "k1", date: "2026-09-06", amount: 100, note: "" })
 	await repo.saveSettings({ purchaseLocations: ["bangkok"] })
 	return repo
 }
@@ -114,9 +115,9 @@ const populated = async <R extends Repository>(repo: R): Promise<R> => {
 /** Two cards, a group, three purchases, a payment and a list: each kind counted apart. */
 const fullyPopulated = async <R extends Repository>(repo: R): Promise<R> => {
 	await populated(repo)
-	await repo.saveCard({ ...sampleCard, id: "scb", name: "SCB", last4: "1111" })
-	await repo.savePurchase({ id: "p3", cardId: "scb", date: "2026-09-07", amount: 100, note: "" })
-	await repo.saveCardPayment({ id: "pay1", cardId: "kbank", date: "2026-09-20", amount: 100, status: "paid" })
+	await repo.saveCard({ ...sampleCard, id: "s1", name: "SCB", last4: "1111" })
+	await repo.savePurchase({ id: "p3", cardId: "s1", date: "2026-09-07", amount: 100, note: "" })
+	await repo.saveCardPayment({ id: "pay1", cardId: "k1", date: "2026-09-20", amount: 100, status: "paid" })
 	await repo.savePurchaseList({ id: "list1", date: "2026-09-08", status: "draft", lines: [] })
 	return repo
 }
@@ -310,7 +311,7 @@ test("backing out of a reset deletes nothing", async () => {
 
 	expect(root.querySelector('[data-row="delete-all"]')).not.toBeNull()
 	expect(await repo.listCards()).toHaveLength(1)
-	expect(await repo.listPurchases("kbank")).toHaveLength(2)
+	expect(await repo.listPurchases("k1")).toHaveLength(2)
 })
 
 test("confirming a reset deletes every record and setting, and says so", async () => {
@@ -321,7 +322,7 @@ test("confirming a reset deletes every record and setting, and says so", async (
 	await click(root, "delete-everything")
 
 	expect(await repo.listCards()).toEqual([])
-	expect(await repo.listPurchases("kbank")).toEqual([])
+	expect(await repo.listPurchases("k1")).toEqual([])
 	expect(await repo.listLimitGroups()).toEqual([])
 	expect(await repo.getSettings()).toEqual({ purchaseLocations: ["krabi"] })
 	expect(resetStatus(root)).toBe("All data deleted.")
@@ -427,8 +428,9 @@ const chooseFile = async (root: HTMLElement, text: string, name = "backup.json")
 
 const oneCardBackup = async () => {
 	const source = await seeded(new InMemoryRepository())
+	await source.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await source.saveCard(sampleCard)
-	await source.savePurchase({ id: "p1", cardId: "kbank", date: "2026-09-05", amount: 10_000, note: "fuel" })
+	await source.savePurchase({ id: "p1", cardId: "k1", date: "2026-09-05", amount: 10_000, note: "fuel" })
 	return JSON.stringify(await exportBackupV3(source, new Date()))
 }
 
@@ -462,7 +464,7 @@ test("a restored file is named and counted under the panel, in the reader's lang
 
 		expect(restoreSheet(root)).toBeNull()
 		expect(importStatus(root)).toBe(
-			"Restored cc-tracking-2026-09-21.json: 1 card, 1 purchase, 0 payments, 0 limit groups, 0 lists.",
+			"Restored cc-tracking-2026-09-21.json: 1 card, 1 purchase, 0 payments, 1 limit group, 0 lists.",
 		)
 		expect(root.querySelector(".import-status")?.getAttribute("role")).toBe("status")
 		// The page reads the locations again: the copy brought its records.
@@ -488,9 +490,9 @@ test("restoring from the clipboard over data here takes Restore, Paste from clip
 
 		expect(restoreSheet(root)).toBeNull()
 		expect(banner(root)).toBe("")
-		expect(importStatus(root)).toBe("Restored pasted text: 1 card, 1 purchase, 0 payments, 0 limit groups, 0 lists.")
+		expect(importStatus(root)).toBe("Restored pasted text: 1 card, 1 purchase, 0 payments, 1 limit group, 0 lists.")
 		// Merged: the purchase this browser held and the copy's own both stay.
-		expect(await repo.listPurchases("kbank")).toHaveLength(2)
+		expect(await repo.listPurchases("k1")).toHaveLength(2)
 		expect(await repo.listLimitGroups()).toHaveLength(1)
 	})
 })
@@ -503,11 +505,11 @@ test("restoring a version 2 file into an empty browser converts it and counts th
 		JSON.stringify({
 			version: 2,
 			exportedAt: "2026-09-21T00:00:00.000Z",
-			limitGroups: [],
+			limitGroups: [{ id: "pool", name: "KBank account", limit: 1 }],
 			cards: [sampleCard],
-			purchases: [{ id: "p1", cardId: "kbank", date: "2026-09-05", amount: 10_000, note: "fuel" }],
+			purchases: [{ id: "p1", cardId: "k1", date: "2026-09-05", amount: 10_000, note: "fuel" }],
 			payments: [
-				{ cardId: "kbank", period: "2026-09", paidAt: "2026-10-01", closeDate: "2026-09-18", dueDate: "2026-10-03" },
+				{ cardId: "k1", period: "2026-09", paidAt: "2026-10-01", closeDate: "2026-09-18", dueDate: "2026-10-03" },
 			],
 			settings: { purchaseLocations: ["bangkok"] },
 		}),
@@ -515,7 +517,7 @@ test("restoring a version 2 file into an empty browser converts it and counts th
 	)
 
 	expect(banner(root)).toBe("")
-	expect((await repo.listCardPayments("kbank")).length).toBe(1)
+	expect((await repo.listCardPayments("k1")).length).toBe(1)
 	expect((await repo.listLocations()).filter((record) => record.takesPurchases).map((record) => record.id)).toEqual([
 		"bangkok",
 	])
@@ -546,8 +548,8 @@ const purgeable = async () => {
 		["b", "2025-01-06"],
 		["c", "2025-03-05"],
 	] as const)
-		await repo.savePurchase({ id, cardId: "kbank", date, amount: id === "c" ? 50 : 100, note: "" })
-	await repo.saveCardPayment({ id: "pay1", cardId: "kbank", date: "2025-02-10", amount: 200, status: "paid" })
+		await repo.savePurchase({ id, cardId: "k1", date, amount: id === "c" ? 50 : 100, note: "" })
+	await repo.saveCardPayment({ id: "pay1", cardId: "k1", date: "2025-02-10", amount: 200, status: "paid" })
 	return repo
 }
 
@@ -575,7 +577,7 @@ test("a purge reports what it deleted in the Reset panel, in the reader's langua
 
 	expect(purgeSheet(root)).toBeNull()
 	expect(resetStatus(root)).toBe("Deleted 2 purchases older than 1 year.")
-	expect((await repo.listPurchases("kbank")).map((purchase) => purchase.id)).toEqual(["c"])
+	expect((await repo.listPurchases("k1")).map((purchase) => purchase.id)).toEqual(["c"])
 	setLocale("th")
 	flushSync()
 	expect(resetStatus(root)).toContain("2")

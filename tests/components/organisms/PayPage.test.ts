@@ -96,18 +96,18 @@ const card = (id: string, extra: Partial<Card> = {}): Card => ({
 	...extra,
 })
 
-/** Group g1 of ฿100,000 holding cards A and B, and an archived Z; only Krabi takes purchases. */
+/** Group g1 of ฿100,000 holding cards 1 and 2, and an archived 9; only Krabi takes purchases. */
 const seed = async (repo: Repository) => {
 	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 })
-	await repo.saveCard(card("A"))
-	await repo.saveCard(card("B"))
-	await repo.saveCard(card("Z", { archived: true }))
+	await repo.saveCard(card("1"))
+	await repo.saveCard(card("2"))
+	await repo.saveCard(card("9", { archived: true }))
 	for (const record of defaultLocations(DEFAULT_SETTINGS))
 		await repo.saveLocation({ ...record, takesPurchases: record.id === "krabi" })
 }
 
 const withStatement = async (repo: Repository) => {
-	await repo.savePurchase({ id: "p1", cardId: "A", date: "2026-09-10", amount: 10_000_00, note: "fuel" })
+	await repo.savePurchase({ id: "p1", cardId: "1", date: "2026-09-10", amount: 10_000_00, note: "fuel" })
 }
 
 const setup = async (
@@ -174,7 +174,7 @@ const pageBanner = () => [...document.querySelectorAll(".error-banner")].find((b
 test("/pay is the card picker under a sub-header, with no sheet", async () => {
 	await setup("/pay")
 	expect(text($(".sub-header h1"))).toBe("Make a payment")
-	expect(pickerRows().map((r) => r.dataset["card"])).toEqual(["A", "B"])
+	expect(pickerRows().map((r) => r.dataset["card"])).toEqual(["1", "2"])
 	expect(sheet()).toBeNull()
 })
 
@@ -184,22 +184,22 @@ test("the picker's tiles get each group's room, so a tile's rail shows its used 
 	expect(first?.classList.contains("tile")).toBe(true)
 	expect(first?.querySelector(".rail")?.getAttribute("aria-label")).toBe("10% of the limit used")
 	expect(text(first?.querySelector(".facts"))).toMatch(/^Bill closed 25 Sep 2026 · ฿10,000.00 left$/)
-	// B has no bill: its last line says when the open statement closes and is due.
+	// 2 has no bill: its last line says when the open statement closes and is due.
 	expect(text(second?.querySelector(".facts"))).toBe("closes 25 Nov 2026 · due 15 Dec 2026")
 })
 
 test("/pay?card= opens the sheet over the picker, the amount prefilled from the address", async () => {
-	await setup("/pay?card=A&amount=12050", withStatement)
+	await setup("/pay?card=1&amount=12050", withStatement)
 	expect(pickerRows()).toHaveLength(2)
 	expect(text(sheet()?.querySelector("h2"))).toBe("Make a payment")
 	expect(amountValue()).toBe("120.50")
-	expect(submitText()).toBe("Record ฿120.50 to A card")
+	expect(submitText()).toBe("Record ฿120.50 to 1 card")
 })
 
 test("without an amount the sheet starts at the next bill, or empty with none", async () => {
-	await setup("/pay?card=A", withStatement)
+	await setup("/pay?card=1", withStatement)
 	expect(amountValue()).toBe("10000")
-	await setup("/pay?card=B", withStatement)
+	await setup("/pay?card=2", withStatement)
 	expect(amountValue()).toBe("")
 	expect(submitText()).toBe("Enter an amount")
 })
@@ -207,8 +207,8 @@ test("without an amount the sheet starts at the next bill, or empty with none", 
 test("picking a card pushes its address and opens its sheet; Back closes it", async () => {
 	const { address } = await setup("/pay", withStatement)
 	await pick(0)
-	expect(address.calls).toEqual(["push /pay?card=A"])
-	expect(submitText()).toContain("A card")
+	expect(address.calls).toEqual(["push /pay?card=1"])
+	expect(submitText()).toContain("1 card")
 	// The browser's Back pops the entry the pick pushed, and the sheet goes with it.
 	address.bar.back()
 	await settle()
@@ -217,7 +217,7 @@ test("picking a card pushes its address and opens its sheet; Back closes it", as
 })
 
 test("Close, Escape and Change take the card out of the address and leave the picker", async () => {
-	const { address } = await setup("/pay?card=A&amount=500", withStatement)
+	const { address } = await setup("/pay?card=1&amount=500", withStatement)
 	await close()
 	expect(sheet()).toBeNull()
 	expect(address.calls).toEqual(["replace /pay"])
@@ -242,22 +242,22 @@ test("closing a sheet the page pushed steps back, so the picker is in history on
 	const { address } = await setup("/pay", withStatement)
 	await pick(0)
 	await close()
-	expect(address.calls).toEqual(["push /pay?card=A", "back"])
+	expect(address.calls).toEqual(["push /pay?card=1", "back"])
 	expect(sheet()).toBeNull()
 	expect(address.now()).toBe("/pay")
 	// Forward onto the pushed entry reopens it, and closing it steps back again.
 	address.forward()
 	await settle()
-	expect(submitText()).toContain("A card")
+	expect(submitText()).toContain("1 card")
 	await close()
-	expect(address.calls).toEqual(["push /pay?card=A", "back", "back"])
-	expect(address.entries).toEqual(["/pay", "/pay?card=A"])
+	expect(address.calls).toEqual(["push /pay?card=1", "back", "back"])
+	expect(address.entries).toEqual(["/pay", "/pay?card=1"])
 	expect(address.now()).toBe("/pay")
 	expect(sheet()).toBeNull()
 })
 
 test("closing a sheet opened from a link at ?card= rewrites the address", async () => {
-	const { address } = await setup("/pay?card=A", withStatement)
+	const { address } = await setup("/pay?card=1", withStatement)
 	await close()
 	expect(address.calls).toEqual(["replace /pay"])
 	expect(address.entries).toEqual(["/pay"])
@@ -285,16 +285,16 @@ test("the back control steps back when there is a page behind, else goes to Tran
 })
 
 test("a paid payment is stored with its note, the settled statement's dates kept, then Transactions replaces the page", async () => {
-	const { repo, visited } = await setup("/pay?card=A", withStatement)
+	const { repo, visited } = await setup("/pay?card=1", withStatement)
 	await fill("amount", "10000")
 	await fill("note", "  From savings  ")
-	expect(submitText()).toBe("Record ฿10,000.00 to A card")
+	expect(submitText()).toBe("Record ฿10,000.00 to 1 card")
 	await submit()
-	expect((await repo.listStatementDates("A")).map((d) => d.period)).toEqual(["2026-09"])
-	const stored = await repo.listCardPayments("A")
+	expect((await repo.listStatementDates("1")).map((d) => d.period)).toEqual(["2026-09"])
+	const stored = await repo.listCardPayments("1")
 	expect(stored).toHaveLength(1)
 	expect(stored[0]).toMatchObject({
-		cardId: "A",
+		cardId: "1",
 		amount: 10_000_00,
 		date: "2026-10-31",
 		status: "paid",
@@ -304,38 +304,38 @@ test("a paid payment is stored with its note, the settled statement's dates kept
 })
 
 test("a blank note stores no note", async () => {
-	const { repo } = await setup("/pay?card=A", withStatement)
+	const { repo } = await setup("/pay?card=1", withStatement)
 	await fill("amount", "100")
 	await fill("note", "   ")
 	await submit()
-	const [payment] = await repo.listCardPayments("A")
+	const [payment] = await repo.listCardPayments("1")
 	expect(payment && "note" in payment).toBe(false)
 })
 
 test("a later date stores a planned payment and freezes nothing", async () => {
-	const { repo, visited } = await setup("/pay?card=A", withStatement)
+	const { repo, visited } = await setup("/pay?card=1", withStatement)
 	await fill("amount", "100")
 	await fill("date", "2026-11-05")
-	expect(submitText()).toBe("Plan ฿100.00 to A card on 05 Nov 2026")
+	expect(submitText()).toBe("Plan ฿100.00 to 1 card on 05 Nov 2026")
 	await submit()
-	expect(await repo.listStatementDates("A")).toEqual([])
-	const [payment] = await repo.listCardPayments("A")
+	expect(await repo.listStatementDates("1")).toEqual([])
+	const [payment] = await repo.listCardPayments("1")
 	expect(payment).toMatchObject({ status: "planned", date: "2026-11-05" })
 	expect(visited).toEqual(["/transactions"])
 })
 
 test("two quick submits save one payment", async () => {
-	const { repo, visited } = await setup("/pay?card=A", withStatement)
+	const { repo, visited } = await setup("/pay?card=1", withStatement)
 	await fill("amount", "100")
 	submitEvent()
 	submitEvent()
 	await settle()
-	expect(await repo.listCardPayments("A")).toHaveLength(1)
+	expect(await repo.listCardPayments("1")).toHaveLength(1)
 	expect(visited).toEqual(["/transactions"])
 })
 
 test("a failed save keeps the sheet and the typing, says why, and frees the button", async () => {
-	const { repo, visited } = await setup("/pay?card=A", async (r) => {
+	const { repo, visited } = await setup("/pay?card=1", async (r) => {
 		r.saveCardPayment = () => Promise.reject(new Error("disk full"))
 	})
 	await fill("amount", "100")
@@ -348,7 +348,7 @@ test("a failed save keeps the sheet and the typing, says why, and frees the butt
 	expect(text($("dialog .error-banner"))).toContain("Could not save the payment.")
 	expect($<HTMLButtonElement>('dialog button[type="submit"]')?.disabled).toBe(false)
 	expect(text(pageBanner())).toBe("")
-	expect(await repo.listCardPayments("A")).toHaveLength(0)
+	expect(await repo.listCardPayments("1")).toHaveLength(0)
 })
 
 test("a read failure shows on the page", async () => {
@@ -359,14 +359,14 @@ test("a read failure shows on the page", async () => {
 })
 
 test("a payment's note goes from the sheet to the ledger's search and through a backup", async () => {
-	const { repo } = await setup("/pay?card=A", withStatement)
+	const { repo } = await setup("/pay?card=1", withStatement)
 	await fill("amount", "100")
 	await fill("note", "From savings")
 	await submit()
 
 	const search = async (from: Repository) =>
 		filterEntries(
-			ledgerEntries(await from.listCards(), [], await from.listCardPayments("A")),
+			ledgerEntries(await from.listCards(), [], await from.listCardPayments("1")),
 			{ ...DEFAULT_TX_FILTER, q: "savings" },
 			"2026-10-31",
 		).map((entry) => (entry.kind === "payment" ? entry.payment.note : undefined))
@@ -379,7 +379,7 @@ test("a payment's note goes from the sheet to the ledger's search and through a 
 
 test("while a save is in flight the sheet is held, so Escape cannot slide it away", async () => {
 	let release!: () => void
-	const { address } = await setup("/pay?card=A", async (r) => {
+	const { address } = await setup("/pay?card=1", async (r) => {
 		const save = r.saveCardPayment.bind(r)
 		r.saveCardPayment = (payment) =>
 			new Promise((resolve) => {
@@ -392,7 +392,7 @@ test("while a save is in flight the sheet is held, so Escape cannot slide it awa
 	sheet()?.dispatchEvent(new Event("cancel", { cancelable: true }))
 	await exit()
 	expect(sheet()).not.toBeNull()
-	expect(address.bar.search()).toContain("card=A")
+	expect(address.bar.search()).toContain("card=1")
 	release()
 	await settle()
 })
@@ -436,8 +436,8 @@ test("Back during a save that then fails says why on the page, and Try again reo
 	expect(text(retry)).toBe("Try again")
 	retry?.click()
 	await settle()
-	expect(address.calls.slice(-1)).toEqual(["push /pay?card=A"])
-	expect(submitText()).toContain("A card")
+	expect(address.calls.slice(-1)).toEqual(["push /pay?card=1"])
+	expect(submitText()).toContain("1 card")
 	expect(amountValue()).toBe("100")
 	expect($<HTMLInputElement>('dialog [name="note"]')?.value).toBe("From savings")
 	expect(text(pageBanner())).toBe("")
@@ -462,7 +462,7 @@ test("Back during a save that then succeeds leaves for Transactions once, with n
 	held.settle(true)
 	await settle()
 	expect(visited).toEqual(["/transactions"])
-	expect(address.calls).toEqual(["push /pay?card=A", "back"])
+	expect(address.calls).toEqual(["push /pay?card=1", "back"])
 })
 
 test("a store that won't open shows why, with Reload, and no picker", async () => {

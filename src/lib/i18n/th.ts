@@ -516,6 +516,9 @@ export const th: Catalog = {
 	"backup.problem.missingLast4": "ไม่มีเลข 4 ตัวท้าย",
 	"backup.problem.badLocation": "มีสถานที่ที่ไม่ใช่ bangkok, phichit หรือ krabi",
 	"backup.problem.unknownLocation": "มีสถานที่ที่ไม่อยู่ในรายการสถานที่ของไฟล์สำรอง",
+	"backup.problem.badCardId": "มีรหัสที่ไม่ใช่ตัวเลขคั่นด้วยจุด นำหน้าด้วยอักษรอังกฤษตัวเล็กได้หนึ่งตัว (เช่น 5, 12.3 หรือ k1.2)",
+	"backup.problem.missingLimitGroup": "ไม่มีกลุ่มวงเงิน",
+	"backup.problem.unknownLimitGroup": "มีกลุ่มวงเงินที่ไม่อยู่ในรายการกลุ่มวงเงินของไฟล์สำรอง",
 	"backup.problem.badOwner": "มีเจ้าของที่ไม่ใช่ KC, NT หรือ RI",
 	// FLAG FOR OWNER REVIEW: noCycle and missingPeriod below both render as "ไม่มีรอบบิล"
 	// ("has no cycle" vs. "is missing a period" in English -- two different problems).

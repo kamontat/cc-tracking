@@ -36,13 +36,14 @@ const settle = async () => {
 }
 
 const sampleCard: Card = {
-	id: "kbank",
+	id: "k1",
 	name: "KBank Visa",
 	last4: "4821",
 	location: "krabi",
 	cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 	comment: "",
 	archived: false,
+	limitGroupId: "pool",
 }
 
 const seeded = async <R extends Repository>(repo: R): Promise<R> => {
@@ -56,15 +57,16 @@ const populated = async (): Promise<InMemoryRepository> => {
 	await repo.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await repo.saveCard({ ...sampleCard, limitGroupId: "pool" })
 	for (const id of ["p1", "p2"])
-		await repo.savePurchase({ id, cardId: "kbank", date: "2026-09-05", amount: 100, note: "" })
+		await repo.savePurchase({ id, cardId: "k1", date: "2026-09-05", amount: 100, note: "" })
 	return repo
 }
 
 /** A copy holding one card (SCB) and one purchase. */
 const oneCardBackup = async (): Promise<string> => {
 	const source = await seeded(new InMemoryRepository())
-	await source.saveCard({ ...sampleCard, id: "scb", name: "SCB" })
-	await source.savePurchase({ id: "s1", cardId: "scb", date: "2026-09-05", amount: 10_000, note: "fuel" })
+	await source.saveLimitGroup({ id: "scb", name: "SCB account", limit: 1 })
+	await source.saveCard({ ...sampleCard, id: "s1", name: "SCB", limitGroupId: "scb" })
+	await source.savePurchase({ id: "s1", cardId: "s1", date: "2026-09-05", amount: 10_000, note: "fuel" })
 	return JSON.stringify(await exportBackupV3(source, new Date()))
 }
 
@@ -128,7 +130,7 @@ const chooseFile = async (root: HTMLElement, file: File) => {
 	await settle()
 }
 
-const oneCardCounts: V3Counts = { cards: 1, purchases: 1, payments: 0, limitGroups: 0, lists: 0 }
+const oneCardCounts: V3Counts = { cards: 1, purchases: 1, payments: 0, limitGroups: 1, lists: 0 }
 
 test("sits in a sheet headed Restore a copy, opening on the clipboard, a file and paste by hand", async () => {
 	await withClipboard({ readText: async () => "" }, async () => {
@@ -158,7 +160,7 @@ test("paste from clipboard restores into an empty browser in one click", async (
 		const sheet = await show(repo, storage)
 		await sheet.click("paste-clipboard")
 
-		expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"])
+		expect((await repo.listCards()).map((card) => card.id)).toEqual(["s1"])
 		expect(sheet.restored).toEqual([oneCardCounts])
 	})
 })
@@ -167,6 +169,7 @@ test("into a new browser, the copy's renames and ticks replace the seeded starti
 	const source = new InMemoryRepository()
 	await source.saveLocation({ id: "krabi", name: "Ao Nang", takesPurchases: false })
 	await source.saveLocation({ id: "phichit", name: "Phichit", takesPurchases: true })
+	await source.saveLimitGroup({ id: "pool", name: "KBank account", limit: 1 })
 	await source.saveCard({ ...sampleCard, location: "krabi" })
 	const text = JSON.stringify(await exportBackupV3(source, new Date()))
 	await withClipboard({ readText: async () => text }, async () => {
@@ -214,12 +217,12 @@ test("with data here, the clipboard asks first, counting here and in the copy", 
 		])
 		expect(rows).toEqual([
 			["Here", "1 card, 2 purchases, 0 payments, 1 limit group, 0 lists"],
-			["In the copy", "1 card, 1 purchase, 0 payments, 0 limit groups, 0 lists"],
+			["In the copy", "1 card, 1 purchase, 0 payments, 1 limit group, 0 lists"],
 		])
 		expect(sheet.action("merge-import")?.hasAttribute("data-variant")).toBe(false)
 		expect(sheet.action("replace-import")?.getAttribute("data-variant")).toBe("danger")
 		expect(sheet.restored).toEqual([])
-		expect(await repo.listPurchases("scb")).toEqual([])
+		expect(await repo.listPurchases("s1")).toEqual([])
 	})
 })
 
@@ -231,8 +234,8 @@ test("merge keeps what is here and adds the copy", async () => {
 		await sheet.click("paste-clipboard")
 		await sheet.click("merge-import")
 
-		expect((await repo.listCards()).map((card) => card.id).sort()).toEqual(["kbank", "scb"])
-		expect(await repo.listLimitGroups()).toHaveLength(1)
+		expect((await repo.listCards()).map((card) => card.id).sort()).toEqual(["k1", "s1"])
+		expect(await repo.listLimitGroups()).toHaveLength(2)
 		expect(sheet.restored).toEqual([oneCardCounts])
 	})
 })
@@ -245,8 +248,8 @@ test("replace leaves only what the copy carries", async () => {
 		await sheet.click("paste-clipboard")
 		await sheet.click("replace-import")
 
-		expect((await repo.listCards()).map((card) => card.id)).toEqual(["scb"])
-		expect(await repo.listLimitGroups()).toEqual([])
+		expect((await repo.listCards()).map((card) => card.id)).toEqual(["s1"])
+		expect((await repo.listLimitGroups()).map((group) => group.id)).toEqual(["scb"])
 		expect(sheet.restored).toEqual([oneCardCounts])
 		expect(sheet.storage.getItem("cc:migration:payments")).toBe("done")
 	})
@@ -262,7 +265,7 @@ test("cancel on the question writes nothing and closes the sheet", async () => {
 
 		expect(sheet.closed()).toBe(1)
 		expect(sheet.restored).toEqual([])
-		expect(await repo.listPurchases("scb")).toEqual([])
+		expect(await repo.listPurchases("s1")).toEqual([])
 	})
 })
 
@@ -306,7 +309,7 @@ test("paste by hand shows the text area, and text that is not a copy shows why a
 		expect(sheet.root.querySelector('[role="alert"]')?.textContent).toContain("Could not restore that copy.")
 		expect((sheet.root.querySelector("textarea") as HTMLTextAreaElement).value).toBe("{ not json")
 		expect(sheet.restored).toEqual([])
-		expect(await repo.listPurchases("kbank")).toHaveLength(2)
+		expect(await repo.listPurchases("k1")).toHaveLength(2)
 	})
 })
 
@@ -366,7 +369,7 @@ test("after a restore, a card on a missing location gets its place back", async 
 	const old = JSON.stringify({
 		version: 2,
 		exportedAt: "2026-09-21T00:00:00.000Z",
-		limitGroups: [],
+		limitGroups: [{ id: "pool", name: "KBank account", limit: 1 }],
 		cards: [sampleCard],
 		purchases: [],
 		payments: [],

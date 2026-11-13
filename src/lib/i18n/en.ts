@@ -501,6 +501,10 @@ export const en = {
 	"backup.problem.missingLast4": "is missing last4",
 	"backup.problem.badLocation": "has a location that is not bangkok, phichit, or krabi",
 	"backup.problem.unknownLocation": "has a location that is not among the backup's locations",
+	"backup.problem.badCardId":
+		"has an id that is not numbers joined by dots, after at most one lower-case letter (such as 5, 12.3 or k1.2)",
+	"backup.problem.missingLimitGroup": "has no limit group",
+	"backup.problem.unknownLimitGroup": "has a limit group that is not among the backup's limit groups",
 	"backup.problem.badOwner": "has an owner that is not KC, NT, or RI",
 	"backup.problem.noCycle": "has no cycle",
 	"backup.problem.badOffsetCycle": "has an offset cycle with a non-integer day field",

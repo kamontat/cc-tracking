@@ -3,7 +3,7 @@ import type { Repository } from "#lib/storage/repository"
 import { describe, expect, test } from "vitest"
 
 import { MessageError } from "#lib/i18n/error"
-import { sampleCard, samplePayment, samplePurchase } from "#lib/storage/contract"
+import { sampleCard, sampleLimitGroup, samplePayment, samplePurchase } from "#lib/storage/contract"
 import { InMemoryRepository } from "#lib/storage/repository"
 import { limitGroupProblem } from "#lib/storage/transfer"
 import { importBackupV3 as importBackup, parseAnyBackup as parseBackup } from "#lib/storage/transfer-v3"
@@ -40,10 +40,11 @@ function captureThrow(fn: () => unknown): unknown {
 
 const populated = async () => {
 	const repo = new InMemoryRepository()
+	await repo.saveLimitGroup(sampleLimitGroup())
 	await repo.saveCard(sampleCard())
-	await repo.saveCard(sampleCard({ id: "scb", name: "SCB Mastercard", location: "phichit" }))
+	await repo.saveCard(sampleCard({ id: "s1", name: "SCB Mastercard", location: "phichit" }))
 	await repo.savePurchase(samplePurchase({ id: "p1" }))
-	await repo.savePurchase(samplePurchase({ id: "p2", cardId: "scb", date: "2026-09-09" }))
+	await repo.savePurchase(samplePurchase({ id: "p2", cardId: "s1", date: "2026-09-09" }))
 	await repo.savePayment(samplePayment())
 	return repo
 }
@@ -111,7 +112,7 @@ describe("parseBackup", () => {
 			version: 2,
 			exportedAt: "2026-09-21T00:00:00.000Z",
 			limitGroups: [],
-			cards: [{ id: "kbank", name: "KBank Visa", last4: "4821" }],
+			cards: [{ id: "k1", name: "KBank Visa", last4: "4821" }],
 			purchases: [],
 			payments: [],
 		}
@@ -139,7 +140,7 @@ describe("parseBackup", () => {
 					purchases: [
 						{
 							id: "p1",
-							cardId: "kbank",
+							cardId: "k1",
 							date: "2026-09-05",
 							amount: 100.5,
 							note: "",
@@ -181,7 +182,7 @@ describe("parseBackup", () => {
 		const backup = await exportBackup(await populated())
 		const parsed = parseBackup(JSON.stringify(backup))
 
-		expect(parsed.cards.map((c) => c.id)).toEqual(["kbank", "scb"])
+		expect(parsed.cards.map((c) => c.id)).toEqual(["k1", "s1"])
 		expect(parsed.purchases.map((p) => p.id)).toEqual(["p1", "p2"])
 		expect(parsed.payments).toHaveLength(1)
 	})
@@ -195,7 +196,7 @@ describe("parseBackup", () => {
 			purchases: [],
 			payments: [
 				{
-					cardId: "kbank",
+					cardId: "k1",
 					period: "2026-09",
 					paidAt: "2026-10-01",
 					closeDate: "2026-09-18",
@@ -226,10 +227,10 @@ describe("parseBackup", () => {
 		const backup = {
 			version: 2,
 			exportedAt: "2026-09-21T00:00:00.000Z",
-			limitGroups: [],
+			limitGroups: [sampleLimitGroup()],
 			cards: [
 				{
-					id: "kbank",
+					id: "k1",
 					name: "KBank Visa",
 					last4: "4821",
 					location: "Chiang Mai",
@@ -254,15 +255,16 @@ describe("parseBackup", () => {
 		const backup = {
 			version: 2,
 			exportedAt: "2026-09-21T00:00:00.000Z",
-			limitGroups: [],
+			limitGroups: [sampleLimitGroup()],
 			cards: [
 				{
-					id: "kbank",
+					id: "k1",
 					name: "KBank Visa",
 					last4: "4821",
 					location: "phichit",
 					cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 					archived: false,
+					limitGroupId: "pool",
 				},
 			],
 			purchases: [],
@@ -319,7 +321,7 @@ describe("owner in a backup", () => {
 		JSON.stringify({
 			version: 2,
 			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [],
+			limitGroups: [sampleLimitGroup()],
 			cards: [
 				{
 					id: "a2",
@@ -328,6 +330,7 @@ describe("owner in a backup", () => {
 					location: "krabi",
 					cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
 					archived: false,
+					limitGroupId: "pool",
 					...card,
 				},
 			],
@@ -364,7 +367,7 @@ describe("entry time in a backup", () => {
 			purchases: [
 				{
 					id: "p1",
-					cardId: "kbank",
+					cardId: "k1",
 					date: "2026-10-20",
 					amount: 100,
 					note: "",
@@ -377,7 +380,7 @@ describe("entry time in a backup", () => {
 	test("imports a purchase with addedAt and keeps it", async () => {
 		const repo = new InMemoryRepository()
 		await importBackup(repo, parseBackup(withPurchase({ addedAt: "2026-10-27T03:15:00.000Z" })))
-		const [stored] = await repo.listPurchases("kbank")
+		const [stored] = await repo.listPurchases("k1")
 		expect(stored?.addedAt).toBe("2026-10-27T03:15:00.000Z")
 	})
 
