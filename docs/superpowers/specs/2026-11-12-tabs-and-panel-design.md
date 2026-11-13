@@ -45,7 +45,8 @@ beside its list on a desktop and in a sheet that slides up on a phone.
 - What the panel holds by kind:
   - **Card**: what `/card` shows today, fitted to the column: the hero (room, owed, next bill),
     the comment and over-room note, the actions (_Use on a list_, _Add purchase_, _Pay_), and
-    the statements, newest first, with _Show older_.
+    the statements, newest first, with _Show older_. _Edit_ turns the panel into the card form;
+    _+ Add card_ opens a blank one.
   - **Limit group**: its name, limit, used and room, and its cards (each opens that card's
     panel). _Edit_ turns the panel into today's group form; _+ Add limit_ opens a blank one.
   - **List**: its status, date, lines and total, and the actions its status allows
@@ -53,11 +54,21 @@ beside its list on a desktop and in a sheet that slides up on a phone.
 
 ### Work inside a panel (decision 3)
 
-_Pay_, _Add purchase_ and editing a purchase replace the panel's content, with a ‹ back to the
-card in the panel's head, instead of a sheet on top of a sheet. Saving, _Cancel_ or ‹ returns to
-the card: a step back when the card's panel is the entry before, else the address is rewritten to
-the card (a form opened straight from an owed tile, _Needs you_ or a pasted link). Each form is
-in the address (`pay`, `purchase`), so a pasted link opens it.
+_Pay_, _Add purchase_, editing a purchase and editing the card or group itself replace the
+panel's content, with a ‹ back to the record in the panel's head, instead of a sheet on top of a
+sheet or a page of its own. Saving, _Cancel_ or ‹ returns to the record: a step back when its
+panel is the entry before, else the address is rewritten to it (a form opened straight from an
+owed tile, _Needs you_ or a pasted link). Each form is in the address (`pay`, `purchase`,
+`edit`, `card=new`, `limit=new`), so a pasted link opens it. Adding a card or a group ends on the
+new record's panel.
+
+The card form fits the column as it is: its four sections (_Card_, _Where_, _Statement_,
+_Comment_) are already one column of fields. On a phone the sheet is the full height while a form
+is open, and the save button stays in view at its foot.
+
+**Unsaved changes.** A form in the panel is one click from being swapped away, so picking another
+record, ×, Escape or the backdrop asks first (_Discard your changes?_) once a field has changed.
+Back leaves without asking, as leaving a page does today (no page guards a form now).
 
 ## Decisions to settle
 
@@ -66,10 +77,12 @@ Each has a recommendation, drawn in the mockup.
 1. **Owed leaves the ledger's side (reverses RD-13's "On a desktop, what each card owes sits
    beside the ledger", DD-79's two columns and DD-144's).** Recommended: accept. Owed is one
    click away as a tab, and _Pay_ on an owed tile opens the card's pay panel right there.
-2. **The card page becomes the card panel.** `/card` goes; its content moves into the panel.
-   Recommended: yes. The edit form stays a full page, as it is long (`/cards/edit?card=`).
-3. **Pay and purchase inside the panel** replace its content (above), never stack. Recommended:
-   yes.
+2. **The card page and the card form become the card panel**, as the limit group's summary and
+   form are. `/card`, `/card/new` and `/card/edit` go; the Cards tab is one page. Recommended:
+   yes (the user asked, 2026-11-13). Cost: the unsaved-changes prompt above, which no page has
+   today.
+3. **Pay, purchase and edit inside the panel** replace its content (above), never stack.
+   Recommended: yes.
 4. **Which records open in a panel.** Recommended: cards, limit groups and lists. A ledger row
    keeps opening in place (`ActionRow`), as it holds only its own buttons; its _Open card_
    opens the card's panel. Writing a list stays a full page, as the builder and the reply are
@@ -95,7 +108,7 @@ plural and repeats once per value (`?cards=12.3&cards=7`); a record key is singu
 trailing slash is redirected away (301). No redirect from an old address; `/backup` goes.
 
 Card ids are `^[a-z]?[0-9]+(\.[0-9]+)*$`, lower case only (`5`, `12.3`, `k1.2`; not `5.`, `.5`,
-`1..2`, `K1`), checked by the card form and by restore. Every card in the user's 2026-11-07
+`1..2`, `K1`), checked by the card form and by restore, so no card id can be `new`. Every card in the user's 2026-11-07
 backup already matches. Group and list ids are UUIDs; location ids are lower-case words. None
 needs escaping.
 
@@ -103,15 +116,16 @@ needs escaping.
 
 | Key        | Values                    | Notes                                                                                          |
 | ---------- | ------------------------- | ---------------------------------------------------------------------------------------------- |
-| `card`     | card id                   | That card's panel. An unknown or invalid id opens nothing.                                     |
+| `card`     | card id, `new`            | That card's panel; `new` a blank card form (no card id can be `new`). An unknown or invalid id opens nothing. |
 | `pay`      | `1`                       | With `card`: the panel's pay form, starting at the next bill.                                  |
 | `amount`   | whole satang > 0          | With `pay`: the amount filled in. Anything else is dropped.                                    |
 | `purchase` | `new`, purchase id        | With `card`: the panel's purchase form, blank or on that purchase. Wins over `pay`.            |
 | `limit`    | group id, `new`           | That limit group's panel; `new` a blank group form. Only on `/cards/limits`.                   |
 | `list`     | list id                   | That list's panel. Only on `/transactions/lists` and `/`.                                      |
-| `edit`     | `1`                       | With `limit`: the group's form instead of its summary.                                         |
+| `edit`     | `1`                       | With `card` or `limit`: the record's form instead of its summary.                              |
 
-`card` wins over `limit` and `list` when more than one is given.
+`card` wins over `limit` and `list` when more than one is given; `purchase` wins over `pay`, and
+`pay` over `edit`.
 
 ### Pages
 
@@ -125,8 +139,6 @@ needs escaping.
 | `/lists/edit`         | Transactions | `list` (list id, required: the builder for a draft, the reply for a waiting list; a saved list or an unknown id says so and links to its panel or Home); `add`, `open` as on `/lists/new`, read for a draft only                                                                                                              |
 | `/cards`              | Cards        | `q` (text); `locations` (stored location id); `owners` (`KC`, `NT`, `RI`); `ungrouped` (`1`); `sort` (`card`, `room`, `name`, `close`, `due`; default `card`); `dir` (`asc`, `desc`; default `desc` for `room`, else `asc`); `by` (`place`, `holder`, `limit`, `none`; default `place`)                                       |
 | `/cards/limits`       | Cards        | `q` (a group's or its cards' names); `owners`; `sort` (`name`, `room`, `used`; default `name`); `dir` (default `desc` for `room` and `used`, else `asc`)                                                                                                                                                                        |
-| `/cards/new`          | Cards        | none: the card form                                                                                                                                                                                                                                                                                                             |
-| `/cards/edit`         | Cards        | `card` (card id, required): the card form on it; a missing or unknown id shows "card not found"                                                                                                                                                                                                                                |
 | `/settings`           | Settings     | none                                                                                                                                                                                                                                                                                                                            |
 | `/settings/locations` | Settings     | none                                                                                                                                                                                                                                                                                                                            |
 
@@ -148,16 +160,16 @@ and the offline worker work as they are (the worker already ignores the query).
 | `/cards?view=groups`                       | `/cards/limits`                             |
 | `/cards?group=<id>`, `?newGroup=1`         | `/cards/limits?limit=<id>`, `?limit=new`    |
 | `/card?id=`                                | `/cards?card=`                              |
-| `/card/new`, `/card/edit?id=`              | `/cards/new`, `/cards/edit?card=`           |
+| `/card/new`, `/card/edit?id=`              | `/cards?card=new`, `/cards?card=<id>&edit=1` |
 | `/backup`                                  | gone                                        |
 
 ## When it ships
 
 PRD.md and PRD_TH.md: new decisions for the tabs, the panel, the card page's retirement, the
-pay picker's, the addresses and the card id format; RD-13, DD-76, DD-79, DD-144, CD-01 and DC-17
+pay picker's, the card form in the panel and its unsaved-changes prompt, the addresses and the card id format; RD-13, DD-76, DD-79, DD-144, CD-01 and DC-17
 amended. ENDPOINTS.md rewritten from the tables above. The `TODO.md` endpoint item is replaced
 by this spec.
 
 Suggested order, each its own pull request: (1) the card id check; (2) the panel molecule and
 the card panel on `/cards`; (3) tabs and paths for Cards; (4) the same for Transactions and
-lists; (5) Home's panel; (6) retire `/card`, `/pay`, `/list/*`.
+lists; (5) Home's panel; (6) retire `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/*`.

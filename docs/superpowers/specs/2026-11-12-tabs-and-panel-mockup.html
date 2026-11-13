@@ -68,7 +68,7 @@ code { font-family: var(--mono); font-size: 0.8125em; background: var(--sunken);
 .tabbar button[aria-current="page"] { color: var(--accent); }
 
 .body { flex: 1; min-block-size: 0; display: flex; }
-.main { flex: 1; min-inline-size: 0; overflow: auto; padding: 16px; display: grid; gap: 14px; align-content: start; }
+.main { flex: 1; min-inline-size: 0; overflow: auto; padding: 16px; display: grid; gap: 14px; align-content: start; grid-auto-rows: max-content; }
 .desk .main { padding: 20px 32px 24px; }
 .title { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .title h2 { margin: 0; font-size: 1.375rem; }
@@ -153,13 +153,14 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 .stmt .rows > div { display: flex; justify-content: space-between; padding: 8px 12px; gap: 8px; }
 .form { display: grid; gap: 12px; }
 .form label { display: grid; gap: 4px; font-size: 0.8125rem; color: var(--muted); }
-.form input { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; background: var(--surface); font-size: 0.9375rem; color: var(--text); }
+.form input { min-inline-size: 0; inline-size: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; background: var(--surface); font-size: 0.9375rem; color: var(--text); }
 .form input.amt { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .pills { display: flex; gap: 6px; flex-wrap: wrap; }
 .pill { inline-size: 26px; block-size: 26px; border-radius: 50%; border: 2px solid transparent; background: var(--gt); cursor: pointer; }
 .pill[aria-pressed="true"] { border-color: var(--text); }
 .twin { display: flex; gap: 8px; }
 .twin .btn { flex: 1; padding: 11px; }
+.form > .twin:last-child { position: sticky; bottom: 0; background: var(--surface); padding-block: 10px; margin-bottom: -16px; }
 .toast { position: absolute; left: 50%; bottom: 76px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 0.8125rem; font-weight: 600; white-space: nowrap; z-index: 9; max-inline-size: 92%; overflow: hidden; text-overflow: ellipsis; }
 .home { display: grid; gap: 14px; }
 .desk .home { grid-template-columns: 1fr 1fr; align-items: start; }
@@ -180,7 +181,8 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 			<div><h4>Cards</h4><ul>
 				<li>Tap a tile: its panel opens. Tap another: the panel swaps, the address is rewritten (Back closes, it does not walk through every card).</li>
 				<li><em>Pay</em> or <em>Add purchase</em> replaces the panel's content; ‹ in the panel or Back returns to the card.</li>
-				<li><em>Limits</em> tab: a group's panel lists its cards; tap one to open it.</li>
+				<li><em>Edit</em> in a card's panel, and <em>+ Add card</em>, open the card form in the panel (<code>?card=12.3&amp;edit=1</code>, <code>?card=new</code>). With a form open, tapping another card or × asks first; Back does not.</li>
+				<li><em>Limits</em> tab: a group's panel lists its cards; tap one to open it. <em>Edit</em> is the group form, in the panel the same way.</li>
 			</ul></div>
 			<div><h4>Transactions</h4><ul>
 				<li><em>Owed</em>: <em>Pay</em> on a tile opens that card's pay form here, without leaving the tab (decision 5).</li>
@@ -248,11 +250,16 @@ const panelOpen = (s) => s.card || s.limit || s.list
 function go(path) { if (now().path !== path || panelOpen(now())) push({ path }) }
 // a record from the list: swap the panel in place when one is open on a desktop, else push
 function openRecord(rec) {
+	if (!leaveForm()) return
 	const s = { path: now().path, ...rec }
 	if (panelOpen(now()) && device === "desk") replace(s)
 	else push(s)
 }
+// a form in the panel asks before its changes go (the mockup treats every open form as changed)
+const inForm = (s) => s.edit || s.pay || s.purchase || s.card === "new" || s.limit === "new"
+const leaveForm = () => !inForm(now()) || confirm("Discard your changes?")
 function closePanel() {
+	if (!leaveForm()) return
 	// step back over our own entries to the bare page; a pasted address is rewritten instead
 	const path = now().path
 	while (at > 0 && panelOpen(now()) && stack[at - 1].path === path) at--
@@ -263,7 +270,7 @@ function closePanel() {
 // (a form opened straight from an owed tile or a pasted link has no card entry under it)
 function toCard() {
 	const s = now(), prev = stack[at - 1]
-	if (prev && prev.path === s.path && prev.card === s.card && !prev.pay && !prev.purchase) back()
+	if (prev && prev.path === s.path && prev.card === s.card && !prev.pay && !prev.purchase && !prev.edit) back()
 	else replace({ path: s.path, card: s.card })
 }
 function say(text) { toast = text; draw(); setTimeout(() => { if (toast === text) { toast = ""; draw() } }, 2600) }
@@ -282,7 +289,7 @@ function cardsTab(s) {
 		}).join("")}</div>`
 	}
 	const places = [...new Set(CARDS.map((c) => c.place))]
-	return `<div class="tools"><input class="search" placeholder="Search cards"><button class="btn" data-variant="quiet">Filter</button><button class="btn" data-variant="quiet">+ Add card</button></div>
+	return `<div class="tools"><input class="search" placeholder="Search cards"><button class="btn" data-variant="quiet">Filter</button><button class="btn" data-variant="quiet" data-do="card:new">+ Add card</button></div>
 	${places.map((p) => `<section class="sect"><h3>${p} <span>${CARDS.filter((c) => c.place === p).length}</span></h3><div class="tiles">${CARDS.filter((c) => c.place === p).map((c) => `<button class="tile c-${c.color}" data-do="card:${c.id}" aria-current="${s.card === c.id}"><span class="r1">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.room)}<small>room</small></span><span class="r3"><span>${c.owner} · due ${c.due}</span><span>${c.owed ? "owes " + baht(c.owed) : "nothing owed"}</span></span></button>`).join("")}</div></section>`).join("")}`
 }
 
@@ -308,8 +315,33 @@ function homeTab() {
 	<section class="sect"><h3>Ready to use</h3><div class="tiles">${CARDS.slice().sort((a, b) => b.room - a.room).slice(0, 3).map((c) => `<button class="tile c-${c.color}" data-do="card:${c.id}"><span class="r1">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.room)}<small>room</small></span></button>`).join("")}</div></section></div>`
 }
 
+// the card form (today's /card/new and /card/edit), its four sections in the column
+function cardForm(s, c) {
+	const v = (x) => (c ? h(x) : "")
+	const pills = (opts, on) => `<div class="pills">${opts.map((o) => `<button class="btn small" data-variant="${o === on ? "" : "quiet"}">${o}</button>`).join("")}</div>`
+	return `<div class="phead">${c ? `<button class="ib" data-do="tocard" aria-label="Back to the card">‹</button>` : ""}<div class="t"><b>${c ? "Edit card" : "New card"}</b>${c ? `<small>${h(c.name)} ${c.id}</small>` : ""}</div><button class="ib" data-do="close" aria-label="Close">×</button></div>
+	<div class="pbody"><div class="form">
+		<h3>Card</h3>
+		<label>Card id<input value="${v(c?.id)}" placeholder="12.3 or k1.2"></label>
+		<label>Name<input value="${v(c?.name)}"></label>
+		<label>Last 4<input value="${v(c?.last4)}" inputmode="numeric"></label>
+		<h3>Where</h3>
+		<div><small class="muted">Location</small>${pills(["Bangkok", "Krabi", "Phichit"], c?.place)}</div>
+		<div><small class="muted">Account holder</small>${pills(["KC", "NT", "RI", "None"], c?.owner)}</div>
+		<label>Limit group<input value="${c && limitOf(c.limit) ? h(limitOf(c.limit).name) : "None"}"></label>
+		<h3>Statement</h3>
+		<div><small class="muted">Due date</small>${pills(["Days after close", "Fixed day"], "Days after close")}</div>
+		<div class="stats"><label>Close day<input value="${c ? c.close.split(" ")[0] : ""}"></label><label>Days until due<input value="${c ? 15 : ""}"></label></div>
+		<h3>Comment</h3>
+		<label><input placeholder="Optional"></label>
+		<div class="twin">${c ? `<button class="btn" data-variant="quiet" data-do="tocard">Cancel</button>` : ""}<button class="btn" data-do="${c ? "saved:Card saved" : "added"}">${c ? "Save" : "Add card"}</button></div>
+	</div></div>`
+}
+
 function cardPanel(s) {
+	if (s.card === "new") return cardForm(s, null)
 	const c = card(s.card)
+	if (c && s.edit) return cardForm(s, c)
 	if (!c) return `<div class="phead"><div class="t"><b>Card not found</b></div><button class="ib" data-do="close" aria-label="Close">×</button></div>`
 	if (s.pay || s.purchase) {
 		const pay = !s.purchase
@@ -323,7 +355,7 @@ function cardPanel(s) {
 		</div></div>`
 	}
 	const l = limitOf(c.limit), pct = Math.round(((c.cap - c.room) / c.cap) * 100)
-	return `<div class="phead">${chip(c)}<div class="t">${cname(c)}<small>${c.place} · ${c.owner}${l ? " · " + h(l.name) : ""}</small></div><button class="btn small" data-variant="quiet" data-do="say:Edit goes to /cards/edit?card=${c.id}">Edit</button><button class="ib" aria-label="More">⋯</button><button class="ib" data-do="close" aria-label="Close">×</button></div>
+	return `<div class="phead">${chip(c)}<div class="t">${cname(c)}<small>${c.place} · ${c.owner}${l ? " · " + h(l.name) : ""}</small></div><button class="btn small" data-variant="quiet" data-do="edit">Edit</button><button class="ib" aria-label="More">⋯</button><button class="ib" data-do="close" aria-label="Close">×</button></div>
 	<div class="pbody">
 		<div class="hero c-${c.color}"><small class="muted">Room</small><span class="big">${baht(c.room)}</span><span class="meter"><i class="${pct > 75 ? "hot" : ""}" style="inline-size:${pct}%"></i></span><small class="muted">${baht(c.cap - c.room)} used of ${baht(c.cap)}${l ? " (shared)" : ""}</small></div>
 		<div class="stats"><div><small>Owed</small><b>${baht(c.owed)}</b></div><div><small>Next bill</small><b>due ${c.due}</b></div></div>
@@ -402,6 +434,8 @@ document.getElementById("dev").addEventListener("click", (e) => {
 	else if (act === "row") { openRow = openRow === arg ? null : arg; draw() }
 	else if (act === "tocard") toCard()
 	else if (act === "saved") { toCard(); say(arg) }
+	// a new card, once added, is the card the panel shows
+	else if (act === "added") { replace({ path: s.path, card: "51.4" }); say("Card added") }
 	else if (act === "say") say(arg)
 })
 for (const [id, fn] of [["device", (v) => { device = v }], ["theme", (v) => { document.documentElement.dataset.theme = v }]]) {
