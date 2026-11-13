@@ -179,10 +179,12 @@ Rules: the path names the page and its tab; the query holds the tab's list setti
 open panel; nothing uses the fragment. Query keys come in three kinds, told apart by name (the
 user asked, 2026-11-13):
 
-- **Filters** start with `f`: they narrow which rows show (`fq`, `fcards`, `ffrom`, `fto`, …).
+- **Filters** start with `f.`: they narrow which rows show (`f.cards`, `f.from`, `f.to`, …). The
+  dot is not escaped in a query, so the address reads as written.
+- **Search** is `q`, with no prefix: the one free-text box each list has.
 - **View** keys have no prefix: `sort`, `dir` and `by` order the rows and cut them into sections.
 - **Data** keys have no prefix: they name a record (`card`, `limit`, `list`) or hold a page's
-  own content (the builder's `cards`). A filter can never be read as data: `fcards` filters,
+  own content (the builder's `cards`). A filter can never be read as data: `f.cards` filters,
   `cards` is what a new list holds, `card` is the open card.
  A key at its default is left out. A key that repeats is
 plural and repeats once per value (`?cards=12.3&cards=7`); a key naming one record is singular.
@@ -228,12 +230,12 @@ When a page takes more than one record key, `card` wins.
 
 | Key       | Values                                          | Default |
 | --------- | ----------------------------------------------- | ------- |
-| `fq`      | any text                                        | empty   |
-| `ftypes`  | `purchase`, `payment` (repeats)                 | any     |
-| `fcards`  | card id (repeats)                               | any     |
-| `frange`  | `today`, `week`, `month`, `lastMonth`, `custom` | none    |
-| `ffrom`   | `YYYY-MM-DD`; an invalid date is dropped        | none    |
-| `fto`     | `YYYY-MM-DD`; an invalid date is dropped        | none    |
+| `q`       | any text                                        | empty   |
+| `f.types` | `purchase`, `payment` (repeats)                 | any     |
+| `f.cards` | card id (repeats)                               | any     |
+| `f.range` | `today`, `week`, `month`, `lastMonth`, `custom` | none    |
+| `f.from`  | `YYYY-MM-DD`; an invalid date is dropped        | none    |
+| `f.to`    | `YYYY-MM-DD`; an invalid date is dropped        | none    |
 | `sort`    | `date`, `amount`                                | `date`  |
 | `dir`     | `asc`, `desc`                                   | `desc`  |
 | `by`      | `day`, `card`, `none`                           | `day`   |
@@ -242,12 +244,12 @@ When a page takes more than one record key, `card` wins.
 
 | Key         | Values                                          | Default  |
 | ----------- | ----------------------------------------------- | -------- |
-| `fq`        | a line's card id, name, last 4 or note          | empty    |
-| `fstatuses` | `draft`, `sent`, `saved` (repeats)              | any      |
-| `fcards`    | card id (repeats)                               | any      |
-| `frange`    | `today`, `week`, `month`, `lastMonth`, `custom` | none     |
-| `ffrom`     | `YYYY-MM-DD`, on the list's date                | none     |
-| `fto`       | `YYYY-MM-DD`, on the list's date                | none     |
+| `q`         | a line's card id, name, last 4 or note          | empty    |
+| `f.statuses`| `draft`, `sent`, `saved` (repeats)              | any      |
+| `f.cards`   | card id (repeats)                               | any      |
+| `f.range`   | `today`, `week`, `month`, `lastMonth`, `custom` | none     |
+| `f.from`    | `YYYY-MM-DD`, on the list's date                | none     |
+| `f.to`      | `YYYY-MM-DD`, on the list's date                | none     |
 | `by`        | `status`, `month`, `none`                       | `status` |
 
 **`/transactions/lists/new`**, Transactions: the builder, a full page. Panels: none; its
@@ -268,9 +270,9 @@ not in the address.
 
 | Key          | Values                                 | Default                       |
 | ------------ | -------------------------------------- | ----------------------------- |
-| `fq`         | any text                               | empty                         |
-| `flocations` | stored location id (repeats)           | any                           |
-| `fowners`    | `KC`, `NT`, `RI` (repeats)             | any                           |
+| `q`          | any text                               | empty                         |
+| `f.locations`| stored location id (repeats)           | any                           |
+| `f.owners`   | `KC`, `NT`, `RI` (repeats)             | any                           |
 | `sort`       | `card`, `room`, `name`, `close`, `due` | `card`                        |
 | `dir`        | `asc`, `desc`                          | `desc` for `room`, else `asc` |
 | `by`         | `place`, `holder`, `limit`, `none`     | `place`                       |
@@ -280,8 +282,8 @@ are new: the group panels have none today.
 
 | Key       | Values                        | Default                                  |
 | --------- | ----------------------------- | ---------------------------------------- |
-| `fq`      | a group's or its cards' names | empty                                    |
-| `fowners` | `KC`, `NT`, `RI` (repeats)    | any                                      |
+| `q`       | a group's or its cards' names | empty                                    |
+| `f.owners`| `KC`, `NT`, `RI` (repeats)    | any                                      |
 | `sort`    | `name`, `room`, `used`        | `name`                                   |
 | `dir`     | `asc`, `desc`                 | `desc` for `room` and `used`, else `asc` |
 
@@ -304,12 +306,12 @@ are new: the group panels have none today.
 | Home's _Ready to use_ (part of `/`)      | `/ready`                                                 |
 | `/backup`                                | gone                                                     |
 
-Renamed keys: the filters take `f`: `q` → `fq`, `type` → `ftypes`, the ledger's `card` →
-`fcards`, `range`/`from`/`to` → `frange`/`ffrom`/`fto`, `status` → `fstatuses`, `loc` →
-`flocations`, `owner` → `fowners`; the Lists view's `lq`, `lcard`, `lrange`, `lfrom`, `lto` →
-`fq`, `fcards`, `frange`, `ffrom`, `fto`, and `lby` → `by`; `owed`, `odir` → `/owed`'s `sort`,
-`dir`; the builder's `card` → `cards`. Gone: `view`, `id`, `group`, `newGroup`, `ungrouped`, and
-the builder's `add` and `open`.
+Renamed keys: the filters take `f.`: `type` → `f.types`, the ledger's `card` → `f.cards`,
+`range`/`from`/`to` → `f.range`/`f.from`/`f.to`, `status` → `f.statuses`, `loc` →
+`f.locations`, `owner` → `f.owners`; the Lists view's `lq` → `q`, its `lcard`, `lrange`,
+`lfrom`, `lto` → `f.cards`, `f.range`, `f.from`, `f.to`, and `lby` → `by`; `owed`, `odir` →
+`/owed`'s `sort`, `dir`; the builder's `card` → `cards`. `q` stays `q`. Gone: `view`, `id`,
+`group`, `newGroup`, `ungrouped`, and the builder's `add` and `open`.
 
 ## When it ships
 
