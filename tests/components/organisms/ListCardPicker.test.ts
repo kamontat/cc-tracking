@@ -74,17 +74,32 @@ const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g
 const order = () => [...document.querySelectorAll(".tile")].map((el) => el.getAttribute("data-card"))
 
 const type = (value: string) => {
-	const input = $<HTMLInputElement>('[data-field="search"]')
+	const input = $<HTMLInputElement>(".tx-search input")
 	if (!input) throw new Error("no search")
 	input.value = value
 	input.dispatchEvent(new Event("input", { bubbles: true }))
 	flushSync()
 }
 
-const sortBy = (sort: string) => {
-	$<HTMLButtonElement>(`[data-sort="${sort}"]`)?.click()
+const click = (selector: string) => {
+	$<HTMLButtonElement>(selector)?.click()
 	flushSync()
 }
+
+/** Opens the sorts from the sort chip, then picks one. */
+const sortBy = (sort: string) => {
+	click('[data-action="sort"]')
+	click(`[data-sort="${sort}"]`)
+}
+
+test("the control bar is the one every list page has: the search, Filter and the sort chip", () => {
+	show()
+	const bar = $(".tx-controls")
+	expect(bar?.querySelector(".tx-ctl .tx-search input[type=search]")?.getAttribute("placeholder")).toBe("Search card")
+	expect(text(bar?.querySelector('.tx-ctl [data-action="filter"].tx-fbtn'))).toBe("Filter")
+	expect(text(bar?.querySelector('.tx-chips [data-action="sort"].tx-chip.tx-sort'))).toBe("Sort: Most room ▾")
+	expect(bar?.querySelector(".tx-count")).toBeNull()
+})
 
 test("every ready card as a tile, most room first, with its last 12 statements under it", () => {
 	show()
@@ -97,15 +112,30 @@ test("every ready card as a tile, most room first, with its last 12 statements u
 	expect(text($('.tile[data-card="1"] .facts'))).toBe("closes 25 Nov · due 15 Dec")
 })
 
-test("the sorts are pills, room picked first; each reorders the tiles", () => {
+test("the sort chip and Filter open the sorts as a filter sheet's pills, room picked first", () => {
 	show()
-	const pills = [...document.querySelectorAll("[data-sort]")]
+	expect($("[data-sort]")).toBeNull()
+	click('[data-action="sort"]')
+	expect($(".filter-group > legend")?.textContent).toBe("Sort")
+	const pills = [...document.querySelectorAll(".filter-group .filter-chips [data-sort]")]
 	expect(pills.map(text)).toEqual(["Most room", "Least used", "Longest unused", "Longest to close", "Latest due"])
 	expect(pills.map((p) => p.getAttribute("aria-pressed"))).toEqual(["true", "false", "false", "false", "false"])
+	// The chip folds them again, and so does Filter's second press.
+	click('[data-action="sort"]')
+	expect($("[data-sort]")).toBeNull()
+	click('[data-action="filter"]')
+	expect(document.querySelectorAll("[data-sort]")).toHaveLength(5)
+})
+
+test("picking a sort reorders the tiles, folds the sorts and names it on the chip", () => {
+	show()
 	sortBy("least")
 	expect(order()).toEqual(["3", "2", "1"])
+	expect($("[data-sort]")).toBeNull()
+	expect(text($('[data-action="sort"]'))).toBe("Sort: Least used ▾")
+	click('[data-action="sort"]')
 	expect($('[data-sort="least"]')?.getAttribute("aria-pressed")).toBe("true")
-	sortBy("idle")
+	click('[data-sort="idle"]')
 	expect(order()).toEqual(["3", "2", "1"])
 })
 
@@ -145,6 +175,8 @@ test("with no ready card it says why and leads to Locations", () => {
 test("reads in Thai", () => {
 	setLocale("th")
 	show()
+	expect(text($('[data-action="sort"]'))).toBe("เรียง: วงเงินเหลือมากสุด ▾")
+	click('[data-action="sort"]')
 	expect(text($('[data-sort="room"]'))).toBe("วงเงินเหลือมากสุด")
 	expect(text($('.tile[data-card="3"] .foot'))).toBe("ไม่ได้ใช้ใน 12 รอบบิล")
 })

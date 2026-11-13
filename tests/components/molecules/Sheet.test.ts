@@ -170,3 +170,21 @@ test("the closing slide and fade are in its styles, and stand down under reduced
 	expect(source).toMatch(/@keyframes backdrop-out/)
 	expect(source).toMatch(/prefers-reduced-motion[\s\S]*data-closing/)
 })
+
+test("a wide sheet is marked, and grows to the wide sheet's token from 900px", async () => {
+	mounted = mount(Sheet, {
+		target: document.body,
+		props: { heading: "Add a card", wide: true, onclose: () => {}, children: body },
+	}) as Instance
+	flushSync()
+	expect(dialog().hasAttribute("data-wide")).toBe(true)
+	const source = await Bun.file("src/components/molecules/Sheet.svelte").text()
+	expect(source).toMatch(/dialog\[data-wide\] \{[^}]*var\(--cc-sheet-wide-max\)/)
+	const tokens = await Bun.file("src/styles/tokens.css").text()
+	expect(tokens).toMatch(/--cc-sheet-wide-max: \d+(\.\d+)?rem;/)
+})
+
+test("a sheet is not wide unless asked", () => {
+	show()
+	expect(dialog().hasAttribute("data-wide")).toBe(false)
+})

@@ -93,6 +93,10 @@
 	   a bottom sheet the screen's full width. */
 	--cc-sheet-max: 32.5rem;
 
+	/* A wide sheet's width from 900px (the add-a-card sheet): its card tiles two to a row, under
+	   the control bar the list pages share. */
+	--cc-sheet-wide-max: 50rem;
+
 	/* The widest the new-version bar grows (DD-181): the message and its button on one line. */
 	--cc-update-bar-width: 28rem;
 

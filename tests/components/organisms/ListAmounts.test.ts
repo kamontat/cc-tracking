@@ -378,6 +378,7 @@ test("a row opens its card's sheet, which takes it off the list or closes with D
 	await click(row("A"))
 	expect(sheets.at(-1)).toEqual({ kind: "card", cardId: "A" })
 	expect(flat(root.querySelector("dialog h2"))).toBe("On the list")
+	expect(root.querySelector("dialog")?.hasAttribute("data-wide")).toBe(true)
 	expect(step("A").hasAttribute("data-adding")).toBe(false)
 	await click(step("A").querySelector('[data-action="done"]'))
 	expect(sheets.at(-1)).toBeNull()
@@ -394,6 +395,9 @@ test("+ Add a card opens the picker; a picked card is added only by Add to list"
 	await click(root.querySelector('.list-layout__main [data-action="add-card"]'))
 	expect(sheets.at(-1)).toEqual({ kind: "pick" })
 	expect(flat(root.querySelector("dialog h2"))).toBe("Add a card")
+	// The wide sheet, with the control bar every list page has.
+	expect(root.querySelector("dialog")?.hasAttribute("data-wide")).toBe(true)
+	expect(root.querySelector('dialog .tx-controls [data-action="filter"]')).not.toBeNull()
 	const tiles = [...root.querySelectorAll("dialog .tile")].map((t) => t.getAttribute("data-card"))
 	expect(tiles.sort()).toEqual(["A", "B", "C", "D"])
 	expect(flat(root.querySelector('dialog .tile[data-card="A"] .aside'))).toBe("On the list")

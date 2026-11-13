@@ -670,6 +670,7 @@
 {#if sheet?.kind === "pick" || (sheetCard && sheetView)}
 	<Sheet
 		bind:this={sheetRef}
+		wide
 		heading={tr(sheet?.kind === "card" && !adding ? "purchaseList.edit.title" : "purchaseList.pick.title")}
 		onclose={() => onsheet(null)}>
 		{#if sheet?.kind === "pick"}
