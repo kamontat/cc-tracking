@@ -182,7 +182,6 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 				<li>Tap a tile: its panel opens. Tap another: the panel swaps, the address is rewritten (Back closes, it does not walk through every card).</li>
 				<li><em>Pay</em> or <em>Add purchase</em> replaces the panel's content; ‹ in the panel or Back returns to the card.</li>
 				<li><em>Edit</em> in a card's panel, and <em>+ Add card</em>, open the card form in the panel (<code>?card=12.3&amp;edit=1</code>, <code>?card=new</code>). With a form open, tapping another card or × asks first; Back does not.</li>
-				<li><em>Owed</em> tab: <em>Pay</em> on a tile opens that card's pay form right there; saving returns to the card's panel, which shows what is left.</li>
 				<li><em>Limits</em> tab: a group's panel lists its cards; tap one to open it. <em>Edit</em> is the group form, in the panel the same way.</li>
 			</ul></div>
 			<div><h4>Transactions</h4><ul>
@@ -190,7 +189,8 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page.</li>
 			</ul></div>
 			<div><h4>Home</h4><ul>
-				<li>Two tabs: <em>Needs you</em> (<code>/</code>) first, <em>Ready to use</em> (<code>/ready</code>). Each shows everything, so <em>See more</em> goes.</li>
+				<li>Three tabs: <em>Needs you</em> (<code>/</code>) first, <em>Owed</em> (<code>/owed</code>), <em>Ready to use</em> (<code>/ready</code>). Each shows everything, so <em>See more</em> goes.</li>
+				<li><em>Owed</em> tab: <em>Pay</em> on a tile opens that card's pay form right there; saving returns to the card's panel, which shows what is left.</li>
 				<li><em>Pay</em>, a card's name, a list row or a ready tile open the panel over Home (<code>/?card=…</code>, <code>/ready?card=…</code>, <code>/?list=…</code>).</li>
 			</ul></div>
 		</div>
@@ -230,7 +230,7 @@ const baht = (n) => "฿" + Math.abs(n).toLocaleString("en-US")
 const used = (l) => l.cap - (CARDS.find((c) => c.limit === l.id)?.room ?? l.cap)
 
 // ---------- the address: state <-> URL, a history stack for ‹ ----------
-const PAGES = { "/": "home", "/ready": "home", "/transactions": "tx", "/transactions/lists": "tx", "/cards": "cards", "/cards/owed": "cards", "/cards/limits": "cards" }
+const PAGES = { "/": "home", "/owed": "home", "/ready": "home", "/transactions": "tx", "/transactions/lists": "tx", "/cards": "cards", "/cards/limits": "cards" }
 let stack = [{ path: "/cards" }]
 let at = 0
 let device = "desk"
@@ -281,10 +281,6 @@ const chip = (c) => `<span class="chip c-${c.color}">${c.last4}</span>`
 const cname = (c) => `<span class="name">${h(c.name)} <span class="id">${c.id}</span></span>`
 
 function cardsTab(s) {
-	if (s.path === "/cards/owed") {
-		const owing = CARDS.filter((c) => c.owed).sort((a, b) => Date.parse(a.due + " 2026") - Date.parse(b.due + " 2026"))
-		return `<div class="tools"><button class="btn" data-variant="quiet">Sort: Most urgent ▾</button></div><div class="tiles">${owing.map((c) => `<div class="tile c-${c.color}" aria-current="${s.card === c.id}"><span class="r1" data-do="card:${c.id}">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.owed)}<small>due ${c.due}</small></span><span class="r3"><span>closed ${c.close}</span><button class="btn small" data-do="pay:${c.id}">Pay</button></span></div>`).join("")}</div>`
-	}
 	if (s.path === "/cards/limits") {
 		return `<div class="tools"><input class="search" placeholder="Search limits"><button class="btn" data-variant="quiet">Sort: Name ▾</button><button class="btn" data-do="limit:new">+ Add limit</button></div>
 		<div class="panelbox rows">${LIMITS.map((l) => {
@@ -309,8 +305,12 @@ function txTab(s) {
 	}).join("")}</div></section>`).join("")}`
 }
 
-// Home's two tabs: Needs you (every row, no See more) and Ready to use (every ready card)
+// Home's three tabs: Needs you (every row, no See more), Owed (every bill) and Ready to use (every ready card)
 function homeTab(s) {
+	if (s.path === "/owed") {
+		const owing = CARDS.filter((c) => c.owed).sort((a, b) => Date.parse(a.due + " 2026") - Date.parse(b.due + " 2026"))
+		return `<div class="tools"><button class="btn" data-variant="quiet">Sort: Most urgent ▾</button></div><div class="tiles">${owing.map((c) => `<div class="tile c-${c.color}" aria-current="${s.card === c.id}"><span class="r1" data-do="card:${c.id}">${cname(c)}<span class="pan">${c.last4}</span></span><span class="big">${baht(c.owed)}<small>due ${c.due}</small></span><span class="r3"><span>closed ${c.close}</span><button class="btn small" data-do="pay:${c.id}">Pay</button></span></div>`).join("")}</div>`
+	}
 	if (s.path === "/ready") {
 		const ready = CARDS.filter((c) => c.room > 0).sort((a, b) => b.room - a.room)
 		return `<div class="tools"><button class="btn" data-variant="quiet">Sort: Most room ▾</button><span class="muted sm">${ready.length} cards ready</span></div>
@@ -404,7 +404,7 @@ function draw() {
 	dev.className = "device " + device
 	const nav = [["/", "Home", "home"], ["/transactions", "Transactions", "tx"], ["/cards", "Cards", "cards"], ["/settings", "Settings", "set"]]
 	const navBtns = nav.map(([p, t, k]) => `<button data-go="${p}" aria-current="${k === page ? "page" : "false"}">${t}</button>`).join("")
-	const ptabs = page === "home" ? [["/", "Needs you", 5], ["/ready", "Ready to use", CARDS.filter((c) => c.room > 0).length]] : page === "tx" ? [["/transactions", "Ledger"], ["/transactions/lists", "Lists", LISTS.length]] : page === "cards" ? [["/cards", "Cards", CARDS.length], ["/cards/owed", "Owed", CARDS.filter((c) => c.owed).length], ["/cards/limits", "Limits", LIMITS.length]] : []
+	const ptabs = page === "home" ? [["/", "Needs you", 5], ["/owed", "Owed", CARDS.filter((c) => c.owed).length], ["/ready", "Ready to use", CARDS.filter((c) => c.room > 0).length]] : page === "tx" ? [["/transactions", "Ledger"], ["/transactions/lists", "Lists", LISTS.length]] : page === "cards" ? [["/cards", "Cards", CARDS.length], ["/cards/limits", "Limits", LIMITS.length]] : []
 	const content = page === "home" ? homeTab(s) : page === "tx" ? txTab(s) : cardsTab(s)
 	const panel = s.card ? cardPanel(s) : s.limit ? limitPanel(s) : s.list ? listPanel(s) : ""
 	dev.innerHTML = `<div class="url"><button data-do="back" ${at ? "" : "disabled"} aria-label="Back">‹</button><output>${path}<span class="q">${h(query)}</span></output></div>

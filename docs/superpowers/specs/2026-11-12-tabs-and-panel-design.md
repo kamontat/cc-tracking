@@ -19,14 +19,15 @@ beside its list on a desktop and in a sheet that slides up on a phone.
 
 ### Tabs
 
-- **Home**: _Needs you · Ready to use_, what to do now. **Transactions**: _Ledger · Lists_,
-  what happened. **Cards**: _Cards · Owed · Limits_, where each card stands.
+- **Home**: _Needs you · Owed · Ready to use_, what to do: what needs you, what to pay, where
+  to spend. **Transactions**: _Ledger · Lists_, what happened. **Cards**: _Cards · Limits_, the
+  cards and their set-up.
 - The tabs sit under the page title, a row of underlined labels that scrolls sideways if it
   must, the same on every width. They are links: each tab is its own address (below), so a
   tab is reached by Back, a bookmark or a pasted link.
 - Each tab has its own search, filter and sort, as today. Changing them rewrites the address in
   place (`replaceState`).
-- Owed no longer sits beside the ledger on a desktop: it is a tab on Cards (decision 1).
+- Owed no longer sits beside the ledger on a desktop: it is a tab on Home (decision 1).
 
 ### The detail panel
 
@@ -75,13 +76,15 @@ Back leaves without asking, as leaving a page does today (no page guards a form 
 
 Each has a recommendation, drawn in the mockup.
 
-1. **Owed moves to Cards** (reverses RD-13's "On a desktop, what each card owes sits beside the
-   ledger", DD-79's two columns and DD-144's). Owed is a list of cards, each its bill, due date
-   and _Pay_: where each card stands, like _Cards_ and _Limits_, while the ledger and _Lists_ are
-   what happened. Its tiles open the card's panel, whose home is Cards. It sits second,
-   _Cards · Owed · Limits_. Lost: a payment landing in the ledger next to what is owed; the pay
-   form returns to the card's panel, which shows what is left. Decided by the user, 2026-11-13.
-   Not merged into _Cards_ (decided by the user, 2026-11-13): the two differ in which cards
+1. **Owed moves to Home** (reverses RD-13's "On a desktop, what each card owes sits beside the
+   ledger", DD-79's two columns and DD-144's). Owed is the cards seen through a task, as _Ready
+   to use_ is: _Ready to use_ is where to spend, _Owed_ what to pay. Paying is something done,
+   not a card's set-up, so Cards keeps the cards and their limits. It sits between the two,
+   _Needs you · Owed · Ready to use_, at `/owed`; its tiles open the card's panel over Home
+   (decision 5). An overdue bill shows in both _Needs you_ (what is urgent) and _Owed_ (every
+   bill). Lost: a payment landing in the ledger next to what is owed; the pay form returns to
+   the card's panel, which shows what is left. Decided by the user, 2026-11-13, after a day on
+   Cards (`/cards/owed`). Not merged into _Cards_ (decided by the user, 2026-11-13): the two differ in which cards
    (every card, or those that owe), their order (by place, or most urgent first, flat), the
    tile's lead number (room, or the bill) and its action (none, or _Pay_). Merged, the bills
    view would be `/cards?owing=1&sort=urgency&by=none` on every visit, over 76 cards, with a
@@ -102,17 +105,19 @@ Each has a recommendation, drawn in the mockup.
    (`/transactions?card=12.3`), a list's line, a limit group's card, Home's _Needs you_
    (`/?card=12.3`). You keep your place instead of jumping to the Cards tab. Each key is singular
    (one record); a filter that repeats stays plural (`cards=`), so the two never read alike.
-6. **_+ New › Pay_ goes to the Owed tab** (`/cards/owed`) instead of its own picker page (`/pay`
-   and `PayPicker` retire): each owed tile has _Pay_. Trade-off: a card that owes nothing is not
+6. **_+ New › Pay_ goes to the Owed tab** (`/owed`) instead of its own picker page (`/pay` and
+   `PayPicker` retire): each owed tile has _Pay_. Trade-off: a card that owes nothing is not
    on Owed, so paying ahead is from its panel (Cards tab, _Pay_). Recommended: yes; the
    alternative keeps a picker at `/payments/new`.
-7. **Home gets tabs too**: _Needs you_ first at `/`, _Ready to use_ at `/ready` (amends RD-15
+7. **Home gets tabs too**: _Needs you_ first at `/`, _Owed_ at `/owed` (decision 1), _Ready to
+   use_ at `/ready` (amends RD-15
    and DD-184's two columns). Decided by the user, 2026-11-13. Each tab has the screen to itself,
-   so both show everything and _See more (N)_ / _Show less_ go (amends DD-106): _Needs you_ every
+   so each shows everything and _See more (N)_ / _Show less_ go (amends DD-106): _Needs you_ every
    row, in DD-62's order, its rows still opening in place; _Ready to use_ every ready card, not
    four, sorted by most room with the new-list picker's old sorts back (most room, longest to
    close, latest due). A tile, a card's name, _Pay_ or a list row opens the panel over Home.
-   `/ready` is a top-level path, as Home's own is `/`; the tab bar lights Home for it.
+   `/owed` and `/ready` are top-level paths, as Home's own is `/`; the tab bar lights Home for
+   them.
    Settings keeps its two columns (CD-11): it has no records to open.
 
 ## Addresses
@@ -147,13 +152,13 @@ needs escaping.
 | Address               | Tab          | Query, besides the panel keys                                                                                                                                                                                                                                                                                                   |
 | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/`                   | Home         | none: _Needs you_                                                                                                                                                                                                                                                                                                                            |
+| `/owed`               | Home         | `sort` (`urgency`, `card`, `due`, `left`; default `urgency`); `dir` (`asc`, `desc`; default `desc` for `left`, else `asc`). Its own page now, so `owed` and `odir` lose their prefix. Only cards that owe.                                                                                                                                         |
 | `/ready`              | Home         | `sort` (`room`, `close`, `due`; default `room`); `dir` (`asc`, `desc`; default `desc`: most room, longest to close, latest due first)
 | `/transactions`       | Transactions | `q` (text); `types` (`purchase`, `payment`); `cards` (card id); `range` (`today`, `week`, `month`, `lastMonth`, `custom`); `from`, `to` (`YYYY-MM-DD`); `sort` (`date`, `amount`; default `date`); `dir` (`asc`, `desc`; default `desc`); `by` (`day`, `card`, `none`; default `day`)                                         |
 | `/transactions/lists` | Transactions | `q` (a line's card id, name, last 4 or note); `statuses` (`draft`, `sent`, `saved`); `cards`; `range`, `from`, `to` (on the list's date); `by` (`status`, `month`, `none`; default `status`). Its own page now, so the `l` prefix goes.                                                                                       |
 | `/lists/new`          | Transactions | `cards` (card id, in order, each once; cards that cannot take purchases are dropped); `add` (`1`: the add-a-card sheet's picker); `open` (card id: that card in the sheet)                                                                                                                                                    |
 | `/lists/edit`         | Transactions | `list` (list id, required: the builder for a draft, the reply for a waiting list; a saved list or an unknown id says so and links to its panel or Home); `add`, `open` as on `/lists/new`, read for a draft only                                                                                                              |
 | `/cards`              | Cards        | `q` (text); `locations` (stored location id); `owners` (`KC`, `NT`, `RI`); `ungrouped` (`1`); `sort` (`card`, `room`, `name`, `close`, `due`; default `card`); `dir` (`asc`, `desc`; default `desc` for `room`, else `asc`); `by` (`place`, `holder`, `limit`, `none`; default `place`)                                       |
-| `/cards/owed`        | Cards        | `sort` (`urgency`, `card`, `due`, `left`; default `urgency`); `dir` (`asc`, `desc`; default `desc` for `left`, else `asc`). Its own page now, so `owed` and `odir` lose their prefix. Only cards that owe.                                                                                                                                         |
 | `/cards/limits`       | Cards        | `q` (a group's or its cards' names); `owners`; `sort` (`name`, `room`, `used`; default `name`); `dir` (default `desc` for `room` and `used`, else `asc`)                                                                                                                                                                        |
 | `/settings`           | Settings     | none                                                                                                                                                                                                                                                                                                                            |
 | `/settings/locations` | Settings     | none                                                                                                                                                                                                                                                                                                                            |
@@ -167,9 +172,9 @@ and the offline worker work as they are (the worker already ignores the query).
 
 | Was                                        | Now                                         |
 | ------------------------------------------ | ------------------------------------------- |
-| `/transactions?view=owed`                  | `/cards/owed`                               |
+| `/transactions?view=owed`                  | `/owed`                                     |
 | `/transactions?view=lists`                 | `/transactions/lists`                       |
-| `/pay`, `/pay?card=<id>&amount=<satang>`   | `/cards/owed`, `…?card=<id>&pay=1&amount=<satang>` |
+| `/pay`, `/pay?card=<id>&amount=<satang>`   | `/owed`, `…?card=<id>&pay=1&amount=<satang>` |
 | `/list/new`                                | `/lists/new`                                |
 | `/list/draft?id=`, `/list/reply?id=`       | `/lists/edit?list=`                         |
 | `/list/view?id=`                           | `/transactions/lists?list=`                 |
@@ -183,10 +188,11 @@ and the offline worker work as they are (the worker already ignores the query).
 ## When it ships
 
 PRD.md and PRD_TH.md: new decisions for the tabs, the panel, the card page's retirement, the
-pay picker's, the card form in the panel and its unsaved-changes prompt, Home's tabs, the addresses and the card id format; RD-13, DD-76, DD-79, DD-144, CD-01 and DC-17
-amended. ENDPOINTS.md rewritten from the tables above. The `TODO.md` endpoint item is replaced
+pay picker's, the card form in the panel and its unsaved-changes prompt, Home's tabs with Owed
+among them, the addresses and the card id format; RD-13, RD-15, DD-76, DD-79, DD-106, DD-144,
+DD-184, CD-01 and DC-17 amended. ENDPOINTS.md rewritten from the tables above. The `TODO.md` endpoint item is replaced
 by this spec.
 
 Suggested order, each its own pull request: (1) the card id check; (2) the panel molecule and
-the card panel on `/cards`; (3) tabs and paths for Cards, Owed among them; (4) the same for Transactions and
-lists; (5) Home's tabs and panel; (6) retire `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/*`.
+the card panel on `/cards`; (3) tabs and paths for Cards; (4) the same for Transactions and
+lists; (5) Home's tabs, Owed among them, and its panel; (6) retire `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/*`.
