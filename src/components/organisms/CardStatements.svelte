@@ -51,8 +51,8 @@
 
 	/**
 	 * What an unfolded statement lists: its purchases and the payment parts that settled it, in
-	 * one run by date (a purchase before a payment on the same day). Two parts of one payment on
-	 * one statement -- one naming the period, one from the pool -- read as one line.
+	 * one run by date, newest first (a purchase before a payment on the same day). Two parts of one
+	 * payment on one statement -- one naming the period, one from the pool -- read as one line.
 	 */
 	function linesOf(statement: LedgerStatement): Line[] {
 		const payments = new Map<string, PaymentLine>()
@@ -65,7 +65,7 @@
 		return [
 			...statement.purchases.map((purchase): Line => ({ kind: "purchase", purchase })),
 			...payments.values(),
-		].sort((a, b) => compareDates(dateOf(a), dateOf(b)))
+		].sort((a, b) => compareDates(dateOf(b), dateOf(a)))
 	}
 
 	/**

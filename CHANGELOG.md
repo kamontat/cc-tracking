@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, and panel and settings polish
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, and statements listed newest first
 
 ### BREAKING CHANGES
 
@@ -53,6 +53,18 @@ reasons don't show up in the code.
   data is untouched. Once pressed, the row reads _Refreshing…_ and takes no second press until
   the page reloads (`forceRefresh` in `#lib/offline/register`, DD-206).
 
+- `bun run mock` writes a version 4 backup to restore from Settings, holding every state the
+  app can show: bills overdue, due soon, partly paid and due later, a card in credit, groups
+  within, high and over their limit, every list status and amount warning, late, near and later
+  planned payments, archived, supplementary, unused and not-ready cards, and over three years of
+  history that _Clean old data_ can trim at every age. Dates are built around today
+  (`--today` to pick another day), so the relative states hold whenever it runs.
+
+- Names, card ids, cycles, amounts, history lengths and a varying number of extra cards, groups,
+  owners, places, saved lists and plans are drawn from a random seed the script prints;
+  `--seed <text>` draws the same file again. `tests/scripts/mock-data.test.ts` checks every
+  scenario through the domain functions across several days and seeds.
+
 ### Improvements
 
 - Beside an open panel, Settings stacks its two columns into one when the page has less than
@@ -89,6 +101,9 @@ reasons don't show up in the code.
 
 - A form in the detail panel (_Edit_, _Make a payment_, _Add purchase_) slides in from the side,
   and ‹ back slides the record in again; reduced motion turns it off (DD-205).
+
+- An unfolded statement on a card lists its purchases and payments newest first, as the
+  statements themselves are; on one day a purchase still comes before a payment (DD-122).
 
 ### Bug fixes
 
@@ -131,6 +146,10 @@ reasons don't show up in the code.
 
 - _Force refresh_ clears the service worker and its caches before reloading, since a plain
   reload would be answered from the offline cache with the version already running.
+
+- The mock data is a backup file rather than a seed the app loads itself, so it goes in and out
+  through the same restore checks as real data, and nothing extra ships to production. The
+  scenarios are built per role, with the randomness only around them, so no seed can lose one.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
