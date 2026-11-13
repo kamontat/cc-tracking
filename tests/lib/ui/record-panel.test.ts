@@ -37,6 +37,14 @@ describe("readRecord", () => {
 		expect(readRecord("?q=a")).toBeNull()
 	})
 
+	test("reads a settings panel by name, as a page with no record key of its own", () => {
+		expect(readRecord("?panel=locations", ["panel"])).toEqual({ kind: "panel", id: "locations" })
+		expect(readRecord("?panel=", ["panel"])).toBeNull()
+		expect(readRecord("?panel=owners", ["card"])).toBeNull()
+		expect(withRecord("/settings?panel=locations", null)).toBe("/settings")
+		expect(withRecord("/settings", { kind: "panel", id: "owners" })).toBe("/settings?panel=owners")
+	})
+
 	test("ignores a key the page does not take", () => {
 		expect(readRecord("?limit=g1", ["card"])).toBeNull()
 		expect(readRecord("?limit=g1&card=5", ["limit"])).toEqual({ kind: "limit", id: "g1" })

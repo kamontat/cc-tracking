@@ -34,8 +34,6 @@ test("src/pages has every page", () => {
 		"owed.astro",
 		"ready.astro",
 		"settings.astro",
-		"settings/locations.astro",
-		"settings/owners.astro",
 		"transactions.astro",
 		"transactions/lists.astro",
 		"transactions/lists/edit.astro",
@@ -44,9 +42,10 @@ test("src/pages has every page", () => {
 })
 
 // The card page, the card form's pages, the payment page and the old list pages retired with the
-// tabs and the detail panel (RD-23, RD-25, RD-26): no file serves them and nothing redirects.
+// tabs and the detail panel (RD-23, RD-25, RD-26), and Locations and Owners became panels over
+// Settings (RD-17, RD-30): no file serves them and nothing redirects.
 test("the retired addresses are not built", () => {
-	for (const gone of ["card.astro", "card", "pay.astro", "list", "list.astro", "backup.astro"]) {
+	for (const gone of ["card.astro", "card", "pay.astro", "list", "list.astro", "backup.astro", "settings"]) {
 		expect(existsSync(`src/pages/${gone}`), gone).toBe(false)
 	}
 	expect(pages.some((page) => /^(card|pay|list)[./]/.test(page))).toBe(false)
@@ -133,8 +132,6 @@ test("each page keeps the width it asks for", async () => {
 		"owed.astro": "page",
 		"ready.astro": "page",
 		"settings.astro": "page",
-		"settings/locations.astro": "page page--form",
-		"settings/owners.astro": "page page--form",
 		"transactions.astro": "page",
 		"transactions/lists.astro": "page",
 		"transactions/lists/edit.astro": "page page--narrow",
@@ -152,8 +149,7 @@ test("each page marks its place in both navs, and none has a floating + New (it 
 		expect(doc.querySelector(".fab-menu, .fab"), page).toBeNull()
 		shell[page] = header ?? "none"
 	}
-	// Home's three tabs under Home; the purchase list pages under Transactions (RD-26); Locations
-	// and Owners under Settings.
+	// Home's three tabs under Home; the purchase list pages under Transactions (RD-26).
 	expect(shell).toEqual({
 		"cards.astro": "cards",
 		"cards/limits.astro": "cards",
@@ -161,8 +157,6 @@ test("each page marks its place in both navs, and none has a floating + New (it 
 		"owed.astro": "home",
 		"ready.astro": "home",
 		"settings.astro": "settings",
-		"settings/locations.astro": "settings",
-		"settings/owners.astro": "settings",
 		"transactions.astro": "transactions",
 		"transactions/lists.astro": "transactions",
 		"transactions/lists/edit.astro": "transactions",

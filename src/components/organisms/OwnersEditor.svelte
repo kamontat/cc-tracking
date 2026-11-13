@@ -15,18 +15,20 @@
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * The Owners page's island (`/settings/owners`, RD-30): one block per owner record, A to Z by
+	 * The Owners panel's body (`/settings?panel=owners`, RD-30): one block per owner record, A to Z by
 	 * name, with how many limit groups and supplementary cards (archived too) it holds, *Rename*,
 	 * and *Delete* while nothing names it and it is not the last record. Then *Add an owner*,
-	 * whose id comes from `ownerId`. The markup is the Locations page's (`.record-row`), so
+	 * whose id comes from `ownerId`. The markup is the Locations panel's (`.record-row`), so
 	 * app.css draws both alike.
 	 */
 	interface Props {
 		/** Opens the store; tests pass one over an in-memory repository. */
 		open?: () => Promise<Opened>
+		/** A write went through, so Settings can sum the records up again. */
+		onchange?: () => void
 	}
 
-	const { open = () => openRepository() }: Props = $props()
+	const { open = () => openRepository(), onchange }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -81,6 +83,7 @@
 			await action(store)
 			done = true
 		}, messageKey)
+		if (done) onchange?.()
 		return done
 	}
 

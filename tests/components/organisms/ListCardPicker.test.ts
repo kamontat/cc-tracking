@@ -159,7 +159,7 @@ test("a card on the list says so, with its amount and its orders when more than 
 test("with no ready card it says why and leads to Locations", () => {
 	show({ rows: [] })
 	expect(text($('[data-empty="none"]'))).toContain("No card can be used right now")
-	expect($('[data-empty="none"] a')?.getAttribute("href")).toBe("/settings/locations")
+	expect($('[data-empty="none"] a')?.getAttribute("href")).toBe("/settings?panel=locations")
 })
 
 test("reads in Thai", () => {

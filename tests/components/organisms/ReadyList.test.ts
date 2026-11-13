@@ -123,7 +123,7 @@ test("grouped, the tiles sit in Cards' sections with no count line; none matchin
 
 test("nothing ready names the next step and offers no list", () => {
 	const root = show({ rows: [] })
-	expect(root.querySelector('[data-action="settings"]')?.getAttribute("href")).toBe("/settings/locations")
+	expect(root.querySelector('[data-action="settings"]')?.getAttribute("href")).toBe("/settings?panel=locations")
 	expect(flat(root.querySelector(".note"))).toContain("Settings")
 	expect(root.querySelectorAll("[data-card]")).toHaveLength(0)
 	expect(root.querySelector(".tiles")).toBeNull()

@@ -10,7 +10,8 @@ import { t } from "#lib/i18n/index"
  * knows which record is open, what is being done in it, and how each step moves through history:
  *
  * - The address names the open record by kind (`?card=<id>`, `?limit=<id>`, `?list=<id>`), never
- *   a form inside it. When a page takes more than one key, `card` wins.
+ *   a form inside it. When a page takes more than one key, `card` wins. Settings' panels
+ *   (`?panel=locations`, `?panel=owners`) are named the same way, the panel's name as its id.
  * - Opening a record from nothing pushes an entry, so Back closes it; showing another one from
  *   the list rewrites that entry; going deeper (a group's card) pushes.
  * - A form (`openForm`) pushes an entry with the address unchanged, so Back returns to the
@@ -28,8 +29,8 @@ import { t } from "#lib/i18n/index"
  * read as it is.
  */
 
-/** The kinds of record with a panel, in the order their keys win (`card` first). */
-export const RECORD_KINDS = ["card", "limit", "list"] as const
+/** The kinds of record with a panel, in the order their keys win (`card` first); `panel` is Settings'. */
+export const RECORD_KINDS = ["card", "limit", "list", "panel"] as const
 
 export type RecordKind = (typeof RECORD_KINDS)[number]
 

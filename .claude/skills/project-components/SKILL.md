@@ -85,13 +85,12 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
 - Rune state shared between components lives in a `*.svelte.ts` module under `src/lib/ui/`,
   imported without the `.ts` (`#lib/ui/open-row.svelte`, `#lib/ui/two-step.svelte`).
 - Shared pieces so far: `ErrorBanner.svelte` (molecule; light DOM, drawn by `.error-banner`
-  in app.css; leave out `onretry` inside a sheet), `SubHeader.astro` (molecule; the back link
-  and the page's title), `Sheet.svelte` (molecule; the bottom sheet, `leave(then)` to slide
+  in app.css; leave out `onretry` inside a sheet), `Sheet.svelte` (molecule; the bottom sheet, `leave(then)` to slide
   it away first), `SvgIcon.svelte` (atom; the `Icon` atom for islands, since a `.svelte` file
   can't import an `.astro` one), and `#lib/ui/address-bar` (the `AddressBar` seam for a
   page whose sheet lives in the address, DD-102), `SubHeaderBar.svelte` (molecule; the
-  sub-header with a title from the reader's data, a `detail` line and an `actions` snippet;
-  the static `SubHeader.astro` takes a catalog key instead), and `#lib/ui/card-label` (a
+  sub-header with a title from the reader's data, a `detail` line and an `actions` snippet),
+  and `#lib/ui/card-label` (a
   card's name in its text forms; never copy it), and `ActionRow.svelte` (molecule; the row that
   opens in place, with `TwoStepButtons` for a two-step _Delete_ or _Confirm_; with `onopen` and
   `current` the same row opens its record in the detail panel instead, as a list's row does on

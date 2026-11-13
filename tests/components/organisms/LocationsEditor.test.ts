@@ -165,6 +165,13 @@ test("Delete swaps in place for Delete and Cancel on the row's line, focus follo
 	expect(rows(root).map((r) => r.getAttribute("data-location"))).toEqual(["krabi", "phichit"])
 })
 
+test("the tick is labelled Takes purchases alone, with no hint after it", async () => {
+	const { root } = await setup()
+	const label = row(root, "krabi").querySelector(".record-row__takes")
+	expect(flat(label)).toBe("Takes purchases")
+	expect(label?.querySelector("small")).toBeNull()
+})
+
 test("ticking Takes purchases saves it; with none ticked the warning shows", async () => {
 	const { repo, root } = await setup()
 	const box = (id: string) => action<HTMLInputElement>(row(root, id), "takes-purchases")

@@ -4,13 +4,17 @@
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
 	import type { V4Counts } from "#lib/storage/transfer-v4"
+	import type { AddressBar } from "#lib/ui/address-bar"
 	import type { PurgedDetail } from "#lib/ui/purge"
 	import type { RestoredDetail } from "#lib/ui/restore"
 	import type { Opened } from "#lib/ui/startup"
 
 	import { onMount } from "svelte"
 
+	import DetailPanel from "#components/molecules/DetailPanel.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
+	import LocationsEditor from "#components/organisms/LocationsEditor.svelte"
+	import OwnersEditor from "#components/organisms/OwnersEditor.svelte"
 	import PurgeSheet from "#components/organisms/PurgeSheet.svelte"
 	import RestoreSheet from "#components/organisms/RestoreSheet.svelte"
 	import { today } from "#lib/domain/date"
@@ -18,15 +22,18 @@
 	import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
 	import { OWNERS_SEED_KEY, seedOwners } from "#lib/storage/seed-owners"
 	import { countRecordsV4, exportBackupV4 } from "#lib/storage/transfer-v4"
+	import { browserBar } from "#lib/ui/address-bar"
 	import { createPageState } from "#lib/ui/page-state"
 	import { countsText } from "#lib/ui/record-counts"
+	import { RecordPanel } from "#lib/ui/record-panel.svelte"
 	import { backupFilename, locationsSummary, ownersSummary, prepareBackupFile } from "#lib/ui/settings"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
 	 * The Settings page's island (RD-19): its sections in `.set` panels, Display, Locations and
-	 * owners (a row into each page) and Backup in the main column, Reset and About beside them
-	 * from 900px. Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
+	 * owners and Backup in the main column, Reset and About beside them from 900px. The Locations
+	 * and Owners rows each open their editor in the detail panel beside the page
+	 * (`?panel=locations`, `?panel=owners`, RD-17, RD-30), whose writes sum the rows up again. Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
 	 * so it renders in the browser (PRD DD-172). The markup is the legacy route's, so app.css
 	 * draws it unchanged.
 	 */
@@ -35,6 +42,8 @@
 		open?: () => Promise<Opened>
 		/** Holds the location and payments markers, for Delete all and the restore sheet alike. */
 		storage?: Storage
+		/** The address bar; tests pass one that records and plays Back and Forward. */
+		address?: AddressBar
 		/** The Display section's rows. */
 		display?: Snippet
 		/** The About section's rows. */
@@ -43,7 +52,47 @@
 		children?: Snippet
 	}
 
-	const { open = () => openRepository(), storage = globalThis.localStorage, display, about }: Props = $props()
+	const {
+		open = () => openRepository(),
+		storage = globalThis.localStorage,
+		address = browserBar(),
+		display,
+		about,
+	}: Props = $props()
+
+	/** The panels a row opens, by the name the address gives them. */
+	const PANELS = ["locations", "owners"] as const
+	type PanelName = (typeof PANELS)[number]
+	const isPanel = (id: string): id is PanelName => (PANELS as readonly string[]).includes(id)
+
+	/** The open panel in the address and history (RD-23): Back closes it, as on every other page. */
+	const panel = new RecordPanel({ address, path: "/settings", kinds: ["panel"] })
+	const current = $derived.by((): PanelName | null => {
+		const id = panel.record?.id
+		return id !== undefined && isPanel(id) ? id : null
+	})
+
+	// An address naming no panel of ours (a typo, an old link) opens nothing, and its key goes.
+	$effect(() => {
+		if (panel.open && current === null) panel.drop()
+	})
+
+	/** A row's plain click opens its panel in place; its link still opens a new tab. */
+	const onRow = (name: PanelName) => (event: MouseEvent) => {
+		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+		event.preventDefault()
+		panel.show({ kind: "panel", id: name })
+	}
+
+	/** One opening of the store, shared with the panel's editor. */
+	let opening: Promise<Opened> | null = null
+	const openOnce = () => {
+		opening ??= open()
+		return opening
+	}
+
+	/** Bumped when a restore or a reset rewrites the records, so an open editor reads them again. */
+	let rewritten = $state(0)
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -126,6 +175,7 @@
 		resetDone = false
 		purged = null
 		openSheet = null
+		rewritten++
 		void page.load()
 	}
 
@@ -158,6 +208,7 @@
 			storage.removeItem(OWNERS_SEED_KEY)
 			await seedOwners(store, storage)
 			owners = await store.listOwners()
+			rewritten++
 			resetDone = true
 		}, "reset.error")
 	}
@@ -202,8 +253,9 @@
 		const unsubscribe = subscribe(() => {
 			lang = getLocale()
 		})
+		const stopPanel = panel.start()
 		void (async () => {
-			const opened = await open()
+			const opened = await openOnce()
 			if (!opened.ok) {
 				startupFailure = opened.message
 				return
@@ -211,136 +263,164 @@
 			repo = opened.repo
 			await page.load()
 		})()
-		return unsubscribe
+		return () => {
+			unsubscribe()
+			stopPanel()
+		}
 	})
 </script>
 
 <ErrorBanner message={bannerMessage} retryLabel={tr("common.reload")} onretry={onRetry} />
-<div class="settings-grid">
-	<div class="settings-grid__main">
-		<section class="set-section" data-section="display">
-			<h2>{tr("settings.display.title")}</h2>
-			<div class="set">{@render display?.()}</div>
-		</section>
-		<section class="set-section" data-section="locations">
-			<h2>{tr("settings.places.title")}</h2>
-			<div class="set">
-				<a class="set-row" data-row="locations" href="/settings/locations">
-					<span class="set-row__text"
-						>{tr("settings.locations.manage")}<small class="set-row__sub">{summary}</small></span
-					>
-					<span class="set-row__chev" aria-hidden="true">›</span>
-				</a>
-				<a class="set-row" data-row="owners" href="/settings/owners">
-					<span class="set-row__text"
-						>{tr("settings.owners.manage")}<small class="set-row__sub">{ownersLine}</small></span
-					>
-					<span class="set-row__chev" aria-hidden="true">›</span>
-				</a>
-			</div>
-		</section>
-		<section class="set-section" data-section="backup">
-			<h2>{tr("backup.title")}</h2>
-			<div class="set">
-				<button class="set-row" type="button" data-row="download" onclick={onExport}>
-					<span class="set-row__text"
-						>{tr("settings.backup.download")}<small class="set-row__sub">{backupFilename(new Date())}</small></span
-					>
-					<span class="set-row__action">{tr("settings.backup.downloadAction")}</span>
-				</button>
-				{#if canWriteClipboard}
-					<button class="set-row" type="button" data-row="copy" onclick={onCopy}>
+<div class="panel-layout settings-layout" data-panel={current ? "" : undefined}>
+	<div class="settings-grid">
+		<div class="settings-grid__main">
+			<section class="set-section" data-section="display">
+				<h2>{tr("settings.display.title")}</h2>
+				<div class="set">{@render display?.()}</div>
+			</section>
+			<section class="set-section" data-section="locations">
+				<h2>{tr("settings.places.title")}</h2>
+				<div class="set">
+					<a
+						class="set-row"
+						data-row="locations"
+						href="/settings?panel=locations"
+						aria-current={current === "locations" ? "true" : undefined}
+						onclick={onRow("locations")}>
 						<span class="set-row__text"
-							>{tr("settings.backup.copy")}<small class="set-row__sub">{tr("settings.backup.copyHint")}</small></span
+							>{tr("settings.locations.manage")}<small class="set-row__sub">{summary}</small></span
 						>
-						<span class="set-row__action" data-variant="quiet" aria-live="polite"
-							>{copied ? tr("settings.backup.copied") : tr("settings.backup.copyAction")}</span
+						<span class="set-row__chev" aria-hidden="true">›</span>
+					</a>
+					<a
+						class="set-row"
+						data-row="owners"
+						href="/settings?panel=owners"
+						aria-current={current === "owners" ? "true" : undefined}
+						onclick={onRow("owners")}>
+						<span class="set-row__text"
+							>{tr("settings.owners.manage")}<small class="set-row__sub">{ownersLine}</small></span
 						>
+						<span class="set-row__chev" aria-hidden="true">›</span>
+					</a>
+				</div>
+			</section>
+			<section class="set-section" data-section="backup">
+				<h2>{tr("backup.title")}</h2>
+				<div class="set">
+					<button class="set-row" type="button" data-row="download" onclick={onExport}>
+						<span class="set-row__text"
+							>{tr("settings.backup.download")}<small class="set-row__sub">{backupFilename(new Date())}</small></span
+						>
+						<span class="set-row__action">{tr("settings.backup.downloadAction")}</span>
 					</button>
+					{#if canWriteClipboard}
+						<button class="set-row" type="button" data-row="copy" onclick={onCopy}>
+							<span class="set-row__text"
+								>{tr("settings.backup.copy")}<small class="set-row__sub">{tr("settings.backup.copyHint")}</small></span
+							>
+							<span class="set-row__action" data-variant="quiet" aria-live="polite"
+								>{copied ? tr("settings.backup.copied") : tr("settings.backup.copyAction")}</span
+							>
+						</button>
+					{/if}
+					<button
+						class="set-row"
+						type="button"
+						data-row="restore"
+						aria-haspopup="dialog"
+						aria-expanded={openSheet === "restore"}
+						onclick={() => toggleSheet("restore")}>
+						<span class="set-row__text"
+							>{tr("backup.restore.title")}<small class="set-row__sub">{tr("settings.backup.restoreHint")}</small></span
+						>
+						<span class="set-row__action" data-variant="quiet">{tr("settings.backup.restoreAction")}</span>
+					</button>
+				</div>
+				<p class="set-note">{tr("backup.warning")}</p>
+				<p class="import-status" role="status">{importedMessage}</p>
+				{#if openSheet === "restore" && repo}
+					<RestoreSheet
+						{repo}
+						{storage}
+						onrestored={onRestored}
+						onclose={() => {
+							openSheet = null
+						}} />
 				{/if}
-				<button
-					class="set-row"
-					type="button"
-					data-row="restore"
-					aria-haspopup="dialog"
-					aria-expanded={openSheet === "restore"}
-					onclick={() => toggleSheet("restore")}>
-					<span class="set-row__text"
-						>{tr("backup.restore.title")}<small class="set-row__sub">{tr("settings.backup.restoreHint")}</small></span
-					>
-					<span class="set-row__action" data-variant="quiet">{tr("settings.backup.restoreAction")}</span>
-				</button>
-			</div>
-			<p class="set-note">{tr("backup.warning")}</p>
-			<p class="import-status" role="status">{importedMessage}</p>
-			{#if openSheet === "restore" && repo}
-				<RestoreSheet
-					{repo}
-					{storage}
-					onrestored={onRestored}
-					onclose={() => {
-						openSheet = null
-					}} />
-			{/if}
-		</section>
-	</div>
-	<div class="settings-grid__side">
-		<section class="set-section" data-section="reset">
-			<h2>{tr("reset.title")}</h2>
-			<div class="set">
-				<button
-					class="set-row"
-					type="button"
-					data-row="purge"
-					aria-haspopup="dialog"
-					aria-expanded={openSheet === "purge"}
-					onclick={() => toggleSheet("purge")}>
-					<span class="set-row__text"
-						>{tr("settings.reset.purge")}<small class="set-row__sub">{tr("settings.reset.purgeHint")}</small></span
-					>
-					<span class="set-row__action" data-variant="quiet">{tr("settings.reset.purgeAction")}</span>
-				</button>
-				{#if resetCounts === null}
-					<button class="set-row" type="button" data-row="delete-all" onclick={onStartReset}>
+			</section>
+		</div>
+		<div class="settings-grid__side">
+			<section class="set-section" data-section="reset">
+				<h2>{tr("reset.title")}</h2>
+				<div class="set">
+					<button
+						class="set-row"
+						type="button"
+						data-row="purge"
+						aria-haspopup="dialog"
+						aria-expanded={openSheet === "purge"}
+						onclick={() => toggleSheet("purge")}>
 						<span class="set-row__text"
-							>{tr("settings.reset.all")}<small class="set-row__sub">{tr("settings.reset.allHint")}</small></span
+							>{tr("settings.reset.purge")}<small class="set-row__sub">{tr("settings.reset.purgeHint")}</small></span
 						>
-						<span class="set-row__action" data-variant="danger">{tr("settings.reset.allAction")}</span>
+						<span class="set-row__action" data-variant="quiet">{tr("settings.reset.purgeAction")}</span>
 					</button>
-				{:else}
-					{@const counts = resetCounts}
-					<div class="set-ask">
-						<p class="set-ask__note">{askText(counts)}</p>
-						<div class="set-ask__actions">
-							<button
-								type="button"
-								data-action="keep-data"
-								onclick={() => {
-									resetCounts = null
-								}}>
-								{tr("reset.keep")}
-							</button>
-							<button data-variant="danger" type="button" data-action="delete-everything" onclick={onConfirmReset}>
-								{tr("reset.deleteEverything")}
-							</button>
+					{#if resetCounts === null}
+						<button class="set-row" type="button" data-row="delete-all" onclick={onStartReset}>
+							<span class="set-row__text"
+								>{tr("settings.reset.all")}<small class="set-row__sub">{tr("settings.reset.allHint")}</small></span
+							>
+							<span class="set-row__action" data-variant="danger">{tr("settings.reset.allAction")}</span>
+						</button>
+					{:else}
+						{@const counts = resetCounts}
+						<div class="set-ask">
+							<p class="set-ask__note">{askText(counts)}</p>
+							<div class="set-ask__actions">
+								<button
+									type="button"
+									data-action="keep-data"
+									onclick={() => {
+										resetCounts = null
+									}}>
+									{tr("reset.keep")}
+								</button>
+								<button data-variant="danger" type="button" data-action="delete-everything" onclick={onConfirmReset}>
+									{tr("reset.deleteEverything")}
+								</button>
+							</div>
 						</div>
-					</div>
+					{/if}
+				</div>
+				<p class="reset-status" role="status">{resetMessage}</p>
+				{#if openSheet === "purge" && repo}
+					<PurgeSheet
+						{repo}
+						today={today()}
+						onpurged={onPurged}
+						onclose={() => {
+							openSheet = null
+						}} />
 				{/if}
-			</div>
-			<p class="reset-status" role="status">{resetMessage}</p>
-			{#if openSheet === "purge" && repo}
-				<PurgeSheet
-					{repo}
-					today={today()}
-					onpurged={onPurged}
-					onclose={() => {
-						openSheet = null
-					}} />
-			{/if}
-		</section>
-		<section class="set-section" data-section="about">
-			<h2>{tr("about.title")}</h2>
-			<div class="set">{@render about?.()}</div>
-		</section>
+			</section>
+			<section class="set-section" data-section="about">
+				<h2>{tr("about.title")}</h2>
+				<div class="set">{@render about?.()}</div>
+			</section>
+		</div>
 	</div>
+	{#if current}
+		<DetailPanel
+			title={tr(current === "locations" ? "settings.locations.title" : "settings.owners.title")}
+			onclose={() => panel.close()}>
+			{#key `${current}:${rewritten}`}
+				{#if current === "locations"}
+					<LocationsEditor open={openOnce} onchange={() => void page.load()} />
+				{:else}
+					<OwnersEditor open={openOnce} onchange={() => void page.load()} />
+				{/if}
+			{/key}
+		</DetailPanel>
+	{/if}
 </div>

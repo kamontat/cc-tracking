@@ -98,7 +98,7 @@
 {#if rows.length === 0}
 	<div class="ready-empty" data-empty="none">
 		<p>{tr("ready.empty")}</p>
-		<a data-action="settings" href="/settings/locations">{tr("ready.toSettings")}</a>
+		<a data-action="settings" href="/settings?panel=locations">{tr("ready.toSettings")}</a>
 	</div>
 {:else}
 	<div class="pick">
