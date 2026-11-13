@@ -141,6 +141,19 @@
 	--cc-detail-panel: 25rem;
 	--cc-detail-sheet-height: 92dvh;
 
+	/* From 900px a page's bottom padding, which clears the floating + New button. */
+	--cc-page-foot: calc(var(--cc-space-5) + var(--cc-bar-height) + var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
+
+	/* The detail panel's column from 900px fits the screen: it parks where the page's content
+	   starts (under the header and the page's top padding) and ends where it ends (above the
+	   page's foot), so reading it never scrolls the page; its body scrolls instead. */
+	--cc-detail-column-top: calc(var(--cc-header-height) + var(--cc-space-5));
+	--cc-detail-column-height: calc(100dvh - var(--cc-detail-column-top) - var(--cc-page-foot));
+
+	/* The room under the panel body's last line, past a phone's home indicator. A form's sticky
+	   save sinks through it, so it parks at the panel's very foot. */
+	--cc-detail-body-end: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+
 	/* A `select` left at `appearance: auto` reserves its own arrow area — about 20px in Chrome,
 	   more in Safari — inside the border box and on top of whatever padding we set, so its right
 	   inset stops matching the inputs beside it and changes per browser. `controls` paints this

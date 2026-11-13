@@ -178,8 +178,7 @@
 		display: flex;
 		flex-direction: column;
 		block-size: var(--cc-detail-sheet-height);
-		overflow: auto;
-		overscroll-behavior: contain;
+		overflow: hidden;
 		color: var(--cc-text);
 		background: var(--cc-bg);
 		border-radius: var(--cc-radius-md) var(--cc-radius-md) 0 0;
@@ -193,11 +192,10 @@
 		border-radius: 0;
 	}
 
+	/* The head stays put; the body under it is what scrolls. */
 	.detail-panel__head {
-		position: sticky;
-		top: 0;
-		z-index: 1;
 		display: flex;
+		flex: none;
 		flex-direction: column;
 		background: var(--cc-bg);
 		border-bottom: var(--cc-border-width) solid var(--cc-border);
@@ -271,14 +269,20 @@
 		flex: none;
 	}
 
+	/* The panel's one scroller, which keeps a scroll that reaches its end from moving the page. */
 	.detail-panel__body {
 		display: flex;
+		flex: 1;
 		flex-direction: column;
 		gap: var(--cc-space-4);
-		padding: var(--cc-space-4) var(--cc-space-4) calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
+		min-block-size: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		padding: var(--cc-space-4) var(--cc-space-4) var(--cc-detail-body-end);
 	}
 
-	/* From 900px: a column beside the list, parked under the header while the list scrolls. */
+	/* From 900px: a column beside the list as tall as the screen leaves it, parked under the
+	   header while the list scrolls with the page. */
 	@media (min-width: 900px) {
 		.detail-panel__backdrop {
 			display: none;
@@ -287,10 +291,9 @@
 		.detail-panel,
 		.detail-panel[data-full] {
 			position: sticky;
-			top: calc(var(--cc-header-height) + var(--cc-space-4));
+			top: var(--cc-detail-column-top);
 			z-index: auto;
-			block-size: auto;
-			max-block-size: calc(100dvh - var(--cc-header-height) - 2 * var(--cc-space-4));
+			block-size: var(--cc-detail-column-height);
 			background: var(--cc-surface);
 			border: var(--cc-border-width) solid var(--cc-border);
 			border-radius: var(--cc-radius-md);

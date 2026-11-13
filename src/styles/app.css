@@ -505,12 +505,7 @@ a:any-link:hover {
 /* From 900px the bar is gone; the page clears only the floating button. */
 @media (min-width: 900px) {
 	.page {
-		padding-bottom: calc(
-			var(--cc-space-5) +
-			var(--cc-bar-height) +
-			var(--cc-space-7) +
-			env(safe-area-inset-bottom, 0px)
-		);
+		padding-bottom: var(--cc-page-foot);
 	}
 }
 
@@ -2009,6 +2004,13 @@ a:any-link:hover {
 	align-items: start;
 }
 
+/* Below 900px the panel is a sheet whose body scrolls on its own; the page behind it holds still. */
+@media (max-width: 899px) {
+	html:has(.detail-panel) {
+		overflow: hidden;
+	}
+}
+
 @media (min-width: 900px) {
 	.panel-layout[data-panel] {
 		grid-template-columns: minmax(0, 1fr) var(--cc-detail-panel);
@@ -2155,12 +2157,13 @@ a:any-link:hover {
 	font-weight: 700;
 }
 
-/* A form in the detail panel (RD-24): its save stays in view at the panel's foot. */
+/* A form in the detail panel (RD-24): its save stays in view at the panel's foot. The body is
+   the scroller, and a sticky bottom counts from inside its padding, so it sinks through that. */
 .detail-panel__body .card-form .actions,
 .detail-panel__body .purchase-form .actions,
 .detail-panel__body .pay-actions {
 	position: sticky;
-	bottom: 0;
+	bottom: calc(-1 * var(--cc-detail-body-end));
 	padding-block: var(--cc-space-3) calc(var(--cc-space-3) + env(safe-area-inset-bottom, 0px));
 	background: var(--cc-bg);
 }

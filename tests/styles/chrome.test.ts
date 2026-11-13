@@ -120,5 +120,9 @@ test("the page ends with room for the floating + New button, on a phone and from
 		expect(phone).toContain(token)
 	const wide = css.slice(css.indexOf("From 900px the bar is gone"))
 	const wideRule = wide.slice(0, wide.indexOf("}\n}"))
-	for (const token of ["--cc-bar-height", "safe-area-inset-bottom"]) expect(wideRule).toContain(token)
+	// From 900px it is `--cc-page-foot`, which the detail panel's column clears as well.
+	expect(wideRule).toContain("padding-bottom: var(--cc-page-foot)")
+	const tokens = await Bun.file("src/styles/tokens.css").text()
+	const foot = tokens.match(/--cc-page-foot:([^;]+);/)?.[1] ?? ""
+	for (const token of ["--cc-bar-height", "safe-area-inset-bottom"]) expect(foot).toContain(token)
 })
