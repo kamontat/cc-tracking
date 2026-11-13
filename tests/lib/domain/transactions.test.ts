@@ -1,4 +1,3 @@
-import type { SortDir } from "#lib/domain/sort"
 import type { Card, CardPayment, Purchase, PurchaseList } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
@@ -18,9 +17,6 @@ import {
 	listIdOf,
 	listRows,
 	monthSummary,
-	OWED_DIRS,
-	type OwedSort,
-	owedRows,
 	sortEntries,
 	TX_DIRS,
 	TX_GROUPS,
@@ -328,37 +324,5 @@ describe("filterLists", () => {
 		expect(ids({ q: "DIESEL" })).toEqual(["w1"])
 		expect(ids({ q: "  " })).toEqual(["d1", "w1", "s1"])
 		expect(ids({ q: "nothing" })).toEqual([])
-	})
-})
-
-describe("owedRows", () => {
-	const cs = [mk("a"), mk("b"), mk("c"), mk("d")]
-	const purchases = [
-		buy("p1", { cardId: "a", date: "2026-08-10", amount: 100 }), // overdue
-		buy("p2", { cardId: "b", date: "2026-10-01", amount: 900 }), // due 14 Nov
-		buy("p3", { cardId: "c", date: "2026-10-01", amount: 500 }),
-	]
-	const ledgers = ledgersFor(cs, purchases, [], [], TODAY)
-	const order = (sort: OwedSort, dir: SortDir = OWED_DIRS[sort]) =>
-		owedRows(cs, ledgers, TODAY, sort, dir).map((r) => r.card.id)
-	test("urgency: overdue, then most owed; zero owed left out", () => {
-		expect(order("urgency")).toEqual(["a", "b", "c"])
-	})
-	test("card, due and left, each in its default direction", () => {
-		expect(OWED_DIRS).toEqual({ urgency: "asc", card: "asc", due: "asc", left: "desc" })
-		expect(order("card")).toEqual(["a", "b", "c"])
-		expect(order("due")).toEqual(["a", "b", "c"])
-		expect(order("left")).toEqual(["b", "c", "a"])
-	})
-	test("each runs the other way too", () => {
-		expect(order("urgency", "desc")).toEqual(["c", "b", "a"])
-		expect(order("card", "desc")).toEqual(["c", "b", "a"])
-		// b and c are due the same day, so they keep id order either way.
-		expect(order("due", "desc")).toEqual(["b", "c", "a"])
-		expect(order("left", "asc")).toEqual(["a", "c", "b"])
-	})
-	test("credit keeps a card in", () => {
-		const withCredit = ledgersFor(cs, [], [pay("m1", { cardId: "d", amount: 50 })], [], TODAY)
-		expect(owedRows(cs, withCredit, TODAY, "card", "asc").map((r) => r.card.id)).toEqual(["d"])
 	})
 })

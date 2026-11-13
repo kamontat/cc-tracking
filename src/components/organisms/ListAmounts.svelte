@@ -22,6 +22,7 @@
 	import { cardLine, cardName, groupColor } from "#lib/ui/card-label"
 	import { tileTone } from "#lib/ui/card-tile"
 	import { countWords } from "#lib/ui/list-share"
+	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
 	 * Writing a purchase list (DD-195): the list first, one row per card with what its orders add
@@ -444,7 +445,9 @@
 					remaining: formatAmount(warning.remaining),
 				})}
 			</span>
-			<a data-action="see-card" href={`/card?id=${encodeURIComponent(card.id)}`}>{tr("purchaseList.warn.seeCard")}</a>
+			<a data-action="see-card" href={withRecord("/cards", { kind: "card", id: card.id })}
+				>{tr("purchaseList.warn.seeCard")}</a
+			>
 		</p>
 	{:else if warning.kind === "close-date"}
 		<p class="note" data-warning="close-date">

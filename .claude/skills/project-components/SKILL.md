@@ -107,14 +107,17 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   `LimitPanel.svelte` and `ListPanel.svelte` do, so any page can hold it. `PurchaseForm.svelte` and
   `GroupForm.svelte` are the purchase and group forms without a sheet.
 - A page with tabs (PRD RD-22) heads its `main` slot with `PageTabs.astro` (molecule, static):
-  one bar on one rule, the title (`--cc-text-xl`), an `aria-hidden` divider, then one link per
-  tab, each tab its own page, the one on show marked `aria-current="page"` and underlined on the
-  bar's rule; only the links scroll sideways (never wrapping), on every width (`<PageTabs
+  one bar on one rule, the title (`--cc-text-xl`), an `aria-hidden` divider, then one link per tab,
+  each tab its own page, the one on show marked `aria-current="page"` and underlined on the bar's
+  rule; only the links scroll sideways (never wrapping), on every width (`<PageTabs
   title="cards.title" label="cards.tabs" tabs={CARDS_TABS} current="/cards" />`). A tab list is a
-  `PageTab[]` in `#lib/ui/page-tabs` (`CARDS_TABS`, `TRANSACTIONS_TABS`). A tab's add button goes
-  at the end of its search row, through `FilterControls`' `end` snippet, as a quiet
-  `button.tx-fbtn` (_+ Add card_, _+ Add limit_), or an `a.btn.tx-fbtn` when it leads to a page
-  (_+ Add list_).
+  `PageTab[]` in `#lib/ui/page-tabs` (`CARDS_TABS`, `TRANSACTIONS_TABS`, `HOME_TABS`). A tab with a
+  sort but no filter sheet (Home's _Owed_ and _Ready to use_) puts `SortBar.svelte` (molecule: the
+  _Sort_ chip and the order switch) over its list. A tile that needs a button (_Pay_ on an owed
+  tile) passes it as `CardTile`'s `action` snippet, drawn beside the tile's link, never inside it. A
+  tab's add button goes at the end of its search row, through `FilterControls`' `end` snippet, as a
+  quiet `button.tx-fbtn` (_+ Add card_, _+ Add limit_), or an `a.btn.tx-fbtn` when it leads to a
+  page (_+ Add list_).
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.

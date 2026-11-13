@@ -1,16 +1,17 @@
-import type { ReadyRow } from "#lib/domain/home"
+import type { ReadyRow, ReadySort } from "#lib/domain/home"
+import type { SortDir } from "#lib/domain/sort"
 import type { LimitGroup, PlainDate } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
 
-import ReadyPanel, { READY_TOP } from "#components/organisms/ReadyPanel.svelte"
+import ReadyList from "#components/organisms/ReadyList.svelte"
 import { setLocale } from "#lib/i18n/index"
 import { flat, testGroup, testRow, testRows } from "./ready-test-rows"
 
 /**
- * Home's short *Ready to use*. Ported from the legacy `cc-ready-panel` tests, against the same
- * markup.
+ * Home's _Ready to use_ tab (RD-22): the count and places, the sort, then every ready card as a
+ * tile that opens the card's panel over the tab.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -26,18 +27,28 @@ type Props = {
 	places: string[]
 	groups: LimitGroup[]
 	today: PlainDate
+	unassigned: number
+	sort: ReadySort
+	dir: SortDir
+	onsort: (sort: ReadySort, dir: SortDir) => void
+	current: string | null
+	onopencard: (id: string) => void
 }
 
 const show = (props: Partial<Props> = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
-	mounted = mount(ReadyPanel, {
+	mounted = mount(ReadyList, {
 		target: document.body,
 		props: {
 			rows: testRows(),
 			groups: [testGroup],
 			places: ["Bangkok", "Krabi"],
 			today: "2026-10-31",
+			unassigned: 0,
+			sort: "room",
+			dir: "desc",
+			onsort: () => {},
 			...props,
 		},
 	})
@@ -49,26 +60,23 @@ const order = (root: ParentNode) => [...root.querySelectorAll("[data-card]")].ma
 
 const tile = (root: ParentNode, id: string) => root.querySelector(`[data-card="${id}"]`) as HTMLElement
 
-test("Home shows four cards before See more", () => {
-	expect(READY_TOP).toBe(4)
-})
-
-test("the heading counts the ready cards and their places", () => {
+test("the head counts the ready cards and their places, with no heading (the tab names it)", () => {
 	const root = show()
-	expect(flat(root.querySelector("h2"))).toBe("Ready to use")
+	expect(root.querySelector("h2")).toBeNull()
 	expect(flat(root.querySelector(".head small"))).toBe("3 cards in Bangkok, Krabi")
 	const one = show({ rows: testRows().slice(0, 1) })
 	expect(flat(one.querySelector(".head small"))).toBe("1 card in Bangkok, Krabi")
 })
 
-test("only the four cards with the most room show, each a tile linking to its card page", () => {
-	const rows = [
-		...testRows(),
-		testRow("D", 90_000_00, "2026-11-10", "2026-11-25"),
-		testRow("E/1", 10_000_00, "2026-11-10", "2026-11-25"),
-	]
-	const root = show({ rows })
-	expect(order(root)).toEqual(["D", "B", "A", "C"])
+const five = () => [
+	...testRows(),
+	testRow("4", 90_000_00, "2026-11-10", "2026-11-25"),
+	testRow("12.3", 10_000_00, "2026-11-10", "2026-11-25"),
+]
+
+test("every ready card shows, most room first, each a tile opening the card's panel over the tab", () => {
+	const root = show({ rows: five() })
+	expect(order(root)).toEqual(["4", "B", "A", "C", "12.3"])
 	expect(root.querySelectorAll(".tiles")).toHaveLength(1)
 	expect(root.querySelector(".tiles")?.id).toBe("ready-list")
 	for (const el of root.querySelectorAll("[data-card]")) {
@@ -76,40 +84,44 @@ test("only the four cards with the most room show, each a tile linking to its ca
 		expect(el.classList.contains("tile")).toBe(true)
 		expect(el.querySelector(".tick, button, a")).toBeNull()
 	}
-	expect(root.querySelector('[data-card="D"]')?.getAttribute("href")).toBe("/card?id=D")
-	const odd = show({ rows: [testRow("E/1", 10_000_00, "2026-11-10", "2026-11-25")] })
-	expect(odd.querySelector('[data-card="E/1"]')?.getAttribute("href")).toBe("/card?id=E%2F1")
-})
-
-test("See more (N) opens the rest in place and Show less folds them; there is no Start a list", () => {
-	const rows = [
-		...testRows(),
-		testRow("D", 90_000_00, "2026-11-10", "2026-11-25"),
-		testRow("E", 10_000_00, "2026-11-10", "2026-11-25"),
-	]
-	const root = show({ rows })
-	expect(root.querySelector('[data-action="start"]')).toBeNull()
-	expect(root.querySelector('[data-action="see-all"]')).toBeNull()
-	const more = () => root.querySelector('[data-action="more"]') as HTMLButtonElement
-	expect(flat(more())).toBe("See more (1)")
-	expect(more().getAttribute("type")).toBe("button")
-	expect(more().getAttribute("data-variant")).toBe("quiet")
-	expect(more().getAttribute("aria-controls")).toBe("ready-list")
-	expect(more().getAttribute("aria-expanded")).toBe("false")
-	more().click()
-	flushSync()
-	expect(order(root)).toHaveLength(5)
-	expect(flat(more())).toBe("Show less")
-	expect(more().getAttribute("aria-expanded")).toBe("true")
-	more().click()
-	flushSync()
-	expect(order(root)).toEqual(["D", "B", "A", "C"])
-})
-
-test("four cards or fewer have no See more", () => {
-	const root = show({ rows: [...testRows(), testRow("D", 90_000_00, "2026-11-10", "2026-11-25")] })
-	expect(order(root)).toHaveLength(4)
+	expect(root.querySelector('[data-card="12.3"]')?.getAttribute("href")).toBe("/ready?card=12.3")
+	// No See more, and no Start a list.
 	expect(root.querySelector('[data-action="more"]')).toBeNull()
+	expect(root.querySelector('[data-action="start"]')).toBeNull()
+})
+
+test("a plain click opens the panel in place, the open card marked; a new-tab click is the browser's", () => {
+	const opened: string[] = []
+	const root = show({ rows: five(), current: "A", onopencard: (id) => opened.push(id) })
+	expect(tile(root, "A").getAttribute("aria-current")).toBe("true")
+	expect(tile(root, "B").hasAttribute("aria-current")).toBe(false)
+	const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 })
+	tile(root, "12.3").dispatchEvent(click)
+	expect(click.defaultPrevented).toBe(true)
+	const tab = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ctrlKey: true })
+	tile(root, "4").dispatchEvent(tab)
+	expect(tab.defaultPrevented).toBe(false)
+	expect(opened).toEqual(["12.3"])
+})
+
+test("sorts by room, close or due, either way, and the sort row says so", () => {
+	const sorts: [ReadySort, SortDir][] = []
+	const rows = [
+		testRow("A", 1_00, "2026-11-12", "2026-11-30"),
+		testRow("B", 3_00, "2026-11-10", "2026-12-02"),
+		testRow("C", 2_00, "2026-11-14", "2026-11-28"),
+	]
+	expect(order(show({ rows, sort: "room", dir: "asc" }))).toEqual(["A", "C", "B"])
+	expect(order(show({ rows, sort: "close", dir: "desc" }))).toEqual(["C", "A", "B"])
+	expect(order(show({ rows, sort: "due", dir: "desc" }))).toEqual(["B", "A", "C"])
+	const root = show({ rows, sort: "due", dir: "asc", onsort: (sort, dir) => sorts.push([sort, dir]) })
+	expect(order(root)).toEqual(["C", "A", "B"])
+	const select = root.querySelector(".sort-bar select[name=sort]") as HTMLSelectElement
+	expect(Array.from(select.options).map((o) => o.value)).toEqual(["room", "close", "due"])
+	expect(select.value).toBe("due")
+	select.value = "close"
+	select.dispatchEvent(new Event("change", { bubbles: true }))
+	expect(sorts).toEqual([["close", "desc"]])
 })
 
 test("nothing ready names the next step and offers no list", () => {
@@ -118,6 +130,7 @@ test("nothing ready names the next step and offers no list", () => {
 	expect(flat(root.querySelector(".note"))).toContain("Settings")
 	expect(root.querySelectorAll("[data-card]")).toHaveLength(0)
 	expect(root.querySelector(".tiles")).toBeNull()
+	expect(root.querySelector(".sort-bar")).toBeNull()
 	expect(flat(root.querySelector(".head small"))).toBe("0 cards in Bangkok, Krabi")
 })
 
@@ -131,15 +144,15 @@ test("no line counts cards without a limit group, nor links to assign them (RD-2
 test("reads in Thai", () => {
 	setLocale("th")
 	const root = show()
-	expect(flat(root.querySelector("h2"))).toBe("พร้อมใช้")
+	expect(flat(root.querySelector(".head small"))).not.toContain("cards in")
 })
 
 test("follows a language switch while shown", () => {
 	const root = show()
-	expect(flat(root.querySelector("h2"))).toBe("Ready to use")
+	expect(flat(root.querySelector(".head small"))).toBe("3 cards in Bangkok, Krabi")
 	setLocale("th")
 	flushSync()
-	expect(flat(root.querySelector("h2"))).toBe("พร้อมใช้")
+	expect(flat(root.querySelector(".head small"))).not.toContain("cards in")
 	expect(flat(tile(root, "A").querySelector(".facts"))).toBe("สรุปยอด 10 พ.ย. 2026")
 })
 

@@ -1,0 +1,128 @@
+import type { Card } from "#lib/domain/types"
+
+import { flushSync, mount, unmount } from "svelte"
+import { afterEach, expect, test } from "vitest"
+
+import ReadyPage from "#components/organisms/ReadyPage.svelte"
+import { setLocale } from "#lib/i18n/index"
+import { InMemoryRepository, type Repository } from "#lib/storage/repository"
+import { fakeHistory } from "../../lib/ui/fake-history"
+import { saveLocations } from "./list-support"
+
+/**
+ * Home's _Ready to use_ tab (`/ready`, RD-22): every ready card, in the order kept in the address
+ * (`sort`, `dir`), each tile opening the card's panel over the tab (`?card=`).
+ */
+let mounted: ReturnType<typeof mount> | undefined
+
+afterEach(() => {
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	document.body.innerHTML = ""
+	setLocale("en")
+})
+
+const settle = async (rounds = 20) => {
+	for (let i = 0; i < rounds; i++) {
+		await new Promise<void>((resolve) => setTimeout(resolve, 0))
+		flushSync()
+	}
+}
+
+const $ = <E extends Element = HTMLElement>(selector: string) => document.querySelector<E>(selector)
+const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
+
+const card = (id: string, closeDay: number, group = "g1", extra: Partial<Card> = {}): Card => ({
+	id,
+	name: `Card ${id}`,
+	last4: "1234",
+	location: "krabi",
+	cycle: { kind: "offset", closeDay, dueOffsetDays: 20 },
+	archived: false,
+	limitGroupId: group,
+	...extra,
+})
+
+const seed = async (repo: Repository) => {
+	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 })
+	await repo.saveLimitGroup({ id: "g2", name: "G2", limit: 50_000_00 })
+	await saveLocations(repo, ["krabi"])
+	// Five ready cards, more than Home's old short panel showed.
+	await repo.saveCard(card("1", 5))
+	await repo.saveCard(card("2", 10))
+	await repo.saveCard(card("3", 15, "g2"))
+	await repo.saveCard(card("4", 20, "g2"))
+	await repo.saveCard(card("5", 28, "g2"))
+	await repo.saveCard(card("9", 5, "g1", { archived: true }))
+}
+
+const open = async (search = "") => {
+	const repo = new InMemoryRepository()
+	await seed(repo)
+	const history = fakeHistory(`/ready${search}`)
+	mounted = mount(ReadyPage, {
+		target: document.body,
+		props: {
+			open: async () => ({ ok: true as const, repo }),
+			clock: () => new Date("2026-10-31T03:00:00Z"),
+			address: history.bar,
+		},
+	})
+	await settle()
+	return { repo, history }
+}
+
+const press = async (el: Element | null | undefined) => {
+	if (!el) throw new Error("nothing to press")
+	;(el as HTMLElement).click()
+	await settle()
+}
+
+const tiles = () => [...document.querySelectorAll("#ready-list [data-card]")].map((el) => el.getAttribute("data-card"))
+
+test("every ready card, most room first, with no See more", async () => {
+	await open()
+	expect(tiles()).toEqual(["1", "2", "3", "4", "5"])
+	expect(text($(".ready .head small"))).toBe("5 cards in Krabi")
+	expect($('[data-action="more"]')).toBeNull()
+})
+
+test("the order comes from the address, and a new one is written in place", async () => {
+	const { history } = await open("?sort=close")
+	// Longest to close first: the 28th closes last, the 5th first.
+	expect(tiles()).toEqual(["5", "4", "3", "2", "1"])
+	const select = $<HTMLSelectElement>(".sort-bar select[name=sort]")
+	if (!select) throw new Error("no sort")
+	select.value = "room"
+	select.dispatchEvent(new Event("change", { bubbles: true }))
+	await settle()
+	expect(history.now()).toBe("/ready")
+	await press($('.filter-seg [data-dir="asc"]'))
+	expect(history.now()).toBe("/ready?dir=asc")
+	expect(history.size()).toBe(1)
+	expect(tiles()).toEqual(["3", "4", "5", "1", "2"])
+})
+
+test("a tile opens the card's panel over the tab, pushing ?card=; Back closes it", async () => {
+	const { history } = await open("?dir=asc")
+	await press($('#ready-list [data-card="2"]'))
+	expect(history.now()).toBe("/ready?dir=asc&card=2")
+	expect(history.size()).toBe(2)
+	expect($(".detail-panel .card-hero")).not.toBeNull()
+	expect($('#ready-list [data-card="2"]')?.getAttribute("aria-current")).toBe("true")
+	history.userBack()
+	await settle()
+	expect($(".detail-panel")).toBeNull()
+})
+
+test("a pasted ?card= opens the panel at once, an archived card's too", async () => {
+	await open("?card=9")
+	expect($(".detail-panel .card-hero")).not.toBeNull()
+})
+
+test("names the places in the reader's language", async () => {
+	await open()
+	setLocale("th")
+	await settle()
+	expect(text($(".ready .head small"))).toContain("กระบี่")
+})

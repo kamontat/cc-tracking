@@ -3,17 +3,14 @@ import { describe, expect, test } from "vitest"
 import {
 	DEFAULT_LEDGER_VIEW,
 	DEFAULT_LISTS_VIEW,
-	DEFAULT_OWED_VIEW,
 	LEDGER_ADDRESS,
 	type LedgerView,
 	LISTS_ADDRESS,
 	type ListsView,
 	readLedgerView,
 	readListsView,
-	readOwedView,
 	writeLedgerView,
 	writeListsView,
-	writeOwedView,
 } from "#lib/ui/tx-query"
 
 describe("the Ledger tab's address (/transactions)", () => {
@@ -110,16 +107,5 @@ describe("the Lists tab's address (/transactions/lists)", () => {
 		expect(DEFAULT_LISTS_VIEW.by).toBe("status")
 		expect(writeListsView({ ...DEFAULT_LISTS_VIEW, by: "none" })).toBe("?by=none")
 		expect(readListsView("?list=abc&card=7")).toEqual(DEFAULT_LISTS_VIEW)
-	})
-})
-
-describe("Owed's order, kept for /owed (Part 5)", () => {
-	test("sort and dir, each sort with its own default direction", () => {
-		expect(DEFAULT_OWED_VIEW).toEqual({ sort: "urgency", dir: "asc" })
-		expect(writeOwedView(DEFAULT_OWED_VIEW)).toBe("")
-		expect(readOwedView("?sort=left")).toEqual({ sort: "left", dir: "desc" })
-		expect(readOwedView("?sort=left&dir=asc")).toEqual({ sort: "left", dir: "asc" })
-		expect(writeOwedView({ sort: "due", dir: "desc" })).toBe("?sort=due&dir=desc")
-		expect(readOwedView("?sort=nope&dir=up")).toEqual(DEFAULT_OWED_VIEW)
 	})
 })

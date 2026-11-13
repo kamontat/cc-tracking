@@ -170,3 +170,24 @@ test("the card open in the detail panel is marked current", () => {
 	expect(show({ href: "/cards?card=A", current: true }).getAttribute("aria-current")).toBe("true")
 	expect(show({ href: "/cards?card=A" }).hasAttribute("aria-current")).toBe(false)
 })
+
+test("an action sits on the tile's last line, beside the link and not inside it", () => {
+	show({
+		href: "/owed?card=A",
+		facts: "Bill closed 18 Sep 2026",
+		action: createRawSnippet(() => ({ render: () => `<button type="button" data-action="pay">Pay</button>` })),
+	})
+	const box = document.body.querySelector(".tile-box") as HTMLElement
+	const link = box.querySelector("a.tile") as HTMLElement
+	expect(link.hasAttribute("data-act")).toBe(true)
+	expect(link.querySelector("button")).toBeNull()
+	const button = box.querySelector(".tile-act > [data-action=pay]")
+	expect(button).not.toBeNull()
+	expect(link.contains(button)).toBe(false)
+})
+
+test("with no action the tile has no box around it", () => {
+	const tile = show({ href: "/cards?card=A" })
+	expect(tile.parentElement?.classList.contains("tile-box")).toBe(false)
+	expect(tile.hasAttribute("data-act")).toBe(false)
+})

@@ -9,9 +9,9 @@ import NeedsYou from "#components/organisms/NeedsYou.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * Home's *Needs you*: overdue bills, planned payments, waiting lists and drafts, each a row that
- * opens in place, five shown then *See more*. Ported from the legacy `cc-needs-you` tests,
- * against the same markup.
+ * Home's *Needs you* tab: overdue bills and planned payments, each a row that opens in place, and
+ * waiting lists and drafts, each a row that opens the list's panel; every one shown, with no *See
+ * more* (the tab has the screen to itself).
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -79,6 +79,7 @@ interface Shown {
 	cards?: Card[]
 	groups?: LimitGroup[]
 	today?: string
+	current?: string | null
 }
 
 /**
@@ -90,23 +91,23 @@ const show = async (initial: Shown = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
 	const values = new SvelteMap<string, unknown>(
-		Object.entries({ items: [], cards: [], groups, today: "2026-10-31", ...initial }),
+		Object.entries({ items: [], cards: [], groups, today: "2026-10-31", current: null, ...initial }),
 	)
 	const calls = {
 		marked: [] as CardPayment[],
 		deleted: [] as CardPayment[],
-		confirmed: [] as PurchaseList[],
-		drafts: [] as PurchaseList[],
-		merged: [] as PurchaseList[],
+		lists: [] as PurchaseList[],
+		cards: [] as string[],
+		paid: [] as [string, number][],
 	}
 	const props: Record<string, unknown> = {
 		onmarkpaid: (p: CardPayment) => calls.marked.push(p),
 		ondeletepayment: (p: CardPayment) => calls.deleted.push(p),
-		onconfirmlist: (l: PurchaseList) => calls.confirmed.push(l),
-		ondeletedraft: (l: PurchaseList) => calls.drafts.push(l),
-		onmergelists: (l: PurchaseList) => calls.merged.push(l),
+		onopenlist: (l: PurchaseList) => calls.lists.push(l),
+		onopencard: (id: string) => calls.cards.push(id),
+		onpay: (c: Card, amount: number) => calls.paid.push([c.id, amount]),
 	}
-	for (const key of ["items", "cards", "groups", "today"])
+	for (const key of ["items", "cards", "groups", "today", "current"])
 		Object.defineProperty(props, key, { get: () => values.get(key) })
 	mounted = mount(NeedsYou, { target: document.body, props: props as never })
 	await settle()
@@ -171,16 +172,21 @@ const overdue = (days: number, more: Partial<NeedsItem & { kind: "overdue" }> = 
 	...more,
 })
 
-test("every row head is one button that opens it in place, no link", async () => {
+test("every row head is one button: a bill or a plan opens in place, a list opens its panel", async () => {
 	const { root } = await show({ items: [...items(), planned("2026-11-02")] })
 	const heads = [...root.querySelectorAll("[data-item]")]
 	expect(heads.map((e) => e.getAttribute("data-item"))).toEqual(["waiting", "overdue", "draft", "planned"])
 	for (const head of heads) {
 		expect(head.localName).toBe("button")
-		expect(head.getAttribute("aria-expanded")).toBe("false")
 		expect(head.querySelector("a, button")).toBeNull()
-		const details = document.getElementById(head.getAttribute("aria-controls") ?? "")
-		expect(details?.hidden).toBe(true)
+	}
+	for (const head of root.querySelectorAll('[data-item="overdue"], [data-item="planned"]')) {
+		expect(head.getAttribute("aria-expanded")).toBe("false")
+		expect(document.getElementById(head.getAttribute("aria-controls") ?? "")?.hidden).toBe(true)
+	}
+	for (const head of root.querySelectorAll('[data-item="waiting"], [data-item="draft"]')) {
+		expect(head.getAttribute("data-opens")).toBe("panel")
+		expect(head.hasAttribute("aria-expanded")).toBe(false)
 	}
 	expect(root.querySelector("a.a-hit")).toBeNull()
 })
@@ -243,17 +249,19 @@ test("more than three cards read as a count", async () => {
 })
 
 test("the heading counts", async () => {
-	expect(text((await show({ items: items().slice(0, 1) })).root, "h1")).toBe("1 thing needs you")
+	expect(text((await show({ items: items().slice(0, 1) })).root, "h2")).toBe("1 thing needs you")
 	const { root } = await show({ items: items() })
-	expect(text(root, "h1")).toBe("3 things need you")
-	expect(root.querySelector("h1")?.getAttribute("data-refocus")).toBe("needs")
-	expect(root.querySelector("h1")?.getAttribute("tabindex")).toBe("-1")
+	// Under the page's title (Home) and its tabs, so a second-level heading.
+	expect(root.querySelector("h1")).toBeNull()
+	expect(text(root, "h2")).toBe("3 things need you")
+	expect(root.querySelector("h2")?.getAttribute("data-refocus")).toBe("needs")
+	expect(root.querySelector("h2")?.getAttribute("tabindex")).toBe("-1")
 })
 
 test("a quiet day is all caught up", async () => {
 	const { root } = await show({ items: [] })
-	expect(text(root, "h1")).toBe("All caught up")
-	expect(root.querySelector("h1")?.getAttribute("data-refocus")).toBe("needs")
+	expect(text(root, "h2")).toBe("All caught up")
+	expect(root.querySelector("h2")?.getAttribute("data-refocus")).toBe("needs")
 	expect(root.querySelector("[data-item]")).toBeNull()
 	expect(root.querySelector('p.note[data-tone="ok"]')).not.toBeNull()
 })
@@ -261,7 +269,7 @@ test("a quiet day is all caught up", async () => {
 test("reads in Thai", async () => {
 	setLocale("th")
 	const { root } = await show({ items: items() })
-	expect(text(root, "h1")).toBe("มี 3 เรื่องรอคุณ")
+	expect(text(root, "h2")).toBe("มี 3 เรื่องรอคุณ")
 	expect(text(root, '[data-item="waiting"] .a-title')).toBe("รอคำตอบใบรายการซื้อวันที่ 30 ต.ค. 2026")
 	expect(root.querySelector(".a-badge, .tag")).toBeNull()
 	expect(text(root, '[data-item="overdue"] .a-title')).toBe("เลยกำหนด: SCB K (RI)")
@@ -272,7 +280,7 @@ test("a language switch repaints the rows", async () => {
 	const { root } = await show({ items: items() })
 	setLocale("th")
 	await settle()
-	expect(text(root, "h1")).toBe("มี 3 เรื่องรอคุณ")
+	expect(text(root, "h2")).toBe("มี 3 เรื่องรอคุณ")
 	expect(text(root, '[data-item="overdue"] .a-title')).toBe("เลยกำหนด: SCB K (RI)")
 })
 
@@ -289,22 +297,22 @@ test("one day overdue reads in the singular", async () => {
 	expect(text(root, '[data-item="overdue"] .a-sub')).toBe("for 1 day")
 })
 
-test("a list id is encoded in its opened row's link", async () => {
-	const { root } = await show({
+test("a list's row opens its panel; the open list's row is marked", async () => {
+	const waiting = list("w1", "sent", ["A"])
+	const draft = list("d1", "draft", ["A"])
+	const { root, calls, set } = await show({
 		items: [
-			{ kind: "waiting", list: list("w 1/2", "sent", ["A"]), total: 100 },
-			{ kind: "draft", list: list("d&1", "draft", ["A"]), total: 100 },
+			{ kind: "waiting", list: waiting, total: 100 },
+			{ kind: "draft", list: draft, total: 100 },
 		],
 	})
-	await open('[data-item="waiting"]')
 	await open('[data-item="draft"]')
-	expect(
-		[...root.querySelectorAll(".a-details:not([hidden]) a[data-action]")].map((e) => e.getAttribute("href")),
-	).toEqual(["/transactions/lists/edit?list=d%261"])
 	await open('[data-item="waiting"]')
-	expect(root.querySelector(".a-details:not([hidden]) a[data-action=record-reply]")?.getAttribute("href")).toBe(
-		"/transactions/lists/edit?list=w+1%2F2",
-	)
+	expect(calls.lists).toEqual([draft, waiting])
+	expect(root.querySelector(".a-details")).toBeNull()
+	await set({ current: "d1" })
+	expect(root.querySelector('[data-item="draft"]')?.getAttribute("aria-current")).toBe("true")
+	expect(root.querySelector('[data-item="waiting"]')?.hasAttribute("aria-current")).toBe(false)
 })
 
 test("a planned payment says how far off it is after its date, and a past plan how long ago", async () => {
@@ -330,55 +338,30 @@ const many = (count: number): NeedsItem[] =>
 
 const shown = (root: ParentNode) => [...root.querySelectorAll("[data-row]")].map((e) => e.getAttribute("data-row"))
 
-test("five or fewer things show in full, with no See more", async () => {
-	const { root } = await show({ items: many(5) })
-	expect(shown(root)).toHaveLength(5)
+test("every thing shows, in order, with no See more", async () => {
+	const { root } = await show({ items: many(8) })
+	expect(text(root, "h2")).toBe("8 things need you")
+	expect(shown(root)).toEqual([0, 1, 2, 3, 4, 5, 6, 7].map((i) => `list:w${i}`))
 	expect(root.querySelector('[data-action="more"]')).toBeNull()
 })
 
-test("more than five show the first five and See more expands the rest in place, in order", async () => {
-	const { root } = await show({ items: many(8) })
-	expect(text(root, "h1")).toBe("8 things need you")
-	expect(shown(root)).toEqual([0, 1, 2, 3, 4].map((i) => `list:w${i}`))
-	const more = root.querySelector<HTMLButtonElement>('[data-action="more"]')
-	expect(more?.getAttribute("type")).toBe("button")
-	expect(more?.getAttribute("data-variant")).toBe("quiet")
-	expect(more?.getAttribute("aria-controls")).toBe("needs-list")
-	expect(more?.getAttribute("aria-expanded")).toBe("false")
-	expect(more?.classList.contains("more")).toBe(true)
-	expect(more?.textContent?.trim()).toBe("See more (3)")
-	await click(more)
-	expect(shown(root)).toEqual([0, 1, 2, 3, 4, 5, 6, 7].map((i) => `list:w${i}`))
-	const less = root.querySelector<HTMLButtonElement>('[data-action="more"]')
-	expect(less?.getAttribute("aria-expanded")).toBe("true")
-	expect(less?.textContent?.trim()).toBe("Show less")
-	await click(less)
-	expect(shown(root)).toHaveLength(5)
-})
-
-test("See more reads in Thai", async () => {
-	setLocale("th")
-	const { root } = await show({ items: many(7) })
-	expect(text(root, '[data-action="more"]')).toBe("ดูเพิ่ม (2)")
-})
-
 test("opening one row closes the other; a second tap closes it", async () => {
-	const { root } = await show({ items: items() })
-	await open('[data-item="waiting"]')
-	expect(root.querySelector('[data-item="waiting"]')?.getAttribute("aria-expanded")).toBe("true")
+	const { root } = await show({ items: [...items(), planned("2026-11-02")] })
+	await open('[data-item="planned"]')
+	expect(root.querySelector('[data-item="planned"]')?.getAttribute("aria-expanded")).toBe("true")
 	await open('[data-item="overdue"]')
-	expect([...root.querySelectorAll("[data-item]")].map((e) => e.getAttribute("aria-expanded"))).toEqual([
-		"false",
-		"true",
-		"false",
-	])
+	expect(
+		[...root.querySelectorAll('[data-item="overdue"], [data-item="planned"]')].map((e) =>
+			e.getAttribute("aria-expanded"),
+		),
+	).toEqual(["true", "false"])
 	expect(root.querySelectorAll(".a-details:not([hidden])")).toHaveLength(1)
 	await open('[data-item="overdue"]')
 	expect(root.querySelector(".a-details:not([hidden])")).toBeNull()
 })
 
 test("an opened overdue bill draws its billing cycle in red to today, says what is left, and offers Pay the amount and Open card", async () => {
-	const { root } = await show({ items: [overdue(28, { remaining: 41_230_00, billed: 50_000_00 })] })
+	const { root, calls } = await show({ items: [overdue(28, { remaining: 41_230_00, billed: 50_000_00 })] })
 	await open('[data-item="overdue"]')
 	const details = shownDetails(root) as HTMLElement
 	const line = details.querySelector<HTMLElement>(".a-cycle")
@@ -402,15 +385,18 @@ test("an opened overdue bill draws its billing cycle in red to today, says what 
 	expect(fill?.style.getPropertyValue("inline-size")).toBe(now?.style.getPropertyValue("inset-inline-start") as string)
 	expect(text(details, ".a-say")).toBe("฿41,230.00 left of ฿50,000.00 billed, 28 days late")
 	expect(parts(details, ".a-say .a-money")).toEqual(["฿41,230.00", "฿50,000.00"])
-	const links = [...details.querySelectorAll(".a-btns > *")]
-	expect(links.map((e) => [e.localName, e.className, e.getAttribute("data-variant")])).toEqual([
-		["a", "btn", null],
-		["a", "btn", "quiet"],
+	// Both open the card's panel over Home: Pay straight on its pay form, the amount left filled in.
+	const buttons = [...details.querySelectorAll(".a-btns > *")]
+	expect(buttons.map((e) => [e.localName, e.getAttribute("type"), e.getAttribute("data-variant")])).toEqual([
+		["button", "button", null],
+		["button", "button", "quiet"],
 	])
-	expect(links.map((e) => e.textContent?.trim())).toEqual(["Pay ฿41,230.00", "Open card"])
-	expect(links.map((e) => e.getAttribute("data-action"))).toEqual(["pay", "open-card"])
-	expect(links[0]?.getAttribute("href")).toBe("/pay?card=SCB%2FK&amount=4123000")
-	expect(links[1]?.getAttribute("href")).toBe("/card?id=SCB%2FK")
+	expect(buttons.map((e) => e.textContent?.trim())).toEqual(["Pay ฿41,230.00", "Open card"])
+	expect(buttons.map((e) => e.getAttribute("data-action"))).toEqual(["pay", "open-card"])
+	await click(buttons[0])
+	await click(buttons[1])
+	expect(calls.paid).toEqual([["SCB/K", 41_230_00]])
+	expect(calls.cards).toEqual(["SCB/K"])
 	// One wrapper of buttons, not one inside another.
 	expect(details.querySelector(".a-btns .a-btns")).toBeNull()
 })
@@ -458,56 +444,6 @@ test("a planned payment's Delete asks first: Delete and Cancel, and only the sec
 	expect(calls.deleted).toEqual([item.payment])
 })
 
-test("an opened waiting list shows each line and when it was sent; Confirm asks Save before it calls back", async () => {
-	const sent: PurchaseList = {
-		id: "w1",
-		date: "2026-10-30",
-		status: "sent",
-		lines: [
-			{ cardId: "SCB/K", amount: 1_000_00 },
-			{ cardId: "X", amount: 250_00 },
-		],
-	}
-	const { root, calls } = await show({ items: [{ kind: "waiting", list: sent, total: 1_250_00 }], cards: [card] })
-	await open('[data-item="waiting"]')
-	const details = shownDetails(root) as HTMLElement
-	expect(parts(details, ".a-part > *")).toEqual(["SCB/K) SCB K (1111)", "฿1,000.00", "X) —", "฿250.00"])
-	expect(details.querySelector(".a-total")).toBeNull()
-	expect(text(details, ".a-say")).toBe("Sent 30 Oct. Confirm saves every line as made.")
-	const first = [...details.querySelectorAll(".a-btns > *")]
-	expect(first.map((e) => e.getAttribute("data-action"))).toEqual(["record-reply", "confirm-list"])
-	expect(first[0]?.localName).toBe("a")
-	expect(first[0]?.className).toBe("btn")
-	expect(first[0]?.textContent?.trim()).toBe("Record reply")
-	await click(first[1])
-	expect(calls.confirmed).toEqual([])
-	expect(root.querySelector("[data-confirming] [data-action=save-list]")).not.toBeNull()
-	await click(root.querySelector("[data-action=save-list]"))
-	expect(calls.confirmed).toEqual([sent])
-})
-
-test("an opened draft offers Continue and a one-step Delete", async () => {
-	const draft = list("d1", "draft", ["A"])
-	const { root, calls } = await show({ items: [{ kind: "draft", list: draft, total: 100 }] })
-	await open('[data-item="draft"]')
-	const details = shownDetails(root) as HTMLElement
-	expect(parts(details, ".a-part > *")).toEqual(["A) —", "฿1.00"])
-	expect(text(details, ".a-say")).toBe("Not sent yet.")
-	const [go, del] = [...details.querySelectorAll(".a-btns > *")]
-	expect(go?.localName).toBe("a")
-	expect(go?.className).toBe("btn")
-	expect(go?.getAttribute("data-action")).toBe("continue")
-	expect(go?.getAttribute("href")).toBe("/transactions/lists/edit?list=d1")
-	expect(go?.textContent?.trim()).toBe("Continue")
-	expect(del?.localName).toBe("button")
-	expect(del?.getAttribute("type")).toBe("button")
-	expect(del?.getAttribute("data-action")).toBe("delete-draft")
-	expect(del?.getAttribute("data-variant")).toBe("danger")
-	expect(del?.textContent?.trim()).toBe("Delete")
-	await click(del)
-	expect(calls.drafts).toEqual([draft])
-})
-
 test("the open row and a half-done swap survive a repaint; a row that goes is forgotten", async () => {
 	const item = planned("2026-11-02")
 	const { root, set } = await show({ items: [...items(), item] })
@@ -523,14 +459,12 @@ test("the open row and a half-done swap survive a repaint; a row that goes is fo
 
 test("opened rows read in Thai", async () => {
 	setLocale("th")
-	const { root } = await show({ items: [overdue(28), { kind: "draft", list: list("d1", "draft", ["A"]), total: 100 }] })
+	const { root } = await show({ items: [overdue(28)] })
 	await open('[data-item="overdue"]')
 	const due = shownDetails(root) as HTMLElement
 	expect(parts(due, ".a-btns > *")).toEqual(["ชำระ ฿1.00", "เปิดบัตร"])
 	expect(text(due, ".a-say")).toBe("เหลือ ฿1.00 จากยอด ฿1.00 เลยกำหนดมา 28 วัน")
 	expect(parts(due, ".a-mk")).toEqual(["สรุปยอดแล้ว 18 ก.ย.", "ครบกำหนด 3 ต.ค.", "วันนี้"])
-	await open('[data-item="draft"]')
-	expect(text(shownDetails(root) as HTMLElement, ".a-say")).toBe("ยังไม่ได้ส่ง")
 })
 
 test("a half-done swap ends when its row closes, when another opens, or when its row goes", async () => {
@@ -588,34 +522,6 @@ test("an opened overdue bill's line is fitted by measuring its labels", async ()
 	} finally {
 		HTMLElement.prototype.getBoundingClientRect = real
 	}
-})
-
-test("a draft or waiting list with another of its status that day offers Merge, which calls back", async () => {
-	const d1 = list("d1", "draft", ["A"])
-	const d2 = list("d2", "draft", ["B"])
-	const w1 = { ...list("w1", "sent", ["A"]), sentAt: "2026-10-30T01:00:00.000Z" }
-	const { root, calls } = await show({
-		items: [
-			{ kind: "waiting", list: w1, total: 100 },
-			{ kind: "draft", list: d1, total: 100 },
-			{ kind: "draft", list: d2, total: 100 },
-		],
-	})
-	await open('[data-row="list:d1"] .a-hit')
-	const details = shownDetails(root) as HTMLElement
-	expect([...details.querySelectorAll(".a-btns > *")].map((b) => b.getAttribute("data-action"))).toEqual([
-		"continue",
-		"merge",
-		"delete-draft",
-	])
-	const merge = details.querySelector('[data-action="merge"]')
-	expect(merge?.getAttribute("data-variant")).toBe("quiet")
-	expect(merge?.textContent?.trim()).toBe("Merge with 1 other list")
-	await click(merge)
-	expect(calls.merged).toEqual([d1])
-	// The one waiting list has no other waiting list that day, so it offers no Merge.
-	await open('[data-row="list:w1"] .a-hit')
-	expect(shownDetails(root)?.querySelector('[data-action="merge"]')).toBeNull()
 })
 
 test("a draft with no amounts yet totals ฿0.00 with no sign", async () => {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PayChoice } from "#lib/domain/pay"
+	import type { OwedRow } from "#lib/domain/owed"
 	import type { GroupRoom } from "#lib/domain/room"
 	import type { SortDir } from "#lib/domain/sort"
 	import type { CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
@@ -8,22 +8,25 @@
 	import { onMount } from "svelte"
 
 	import CardTile from "#components/molecules/CardTile.svelte"
-	import { OWED_DIRS, OWED_SORTS, type OwedSort } from "#lib/domain/transactions"
+	import SortBar from "#components/molecules/SortBar.svelte"
+	import { formatAmount } from "#lib/domain/money"
+	import { OWED_DIRS, OWED_SORTS, type OwedSort, owedLeft } from "#lib/domain/owed"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
+	import { cardLine } from "#lib/ui/card-label"
 	import { tileTone } from "#lib/ui/card-tile"
-	import { payAddress } from "#lib/ui/pay-address"
+	import { OWED_ADDRESS } from "#lib/ui/home-query"
 	import { payTileContent, payTileName } from "#lib/ui/pay-tile"
-	import { sortFieldLabel, sortOrderLabel } from "#lib/ui/sort-label"
+	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
-	 * "Owed on each card": a heading with its sort chip (the field) and the order switch (↓ | ↑,
-	 * the sort's own way first, each named by its full words, DD-193), then a card list of payment tiles, one for
-	 * every card that owes money or holds credit, each a link to the payment sheet on its card. The
-	 * tile is the payment picker's (DD-166); the list is one column, since it sits in a narrow
-	 * column beside the ledger from 900px and has the phone's width below it.
+	 * Home's _Owed_ tab (RD-25): the sort row (the field chip and the order switch, DD-193), then a
+	 * card list of payment tiles (DD-166), one for every card that owes. A tile opens the card's
+	 * panel over the tab (`/owed?card=<id>`; a click asking for a new tab is the browser's), the open
+	 * card's tile marked; _Pay_ on its last line (beside the link, not in it) hands the row to
+	 * `onpay`, which opens the panel on the pay form with what is left filled in.
 	 */
 	interface Props {
-		rows: PayChoice[]
+		rows: OwedRow[]
 		/** The stored limit groups, in order: a tile takes its group's colour. */
 		groups: LimitGroup[]
 		/** Each group's room, by group id: a tile's rail shows its group's used share. */
@@ -36,9 +39,15 @@
 		dir: SortDir
 		/** The reader chose a sort (in its own direction) or reversed the order. */
 		onsort: (sort: OwedSort, dir: SortDir) => void
+		/** The card open in the panel now, whose tile is marked. */
+		current?: string | null
+		/** A tile's plain click: open the card's panel. */
+		onopencard?: (id: string) => void
+		/** _Pay_ on a tile. */
+		onpay?: (row: OwedRow) => void
 	}
 
-	const { rows, groups, rooms, ledgers, today, sort, dir, onsort }: Props = $props()
+	const { rows, groups, rooms, ledgers, today, sort, dir, onsort, current = null, onopencard, onpay }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -48,28 +57,21 @@
 	}
 
 	/** A tile's lines and name, re-read when the language changes. */
-	const content = (row: PayChoice) => {
+	const content = (row: OwedRow) => {
 		void lang
 		return payTileContent(row, { rooms, ledgers, today })
 	}
-	const name = (row: PayChoice) => {
+	const name = (row: OwedRow) => {
 		void lang
 		return payTileName(row)
 	}
 
-	const fieldLabel = (option: OwedSort) => {
-		void lang
-		return sortFieldLabel(option)
+	/** A tile's click: the panel opens in place, unless the reader asked the browser for a new tab. */
+	const opener = (id: string) => (event: MouseEvent) => {
+		if (!onopencard || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+		event.preventDefault()
+		onopencard(id)
 	}
-	/** The order switch's two ways, the sort's own first, each named by its full words. */
-	const ways = $derived.by(() => {
-		void lang
-		const own = OWED_DIRS[sort]
-		return [own, own === "asc" ? "desc" : "asc"].map((way) => ({
-			dir: way as SortDir,
-			label: sortOrderLabel(sort, way as SortDir),
-		}))
-	})
 
 	onMount(() =>
 		subscribe(() => {
@@ -79,52 +81,34 @@
 </script>
 
 <section class="owed-list">
-	<div class="sec-head" row>
-		<h2>{tr("tx.owed.title")}</h2>
-		{#if rows.length}
-			<div class="sort" row>
-				<label class="chip" data-active={sort !== "urgency" || dir !== OWED_DIRS.urgency ? "" : undefined}>
-					{tr("list.sort")}
-					<select
-						name="sort"
-						value={sort}
-						onchange={(event) => {
-							const next = event.currentTarget.value as OwedSort
-							onsort(next, OWED_DIRS[next])
-						}}>
-						{#each OWED_SORTS as option (option)}
-							<option value={option}>{fieldLabel(option)}</option>
-						{/each}
-					</select>
-				</label>
-				<fieldset class="filter-seg" aria-label={tr("sort.order")}>
-					{#each ways as way (way.dir)}
-						<button
-							type="button"
-							data-variant="quiet"
-							data-dir={way.dir}
-							aria-pressed={dir === way.dir ? "true" : "false"}
-							aria-label={way.label}
-							title={way.label}
-							onclick={() => onsort(sort, way.dir)}>
-							{way.dir === "asc" ? "↑" : "↓"}
-						</button>
-					{/each}
-				</fieldset>
-			</div>
-		{/if}
-	</div>
 	{#if rows.length === 0}
-		<p class="empty">{tr("tx.owed.empty")}</p>
+		<p class="empty">{tr("owed.empty")}</p>
 	{:else}
+		<SortBar fields={OWED_SORTS} defaults={OWED_DIRS} initial="urgency" field={sort} {dir} onchange={onsort} />
 		<div class="tiles">
 			{#each rows as row (row.card.id)}
 				<CardTile
 					card={row.card}
 					tone={tileTone(row.card, groups)}
 					label={name(row)}
-					href={payAddress({ cardId: row.card.id })}
-					{...content(row)} />
+					href={withRecord(OWED_ADDRESS, { kind: "card", id: row.card.id })}
+					current={row.card.id === current}
+					onclick={opener(row.card.id)}
+					{...content(row)}>
+					{#snippet action()}
+						<button
+							type="button"
+							class="pay"
+							data-action="pay"
+							aria-label={tr("owed.payName", {
+								amount: formatAmount(owedLeft(row)),
+								card: cardLine(row.card.id, row.card, { short: true }),
+							})}
+							onclick={() => onpay?.(row)}>
+							{tr("owed.pay")}
+						</button>
+					{/snippet}
+				</CardTile>
 			{/each}
 		</div>
 	{/if}
@@ -138,73 +122,25 @@
 		min-inline-size: 0;
 	}
 
-	.sec-head {
-		display: flex;
-		flex-direction: row;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--cc-space-2);
-	}
-
-	/* Two classes, to outrank app.css's page heading rules. */
-	.owed-list h2 {
-		margin: 0;
-		font-size: var(--cc-text-lg);
-		font-weight: 700;
-	}
-
-	.sort {
-		display: flex;
-		flex-direction: row;
-		align-items: stretch;
-		gap: var(--cc-space-1);
-	}
-
-	/* The legacy `listControls` chip: its name, then a select stripped of its own box. */
-	.chip {
-		display: flex;
-		flex-direction: row;
-		gap: var(--cc-space-1);
-		align-items: center;
-		padding-inline-start: var(--cc-space-3);
-		color: var(--cc-text-muted);
-		white-space: nowrap;
-		background: var(--cc-surface-sunken);
-		border: var(--cc-border-width) solid var(--cc-border);
-		border-radius: var(--cc-radius-md);
-	}
-
-	.chip[data-active] {
-		color: var(--cc-link);
-		border-color: var(--cc-accent);
-	}
-
-	/* A select stripped of its own box, painting the chevron the legacy shadow root gave every
-	   select, with a token gutter on both sides of it. background-color, not the shorthand: the
-	   chevron is a background-image. */
-	.owed-list .chip select {
-		appearance: none;
-		inline-size: auto;
-		padding-block: var(--cc-space-1);
-		padding-inline-start: var(--cc-space-1);
-		padding-inline-end: calc(var(--cc-space-3) * 2 + var(--cc-select-chevron-size));
-		font: inherit;
-		font-size: var(--cc-text-sm);
-		color: var(--cc-text);
-		background-color: transparent;
-		background-image: var(--cc-select-chevron);
-		background-repeat: no-repeat;
-		background-position: right var(--cc-space-3) center;
-		background-size: var(--cc-select-chevron-size);
-		border: 0;
-	}
-
-	/* One column at every width: the side column is narrow, a phone narrower. */
+	/* The tiles' grid: one column on a phone, as many as fit from 900px, as Ready to use. */
 	.tiles {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--cc-space-2);
+	}
+
+	@media (min-width: 900px) {
+		.owed-list .tiles {
+			grid-template-columns: repeat(auto-fill, minmax(var(--cc-tile-min), 1fr));
+		}
+	}
+
+	/* Two classes, to outrank app.css's `.page button`: a compact primary button on the tile. */
+	.owed-list .pay {
+		justify-content: center;
+		padding-block: 0;
+		padding-inline: var(--cc-space-3);
+		font-size: var(--cc-text-sm);
 	}
 
 	.owed-list .empty {

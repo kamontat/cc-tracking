@@ -9,9 +9,6 @@ import {
 	LISTS_GROUPS,
 	type ListsFilter,
 	type ListsGroup,
-	OWED_DIRS,
-	OWED_SORTS,
-	type OwedSort,
 	TX_DIRS,
 	TX_GROUPS,
 	TX_SORTS,
@@ -48,14 +45,6 @@ export type ListsView = {
 }
 
 export const DEFAULT_LISTS_VIEW: ListsView = { filter: DEFAULT_LISTS_FILTER, by: "status" }
-
-/**
- * What each card owes, in order (`?sort=&dir=`). Transactions no longer shows it; Home's _Owed_
- * tab (`/owed`) reads it next.
- */
-export type OwedView = { sort: OwedSort; dir: SortDir }
-
-export const DEFAULT_OWED_VIEW: OwedView = { sort: "urgency", dir: OWED_DIRS.urgency }
 
 /** How many ledger rows show at first, and how many more each *Show more* adds. */
 export const LEDGER_PAGE = 50
@@ -137,20 +126,5 @@ export function writeListsView(view: ListsView): string {
 	for (const s of filter.status) p.append("f.statuses", s)
 	writeCardsAndDate(p, filter)
 	if (view.by !== DEFAULT_LISTS_VIEW.by) p.set("by", view.by)
-	return query(p)
-}
-
-/** What each card owes, in order, read from a query; unknown values read as defaults. */
-export function readOwedView(search: string): OwedView {
-	const p = new URLSearchParams(search)
-	const sort = oneOf(OWED_SORTS, p.get("sort"), DEFAULT_OWED_VIEW.sort)
-	return { sort, dir: readDir(p.get("dir"), sort, OWED_DIRS) }
-}
-
-/** `""` for the default order, else `?` and the keys that differ. */
-export function writeOwedView(view: OwedView): string {
-	const p = new URLSearchParams()
-	if (view.sort !== DEFAULT_OWED_VIEW.sort) p.set("sort", view.sort)
-	if (view.dir !== OWED_DIRS[view.sort]) p.set("dir", view.dir)
 	return query(p)
 }

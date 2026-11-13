@@ -1,8 +1,9 @@
 import type { CardsSort } from "#lib/domain/cards-view"
 import type { ReadySort } from "#lib/domain/home"
 import type { LimitsSort } from "#lib/domain/limits-view"
+import type { OwedSort } from "#lib/domain/owed"
 import type { SortDir } from "#lib/domain/sort"
-import type { OwedSort, TxSort } from "#lib/domain/transactions"
+import type { TxSort } from "#lib/domain/transactions"
 
 import { t } from "#lib/i18n/index"
 

@@ -308,10 +308,10 @@ test("cards sharing a limit are warned together", async () => {
 	}
 })
 
-test("an overdue bill links to the card", async () => {
+test("an overdue bill links to the card's panel on Cards", async () => {
 	await show({}, { ledgerA: overdueLedger() })
 	const link = (await opened("A")).querySelector('[data-warning="overdue-bill"] a') as HTMLAnchorElement
-	expect(link.getAttribute("href")).toBe("/card?id=A")
+	expect(link.getAttribute("href")).toBe("/cards?card=A")
 })
 
 test("buying on the close date is warned", async () => {

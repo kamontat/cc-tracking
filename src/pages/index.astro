@@ -1,11 +1,15 @@
 ---
+import PageTabs from "#components/molecules/PageTabs.astro"
 import HomePage from "#components/organisms/HomePage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
+import { NEEDS_ADDRESS } from "#lib/ui/home-query"
+import { HOME_TABS } from "#lib/ui/page-tabs"
 ---
 
-<!-- Home: Needs you and Ready to use are the reader's data, so the page is an island. -->
+<!-- Home, its Needs you tab (RD-22): the title and the tabs are static; what needs the reader is their data, so it is an island. -->
 <AppLayout title="Home" titleKey="title.home" tab="home">
 	<Fragment slot="main">
+		<PageTabs title="nav.home" label="home.tabs" tabs={HOME_TABS} current={NEEDS_ADDRESS} />
 		<HomePage client:load />
 	</Fragment>
 </AppLayout>

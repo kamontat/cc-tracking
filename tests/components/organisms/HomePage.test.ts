@@ -7,12 +7,13 @@ import HomePage from "#components/organisms/HomePage.svelte"
 import { setLocale } from "#lib/i18n/index"
 import { LocalStorageRepository } from "#lib/storage/local"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
+import { fakeHistory } from "../../lib/ui/fake-history"
 import { saveLocations } from "./list-support"
 
 /**
- * Home's island: *Needs you* and a short *Ready to use* (DD-103, DD-152). Ported from the legacy
- * route's tests; where those read the two elements' properties, these read what they draw and
- * press the real rows.
+ * Home's _Needs you_ tab (`/`, RD-22): every row that needs the reader, the plans' writes, and the
+ * panels it opens over Home: a list's (`?list=`) and a card's (`?card=`), _Pay_ opening the card's
+ * panel straight on its pay form.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -65,45 +66,29 @@ const seed = async (repo: Repository) => {
 
 const setup = async (
 	repo: Repository = new InMemoryRepository(),
-	{ seeded = false, tickMs }: { seeded?: boolean; tickMs?: number } = {},
+	{ seeded = false, tickMs, search = "" }: { seeded?: boolean; tickMs?: number; search?: string } = {},
 ) => {
 	setLocale("en")
 	if (!seeded) await seed(repo)
 	const time = movableClock()
+	const history = fakeHistory(`/${search}`)
 	mounted = mount(HomePage, {
 		target: document.body,
-		props: { open: async () => ({ ok: true, repo }), clock: time.clock, ...(tickMs ? { tickMs } : {}) },
+		props: {
+			open: async () => ({ ok: true, repo }),
+			clock: time.clock,
+			address: history.bar,
+			newId: () => "id-1",
+			...(tickMs ? { tickMs } : {}),
+		},
 	})
 	await settle()
-	return { repo, time }
+	return { repo, time, history }
 }
 
-/** The *Ready to use* tiles, in order. */
-const readyCards = () =>
-	[...document.querySelectorAll("#ready-list [data-card]")].map((el) => el.getAttribute("data-card"))
 /** The *Needs you* rows, by row id. */
 const needsRows = () =>
 	[...document.querySelectorAll("#needs-list [data-row]")].map((el) => el.getAttribute("data-row"))
-
-test("needs you comes before ready to use", async () => {
-	await setup()
-	const grid = $(".home-grid")
-	expect([...(grid?.children ?? [])].map((c) => c.className.split(" ")[0])).toEqual(["home-needs", "home-ready"])
-	expect(grid?.querySelector(".home-needs h1")).not.toBeNull()
-	expect(grid?.querySelector(".home-ready h2")).not.toBeNull()
-})
-
-test("a card in no stored group is left out of Ready to use, and nothing counts it (RD-27)", async () => {
-	const repo = new InMemoryRepository()
-	await seed(repo)
-	const { limitGroupId: _, ...loose } = card("N")
-	await repo.saveCard(loose)
-	await repo.saveCard(card("O", { limitGroupId: "gone" }))
-	await setup(repo, { seeded: true })
-	expect(readyCards()).toEqual(["A", "B"])
-	expect(document.body.textContent).not.toContain("no limit group")
-	expect($('a[href^="/cards?ungrouped"]')).toBeNull()
-})
 
 test("the batch start is never touched", async () => {
 	localStorage.clear()
@@ -111,21 +96,7 @@ test("the batch start is never touched", async () => {
 	expect(localStorage.getItem("cc:batch-start")).toBeNull()
 })
 
-test("Home has no selection: the short panel has no Start a list", async () => {
-	await setup()
-	expect(readyCards()).toEqual(["A", "B"])
-	expect($(".home-ready .tick")).toBeNull()
-	expect($('[data-action="start"]')).toBeNull()
-	expect($('[data-testid="selection"]')).toBeNull()
-	expect(document.documentElement.hasAttribute("data-selecting")).toBe(false)
-})
-
-test("the floating Payment button stays on Home", async () => {
-	const css = await Bun.file("src/styles/app.css").text()
-	expect(css).not.toContain("data-selecting")
-})
-
-test("stored payments and sent lists move the room", async () => {
+test("a paid bill no longer needs you; a sent list does", async () => {
 	const repo = new InMemoryRepository()
 	await repo.savePurchase({ id: "p1", cardId: "A", date: "2026-09-10", amount: 20_000_00, note: "" })
 	await repo.saveCardPayment({
@@ -144,9 +115,6 @@ test("stored payments and sent lists move the room", async () => {
 		lines: [{ cardId: "B", amount: 10_000_00 }],
 	})
 	await setup(repo)
-	expect(readyCards()).toHaveLength(2)
-	// G1's ฿100,000.00, less A's open ฿5,000.00 and the waiting ฿10,000.00, on both cards.
-	for (const id of ["A", "B"]) expect(flat($(`#ready-list [data-card="${id}"]`))).toContain("฿85,000.00")
 	expect($('#needs-list [data-item="waiting"]')).not.toBeNull()
 	expect($('#needs-list [data-item="overdue"]')).toBeNull()
 })
@@ -178,30 +146,6 @@ test("past midnight moves today", async () => {
 	expect(when()).toContain("today")
 })
 
-test("ready to use names the places that take purchases, A to Z in the reader's language", async () => {
-	const repo = new InMemoryRepository()
-	await seed(repo)
-	await repo.saveLocation({ id: "chiang-mai", name: "Chiang Mai", takesPurchases: true })
-	await repo.saveCard(card("C", { location: "chiang-mai" }))
-	await setup(repo, { seeded: true })
-	expect(flat($(".home-ready .head small"))).toBe("3 cards in Chiang Mai, Krabi")
-	expect(readyCards().sort()).toEqual(["A", "B", "C"])
-	// A language switch repaints with the names, and their order, in that language.
-	setLocale("th")
-	await settle()
-	expect(flat($(".home-ready .head small"))).toContain("กระบี่, Chiang Mai")
-})
-
-test("with nothing ready, the panel still names no place that takes none", async () => {
-	const repo = new InMemoryRepository()
-	await seed(repo)
-	await saveLocations(repo, [])
-	await setup(repo, { seeded: true })
-	expect(readyCards()).toEqual([])
-	expect($('.home-ready [data-action="settings"]')).not.toBeNull()
-	expect(flat($(".home-ready .head small"))).toBe("0 cards in")
-})
-
 class FailingReadRepository extends InMemoryRepository {
 	override listCards(): Promise<Card[]> {
 		return Promise.reject(new Error("disk is gone"))
@@ -211,16 +155,6 @@ class FailingReadRepository extends InMemoryRepository {
 test("a failed read shows the banner", async () => {
 	await setup(new FailingReadRepository(), { seeded: true })
 	expect(flat($(".error-banner p")).startsWith("Could not read your cards.")).toBe(true)
-})
-
-test("Home is two columns from 900px: Ready to use left, Needs you right; a phone keeps Needs you first", async () => {
-	const css = await Bun.file("src/styles/app.css").text()
-	expect(css).toMatch(
-		/@media \(min-width: 900px\)\s*\{\s*\.home-grid\s*\{[^}]*grid-template-columns: minmax\(0, 1\.5fr\) minmax\(0, 1fr\);[^}]*grid-template-areas: "ready needs";/,
-	)
-	expect(css).toMatch(/\.home-grid > \.home-needs\s*\{\s*grid-area: needs;/)
-	expect(css).toMatch(/\.home-grid > \.home-ready\s*\{\s*grid-area: ready;/)
-	expect(css).not.toMatch(/\.home-grid > cc-/)
 })
 
 /** Opens the Needs you row `row` (unless open) and taps `action` in it. */
@@ -265,17 +199,6 @@ test("after Paid takes a row away, focus moves to the next row's head", async ()
 	expect(document.activeElement).toBe($('[data-row="plan:A:c3"] .a-hit'))
 })
 
-test("in a folded list, focus moves to the row that slides into the gone row's place", async () => {
-	const repo = new InMemoryRepository()
-	for (const plan of plans("2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03"))
-		await repo.saveCardPayment(plan)
-	await setup(repo)
-	// Five show; the sixth waits behind See more.
-	expect($('[data-row="plan:A:c6"]')).toBeNull()
-	await pressIn("plan:A:c5", "mark-paid")
-	expect(document.activeElement).toBe($('[data-row="plan:A:c6"] .a-hit'))
-})
-
 test("after Paid takes the last row away, focus moves to the row before it", async () => {
 	const repo = new InMemoryRepository()
 	for (const plan of plans("2026-11-01", "2026-11-02")) await repo.saveCardPayment(plan)
@@ -289,7 +212,7 @@ test("after Paid takes the only row away, focus moves to the heading", async () 
 	await repo.saveCardPayment(soonPlan)
 	await setup(repo)
 	await pressIn("plan:A:c1", "mark-paid")
-	const heading = $(".home-needs h1")
+	const heading = $(".needs h2")
 	expect(heading?.getAttribute("tabindex")).toBe("-1")
 	expect(document.activeElement).toBe(heading)
 })
@@ -330,37 +253,6 @@ test("a failed write shows the banner and keeps the row open", async () => {
 
 const draft = { id: "d1", date: "2026-10-31", status: "draft" as const, lines: [{ cardId: "A", amount: 1_000_00 }] }
 
-test("Delete on a Needs you draft removes it at once", async () => {
-	const repo = new InMemoryRepository()
-	await repo.savePurchaseList(draft)
-	await setup(repo)
-	await tapIn("list:d1", "delete-draft")
-	expect(await repo.listPurchaseLists()).toEqual([])
-	expect($('[data-row="list:d1"]')).toBeNull()
-})
-
-test("Merge on a Needs you draft takes in the other draft for that day", async () => {
-	const repo = new InMemoryRepository()
-	await repo.savePurchaseList(draft)
-	await repo.savePurchaseList({ ...draft, id: "d2", lines: [{ cardId: "A", amount: 0 }] })
-	await setup(repo)
-	await tapIn("list:d1", "merge")
-	expect(await repo.listPurchaseLists()).toEqual([draft])
-	expect($('[data-row="list:d2"]')).toBeNull()
-})
-
-test("Delete refuses a draft sent since, and says why", async () => {
-	const repo = new InMemoryRepository()
-	await repo.savePurchaseList(draft)
-	await setup(repo)
-	await repo.savePurchaseList({ ...draft, status: "sent" })
-	await tapIn("list:d1", "delete-draft")
-	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual(["sent"])
-	expect(flat($(".error-banner p"))).toBe(
-		"Could not delete the draft. This list was sent or saved elsewhere, so it was not changed.",
-	)
-})
-
 /** Taps the first step of a two-step button in a row; returns the second step. */
 const tapTwice = async (row: string, first: string, second: string) => {
 	$(`[data-row="${row}"] .a-hit`)?.click()
@@ -385,13 +277,93 @@ test("Delete on a planned payment is two steps, then the stored payment is gone"
 	expect($(".error-banner")).toBeNull()
 })
 
-test("Confirm on a waiting list is two steps, then Save stores the list saved", async () => {
+test("Needs you is the page: every row, with no Ready to use beside it and no See more", async () => {
 	const repo = new InMemoryRepository()
-	await repo.savePurchaseList({ ...draft, id: "w1", status: "sent" })
+	for (const plan of plans("2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03"))
+		await repo.saveCardPayment(plan)
 	await setup(repo)
-	const second = await tapTwice("list:w1", "confirm-list", "save-list")
-	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual(["sent"])
-	await second()
-	expect((await repo.listPurchaseLists()).map((l) => l.status)).toEqual(["saved"])
-	expect($('[data-row="list:w1"]')).toBeNull()
+	expect(needsRows()).toHaveLength(6)
+	expect($('[data-action="more"]')).toBeNull()
+	expect($(".home-grid, .ready, #ready-list")).toBeNull()
+	expect($(".panel-layout > .needs-main > .needs")).not.toBeNull()
+})
+
+test("a list's row opens its panel over Home, pushing ?list=; Back closes it", async () => {
+	const repo = new InMemoryRepository()
+	await repo.savePurchaseList(draft)
+	const { history } = await setup(repo)
+	$('[data-row="list:d1"] .a-hit')?.click()
+	await settle()
+	expect(history.now()).toBe("/?list=d1")
+	expect($(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+	expect($('[data-row="list:d1"] .a-hit')?.getAttribute("aria-current")).toBe("true")
+	expect($('.detail-panel [data-action="continue"]')?.getAttribute("href")).toBe("/transactions/lists/edit?list=d1")
+	history.userBack()
+	await settle()
+	expect(history.now()).toBe("/")
+	expect($(".detail-panel")).toBeNull()
+})
+
+test("deleting a draft in its panel takes its row off Needs you", async () => {
+	const repo = new InMemoryRepository()
+	await repo.savePurchaseList(draft)
+	await setup(repo, { search: "?list=d1" })
+	$('.detail-panel [data-action="delete-draft"]')?.click()
+	await settle()
+	expect(await repo.listPurchaseLists()).toEqual([])
+	expect($('[data-row="list:d1"]')).toBeNull()
+	expect($(".detail-panel")).toBeNull()
+})
+
+/** A card with a lower-case id, as a card's panel needs (RD-28), with a bill overdue since October. */
+const overdueSeven = async (repo: Repository) => {
+	await repo.saveCard(card("7", { name: "KTC" }))
+	await repo.savePurchase({ id: "p1", cardId: "7", date: "2026-09-10", amount: 3_000_00, note: "" })
+}
+
+test("Open card on an overdue bill opens the card's panel over Home; card wins over list", async () => {
+	const repo = new InMemoryRepository()
+	await overdueSeven(repo)
+	const { history } = await setup(repo)
+	await tapIn("due:7", "open-card")
+	expect(history.now()).toBe("/?card=7")
+	expect($(".detail-panel .card-hero")).not.toBeNull()
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	await repo.savePurchaseList(draft)
+	await setup(repo, { seeded: true, search: "?list=d1&card=7" })
+	expect($(".detail-panel .card-hero")).not.toBeNull()
+	expect($('.detail-panel [data-action="continue"]')).toBeNull()
+})
+
+test("Pay on an overdue bill opens the card's panel on its pay form, the amount left filled in; Cancel swaps the card back in place", async () => {
+	const repo = new InMemoryRepository()
+	await overdueSeven(repo)
+	const { history } = await setup(repo)
+	await tapIn("due:7", "pay")
+	expect(history.now()).toBe("/?card=7")
+	expect(history.size()).toBe(2)
+	expect($<HTMLInputElement>('.detail-panel input[name="amount"]')?.value).toBe("3000")
+	$('.detail-panel [data-action="cancel"]')?.click()
+	await settle()
+	expect($(".detail-panel .card-hero")).not.toBeNull()
+	expect(history.now()).toBe("/?card=7")
+	expect(history.size()).toBe(2)
+})
+
+test("saving the payment returns to the card in place, and the bill leaves Needs you", async () => {
+	const repo = new InMemoryRepository()
+	await overdueSeven(repo)
+	await setup(repo)
+	await tapIn("due:7", "pay")
+	$(".detail-panel form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
+	await settle()
+	expect(await repo.listCardPayments("7")).toMatchObject([{ id: "id-1", amount: 3_000_00, status: "paid" }])
+	expect($(".detail-panel .card-hero")).not.toBeNull()
+	expect($('[data-row="due:7"]')).toBeNull()
+})
+
+test("Home's two-column grid is gone from app.css: each tab has the screen to itself", async () => {
+	const css = await Bun.file("src/styles/app.css").text()
+	expect(css).not.toMatch(/\.home-(grid|needs|ready)\b/)
 })

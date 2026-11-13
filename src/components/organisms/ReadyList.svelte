@@ -1,26 +1,25 @@
-<script lang="ts" module>
-	/** How many cards Home shows before *See more*. */
-	export const READY_TOP = 4
-</script>
-
 <script lang="ts">
-	import type { ReadyRow } from "#lib/domain/home"
+	import type { ReadyRow, ReadySort } from "#lib/domain/home"
+	import type { SortDir } from "#lib/domain/sort"
 	import type { LimitGroup, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
 	import CardTile from "#components/molecules/CardTile.svelte"
+	import SortBar from "#components/molecules/SortBar.svelte"
 	import { displayDate } from "#lib/domain/date"
-	import { sortReady } from "#lib/domain/home"
+	import { READY_DIRS, READY_SORTS, sortReady } from "#lib/domain/home"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { lastFour, tileTone } from "#lib/ui/card-tile"
+	import { READY_ADDRESS } from "#lib/ui/home-query"
+	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
-	 * Home's short *Ready to use* (DD-103): the count, the four cards with the most room as card
-	 * tiles that open the card's page (DD-151), then *See more (N)* (the control *Needs you* uses),
-	 * which opens the rest in place and reads *Show less* to fold them. Starting a list is the
-	 * *+ New* menu's job and the builder's (`/transactions/lists/new`). With no card ready it says so and leads to Settings.
+	 * Home's _Ready to use_ tab (RD-22): the count and places with the sort row (most room, longest
+	 * to close, latest due, either way, DD-193), then every ready card as a card tile (DD-151) that
+	 * opens the card's panel over the tab (`/ready?card=<id>`; a click asking for a new tab is the
+	 * browser's), the open card's tile marked. With no card ready it says so and leads to Settings.
 	 */
 	interface Props {
 		rows: ReadyRow[]
@@ -30,12 +29,19 @@
 		groups: LimitGroup[]
 		/** Kept for the page's clock; the tiles' dates come with the rows. */
 		today: PlainDate
+		/** How many unarchived cards that could take a purchase point at no limit group. */
+		unassigned: number
+		sort: ReadySort
+		dir: SortDir
+		/** The reader chose a sort (in its own direction) or reversed the order. */
+		onsort: (sort: ReadySort, dir: SortDir) => void
+		/** The card open in the panel now, whose tile is marked. */
+		current?: string | null
+		/** A tile's plain click: open the card's panel. */
+		onopencard?: (id: string) => void
 	}
 
-	const { rows, places, groups }: Props = $props()
-
-	/** Whether the cards past the first `READY_TOP` are open. */
-	let expanded = $state(false)
+	const { rows, places, groups, unassigned, sort, dir, onsort, current = null, onopencard }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -45,8 +51,14 @@
 	}
 
 	const count = $derived(rows.length)
-	const sorted = $derived(sortReady(rows, "room"))
-	const shown = $derived(expanded ? sorted : sorted.slice(0, READY_TOP))
+	const sorted = $derived(sortReady(rows, sort, dir))
+
+	/** A tile's click: the panel opens in place, unless the reader asked the browser for a new tab. */
+	const opener = (id: string) => (event: MouseEvent) => {
+		if (!onopencard || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+		event.preventDefault()
+		onopencard(id)
+	}
 
 	/** Line 3: when the card closes, or, between a bill's close and its due date, when it is due. */
 	const facts = (row: ReadyRow): string =>
@@ -63,8 +75,10 @@
 
 <div class="ready">
 	<div class="head">
-		<h2>{tr("ready.title")}</h2>
 		<small>{tr(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places: places.join(", ") })}</small>
+		{#if count > 0}
+			<SortBar fields={READY_SORTS} defaults={READY_DIRS} initial="room" field={sort} {dir} onchange={onsort} />
+		{/if}
 	</div>
 	{#if count === 0}
 		<div class="note">
@@ -74,13 +88,15 @@
 		</div>
 	{:else}
 		<div class="tiles" id="ready-list">
-			{#each shown as row (row.card.id)}
+			{#each sorted as row (row.card.id)}
 				<CardTile
 					card={row.card}
 					room={row.room}
 					credit={row.credit}
 					tone={tileTone(row.card, groups)}
-					href={`/card?id=${encodeURIComponent(row.card.id)}`}
+					href={withRecord(READY_ADDRESS, { kind: "card", id: row.card.id })}
+					current={row.card.id === current}
+					onclick={opener(row.card.id)}
 					corner={lastFour(row.card)}
 					mono
 					facts={facts(row)}
@@ -88,20 +104,6 @@
 					quietOver />
 			{/each}
 		</div>
-		{#if count > READY_TOP}
-			<button
-				type="button"
-				class="more"
-				data-variant="quiet"
-				data-action="more"
-				aria-controls="ready-list"
-				aria-expanded={expanded ? "true" : "false"}
-				onclick={() => {
-					expanded = !expanded
-				}}>
-				{expanded ? tr("common.showLess") : tr("common.seeMore", { count: count - READY_TOP })}
-			</button>
-		{/if}
 	{/if}
 </div>
 
@@ -116,24 +118,15 @@
 		display: flex;
 		flex-direction: row;
 		flex-wrap: wrap;
-		align-items: baseline;
+		align-items: center;
 		justify-content: space-between;
 		gap: var(--cc-space-1) var(--cc-space-3);
 	}
 
-	/* Outranks app.css's `.page h2` and `.page small`. */
-	.ready .head h2 {
-		font-size: var(--cc-text-2xl);
-		font-weight: 700;
-	}
-
+	/* Outranks app.css's `.page small`. */
 	.ready .head small {
 		font-size: var(--cc-text-sm);
 		color: var(--cc-text-muted);
-	}
-
-	.ready .more {
-		align-self: center;
 	}
 
 	.ready .note {
