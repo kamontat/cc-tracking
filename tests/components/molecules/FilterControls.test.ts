@@ -158,6 +158,25 @@ test("with no sort given, there is no sort chip", () => {
 	expect(document.querySelector('[data-action="filter"]')).not.toBeNull()
 })
 
+test("with no onopen, it is the search box alone: no Filter button and no chip row", () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	const searched: string[] = []
+	mounted = mount(FilterControls, {
+		target: document.body,
+		props: { q: "", placeholder: "Search card", onsearch: (q: string) => searched.push(q) },
+	})
+	flushSync()
+	expect(document.querySelector(".tx-controls .tx-ctl label.tx-search input.search")).not.toBeNull()
+	expect(document.querySelector(".tx-ctl")?.children).toHaveLength(1)
+	expect(document.querySelector('[data-action="filter"]')).toBeNull()
+	expect(document.querySelector(".tx-chips")).toBeNull()
+	const input = document.querySelector<HTMLInputElement>("input.search")
+	if (input) input.value = "uob"
+	input?.dispatchEvent(new Event("input"))
+	expect(searched).toEqual(["uob"])
+})
+
 test("an end snippet sits at the end of the search row, after Filter", async () => {
 	const { createRawSnippet } = await import("svelte")
 	if (mounted) unmount(mounted)

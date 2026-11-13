@@ -18,10 +18,10 @@
 	import { tileTone } from "#lib/ui/card-tile"
 
 	/**
-	 * The add-a-card sheet's picker (DD-195): the control bar the list pages share (`FilterControls`:
-	 * the search, *Filter* and the sort chip; no filters, so no badge and no filter chips), where
-	 * *Filter* and the sort chip fold open the sorts in place as a filter sheet's pills (most room,
-	 * least used, longest unused, longest to close, latest due; most room first), then every ready card
+	 * The add-a-card sheet's picker (DD-195, DD-198): the list pages' search box (`FilterControls` with
+	 * no `onopen`, so no *Filter* and no sort chip), the sorts always shown under it as a filter sheet's
+	 * pills (most room, least used, longest unused, longest to close, latest due; most room first), so
+	 * picking one never changes the sheet's height, then every ready card
 	 * as a card tile (DD-151) with its last 12 statements under it: the bars on one scale for all
 	 * the cards, the 12-statement total and the day it was last used. A tap calls `onpick`. A card
 	 * already on the list says so at the right of its room, with what it holds there.
@@ -47,8 +47,6 @@
 
 	let query = $state("")
 	let sort = $state<PickSort>("room")
-	/** The sorts are open under the control bar. */
-	let sorting = $state(false)
 
 	const shown = $derived(sortPick(rows, sort, usage).filter((row) => matchesCard(row.card, query)))
 
@@ -106,33 +104,24 @@
 			placeholder={tr("ready.search")}
 			onsearch={(q: string) => {
 				query = q
-			}}
-			onopen={() => {
-				sorting = !sorting
-			}}
-			count={0}
-			sort={tr(`purchaseList.sort.${sort}`)}
-			chips={[]} />
-		{#if sorting}
-			<fieldset class="filter-group">
-				<legend>{tr("purchaseList.sort")}</legend>
-				<div class="filter-chips">
-					{#each PICK_SORTS as value (value)}
-						<button
-							type="button"
-							data-variant="quiet"
-							data-sort={value}
-							aria-pressed={sort === value ? "true" : "false"}
-							onclick={() => {
-								sort = value
-								sorting = false
-							}}>
-							{tr(`purchaseList.sort.${value}`)}
-						</button>
-					{/each}
-				</div>
-			</fieldset>
-		{/if}
+			}} />
+		<fieldset class="filter-group">
+			<legend>{tr("purchaseList.sort")}</legend>
+			<div class="filter-chips">
+				{#each PICK_SORTS as value (value)}
+					<button
+						type="button"
+						data-variant="quiet"
+						data-sort={value}
+						aria-pressed={sort === value ? "true" : "false"}
+						onclick={() => {
+							sort = value
+						}}>
+						{tr(`purchaseList.sort.${value}`)}
+					</button>
+				{/each}
+			</div>
+		</fieldset>
 		{#if shown.length === 0}
 			<p class="placeholder" data-empty="no-match">{tr("ready.noMatch")}</p>
 		{:else}
@@ -170,7 +159,7 @@
 		gap: var(--cc-space-3);
 	}
 
-	/* The control bar and the sorts are app.css's `.tx-controls` and `.filter-group`. */
+	/* The search box and the sorts are app.css's `.tx-controls` and `.filter-group`. */
 
 	.tiles {
 		display: grid;
