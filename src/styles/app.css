@@ -580,6 +580,23 @@ a:any-link:hover {
 	color: var(--cc-accent);
 }
 
+/* A row that states a fact rather than doing something, its figure on the right: the
+   _Your data_ panel's rows (RD-31), a `<dl>` whose rows are `dt` and `dd`. */
+.page dl.set,
+.page .set-row--fact > * {
+	margin: 0;
+}
+
+.page .set-row--fact {
+	cursor: default;
+}
+
+.set-row__value {
+	flex: none;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+}
+
 /* *Delete all data*, asked: the warning over *Keep my data* and *Delete everything*, side by
    side, in the row's place. */
 .set-ask {

@@ -133,7 +133,7 @@ const sectionsIn = (root: HTMLElement, column: string) =>
 		section.getAttribute("data-section"),
 	)
 
-test("lays the sections out in two columns: display, locations and owners, and backup, then reset and about", async () => {
+test("lays the sections out in two columns: display, locations and owners, and backup, then your data, reset and about", async () => {
 	const root = await show()
 
 	expect(sectionsIn(root, "main")).toEqual(["display", "locations", "backup"])
@@ -141,7 +141,7 @@ test("lays the sections out in two columns: display, locations and owners, and b
 	expect(
 		[...root.querySelectorAll('[data-section="locations"] .set > .set-row')].map((r) => r.getAttribute("data-row")),
 	).toEqual(["locations", "owners"])
-	expect(sectionsIn(root, "side")).toEqual(["reset", "about"])
+	expect(sectionsIn(root, "side")).toEqual(["data", "reset", "about"])
 	for (const section of root.querySelectorAll("section.set-section")) {
 		expect(section.querySelector(":scope > h2")).not.toBeNull()
 		expect(section.querySelector(":scope > .set")).not.toBeNull()
@@ -154,7 +154,7 @@ test("names each section in the chosen language", async () => {
 	const root = await show()
 
 	const headings = () => [...root.querySelectorAll("section.set-section > h2")].map((h) => h.textContent?.trim())
-	expect(headings()).toEqual(["Display", "Locations and owners", "Backup", "Reset", "About"])
+	expect(headings()).toEqual(["Display", "Locations and owners", "Backup", "Your data", "Reset", "About"])
 	setLocale("th")
 	flushSync()
 	expect(headings()).not.toContain("Backup")
@@ -576,6 +576,110 @@ const purgeable = async () => {
 	return repo
 }
 
+const dataPanel = (root: HTMLElement) => root.querySelector<HTMLElement>(".detail-panel")
+
+/** Opens the data panel from its row in the Your data section. */
+const openData = async (root: HTMLElement) => {
+	if (!dataPanel(root)) await press(row(root, "data"))
+}
+
+/** A data row's label, the detail under it, and its figure, joined by `|`. */
+const dataRow = (root: HTMLElement, name: string) => {
+	const found = dataPanel(root)?.querySelector(`[data-row="${name}"]`)
+	return [".set-row__label", ".set-row__sub", ".set-row__value"]
+		.map((part) => flat(found?.querySelector(part)))
+		.join(" | ")
+}
+
+test("Your data is one row, with the gist, that opens the data panel beside Settings (?panel=data)", async () => {
+	const root = await show(await fullyPopulated(new InMemoryRepository()))
+
+	const rows = [...root.querySelectorAll('[data-section="data"] .set > .set-row')]
+	expect(rows.map((found) => found.getAttribute("data-row"))).toEqual(["data"])
+	const link = row(root, "data")
+	expect(link.getAttribute("href")).toBe("/settings?panel=data")
+	expect(flat(link.querySelector(".set-row__sub"))).toMatch(/^2 cards · 3 purchases · \d/)
+	expect(link.hasAttribute("aria-current")).toBe(false)
+	expect(dataPanel(root)).toBeNull()
+
+	await press(link)
+
+	expect(history.calls).toEqual(["push /settings?panel=data"])
+	expect(link.getAttribute("aria-current")).toBe("true")
+	expect(flat(dataPanel(root)?.querySelector("h2"))).toBe("Your data")
+	expect(flat(dataPanel(root)?.querySelector(".detail-panel__detail"))).toBe("In this browser only")
+	expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+
+	// Another row swaps its panel in place.
+	await press(row(root, "locations"))
+	expect(history.calls).toEqual(["push /settings?panel=data", "replace /settings?panel=locations"])
+	expect(link.hasAttribute("aria-current")).toBe(false)
+})
+
+test("× steps back over the data panel, Back closes it, and a pasted address opens it", async () => {
+	const root = await show()
+
+	await openData(root)
+	await press(dataPanel(root)?.querySelector<HTMLElement>('[data-action="close-panel"]') as HTMLElement)
+	expect(history.now()).toBe("/settings")
+	expect(dataPanel(root)).toBeNull()
+
+	await press(row(root, "data"))
+	history.userBack()
+	await settle()
+	expect(dataPanel(root)).toBeNull()
+
+	const pasted = await show(new InMemoryRepository(), undefined, "/settings?panel=data")
+	expect(flat(dataPanel(pasted)?.querySelector("h2"))).toBe("Your data")
+})
+
+test("the data panel sums up what this browser holds, a row per kind", async () => {
+	const root = await show(await fullyPopulated(new InMemoryRepository()))
+	await openData(root)
+
+	expect(
+		[...(dataPanel(root)?.querySelectorAll(".set > .set-row") ?? [])].map((found) => found.getAttribute("data-row")),
+	).toEqual(["cards", "limit-groups", "purchases", "payments", "lists", "locations", "owners", "storage"])
+	expect(dataRow(root, "cards")).toBe("Cards | 2 active · 0 archived | 2")
+	expect(dataRow(root, "purchases")).toBe("Purchases | ฿3.00 · 05 Sep 2026 to 07 Sep 2026 | 3")
+	expect(dataRow(root, "lists")).toBe("Purchase lists | 1 draft · 0 waiting · 0 saved | 1")
+	expect(dataRow(root, "locations")).toBe("Locations |  | 3")
+	// The panel reads; only its head has buttons.
+	expect(dataPanel(root)?.querySelector(".detail-panel__body button, .detail-panel__body a")).toBeNull()
+})
+
+test("the storage row counts this browser's own keys", async () => {
+	const storage = memoryStorage()
+	storage.setItem("cc:card:k1", "x".repeat(1020))
+	const root = await show(new InMemoryRepository(), storage)
+	await openData(root)
+
+	expect(dataRow(root, "storage")).toBe("Storage used |  | 2.0 KB")
+	expect(flat(dataPanel(root)?.querySelector(".detail-panel__detail"))).toBe("In this browser only")
+})
+
+test("the data panel follows a language switch", async () => {
+	const root = await show(await fullyPopulated(new InMemoryRepository()))
+	await openData(root)
+
+	setLocale("th")
+	flushSync()
+	expect(dataRow(root, "cards")).not.toContain("Cards")
+	expect(flat(row(root, "data"))).not.toContain("cards")
+})
+
+test("the data panel counts again after a reset", async () => {
+	const root = await show(await fullyPopulated(new InMemoryRepository()))
+	await openData(root)
+
+	await click(root, "reset")
+	await click(root, "delete-everything")
+
+	expect(dataRow(root, "cards")).toBe("Cards | None yet | 0")
+	expect(dataRow(root, "owners")).toBe("Owners |  | 3")
+	expect(flat(row(root, "data").querySelector(".set-row__sub"))).toMatch(/^0 cards · 0 purchases/)
+})
+
 test("the Delete old purchases row opens the purge sheet, and closing takes it away", async () => {
 	const root = await show()
 	expect(purgeSheet(root)).toBeNull()
@@ -601,6 +705,9 @@ test("a purge reports what it deleted in the Reset panel, in the reader's langua
 	expect(purgeSheet(root)).toBeNull()
 	expect(resetStatus(root)).toBe("Deleted 2 purchases older than 1 year.")
 	expect((await repo.listPurchases("k1")).map((purchase) => purchase.id)).toEqual(["c"])
+	// The data panel counts again, too.
+	await openData(root)
+	expect(dataRow(root, "purchases")).toMatch(/\| 1$/)
 	setLocale("th")
 	flushSync()
 	expect(resetStatus(root)).toContain("2")

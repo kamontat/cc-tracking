@@ -1,7 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: `/settings/locations` and `/settings/owners` became panels over `/settings`, 2026-11-14, PRD DD-203). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: `/settings?panel=data`, the data summary panel, 2026-11-14, PRD DD-204). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -237,15 +237,16 @@ the panel. Example: `/cards/limits?f.owners=KC&sort=room&limit=<id>`.
 
 ### `/settings`
 
-| Key     | Values                | Default | Notes                                                  |
-| ------- | --------------------- | ------- | ------------------------------------------------------ |
-| `panel` | `locations`, `owners` | none    | The panel open beside Settings (RD-17, RD-30, DD-203). |
+| Key     | Values                        | Default | Notes                                                                 |
+| ------- | ----------------------------- | ------- | --------------------------------------------------------------------- |
+| `panel` | `locations`, `owners`, `data` | none    | The panel open beside Settings (RD-17, RD-30, RD-31, DD-203, DD-204). |
 
-_Manage locations_ and _Manage owners_ each open their panel the way a card's tile opens its
-panel on `/cards`: push from nothing, rewrite when the other is open; × steps back over it, and
+_Manage locations_, _Manage owners_ and _Data summary_ each open their panel the way a card's tile opens its
+panel on `/cards`: push from nothing, rewrite when another is open; × steps back over it, and
 Back closes it. `locations` adds, renames and deletes the stored locations (only one no card is
 kept at) and ticks _Takes purchases_; `owners` adds, renames and deletes the stored owners (only
-one no limit group or supplementary card names). Any other value opens nothing and the key is
+one no limit group or supplementary card names); `data` sums up what this browser holds, kind by
+kind, and the space it takes (read only). Any other value opens nothing and the key is
 rewritten away. Every note that says where to tick a place links to `/settings?panel=locations`.
 
 ## Trailing slash

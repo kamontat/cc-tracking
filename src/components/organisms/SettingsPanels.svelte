@@ -23,6 +23,7 @@
 	import { OWNERS_SEED_KEY, seedOwners } from "#lib/storage/seed-owners"
 	import { countRecordsV4, exportBackupV4 } from "#lib/storage/transfer-v4"
 	import { browserBar } from "#lib/ui/address-bar"
+	import { type DataSummary, storedBytes, summariseData, summaryLine, summaryRows } from "#lib/ui/data-summary"
 	import { createPageState } from "#lib/ui/page-state"
 	import { countsText } from "#lib/ui/record-counts"
 	import { RecordPanel } from "#lib/ui/record-panel.svelte"
@@ -31,9 +32,10 @@
 
 	/**
 	 * The Settings page's island (RD-19): its sections in `.set` panels, Display, Locations and
-	 * owners and Backup in the main column, Reset and About beside them from 900px. The Locations
-	 * and Owners rows each open their editor in the detail panel beside the page
-	 * (`?panel=locations`, `?panel=owners`, RD-17, RD-30), whose writes sum the rows up again. Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
+	 * owners and Backup in the main column, Your data, Reset and About beside them from 900px. The
+	 * Locations and Owners rows each open their editor in the detail panel beside the page
+	 * (`?panel=locations`, `?panel=owners`, RD-17, RD-30), whose writes sum the rows up again; the
+	 * Data summary row opens what the store holds (`?panel=data`, RD-31). Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
 	 * so it renders in the browser (PRD DD-172). The markup is the legacy route's, so app.css
 	 * draws it unchanged.
 	 */
@@ -61,7 +63,7 @@
 	}: Props = $props()
 
 	/** The panels a row opens, by the name the address gives them. */
-	const PANELS = ["locations", "owners"] as const
+	const PANELS = ["locations", "owners", "data"] as const
 	type PanelName = (typeof PANELS)[number]
 	const isPanel = (id: string): id is PanelName => (PANELS as readonly string[]).includes(id)
 
@@ -104,6 +106,8 @@
 	let repo = $state<Repository | null>(null)
 	let locations = $state<LocationRecord[]>([])
 	let owners = $state<OwnerRecord[]>([])
+	/** What the store holds, counted afresh after every load, reset and purge. */
+	let data = $state<DataSummary | null>(null)
 	/** Why the store would not open, re-read in the reader's language. */
 	let startupFailure = $state<(() => string) | null>(null)
 	/** Bumped after every load, so the banner re-reads the page state's error. */
@@ -118,9 +122,15 @@
 	let resetDone = $state(false)
 	let purged = $state<PurgedDetail | null>(null)
 
+	const countData = async (store: Repository) => {
+		data = summariseData(await exportBackupV4(store, new Date()), storedBytes(storage))
+	}
+
 	const page = createPageState({
 		fetch: async () => {
-			if (repo) [locations, owners] = await Promise.all([repo.listLocations(), repo.listOwners()])
+			if (!repo) return
+			;[locations, owners] = await Promise.all([repo.listLocations(), repo.listOwners()])
+			await countData(repo)
 		},
 		fallbackKey: "settings.error.read",
 		paint: () => {
@@ -184,6 +194,7 @@
 		purged = detail
 		resetDone = false
 		openSheet = null
+		void page.load()
 	}
 
 	const onStartReset = () => {
@@ -208,6 +219,7 @@
 			storage.removeItem(OWNERS_SEED_KEY)
 			await seedOwners(store, storage)
 			owners = await store.listOwners()
+			await countData(store)
 			rewritten++
 			resetDone = true
 		}, "reset.error")
@@ -243,6 +255,22 @@
 	})
 
 	const ownersLine = $derived(ownersSummary(owners))
+
+	const dataRows = $derived.by(() => {
+		void lang
+		return data ? summaryRows(data) : []
+	})
+
+	const dataLine = $derived.by(() => {
+		void lang
+		return data ? summaryLine(data) : ""
+	})
+
+	const PANEL_TITLES: Record<PanelName, MessageKey> = {
+		locations: "settings.locations.title",
+		owners: "settings.owners.title",
+		data: "settings.data.title",
+	}
 
 	const onRetry = () => {
 		if (startupFailure) location.reload()
@@ -351,6 +379,20 @@
 			</section>
 		</div>
 		<div class="settings-grid__side">
+			<section class="set-section" data-section="data">
+				<h2>{tr("settings.data.title")}</h2>
+				<div class="set">
+					<a
+						class="set-row"
+						data-row="data"
+						href="/settings?panel=data"
+						aria-current={current === "data" ? "true" : undefined}
+						onclick={onRow("data")}>
+						<span class="set-row__text">{tr("settings.data.open")}<small class="set-row__sub">{dataLine}</small></span>
+						<span class="set-row__chev" aria-hidden="true">›</span>
+					</a>
+				</div>
+			</section>
 			<section class="set-section" data-section="reset">
 				<h2>{tr("reset.title")}</h2>
 				<div class="set">
@@ -412,10 +454,25 @@
 	</div>
 	{#if current}
 		<DetailPanel
-			title={tr(current === "locations" ? "settings.locations.title" : "settings.owners.title")}
+			title={tr(PANEL_TITLES[current])}
+			detail={current === "data" ? tr("settings.data.storageSub") : undefined}
 			onclose={() => panel.close()}>
 			{#key `${current}:${rewritten}`}
-				{#if current === "locations"}
+				{#if current === "data"}
+					<dl class="set">
+						{#each dataRows as fact (fact.row)}
+							<div class="set-row set-row--fact" data-row={fact.row}>
+								<dt class="set-row__text">
+									<span class="set-row__label">{fact.label}</span>
+									{#if fact.sub}
+										<small class="set-row__sub">{fact.sub}</small>
+									{/if}
+								</dt>
+								<dd class="set-row__value">{fact.value}</dd>
+							</div>
+						{/each}
+					</dl>
+				{:else if current === "locations"}
 					<LocationsEditor open={openOnce} onchange={() => void page.load()} />
 				{:else}
 					<OwnersEditor open={openOnce} onchange={() => void page.load()} />
