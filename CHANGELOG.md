@@ -4,28 +4,73 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-13: Tabs and a detail panel, settled (not built yet), and card ids and limit groups enforced
+## 2026-11-13: Tabs and a detail panel, and card ids and limit groups enforced
 
 ### BREAKING CHANGES
 
-- Restore refuses a backup with a card whose id is outside `^[a-z]?[0-9]+(\.[0-9]+)*# Changelog
+- `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/new`, `/list/draft`, `/list/reply` and
+  `/list/view` are gone, each a 404, with no redirect: a card opens at `/cards?card=<id>`, a list
+  at `/transactions/lists?list=<id>`, a new list at `/transactions/lists/new?cards=<id>`, a draft
+  or a waiting list at `/transactions/lists/edit?list=<id>`, and a payment starts from _Pay_ on a
+  bill in _Owed_ or in a card's panel. Update bookmarks (DD-200).
 
-This changelog is built from the design specs written for each stage of the project. Entries
-are newest first. Each one says what changed and keeps the decisions behind it, because the
-reasons don't show up in the code.
+- The `/backup` redirect to `/settings` is gone, and `public/_redirects` with it.
 
-(`K1`,
-`5.`, `1..2`), with no `limitGroupId`, or naming a limit group not in the file, and writes
-nothing. Fix the file (lower-case ids, a group for every card) and restore again. Every card in
-the 2026-11-07 backup passes (RD-27, RD-28, amends DC-06).
+- Address keys changed (RD-29): filters take `f.` (`type` → `f.types`, the ledger's `card` →
+  `f.cards`, `range`/`from`/`to` → `f.range`/`f.from`/`f.to`, `status` → `f.statuses`, `loc` →
+  `f.locations`, `owner` → `f.owners`); the Lists view's `lq`, `lcard`, `lrange`, `lfrom`, `lto`
+  and `lby` are now `/transactions/lists`' `q`, `f.cards`, `f.range`, `f.from`, `f.to` and `by`;
+  the builder's `card` is `cards`. `view`, `id`, `group`, `newGroup`, `ungrouped` and the
+  builder's `add` and `open` are no longer read. An old link opens the default view.
 
-- Cards' `ungrouped` address key is no longer read, and the _Not in a group_ filter, its chip and
-  the _Not in a group_ and _No account holder_ sections are gone; a link with `?ungrouped=1`
-  opens the full list.
+- `/transactions?view=owed` is `/owed`, `/transactions?view=lists` is `/transactions/lists`, and
+  `/cards?view=groups` is `/cards/limits`; Home's _Ready to use_ is its own tab at `/ready`.
 
-- Message keys removed: `card.hero.noGroup`, `card.noGroupNote`, `cards.page.noGroup`,
-  `cards.filter.ungrouped`, `spendable.unassigned.one`, `spendable.unassigned.many`,
-  `spendable.unassignedAction` and `group.noHolder`.
+- The floating _+ New_ button and menu are gone: a list starts from _+ Add list_ on the _Lists_
+  tab or a card's _Use on a list_, a payment from _Pay_ on a bill or in a card's panel.
+
+- Restore refuses a backup with a card whose id is outside `^[a-z]?[0-9]+(\.[0-9]+)*$` (`K1`,
+  `5.`, `1..2`), with no `limitGroupId`, or naming a limit group not in the file, and writes
+  nothing. Fix the file (lower-case ids, a group for every card) and restore again. Every card in
+  the 2026-11-07 backup passes (RD-27, RD-28, amends DC-06).
+
+- The _Not in a group_ filter and section and the _No account holder_ section are gone from
+  Cards, and _Ready to use_ no longer counts cards without a limit group.
+
+- Message keys removed include `card.hero.noGroup`, `card.noGroupNote`, `cards.page.noGroup`,
+  `cards.filter.ungrouped`, `spendable.unassigned.*`, `spendable.unassignedAction`,
+  `group.noHolder`, `cards.view.*`, `tx.view.*`, `common.seeMore`, `common.showLess`,
+  `ready.title`, `tx.owed.title` and the `/pay` picker's keys.
+
+### Features
+
+- Home, Transactions and Cards have tabs, one view at a time on every screen, each tab its own
+  address: Home _Needs you_ (`/`), _Owed_ (`/owed`) and _Ready to use_ (`/ready`);
+  Transactions _Ledger_ (`/transactions`) and _Lists_ (`/transactions/lists`); Cards _Cards_
+  (`/cards`) and _Limits_ (`/cards/limits`). The page title sits in the tab bar, before a thin
+  divider (RD-22, DD-197 to DD-199).
+
+- A detail panel: a card (`?card=`), a limit group (`?limit=`) or a list (`?list=`) opens beside
+  its list from 900px, in a column fixed to the screen whose body scrolls on its own, and in a
+  sheet that slides up below 900px. Back, ×, Escape, the backdrop and a swipe down close it, and
+  the card panel opens over any tab that shows a card (RD-23, DD-196).
+
+- The card panel holds what the card page did, and its forms open in place with ‹ back to the
+  card: _Edit_, _Add purchase_, a purchase's _Edit_, _Make a payment_, and _+ Add card_'s blank
+  form. A form with changes asks _Discard your changes?_ before ×, Escape, the backdrop or
+  another record drops it (RD-24).
+
+- The limit panel shows a group's room, use and cards, each opening its card's panel, and its
+  form; _Limits_ gains a search, a holder filter and a sort by name, room or use.
+
+- The list panel shows a list's status, date, lines and total with the actions its status
+  allows; the builder is `/transactions/lists/new`, and a draft or a waiting list opens at
+  `/transactions/lists/edit?list=<id>`. Saving opens the saved list in its panel on _Lists_
+  (RD-26).
+
+- _Owed_ and _Ready to use_ have Cards' search, location and holder filters, sort and grouping;
+  _Owed_ adds a bill filter (`f.states`: overdue, due soon, no bill yet), and _Pay_ on a bill
+  opens the card's pay form in its panel with what is left filled in (RD-25).
 
 ### Improvements
 
@@ -33,48 +78,55 @@ the 2026-11-07 backup passes (RD-27, RD-28, amends DC-06).
   group is required: _Choose a limit group_ is a placeholder that can't be picked, and with no
   group stored the form says to add one first, from _Limits_ (RD-27, RD-28).
 
-- A card without a limit group is invalid data, left out of Cards' lists like a card at an
-  unknown place, so _Ready to use_ no longer counts "N cards have no limit group yet" and the
-  card page and tiles no longer say a card has none.
+- A card without a limit group is invalid data, left out of every list like a card at an
+  unknown place, and nothing on a card or a tile says it has none.
+
+- Each Home tab has the screen to itself, so _Needs you_ and _Ready to use_ show every row with
+  no _See more_; _Ready to use_ is sorted by most room, longest to close or latest due.
+
+- The _Add a card_ sheet in the list builder is wider on a desktop, with the search box every
+  list uses and its five sorts always shown as pills, so picking one never changes its height.
+
+- A card that isn't offered on lists says why in a note whose _Settings › Locations_ is the link,
+  and the panel's head buttons (‹, _Edit_, ⋯, ×) are one size, with no focus ring left on ⋯
+  after a mouse click.
 
 ### Decisions
 
-- Nothing in the app changes yet. The plan is settled as PRD RD-22 to RD-29, with its spec and
-  mockup in `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md` and
-  `2026-11-12-tabs-and-panel-mockup.html`, to be built in six pull requests listed in `TODO.md`.
+- Settled and built the same day as PRD RD-22 to RD-29, from
+  `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md` and its mockup, in six pull
+  requests (#73 to #78), the last five stacked.
 
-- Home, Transactions and Cards show one tab at a time on every screen: Home _Needs you · Owed ·
-  Ready to use_, Transactions _Ledger · Lists_, Cards _Cards · Limits_. The desktop's two
-  columns go, because they made one address mean two layouts (RD-22).
+- One view at a time on every screen: the desktop's two columns made one address mean two
+  layouts (RD-22).
 
-- A card, a limit group or a list opens in a panel beside its list on a desktop, in a sheet on
-  a phone, so the reader keeps their place. The card page, the card form's pages and the group
-  sheet fold into it; forms open inside the panel and stay out of the address. A ledger row
-  still opens in place, for now (RD-23, RD-24).
+- A record opens beside its list, so the reader keeps their place; forms stay out of the address,
+  so a reload or a pasted link shows the record, and a form is a tap away. A ledger row still
+  opens in place, for now (RD-23, RD-24).
 
-- _Owed_ moves to Home, beside _Ready to use_: one is what to pay, the other where to spend. It
-  was on Cards for a day and stays its own tab rather than a Cards filter, as the two differ in
-  which cards, their order, the lead number and the action (RD-25).
+- _Owed_ is a Home tab, not a Cards filter: the two differ in which cards, their order, the lead
+  number and the action. It shows only cards that owe, so a card holding only credit is not on
+  it (amends DD-89, RD-25).
 
-- The floating _+ New_ and the `/pay` card picker go: a list starts on the _Lists_ tab or a
-  card, a payment on a bill in _Owed_ or a card's panel (RD-25).
+- Ids go in the query, not the path, so every address stays a static page and needs no rewrite
+  rule in `_redirects`, local dev or the offline worker; this replaces the record-path plan
+  proved in PR #37 (RD-29).
 
-- Every card must have a limit group, and a card id must match `^[a-z]?[0-9]+(\.[0-9]+)*$`;
-  every card in the 2026-11-07 backup already does both (RD-27, RD-28).
+- The tabs are static links that ship no JavaScript, so they show no counts, which would need
+  the reader's data.
 
-- Ids go in the query, not the path: the open record is `card`, `limit` or `list`, filters take
-  `f.`, search is `q`, and `sort`, `dir` and `by` order and section. Every address stays a
-  static page, so no rewrite rules are needed for `_redirects`, local dev or the offline
-  worker. This replaces the record-path plan proved in PR #37, which needed rewrites in all
-  three places and a reserved word for card ids (RD-29).
+- From 900px the panel is fixed to the screen rather than sticky in the page: a sticky column's
+  height had to guess what sat above the list, and a tab bar there pushed it past the bottom.
 
-- `ENDPOINTS.md` is not rewritten ahead of the code: it says the plan is coming, and each part
-  updates it as it ships.
+- The page title sits in the tab bar (one line, one rule), chosen from six mockups.
 
 - The card form checks only a new card's id: a stored card's id can't be edited. Restore checks
   version 2 files as well as version 3, as an old file brings cards just the same. The group
   placeholder stays rather than defaulting to the first group, so a new card never lands in a
   group by accident.
+
+- _Record reply_ keeps its name rather than the spec's _Enter reply_, so one action has one
+  name.
 
 ## 2026-11-12: Building a purchase list a card at a time, with each card's last 12 statements
 
