@@ -616,6 +616,8 @@ describe("the locations and owners panels (RD-17, RD-30)", () => {
 		const root = await show(repo)
 		expect(root.querySelector(".detail-panel")).toBeNull()
 		expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(false)
+		// The container Settings' columns measure, so an open panel can stack them.
+		expect(root.querySelector(".panel-layout")?.classList.contains("settings-layout")).toBe(true)
 
 		await press(row(root, "locations"))
 		expect(history.calls).toEqual(["push /settings?panel=locations"])

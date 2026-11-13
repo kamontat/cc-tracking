@@ -417,7 +417,7 @@ a:any-link:hover {
 /*
  * Settings (prototype `vSettings`, RD-19): sections, each a heading over one `.set` panel of
  * rows, in one column on a phone and two from 900px -- Display, Locations and Backup in the
- * main column, Reset and About beside them.
+ * main column, Reset and About beside them -- unless an open panel leaves room for only one.
  */
 .settings-grid {
 	display: grid;
@@ -443,9 +443,18 @@ a:any-link:hover {
 	gap: var(--cc-space-2);
 }
 
+/* What the grid measures: the page's width, less the panel's column while one is open (DD-203). */
+.settings-layout {
+	container: settings / inline-size;
+}
+
+/* Two columns from 900px while the page holds room for two; beside an open panel on a narrower
+   screen the sections stack in one. A container query takes no var(), so the width is here. */
 @media (min-width: 900px) {
-	.settings-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+	@container settings (min-width: 40rem) {
+		.settings-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 }
 

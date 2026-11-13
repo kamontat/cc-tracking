@@ -271,7 +271,7 @@
 </script>
 
 <ErrorBanner message={bannerMessage} retryLabel={tr("common.reload")} onretry={onRetry} />
-<div class="panel-layout" data-panel={current ? "" : undefined}>
+<div class="panel-layout settings-layout" data-panel={current ? "" : undefined}>
 	<div class="settings-grid">
 		<div class="settings-grid__main">
 			<section class="set-section" data-section="display">
