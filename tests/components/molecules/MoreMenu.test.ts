@@ -2,7 +2,7 @@ import type { MoreItem } from "#lib/ui/more-menu"
 
 import { flushSync, mount, unmount } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
-import { afterEach, expect, test } from "vitest"
+import { afterEach, expect, test, vi } from "vitest"
 
 import MoreMenu from "#components/molecules/MoreMenu.svelte"
 import { setLocale } from "#lib/i18n/index"
@@ -121,6 +121,32 @@ test("Escape closes it and hands focus back to ⋯", () => {
 	expect(list()?.hidden).toBe(true)
 	expect(toggle.getAttribute("aria-expanded")).toBe("false")
 	expect(document.activeElement).toBe(toggle)
+})
+
+test("opened by a pointer, focus moves without the keyboard's ring; opened by a key, with it", () => {
+	const { toggle } = show()
+	const focus = vi.spyOn(HTMLElement.prototype, "focus")
+	const pressEscape = () => {
+		button("archive")?.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }))
+		flushSync()
+	}
+	const open = (detail: number) => {
+		toggle.dispatchEvent(new MouseEvent("click", { bubbles: true, detail }))
+		flushSync()
+	}
+	try {
+		open(1)
+		expect(focus.mock.lastCall?.[0]).toEqual({ focusVisible: false })
+		pressEscape()
+		expect(document.activeElement).toBe(toggle)
+		expect(focus.mock.lastCall?.[0]).toEqual({ focusVisible: false })
+		open(0)
+		expect(focus.mock.lastCall?.[0]).toEqual({ focusVisible: true })
+		pressEscape()
+		expect(focus.mock.lastCall?.[0]).toEqual({ focusVisible: true })
+	} finally {
+		focus.mockRestore()
+	}
 })
 
 test("Escape on a closed menu is left to the page", () => {

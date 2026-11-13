@@ -7,6 +7,7 @@ import { expect, test } from "vitest"
  */
 const tokens = await Bun.file("src/styles/tokens.css").text()
 const app = await Bun.file("src/styles/app.css").text()
+const more = (await Bun.file("src/components/molecules/MoreMenu.svelte").text()).split("<style>")[1] ?? ""
 const panel = (await Bun.file("src/components/molecules/DetailPanel.svelte").text()).split("<style>")[1] ?? ""
 
 /** The text inside every `@media (<query>) { ... }` block, in order. */
@@ -103,4 +104,22 @@ test("a form's sticky save sinks through the body's bottom padding to the panel'
 
 test("below 900px the page behind the sheet doesn't scroll", () => {
 	expect(rule(narrow(app), "html:has(.detail-panel)").get("overflow")).toBe("hidden")
+})
+
+test("the head's buttons are one set: as tall as an icon control, square when an icon, one radius", () => {
+	expect(tokens).toMatch(/--cc-control-size:\s*calc\(var\(--cc-icon-size\) \+ 2 \* var\(--cc-space-2\)\);/)
+	const every = rule(panel, ".detail-panel__bar :global(button[data-variant])")
+	expect(every.get("block-size")).toBe("var(--cc-control-size)")
+	// On the title's centre line, not `.page button`'s flex-start.
+	expect(every.get("align-self")).toBe("center")
+	expect(every.get("padding-block")).toBe("0")
+	expect(every.get("border-radius")).toBe("var(--cc-radius-sm)")
+	const icon = rule(panel, ".detail-panel .detail-panel__icon")
+	expect(icon.get("inline-size")).toBe("var(--cc-control-size)")
+	expect(icon.get("padding")).toBe("0")
+	// ⋯ is the same square wherever the menu sits.
+	const trigger = rule(more, "button.more[data-variant]")
+	expect(trigger.get("inline-size")).toBe("var(--cc-control-size)")
+	expect(trigger.get("block-size")).toBe("var(--cc-control-size)")
+	expect(trigger.get("padding")).toBe("0")
 })

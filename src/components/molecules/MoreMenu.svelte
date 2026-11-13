@@ -12,7 +12,8 @@
 	 * hand focus back to `⋯`; a click outside leaves it with what was clicked. An item with `ask`
 	 * swaps the list for the question with *Delete* (danger) and *Keep* (UI-09), focus following
 	 * each swap. A choice closes the list, then runs the item's `onselect` and the menu's
-	 * `onselect` with its action.
+	 * `onselect` with its action. Focus moves with the keyboard's ring only when the menu was opened
+	 * from the keyboard: opened with a pointer, Escape leaves no ring on `⋯`.
 	 */
 	interface Props {
 		items: MoreItem[]
@@ -39,6 +40,8 @@
 
 	let host: HTMLElement | undefined = $state()
 	let toggleButton: HTMLButtonElement | undefined = $state()
+	/** Whether the menu was opened from the keyboard, so the focus it moves shows the ring. */
+	let byKey = true
 
 	const asked = $derived(items.find((item) => item.action === asking))
 
@@ -46,10 +49,12 @@
 	function focusAction(action: string | undefined) {
 		flushSync()
 		if (action === undefined) return
-		host?.querySelector<HTMLElement>(`[data-action="${CSS.escape(action)}"]`)?.focus()
+		host?.querySelector<HTMLElement>(`[data-action="${CSS.escape(action)}"]`)?.focus({ focusVisible: byKey })
 	}
 
-	function show() {
+	/** A click's `detail` counts pointer presses: 0 is a key (Enter, Space) pressing the button. */
+	function show(event: MouseEvent) {
+		byKey = event.detail === 0
 		asking = null
 		open = true
 		focusAction(items[0]?.action)
@@ -62,7 +67,7 @@
 	function close(refocus = true) {
 		open = false
 		asking = null
-		if (refocus) toggleButton?.focus()
+		if (refocus) toggleButton?.focus({ focusVisible: byKey })
 	}
 
 	function pick(item: MoreItem) {
@@ -126,7 +131,7 @@
 		aria-controls={menuId}
 		aria-expanded={open ? "true" : "false"}
 		bind:this={toggleButton}
-		onclick={() => (open ? close() : show())}>
+		onclick={(event) => (open ? close() : show(event))}>
 		⋯
 	</button>
 	<fieldset class="more-menu" id={menuId} aria-label={tr("common.more")} hidden={!open}>
@@ -174,8 +179,12 @@
 		opacity: 0.55;
 	}
 
+	/* A square icon control, as a sub-header's back and the detail panel's ×. */
 	button.more[data-variant] {
-		min-inline-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
+		box-sizing: border-box;
+		inline-size: var(--cc-control-size);
+		block-size: var(--cc-control-size);
+		padding: 0;
 		font-size: var(--cc-text-md);
 		line-height: 1;
 	}

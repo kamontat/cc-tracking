@@ -1662,8 +1662,8 @@ a:any-link:hover {
 	display: grid;
 	place-items: center;
 	flex: none;
-	inline-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
-	block-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
+	inline-size: var(--cc-control-size);
+	block-size: var(--cc-control-size);
 	color: var(--cc-text);
 	background: var(--cc-surface-sunken);
 	border-radius: var(--cc-radius-sm);

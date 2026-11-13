@@ -17,7 +17,8 @@
 	 * and a swipe down on the head each call `onclose`, and the page decides (`RecordPanel.close`,
 	 * which asks first about a changed form). Escape is left alone while a sheet or a menu is open
 	 * over the panel. Typing or picking in the body (`input`, `change`, a pressed choice in a form)
-	 * calls `ontouch`, so the page knows a form changed. The panel takes focus as it opens. With
+	 * calls `ontouch`, so the page knows a form changed. The panel takes focus as it opens, and again
+	 * when its head changes and takes the focused button with it. Every head button is one size. With
 	 * `full` (a form is open) the phone's sheet takes the whole height.
 	 */
 	interface Props {
@@ -96,6 +97,13 @@
 		swipeFrom = null
 		if (from !== null && event.clientY - from >= SWIPE_CLOSE) onclose()
 	}
+
+	// A head that changes (a form opening from *Edit*, ‹ back to the record) can take the focused
+	// control with it; focus stays in the panel rather than dropping to the page.
+	$effect(() => {
+		void title
+		if (document.activeElement === document.body) aside?.focus({ preventScroll: true })
+	})
 
 	onMount(() => {
 		const unsubscribe = subscribe(() => {
@@ -253,14 +261,25 @@
 		gap: var(--cc-space-2);
 	}
 
-	/* A square icon button, as the sub-header's back control. */
-	.detail-panel .detail-panel__icon {
+	/* Every button in the head (‹, *Edit*, ⋯, ×) is one set: the same height and radius, its
+	   variant's colours from `.page button`. */
+	.detail-panel__bar :global(button[data-variant]) {
 		display: inline-flex;
 		flex: none;
+		align-self: center;
 		align-items: center;
 		justify-content: center;
-		padding: var(--cc-space-2);
+		box-sizing: border-box;
+		block-size: var(--cc-control-size);
+		padding-block: 0;
 		line-height: 1;
+		border-radius: var(--cc-radius-sm);
+	}
+
+	/* ‹ and × are squares, as the sub-header's back control and the menu's ⋯. */
+	.detail-panel .detail-panel__icon {
+		inline-size: var(--cc-control-size);
+		padding: 0;
 	}
 
 	.detail-panel__icon :global(.icon) {

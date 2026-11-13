@@ -1,6 +1,7 @@
 import type { Snippet } from "svelte"
 
 import { createRawSnippet, flushSync, mount, unmount } from "svelte"
+import { SvelteMap } from "svelte/reactivity"
 import { afterEach, expect, test } from "vitest"
 
 import DetailPanel from "#components/molecules/DetailPanel.svelte"
@@ -151,6 +152,32 @@ test("a pressed choice in a form counts as a change too", () => {
 
 test("the panel takes focus when it opens", () => {
 	show()
+	expect(document.activeElement).toBe($("aside.detail-panel"))
+})
+
+test("a focused head control that goes (Edit, as its form opens) leaves focus in the panel", () => {
+	const values = new SvelteMap<string, unknown>([
+		["title", "KBank Visa"],
+		["actions", raw('<button type="button" data-action="edit">Edit</button>')],
+	])
+	mounted = mount(DetailPanel, {
+		target: document.body,
+		props: {
+			get title() {
+				return values.get("title") as string
+			},
+			get actions() {
+				return values.get("actions") as Snippet | undefined
+			},
+			onclose: () => {},
+			children: raw("<p>body</p>"),
+		},
+	})
+	flushSync()
+	$('[data-action="edit"]')?.focus()
+	values.set("title", "Edit card")
+	values.delete("actions")
+	flushSync()
 	expect(document.activeElement).toBe($("aside.detail-panel"))
 })
 
