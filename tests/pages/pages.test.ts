@@ -18,10 +18,13 @@ const pages = Array.from(new Bun.Glob("**/*.astro").scanSync({ cwd: "src/pages" 
 
 const source = (page: string) => Bun.file(`src/pages/${page}`).text()
 
+/** Each page's module, through Vite's glob (a template-literal import only reaches one directory down). */
+const modules = import.meta.glob<{ default: AstroComponentFactory }>("../../src/pages/**/*.astro")
+
 const render = async (page: string) => {
-	const module = (await import(`../../src/pages/${page}`)) as {
-		default: AstroComponentFactory
-	}
+	const load = modules[`../../src/pages/${page}`]
+	if (!load) throw new Error(`no module for src/pages/${page}`)
+	const module = await load()
 	const container = await createContainer()
 	return container.renderToString(module.default)
 }
