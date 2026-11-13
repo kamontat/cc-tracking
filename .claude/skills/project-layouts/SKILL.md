@@ -50,8 +50,8 @@ It lays out, in `<body>`:
 - the `SiteHeader` organism (`#site-header`): the brand, the build mark (static, from the
   build stamps), today's date (the `HeaderDate` island, `transition:persist` so it survives
   navigation) and the header tabs;
-- `<main id="page">` with `page` plus the page's `mainClass` (`page--narrow`,
-  `page--form`), holding the page's `main` slot (its island);
+- `<main id="page">` with `page` plus the page's `mainClass` (`page--narrow`), holding the
+  page's `main` slot (its island);
 - the `TabBar` organism (`#tabbar`): the bottom tabs (nothing floats beside them: the
   *+ New* menu retired, PRD DD-200);
 - the default `<slot />`, after the tab bar, for anything a page needs outside `<main>`.

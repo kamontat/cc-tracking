@@ -536,7 +536,7 @@
 			     so the actions below stay buttons of one size: Pay alone, full width. -->
 			<p class="note card-note">
 				{#if cannotPurchase.toLocations}
-					{cannotPurchase.toLocations.before}<a data-action="settings" href="/settings/locations"
+					{cannotPurchase.toLocations.before}<a data-action="settings" href="/settings?panel=locations"
 						>{tr("card.locationsLink")}</a
 					>{cannotPurchase.toLocations.after}
 				{:else}

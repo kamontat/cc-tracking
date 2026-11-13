@@ -1,7 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: `/card`, `/pay`, `/list/*` and the `/backup` redirect retired, 2026-11-13, PRD DD-200). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: `/settings?panel=data`, the data summary panel, 2026-11-14, PRD DD-204). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -13,7 +13,7 @@ own address leave a key out while it holds its default, so the bare path is the 
 
 The addresses follow the tabs-and-panel plan (PRD RD-22 to RD-29, settled and built 2026-11-13,
 spec `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`): tabs as paths, the open
-record in the query (`card`, `limit`, `list`), filters prefixed `f.`, search `q`.
+record in the query (`card`, `limit`, `list`; Settings' `panel`), filters prefixed `f.`, search `q`.
 
 ## Retired addresses
 
@@ -28,6 +28,8 @@ No retired address redirects (RD-29): each is a 404 now, and `public/_redirects`
 | `/list/draft?id=`, `/list/reply?id=`     | `/transactions/lists/edit?list=`                        |
 | `/list/view?id=`                         | `/transactions/lists?list=`                             |
 | `/backup` (was a 301 to `/settings`)     | gone                                                    |
+| `/settings/locations`                    | `/settings?panel=locations`                             |
+| `/settings/owners`                       | `/settings?panel=owners`                                |
 
 ## Home
 
@@ -235,16 +237,17 @@ the panel. Example: `/cards/limits?f.owners=KC&sort=room&limit=<id>`.
 
 ### `/settings`
 
-No query.
+| Key     | Values                        | Default | Notes                                                                 |
+| ------- | ----------------------------- | ------- | --------------------------------------------------------------------- |
+| `panel` | `locations`, `owners`, `data` | none    | The panel open beside Settings (RD-17, RD-30, RD-31, DD-203, DD-204). |
 
-### `/settings/locations`
-
-No query.
-
-### `/settings/owners`
-
-No query. The stored owners (RD-30): add, rename, and delete one no limit group or
-supplementary card names.
+_Manage locations_, _Manage owners_ and _Data summary_ each open their panel the way a card's tile opens its
+panel on `/cards`: push from nothing, rewrite when another is open; × steps back over it, and
+Back closes it. `locations` adds, renames and deletes the stored locations (only one no card is
+kept at) and ticks _Takes purchases_; `owners` adds, renames and deletes the stored owners (only
+one no limit group or supplementary card names); `data` sums up what this browser holds, kind by
+kind, and the space it takes (read only). Any other value opens nothing and the key is
+rewritten away. Every note that says where to tick a place links to `/settings?panel=locations`.
 
 ## Trailing slash
 

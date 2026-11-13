@@ -1,7 +1,7 @@
 import type { Card } from "#lib/domain/types"
 
 import { createRawSnippet, flushSync, mount, unmount } from "svelte"
-import { afterEach, expect, test } from "vitest"
+import { afterEach, describe, expect, test } from "vitest"
 
 import SettingsPanels from "#components/organisms/SettingsPanels.svelte"
 import { defaultLocations } from "#lib/domain/locations"
@@ -12,6 +12,7 @@ import { LocalStorageRepository } from "#lib/storage/local"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { SEED_KEY } from "#lib/storage/seed-locations"
 import { exportBackupV4, parseAnyBackup } from "#lib/storage/transfer-v4"
+import { fakeHistory } from "../../lib/ui/fake-history"
 
 /**
  * The Settings page's island (RD-19): Display, Locations and Backup in the main column, Reset
@@ -35,12 +36,17 @@ const settle = async () => {
 
 const slot = (html: string) => createRawSnippet(() => ({ render: () => html }))
 
-const show = async (repo: Repository = new InMemoryRepository(), storage?: Storage) => {
+/** The address the last `show` started on, with every move the page made. */
+let history = fakeHistory("/settings")
+
+const show = async (repo: Repository = new InMemoryRepository(), storage?: Storage, start = "/settings") => {
 	document.body.innerHTML = ""
+	history = fakeHistory(start)
 	mounted = mount(SettingsPanels, {
 		target: document.body,
 		props: {
 			open: async () => ({ ok: true as const, repo }),
+			address: history.bar,
 			display: slot('<div class="set-row" data-row="language"></div>'),
 			about: slot('<dl data-slot="about"></dl>'),
 			...(storage ? { storage } : {}),
@@ -154,12 +160,12 @@ test("names each section in the chosen language", async () => {
 	expect(headings()).not.toContain("Backup")
 })
 
-test("the locations row links to the locations page and sums them up", async () => {
+test("the locations row links to the locations panel and sums them up", async () => {
 	const root = await show(await seeded(new InMemoryRepository()))
 
 	const locations = row(root, "locations")
 	expect(locations.tagName).toBe("A")
-	expect(locations.getAttribute("href")).toBe("/settings/locations")
+	expect(locations.getAttribute("href")).toBe("/settings?panel=locations")
 	expect(locations.textContent).toContain("Manage locations")
 	expect(flat(locations)).toContain("3 places · Krabi takes purchases")
 })
@@ -343,13 +349,13 @@ test("confirming a reset deletes every record and setting, and says so", async (
 	expect(flat(row(root, "owners"))).toContain("KC, NT, RI")
 })
 
-test("the Owners row opens /settings/owners and names every owner A to Z", async () => {
+test("the Owners row links to the owners panel and names every owner A to Z", async () => {
 	const repo = await populated(new InMemoryRepository())
 	await repo.saveOwner({ id: "pim", name: "Pim" })
 	await repo.saveOwner({ id: "KC", name: "Kamontat" })
 	const root = await show(repo)
 	const owners = row(root, "owners") as HTMLAnchorElement
-	expect(owners.getAttribute("href")).toBe("/settings/owners")
+	expect(owners.getAttribute("href")).toBe("/settings?panel=owners")
 	expect(flat(owners)).toContain("Manage owners")
 	expect(flat(owners)).toContain("Kamontat, Pim")
 })
@@ -585,39 +591,46 @@ const dataRow = (root: HTMLElement, name: string) => {
 		.join(" | ")
 }
 
-test("Your data is one row, a button with the gist that opens the data panel", async () => {
+test("Your data is one row, with the gist, that opens the data panel beside Settings (?panel=data)", async () => {
 	const root = await show(await fullyPopulated(new InMemoryRepository()))
 
 	const rows = [...root.querySelectorAll('[data-section="data"] .set > .set-row')]
 	expect(rows.map((found) => found.getAttribute("data-row"))).toEqual(["data"])
-	const button = row(root, "data")
-	expect(button.tagName).toBe("BUTTON")
-	expect(flat(button.querySelector(".set-row__sub"))).toMatch(/^2 cards · 3 purchases · \d/)
-	expect(button.getAttribute("aria-expanded")).toBe("false")
+	const link = row(root, "data")
+	expect(link.getAttribute("href")).toBe("/settings?panel=data")
+	expect(flat(link.querySelector(".set-row__sub"))).toMatch(/^2 cards · 3 purchases · \d/)
+	expect(link.hasAttribute("aria-current")).toBe(false)
 	expect(dataPanel(root)).toBeNull()
-	expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(false)
 
-	await press(button)
+	await press(link)
 
-	expect(button.getAttribute("aria-expanded")).toBe("true")
+	expect(history.calls).toEqual(["push /settings?panel=data"])
+	expect(link.getAttribute("aria-current")).toBe("true")
 	expect(flat(dataPanel(root)?.querySelector("h2"))).toBe("Your data")
-	// The page makes room for the panel from 900px.
+	expect(flat(dataPanel(root)?.querySelector(".detail-panel__detail"))).toBe("In this browser only")
 	expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+
+	// Another row swaps its panel in place.
+	await press(row(root, "locations"))
+	expect(history.calls).toEqual(["push /settings?panel=data", "replace /settings?panel=locations"])
+	expect(link.hasAttribute("aria-current")).toBe(false)
 })
 
-test("the data panel closes from its ×, and the row opens it again", async () => {
+test("× steps back over the data panel, Back closes it, and a pasted address opens it", async () => {
 	const root = await show()
 
 	await openData(root)
 	await press(dataPanel(root)?.querySelector<HTMLElement>('[data-action="close-panel"]') as HTMLElement)
+	expect(history.now()).toBe("/settings")
 	expect(dataPanel(root)).toBeNull()
-	expect(row(root, "data").getAttribute("aria-expanded")).toBe("false")
 
 	await press(row(root, "data"))
-	expect(dataPanel(root)).not.toBeNull()
-	// Pressing the row again closes it, as a toggle.
-	await press(row(root, "data"))
+	history.userBack()
+	await settle()
 	expect(dataPanel(root)).toBeNull()
+
+	const pasted = await show(new InMemoryRepository(), undefined, "/settings?panel=data")
+	expect(flat(dataPanel(pasted)?.querySelector("h2"))).toBe("Your data")
 })
 
 test("the data panel sums up what this browser holds, a row per kind", async () => {
@@ -699,4 +712,77 @@ test("a purge reports what it deleted in the Reset panel, in the reader's langua
 	flushSync()
 	expect(resetStatus(root)).toContain("2")
 	expect(resetStatus(root)).not.toContain("Deleted")
+})
+
+describe("the locations and owners panels (RD-17, RD-30)", () => {
+	const panelTitle = (root: HTMLElement) => flat(root.querySelector(".detail-panel h2"))
+
+	test("a row opens its panel beside Settings, pushing ?panel=, and marks the row", async () => {
+		const repo = await seeded(new InMemoryRepository())
+		await repo.saveOwner({ id: "KC", name: "KC" })
+		const root = await show(repo)
+		expect(root.querySelector(".detail-panel")).toBeNull()
+		expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(false)
+		// The container Settings' columns measure, so an open panel can stack them.
+		expect(root.querySelector(".panel-layout")?.classList.contains("settings-layout")).toBe(true)
+
+		await press(row(root, "locations"))
+		expect(history.calls).toEqual(["push /settings?panel=locations"])
+		expect(panelTitle(root)).toBe("Locations")
+		expect(root.querySelectorAll(".detail-panel .record-row[data-location]")).toHaveLength(3)
+		expect(root.querySelector(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+		expect(row(root, "locations").getAttribute("aria-current")).toBe("true")
+		expect(row(root, "owners").hasAttribute("aria-current")).toBe(false)
+
+		// The other row swaps the panel in place.
+		await press(row(root, "owners"))
+		expect(history.calls).toEqual(["push /settings?panel=locations", "replace /settings?panel=owners"])
+		expect(panelTitle(root)).toBe("Owners")
+		expect(root.querySelector(".detail-panel .record-row[data-owner]")).not.toBeNull()
+	})
+
+	test("× steps back over the panel, and Back closes it", async () => {
+		const root = await show(await seeded(new InMemoryRepository()))
+		await press(row(root, "owners"))
+		await press(root.querySelector<HTMLElement>('[data-action="close-panel"]') as HTMLElement)
+		expect(history.now()).toBe("/settings")
+		expect(root.querySelector(".detail-panel")).toBeNull()
+
+		await press(row(root, "locations"))
+		history.userBack()
+		await settle()
+		expect(root.querySelector(".detail-panel")).toBeNull()
+	})
+
+	test("a pasted address opens its panel; an unknown panel opens nothing and drops the key", async () => {
+		const root = await show(await seeded(new InMemoryRepository()), undefined, "/settings?panel=owners")
+		expect(panelTitle(root)).toBe("Owners")
+
+		const other = await show(await seeded(new InMemoryRepository()), undefined, "/settings?panel=cards")
+		expect(other.querySelector(".detail-panel")).toBeNull()
+		expect(history.now()).toBe("/settings")
+	})
+
+	test("a change in the panel updates its row's summary at once", async () => {
+		const repo = await seeded(new InMemoryRepository())
+		const root = await show(repo, undefined, "/settings?panel=locations")
+		const bangkok = root.querySelector<HTMLInputElement>(
+			'.record-row[data-location="bangkok"] [data-action="takes-purchases"]',
+		)
+		bangkok?.click()
+		await settle()
+		expect(flat(row(root, "locations"))).toContain("Bangkok, Krabi take purchases")
+	})
+
+	test("a reset reads the open panel again", async () => {
+		const repo = await populated(new InMemoryRepository())
+		await repo.saveOwner({ id: "pim", name: "Pim" })
+		const root = await show(repo, undefined, "/settings?panel=owners")
+		expect(root.querySelector('.detail-panel .record-row[data-owner="pim"]')).not.toBeNull()
+
+		await click(root, "reset")
+		await click(root, "delete-everything")
+		expect(root.querySelector('.detail-panel .record-row[data-owner="pim"]')).toBeNull()
+		expect(root.querySelectorAll(".detail-panel .record-row[data-owner]")).toHaveLength(3)
+	})
 })

@@ -296,11 +296,6 @@ a:any-link:hover {
 	max-width: var(--cc-page-narrow);
 }
 
-/* A form page (the card form) keeps its narrow measure at every width. */
-.page--form {
-	max-width: var(--cc-page-narrow);
-}
-
 @media (min-width: 900px) {
 	.page--narrow {
 		max-width: var(--cc-page-width);
@@ -422,7 +417,7 @@ a:any-link:hover {
 /*
  * Settings (prototype `vSettings`, RD-19): sections, each a heading over one `.set` panel of
  * rows, in one column on a phone and two from 900px -- Display, Locations and Backup in the
- * main column, Reset and About beside them.
+ * main column, Reset and About beside them -- unless an open panel leaves room for only one.
  */
 .settings-grid {
 	display: grid;
@@ -448,9 +443,18 @@ a:any-link:hover {
 	gap: var(--cc-space-2);
 }
 
+/* What the grid measures: the page's width, less the panel's column while one is open (DD-203). */
+.settings-layout {
+	container: settings / inline-size;
+}
+
+/* Two columns from 900px while the page holds room for two; beside an open panel on a narrower
+   screen the sections stack in one. A container query takes no var(), so the width is here. */
 @media (min-width: 900px) {
-	.settings-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+	@container settings (min-width: 40rem) {
+		.settings-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 }
 
@@ -570,6 +574,12 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
+/* The row whose panel is open beside Settings (Locations, Owners): its label and › in the accent. */
+.page .set-row[aria-current="true"],
+.set-row[aria-current="true"] .set-row__chev {
+	color: var(--cc-accent);
+}
+
 /* A row that states a fact rather than doing something, its figure on the right: the
    _Your data_ panel's rows (RD-31), a `<dl>` whose rows are `dt` and `dd`. */
 .page dl.set,
@@ -621,7 +631,7 @@ a:any-link:hover {
 }
 
 /*
- * The Locations and Owners pages (prototype `vLocations`, RD-17, RD-30): one `.set` panel with
+ * The Locations and Owners panels (prototype `vLocations`, RD-17, RD-30): one `.set` panel with
  * a block per record -- its name and count beside *Rename* and *Delete* (or the name field, or
  * the asking *Delete* and *Cancel* on the same line), and on Locations *Takes purchases* under
  * them -- then the notes and the add field.
@@ -677,10 +687,6 @@ a:any-link:hover {
 	gap: var(--cc-space-2);
 	color: var(--cc-text);
 	cursor: pointer;
-}
-
-.page .record-row__takes small {
-	font-size: var(--cc-text-xs);
 }
 
 .page .record-row__takes input {

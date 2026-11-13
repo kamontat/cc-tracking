@@ -4,6 +4,7 @@
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
 	import type { V4Counts } from "#lib/storage/transfer-v4"
+	import type { AddressBar } from "#lib/ui/address-bar"
 	import type { PurgedDetail } from "#lib/ui/purge"
 	import type { RestoredDetail } from "#lib/ui/restore"
 	import type { Opened } from "#lib/ui/startup"
@@ -12,6 +13,8 @@
 
 	import DetailPanel from "#components/molecules/DetailPanel.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
+	import LocationsEditor from "#components/organisms/LocationsEditor.svelte"
+	import OwnersEditor from "#components/organisms/OwnersEditor.svelte"
 	import PurgeSheet from "#components/organisms/PurgeSheet.svelte"
 	import RestoreSheet from "#components/organisms/RestoreSheet.svelte"
 	import { today } from "#lib/domain/date"
@@ -19,16 +22,20 @@
 	import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
 	import { OWNERS_SEED_KEY, seedOwners } from "#lib/storage/seed-owners"
 	import { countRecordsV4, exportBackupV4 } from "#lib/storage/transfer-v4"
+	import { browserBar } from "#lib/ui/address-bar"
 	import { type DataSummary, storedBytes, summariseData, summaryLine, summaryRows } from "#lib/ui/data-summary"
 	import { createPageState } from "#lib/ui/page-state"
 	import { countsText } from "#lib/ui/record-counts"
+	import { RecordPanel } from "#lib/ui/record-panel.svelte"
 	import { backupFilename, locationsSummary, ownersSummary, prepareBackupFile } from "#lib/ui/settings"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
 	 * The Settings page's island (RD-19): its sections in `.set` panels, Display, Locations and
-	 * owners (a row into each page) and Backup in the main column, Your data (a row into its panel, RD-31), Reset and
-	 * About beside them from 900px. Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
+	 * owners and Backup in the main column, Your data, Reset and About beside them from 900px. The
+	 * Locations and Owners rows each open their editor in the detail panel beside the page
+	 * (`?panel=locations`, `?panel=owners`, RD-17, RD-30), whose writes sum the rows up again; the
+	 * Data summary row opens what the store holds (`?panel=data`, RD-31). Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
 	 * so it renders in the browser (PRD DD-172). The markup is the legacy route's, so app.css
 	 * draws it unchanged.
 	 */
@@ -37,6 +44,8 @@
 		open?: () => Promise<Opened>
 		/** Holds the location and payments markers, for Delete all and the restore sheet alike. */
 		storage?: Storage
+		/** The address bar; tests pass one that records and plays Back and Forward. */
+		address?: AddressBar
 		/** The Display section's rows. */
 		display?: Snippet
 		/** The About section's rows. */
@@ -45,7 +54,47 @@
 		children?: Snippet
 	}
 
-	const { open = () => openRepository(), storage = globalThis.localStorage, display, about }: Props = $props()
+	const {
+		open = () => openRepository(),
+		storage = globalThis.localStorage,
+		address = browserBar(),
+		display,
+		about,
+	}: Props = $props()
+
+	/** The panels a row opens, by the name the address gives them. */
+	const PANELS = ["locations", "owners", "data"] as const
+	type PanelName = (typeof PANELS)[number]
+	const isPanel = (id: string): id is PanelName => (PANELS as readonly string[]).includes(id)
+
+	/** The open panel in the address and history (RD-23): Back closes it, as on every other page. */
+	const panel = new RecordPanel({ address, path: "/settings", kinds: ["panel"] })
+	const current = $derived.by((): PanelName | null => {
+		const id = panel.record?.id
+		return id !== undefined && isPanel(id) ? id : null
+	})
+
+	// An address naming no panel of ours (a typo, an old link) opens nothing, and its key goes.
+	$effect(() => {
+		if (panel.open && current === null) panel.drop()
+	})
+
+	/** A row's plain click opens its panel in place; its link still opens a new tab. */
+	const onRow = (name: PanelName) => (event: MouseEvent) => {
+		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+		event.preventDefault()
+		panel.show({ kind: "panel", id: name })
+	}
+
+	/** One opening of the store, shared with the panel's editor. */
+	let opening: Promise<Opened> | null = null
+	const openOnce = () => {
+		opening ??= open()
+		return opening
+	}
+
+	/** Bumped when a restore or a reset rewrites the records, so an open editor reads them again. */
+	let rewritten = $state(0)
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -59,8 +108,6 @@
 	let owners = $state<OwnerRecord[]>([])
 	/** What the store holds, counted afresh after every load, reset and purge. */
 	let data = $state<DataSummary | null>(null)
-	/** Whether the data panel is open, beside the page from 900px and a sheet below. */
-	let dataOpen = $state(false)
 	/** Why the store would not open, re-read in the reader's language. */
 	let startupFailure = $state<(() => string) | null>(null)
 	/** Bumped after every load, so the banner re-reads the page state's error. */
@@ -138,6 +185,7 @@
 		resetDone = false
 		purged = null
 		openSheet = null
+		rewritten++
 		void page.load()
 	}
 
@@ -172,6 +220,7 @@
 			await seedOwners(store, storage)
 			owners = await store.listOwners()
 			await countData(store)
+			rewritten++
 			resetDone = true
 		}, "reset.error")
 	}
@@ -217,6 +266,12 @@
 		return data ? summaryLine(data) : ""
 	})
 
+	const PANEL_TITLES: Record<PanelName, MessageKey> = {
+		locations: "settings.locations.title",
+		owners: "settings.owners.title",
+		data: "settings.data.title",
+	}
+
 	const onRetry = () => {
 		if (startupFailure) location.reload()
 		else void page.load()
@@ -226,8 +281,9 @@
 		const unsubscribe = subscribe(() => {
 			lang = getLocale()
 		})
+		const stopPanel = panel.start()
 		void (async () => {
-			const opened = await open()
+			const opened = await openOnce()
 			if (!opened.ok) {
 				startupFailure = opened.message
 				return
@@ -235,12 +291,15 @@
 			repo = opened.repo
 			await page.load()
 		})()
-		return unsubscribe
+		return () => {
+			unsubscribe()
+			stopPanel()
+		}
 	})
 </script>
 
 <ErrorBanner message={bannerMessage} retryLabel={tr("common.reload")} onretry={onRetry} />
-<div class="panel-layout" data-panel={dataOpen ? "" : undefined}>
+<div class="panel-layout settings-layout" data-panel={current ? "" : undefined}>
 	<div class="settings-grid">
 		<div class="settings-grid__main">
 			<section class="set-section" data-section="display">
@@ -250,13 +309,23 @@
 			<section class="set-section" data-section="locations">
 				<h2>{tr("settings.places.title")}</h2>
 				<div class="set">
-					<a class="set-row" data-row="locations" href="/settings/locations">
+					<a
+						class="set-row"
+						data-row="locations"
+						href="/settings?panel=locations"
+						aria-current={current === "locations" ? "true" : undefined}
+						onclick={onRow("locations")}>
 						<span class="set-row__text"
 							>{tr("settings.locations.manage")}<small class="set-row__sub">{summary}</small></span
 						>
 						<span class="set-row__chev" aria-hidden="true">›</span>
 					</a>
-					<a class="set-row" data-row="owners" href="/settings/owners">
+					<a
+						class="set-row"
+						data-row="owners"
+						href="/settings?panel=owners"
+						aria-current={current === "owners" ? "true" : undefined}
+						onclick={onRow("owners")}>
 						<span class="set-row__text"
 							>{tr("settings.owners.manage")}<small class="set-row__sub">{ownersLine}</small></span
 						>
@@ -313,17 +382,15 @@
 			<section class="set-section" data-section="data">
 				<h2>{tr("settings.data.title")}</h2>
 				<div class="set">
-					<button
+					<a
 						class="set-row"
-						type="button"
 						data-row="data"
-						aria-expanded={dataOpen}
-						onclick={() => {
-							dataOpen = !dataOpen
-						}}>
+						href="/settings?panel=data"
+						aria-current={current === "data" ? "true" : undefined}
+						onclick={onRow("data")}>
 						<span class="set-row__text">{tr("settings.data.open")}<small class="set-row__sub">{dataLine}</small></span>
-						<span class="set-row__action" data-variant="quiet">{tr("settings.data.openAction")}</span>
-					</button>
+						<span class="set-row__chev" aria-hidden="true">›</span>
+					</a>
 				</div>
 			</section>
 			<section class="set-section" data-section="reset">
@@ -385,26 +452,32 @@
 			</section>
 		</div>
 	</div>
+	{#if current}
+		<DetailPanel
+			title={tr(PANEL_TITLES[current])}
+			detail={current === "data" ? tr("settings.data.storageSub") : undefined}
+			onclose={() => panel.close()}>
+			{#key `${current}:${rewritten}`}
+				{#if current === "data"}
+					<dl class="set">
+						{#each dataRows as fact (fact.row)}
+							<div class="set-row set-row--fact" data-row={fact.row}>
+								<dt class="set-row__text">
+									<span class="set-row__label">{fact.label}</span>
+									{#if fact.sub}
+										<small class="set-row__sub">{fact.sub}</small>
+									{/if}
+								</dt>
+								<dd class="set-row__value">{fact.value}</dd>
+							</div>
+						{/each}
+					</dl>
+				{:else if current === "locations"}
+					<LocationsEditor open={openOnce} onchange={() => void page.load()} />
+				{:else}
+					<OwnersEditor open={openOnce} onchange={() => void page.load()} />
+				{/if}
+			{/key}
+		</DetailPanel>
+	{/if}
 </div>
-{#if dataOpen}
-	<DetailPanel
-		title={tr("settings.data.title")}
-		detail={tr("settings.data.storageSub")}
-		onclose={() => {
-			dataOpen = false
-		}}>
-		<dl class="set">
-			{#each dataRows as fact (fact.row)}
-				<div class="set-row set-row--fact" data-row={fact.row}>
-					<dt class="set-row__text">
-						<span class="set-row__label">{fact.label}</span>
-						{#if fact.sub}
-							<small class="set-row__sub">{fact.sub}</small>
-						{/if}
-					</dt>
-					<dd class="set-row__value">{fact.value}</dd>
-				</div>
-			{/each}
-		</dl>
-	</DetailPanel>
-{/if}

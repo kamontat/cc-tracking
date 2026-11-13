@@ -171,7 +171,7 @@ test("a card kept where purchases aren't taken says so in a note with a link, an
 	)
 	// A plain link inside the note, not a button beside the actions.
 	const link = note?.querySelector<HTMLAnchorElement>('a[data-action="settings"]')
-	expect(link?.getAttribute("href")).toBe("/settings/locations")
+	expect(link?.getAttribute("href")).toBe("/settings?panel=locations")
 	expect(link?.classList.contains("btn")).toBe(false)
 	expect(text(link)).toBe("Settings › Locations")
 	const actions = body?.querySelector(".card-actions")

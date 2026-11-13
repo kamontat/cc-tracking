@@ -77,11 +77,11 @@ describe("applyCopy on the document title", () => {
 	// An Astro page names its title's key; the pass translates it and adds the build's mark,
 	// as the legacy applyChrome does for Lit pages.
 	test("translates a keyed <title> and keeps the build mark", () => {
-		document.head.innerHTML = `<title data-i18n-title="title.locations">Locations — cc-tracking</title>`
+		document.head.innerHTML = `<title data-i18n-title="title.settings">Settings — cc-tracking</title>`
 		setLocale("th")
 		applyCopy(document)
 		const { environment, pr } = buildInfo()
-		expect(document.title).toBe(`${th["title.locations"]}${titleMark(environment, pr)}`)
+		expect(document.title).toBe(`${th["title.settings"]}${titleMark(environment, pr)}`)
 		document.head.innerHTML = ""
 	})
 

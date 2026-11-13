@@ -36,7 +36,7 @@ test("has no floating + New, and no prop to ask for one (RD-25)", async () => {
 test("puts the page's main content inside <main>", async () => {
 	const doc = parseHtml(
 		await (await createContainer()).renderToString(AppLayout, {
-			props: { title: "Locations", titleKey: "title.locations" },
+			props: { title: "Settings", titleKey: "title.settings" },
 			slots: { main: `<p id="mine">mine</p>` },
 		}),
 	)
@@ -45,8 +45,8 @@ test("puts the page's main content inside <main>", async () => {
 
 // The title is translated in the browser like the rest of the static copy.
 test("names the title's key, for the copy pass to translate", async () => {
-	const doc = await render({ titleKey: "title.locations" })
-	expect(doc.querySelector("title")?.getAttribute("data-i18n-title")).toBe("title.locations")
+	const doc = await render({ titleKey: "title.settings" })
+	expect(doc.querySelector("title")?.getAttribute("data-i18n-title")).toBe("title.settings")
 })
 
 test("passes the page's own content through after the shell", async () => {

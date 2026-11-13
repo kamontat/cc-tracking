@@ -11,7 +11,7 @@
 	 * reader's data (a card's name): a back control, the title over a muted `detail` line, and
 	 * `actions` (an Edit link, a More menu) at its end. A string `back` is a link to that address;
 	 * a function is a quiet button that runs it, for a step inside one page. The same markup as
-	 * the static `SubHeader` and the legacy `subHeader`, so app.css draws all three alike.
+	 * the legacy `subHeader`, so app.css draws both alike.
 	 */
 	interface Props {
 		title: string

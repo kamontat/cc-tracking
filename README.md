@@ -94,18 +94,18 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
   sortable; a group opens in its panel (`?limit=<id>`), where it is edited, and
   _+ Add limit_ adds one; each group has a colour, one of 12 swatches or _Random_.
 - `/settings` — sections for _Display_ (language and theme), _Locations and
-  owners_ (a row into each page), _Backup_, _Reset_ (_Delete old purchases_ and _Delete all data_) and
-  _About_.
-- `/settings/locations` — the stored locations: add, rename, delete (only one no
-  card is kept at), and tick _Takes purchases_.
-- `/settings/owners` — the stored owners, who a limit group's account or a
-  supplementary card belongs to: add, rename, delete (only one no group or
-  supplementary card names).
+  owners_ (a row each, opening its panel beside Settings), _Backup_, _Reset_ (_Delete old
+  purchases_ and _Delete all data_) and _About_.
+  - `?panel=locations` — the stored locations: add, rename, delete (only one no
+    card is kept at), and tick _Takes purchases_.
+  - `?panel=owners` — the stored owners, who a limit group's account or a
+    supplementary card belongs to: add, rename, delete (only one no group or
+    supplementary card names).
 
 ## Which cards can take a purchase
 
 The answer belongs to where a card is kept, not to the card. Each location on
-`/settings/locations` has a _Takes purchases_ tick; only unarchived cards kept in
+the Locations panel (`/settings?panel=locations`) has a _Takes purchases_ tick; only unarchived cards kept in
 a ticked place, in a limit group, appear in Home's _Ready to use_ and in the
 new list's add-a-card sheet. Every card still appears everywhere else, including the
 overdue bills in _Needs you_.
