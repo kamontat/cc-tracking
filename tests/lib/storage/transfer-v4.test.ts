@@ -374,6 +374,9 @@ describe("backup version 3", () => {
 	test("an unreadable file is rejected", () => {
 		rejects("not json", "backup.unreadable")
 		rejects(v3({ locations: undefined }), "backup.unreadable")
+		// JSON that carries no version at all is not a backup, not one of an unknown version.
+		rejects(JSON.stringify({ nbformat: 4, cells: [] }), "backup.unreadable")
+		rejects(v3({ version: undefined }), "backup.unreadable")
 	})
 
 	const bad: [string, string, string][] = [

@@ -250,6 +250,8 @@ export function parseAnyBackup(text: string): BackupV4 {
 	if (!isPlainObject(value)) throw new MessageError("backup.unreadable")
 
 	const version = prop(value, "version")
+	// With no version at all it is some other JSON, not a backup of a version this app skips.
+	if (version === undefined) throw new MessageError("backup.unreadable")
 	if (version !== BACKUP_OLDEST && version !== BACKUP_V4) {
 		throw new MessageError("backup.version", {
 			found: JSON.stringify(version),
