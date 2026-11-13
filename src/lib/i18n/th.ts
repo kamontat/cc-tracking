@@ -501,7 +501,7 @@ export const th: Catalog = {
 	"purge.error": "ลบรายการซื้อเก่าไม่สำเร็จ",
 
 	"backup.unreadable": "นี่ไม่ใช่ข้อมูลสำรองที่อ่านได้",
-	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านเวอร์ชัน {expected}",
+	"backup.version": "ข้อมูลสำรองนี้เป็นเวอร์ชัน {found} แต่แอปอ่านได้เฉพาะเวอร์ชัน {oldest}–{newest}",
 	// FLAG FOR OWNER REVIEW: backup.card / backup.purchase / backup.cardPayment are each
 	// assembled with one of the backup.problem.* fragments below (backup.card + " " +
 	// backup.problem.missingId, say) to form one sentence, so Thai word order has to match

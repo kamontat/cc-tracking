@@ -61,7 +61,8 @@ describe("parseBackup", () => {
 		expect((failure as MessageError).key).toBe("backup.version")
 		expect((failure as MessageError).params).toEqual({
 			found: "5",
-			expected: 4,
+			oldest: 3,
+			newest: 4,
 		})
 	})
 
@@ -83,7 +84,8 @@ describe("parseBackup", () => {
 		expect((failure as MessageError).key).toBe("backup.version")
 		expect((failure as MessageError).params).toEqual({
 			found: String(version),
-			expected: 4,
+			oldest: 3,
+			newest: 4,
 		})
 	})
 
@@ -135,7 +137,8 @@ describe("parseBackup", () => {
 		expect((failure as MessageError).key).toBe("backup.version")
 		expect((failure as MessageError).params).toEqual({
 			found: '"3"',
-			expected: 4,
+			oldest: 3,
+			newest: 4,
 		})
 	})
 

@@ -535,7 +535,7 @@ test.each([1, 2])("a version %i file is refused as unsupported, and nothing is w
 	)
 
 	expect(flat(restoreSheet(root)?.querySelector('[role="alert"]'))).toContain(
-		`That backup is version ${version}, and this app reads version 4.`,
+		`This backup is version ${version}, but this app reads versions 3–4.`,
 	)
 	expect(await repo.listCards()).toEqual([])
 	expect(await repo.listCardPayments("k1")).toEqual([])

@@ -30,6 +30,8 @@ import {
 } from "#lib/storage/transfer"
 
 export const BACKUP_V4 = 4
+/** The oldest version restore still reads (DD-202). */
+const BACKUP_OLDEST = 3
 
 /** The starting owners, fresh each time, so a caller's edit can't reach the constant. */
 const startingOwners = (): OwnerRecord[] => DEFAULT_OWNERS.map((owner) => ({ ...owner }))
@@ -248,10 +250,11 @@ export function parseAnyBackup(text: string): BackupV4 {
 	if (!isPlainObject(value)) throw new MessageError("backup.unreadable")
 
 	const version = prop(value, "version")
-	if (version !== 3 && version !== BACKUP_V4) {
+	if (version !== BACKUP_OLDEST && version !== BACKUP_V4) {
 		throw new MessageError("backup.version", {
 			found: JSON.stringify(version),
-			expected: BACKUP_V4,
+			oldest: BACKUP_OLDEST,
+			newest: BACKUP_V4,
 		})
 	}
 

@@ -491,7 +491,7 @@ export const en = {
 	"purge.error": "Could not delete the old purchases.",
 
 	"backup.unreadable": "That is not a readable backup.",
-	"backup.version": "That backup is version {found}, and this app reads version {expected}.",
+	"backup.version": "This backup is version {found}, but this app reads versions {oldest}–{newest}.",
 	"backup.card": "That backup's card #{index} {problem}.",
 	"backup.purchase": "That backup's purchase #{index} {problem}.",
 	"backup.limitGroup": "That backup's limit group #{index} {problem}.",
