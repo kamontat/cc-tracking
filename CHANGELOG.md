@@ -4,6 +4,40 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-14: Data versions 1 and 2 removed
+
+### BREAKING CHANGES
+
+- Restore refuses a version 1 or 2 backup and writes nothing. Restore it in an older build and
+  download a fresh copy, which is version 4 (DD-202).
+
+- Startup no longer converts the old per-statement payments (`cc:payment:<cardId>:<period>`). A
+  browser that never opened the app after phase 4 loses those payments; payments converted
+  earlier (`m:` ids) are kept. A reset still clears the leftover records.
+
+- `StatementPayment`, `Statement`, `PaymentPart`, the repository's `listPayments`,
+  `savePayment` and `deletePayment`, `buildStatement`, `partsOf`, `migratePayments` and
+  `convertPayments` are gone, and `replaceWithBackupV4` no longer takes a storage argument.
+  Message keys removed: `startup.paymentsFailed`, `backup.payment`, `backup.problem.badLocation`,
+  `backup.problem.badPaidAt` and `backup.problem.badParts`.
+
+### Improvements
+
+- The version error names the range of versions read: "This backup is version 2, but this app
+  reads versions 3–4." `backup.version` now takes `oldest` and `newest` in place of `expected`.
+
+- Restore reads only versions 3 and 4. The version 2 conversion, its payment and closed-set
+  location checks, and the clearing of stale `m:` parts on import are gone, so every Merge is
+  purely additive (DD-95 and DD-133 retired).
+
+### Decisions
+
+- The stored-payment conversion went along with version 2 restore, rather than keeping it for
+  browsers that never ran it, because the user asked to treat data versions 1 and 2 as removed.
+
+- The existing `backup.version` key gives the message, not a separate "no longer supported"
+  one. It gives the versions read as a range, so a later version updates it without new text.
+
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
 ### BREAKING CHANGES
