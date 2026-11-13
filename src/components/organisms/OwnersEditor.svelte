@@ -194,7 +194,6 @@
 <ErrorBanner message={bannerMessage} retryLabel={tr("common.reload")} onretry={onRetry} />
 {#if !startupFailure}
 	<div class="records">
-		<p class="set-note">{tr("owners.deleteNote")}</p>
 		{#if sorted.length > 0}
 			<div class="set">
 				{#each sorted as record (record.id)}
@@ -262,6 +261,7 @@
 				{/each}
 			</div>
 		{/if}
+		<p class="set-note">{tr("owners.deleteNote")}</p>
 		<form class="record-add" data-action="add-owner" onsubmit={onAdd}>
 			<label>
 				{tr("owners.add")}
