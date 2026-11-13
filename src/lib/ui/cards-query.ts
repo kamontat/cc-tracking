@@ -15,10 +15,11 @@ import {
 	type LimitsSort,
 	type LimitsView,
 } from "#lib/domain/limits-view"
-import { OWNERS } from "#lib/domain/owner"
+import { DEFAULT_OWNERS } from "#lib/domain/owner"
 import { readDir } from "#lib/domain/sort"
 
-const manyOf = <T extends string>(known: readonly T[], values: string[]): T[] => known.filter((k) => values.includes(k))
+/** The starting owners' ids, for a caller that has no stored owners to hand. */
+const STARTING_OWNER_IDS = DEFAULT_OWNERS.map((owner) => owner.id)
 
 /** The `values` that are in `ids`, once each, in the address's order. */
 const known = (ids: readonly string[], values: string[]): string[] =>
@@ -27,13 +28,17 @@ const known = (ids: readonly string[], values: string[]): string[] =>
 /**
  * The search and the `f.locations` and `f.owners` filters every list of cards shares (Cards,
  * Home's _Owed_ and _Ready to use_, RD-29). An `f.locations` is kept only when it is one of
- * `locationIds`, the stored records' ids; an unknown owner is dropped.
+ * `locationIds`, and an `f.owners` when it is one of `ownerIds`, the stored records' ids.
  */
-export function readCardFilter(p: URLSearchParams, locationIds: readonly string[]): CardFilter {
+export function readCardFilter(
+	p: URLSearchParams,
+	locationIds: readonly string[],
+	ownerIds: readonly string[] = STARTING_OWNER_IDS,
+): CardFilter {
 	return {
 		q: p.get("q") ?? "",
 		locations: known(locationIds, p.getAll("f.locations")),
-		owners: manyOf(OWNERS, p.getAll("f.owners")),
+		owners: known(ownerIds, p.getAll("f.owners")),
 	}
 }
 
@@ -47,14 +52,18 @@ export function writeCardFilter(p: URLSearchParams, filter: CardFilter): void {
 /**
  * The Cards tab's state from `/cards?q=&f.locations=&f.owners=&sort=&dir=&by=` (RD-29);
  * unknown values read as defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`). An
- * `f.locations` is kept only when it is one of `locationIds`, the stored records' ids.
+ * `f.locations` is kept only when it is one of `locationIds`, an `f.owners` one of `ownerIds`.
  */
-export function readCardsView(search: string, locationIds: readonly string[]): CardsView {
+export function readCardsView(
+	search: string,
+	locationIds: readonly string[],
+	ownerIds: readonly string[] = STARTING_OWNER_IDS,
+): CardsView {
 	const p = new URLSearchParams(search)
 	const sort = p.get("sort")
 	const field = CARDS_SORTS.includes(sort as CardsSort) ? (sort as CardsSort) : DEFAULT_CARDS_VIEW.sort
 	return {
-		...readCardFilter(p, locationIds),
+		...readCardFilter(p, locationIds, ownerIds),
 		sort: field,
 		dir: readDir(p.get("dir"), field, CARDS_DIRS),
 		by: CARDS_GROUPS.includes(p.get("by") as CardsGroup) ? (p.get("by") as CardsGroup) : DEFAULT_CARDS_VIEW.by,
@@ -80,15 +89,16 @@ export const limitAddress = (id: string): string => `${LIMITS_ADDRESS}?${new URL
 
 /**
  * The Limits tab's state from `/cards/limits?q=&f.owners=&sort=&dir=` (RD-29); unknown values read
- * as defaults, and a missing `dir` as the sort's own (`LIMITS_DIRS`).
+ * as defaults, and a missing `dir` as the sort's own (`LIMITS_DIRS`). An `f.owners` is kept only
+ * when it is one of `ownerIds`, the stored records' ids.
  */
-export function readLimitsView(search: string): LimitsView {
+export function readLimitsView(search: string, ownerIds: readonly string[] = STARTING_OWNER_IDS): LimitsView {
 	const p = new URLSearchParams(search)
 	const sort = p.get("sort")
 	const field = LIMITS_SORTS.includes(sort as LimitsSort) ? (sort as LimitsSort) : DEFAULT_LIMITS_VIEW.sort
 	return {
 		q: p.get("q") ?? "",
-		owners: manyOf(OWNERS, p.getAll("f.owners")),
+		owners: known(ownerIds, p.getAll("f.owners")),
 		sort: field,
 		dir: readDir(p.get("dir"), field, LIMITS_DIRS),
 	}

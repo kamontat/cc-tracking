@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
-	import type { BackupV3, V3Counts } from "#lib/storage/transfer-v3"
+	import type { BackupV4, V4Counts } from "#lib/storage/transfer-v4"
 	import type { RestoredDetail, RestoreStep } from "#lib/ui/restore"
 
 	import { onMount } from "svelte"
@@ -9,15 +9,18 @@
 	import Sheet from "#components/molecules/Sheet.svelte"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { migrateLocations } from "#lib/storage/migrate-locations"
+	import { migrateOwners } from "#lib/storage/migrate-owners"
 	import { seedLocations } from "#lib/storage/seed-locations"
+	import { seedOwners } from "#lib/storage/seed-owners"
 	import {
 		backupCounts,
-		countRecordsV3,
-		importBackupV3,
+		countRecordsV4,
+		importBackupV4,
 		onlySeededDefaults,
+		onlySeededOwners,
 		parseAnyBackup,
-		replaceWithBackupV3,
-	} from "#lib/storage/transfer-v3"
+		replaceWithBackupV4,
+	} from "#lib/storage/transfer-v4"
 	import { countsText } from "#lib/ui/record-counts"
 	import { canReadClipboard, restoreFailureText } from "#lib/ui/restore"
 
@@ -45,7 +48,7 @@
 	const { repo, storage = globalThis.localStorage, onrestored, onclose }: Props = $props()
 
 	/** A parsed copy waiting on the merge-or-replace answer. No `file` means it was pasted. */
-	type Pending = { file: string | undefined; backup: BackupV3; existing: V3Counts; incoming: V3Counts }
+	type Pending = { file: string | undefined; backup: BackupV4; existing: V4Counts; incoming: V4Counts }
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -53,7 +56,7 @@
 		void lang
 		return t(key, params)
 	}
-	const counts = (value: V3Counts) => {
+	const counts = (value: V4Counts) => {
 		void lang
 		return countsText(value)
 	}
@@ -96,12 +99,14 @@
 	 */
 	const finish = async (
 		file: string | undefined,
-		backup: BackupV3,
-		write: (repo: Repository, backup: BackupV3) => Promise<void>,
+		backup: BackupV4,
+		write: (repo: Repository, backup: BackupV4) => Promise<void>,
 	) => {
 		await write(repo, backup)
 		await seedLocations(repo, storage)
 		await migrateLocations(repo, storage)
+		await seedOwners(repo, storage)
+		await migrateOwners(repo)
 		const restored = backupCounts(backup)
 		const detail: RestoredDetail = file === undefined ? restored : { file, ...restored }
 		leaving = true
@@ -113,11 +118,13 @@
 	/** Parses `text`, then restores it at once into an empty browser or asks first otherwise. */
 	const start = async (file: string | undefined, source: string) => {
 		const backup = parseAnyBackup(source)
-		const existing = await countRecordsV3(repo)
+		const existing = await countRecordsV4(repo)
 		const empty =
-			Object.values(existing).every((count) => count === 0) && onlySeededDefaults(await repo.listLocations())
+			Object.values(existing).every((count) => count === 0) &&
+			onlySeededDefaults(await repo.listLocations()) &&
+			onlySeededOwners(await repo.listOwners())
 		if (empty) {
-			await finish(file, backup, (store, copy) => importBackupV3(store, copy, { overSeeded: true }))
+			await finish(file, backup, (store, copy) => importBackupV4(store, copy, { overSeeded: true }))
 		} else {
 			pending = { file, backup, existing, incoming: backupCounts(backup) }
 			step = "question"
@@ -150,7 +157,7 @@
 		if (!waiting) return
 		return run(() =>
 			finish(waiting.file, waiting.backup, (store, backup) =>
-				replace ? replaceWithBackupV3(store, backup, storage) : importBackupV3(store, backup),
+				replace ? replaceWithBackupV4(store, backup, storage) : importBackupV4(store, backup),
 			),
 		)
 	}

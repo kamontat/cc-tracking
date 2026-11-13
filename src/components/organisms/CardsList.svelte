@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { CardsResults, CardsRooms } from "#lib/domain/cards-view"
-	import type { Card, CardLedger, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
+	import type { Card, CardLedger, LimitGroup, LocationRecord, OwnerRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
@@ -9,7 +9,7 @@
 	import CardTile from "#components/molecules/CardTile.svelte"
 	import { cardOpenDates } from "#lib/domain/cards-view"
 	import { displayDate, today as todayOf } from "#lib/domain/date"
-	import { cardOwnerOf } from "#lib/domain/owner"
+	import { cardOwnerOf, ownerName } from "#lib/domain/owner"
 	import { nameOfLocation } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { lastFour, tileTone } from "#lib/ui/card-tile"
@@ -36,6 +36,8 @@
 		ledgers?: Map<string, CardLedger>
 		/** The stored locations: each section's name, and whether it takes purchases. */
 		locations?: LocationRecord[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: OwnerRecord[]
 		/** How many cards are stored at all, to tell "none yet" from "none match". */
 		total?: number
 		/** Today, which picks each card's open period for the tile's close and due dates. */
@@ -56,6 +58,7 @@
 		credits = new Map(),
 		ledgers = new Map(),
 		locations = [],
+		owners = [],
 		total = 0,
 		today = todayOf(new Date()),
 		onopen,
@@ -89,7 +92,8 @@
 	/** Line 2's aside: the cardholder, then `· Sub` for a supplementary card. */
 	const holder = (card: Card): string => {
 		const group = groups.find((g) => g.id === card.limitGroupId) ?? null
-		const owner = cardOwnerOf(card, group) ?? ""
+		const id = cardOwnerOf(card, group)
+		const owner = id ? ownerName(id, owners) : ""
 		return card.supplementary ? [owner, tr("tile.sub")].filter(Boolean).join(" · ") : owner
 	}
 
@@ -139,6 +143,7 @@
 		{results}
 		cardOf={(card: Card) => card}
 		{locations}
+		{owners}
 		head={results.flat ? cardsCount(results.flat.length) : undefined}
 		{tile} />
 	{#if results.archived.length > 0}
@@ -148,6 +153,7 @@
 				results={{ sections: null, flat: results.archived, count: results.archived.length }}
 				cardOf={(card: Card) => card}
 				{locations}
+				{owners}
 				{tile} />
 		</details>
 	{/if}

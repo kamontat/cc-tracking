@@ -35,6 +35,7 @@ test("src/pages has every page", () => {
 		"ready.astro",
 		"settings.astro",
 		"settings/locations.astro",
+		"settings/owners.astro",
 		"transactions.astro",
 		"transactions/lists.astro",
 		"transactions/lists/edit.astro",
@@ -133,6 +134,7 @@ test("each page keeps the width it asks for", async () => {
 		"ready.astro": "page",
 		"settings.astro": "page",
 		"settings/locations.astro": "page page--form",
+		"settings/owners.astro": "page page--form",
 		"transactions.astro": "page",
 		"transactions/lists.astro": "page",
 		"transactions/lists/edit.astro": "page page--narrow",
@@ -151,7 +153,7 @@ test("each page marks its place in both navs, and none has a floating + New (it 
 		shell[page] = header ?? "none"
 	}
 	// Home's three tabs under Home; the purchase list pages under Transactions (RD-26); Locations
-	// under Settings.
+	// and Owners under Settings.
 	expect(shell).toEqual({
 		"cards.astro": "cards",
 		"cards/limits.astro": "cards",
@@ -160,6 +162,7 @@ test("each page marks its place in both navs, and none has a floating + New (it 
 		"ready.astro": "home",
 		"settings.astro": "settings",
 		"settings/locations.astro": "settings",
+		"settings/owners.astro": "settings",
 		"transactions.astro": "transactions",
 		"transactions/lists.astro": "transactions",
 		"transactions/lists/edit.astro": "transactions",

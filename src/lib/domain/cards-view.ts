@@ -4,7 +4,7 @@ import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
 import { compareDates, today as todayOf } from "#lib/domain/date"
 import { byGroupName } from "#lib/domain/list-view"
-import { cardOwnerOf, OWNERS, type Owner } from "#lib/domain/owner"
+import { cardOwnerOf, DEFAULT_OWNERS, type Owner } from "#lib/domain/owner"
 import { directed, type SortDir } from "#lib/domain/sort"
 import { openPeriod } from "#lib/domain/statement"
 import { getLocale } from "#lib/i18n/index"
@@ -162,7 +162,8 @@ const groupIn = (groupById: ReadonlyMap<string, LimitGroup>, card: Card): LimitG
 /**
  * `items` (already in order; `cardOf` reads each one's card) in sections by `by`, each section
  * keeping that order: places in `locationOrder` (a card kept elsewhere is left out), holders in
- * `OWNERS` order, limit groups A to Z (`byGroupName`); or flat for `none`.
+ * `ownerOrder` (the stored owners A to Z by name; the starting three when not given) then any
+ * other holder by id, limit groups A to Z (`byGroupName`); or flat for `none`.
  */
 export function sectionCards<T>(
 	by: CardsGroup,
@@ -170,6 +171,7 @@ export function sectionCards<T>(
 	cardOf: (item: T) => Card,
 	groups: LimitGroup[],
 	locationOrder: readonly string[],
+	ownerOrder: readonly Owner[] = DEFAULT_OWNERS.map((owner) => owner.id),
 ): Sectioned<T> {
 	if (by === "none") return { sections: null, flat: items, count: items.length }
 	const groupById = new Map(groups.map((g) => [g.id, g]))
@@ -183,11 +185,13 @@ export function sectionCards<T>(
 			cards: items.filter((item) => cardOf(item).location === location),
 		}))
 	} else if (by === "holder") {
-		sections = OWNERS.map((owner) => ({
+		const holderOf = (item: T) => cardOwnerOf(cardOf(item), groupOf(item))
+		const others = items.map(holderOf).filter((owner): owner is Owner => owner !== null && !ownerOrder.includes(owner))
+		sections = [...ownerOrder, ...new Set(others.toSorted())].map((owner) => ({
 			key: `holder:${owner}` as const,
 			kind: "holder" as const,
 			owner,
-			cards: items.filter((item) => cardOwnerOf(cardOf(item), groupOf(item)) === owner),
+			cards: items.filter((item) => holderOf(item) === owner),
 		}))
 	} else {
 		sections = [...groups].sort(byGroupName).map((group) => ({
@@ -221,13 +225,14 @@ export function cardsResults(
 	locationOrder: readonly string[],
 	today: PlainDate = todayOf(new Date()),
 	ledgers: ReadonlyMap<string, CardLedger> = new Map(),
+	ownerOrder?: readonly Owner[],
 ): CardsResults {
 	// A card in no stored group is invalid data (RD-27): left out, like one kept at no stored place.
 	const matches = filterCards(cards, (c) => c, groups, view)
 	const compare = directed(sortKey(view.sort, rooms, today, ledgers), view.dir, byId)
 	const archived = matches.filter((c) => c.archived).sort(compare)
 	const live = matches.filter((c) => !c.archived).sort(compare)
-	return { ...sectionCards(view.by, live, (c) => c, groups, locationOrder), archived }
+	return { ...sectionCards(view.by, live, (c) => c, groups, locationOrder, ownerOrder), archived }
 }
 
 export type GroupPanel = {

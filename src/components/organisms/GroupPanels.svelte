@@ -1,12 +1,13 @@
 <script lang="ts">
 	import type { GroupPanel } from "#lib/domain/cards-view"
+	import type { OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
 	import { toGroupColor } from "#lib/domain/group-color"
 	import { formatAmount } from "#lib/domain/money"
-	import { ownerOf } from "#lib/domain/owner"
+	import { ownerName, ownerOf } from "#lib/domain/owner"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 
 	/**
@@ -17,6 +18,8 @@
 	 */
 	interface Props {
 		panels: GroupPanel[]
+		/** The stored owners, to name each group's holder by its record (RD-30). */
+		owners?: readonly OwnerRecord[]
 		/** What to say when there is no panel: no group yet, or none matches. */
 		empty: string
 		/** The group open in the detail panel now (`aria-current`). */
@@ -25,7 +28,7 @@
 		onopengroup: (id: string) => void
 	}
 
-	const { panels, empty, current = null, onopengroup }: Props = $props()
+	const { panels, owners = [], empty, current = null, onopengroup }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -73,7 +76,7 @@
 				aria-current={group.id === current ? "true" : undefined}
 				onclick={() => onopengroup(group.id)}>
 				<span class="ghead">
-					<span class="gname">{group.name} ({ownerOf(group)})</span>
+					<span class="gname">{group.name} ({ownerName(ownerOf(group), owners)})</span>
 					<span data-numeric
 						>{tr("cards.group.roomOf", { room: formatAmount(panel.room), limit: formatAmount(panel.limit) })}</span
 					>

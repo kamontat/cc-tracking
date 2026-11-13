@@ -6,7 +6,7 @@ import ListPanel from "#components/organisms/ListPanel.svelte"
 import ListReplyPage from "#components/organisms/ListReplyPage.svelte"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { type BackupV3, exportBackupV3, importBackupV3, parseAnyBackup } from "#lib/storage/transfer-v3"
+import { type BackupV4, exportBackupV4, importBackupV4, parseAnyBackup } from "#lib/storage/transfer-v4"
 import { RecordPanel } from "#lib/ui/record-panel.svelte"
 import { fakeHistory } from "../../lib/ui/fake-history"
 import { cleanup, click, closeCard, fieldsOf, settle, setupPage, stored, typeField } from "./list-support"
@@ -34,7 +34,7 @@ const press = async (selector: string) => {
  * The backup's text with the seeded cards A, B and Z renamed 1, 2 and 9, since restore refuses
  * an id outside the card id form (RD-28).
  */
-const restorable = (backup: BackupV3): string => {
+const restorable = (backup: BackupV4): string => {
 	const renamed: Record<string, string> = { A: "1", B: "2", Z: "9" }
 	const id = (cardId: string) => renamed[cardId] ?? cardId
 	return JSON.stringify({
@@ -122,7 +122,7 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 
 	// A backup carries the notes on list lines.
 	const copy = new InMemoryRepository()
-	await importBackupV3(copy, parseAnyBackup(restorable(await exportBackupV3(repo, new Date()))))
+	await importBackupV4(copy, parseAnyBackup(restorable(await exportBackupV4(repo, new Date()))))
 	expect((await copy.listPurchaseLists()).find((l) => l.id === "l1")?.lines).toEqual([
 		{ cardId: "1", amount: 125_00, made: true, note: "diesel for the van" },
 		{ cardId: "2", amount: 50_00, made: false, note: "stamps" },

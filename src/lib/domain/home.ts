@@ -1,3 +1,4 @@
+import type { Owner } from "#lib/domain/owner"
 import type {
 	Card,
 	CardLedger,
@@ -126,9 +127,10 @@ export function readyResults(
 	groups: LimitGroup[],
 	view: ReadyView,
 	locationOrder: readonly string[],
+	ownerOrder?: readonly Owner[],
 ): Sectioned<ReadyRow> {
 	const matches = filterCards(sortReady(rows, view.sort, view.dir), (row) => row.card, groups, view)
-	return sectionCards(view.by, matches, (row) => row.card, groups, locationOrder)
+	return sectionCards(view.by, matches, (row) => row.card, groups, locationOrder, ownerOrder)
 }
 
 export type NeedsItem =

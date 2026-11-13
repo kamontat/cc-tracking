@@ -1,3 +1,4 @@
+import type { Owner } from "#lib/domain/owner"
 import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
 import { type CardListView, filterCards, type Sectioned, sectionCards } from "#lib/domain/cards-view"
@@ -51,10 +52,11 @@ export function owedResults(
 	groups: LimitGroup[],
 	view: OwedView,
 	locationOrder: readonly string[],
+	ownerOrder?: readonly Owner[],
 ): Sectioned<OwedRow> {
 	const states = (row: OwedRow) => view.states.length === 0 || view.states.includes(owedState(row) as OwedState)
 	const matches = filterCards(rows, (row) => row.card, groups, view).filter(states)
-	return sectionCards(view.by, matches, (row) => row.card, groups, locationOrder)
+	return sectionCards(view.by, matches, (row) => row.card, groups, locationOrder, ownerOrder)
 }
 
 /**

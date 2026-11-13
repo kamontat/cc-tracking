@@ -24,7 +24,7 @@ export type GroupColor = (typeof GROUP_COLORS)[number]
 
 /**
  * Narrows untrusted data to a `GroupColor`, or `null` when it is not one. Takes `unknown` for
- * the same reason `toOwner` does: an imported backup or a group saved before the field existed
+ * the same reason `toLocation` does: an imported backup or a group saved before the field existed
  * can carry anything.
  */
 export function toGroupColor(value: unknown): GroupColor | null {

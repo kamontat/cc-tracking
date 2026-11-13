@@ -6,7 +6,7 @@ import { MessageError } from "#lib/i18n/error"
 import { sampleCard, sampleLimitGroup, samplePayment, samplePurchase } from "#lib/storage/contract"
 import { InMemoryRepository } from "#lib/storage/repository"
 import { limitGroupProblem } from "#lib/storage/transfer"
-import { importBackupV3 as importBackup, parseAnyBackup as parseBackup } from "#lib/storage/transfer-v3"
+import { importBackupV4 as importBackup, parseAnyBackup as parseBackup } from "#lib/storage/transfer-v4"
 
 /** A version 2 file's contents, the shape the validators here are shared with. */
 const exportBackup = async (repo: Repository) => {
@@ -65,7 +65,7 @@ describe("parseBackup", () => {
 		const failure = captureThrow(() =>
 			parseBackup(
 				JSON.stringify({
-					version: 4,
+					version: 5,
 					cards: [],
 					purchases: [],
 					payments: [],
@@ -76,8 +76,8 @@ describe("parseBackup", () => {
 		expect(failure).toBeInstanceOf(MessageError)
 		expect((failure as MessageError).key).toBe("backup.version")
 		expect((failure as MessageError).params).toEqual({
-			found: "4",
-			expected: 3,
+			found: "5",
+			expected: 4,
 		})
 	})
 
@@ -174,7 +174,7 @@ describe("parseBackup", () => {
 		expect((failure as MessageError).key).toBe("backup.version")
 		expect((failure as MessageError).params).toEqual({
 			found: '"2"',
-			expected: 3,
+			expected: 4,
 		})
 	})
 

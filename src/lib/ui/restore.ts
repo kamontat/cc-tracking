@@ -1,4 +1,4 @@
-import type { V3Counts } from "#lib/storage/transfer-v3"
+import type { V4Counts } from "#lib/storage/transfer-v4"
 
 import { messageOf } from "#lib/i18n/error"
 import { t } from "#lib/i18n/index"
@@ -7,7 +7,7 @@ import { t } from "#lib/i18n/index"
 export type RestoreStep = "start" | "paste" | "question"
 
 /** What the restore sheet hands back: what the copy held, and the file's name when it came from one. */
-export type RestoredDetail = { file?: string } & V3Counts
+export type RestoredDetail = { file?: string } & V4Counts
 
 /** Whether the browser lets the page read the clipboard; older Firefox and plain-http pages do not. */
 export const canReadClipboard = (): boolean =>

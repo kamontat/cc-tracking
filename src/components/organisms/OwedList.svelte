@@ -2,7 +2,7 @@
 	import type { Sectioned } from "#lib/domain/cards-view"
 	import type { OwedRow } from "#lib/domain/owed"
 	import type { GroupRoom } from "#lib/domain/room"
-	import type { CardLedger, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
+	import type { CardLedger, LimitGroup, LocationRecord, OwnerRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
@@ -39,6 +39,8 @@
 		ledgers: Map<string, CardLedger>
 		/** The stored locations: each place section's name. */
 		locations?: LocationRecord[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: OwnerRecord[]
 		/** Today, which picks a card's open period when its ledger has no open statement. */
 		today: PlainDate
 		/** The card open in the panel now, whose tile is marked. */
@@ -56,6 +58,7 @@
 		rooms,
 		ledgers,
 		locations = [],
+		owners = [],
 		today,
 		current = null,
 		onopencard,
@@ -122,7 +125,7 @@
 	{#if results.count === 0}
 		<p class="empty">{total === 0 ? tr("owed.empty") : tr("cards.page.noMatch")}</p>
 	{:else}
-		<CardSections {results} cardOf={(row: OwedRow) => row.card} {locations} {tile} />
+		<CardSections {results} cardOf={(row: OwedRow) => row.card} {locations} {owners} {tile} />
 	{/if}
 </section>
 

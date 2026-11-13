@@ -1,0 +1,13 @@
+---
+import SubHeader from "#components/molecules/SubHeader.astro"
+import OwnersEditor from "#components/organisms/OwnersEditor.svelte"
+import AppLayout from "#layouts/AppLayout.astro"
+---
+
+<!-- Settings > Owners (RD-30): a static sub-header, and the reader's owners as an island. -->
+<AppLayout title="Owners" titleKey="title.owners" tab="settings" mainClass="page--form">
+	<Fragment slot="main">
+		<SubHeader titleKey="settings.owners.title" back="/settings" />
+		<OwnersEditor client:load />
+	</Fragment>
+</AppLayout>

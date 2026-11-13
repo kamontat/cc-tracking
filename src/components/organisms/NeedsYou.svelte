@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { NeedsItem } from "#lib/domain/home"
-	import type { Card, CardPayment, LimitGroup, PlainDate, PurchaseList } from "#lib/domain/types"
+	import type { Card, CardPayment, LimitGroup, OwnerRecord, PlainDate, PurchaseList } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { CycleInput } from "#lib/ui/cycle-line"
 	import type { ActionKind, RowPart, Say } from "#lib/ui/row-text"
@@ -45,6 +45,8 @@
 		cards?: Card[]
 		/** Every stored limit group, to say whose card it is (DR-13). */
 		groups?: LimitGroup[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: OwnerRecord[]
 		/** Today, to say how far off a planned payment is. */
 		today?: PlainDate
 		/** The list open in the panel now, whose row is marked. */
@@ -65,6 +67,7 @@
 		items = [],
 		cards = [],
 		groups = [],
+		owners = [],
 		today = "",
 		current = null,
 		onmarkpaid,
@@ -139,14 +142,14 @@
 		switch (item.kind) {
 			case "waiting":
 				return {
-					...waitingText(item.list, cards, groups),
+					...waitingText(item.list, cards, groups, owners),
 					amount: listAmount(item.list),
 					parts: listParts(item.list, cards),
 					say: say("row.say.sent", { date: sentWords(item.list) }),
 				}
 			case "overdue":
 				return {
-					...overdueText(item.card, groups, item.days),
+					...overdueText(item.card, groups, item.days, owners),
 					amount: { text: formatAmount(item.remaining), tone: "danger" },
 					// From the statement's start to a few days past today, so today sits inside.
 					cycle: {
@@ -168,14 +171,14 @@
 				}
 			case "planned":
 				return {
-					...plannedText(item.payment, item.card, groups, today),
+					...plannedText(item.payment, item.card, groups, today, owners),
 					amount: { text: `+${formatAmount(item.payment.amount)}`, tone: "in" },
 					// The subtitle has no note, so the sentence carries it.
 					say: plannedSay(item.payment),
 				}
 			case "draft":
 				return {
-					...draftText(item.list, cards, groups),
+					...draftText(item.list, cards, groups, owners),
 					amount: listAmount(item.list),
 					parts: listParts(item.list, cards),
 					say: t("row.say.draft"),

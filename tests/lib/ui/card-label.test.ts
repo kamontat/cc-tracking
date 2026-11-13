@@ -86,3 +86,11 @@ test("card titles read name · holder (last4); holder and digits drop out when u
 	expect(cardTitle({ ...noGroup, last4: "" }, owned)).toBe("Card A10")
 	expect(cardRowTitle({ ...card, last4: "" }, owned)).toBe("10) Card A10 · RI")
 })
+
+test("the holder shows by its owner record's name", () => {
+	const owned: LimitGroup[] = [{ id: "g2", name: "G", limit: 1, owner: "RI" }]
+	const owners = [{ id: "RI", name: "Rin" }]
+	expect(cardOwnerName("10", card, owned, owners)).toBe("Card A10 (Rin)")
+	expect(cardTitle(card, owned, owners)).toBe("Card A10 · Rin (4412)")
+	expect(cardRowTitle(card, owned, owners)).toBe("10) Card A10 · Rin (4412)")
+})

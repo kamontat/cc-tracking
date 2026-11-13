@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Sectioned } from "#lib/domain/cards-view"
 	import type { ReadyRow } from "#lib/domain/home"
-	import type { LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
+	import type { LimitGroup, LocationRecord, OwnerRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
@@ -33,6 +33,8 @@
 		groups: LimitGroup[]
 		/** The stored locations: each place section's name. */
 		locations?: LocationRecord[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: OwnerRecord[]
 		/** Kept for the page's clock; the tiles' dates come with the rows. */
 		today: PlainDate
 		/** The card open in the panel now, whose tile is marked. */
@@ -41,7 +43,7 @@
 		onopencard?: (id: string) => void
 	}
 
-	const { results, total, places, groups, locations = [], current = null, onopencard }: Props = $props()
+	const { results, total, places, groups, locations = [], owners = [], current = null, onopencard }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -109,6 +111,7 @@
 				{results}
 				cardOf={(row: ReadyRow) => row.card}
 				{locations}
+				{owners}
 				head={results.flat ? head : undefined}
 				{tile} />
 		</div>

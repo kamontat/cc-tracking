@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { LimitGroup } from "#lib/domain/types"
+	import type { LimitGroup, OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount, tick, untrack } from "svelte"
@@ -8,7 +8,7 @@
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import { GROUP_COLORS, type GroupColor, pickColor, toGroupColor } from "#lib/domain/group-color"
 	import { amountOf, formatAmountInput } from "#lib/domain/money"
-	import { OWNERS, type Owner, ownerOf } from "#lib/domain/owner"
+	import { DEFAULT_OWNERS, type Owner, ownerOf, sortOwners } from "#lib/domain/owner"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 
 	/**
@@ -24,6 +24,8 @@
 		group: LimitGroup | null
 		/** Every stored group; the sheet leaves its own out when judging which colours are free. */
 		groups: LimitGroup[]
+		/** The stored owners, each a choice for the account holder, A to Z by name. */
+		owners?: readonly OwnerRecord[]
 		/** A card uses the group, so it cannot be deleted. */
 		inUse: boolean
 		/** Why the last save or delete failed, already in the reader's language; typing is kept. */
@@ -38,7 +40,21 @@
 		oncancel?: (() => void) | undefined
 	}
 
-	const { group, groups, inUse, error, busy, random = Math.random, onsave, ondelete, oncancel }: Props = $props()
+	const {
+		group,
+		groups,
+		owners = DEFAULT_OWNERS,
+		inUse,
+		error,
+		busy,
+		random = Math.random,
+		onsave,
+		ondelete,
+		oncancel,
+	}: Props = $props()
+
+	const choices = $derived(sortOwners(owners))
+	const choiceIds = $derived(choices.map((choice) => choice.id))
 
 	const uid = $props.id()
 	const ownerLegend = `${uid}-owner`
@@ -208,21 +224,21 @@
 			role="radiogroup"
 			aria-labelledby={ownerLegend}
 			onkeydown={(event) =>
-				arrow(event, OWNERS, owner, "data-owner", (next) => {
+				arrow(event, choiceIds, owner, "data-owner", (next) => {
 					owner = next
 				})}>
-			{#each OWNERS as choice (choice)}
+			{#each choices as choice (choice.id)}
 				<!-- biome-ignore lint/a11y/useSemanticElements: a segmented control of buttons, roving tabindex (WAI-ARIA radio group) -->
 				<button
 					type="button"
 					role="radio"
-					data-owner={choice}
-					aria-checked={owner === choice ? "true" : "false"}
-					tabindex={tabStop(OWNERS, owner, choice)}
+					data-owner={choice.id}
+					aria-checked={owner === choice.id ? "true" : "false"}
+					tabindex={tabStop(choiceIds, owner, choice.id)}
 					onclick={() => {
-						owner = choice
+						owner = choice.id
 					}}>
-					{choice}
+					{choice.name}
 				</button>
 			{/each}
 		</div>

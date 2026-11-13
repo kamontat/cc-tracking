@@ -1,12 +1,13 @@
 <script lang="ts" generics="T">
 	import type { Snippet } from "svelte"
 	import type { CardSection, Sectioned } from "#lib/domain/cards-view"
-	import type { Card, LocationRecord } from "#lib/domain/types"
+	import type { Card, LocationRecord, OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
 	import { takesPurchases } from "#lib/domain/locations"
+	import { ownerName } from "#lib/domain/owner"
 	import { nameOfLocation } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 
@@ -24,13 +25,15 @@
 		cardOf: (item: T) => Card
 		/** The stored locations: each place section's name, and whether it takes purchases. */
 		locations: LocationRecord[]
+		/** The stored owners: each holder section's name. */
+		owners?: OwnerRecord[]
 		/** The line over a list that is not grouped. */
 		head?: string | undefined
 		/** One tile; `unplaced` when no section head names its place. */
 		tile: Snippet<[item: T, unplaced: boolean]>
 	}
 
-	const { results, cardOf, locations, head, tile }: Props = $props()
+	const { results, cardOf, locations, owners = [], head, tile }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -52,7 +55,7 @@
 				extra: takes ? ` · ${t("cards.page.takesPurchases")}` : "",
 			}
 		}
-		if (section.kind === "holder") return { name: section.owner, extra: "" }
+		if (section.kind === "holder") return { name: ownerName(section.owner, owners), extra: "" }
 		return { name: section.group.name, extra: "" }
 	}
 

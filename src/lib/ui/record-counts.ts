@@ -1,5 +1,5 @@
 import type { MessageKey } from "#lib/i18n/catalog"
-import type { V3Counts } from "#lib/storage/transfer-v3"
+import type { V4Counts } from "#lib/storage/transfer-v4"
 
 import { t } from "#lib/i18n/index"
 
@@ -10,7 +10,7 @@ const KINDS = ["cards", "purchases", "payments", "limitGroups", "lists"] as cons
  * "1 card, 2 purchases, …": how many of each record, singular or plural per kind. Used by the
  * restore question and messages and by the Delete all data warning.
  */
-export const countsText = (counts: V3Counts): string =>
+export const countsText = (counts: V4Counts): string =>
 	KINDS.map((kind) => {
 		const count = counts[kind]
 		const key = `counts.${kind}.${count === 1 ? "one" : "many"}` as MessageKey

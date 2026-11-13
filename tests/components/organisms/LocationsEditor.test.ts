@@ -71,10 +71,10 @@ const setup = async (before?: (repo: Repository) => Promise<void>, locale: "en" 
 
 const flat = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
-const rows = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>(".location-row")]
+const rows = (root: HTMLElement) => [...root.querySelectorAll<HTMLElement>(".record-row")]
 
 const row = (root: HTMLElement, id: string) => {
-	const found = root.querySelector<HTMLElement>(`.location-row[data-location="${id}"]`)
+	const found = root.querySelector<HTMLElement>(`.record-row[data-location="${id}"]`)
 	if (!found) throw new Error(`no row ${id}`)
 	return found
 }
@@ -95,7 +95,7 @@ const type = (field: HTMLInputElement | null, value: string) => {
 	field.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
-const field = (root: HTMLElement, id: string) => row(root, id).querySelector<HTMLInputElement>(".location-row__field")
+const field = (root: HTMLElement, id: string) => row(root, id).querySelector<HTMLInputElement>(".record-row__field")
 
 const rename = async (root: HTMLElement, id: string, name: string) => {
 	await click(row(root, id), "rename")
@@ -137,14 +137,26 @@ test("the last location has no Delete, even with no cards", async () => {
 	expect(action(row(root, "krabi"), "delete")).toBeNull()
 })
 
-test("Delete asks once inline; Cancel keeps it, Delete removes it", async () => {
+test("Delete swaps in place for Delete and Cancel on the row's line, focus following; Cancel keeps it, Delete removes it", async () => {
 	const { repo, root } = await setup()
 	await click(row(root, "bangkok"), "delete")
-	expect(flat(row(root, "bangkok"))).toContain("Delete Bangkok?")
+	const line = row(root, "bangkok").querySelector(".record-row__line")
+	// The name and its count stay; the row's buttons are now the asking pair, and nothing else.
+	expect(flat(line?.querySelector(".record-row__text"))).toContain("Bangkok")
+	expect([...(line?.querySelectorAll("button") ?? [])].map((b) => b.getAttribute("data-action"))).toEqual([
+		"confirm-delete",
+		"cancel-delete",
+	])
+	expect(root.querySelector(".set-ask")).toBeNull()
+	const confirm = action(row(root, "bangkok"), "confirm-delete")
+	expect(confirm?.getAttribute("data-variant")).toBe("danger")
+	expect(confirm?.getAttribute("aria-label")).toBe("Delete Bangkok?")
+	expect(document.activeElement).toBe(confirm)
 	expect(await stored(repo, "bangkok")).toBeDefined()
 
 	await click(row(root, "bangkok"), "cancel-delete")
 	expect(action(row(root, "bangkok"), "confirm-delete")).toBeNull()
+	expect(document.activeElement).toBe(action(row(root, "bangkok"), "delete"))
 	expect(await stored(repo, "bangkok")).toBeDefined()
 
 	await click(row(root, "bangkok"), "delete")
@@ -158,7 +170,7 @@ test("ticking Takes purchases saves it; with none ticked the warning shows", asy
 	const box = (id: string) => action<HTMLInputElement>(row(root, id), "takes-purchases")
 	expect(box("krabi")?.checked).toBe(true)
 	expect(box("bangkok")?.checked).toBe(false)
-	expect(root.querySelector(".location-warning")).toBeNull()
+	expect(root.querySelector(".record-warning")).toBeNull()
 
 	const krabi = box("krabi")
 	if (!krabi) throw new Error("no box")
@@ -166,7 +178,7 @@ test("ticking Takes purchases saves it; with none ticked the warning shows", asy
 	krabi.dispatchEvent(new Event("change", { bubbles: true }))
 	await settle()
 	expect((await stored(repo, "krabi"))?.takesPurchases).toBe(false)
-	expect(flat(root.querySelector(".location-warning"))).toBe(
+	expect(flat(root.querySelector(".record-warning"))).toBe(
 		"No place takes purchases, so Ready to use on Home is empty.",
 	)
 
@@ -176,7 +188,7 @@ test("ticking Takes purchases saves it; with none ticked the warning shows", asy
 	bangkok.dispatchEvent(new Event("change", { bubbles: true }))
 	await settle()
 	expect((await stored(repo, "bangkok"))?.takesPurchases).toBe(true)
-	expect(root.querySelector(".location-warning")).toBeNull()
+	expect(root.querySelector(".record-warning")).toBeNull()
 })
 
 test("rename keeps the id and saves the new name", async () => {
@@ -247,7 +259,7 @@ test("Thai: เชียงใหม่ gets id location, the same name again is
 	expect(await stored(repo, "location")).toEqual({ id: "location", name: "เชียงใหม่", takesPurchases: false })
 	await add(root, " เชียงใหม่ ")
 	expect((await repo.listLocations()).length).toBe(4)
-	expect(action(root, "add-location")?.querySelector(".location-error")).not.toBeNull()
+	expect(action(root, "add-location")?.querySelector(".record-error")).not.toBeNull()
 
 	await add(root, "ลำปาง")
 	expect((await stored(repo, "location-2"))?.name).toBe("ลำปาง")
@@ -334,5 +346,5 @@ test("a store the browser refuses shows why, with Reload, and no rows", async ()
 	await settle()
 	expect(flat(document.querySelector(".error-banner p"))).toBe("This browser is not letting the page store data.")
 	expect(flat(document.querySelector(".error-banner button"))).toBe("Reload")
-	expect(document.querySelector(".location-row")).toBeNull()
+	expect(document.querySelector(".record-row")).toBeNull()
 })

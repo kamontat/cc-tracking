@@ -1,6 +1,6 @@
 import type { GroupPanel } from "#lib/domain/cards-view"
 import type { Owner } from "#lib/domain/owner"
-import type { LimitGroup } from "#lib/domain/types"
+import type { LimitGroup, OwnerRecord } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
@@ -41,7 +41,7 @@ const panels: GroupPanel[] = [
 	},
 ]
 
-const show = (list: GroupPanel[] = panels, current: string | null = null) => {
+const show = (list: GroupPanel[] = panels, current: string | null = null, owners: OwnerRecord[] = []) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
 	const opened: string[] = []
@@ -49,6 +49,7 @@ const show = (list: GroupPanel[] = panels, current: string | null = null) => {
 		target: document.body,
 		props: {
 			panels: list,
+			owners,
 			empty: "No limit groups yet. Add one.",
 			current,
 			onopengroup: (id: string) => opened.push(id),
@@ -86,6 +87,11 @@ test("a panel: name (holder), room of limit, the bar, ids and use", () => {
 	const full = root.querySelector('button[data-group="g/2"]')
 	expect(text(full?.querySelector(".gnote"))).toBe("92% used · getting full")
 	expect(full?.querySelector(".usage")?.getAttribute("data-level")).toBe("high")
+})
+
+test("a panel names its holder by the owner record", () => {
+	const { root } = show(panels, null, [{ id: "KC", name: "Kamontat" }])
+	expect(text(root.querySelector(".gname"))).toBe("SCB Business (Kamontat)")
 })
 
 test("the bar takes the tiles' rail colours: grey within, amber from 80%, red past the limit", async () => {

@@ -3,7 +3,7 @@
 	import type { AmountWarning, DraftLine } from "#lib/domain/amount-warnings"
 	import type { ReadyRow } from "#lib/domain/home"
 	import type { GroupRoom } from "#lib/domain/room"
-	import type { Card, CardLedger, CardPayment, LimitGroup, PlainDate } from "#lib/domain/types"
+	import type { Card, CardLedger, CardPayment, LimitGroup, OwnerRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { ListSheet } from "#lib/ui/list-address"
 
@@ -45,6 +45,8 @@
 		allCards: Card[]
 		/** The stored limit groups, in order: a card's chip takes its group's colour. */
 		groups: LimitGroup[]
+		/** The stored owners, to name a holder by its record (RD-30). */
+		owners?: readonly OwnerRecord[]
 		/** Planned payments (`plannedOf`). */
 		planned: CardPayment[]
 		/** Every ready card: the picker's tiles, and where a card being added finds its dates. */
@@ -80,6 +82,7 @@
 		cards,
 		allCards,
 		groups,
+		owners = [],
 		planned,
 		ready,
 		rooms,
@@ -681,6 +684,7 @@
 				rows={ready}
 				{usage}
 				{groups}
+				{owners}
 				{onList}
 				onpick={(cardId: string) => onsheet({ kind: "card", cardId })} />
 		{:else if sheetCard && sheetView}

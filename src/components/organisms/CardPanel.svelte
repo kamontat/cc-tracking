@@ -374,7 +374,7 @@
 		void lang
 		if (!view) return { title: "", back: false }
 		if (view.id === null) return { title: t("cards.page.new"), back: false }
-		const name = card && data ? cardTitle(card, data.groups) : view.id
+		const name = card && data ? cardTitle(card, data.groups, data.owners) : view.id
 		if (!form) {
 			const detail =
 				card && data ? t("card.subtitle", { id: card.id, location: nameOfLocation(data.locations, card.location) }) : ""
@@ -438,6 +438,7 @@
 					<CardForm
 						card={null}
 						groups={data.groups}
+						owners={data.owners}
 						locations={data.locations}
 						{busy}
 						error={formFailed ? error : ""}
@@ -446,6 +447,7 @@
 					<CardForm
 						{card}
 						groups={data.groups}
+						owners={data.owners}
 						locations={data.locations}
 						{busy}
 						error={formFailed ? error : ""}
@@ -516,6 +518,7 @@
 			card={current}
 			cards={money.cards}
 			groups={money.groups}
+			owners={money.owners}
 			room={roomFor(current, money)}
 			owed={ledger?.owed ?? 0}
 			credit={ledger?.credit ?? 0}

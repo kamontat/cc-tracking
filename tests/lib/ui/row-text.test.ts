@@ -3,7 +3,18 @@ import type { Card, CardPayment, PurchaseList } from "#lib/domain/types"
 import { afterEach, expect, test } from "vitest"
 
 import { setLocale } from "#lib/i18n/index"
-import { listParts, money, plannedSay, plannedText, say, sayText, waitingText, whenWords } from "#lib/ui/row-text"
+import {
+	cardsOrCount,
+	listParts,
+	money,
+	overdueText,
+	plannedSay,
+	plannedText,
+	say,
+	sayText,
+	waitingText,
+	whenWords,
+} from "#lib/ui/row-text"
 
 /** The opening row's words: pure, given the locale. Ported from the legacy `action-row` builders. */
 afterEach(() => setLocale("en"))
@@ -73,6 +84,16 @@ test("a list names a card with several orders once", () => {
 		[],
 	)
 	expect(text.subtitle.match(/Card A/g)).toHaveLength(1)
+})
+
+test("a planned payment and an overdue bill name the holder by its owner record", () => {
+	const payment = { id: "p1", cardId: "1", date: "2026-11-05", amount: 1_000_00 } as CardPayment
+	const groups = [{ id: "g1", name: "G", limit: 1, owner: "RI" }]
+	const owners = [{ id: "RI", name: "Rin" }]
+	const held = { ...card("1", "Card A"), limitGroupId: "g1" }
+	expect(plannedText(payment, held, groups, "2026-11-03", owners).title).toContain("Card A (Rin)")
+	expect(overdueText(held, groups, 2, owners).title).toContain("Card A (Rin)")
+	expect(cardsOrCount(["1"], [held], groups, owners)).toBe("Card A (Rin)")
 })
 
 test("a planned payment says when, and its note only in the opened sentence", () => {

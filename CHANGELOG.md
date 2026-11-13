@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-13: Tabs and a detail panel, and card ids and limit groups enforced
+## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
 ### BREAKING CHANGES
 
@@ -42,6 +42,21 @@ reasons don't show up in the code.
   `group.noHolder`, `cards.view.*`, `tx.view.*`, `common.seeMore`, `common.showLess`,
   `ready.title`, `tx.owed.title` and the `/pay` picker's keys.
 
+- Backups are now written as version 4, with an `owners` list. The app before this change reads
+  only versions 2 and 3, so restore a version 4 file only into the current app. Versions 2 and
+  3 still restore (RD-30, DC-05).
+
+- A version 4 backup is refused, with nothing written, when a limit group or a supplementary card
+  names an owner the file's `owners` does not have (`backup.problem.unknownOwner`).
+
+- `#lib/storage/transfer-v3` is now `#lib/storage/transfer-v4`, and its exports are renamed
+  (`exportBackupV4`, `importBackupV4`, `replaceWithBackupV4`, `countRecordsV4`, `BackupV4`,
+  `V4Counts`). `OWNERS` and `toOwner` are gone from `#lib/domain/owner`: owners are stored
+  records (`DEFAULT_OWNERS`, `ownerName`, `sortOwners`).
+
+- The Locations page's classes are shared as `.records`, `.record-row`, `.record-add`,
+  `.record-error` and `.record-warning` (they were `.locations` and `.location-*`).
+
 ### Features
 
 - Home, Transactions and Cards have tabs, one view at a time on every screen, each tab its own
@@ -72,6 +87,22 @@ reasons don't show up in the code.
   _Owed_ adds a bill filter (`f.states`: overdue, due soon, no bill yet), and _Pay_ on a bill
   opens the card's pay form in its panel with what is left filled in (RD-25).
 
+- Owners are managed in Settings, as locations are: `/settings/owners` adds, renames and deletes
+  an owner (only one no limit group or supplementary card names, and never the last). An owner
+  is a stored record `{ id, name }` at `cc:owner:<id>`, seeded once as KC, NT and RI (RD-30).
+
+- Every screen shows an owner by its name: tiles, the card and limit panels, Needs you and
+  Upcoming rows, group labels, holder sections and filter chips. The group form's _Account
+  holder_, the card form's supplementary holder, the _Account holder_ filters and holder
+  sections offer every owner, A to Z by name, and `f.owners` takes any stored owner's id.
+
+- At every load and after a restore, every limit group and supplementary card is pointed at a
+  stored owner: no owner is KC's, a starting owner whose record is gone comes back, and any
+  other unknown owner moves to the first owner A to Z (DC-18).
+
+- Backup version 4 carries the owners. Merge keeps a renamed owner; into a new browser the
+  copy's owners replace the seeded ones; _Delete all data_ seeds KC, NT and RI again.
+
 ### Improvements
 
 - The card form refuses a new card's id that doesn't match the card id format, and its limit
@@ -90,6 +121,13 @@ reasons don't show up in the code.
 - A card that isn't offered on lists says why in a note whose _Settings › Locations_ is the link,
   and the panel's head buttons (‹, _Edit_, ⋯, ×) are one size, with no focus ring left on ⋯
   after a mouse click.
+
+- Settings' Locations section is now _Locations and owners_, one list with a row into each page;
+  the owners row names every owner A to Z.
+
+- _Delete_ on a location or an owner swaps in place for _Delete_ (asking "Delete NAME?") and
+  _Cancel_ on the row's own line, focus following, as a payment's _Delete_ does; the row keeps
+  its name and count (amends DD-129).
 
 ### Decisions
 
@@ -127,6 +165,17 @@ reasons don't show up in the code.
 
 - _Record reply_ keeps its name rather than the spec's _Enter reply_, so one action has one
   name.
+
+- Owners keep their seeded ids (`KC`, `NT`, `RI`) and gain a name, so no stored group or card
+  changes and a rename only changes what is shown. Rejected: initials as the only key, which
+  would rewrite every group and card on a rename (DD-201).
+
+- An unknown owner is repaired at startup rather than read as another owner on the fly, so
+  stored data and every screen agree. Rejected: reading it as the first owner without
+  rewriting it (DD-201).
+
+- Owners need a new backup version rather than an optional field in version 3, so a file's
+  groups and supplementary cards can be checked against its own owners (DD-201).
 
 ## 2026-11-12: Building a purchase list a card at a time, with each card's last 12 statements
 

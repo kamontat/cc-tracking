@@ -301,6 +301,7 @@
 				lists={data.lists}
 				ledgers={data.ledgers}
 				limitGroups={data.groups}
+				owners={data.owners}
 				today={now}
 				filtered={narrowed}
 				{limit}

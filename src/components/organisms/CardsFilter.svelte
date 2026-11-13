@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { CardsView } from "#lib/domain/cards-view"
-	import type { LocationRecord } from "#lib/domain/types"
+	import type { LocationRecord, OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 
@@ -22,6 +22,8 @@
 		view: CardsView
 		/** The stored locations, every one offered, A to Z by shown name. */
 		locations: LocationRecord[]
+		/** The stored owners, every one offered, A to Z by name. */
+		owners?: readonly OwnerRecord[]
 		/** How many cards a view would show. */
 		count: (view: CardsView) => number
 		/** The draft view, once the sheet has slid away; the page takes the sheet off screen. */
@@ -30,7 +32,7 @@
 		onclose: () => void
 	}
 
-	const { view, locations, count, onapply, onclose, tab }: Props = $props()
+	const { view, locations, owners, count, onapply, onclose, tab }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -54,6 +56,7 @@
 	fields={CARDS_SORTS}
 	dirs={CARDS_DIRS}
 	{locations}
+	{owners}
 	{count}
 	{onapply}
 	{onclose} />

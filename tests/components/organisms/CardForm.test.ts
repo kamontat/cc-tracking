@@ -1,10 +1,11 @@
-import type { Card, LimitGroup, LocationRecord } from "#lib/domain/types"
+import type { Card, LimitGroup, LocationRecord, OwnerRecord } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
 import { SvelteMap } from "svelte/reactivity"
 import { afterEach, expect, test } from "vitest"
 
 import CardForm from "#components/organisms/CardForm.svelte"
+import { DEFAULT_OWNERS } from "#lib/domain/owner"
 import { setLocale } from "#lib/i18n/index"
 
 /**
@@ -51,6 +52,7 @@ interface Shown {
 	card?: Card | null
 	groups?: LimitGroup[]
 	locations?: LocationRecord[]
+	owners?: OwnerRecord[]
 	error?: string
 	busy?: boolean
 }
@@ -74,6 +76,9 @@ const show = async (card: Card | null = null, limitGroups = groups, extra: Shown
 			},
 			get locations() {
 				return values.get("locations") as LocationRecord[]
+			},
+			get owners() {
+				return (values.get("owners") as OwnerRecord[] | undefined) ?? DEFAULT_OWNERS
 			},
 			get error() {
 				return values.get("error") as string
@@ -259,6 +264,35 @@ test("names the account holder from the chosen group, and asks for a holder only
 
 	await fill("holder", "account")
 	expect($('[name="owner"]')).toBeNull()
+})
+
+test("names holders by the stored owners, and offers each of them A to Z by name", async () => {
+	const owners = [
+		{ id: "NT", name: "Nat" },
+		{ id: "pim", name: "Pim" },
+		{ id: "KC", name: "Kamontat" },
+	]
+	const { saves } = await show(null, [{ id: "nt", name: "NT pool", limit: 1, owner: "NT" }], { owners })
+	await fill("limitGroupId", "nt")
+	expect($<HTMLOptionElement>('[name="holder"] option[value="account"]')?.textContent).toContain("Account holder (Nat)")
+	expect($<HTMLOptionElement>('[name="limitGroupId"] option[value="nt"]')?.textContent).toContain("NT pool (Nat)")
+	await fill("holder", "supplementary")
+	const options = [...document.body.querySelectorAll<HTMLOptionElement>('[name="owner"] option')]
+	expect(options.map((o) => [o.value, o.textContent?.trim()])).toEqual([
+		["", "Choose who holds it"],
+		["KC", "Kamontat"],
+		["NT", "Nat"],
+		["pim", "Pim"],
+	])
+	await fill("owner", "pim")
+	await fill("id", "77")
+	await fill("name", "Pim's card")
+	await fill("last4", "1234")
+	await fill("closeDay", "18")
+	await fill("dueOffsetDays", "15")
+	$<HTMLFormElement>("form")?.requestSubmit()
+	await Promise.resolve()
+	expect(saves[0]?.owner).toBe("pim")
 })
 
 test("refuses a supplementary card with no holder chosen", async () => {

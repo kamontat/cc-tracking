@@ -5,7 +5,7 @@
 	import type { NameProblem } from "#lib/ui/location-names"
 	import type { Opened } from "#lib/ui/startup"
 
-	import { onMount } from "svelte"
+	import { onMount, tick } from "svelte"
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import { canDeleteLocation, locationId, renameLocation } from "#lib/domain/locations"
@@ -135,9 +135,24 @@
 		} else if (event.key === "Escape") onCancelName()
 	}
 
+	/** Focuses the button `action` on record `id`'s row once the swap has drawn (UI-09). */
+	const focusOn = async (id: string, action: string) => {
+		await tick()
+		document
+			.querySelector<HTMLElement>(`.record-row[data-location="${CSS.escape(id)}"] [data-action="${action}"]`)
+			?.focus()
+	}
+
+	/** *Delete* swaps in place for the asking *Delete* and *Cancel*, focus following. */
 	const onDelete = (id: string) => {
 		deleting = id
 		renaming = null
+		void focusOn(id, "confirm-delete")
+	}
+
+	const onCancelDelete = (id: string) => {
+		deleting = null
+		void focusOn(id, "delete")
 	}
 
 	/** The question stays open until the delete goes through. */
@@ -184,18 +199,18 @@
 
 <ErrorBanner message={bannerMessage} retryLabel={tr("common.reload")} onretry={onRetry} />
 {#if !startupFailure}
-	<div class="locations">
+	<div class="records">
 		{#if sorted.length > 0}
 			<div class="set">
 				{#each sorted as record (record.id)}
 					{@const name = nameOf(record)}
 					{@const count = countAt(record.id)}
-					<div class="location-row" data-location={record.id}>
+					<div class="record-row" data-location={record.id}>
 						{#if renaming?.id === record.id}
-							{@const errorId = `location-error-${record.id}`}
-							<div class="location-row__line">
+							{@const errorId = `record-error-${record.id}`}
+							<div class="record-row__line">
 								<input
-									class="location-row__field"
+									class="record-row__field"
 									value={renaming.text}
 									oninput={(event) => {
 										if (renaming) renaming.text = event.currentTarget.value
@@ -210,47 +225,47 @@
 								</button>
 							</div>
 							{#if renaming.problem}
-								<p class="location-error" id={errorId} role="alert">{why(renaming.problem)}</p>
+								<p class="record-error" id={errorId} role="alert">{why(renaming.problem)}</p>
 							{/if}
-						{:else if deleting === record.id}
-							<div class="set-ask">
-								<p class="set-ask__note">{tr("locations.deleteAsk", { name })}</p>
-								<div class="set-ask__actions">
-									<button
-										type="button"
-										data-variant="quiet"
-										data-action="cancel-delete"
-										onclick={() => {
-											deleting = null
-										}}>
-										{tr("common.cancel")}
-									</button>
+						{:else}
+							<div class="record-row__line">
+								<span class="record-row__text">
+									<strong>{name}</strong>
+									<small>{count === 1 ? tr("cards.page.count.one") : tr("cards.page.count.many", { count })}</small>
+								</span>
+								{#if deleting === record.id}
 									<button
 										type="button"
 										data-variant="danger"
 										data-action="confirm-delete"
+										aria-label={tr("locations.deleteAsk", { name })}
 										onclick={() => onConfirmDelete(record.id)}>
 										{tr("common.delete")}
 									</button>
-								</div>
-							</div>
-						{:else}
-							<div class="location-row__line">
-								<span class="location-row__text">
-									<strong>{name}</strong>
-									<small>{count === 1 ? tr("cards.page.count.one") : tr("cards.page.count.many", { count })}</small>
-								</span>
-								<button type="button" data-variant="quiet" data-action="rename" onclick={() => onRename(record)}>
-									{tr("locations.rename")}
-								</button>
-								{#if locations.length > 1 && canDeleteLocation(record.id, cards)}
-									<button type="button" data-variant="danger" data-action="delete" onclick={() => onDelete(record.id)}>
-										{tr("common.delete")}
+									<button
+										type="button"
+										data-variant="quiet"
+										data-action="cancel-delete"
+										onclick={() => onCancelDelete(record.id)}>
+										{tr("common.cancel")}
 									</button>
+								{:else}
+									<button type="button" data-variant="quiet" data-action="rename" onclick={() => onRename(record)}>
+										{tr("locations.rename")}
+									</button>
+									{#if locations.length > 1 && canDeleteLocation(record.id, cards)}
+										<button
+											type="button"
+											data-variant="danger"
+											data-action="delete"
+											onclick={() => onDelete(record.id)}>
+											{tr("common.delete")}
+										</button>
+									{/if}
 								{/if}
 							</div>
 						{/if}
-						<label class="location-row__takes">
+						<label class="record-row__takes">
 							<input
 								type="checkbox"
 								data-action="takes-purchases"
@@ -263,24 +278,24 @@
 			</div>
 		{/if}
 		{#if noneTake}
-			<p class="location-warning" role="status">{tr("locations.noneTake")}</p>
+			<p class="record-warning" role="status">{tr("locations.noneTake")}</p>
 		{/if}
 		<p class="set-note">{tr("locations.deleteNote")}</p>
-		<form class="location-add" data-action="add-location" onsubmit={onAdd}>
+		<form class="record-add" data-action="add-location" onsubmit={onAdd}>
 			<label>
 				{tr("locations.add")}
-				<span class="location-add__control">
+				<span class="record-add__control">
 					<input
 						name="name"
 						bind:value={addText}
 						placeholder={tr("locations.addPlaceholder")}
 						aria-invalid={addProblem ? "true" : "false"}
-						aria-describedby={addProblem ? "location-add-error" : undefined}>
+						aria-describedby={addProblem ? "record-add-error" : undefined}>
 					<button type="submit">{tr("locations.addAction")}</button>
 				</span>
 			</label>
 			{#if addProblem}
-				<p class="location-error" id="location-add-error" role="alert">{why(addProblem)}</p>
+				<p class="record-error" id="record-add-error" role="alert">{why(addProblem)}</p>
 			{/if}
 		</form>
 	</div>
