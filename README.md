@@ -54,32 +54,31 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
   _Ready to use_ shows the four cards with the most room (see _Which cards can
   take a purchase_ below), sorted by room, each opening its card page, then _See
   more_ for the rest.
-- `/list/new` — the picker for a new purchase list: search, a Filter sheet (where
-  a card is kept, its owner) and a sort (most room, longest to close, latest
-  due), all kept in the address as `q`, `loc`, `owner` and `sort`. Ticking cards
-  shows a bar with how many are selected, _Clear_, and _Enter amounts_, which goes
-  on to the next step for those cards in the order they were ticked.
-- `/list/new?card=<id>` (once per card) — a new purchase list for those cards.
-  Enter an amount per card and the purchase date, with warnings that never block
+- `/transactions` and `/transactions/lists` — Transactions' two tabs, _Ledger_ and
+  _Lists_, one at a time on every screen. The ledger lists purchases and payments,
+  with an _Upcoming_ section above it for planned payments and waiting lists; a
+  purchase's _Open card_ opens the card's panel (`?card=<id>`). _Lists_ holds
+  every purchase list; a list opens in its panel (`?list=<id>`) with its lines,
+  _Continue_ or _Record reply_, _Merge_, _Delete_ or _Confirm_, and _+ Add list_
+  starts a new one. The _+ New_ menu offers _New purchase list_ and _Make a
+  payment_.
+- `/transactions/lists/new?cards=<id>` (once per card) — a new purchase list:
+  each card's amounts in its add-a-card sheet, with warnings that never block
   (over the group's room, with _Lower to_ the room left; room held by lists
   waiting for the spender; a shared limit; an overdue bill; the close date; a date
   that has passed). _Review_ shows the dated table with _Copy text_ and _Save
   image_ (on a phone that can share files, the image goes to the share sheet;
-  elsewhere it downloads), then _Mark as sent_ or _Save as draft instead_.
-- `/list/draft?id=<list id>` — the same two steps for a stored draft, which names
-  any card that can no longer take purchases and leaves it out, plus _Delete
-  draft_, which deletes it at once.
-- `/list/reply?id=<list id>` — the spender's reply to a waiting list: mark each
+  elsewhere it downloads), then _Mark as sent_; _Save as draft_ keeps it for
+  later. A save opens the list in its panel on the _Lists_ tab.
+- `/transactions/lists/edit?list=<list id>` — a draft in the same builder (any
+  card that can no longer take purchases is named and left out, and _Delete
+  draft_ deletes it at once), or the spender's reply to a waiting list: mark each
   line _Made_ or _Not made_, correct the real amount, optionally move the
   not-made lines to a draft for the next day, and save. _Cancel list_ deletes the
-  waiting list at once, so it stops holding room; nothing is bought.
-- `/list/view?id=<list id>` — a saved list, read-only: what was bought.
-  Each list page opened on a list in another state links to that list's own
-  page.
-- `/transactions` — the ledger of purchases and payments, with an _Upcoming_
-  section above it for planned payments and waiting lists, plus the _Lists_ and
-  _Owed_ views. The _+ New_ menu in the header offers _New purchase list_ and
-  _Make a payment_.
+  waiting list at once, so it stops holding room; nothing is bought. A saved list
+  has no edit page: it says so and links to its panel.
+- `/list/new`, `/list/draft`, `/list/reply` and `/list/view` — the old list pages,
+  still served on their old keys (`card`, `id`) until they retire.
 - `/pay` — _Make a payment_: pick a card, then a sheet takes the amount, the date
   and a note. A date after today saves it as a planned payment.
 - `/cards` and `/cards/limits` — Cards' two tabs, _Cards_ and _Limits_, one at a
@@ -108,8 +107,8 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
 
 The answer belongs to where a card is kept, not to the card. Each location on
 `/settings/locations` has a _Takes purchases_ tick; only unarchived cards kept in
-a ticked place, in a limit group, appear in Home's _Ready to use_ and on the
-`/list/new` picker. Every card still appears everywhere else, including the
+a ticked place, in a limit group, appear in Home's _Ready to use_ and in the
+new list's add-a-card sheet. Every card still appears everywhere else, including the
 overdue bills in _Needs you_.
 
 The first load stores Bangkok, Phichit and Krabi as location records, taking their
@@ -185,7 +184,8 @@ Everything lives in this browser's `localStorage`, under keys shaped like
 `cc:card:<id>`, `cc:purchase:<cardId>:<date>:<uuid>`, `cc:limitgroup:<id>`,
 `cc:cardpayment:<cardId>:<id>`, `cc:statementdates:<cardId>:<period>`,
 `cc:location:<id>` and `cc:list:<id>` (a purchase list, with its lines and status;
-`/list/draft`, `/list/reply` or `/list/view` opens it by that status). One-off
+`/transactions/lists/edit?list=<id>` works on a draft or a waiting list, and
+`/transactions/lists?list=<id>` shows any list in its panel). One-off
 markers and notices from data migrations sit under `cc:migration:*`, and which
 panels are folded under `cc:panel:*`. A purchase saved from a spender's reply takes
 the id `<list id>-<n>` instead of a uuid, and a draft moved from it `<list id>-<n>`

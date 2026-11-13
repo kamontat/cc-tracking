@@ -93,7 +93,9 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   sub-header with a title from the reader's data, a `detail` line and an `actions` snippet;
   the static `SubHeader.astro` takes a catalog key instead), and `#lib/ui/card-label` (a
   card's name in its text forms; never copy it), and `ActionRow.svelte` (molecule; the row that
-  opens in place, with `TwoStepButtons` for a two-step _Delete_ or _Confirm_).
+  opens in place, with `TwoStepButtons` for a two-step _Delete_ or _Confirm_; with `onopen` and
+  `current` the same row opens its record in the detail panel instead, as a list's row does on
+  the Lists tab).
 - The detail panel (PRD RD-23, DD-196) is three pieces; never build another. `RecordPanel`
   (`#lib/ui/record-panel.svelte`) is the open record in the address (`card`, `limit`, `list`)
   and every step through history: the page makes one over its `AddressBar` (`path`, `kinds`),
@@ -101,16 +103,18 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   `show(ref)` from a list, `deeper(ref)` from inside a panel, `openForm`, `blank(kind)`, `back`,
   `close`, `created(ref)`. `DetailPanel.svelte` (molecule) draws the column or sheet and its
   head; the page wraps its list and the panel in `.panel-layout` (`data-panel` while open,
-  app.css). A kind's content is an organism that reads the store itself, as `CardPanel.svelte`
-  and `LimitPanel.svelte` do, so any page can hold it. `PurchaseForm.svelte` and
+  app.css). A kind's content is an organism that reads the store itself, as `CardPanel.svelte`,
+  `LimitPanel.svelte` and `ListPanel.svelte` do, so any page can hold it. `PurchaseForm.svelte` and
   `GroupForm.svelte` are the purchase and group forms without a sheet.
 - A page with tabs (PRD RD-22) heads its `main` slot with `PageTabs.astro` (molecule, static):
   one bar on one rule, the title (`--cc-text-xl`), an `aria-hidden` divider, then one link per
   tab, each tab its own page, the one on show marked `aria-current="page"` and underlined on the
-  bar's rule; only the links scroll sideways (never wrapping), on every width (`<PageTabs title="cards.title" label="cards.tabs" tabs={CARDS_TABS}
-  current="/cards" />`). A tab list is a `PageTab[]` in `#lib/ui/page-tabs`. A tab's add button
-  goes at the end of its search row, through `FilterControls`' `end` snippet, as a quiet
-  `button.tx-fbtn` (_+ Add card_, _+ Add limit_).
+  bar's rule; only the links scroll sideways (never wrapping), on every width (`<PageTabs
+  title="cards.title" label="cards.tabs" tabs={CARDS_TABS} current="/cards" />`). A tab list is a
+  `PageTab[]` in `#lib/ui/page-tabs` (`CARDS_TABS`, `TRANSACTIONS_TABS`). A tab's add button goes
+  at the end of its search row, through `FilterControls`' `end` snippet, as a quiet
+  `button.tx-fbtn` (_+ Add card_, _+ Add limit_), or an `a.btn.tx-fbtn` when it leads to a page
+  (_+ Add list_).
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.

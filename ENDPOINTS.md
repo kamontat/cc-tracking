@@ -1,12 +1,12 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: Cards' tabs, `/cards` and `/cards/limits`, 2026-11-13, PRD DD-197). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: Transactions' tabs and the purchase list pages, `/transactions`, `/transactions/lists`, `/transactions/lists/new` and `/transactions/lists/edit`, 2026-11-13, PRD DD-198). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
 Unknown query keys are ignored, and a value the page does not know reads as the default.
-A sort's direction (`dir`, `odir`) defaults to that sort's own, so it is written only when it
+A sort's direction (`dir`) defaults to that sort's own, so it is written only when it
 runs the other way.
 Keys marked _repeated_ may appear more than once (`?card=a&card=b`). Pages that rewrite their
 own address leave a key out while it holds its default, so the bare path is the default view.
@@ -18,7 +18,9 @@ and `/card`, `/pay`, `/list/*` and the `/backup` redirect retired. The full list
 `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`. This file stays in step with the
 code: each part of the plan rewrites the addresses it changes here as it ships. Shipped so far:
 `card` on `/cards` (part 2, DD-196); Cards' tabs, `/cards` and `/cards/limits`, with `f.`
-filters and the `limit` key (part 3, DD-197).
+filters and the `limit` key (part 3, DD-197); Transactions' tabs, `/transactions` and
+`/transactions/lists`, with `f.` filters and the `card` and `list` keys, and the list pages
+`/transactions/lists/new` and `/transactions/lists/edit` (part 4, DD-198).
 
 ## Redirects
 
@@ -34,33 +36,87 @@ No query.
 
 ## Transactions
 
+Two tabs, each its own page (RD-22): _Ledger_ at `/transactions` and _Lists_ at
+`/transactions/lists`, under the page title on every width. The tab bar lights Transactions for
+both, and for the list pages under `/transactions/lists/`. A filter takes `f.` (RD-29). What each
+card owes is no longer on Transactions (it moves to Home's _Owed_, `/owed`, next).
+
 ### `/transactions`
 
-| Key      | Values                                          | Default        | Notes                                                                                                           |
-| -------- | ----------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------- |
-| `view`   | `ledger`, `lists`, `owed`                       | `ledger`       | Which view shows. On desktop `owed` sits beside the ledger.                                                     |
-| `q`      | any text                                        | empty          | Ledger search.                                                                                                  |
-| `type`   | `purchase`, `payment` (repeated)                | any            | Ledger entry types.                                                                                             |
-| `card`   | card id (repeated)                              | any            | Ledger cards.                                                                                                   |
-| `range`  | `today`, `week`, `month`, `lastMonth`, `custom` | none           | Ledger date preset.                                                                                             |
-| `from`   | `YYYY-MM-DD`                                    | none           | Ledger range start; an invalid date is dropped.                                                                 |
-| `to`     | `YYYY-MM-DD`                                    | none           | Ledger range end; an invalid date is dropped.                                                                   |
-| `sort`   | `date`, `amount`                                | `date`         | Ledger order. The retired `new`, `old`, `big`, `small` read as `date`.                                          |
-| `dir`    | `asc`, `desc`                                   | the sort's own | Ledger direction: `date` and `amount` default to `desc` (newest, biggest first).                                |
-| `by`     | `day`, `card`, `none`                           | `day`          | Ledger sections: each day (in the date sort's direction, else newest first), each card by id, or one flat list. |
-| `owed`   | `urgency`, `card`, `due`, `left`                | `urgency`      | Owed view order.                                                                                                |
-| `odir`   | `asc`, `desc`                                   | the sort's own | Owed direction: `left` defaults to `desc` (most owed first), the others to `asc`.                               |
-| `lq`     | any text                                        | empty          | Lists view search: a line's card id, name, last 4 or note.                                                      |
-| `status` | `draft`, `sent`, `saved` (repeated)             | any            | Lists view status filter.                                                                                       |
-| `lcard`  | card id (repeated)                              | any            | Lists view cards: a list with any of them on a line.                                                            |
-| `lrange` | `today`, `week`, `month`, `lastMonth`, `custom` | none           | Lists view date preset, on the list's date.                                                                     |
-| `lfrom`  | `YYYY-MM-DD`                                    | none           | Lists view range start; an invalid date is dropped.                                                             |
-| `lto`    | `YYYY-MM-DD`                                    | none           | Lists view range end; an invalid date is dropped.                                                               |
-| `lby`    | `status`, `month`, `none`                       | `status`       | Lists view sections: drafts, waiting and saved by date; each month, newest first; or every list in one.         |
+The ledger: the month's summary, _Upcoming_, and purchases and payments by day.
 
-The page rewrites its address (`replaceState`) on every change, so the current view can be
-bookmarked. The Lists view's keys are its own, so a ledger search does not carry into it.
-Example: `/transactions?view=lists&lq=fuel&status=draft&status=sent`.
+| Key       | Values                                          | Default        | Notes                                                                                                                                                            |
+| --------- | ----------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `q`       | any text                                        | empty          | Search: a card, a note or an amount.                                                                                                                             |
+| `f.types` | `purchase`, `payment` (repeated)                | any            | Entry types.                                                                                                                                                     |
+| `f.cards` | card id (repeated)                              | any            | Cards.                                                                                                                                                           |
+| `f.range` | `today`, `week`, `month`, `lastMonth`, `custom` | none           | Date preset.                                                                                                                                                     |
+| `f.from`  | `YYYY-MM-DD`                                    | none           | Range start; an invalid date is dropped.                                                                                                                         |
+| `f.to`    | `YYYY-MM-DD`                                    | none           | Range end; an invalid date is dropped.                                                                                                                           |
+| `sort`    | `date`, `amount`                                | `date`         | Order. The retired `new`, `old`, `big`, `small` read as `date`.                                                                                                  |
+| `dir`     | `asc`, `desc`                                   | the sort's own | Direction: `date` and `amount` default to `desc` (newest, biggest first).                                                                                        |
+| `by`      | `day`, `card`, `none`                           | `day`          | Sections: each day (in the date sort's direction, else newest first), each card by id, or one flat list.                                                         |
+| `card`    | card id                                         | none           | Opens the card's panel (a purchase's _Open card_), as on `/cards`. An id not in the card id format (RD-28) or a card not stored opens nothing, and the key goes. |
+
+Search, filter and sort changes rewrite the address (`replaceState`), keeping `card`. A row opens
+in place; a purchase's _Open card_ opens the card's panel, pushing `card` (Back closes it), and
+its _Open list_ links to `/transactions/lists?list=<id>`. Example:
+`/transactions?f.types=purchase&f.cards=12.3&sort=amount&card=12.3`. The retired `view`, `type`,
+`range`, `from`, `to`, `owed` and `odir` are ignored like any unknown key, and the old `card`
+filter now names the card panel.
+
+### `/transactions/lists`
+
+Every purchase list, in sections (DD-188).
+
+| Key          | Values                                          | Default  | Notes                                                                                             |
+| ------------ | ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `q`          | any text                                        | empty    | Search: a line's card id, name, last 4 or note.                                                   |
+| `f.statuses` | `draft`, `sent`, `saved` (repeated)             | any      | Status.                                                                                           |
+| `f.cards`    | card id (repeated)                              | any      | A list with any of them on a line.                                                                |
+| `f.range`    | `today`, `week`, `month`, `lastMonth`, `custom` | none     | Date preset, on the list's date.                                                                  |
+| `f.from`     | `YYYY-MM-DD`                                    | none     | Range start, on the list's date; an invalid date is dropped.                                      |
+| `f.to`       | `YYYY-MM-DD`                                    | none     | Range end, on the list's date; an invalid date is dropped.                                        |
+| `by`         | `status`, `month`, `none`                       | `status` | Sections: drafts, waiting and saved by date; each month, newest first; or every list in one.      |
+| `list`       | list id                                         | none     | Opens the list's panel. An empty id or a list not stored opens nothing, and the key is taken out. |
+| `card`       | card id                                         | none     | Opens the card's panel (a list's line), as on `/cards`; wins over `list`.                         |
+
+Search, filter and grouping changes rewrite the address (`replaceState`), keeping the open record.
+A row opens its list's panel the way a tile does on `/cards` (push from nothing, rewrite when one
+is open). A line in the list panel opens its card's panel a step deeper (pushes `?card=<id>` in
+place of `list`, so Back returns to the list). The panel's _Continue_ (a draft) and _Record reply_
+(a waiting list) go to `/transactions/lists/edit?list=<id>`; _Merge_ and _Confirm_ write in place;
+a draft's _Delete_ closes the panel. _+ Add list_ (at the end of the search row) goes to
+`/transactions/lists/new`. Example: `/transactions/lists?f.statuses=draft&by=month&list=<id>`.
+
+### `/transactions/lists/new`
+
+The builder, a full page (DD-195): a new list, empty or holding the cards named. Reached from
+_+ Add list_ on the Lists tab and a card's _Use on a list_ (`/transactions/lists/new?cards=<id>`).
+
+| Key     | Values             | Notes                                                                                         |
+| ------- | ------------------ | --------------------------------------------------------------------------------------------- |
+| `cards` | card id (repeated) | The cards on the new list, in order, each once; cards that cannot take purchases are dropped. |
+
+Adding or removing a card rewrites `cards` in place, never pushing, so a reload keeps them (nothing
+is stored until _Save as draft_). The add-a-card sheet is not in the address: opening it pushes an
+entry with the address unchanged, so Back closes it; picking a card, _All cards_ and the card before
+or after change nothing in history; _Add to list_, _Remove from list_, _Done_ and Close step back over
+its entry. A save leaves with `location.replace` for `/transactions/lists?list=<id>`, the list just
+written (or the one it merged into) open in its panel, so Back does not reopen the builder.
+
+- `/transactions/lists/new` -- an empty new list.
+- `/transactions/lists/new?cards=12.3&cards=7` -- a new list holding those cards.
+
+### `/transactions/lists/edit`
+
+| Key    | Values            | Notes                                                                                                                                         |
+| ------ | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list` | list id, required | The builder on a draft, the spender's reply on a waiting list; a saved list or an unknown id says so and links to its panel or the Lists tab. |
+
+The add-a-card sheet works as on `/transactions/lists/new`; a draft's cards come from the stored
+draft, so the address stays as it is. A save leaves for `/transactions/lists?list=<id>`; deleting
+the draft or cancelling the waiting list, for `/transactions/lists`. ‹ leads to the Lists tab.
 
 ### `/pay`
 
@@ -74,6 +130,7 @@ Example: `/transactions?view=lists&lq=fuel&status=draft&status=sent`.
 - `/pay?card=<id>&amount=<satang>` -- sheet with the amount prefilled.
 
 Picking a card pushes `?card=<id>` (Back closes the sheet). A save leaves for `/transactions`.
+Still served until it retires; payments move to Home's _Owed_ and the card panel.
 
 ## Cards
 
@@ -150,17 +207,19 @@ No query. The add-card form.
 
 - `/card/edit?id=<id>` -- the edit form; its back link leads to `/card?id=<id>`.
 
-## Purchase lists
+## Purchase lists (old pages)
 
-Each list status has its own page. A link to a stored list goes to the page for its status:
-`draft` to `/list/draft`, `sent` to `/list/reply`, `saved` to `/list/view`. A page opened on
-a list in another status says so and links to the right page; an unknown id links Home.
+Still served, on their old keys, until they retire (RD-26): every link in the app now goes to the
+pages under `/transactions/lists` instead (a draft or a waiting list to
+`/transactions/lists/edit?list=<id>`, a saved list to `/transactions/lists?list=<id>`), and a
+write on an old page still goes Home. A page opened on a list in another status says so and links
+to where it is worked on now; an unknown id links to the Lists tab.
 
 ### `/list/new`
 
 The new list itself, empty or holding the cards named (DD-195). Cards are added from its
-add-a-card sheet; there is no picker step. Reached from the _+ New_ menu (`/list/new`) and a
-card page's _Use on a list_ (`/list/new?card=<id>`). An `id` is ignored: a stored draft opens at
+add-a-card sheet; there is no picker step. Nothing links here any more (the _+ New_ menu and _Use
+on a list_ go to `/transactions/lists/new`). An `id` is ignored: a stored draft opens at
 `/list/draft`.
 
 | Key    | Values             | Notes                                                                                                                                                                                  |
