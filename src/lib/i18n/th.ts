@@ -410,6 +410,7 @@ export const th: Catalog = {
 
 	"reset.title": "รีเซ็ต",
 	"settings.locations.title": "สถานที่",
+	"settings.places.title": "สถานที่และเจ้าของบัตร",
 	"settings.locations.manage": "จัดการสถานที่",
 	"settings.locations.summary": "{count} · {takers}",
 	"settings.locations.count.one": "1 แห่ง",

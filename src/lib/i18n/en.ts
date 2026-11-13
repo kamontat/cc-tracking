@@ -400,6 +400,7 @@ export const en = {
 
 	"reset.title": "Reset",
 	"settings.locations.title": "Locations",
+	"settings.places.title": "Locations and owners",
 	"settings.locations.manage": "Manage locations",
 	"settings.locations.summary": "{count} · {takers}",
 	"settings.locations.count.one": "1 place",

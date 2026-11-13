@@ -25,8 +25,8 @@
 
 	/**
 	 * The Settings page's island (RD-19): its sections in `.set` panels, Display, Locations and
-	 * Backup in the main column, Reset and About beside them from 900px. Display and About come
-	 * in as slots, since they need none of the reader's data; the rest reads or writes the store,
+	 * owners (a row into each page) and Backup in the main column, Reset and About beside them
+	 * from 900px. Display and About come in as slots, since they need none of the reader's data; the rest reads or writes the store,
 	 * so it renders in the browser (PRD DD-172). The markup is the legacy route's, so app.css
 	 * draws it unchanged.
 	 */
@@ -223,7 +223,7 @@
 			<div class="set">{@render display?.()}</div>
 		</section>
 		<section class="set-section" data-section="locations">
-			<h2>{tr("settings.locations.title")}</h2>
+			<h2>{tr("settings.places.title")}</h2>
 			<div class="set">
 				<a class="set-row" data-row="locations" href="/settings/locations">
 					<span class="set-row__text"
@@ -231,11 +231,6 @@
 					>
 					<span class="set-row__chev" aria-hidden="true">›</span>
 				</a>
-			</div>
-		</section>
-		<section class="set-section" data-section="owners">
-			<h2>{tr("settings.owners.title")}</h2>
-			<div class="set">
 				<a class="set-row" data-row="owners" href="/settings/owners">
 					<span class="set-row__text"
 						>{tr("settings.owners.manage")}<small class="set-row__sub">{ownersLine}</small></span

@@ -21,8 +21,7 @@ test("an island's built frame reads English, like the static copy beside it", as
 	const doc = parseHtml(await (await createContainer()).renderToString(SettingsPanels))
 	expect([...doc.querySelectorAll("section.set-section > h2")].map((h) => h.textContent?.trim())).toEqual([
 		"Display",
-		"Locations",
-		"Owners",
+		"Locations and owners",
 		"Backup",
 		"Reset",
 		"About",

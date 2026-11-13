@@ -93,8 +93,8 @@ Every address and query key is listed in [`ENDPOINTS.md`](ENDPOINTS.md).
   card_. The limit groups are searchable, filterable by holder and
   sortable; a group opens in its panel (`?limit=<id>`), where it is edited, and
   _+ Add limit_ adds one; each group has a colour, one of 12 swatches or _Random_.
-- `/settings` — sections for _Display_ (language and theme), _Locations_,
-  _Owners_, _Backup_, _Reset_ (_Delete old purchases_ and _Delete all data_) and
+- `/settings` — sections for _Display_ (language and theme), _Locations and
+  owners_ (a row into each page), _Backup_, _Reset_ (_Delete old purchases_ and _Delete all data_) and
   _About_.
 - `/settings/locations` — the stored locations: add, rename, delete (only one no
   card is kept at), and tick _Takes purchases_.

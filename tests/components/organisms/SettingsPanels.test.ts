@@ -127,10 +127,14 @@ const sectionsIn = (root: HTMLElement, column: string) =>
 		section.getAttribute("data-section"),
 	)
 
-test("lays the sections out in two columns: display, locations, owners and backup, then reset and about", async () => {
+test("lays the sections out in two columns: display, locations and owners, and backup, then reset and about", async () => {
 	const root = await show()
 
-	expect(sectionsIn(root, "main")).toEqual(["display", "locations", "owners", "backup"])
+	expect(sectionsIn(root, "main")).toEqual(["display", "locations", "backup"])
+	// Locations and owners are one list: a row each, in the same panel.
+	expect(
+		[...root.querySelectorAll('[data-section="locations"] .set > .set-row')].map((r) => r.getAttribute("data-row")),
+	).toEqual(["locations", "owners"])
 	expect(sectionsIn(root, "side")).toEqual(["reset", "about"])
 	for (const section of root.querySelectorAll("section.set-section")) {
 		expect(section.querySelector(":scope > h2")).not.toBeNull()
@@ -144,7 +148,7 @@ test("names each section in the chosen language", async () => {
 	const root = await show()
 
 	const headings = () => [...root.querySelectorAll("section.set-section > h2")].map((h) => h.textContent?.trim())
-	expect(headings()).toEqual(["Display", "Locations", "Owners", "Backup", "Reset", "About"])
+	expect(headings()).toEqual(["Display", "Locations and owners", "Backup", "Reset", "About"])
 	setLocale("th")
 	flushSync()
 	expect(headings()).not.toContain("Backup")
