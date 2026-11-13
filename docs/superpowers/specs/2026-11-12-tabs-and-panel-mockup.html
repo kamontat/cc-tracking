@@ -171,12 +171,6 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 .lamt { inline-size: 110px; border: 1px solid var(--border); border-radius: 10px; padding: 6px 9px; background: var(--surface); text-align: end; font-weight: 700; }
 .lsheet { position: absolute; left: 0; right: 0; bottom: 0; max-block-size: 85%; overflow: auto; background: var(--surface); border-radius: 22px 22px 0 0; z-index: 6; box-shadow: var(--shadow-lg); display: grid; align-content: start; animation: up 220ms ease-out; }
 .desk .lsheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); inline-size: 520px; border-radius: 18px; animation: none; }
-.fab { position: absolute; right: 18px; bottom: 76px; z-index: 4; display: grid; gap: 8px; justify-items: end; }
-.desk .fab { bottom: 24px; right: 28px; }
-.btn.round { inline-size: 56px; block-size: 56px; border-radius: 50%; font-size: 1.5rem; padding: 0; box-shadow: var(--shadow-lg); }
-.fabmenu { display: grid; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-lg); overflow: hidden; }
-.fabmenu button { border: 0; background: none; padding: 11px 18px; text-align: start; font-weight: 600; cursor: pointer; }
-.fabmenu button + button { border-top: 1px solid var(--border); }
 .desk .home { grid-template-columns: 1fr 1fr; align-items: start; }
 </style>
 </head>
@@ -202,11 +196,11 @@ h3 { margin: 0; font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: up
 				<li><em>Ledger</em>: a row still opens in place; its <em>Open card</em> opens the card's panel over the ledger.</li>
 				<li><em>Lists</em>: a list opens in the panel; <em>Continue</em> leaves for the full builder page. <em>+ Add list</em> starts a new one (<code>/lists/new</code>), as <em>+ Add card</em> and <em>+ Add limit</em> do on their tabs.</li>
 			</ul></div>
-			<div><h4>+ New</h4><ul>
-				<li><em>+</em> opens <em>New list</em> and <em>Pay a card</em>, on every tab.</li>
-				<li><em>New list</em> is a full page, <code>/lists/new</code>, under Transactions. <em>+ Add a card</em> opens its sheet (<code>add=1</code>), a card in it is <code>open=&lt;id&gt;</code>; <em>Add to list</em> writes the card into <code>cards</code>.</li>
-				<li><em>Save as draft</em> leaves for Home with the list open over <em>Needs you</em> (<code>/?list=…</code>). A card's <em>Use on a list</em> starts one with that card; a draft's <em>Continue</em> and a waiting list's <em>Enter reply</em> open <code>/lists/edit?list=…</code>.</li>
-				<li><em>Pay a card</em> goes to the <em>Owed</em> tab; each bill has <em>Pay</em>. A card that owes nothing is paid from its panel.</li>
+			<div><h4>Starting a list or a payment</h4><ul>
+				<li>No floating <em>+ New</em>: things start where they live.</li>
+				<li>A list: <em>+ Add list</em> on the <em>Lists</em> tab, or a card's <em>Use on a list</em>. Both open the builder, <code>/lists/new</code>; <em>+ Add a card</em> opens its sheet (<code>add=1</code>, then <code>open=&lt;id&gt;</code>), <em>Add to list</em> writes <code>cards</code>.</li>
+				<li><em>Save as draft</em> leaves for Home with the list open over <em>Needs you</em> (<code>/?list=…</code>). A draft's <em>Continue</em> and a waiting list's <em>Enter reply</em> open <code>/lists/edit?list=…</code>.</li>
+				<li>A payment: <em>Pay</em> on a bill in Home's <em>Owed</em>, or <em>Pay</em> in a card's panel (a card that owes nothing).</li>
 			</ul></div>
 			<div><h4>Home</h4><ul>
 				<li>Three tabs: <em>Needs you</em> (<code>/</code>) first, <em>Owed</em> (<code>/owed</code>), <em>Ready to use</em> (<code>/ready</code>). Each shows everything, so <em>See more</em> goes.</li>
@@ -256,7 +250,6 @@ let at = 0
 let device = "desk"
 let toast = ""
 let openRow = null
-let fab = false
 const now = () => stack[at]
 const urlOf = (s) => {
 	const q = new URLSearchParams()
@@ -478,7 +471,6 @@ function draw() {
 	<nav class="tabbar">${navBtns}</nav>
 	${panel && device === "phone" ? `<div class="scrim" data-do="close"></div><aside class="aside"><span class="grab"></span>${panel}</aside>` : ""}
 	${page === "list" && (s.add || s.open) ? `<div class="scrim" data-do="lclose"></div><aside class="lsheet"><span class="grab"></span>${listSheet(s)}</aside>` : ""}
-	${page === "list" ? "" : `<div class="fab">${fab ? `<div class="fabmenu"><button data-do="newlist">New list</button><button data-do="newpay">Pay a card</button></div>` : ""}<button class="btn round" data-do="fab" aria-expanded="${fab}" aria-label="New">${fab ? "×" : "+"}</button></div>`}
 	${toast ? `<div class="toast">${h(toast)}</div>` : ""}`
 }
 
@@ -503,9 +495,7 @@ document.getElementById("dev").addEventListener("click", (e) => {
 	else if (act === "purchase") push({ path: s.path, card: arg, purchase: "new" })
 	else if (act === "row") { openRow = openRow === arg ? null : arg; draw() }
 	else if (act === "tocard") toCard()
-	else if (act === "fab") { fab = !fab; draw() }
-	else if (act === "newlist") { fab = false; push({ path: "/lists/new" }) }
-	else if (act === "newpay") { fab = false; push({ path: "/owed" }) }
+	else if (act === "newlist") push({ path: "/lists/new" })
 	else if (act === "uselist") push({ path: "/lists/new", cards: [arg] })
 	else if (act === "editlist") { const l = LISTS.find((x) => x.id === arg); push({ path: "/lists/edit", list: arg, cards: l.lines.map(([id]) => id) }) }
 	else if (act === "ladd") push({ ...s, add: 1 })

@@ -72,30 +72,29 @@ is open, and the save button stays in view at its foot.
 record, ×, Escape or the backdrop asks first (_Discard your changes?_) once a field has changed.
 Back leaves without asking, as leaving a page does today (no page guards a form now).
 
-### _+ New_ and the list pages
+### Starting a list or a payment
 
-- The floating _+ New_ (DD-104) stays on every tab, with two items: _New list_ and _Pay a card_.
-  It is hidden on the list pages, which are a task of their own with a footer of their own.
-- **_New list_** goes to `/lists/new`, a full page (not a panel), and the tab bar lights
-  Transactions, whose _Lists_ tab holds every list. The page is today's builder (DD-195): a
-  sub-header with ‹ (Back), the lines, _+ Add a card_, and a footer with the total, _Save as
-  draft_ and _Review_. Its add-a-card sheet keeps DD-195's keys: _+ Add a card_ pushes `add=1`
-  (the picker), picking a card rewrites it to `open=<card id>`, and _Add to list_, _Remove from
-  list_, _Done_ or × close it by stepping back over its entry, writing the cards into `cards`.
-  On a desktop the sheet is a dialog in the middle, as today.
-- The _Lists_ tab has _+ Add list_ at the end of its search row, going to `/lists/new`, as
-  _Cards_ has _+ Add card_ and _Limits_ _+ Add limit_ (the user asked, 2026-11-13). The three are
-  the same quiet button.
-- A card's _Use on a list_ starts one with that card: `/lists/new?cards=<id>`.
+- **No floating _+ New_** (retires DD-104; the user asked, 2026-11-13). Each thing starts where
+  it lives: a list on the _Lists_ tab or a card, a payment on a bill or a card.
+- **A list** starts from _+ Add list_ at the end of the _Lists_ tab's search row (as _Cards_ has
+  _+ Add card_ and _Limits_ _+ Add limit_, the three the same quiet button), or from a card's
+  _Use on a list_, which starts it with that card (`/lists/new?cards=<id>`).
+- `/lists/new` is a full page (not a panel), and the tab bar lights Transactions, whose _Lists_
+  tab holds every list. The page is today's builder (DD-195): a sub-header with ‹ (Back), the
+  lines, _+ Add a card_, and a footer with the total, _Save as draft_ and _Review_. Its
+  add-a-card sheet keeps DD-195's keys: _+ Add a card_ pushes `add=1` (the picker), picking a
+  card rewrites it to `open=<card id>`, and _Add to list_, _Remove from list_, _Done_ or × close
+  it by stepping back over its entry, writing the cards into `cards`. On a desktop the sheet is a
+  dialog in the middle, as today.
 - A draft's _Continue_ and a waiting list's _Enter reply_ (in the list's panel) go to
   `/lists/edit?list=<id>`: the builder on the draft, or the reply. A saved list has no edit page;
   its panel is all there is.
 - Saving leaves with `location.replace`, as today, but for `/?list=<id>`: Home's _Needs you_ with
   the list just written open in the panel (today it is `/` alone), so the reader sees what was
   saved, and Back does not reopen the builder.
-- **_Pay a card_** goes to Home's _Owed_ tab (`/owed`, decision 6), where each bill has _Pay_,
-  which opens the card's pay form in the panel. A card that owes nothing is paid from its
-  panel's _Pay_.
+- **A payment** starts from _Pay_ on a bill in Home's _Owed_ tab, which opens the card's pay form
+  in the panel, or from _Pay_ in any card's panel (a card that owes nothing, paying ahead).
+  `/pay` and its card picker retire.
 
 ## Decisions to settle
 
@@ -113,7 +112,7 @@ Each has a recommendation, drawn in the mockup.
    (every card, or those that owe), their order (by place, or most urgent first, flat), the
    tile's lead number (room, or the bill) and its action (none, or _Pay_). Merged, the bills
    view would be `/cards?owing=1&sort=urgency&by=none` on every visit, over 76 cards, with a
-   tile carrying both numbers; and _+ New › Pay_ would land on a view no tab shows.
+   tile carrying both numbers.
 2. **The card page and the card form become the card panel**, as the limit group's summary and
    form are. `/card`, `/card/new` and `/card/edit` go; the Cards tab is one page. Recommended:
    yes (the user asked, 2026-11-13). Cost: the unsaved-changes prompt above, which no page has
@@ -130,10 +129,10 @@ Each has a recommendation, drawn in the mockup.
    (`/transactions?card=12.3`), a list's line, a limit group's card, Home's _Needs you_
    (`/?card=12.3`). You keep your place instead of jumping to the Cards tab. Each key is singular
    (one record); a filter that repeats stays plural (`cards=`), so the two never read alike.
-6. **_+ New › Pay_ goes to the Owed tab** (`/owed`) instead of its own picker page (`/pay` and
-   `PayPicker` retire): each owed tile has _Pay_. Trade-off: a card that owes nothing is not
-   on Owed, so paying ahead is from its panel (Cards tab, _Pay_). Recommended: yes; the
-   alternative keeps a picker at `/payments/new`.
+6. **No floating _+ New_, and no pay picker** (retires DD-104 and the `/pay` picker, DD-76).
+   Decided by the user, 2026-11-13: a list starts on the _Lists_ tab or a card, a payment on a
+   bill in _Owed_ or a card's panel (above). Lost: one button that starts either from any page;
+   from Cards or Transactions, paying is a tab switch to Home's _Owed_ or a card's panel away.
 7. **Home gets tabs too**: _Needs you_ first at `/`, _Owed_ at `/owed` (decision 1), _Ready to
    use_ at `/ready` (amends RD-15
    and DD-184's two columns). Decided by the user, 2026-11-13. Each tab has the screen to itself,
@@ -214,7 +213,7 @@ and the offline worker work as they are (the worker already ignores the query).
 
 PRD.md and PRD_TH.md: new decisions for the tabs, the panel, the card page's retirement, the
 pay picker's, the card form in the panel and its unsaved-changes prompt, Home's tabs with Owed
-among them, the addresses and the card id format; RD-13, RD-15, DD-76, DD-79, DD-106, DD-144,
+among them, the addresses and the card id format; RD-13, RD-15, DD-76, DD-79, DD-104 (retired), DD-106, DD-144,
 DD-184, CD-01 and DC-17 amended. ENDPOINTS.md rewritten from the tables above. The `TODO.md` endpoint item is replaced
 by this spec.
 
