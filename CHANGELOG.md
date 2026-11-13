@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, and locations and owners in a panel over settings
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, and a data summary
 
 ### BREAKING CHANGES
 
@@ -36,6 +36,14 @@ reasons don't show up in the code.
   panel updates the row's summary at once, and a restore or _Delete all data_ reads the open
   panel again. Every "choose places in Locations" link goes to the panel (DD-203).
 
+- Settings has a _Your data_ section at the top of its side column with one row, _Data summary_,
+  whose line gives the gist ("4 cards · 66 purchases · 17.5 KB"). It opens a third panel beside
+  Settings, `?panel=data`, that sums up what this browser holds: cards (active and archived),
+  limit groups, purchases (their total and first to last date), payments (paid and their total,
+  planned), purchase lists by status, locations, owners, and the storage the app's `cc:` keys
+  take. It counts again after a restore, a purge, a reset or a change in another panel (RD-31,
+  DD-204).
+
 ### Improvements
 
 - Beside an open panel, Settings stacks its two columns into one when the page has less than
@@ -66,6 +74,14 @@ reasons don't show up in the code.
 
 - Moving the delete note above each list was tried and reverted: the user preferred it under the
   list.
+
+- The data summary is counted from the backup export (`exportBackupV4`), so its figures match
+  what _Download a copy_ would carry. Its storage figure counts only `cc:` keys, two bytes per
+  character as browsers keep localStorage, so another app on the same origin doesn't inflate it.
+
+- The summary first sat on the page as a list, then moved behind a row into a panel, as the user
+  asked; once Locations and Owners became panels (DD-203) it took the same `panel=` key, so Back
+  closes it and a link keeps it open, rather than staying out of the address.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
