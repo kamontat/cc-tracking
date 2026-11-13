@@ -22,12 +22,14 @@
 		replaceWithBackupV4,
 	} from "#lib/storage/transfer-v4"
 	import { countsText } from "#lib/ui/record-counts"
-	import { canReadClipboard, restoreFailureText } from "#lib/ui/restore"
+	import { canReadClipboard, fetchBackupText, linkName, restoreFailureText } from "#lib/ui/restore"
 
 	/**
 	 * *Restore a copy*, clipboard first, in a sheet. The start offers *Paste from clipboard*
-	 * (primary), *Choose a file* and *Paste by hand*; a browser that cannot read the clipboard
-	 * opens on the text area instead. The clipboard and a file are parsed at once. Into an empty
+	 * (primary), *Choose a file*, *From a link* and *Paste by hand*; a browser that cannot read the
+	 * clipboard opens on the text area instead, with *From a link* under it. *From a link* fetches
+	 * the address typed in and names the copy by the link's file. The clipboard and a file are
+	 * parsed at once. Into an empty
 	 * browser (no records, and locations only the untouched starting places) the copy goes in
 	 * straight away, its locations over the seeded ones; otherwise the sheet shows both counts
 	 * and asks *Merge* or *Replace*. After any write the starting locations are seeded and every
@@ -62,8 +64,11 @@
 	}
 
 	let sheet: { leave: (then: () => void) => void } | undefined = $state()
-	let step = $state<RestoreStep>(canReadClipboard() ? "start" : "paste")
+	/** Whether the start step is on offer; without it the sheet opens on the text area. */
+	const clipboard = canReadClipboard()
+	let step = $state<RestoreStep>(clipboard ? "start" : "paste")
 	let text = $state("")
+	let link = $state("")
 	/** The clipboard read was refused, so the text area says to paste by hand. */
 	let refused = $state(false)
 	/** Why the last parse or write failed, kept raw so a language switch re-translates it. */
@@ -152,6 +157,14 @@
 		return run(async () => start(file.name, await file.text()))
 	}
 
+	const onLink = () => run(async () => start(linkName(link), await fetchBackupText(link)))
+
+	/** Moves to `next`, leaving the last failure behind. */
+	const goTo = (next: RestoreStep) => {
+		failure = null
+		step = next
+	}
+
 	const answer = (replace: boolean) => {
 		const waiting = pending
 		if (!waiting) return
@@ -223,7 +236,34 @@
 			<button type="button" data-action="import-text" disabled={busy} onclick={() => run(() => start(undefined, text))}>
 				{tr("backup.importText")}
 			</button>
+			{#if !clipboard}
+				<button
+					type="button"
+					class="by-hand"
+					data-variant="quiet"
+					data-action="from-link"
+					disabled={busy}
+					onclick={() => goTo("link")}>
+					{tr("backup.fromLink")}
+				</button>
+			{/if}
 		</div>
+	{:else if step === "link"}
+		<form
+			class="step"
+			data-step="link"
+			novalidate
+			onsubmit={(event) => {
+				event.preventDefault()
+				onLink()
+			}}>
+			<label>
+				{tr("backup.linkLabel")}
+				<input type="url" inputmode="url" autocomplete="off" spellcheck="false" bind:value={link}>
+			</label>
+			<p class="hint">{tr("backup.linkHint")}</p>
+			<button type="submit" data-action="import-link" disabled={busy}>{tr("backup.importText")}</button>
+		</form>
 	{:else}
 		<div class="step" data-step="start">
 			<button type="button" data-action="paste-clipboard" disabled={busy} onclick={onClipboard}>
@@ -233,16 +273,16 @@
 				{tr("backup.import")}
 				<input type="file" accept="application/json" data-action="choose-file" disabled={busy} onchange={onFile}>
 			</label>
+			<button type="button" data-variant="quiet" data-action="from-link" disabled={busy} onclick={() => goTo("link")}>
+				{tr("backup.fromLink")}
+			</button>
 			<button
 				type="button"
 				class="by-hand"
 				data-variant="quiet"
 				data-action="paste-by-hand"
 				disabled={busy}
-				onclick={() => {
-					failure = null
-					step = "paste"
-				}}>
+				onclick={() => goTo("paste")}>
 				{tr("backup.paste")}
 			</button>
 		</div>
@@ -311,7 +351,8 @@
 		background: transparent;
 	}
 
-	.step textarea {
+	.step textarea,
+	.step input[type="url"] {
 		inline-size: 100%;
 		padding: var(--cc-space-2);
 		font-family: var(--cc-font-mono);

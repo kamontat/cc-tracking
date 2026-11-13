@@ -2,7 +2,7 @@ import type { Card } from "#lib/domain/types"
 import type { RestoredDetail } from "#lib/ui/restore"
 
 import { flushSync, mount, unmount } from "svelte"
-import { afterEach, expect, test } from "vitest"
+import { afterEach, expect, test, vi } from "vitest"
 
 import RestoreSheet from "#components/organisms/RestoreSheet.svelte"
 import { defaultLocations } from "#lib/domain/locations"
@@ -473,6 +473,113 @@ test("after a restore, the sheet stays busy while it slides away, so nothing wri
 		// The held sheet ignores Close while it leaves.
 		await sheet.click("close")
 		expect(sheet.closed()).toBe(0)
+	})
+})
+
+/** Swaps in a stub `fetch` for the length of `run`, recording each address asked for. */
+const withFetch = async (answer: (url: string) => Promise<Response>, run: (asked: string[]) => Promise<void>) => {
+	const asked: string[] = []
+	vi.stubGlobal("fetch", (input: RequestInfo | URL) => {
+		asked.push(String(input))
+		return answer(String(input))
+	})
+	try {
+		await run(asked)
+	} finally {
+		vi.unstubAllGlobals()
+	}
+}
+
+const typeLink = (root: HTMLElement, value: string) => {
+	const input = root.querySelector('input[type="url"]') as HTMLInputElement
+	input.value = value
+	input.dispatchEvent(new Event("input", { bubbles: true }))
+}
+
+test("from a link opens a step with the address field and Restore, quiet beside the clipboard", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		const sheet = await show(new InMemoryRepository())
+		expect(sheet.action("from-link")?.getAttribute("data-variant")).toBe("quiet")
+		await sheet.click("from-link")
+
+		expect(sheet.step()).toBe("link")
+		expect(sheet.root.querySelector('input[type="url"]')).not.toBeNull()
+		expect(sheet.action("import-link")?.textContent?.trim()).toBe("Restore")
+	})
+})
+
+test("a link restores into an empty browser at once, named by its file", async () => {
+	const text = await oneCardBackup()
+	await withClipboard({ readText: async () => "" }, async () => {
+		await withFetch(
+			async () => new Response(text),
+			async (asked) => {
+				const { repo, storage } = await freshBrowser()
+				const sheet = await show(repo, storage)
+				await sheet.click("from-link")
+				typeLink(sheet.root, "https://example.com/backups/cc-tracking-2026-11-14.json")
+				await sheet.click("import-link")
+
+				expect(asked).toEqual(["https://example.com/backups/cc-tracking-2026-11-14.json"])
+				expect((await repo.listCards()).map((card) => card.id)).toEqual(["s1"])
+				expect(sheet.restored).toEqual([{ file: "cc-tracking-2026-11-14.json", ...oneCardCounts }])
+			},
+		)
+	})
+})
+
+test("a link with data here asks merge or replace about the link's file", async () => {
+	const text = await oneCardBackup()
+	await withClipboard({ readText: async () => "" }, async () => {
+		await withFetch(
+			async () => new Response(text),
+			async () => {
+				const repo = await populated()
+				const sheet = await show(repo)
+				await sheet.click("from-link")
+				typeLink(sheet.root, "https://example.com/b.json")
+				await sheet.click("import-link")
+
+				expect(sheet.step()).toBe("question")
+				expect(sheet.text()).toContain("Restore b.json?")
+				await sheet.click("merge-import")
+				expect((await repo.listCards()).map((card) => card.id).sort()).toEqual(["k1", "s1"])
+			},
+		)
+	})
+})
+
+test("a link that fails shows why, keeps the address and writes nothing", async () => {
+	await withClipboard({ readText: async () => "" }, async () => {
+		await withFetch(
+			async () => new Response("gone", { status: 404 }),
+			async () => {
+				const repo = await populated()
+				const sheet = await show(repo)
+				await sheet.click("from-link")
+				typeLink(sheet.root, "https://example.com/b.json")
+				await sheet.click("import-link")
+
+				expect(sheet.step()).toBe("link")
+				expect(sheet.root.querySelector('[role="alert"]')?.textContent).toBe(
+					"Could not restore that copy. That link answered with error 404.",
+				)
+				expect((sheet.root.querySelector('input[type="url"]') as HTMLInputElement).value).toBe(
+					"https://example.com/b.json",
+				)
+				expect(sheet.restored).toEqual([])
+				expect(await repo.listPurchases("k1")).toHaveLength(2)
+			},
+		)
+	})
+})
+
+test("a link is offered without a readable clipboard too", async () => {
+	await withClipboard(undefined, async () => {
+		const sheet = await show(new InMemoryRepository())
+		expect(sheet.step()).toBe("paste")
+		await sheet.click("from-link")
+		expect(sheet.step()).toBe("link")
 	})
 })
 
