@@ -7,7 +7,6 @@ import type {
 	Purchase,
 	PurchaseList,
 	StatementDates,
-	StatementPayment,
 } from "#lib/domain/types"
 
 import { canDeleteOwner } from "#lib/domain/owner"
@@ -33,10 +32,6 @@ export interface Repository {
 	listPurchases(cardId: string, from?: string, to?: string): Promise<Purchase[]>
 	savePurchase(purchase: Purchase): Promise<void>
 	deletePurchase(cardId: string, id: string): Promise<void>
-
-	listPayments(cardId: string): Promise<StatementPayment[]>
-	savePayment(payment: StatementPayment): Promise<void>
-	deletePayment(cardId: string, period: string): Promise<void>
 
 	listLimitGroups(): Promise<LimitGroup[]>
 	saveLimitGroup(group: LimitGroup): Promise<void>
@@ -93,7 +88,6 @@ const pairKey = (cardId: string, part: string): string => `${encodeURIComponent(
 export class InMemoryRepository implements Repository {
 	private cards = new Map<string, Card>()
 	private purchases = new Map<string, Purchase>()
-	private payments = new Map<string, StatementPayment>()
 	private limitGroups = new Map<string, LimitGroup>()
 	private cardPayments = new Map<string, CardPayment>()
 	private statementDates = new Map<string, StatementDates>()
@@ -127,15 +121,12 @@ export class InMemoryRepository implements Repository {
 			}
 		}
 		this.cards.delete(id)
-		// Cascade: delete the card's payments, card payments and statement dates
+		// Cascade: delete the card's card payments and statement dates
 		for (const [key, payment] of [...this.cardPayments.entries()]) {
 			if (payment.cardId === id) this.cardPayments.delete(key)
 		}
 		for (const [key, dates] of [...this.statementDates.entries()]) {
 			if (dates.cardId === id) this.statementDates.delete(key)
-		}
-		for (const [key, payment] of [...this.payments.entries()]) {
-			if (payment.cardId === id) this.payments.delete(key)
 		}
 	}
 
@@ -154,21 +145,6 @@ export class InMemoryRepository implements Repository {
 
 	async deletePurchase(cardId: string, id: string): Promise<void> {
 		this.purchases.delete(pairKey(cardId, id))
-	}
-
-	async listPayments(cardId: string): Promise<StatementPayment[]> {
-		return [...this.payments.values()]
-			.filter((p) => p.cardId === cardId)
-			.map(clone)
-			.sort((a, b) => (a.period < b.period ? -1 : 1))
-	}
-
-	async savePayment(payment: StatementPayment): Promise<void> {
-		this.payments.set(pairKey(payment.cardId, payment.period), clone(payment))
-	}
-
-	async deletePayment(cardId: string, period: string): Promise<void> {
-		this.payments.delete(pairKey(cardId, period))
 	}
 
 	async listLimitGroups(): Promise<LimitGroup[]> {
@@ -271,7 +247,6 @@ export class InMemoryRepository implements Repository {
 	async clearAll(): Promise<void> {
 		this.cards.clear()
 		this.purchases.clear()
-		this.payments.clear()
 		this.limitGroups.clear()
 		this.cardPayments.clear()
 		this.statementDates.clear()

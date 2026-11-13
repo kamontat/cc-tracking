@@ -2,7 +2,6 @@ import { afterEach, beforeEach } from "vitest"
 
 import { resetLocale } from "#lib/i18n/index"
 import { MIGRATION_KEY } from "#lib/storage/migrate-locations"
-import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments"
 import { SEED_KEY } from "#lib/storage/seed-locations"
 
 /**
@@ -28,7 +27,7 @@ beforeEach(() => {
  */
 afterEach(() => {
 	try {
-		for (const key of [SEED_KEY, MIGRATION_KEY, PAYMENTS_MIGRATION_KEY]) localStorage.removeItem(key)
+		for (const key of [SEED_KEY, MIGRATION_KEY]) localStorage.removeItem(key)
 	} catch {
 		// As above: some tests take the store away on purpose.
 	}

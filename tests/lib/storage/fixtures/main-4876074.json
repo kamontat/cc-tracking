@@ -1,5 +1,5 @@
 {
-	"//": "localStorage as main (4876074) saved it, and what main read back. Made by running main's LocalStorageRepository; do not edit by hand.",
+	"//": "localStorage as main (4876074) saved it, and what main read back, with its old statement payments converted once to card payments and kept statement dates (the conversion is gone, PRD DD-202). Made by running main's LocalStorageRepository; do not edit by hand.",
 	"today": "2026-11-03",
 	"storage": {
 		"cc:batch-start": "\"2026-10-30T02:00:00.000Z\"",
@@ -8,13 +8,14 @@
 		"cc:card:3%2Fx": "{\"id\":\"3/x\",\"name\":\"UOB Krabi\",\"last4\":\"0001\",\"location\":\"phichit\",\"cycle\":{\"kind\":\"offset\",\"closeDay\":1,\"dueOffsetDays\":20},\"archived\":false,\"limitGroupId\":\"uob\"}",
 		"cc:card:4": "{\"id\":\"4\",\"name\":\"Old card\",\"last4\":\"9999\",\"location\":\"bangkok\",\"cycle\":{\"kind\":\"fixed\",\"closeDay\":5,\"dueDay\":25},\"archived\":true,\"limitGroupId\":\"old\"}",
 		"cc:card:5": "{\"id\":\"5\",\"name\":\"No group\",\"last4\":\"1234\",\"location\":\"krabi\",\"cycle\":{\"kind\":\"offset\",\"closeDay\":10,\"dueOffsetDays\":20},\"archived\":false}",
+		"cc:cardpayment:1:m%3A1%3A2026-08%3A0": "{\"id\":\"m:1:2026-08:0\",\"cardId\":\"1\",\"date\":\"2026-09-01\",\"amount\":1250000,\"status\":\"paid\",\"period\":\"2026-08\"}",
+		"cc:cardpayment:1:m%3A1%3A2026-09%3A0": "{\"id\":\"m:1:2026-09:0\",\"cardId\":\"1\",\"date\":\"2026-09-30\",\"amount\":500000,\"status\":\"paid\",\"period\":\"2026-09\"}",
+		"cc:cardpayment:1:m%3A1%3A2026-09%3A1": "{\"id\":\"m:1:2026-09:1\",\"cardId\":\"1\",\"date\":\"2026-10-05\",\"amount\":225050,\"status\":\"paid\",\"period\":\"2026-09\"}",
+		"cc:cardpayment:3%2Fx:m%3A3%2Fx%3A2026-10%3A0": "{\"id\":\"m:3/x:2026-10:0\",\"cardId\":\"3/x\",\"date\":\"2026-10-10\",\"amount\":1500000,\"status\":\"paid\",\"period\":\"2026-10\"}",
+		"cc:cardpayment:4:m%3A4%3A2026-07%3A0": "{\"id\":\"m:4:2026-07:0\",\"cardId\":\"4\",\"date\":\"2026-07-20\",\"amount\":500000,\"status\":\"paid\",\"period\":\"2026-07\"}",
 		"cc:limitgroup:old": "{\"id\":\"old\",\"name\":\"Old pool\",\"limit\":1000000}",
 		"cc:limitgroup:scb": "{\"id\":\"scb\",\"name\":\"SCB Business\",\"limit\":20000000,\"owner\":\"KC\"}",
 		"cc:limitgroup:uob": "{\"id\":\"uob\",\"name\":\"UOB\",\"limit\":5000000,\"owner\":\"NT\"}",
-		"cc:payment:1:2026-08": "{\"cardId\":\"1\",\"period\":\"2026-08\",\"paidAt\":\"2026-09-01\",\"closeDate\":\"2026-08-18\",\"dueDate\":\"2026-09-02\"}",
-		"cc:payment:1:2026-09": "{\"cardId\":\"1\",\"period\":\"2026-09\",\"paidAt\":\"2026-10-05\",\"closeDate\":\"2026-09-18\",\"dueDate\":\"2026-10-03\",\"parts\":[{\"paidAt\":\"2026-09-30\",\"amount\":500000},{\"paidAt\":\"2026-10-05\",\"amount\":225050}]}",
-		"cc:payment:3%2Fx:2026-10": "{\"cardId\":\"3/x\",\"period\":\"2026-10\",\"paidAt\":\"2026-10-10\",\"closeDate\":\"2026-10-01\",\"dueDate\":\"2026-10-21\",\"parts\":[{\"paidAt\":\"2026-10-10\",\"amount\":1500000}]}",
-		"cc:payment:4:2026-07": "{\"cardId\":\"4\",\"period\":\"2026-07\",\"paidAt\":\"2026-07-20\",\"closeDate\":\"2026-07-05\",\"dueDate\":\"2026-07-25\"}",
 		"cc:purchase:1:2026-08-02:a": "{\"id\":\"a\",\"cardId\":\"1\",\"date\":\"2026-08-02\",\"amount\":1250000,\"note\":\"note a\"}",
 		"cc:purchase:1:2026-08-20:b": "{\"id\":\"b\",\"cardId\":\"1\",\"date\":\"2026-08-20\",\"amount\":300000,\"note\":\"note b\"}",
 		"cc:purchase:1:2026-09-10:c": "{\"id\":\"c\",\"cardId\":\"1\",\"date\":\"2026-09-10\",\"amount\":725050,\"note\":\"note c\"}",
@@ -26,7 +27,11 @@
 		"cc:purchase:3%2Fx:2026-10-20:i": "{\"id\":\"i\",\"cardId\":\"3/x\",\"date\":\"2026-10-20\",\"amount\":3106500,\"note\":\"note i\"}",
 		"cc:purchase:4:2026-07-01:j": "{\"id\":\"j\",\"cardId\":\"4\",\"date\":\"2026-07-01\",\"amount\":500000,\"note\":\"note j\"}",
 		"cc:purchase:5:2026-10-05:k": "{\"id\":\"k\",\"cardId\":\"5\",\"date\":\"2026-10-05\",\"amount\":100000,\"note\":\"note k\"}",
-		"cc:settings": "{\"purchaseLocations\":[\"krabi\",\"bangkok\"]}"
+		"cc:settings": "{\"purchaseLocations\":[\"krabi\",\"bangkok\"]}",
+		"cc:statementdates:1:2026-08": "{\"cardId\":\"1\",\"period\":\"2026-08\",\"closeDate\":\"2026-08-18\",\"dueDate\":\"2026-09-02\"}",
+		"cc:statementdates:1:2026-09": "{\"cardId\":\"1\",\"period\":\"2026-09\",\"closeDate\":\"2026-09-18\",\"dueDate\":\"2026-10-03\"}",
+		"cc:statementdates:3%2Fx:2026-10": "{\"cardId\":\"3/x\",\"period\":\"2026-10\",\"closeDate\":\"2026-10-01\",\"dueDate\":\"2026-10-21\"}",
+		"cc:statementdates:4:2026-07": "{\"cardId\":\"4\",\"period\":\"2026-07\",\"closeDate\":\"2026-07-05\",\"dueDate\":\"2026-07-25\"}"
 	},
 	"expected": {
 		"cards": [

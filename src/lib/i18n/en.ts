@@ -362,7 +362,6 @@ export const en = {
 	"storage.unavailable":
 		"This browser is not letting the page store data. Private windows and blocked site data both cause this.",
 	"startup.failed": "Something went wrong starting the page.",
-	"startup.paymentsFailed": "Could not update your saved payments. Nothing was lost. Reload to try again.",
 
 	"backup.title": "Backup",
 	"backup.warning": "Your data lives only in this browser. Download a copy to keep it safe.",
@@ -509,10 +508,9 @@ export const en = {
 	"purge.error": "Could not delete the old purchases.",
 
 	"backup.unreadable": "That is not a readable backup.",
-	"backup.version": "That backup is version {found}, and this app reads version {expected}.",
+	"backup.version": "This backup is version {found}, but this app reads versions {oldest}–{newest}.",
 	"backup.card": "That backup's card #{index} {problem}.",
 	"backup.purchase": "That backup's purchase #{index} {problem}.",
-	"backup.payment": "That backup's payment #{index} {problem}.",
 	"backup.limitGroup": "That backup's limit group #{index} {problem}.",
 	"backup.cardPayment": "That backup's card payment #{index} {problem}.",
 	"backup.statementDates": "That backup's statement dates #{index} {problem}.",
@@ -523,7 +521,6 @@ export const en = {
 	"backup.problem.missingId": "is missing an id",
 	"backup.problem.missingName": "is missing a name",
 	"backup.problem.missingLast4": "is missing last4",
-	"backup.problem.badLocation": "has a location that is not bangkok, phichit, or krabi",
 	"backup.problem.unknownLocation": "has a location that is not among the backup's locations",
 	"backup.problem.unknownOwner": "has an owner that is not among the backup's owners",
 	"backup.problem.badCardId":
@@ -540,10 +537,8 @@ export const en = {
 	"backup.problem.badAmount": "has a non-integer amount",
 	"backup.problem.badAddedAt": "has an entry time that is not a valid date and time",
 	"backup.problem.missingPeriod": "is missing a period",
-	"backup.problem.badPaidAt": "has an invalid paidAt date",
 	"backup.problem.badCloseDate": "has an invalid closeDate",
 	"backup.problem.badDueDate": "has an invalid dueDate",
-	"backup.problem.badParts": "has partial payments that are not a list of dated, positive whole-satang amounts",
 	"backup.problem.badLimit": "has a limit that is not a whole number of satang",
 	"backup.problem.badLimitRange": "has a limit that is not a whole number of satang above zero",
 	"backup.problem.badAmountRange": "has an amount that is not a whole number of satang above zero",

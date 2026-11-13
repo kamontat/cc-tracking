@@ -10,7 +10,7 @@ import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { setLocale } from "#lib/i18n/index"
 import { memoryStorage } from "#lib/storage/contract"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
-import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
+import { seedLocations } from "#lib/storage/seed-locations"
 import { seedOwners } from "#lib/storage/seed-owners"
 import { exportBackupV4, type V4Counts } from "#lib/storage/transfer-v4"
 
@@ -252,7 +252,6 @@ test("replace leaves only what the copy carries", async () => {
 		expect((await repo.listCards()).map((card) => card.id)).toEqual(["s1"])
 		expect((await repo.listLimitGroups()).map((group) => group.id)).toEqual(["scb"])
 		expect(sheet.restored).toEqual([oneCardCounts])
-		expect(sheet.storage.getItem("cc:migration:payments")).toBe("done")
 	})
 })
 
@@ -362,38 +361,17 @@ test("a language switch on the question keeps the question", async () => {
 	})
 })
 
-test("after a restore, a card on a missing location gets its place back", async () => {
-	// The starting places were seeded once and since deleted, and an old copy brings a card
-	// at Krabi with no location records of its own.
-	const storage = memoryStorage()
-	storage.setItem(SEED_KEY, "done")
-	const old = JSON.stringify({
-		version: 2,
-		exportedAt: "2026-09-21T00:00:00.000Z",
-		limitGroups: [{ id: "pool", name: "KBank account", limit: 1 }],
-		cards: [sampleCard],
-		purchases: [],
-		payments: [],
-	})
-	await withClipboard({ readText: async () => old }, async () => {
-		const repo = new InMemoryRepository()
-		const sheet = await show(repo, storage)
-		await sheet.click("paste-clipboard")
-
-		expect(sheet.restored).toHaveLength(1)
-		const ids = (await repo.listLocations()).map((location) => location.id)
-		expect(ids).toContain("krabi")
-	})
-})
-
 test("after a restore into a browser never seeded, the starting places are stored", async () => {
 	const old = JSON.stringify({
-		version: 2,
+		version: 3,
 		exportedAt: "2026-09-21T00:00:00.000Z",
 		limitGroups: [],
 		cards: [],
 		purchases: [],
 		payments: [],
+		statementDates: [],
+		lists: [],
+		locations: [],
 	})
 	await withClipboard({ readText: async () => old }, async () => {
 		const repo = new InMemoryRepository()

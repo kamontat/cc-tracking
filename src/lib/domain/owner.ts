@@ -5,8 +5,8 @@ export type Owner = string
 
 /**
  * The three people the app started with, as records: each named by its initials, which are
- * not translated. Seeded once (`seed-owners`), and the closed set a version 2 or 3 backup
- * was written with.
+ * not translated. Seeded once (`seed-owners`), and the closed set a version 3 backup was
+ * written with.
  */
 export const DEFAULT_OWNERS: readonly OwnerRecord[] = [
 	{ id: "KC", name: "KC" },
@@ -17,8 +17,8 @@ export const DEFAULT_OWNERS: readonly OwnerRecord[] = [
 export const DEFAULT_OWNER: Owner = "KC"
 
 /**
- * True for one of the starting owners' ids. Takes `unknown`: its callers check a version 2 or
- * 3 backup file, which the type system can't vouch for.
+ * True for one of the starting owners' ids. Takes `unknown`: its callers check a version 3
+ * backup file, which the type system can't vouch for.
  */
 export function isStartingOwner(value: unknown): value is Owner {
 	return typeof value === "string" && DEFAULT_OWNERS.some((owner) => owner.id === value)

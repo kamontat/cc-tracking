@@ -8,7 +8,6 @@ import type {
 	Purchase,
 	PurchaseList,
 	StatementDates,
-	StatementPayment,
 } from "#lib/domain/types"
 import type { Repository } from "#lib/storage/repository"
 
@@ -35,15 +34,6 @@ export const samplePurchase = (overrides: Partial<Purchase> = {}): Purchase => (
 	date: "2026-09-05",
 	amount: 10_000,
 	note: "fuel",
-	...overrides,
-})
-
-export const samplePayment = (overrides: Partial<StatementPayment> = {}): StatementPayment => ({
-	cardId: "k1",
-	period: "2026-09",
-	paidAt: "2026-10-01",
-	closeDate: "2026-09-18",
-	dueDate: "2026-10-03",
 	...overrides,
 })
 
@@ -143,7 +133,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 			expect(await repo.listCards()).toEqual([])
 			expect(await repo.getCard("k1")).toBeNull()
 			expect(await repo.listPurchases("k1")).toEqual([])
-			expect(await repo.listPayments("k1")).toEqual([])
+			expect(await repo.listCardPayments("k1")).toEqual([])
 		})
 
 		test("saves and reads a card back whole", async () => {
@@ -185,12 +175,12 @@ export function repositoryContract(name: string, create: () => Repository): void
 			// Save first card with purchase and payment
 			await repo.saveCard(sampleCard({ id: "k1" }))
 			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "k1" }))
-			await repo.savePayment(samplePayment({ cardId: "k1", period: "2026-09" }))
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "k1" }))
 
 			// Save second card with purchase and payment
 			await repo.saveCard(sampleCard({ id: "scb" }))
 			await repo.savePurchase(samplePurchase({ id: "p2", cardId: "scb" }))
-			await repo.savePayment(samplePayment({ cardId: "scb", period: "2026-09" }))
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "scb" }))
 
 			// A card with purchases cannot be deleted (RD-07); remove them first
 			await repo.deletePurchase("k1", "p1")
@@ -198,23 +188,23 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 			// Verify first card's records are gone
 			expect(await repo.getCard("k1")).toBeNull()
-			expect(await repo.listPayments("k1")).toEqual([])
+			expect(await repo.listCardPayments("k1")).toEqual([])
 
 			// Verify second card's records remain untouched
 			expect(await repo.listPurchases("scb")).toHaveLength(1)
 			expect((await repo.listPurchases("scb"))[0]?.id).toBe("p2")
-			expect(await repo.listPayments("scb")).toHaveLength(1)
+			expect(await repo.listCardPayments("scb")).toHaveLength(1)
 		})
 
 		test("cascade delete does not affect cards whose id is a prefix", async () => {
 			// Create cards abc and abc:def to test prefix collision vulnerability
 			await repo.saveCard(sampleCard({ id: "abc" }))
 			await repo.savePurchase(samplePurchase({ id: "p1", cardId: "abc" }))
-			await repo.savePayment(samplePayment({ cardId: "abc", period: "2026-09" }))
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "abc" }))
 
 			await repo.saveCard(sampleCard({ id: "abc:def" }))
 			await repo.savePurchase(samplePurchase({ id: "p2", cardId: "abc:def" }))
-			await repo.savePayment(samplePayment({ cardId: "abc:def", period: "2026-09" }))
+			await repo.saveCardPayment(sampleCardPayment({ cardId: "abc:def" }))
 
 			// Delete the shorter-id card (purchases first, RD-07)
 			await repo.deletePurchase("abc", "p1")
@@ -222,12 +212,12 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 			// Verify abc's records are gone
 			expect(await repo.getCard("abc")).toBeNull()
-			expect(await repo.listPayments("abc")).toEqual([])
+			expect(await repo.listCardPayments("abc")).toEqual([])
 
 			// Verify abc:def's records are intact
 			expect(await repo.listPurchases("abc:def")).toHaveLength(1)
 			expect((await repo.listPurchases("abc:def"))[0]?.id).toBe("p2")
-			expect(await repo.listPayments("abc:def")).toHaveLength(1)
+			expect(await repo.listCardPayments("abc:def")).toHaveLength(1)
 		})
 
 		test("lists cards sorted by id in ascending order", async () => {
@@ -285,21 +275,10 @@ export function repositoryContract(name: string, create: () => Repository): void
 			expect(await repo.listPurchases("k1")).toEqual([])
 		})
 
-		test("saves, lists, and deletes payments per card", async () => {
-			await repo.savePayment(samplePayment({ period: "2026-09" }))
-			await repo.savePayment(samplePayment({ period: "2026-08" }))
-			await repo.savePayment(samplePayment({ cardId: "scb", period: "2026-09" }))
-
-			expect((await repo.listPayments("k1")).map((p) => p.period)).toEqual(["2026-08", "2026-09"])
-
-			await repo.deletePayment("k1", "2026-08")
-			expect((await repo.listPayments("k1")).map((p) => p.period)).toEqual(["2026-09"])
-		})
-
 		test("deleting something absent is not an error", async () => {
 			await repo.deleteCard("nope")
 			await repo.deletePurchase("nope", "nope")
-			await repo.deletePayment("nope", "2026-01")
+			await repo.deleteCardPayment("nope", "nope")
 		})
 
 		test("returned objects are copies, not live references", async () => {
@@ -408,7 +387,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 		test("clearing forgets every record and setting", async () => {
 			await repo.saveCard(sampleCard())
 			await repo.savePurchase(samplePurchase())
-			await repo.savePayment(samplePayment())
+			await repo.saveCardPayment(sampleCardPayment())
 			await repo.saveLimitGroup(sampleLimitGroup())
 			await repo.saveSettings({ purchaseLocations: [] })
 
@@ -416,7 +395,7 @@ export function repositoryContract(name: string, create: () => Repository): void
 
 			expect(await repo.listCards()).toEqual([])
 			expect(await repo.listPurchases("k1")).toEqual([])
-			expect(await repo.listPayments("k1")).toEqual([])
+			expect(await repo.listCardPayments("k1")).toEqual([])
 			expect(await repo.listLimitGroups()).toEqual([])
 			expect(await repo.getSettings()).toEqual(DEFAULT_SETTINGS)
 		})
@@ -536,16 +515,12 @@ export function repositoryContract(name: string, create: () => Repository): void
 			await repo.saveCardPayment(sampleCardPayment({ id: "b:c", cardId: "a" }))
 			await repo.saveStatementDates(sampleStatementDates({ cardId: "a:b", period: "x" }))
 			await repo.saveStatementDates(sampleStatementDates({ cardId: "a", period: "b:x" }))
-			await repo.savePayment(samplePayment({ cardId: "a:b", period: "x" }))
-			await repo.savePayment(samplePayment({ cardId: "a", period: "b:x" }))
 			expect((await repo.listPurchases("a:b")).map((p) => p.id)).toEqual(["c"])
 			expect((await repo.listPurchases("a")).map((p) => p.id)).toEqual(["b:c"])
 			expect((await repo.listCardPayments("a:b")).map((p) => p.id)).toEqual(["c"])
 			expect((await repo.listCardPayments("a")).map((p) => p.id)).toEqual(["b:c"])
 			expect((await repo.listStatementDates("a:b")).map((d) => d.period)).toEqual(["x"])
 			expect((await repo.listStatementDates("a")).map((d) => d.period)).toEqual(["b:x"])
-			expect((await repo.listPayments("a:b")).map((p) => p.period)).toEqual(["x"])
-			expect((await repo.listPayments("a")).map((p) => p.period)).toEqual(["b:x"])
 		})
 
 		test("clearAll removes the new records", async () => {

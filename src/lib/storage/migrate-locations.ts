@@ -9,9 +9,8 @@ export const MIGRATION_KEY = "cc:migration:location"
 /**
  * Points every card at a stored location record, once per load.
  *
- * Cards written before the field was a closed set still hold free text, a version 2 backup
- * can bring cards without their records, and a default record can have gone. So each card is
- * checked against the stored record ids: one kept at a default place whose record is missing
+ * Cards written before the field was a closed set still hold free text, and a default record
+ * can have gone. So each card is checked against the stored record ids: one kept at a default place whose record is missing
  * (`bangkok`, `phichit`, `krabi`) gets that default record back, taking no purchases; any
  * other unknown value moves the card to the `DEFAULT_LOCATION` record when stored, else to the
  * first record by id, so the result never depends on the reader's language.

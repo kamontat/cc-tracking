@@ -515,13 +515,13 @@ test("restoring from the clipboard over data here takes Restore, Paste from clip
 	})
 })
 
-test("restoring a version 2 file into an empty browser converts it and counts the lists", async () => {
+test.each([1, 2])("a version %i file is refused as unsupported, and nothing is written", async (version) => {
 	const repo = new InMemoryRepository()
 	const root = await show(repo)
 	await chooseFile(
 		root,
 		JSON.stringify({
-			version: 2,
+			version,
 			exportedAt: "2026-09-21T00:00:00.000Z",
 			limitGroups: [{ id: "pool", name: "KBank account", limit: 1 }],
 			cards: [sampleCard],
@@ -534,12 +534,11 @@ test("restoring a version 2 file into an empty browser converts it and counts th
 		"old.json",
 	)
 
-	expect(banner(root)).toBe("")
-	expect((await repo.listCardPayments("k1")).length).toBe(1)
-	expect((await repo.listLocations()).filter((record) => record.takesPurchases).map((record) => record.id)).toEqual([
-		"bangkok",
-	])
-	expect(importStatus(root)).toContain("0 lists")
+	expect(flat(restoreSheet(root)?.querySelector('[role="alert"]'))).toContain(
+		`This backup is version ${version}, but this app reads versions 3–4.`,
+	)
+	expect(await repo.listCards()).toEqual([])
+	expect(await repo.listCardPayments("k1")).toEqual([])
 })
 
 test("a restore clears an earlier reset message", async () => {
