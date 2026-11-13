@@ -1,7 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: Home's tabs, `/`, `/owed` and `/ready`, 2026-11-13, PRD DD-199). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: Home's tabs, `/`, `/owed` and `/ready`, with Cards' search, filters and grouping on `/owed` and `/ready`, 2026-11-13, PRD DD-199). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -21,8 +21,8 @@ code: each part of the plan rewrites the addresses it changes here as it ships. 
 filters and the `limit` key (part 3, DD-197); Transactions' tabs, `/transactions` and
 `/transactions/lists`, with `f.` filters and the `card` and `list` keys, and the list pages
 `/transactions/lists/new` and `/transactions/lists/edit` (part 4, DD-198); Home's tabs, `/`,
-`/owed` and `/ready`, with the `card` and `list` keys and the tabs' `sort` and `dir` (part 5,
-DD-199).
+`/owed` and `/ready`, with the `card` and `list` keys and, on `/owed` and `/ready`, Cards' `q`,
+`f.` filters, `sort`, `dir` and `by` (part 5, DD-199).
 
 ## Redirects
 
@@ -54,31 +54,45 @@ back in place.
 
 ### `/owed`
 
-_Owed_: every card that owes, as payment tiles.
+_Owed_: every card that owes, as payment tiles, under Cards' control row (search, _Filter_, the
+sort and group chips, a chip per filter) and Cards' _Filter · Sort · Group_ sheet, with _Bill_
+added.
 
-| Key    | Values                           | Default        | Notes                                                                                                                |
-| ------ | -------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `sort` | `urgency`, `card`, `due`, `left` | `urgency`      | Order: most urgent (overdue, due within 7 days, then most owed), card id, due date, or what is owed.                 |
-| `dir`  | `asc`, `desc`                    | the sort's own | Direction: `left` defaults to `desc` (most owed first), the rest to `asc`.                                           |
-| `card` | card id                          | none           | Opens the card's panel (a tile, or _Pay_ on it). An invalid id or a card not stored opens nothing, and the key goes. |
+| Key           | Values                                    | Default        | Notes                                                                                                                                                 |
+| ------------- | ----------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `q`           | text                                      | empty          | Search: the card's id, name, last 4 or comment, as on `/cards`.                                                                                       |
+| `f.locations` | stored location id, _repeated_            | any            | Only cards kept there. An id with no stored location is dropped.                                                                                      |
+| `f.owners`    | `KC`, `NT`, `RI`, _repeated_              | any            | Only cards held by them (a supplementary card's own holder, else its limit group's owner).                                                            |
+| `f.states`    | `overdue`, `soon`, `unbilled`, _repeated_ | any            | Only cards whose bill is past due, due within 7 days (the pay tag's _Due in N days_), or that owe with no bill yet (all of it on the open statement). |
+| `sort`        | `urgency`, `card`, `due`, `left`          | `urgency`      | Order: most urgent (overdue, due within 7 days, then most owed), card id, due date, or what is owed.                                                  |
+| `dir`         | `asc`, `desc`                             | the sort's own | Direction: `left` defaults to `desc` (most owed first), the rest to `asc`.                                                                            |
+| `by`          | `place`, `holder`, `limit`, `none`        | `none`         | Sections, as on `/cards`: places in order, holders then none, limit groups A to Z then none; each keeps the order. `none` is one flat list.           |
+| `card`        | card id                                   | none           | Opens the card's panel (a tile, or _Pay_ on it). An invalid id or a card not stored opens nothing, and the key goes.                                  |
 
-A sort change rewrites the address (`replaceState`), keeping `card`. A tile pushes `card`; _Pay_
-on a tile opens the card's panel on its pay form with what is left on the bill filled in, with no
-address of its own. Example: `/owed?sort=left&dir=asc&card=12.3`. Replaces Transactions' old
+A search, filter, sort or grouping change rewrites the address (`replaceState`), keys at their
+default left out, keeping `card`. A tile pushes `card`; _Pay_ on a tile opens the card's panel on
+its pay form with what is left on the bill filled in, with no address of its own. Example:
+`/owed?f.states=overdue&f.states=soon&by=holder&card=12.3`. Replaces Transactions' old
 `?view=owed` (and its `owed` and `odir` keys).
 
 ### `/ready`
 
-_Ready to use_: every card that can take a purchase now, as card tiles.
+_Ready to use_: every card that can take a purchase now, as card tiles, under Cards' control row
+and _Filter · Sort · Group_ sheet.
 
-| Key    | Values                 | Default | Notes                                                                                                |
-| ------ | ---------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
-| `sort` | `room`, `close`, `due` | `room`  | Order: room, close date or due date.                                                                 |
-| `dir`  | `asc`, `desc`          | `desc`  | Direction: every sort defaults to `desc` (most room, longest to close, latest due).                  |
-| `card` | card id                | none    | Opens the card's panel (a tile). An invalid id or a card not stored opens nothing, and the key goes. |
+| Key           | Values                             | Default | Notes                                                                                                |
+| ------------- | ---------------------------------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `q`           | text                               | empty   | Search: the card's id, name, last 4 or comment, as on `/cards`.                                      |
+| `f.locations` | stored location id, _repeated_     | any     | Only cards kept there. An id with no stored location is dropped.                                     |
+| `f.owners`    | `KC`, `NT`, `RI`, _repeated_       | any     | Only cards held by them.                                                                             |
+| `sort`        | `room`, `close`, `due`             | `room`  | Order: room, close date or due date.                                                                 |
+| `dir`         | `asc`, `desc`                      | `desc`  | Direction: every sort defaults to `desc` (most room, longest to close, latest due).                  |
+| `by`          | `place`, `holder`, `limit`, `none` | `place` | Sections, as on `/cards`; each keeps the order. `none` is one flat list under the count and places.  |
+| `card`        | card id                            | none    | Opens the card's panel (a tile). An invalid id or a card not stored opens nothing, and the key goes. |
 
-A sort change rewrites the address (`replaceState`), keeping `card`; a tile pushes `card`.
-Example: `/ready?sort=close&card=7`.
+A search, filter, sort or grouping change rewrites the address (`replaceState`), keys at their
+default left out, keeping `card`; a tile pushes `card`. Example:
+`/ready?f.owners=KC&sort=close&by=limit&card=7`.
 
 ## Transactions
 
