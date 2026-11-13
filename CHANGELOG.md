@@ -4,7 +4,38 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-13: Tabs and a detail panel, settled (not built yet)
+## 2026-11-13: Tabs and a detail panel, settled (not built yet), and card ids and limit groups enforced
+
+### BREAKING CHANGES
+
+- Restore refuses a backup with a card whose id is outside `^[a-z]?[0-9]+(\.[0-9]+)*# Changelog
+
+This changelog is built from the design specs written for each stage of the project. Entries
+are newest first. Each one says what changed and keeps the decisions behind it, because the
+reasons don't show up in the code.
+
+(`K1`,
+`5.`, `1..2`), with no `limitGroupId`, or naming a limit group not in the file, and writes
+nothing. Fix the file (lower-case ids, a group for every card) and restore again. Every card in
+the 2026-11-07 backup passes (RD-27, RD-28, amends DC-06).
+
+- Cards' `ungrouped` address key is no longer read, and the _Not in a group_ filter, its chip and
+  the _Not in a group_ and _No account holder_ sections are gone; a link with `?ungrouped=1`
+  opens the full list.
+
+- Message keys removed: `card.hero.noGroup`, `card.noGroupNote`, `cards.page.noGroup`,
+  `cards.filter.ungrouped`, `spendable.unassigned.one`, `spendable.unassigned.many`,
+  `spendable.unassignedAction` and `group.noHolder`.
+
+### Improvements
+
+- The card form refuses a new card's id that doesn't match the card id format, and its limit
+  group is required: _Choose a limit group_ is a placeholder that can't be picked, and with no
+  group stored the form says to add one first, from _Limits_ (RD-27, RD-28).
+
+- A card without a limit group is invalid data, left out of Cards' lists like a card at an
+  unknown place, so _Ready to use_ no longer counts "N cards have no limit group yet" and the
+  card page and tiles no longer say a card has none.
 
 ### Decisions
 
@@ -39,6 +70,11 @@ reasons don't show up in the code.
 
 - `ENDPOINTS.md` is not rewritten ahead of the code: it says the plan is coming, and each part
   updates it as it ships.
+
+- The card form checks only a new card's id: a stored card's id can't be edited. Restore checks
+  version 2 files as well as version 3, as an old file brings cards just the same. The group
+  placeholder stays rather than defaulting to the first group, so a new card never lands in a
+  group by accident.
 
 ## 2026-11-12: Building a purchase list a card at a time, with each card's last 12 statements
 
