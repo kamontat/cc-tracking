@@ -12,12 +12,13 @@
 	import { locationName, sortLocations } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { draftOf, keptIn, readCardDraft } from "#lib/ui/card-form"
+	import { LIMITS_ADDRESS } from "#lib/ui/cards-query"
 
 	/**
 	 * The card form, the whole of `/card/new` and `/card/edit` under their sub-header, in panels:
 	 * *Card* (name; card id, disabled when editing, beside last 4), *Where and who* (*Kept in* as a
 	 * segmented control of every stored location, A to Z by shown name; the limit group,
-	 * `name (holder) · limit`; the cardholder, the group's account holder or a supplementary card
+	 * `name (holder) · limit`, required, or with none stored a note to add one from Limits; the cardholder, the group's account holder or a supplementary card
 	 * with its own holder), *Billing cycle* (the kind, then the close day beside *due days after
 	 * close* or *due on day*) and *Comment*; then the submit. Archive and Delete live on the card
 	 * page's More menu, not here.
@@ -190,21 +191,31 @@
 				</div>
 			</fieldset>
 
-			<label>
-				{tr("form.limitGroup")}
-				<select
-					name="limitGroupId"
-					disabled={sortedGroups.length === 0}
-					value={draft.groupId}
-					onchange={(event) => {
-						draft.groupId = picked(event)
-					}}>
-					<option value="">{tr("form.limitGroupNone")}</option>
-					{#each sortedGroups as group (group.id)}
-						<option value={group.id}>{groupLabel(group)} · {formatAmount(group.limit)}</option>
-					{/each}
-				</select>
-			</label>
+			{#if sortedGroups.length === 0}
+				<!-- Every card draws on a group (RD-27): with none stored there is nothing to pick. -->
+				<p class="no-groups" data-no-groups>
+					<span>{tr("form.limitGroup")}</span>
+					{tr("form.noGroups")}
+					<a href={LIMITS_ADDRESS}>{tr("form.noGroupsAction")}</a>
+				</p>
+			{:else}
+				<label>
+					{tr("form.limitGroup")}
+					<select
+						name="limitGroupId"
+						required
+						value={draft.groupId}
+						onchange={(event) => {
+							draft.groupId = picked(event)
+						}}>
+						<!-- Shown until a group is picked, never picked back (RD-27). -->
+						<option value="" disabled>{tr("form.limitGroupNone")}</option>
+						{#each sortedGroups as group (group.id)}
+							<option value={group.id}>{groupLabel(group)} · {formatAmount(group.limit)}</option>
+						{/each}
+					</select>
+				</label>
+			{/if}
 
 			<div class="field">
 				<label>
@@ -373,6 +384,19 @@
 		flex-direction: column;
 		gap: var(--cc-space-1);
 		font-size: var(--cc-text-sm);
+		color: var(--cc-text-muted);
+	}
+
+	.card-form .no-groups {
+		display: flex;
+		flex-direction: column;
+		gap: var(--cc-space-1);
+		margin: 0;
+		font-size: var(--cc-text-sm);
+		color: var(--cc-text);
+	}
+
+	.card-form .no-groups > span {
 		color: var(--cc-text-muted);
 	}
 

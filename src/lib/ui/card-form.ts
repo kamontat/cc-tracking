@@ -1,6 +1,7 @@
 import type { Card, CycleRule, LimitGroup, LocationRecord } from "#lib/domain/types"
 import type { MessageKey } from "#lib/i18n/catalog"
 
+import { isCardId } from "#lib/domain/card"
 import { DEFAULT_LOCATION } from "#lib/domain/location"
 import { type Owner, toOwner } from "#lib/domain/owner"
 import { sortLocations } from "#lib/i18n/format"
@@ -72,7 +73,8 @@ const inRange = (value: number, low: number, high: number) => Number.isInteger(v
 export type CardRead = { ok: true; card: Card } | { ok: false; key: MessageKey }
 
 /**
- * Reads the draft into a card: the id (kept from `card` when editing), name, four-digit last 4,
+ * Reads the draft into a card: the id (kept from `card` when editing, else in the card id form,
+ * `isCardId`), name, four-digit last 4,
  * close day 1-31, then due 1-60 days after close or on day 1-31, a stored limit group, and a
  * holder for a supplementary card -- which a primary card leaves off, since whoever holds its
  * group holds it.
@@ -90,6 +92,7 @@ export function readCardDraft(
 	const closeDay = numberOf(text.closeDay)
 
 	if (!id) return { ok: false, key: "form.error.id" }
+	if (!card && !isCardId(id)) return { ok: false, key: "form.error.idFormat" }
 	if (!name) return { ok: false, key: "form.error.name" }
 	if (!/^\d{4}$/.test(last4)) return { ok: false, key: "form.error.last4" }
 	if (!inRange(closeDay, 1, 31)) return { ok: false, key: "form.error.closeDay" }

@@ -14,3 +14,9 @@ import { takesPurchases } from "#lib/domain/locations"
 export function canPurchase(card: Card, locations: LocationRecord[]): boolean {
 	return takesPurchases(locations, card.location)
 }
+
+/**
+ * A card id's form (RD-28): digits in dot-separated parts, after at most one lower-case letter
+ * (`5`, `12.3`, `k1.2`; never `5.`, `.5`, `1..2` or `K1`). The card form and restore check it.
+ */
+export const isCardId = (id: string): boolean => /^[a-z]?[0-9]+(\.[0-9]+)*$/.test(id)

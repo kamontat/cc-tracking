@@ -134,30 +134,30 @@ test("/card/new: a compact sub-header to Cards, New card with no subtitle, over 
 
 test("/card/new: a save stores the card and replaces the address with its page", async () => {
 	const { repo, visited } = await setup("new", "")
-	await fillNew("N 1")
+	await fillNew("k1.2")
 	await submit()
-	expect((await repo.getCard("N 1"))?.name).toBe("New Visa")
-	expect(visited).toEqual(["/card?id=N%201"])
+	expect((await repo.getCard("k1.2"))?.name).toBe("New Visa")
+	expect(visited).toEqual(["/card?id=k1.2"])
 })
 
 test("/card/new: Kept in offers a stored custom location, and the card is saved there", async () => {
 	const { repo } = await setup("new", "", async (r) => {
 		await r.saveLocation({ id: "chiang-mai", name: "Chiang Mai", takesPurchases: false })
 	})
-	await fillNew("N1")
+	await fillNew("1")
 	$<HTMLButtonElement>('[data-location="chiang-mai"]')?.click()
 	await settle(1)
 	await submit()
-	expect((await repo.getCard("N1"))?.location).toBe("chiang-mai")
+	expect((await repo.getCard("1"))?.location).toBe("chiang-mai")
 })
 
 test("/card/new: an id already stored is refused, the typing kept", async () => {
-	const { repo, visited } = await setup("new", "")
-	await fillNew("A")
+	const { repo, visited } = await setup("new", "", (r) => r.saveCard(card("5")))
+	await fillNew("5")
 	await submit()
 	expect(visited).toEqual([])
-	expect((await repo.getCard("A"))?.name).toBe("A card")
-	expect(formError()).toContain('A card with id "A" already exists.')
+	expect((await repo.getCard("5"))?.name).toBe("5 card")
+	expect(formError()).toContain('A card with id "5" already exists.')
 	expect($<HTMLInputElement>('form [name="name"]')?.value).toBe("New Visa")
 })
 

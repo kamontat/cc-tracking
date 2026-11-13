@@ -2,7 +2,7 @@ import type { Card, LocationRecord } from "#lib/domain/types"
 
 import { expect, test } from "vitest"
 
-import { canPurchase } from "#lib/domain/card"
+import { canPurchase, isCardId } from "#lib/domain/card"
 
 const card = (fields: Partial<Card>): Card => ({
 	id: "kbank",
@@ -46,3 +46,14 @@ test("the answer comes from the location, not from a flag left on the card", () 
 	const stale = { ...card({ location: "bangkok" }), canPurchase: true }
 	expect(canPurchase(stale as Card, locations)).toBe(false)
 })
+
+test.each(["5", "12.3", "k1.2", "0001", "a1.2.3"])("%s is a card id (RD-28)", (id) => {
+	expect(isCardId(id)).toBe(true)
+})
+
+test.each(["", "5.", ".5", "1..2", "K1", "kb1", "k", "1 2", " 5", "kbank", "3/x"])(
+	"%j is not a card id (RD-28)",
+	(id) => {
+		expect(isCardId(id)).toBe(false)
+	},
+)

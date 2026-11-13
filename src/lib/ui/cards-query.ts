@@ -36,6 +36,9 @@ export function readCardsView(search: string, locationIds: readonly string[]): C
 	}
 }
 
+/** Where the limit groups are listed: the Cards page's groups view. */
+export const LIMITS_ADDRESS = "/cards?view=groups"
+
 /** What the Cards page shows below 900px: the cards, or the limit groups (`?view=groups`). */
 export type CardsShow = "cards" | "groups"
 
