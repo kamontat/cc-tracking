@@ -177,6 +177,16 @@ test("a card kept where purchases aren't taken says so in a note with a link, an
 	expect([...(actions?.children ?? [])].map((el) => el.getAttribute("data-action"))).toEqual(["pay"])
 })
 
+test("a card whose limit group isn't stored is invalid data: no note about it, and Pay is the one action", async () => {
+	const repo = await stocked()
+	await repo.saveCard({ ...card, limitGroupId: "gone" })
+	await show(repo)
+	const body = $(".detail-panel__body")
+	expect(body?.querySelector(".card-note")).toBeNull()
+	const actions = body?.querySelector(".card-actions")
+	expect([...(actions?.children ?? [])].map((el) => el.getAttribute("data-action"))).toEqual(["pay"])
+})
+
 test("Edit turns the panel into the card form; saving returns to the card", async () => {
 	const repo = await stocked()
 	const { history, changes } = await show(repo)

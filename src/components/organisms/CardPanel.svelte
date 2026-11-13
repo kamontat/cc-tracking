@@ -333,7 +333,8 @@
 		void lang
 		if (!card) return null
 		if (card.archived) return { text: t("card.archivedNote") }
-		if (data && !roomFor(card, data)) return { text: t("card.noGroupNote") }
+		// No stored limit group is invalid data (RD-27): not offered, and nothing said about it.
+		if (data && !roomFor(card, data)) return { text: "" }
 		if (data && !canPurchase(card, data.locations)) {
 			// The note's "Settings › Locations" is the link itself, cut out of the sentence at {link}.
 			const location = nameOfLocation(data.locations, card.location)
@@ -527,7 +528,7 @@
 		{#if overNote}
 			<p class="card-over" role="status" data-over-room>{overNote}</p>
 		{/if}
-		{#if cannotPurchase}
+		{#if cannotPurchase?.text}
 			<!-- Why the card isn't offered on lists, with the way to change it as a link in the note,
 			     so the actions below stay buttons of one size: Pay alone, full width. -->
 			<p class="note card-note">

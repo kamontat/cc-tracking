@@ -1,5 +1,6 @@
 import type { AddressBar } from "#lib/ui/address-bar"
 
+import { isCardId } from "#lib/domain/card"
 import { t } from "#lib/i18n/index"
 
 /*
@@ -41,11 +42,8 @@ export type PanelForm = { name: string; arg?: string }
 /** What the panel shows: a record (or, for a blank form, its kind alone) and any form over it. */
 export type PanelView = { kind: RecordKind; id: string | null; form: PanelForm | null }
 
-/** A card id (RD-28): lower case only, `5`, `12.3`, `k1.2`. */
-const CARD_ID = /^[a-z]?[0-9]+(\.[0-9]+)*$/
-
-/** Whether `id` can name a record of `kind`: a card id in its format; any other, not empty. */
-export const isRecordId = (kind: RecordKind, id: string): boolean => (kind === "card" ? CARD_ID.test(id) : id !== "")
+/** Whether `id` can name a record of `kind`: a card id in its format (`isCardId`, RD-28); any other, not empty. */
+export const isRecordId = (kind: RecordKind, id: string): boolean => (kind === "card" ? isCardId(id) : id !== "")
 
 /**
  * The record the query names among the `kinds` a page takes, `card` winning; an empty or invalid
