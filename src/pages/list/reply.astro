@@ -6,6 +6,6 @@ import AppLayout from "#layouts/AppLayout.astro"
 <!-- The spender's reply to a waiting list (`?id=`); the list is the reader's data, so the page is an island. -->
 <AppLayout title="Spender's reply" titleKey="title.listReply" tab="home" fab={false} mainClass="page--narrow">
 	<Fragment slot="main">
-		<ListReplyPage client:load />
+		<ListReplyPage client:load legacy />
 	</Fragment>
 </AppLayout>

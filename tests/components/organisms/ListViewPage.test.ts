@@ -78,7 +78,7 @@ test("a saved list that moved lines links to their draft", async () => {
 	expect(side?.contains(link)).toBe(true)
 	expect(side?.querySelector('p.note[data-tone="ok"]')).toBeInstanceOf(HTMLElement)
 	expect(root.querySelector(".list-layout > .list-layout__main > .saved-lines")).toBeInstanceOf(HTMLElement)
-	expect(link?.getAttribute("href")).toBe("/list/draft?id=w1-2")
+	expect(link?.getAttribute("href")).toBe("/transactions/lists/edit?list=w1-2")
 	expect(flatText(link)).toContain("B) B card moved to a draft for Sat, 31 Oct")
 	expect(link?.querySelector("small")?.textContent).toBe("Open it when you're ready to send")
 })
@@ -86,17 +86,17 @@ test("a saved list that moved lines links to their draft", async () => {
 test("an unknown list says so and leads home", async () => {
 	const { root } = await setup("?id=gone", async () => {})
 	expect(root.textContent).toContain("This list no longer exists.")
-	expect(root.querySelector('a[href="/"]:not([data-action])')).not.toBeNull()
+	expect(root.querySelector('a[href="/transactions/lists"]:not([data-action])')).not.toBeNull()
 	expect(root.querySelector(".saved-lines")).toBeNull()
 })
 
 test("a list not yet saved leads to its own page", async () => {
 	const waiting = await setup("?id=w1", (repo) => repo.savePurchaseList(sent("w1", ["A"])))
 	expect(waiting.root.querySelector(".saved-lines")).toBeNull()
-	expect(elsewhereLink(waiting.root)).toBe("/list/reply?id=w1")
+	expect(elsewhereLink(waiting.root)).toBe("/transactions/lists/edit?list=w1")
 
 	const notSent = await setup("?id=d1", (repo) => repo.savePurchaseList(draft("d1", ["A"])))
-	expect(elsewhereLink(notSent.root)).toBe("/list/draft?id=d1")
+	expect(elsewhereLink(notSent.root)).toBe("/transactions/lists/edit?list=d1")
 })
 
 test("a saved list shows each line's note", async () => {

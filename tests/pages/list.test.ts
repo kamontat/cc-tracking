@@ -1,8 +1,9 @@
 import { expect, test } from "vitest"
 
 /**
- * The four list pages: one static page per case, each an island over the shared flows. Ported
- * from the legacy `routes/list/pages` test.
+ * The four old list pages: one static page per case, each an island over the shared flows, on
+ * their old keys (`legacy`) until they retire (RD-26). Ported from the legacy
+ * `routes/list/pages` test.
  */
 const PAGES = {
 	new: "ListNewPage",
@@ -20,6 +21,7 @@ test("each list case has its own page with its island, and the old single page i
 		expect(source, name).toContain('mainClass="page--narrow"')
 	}
 	expect(await page("draft")).toContain('mode="draft"')
+	for (const name of ["new", "draft", "reply"]) expect(await page(name), name).toMatch(/client:load[^>]*\blegacy\b/)
 	expect(await Bun.file("src/pages/list.astro").exists()).toBe(false)
 })
 

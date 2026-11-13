@@ -1,7 +1,7 @@
 import type { PurchaseList } from "#lib/domain/types"
 import type { ShareApi, ShareTable } from "#lib/ui/list-share"
 
-import { afterEach, expect, test, vi } from "vitest"
+import { afterEach, describe, expect, test, vi } from "vitest"
 
 import ListEntryPage from "#components/organisms/ListEntryPage.svelte"
 import { MessageError } from "#lib/i18n/error"
@@ -29,9 +29,11 @@ import {
 
 /**
  * Writing a purchase list: the list, with each card's amounts in its add-a-card sheet, then
- * review and mark it sent or keep it as a draft (`/list/new?card=…`, `/list/draft?id=`). Ported
- * from the legacy `entry` tests; where those dispatched the amounts element's events, these type
- * into the real form.
+ * review and mark it sent or keep it as a draft. Most of these run on the old pages
+ * (`/list/new?card=…`, `/list/draft?id=`, `legacy`), which still build until they retire; the
+ * last section holds the builder to its new addresses (`/transactions/lists/new?cards=…`,
+ * `/transactions/lists/edit?list=`, RD-26). Ported from the legacy `entry` tests; where those
+ * dispatched the amounts element's events, these type into the real form.
  */
 afterEach(cleanup)
 
@@ -54,6 +56,7 @@ const setup = async (
 		search?: string
 		share?: ShareApi
 		before?: (repo: Repository) => Promise<void>
+		legacy?: boolean
 	} = {},
 ) => {
 	const calls: Calls = { copy: [], saveImage: [] }
@@ -63,6 +66,7 @@ const setup = async (
 		...(options.before ? { before: options.before } : {}),
 		props: {
 			mode: options.mode ?? "new",
+			legacy: options.legacy ?? true,
 			share: options.share ?? recordingShare(calls),
 			newId: () => "l-new",
 		},
@@ -274,21 +278,21 @@ test("a draft sent or saved elsewhere is not saved over", async () => {
 	}
 })
 
-test("an unknown draft says so and leads home", async () => {
+test("an unknown draft says so and leads to the Lists tab", async () => {
 	await setup({ mode: "draft", search: "?id=gone" })
 	expect(document.body.textContent).toContain("This list no longer exists.")
-	expect($('a[href="/"]:not([data-action])')).not.toBeNull()
+	expect(flatText($('a[href="/transactions/lists"]:not([data-action])'))).toBe("Go to Lists")
 	expect($('[data-field="amount"]')).toBeNull()
 })
 
-test("a list that is not a draft leads to its own page", async () => {
+test("a list that is not a draft leads to where it is worked on now", async () => {
 	await setupDraft((r) => r.savePurchaseList(sent("d1", ["A"])))
 	expect($(".line[data-card]")).toBeNull()
 	expect(document.body.textContent).toContain("This list is waiting for the spender's reply.")
-	expect(elsewhereLink(document)).toBe("/list/reply?id=d1")
+	expect(elsewhereLink(document)).toBe("/transactions/lists/edit?list=d1")
 	await setupDraft((r) => r.savePurchaseList(saved("d1", ["A"])))
 	expect(document.body.textContent).toContain("This list is already saved.")
-	expect(elsewhereLink(document)).toBe("/list/view?id=d1")
+	expect(elsewhereLink(document)).toBe("/transactions/lists?list=d1")
 })
 
 test("a sent list holds room on a new list", async () => {
@@ -306,7 +310,7 @@ test("a saved list replaces the page in history", async () => {
 	try {
 		await setupPage(ListEntryPage, {
 			search: "?card=A",
-			props: { mode: "new", share: {}, newId: () => "l-new", navigate: undefined },
+			props: { mode: "new", legacy: true, share: {}, newId: () => "l-new", navigate: undefined },
 		})
 		await typeAmount("A", "125")
 		await click(document, "save-draft")
@@ -712,4 +716,99 @@ test("the merge question reads in Thai", async () => {
 	await settle()
 	expect(mergeAsk()).toContain("มีฉบับร่างของวันที่")
 	expect(flatText($('[data-action="keep-separate"]'))).toBe("แยกไว้")
+})
+
+describe("the builder on its own addresses (RD-26)", () => {
+	const fresh = (search: string, before?: (repo: Repository) => Promise<void>) =>
+		setup({ legacy: false, search, ...(before ? { before } : {}) })
+	const freshDraft = (before: (repo: Repository) => Promise<void>) =>
+		setup({ legacy: false, mode: "draft", search: "?list=d1", before })
+
+	test("a new list holds the cards in `cards`, each once, dropping cards that cannot take purchases", async () => {
+		await fresh("?cards=B&cards=A&cards=B&cards=Z&card=A")
+		expect(onList()).toEqual(["B", "A"])
+		// ‹ goes back to the Lists tab, under which the builder lives.
+		expect($('[data-action="back"]')?.getAttribute("href")).toBe("/transactions/lists")
+	})
+
+	test("adding or removing a card rewrites `cards` in place", async () => {
+		const { now, entries } = await fresh("?cards=A")
+		await add("B")
+		expect(now()).toBe("/transactions/lists/new?cards=A&cards=B")
+		await remove("A")
+		expect(now()).toBe("/transactions/lists/new?cards=B")
+		// The page's own entry holds the cards; the sheet's entries were stepped back over.
+		expect(entries[0]).toBe("/transactions/lists/new?cards=B")
+	})
+
+	test("the add-a-card sheet is not in the address: opening pushes the same address, Back closes it", async () => {
+		const { now, entries, back, pushOptions } = await fresh("?cards=A")
+		await click(document, "add-card")
+		expect($("dialog .tile")).not.toBeNull()
+		expect(entries).toEqual(["?cards=A", "/transactions/lists/new?cards=A"])
+		expect(pushOptions).toEqual([{ ownPage: true }])
+		$('dialog .tile[data-card="B"]')?.click()
+		await settle()
+		expect(entries).toHaveLength(2)
+		expect(now()).toBe("/transactions/lists/new?cards=A")
+		back()
+		await settle()
+		expect($("dialog")).toBeNull()
+		expect(onList()).toEqual(["A"])
+	})
+
+	test("Add to list closes the sheet by stepping back over its entry, and `cards` holds the card", async () => {
+		const { now, entries } = await fresh("?cards=A")
+		await add("B")
+		expect($("dialog")).toBeNull()
+		expect(onList()).toEqual(["A", "B"])
+		expect(now()).toBe("/transactions/lists/new?cards=A&cards=B")
+		expect(entries[0]).toBe("/transactions/lists/new?cards=A&cards=B")
+	})
+
+	test("an old address's sheet keys open nothing", async () => {
+		await fresh("?cards=A&add=1&open=A")
+		expect($("dialog")).toBeNull()
+	})
+
+	test("Save as draft leaves for the Lists tab with the new list open in its panel", async () => {
+		const { repo, visited } = await fresh("?cards=A")
+		await typeAmount("A", "125")
+		await click(document, "save-draft")
+		expect((await stored(repo)).map((l) => l.id)).toEqual(["l-new"])
+		expect(visited).toEqual(["/transactions/lists?list=l-new"])
+	})
+
+	test("Mark as sent leaves the same way", async () => {
+		const { visited } = await fresh("?cards=A")
+		await typeAndReview({ A: "125" })
+		await click(document, "mark-sent")
+		expect(visited).toEqual(["/transactions/lists?list=l-new"])
+	})
+
+	test("a merged save opens the list it went into", async () => {
+		const existing = draft("d0", ["B"], { date: "2026-10-31" })
+		const { visited } = await fresh("?cards=A", (r) => r.savePurchaseList(existing))
+		await typeAmount("A", "125")
+		await click(document, "save-draft")
+		await click(document, "merge")
+		expect(visited).toEqual(["/transactions/lists?list=d0"])
+	})
+
+	test("a draft opens from `list`, keeps its address, and Delete leaves for the Lists tab", async () => {
+		const { now, repo, visited } = await freshDraft(draftWith(["A"]))
+		expect(onList()).toEqual(["A"])
+		expect($("h1")?.textContent).toContain("Draft list")
+		await add("B")
+		expect(now()).toBe("?list=d1")
+		await click(document, "delete-draft")
+		expect(await stored(repo)).toEqual([])
+		expect(visited).toEqual(["/transactions/lists"])
+	})
+
+	test("a draft's save opens it in its panel", async () => {
+		const { visited } = await freshDraft(draftWith(["A"]))
+		await click(document, "save-draft")
+		expect(visited).toEqual(["/transactions/lists?list=d1"])
+	})
 })

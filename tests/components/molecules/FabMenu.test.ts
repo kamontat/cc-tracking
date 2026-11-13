@@ -33,7 +33,7 @@ describe("FabMenu", () => {
 	test("the menu holds the two ways to start, each with its icon and translated label", async () => {
 		const html = await render()
 		const items = [...html.matchAll(/<a\b[^>]*class="fab-menu__item"[^>]*>[\s\S]*?<\/a>/g)].map((m) => m[0])
-		expect(items.map((a) => a.match(/href="([^"]*)"/)?.[1])).toEqual(["/list/new", payAddress()])
+		expect(items.map((a) => a.match(/href="([^"]*)"/)?.[1])).toEqual(["/transactions/lists/new", payAddress()])
 		expect(items.map((a) => a.match(/data-action="([^"]*)"/)?.[1])).toEqual(["new-list", "pay"])
 		expect(items[0]).toContain(ICON_PATHS.list)
 		expect(items[0]).toContain(`<span data-i18n="fab.newList">`)

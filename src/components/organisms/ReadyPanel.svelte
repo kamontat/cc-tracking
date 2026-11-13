@@ -20,7 +20,7 @@
 	 * Home's short *Ready to use* (DD-103): the count, the four cards with the most room as card
 	 * tiles that open the card's page (DD-151), then *See more (N)* (the control *Needs you* uses),
 	 * which opens the rest in place and reads *Show less* to fold them. Starting a list is the
-	 * *+ New* menu's job and `/list/new`'s. With no card ready it says so and leads to Settings.
+	 * *+ New* menu's job and the builder's (`/transactions/lists/new`). With no card ready it says so and leads to Settings.
 	 */
 	interface Props {
 		rows: ReadyRow[]

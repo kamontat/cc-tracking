@@ -150,7 +150,9 @@ test("the body is the card page's: hero, actions and statements", async () => {
 	const body = $(".detail-panel__body")
 	expect(body?.querySelector(".card-hero")).not.toBeNull()
 	expect(text(body?.querySelector(".card-comment"))).toBe("Pays fuel")
-	expect(body?.querySelector('a[data-action="use-on-list"]')?.getAttribute("href")).toBe("/list/new?card=12.3")
+	expect(body?.querySelector('a[data-action="use-on-list"]')?.getAttribute("href")).toBe(
+		"/transactions/lists/new?cards=12.3",
+	)
 	expect(body?.querySelector('button[data-action="add-purchase"]')).not.toBeNull()
 	expect(body?.querySelector('button[data-action="pay"]')).not.toBeNull()
 	expect(body?.querySelector(".card-statements")).not.toBeNull()

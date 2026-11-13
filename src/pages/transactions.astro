@@ -1,11 +1,15 @@
 ---
+import PageTabs from "#components/molecules/PageTabs.astro"
 import TransactionsPage from "#components/organisms/TransactionsPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
+import { TRANSACTIONS_TABS } from "#lib/ui/page-tabs"
+import { LEDGER_ADDRESS } from "#lib/ui/tx-query"
 ---
 
-<!-- Transactions: the ledger, the purchase lists and what is owed are all the reader's data, so the page is an island. -->
-<AppLayout title="Transactions" titleKey="title.transactions" tab="transactions" mainClass="page--tx">
+<!-- Transactions, its Ledger tab (RD-22): the title and the Ledger · Lists tabs are the same for every reader; the ledger is the reader's data, so it is an island. -->
+<AppLayout title="Transactions" titleKey="title.transactions" tab="transactions">
 	<Fragment slot="main">
+		<PageTabs title="nav.transactions" label="tx.tabs" tabs={TRANSACTIONS_TABS} current={LEDGER_ADDRESS} />
 		<TransactionsPage client:load />
 	</Fragment>
 </AppLayout>

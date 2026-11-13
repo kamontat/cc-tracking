@@ -300,10 +300,10 @@ test("a list id is encoded in its opened row's link", async () => {
 	await open('[data-item="draft"]')
 	expect(
 		[...root.querySelectorAll(".a-details:not([hidden]) a[data-action]")].map((e) => e.getAttribute("href")),
-	).toEqual(["/list/draft?id=d%261"])
+	).toEqual(["/transactions/lists/edit?list=d%261"])
 	await open('[data-item="waiting"]')
 	expect(root.querySelector(".a-details:not([hidden]) a[data-action=record-reply]")?.getAttribute("href")).toBe(
-		"/list/reply?id=w%201%2F2",
+		"/transactions/lists/edit?list=w+1%2F2",
 	)
 })
 
@@ -497,7 +497,7 @@ test("an opened draft offers Continue and a one-step Delete", async () => {
 	expect(go?.localName).toBe("a")
 	expect(go?.className).toBe("btn")
 	expect(go?.getAttribute("data-action")).toBe("continue")
-	expect(go?.getAttribute("href")).toBe("/list/draft?id=d1")
+	expect(go?.getAttribute("href")).toBe("/transactions/lists/edit?list=d1")
 	expect(go?.textContent?.trim()).toBe("Continue")
 	expect(del?.localName).toBe("button")
 	expect(del?.getAttribute("type")).toBe("button")

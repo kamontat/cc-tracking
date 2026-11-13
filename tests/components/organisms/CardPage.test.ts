@@ -307,7 +307,7 @@ test("Use on a list starts a list on this card, and Make a payment opens its nex
 
 	const actions = $(".card-actions")
 	const use = actions?.querySelector('a[data-action="use-on-list"]')
-	expect(use?.getAttribute("href")).toBe("/list/new?card=a+b")
+	expect(use?.getAttribute("href")).toBe("/transactions/lists/new?cards=a+b")
 	expect(text(use)).toBe("Use on a list")
 	const pay = actions?.querySelector('a[data-action="pay"]')
 	expect(pay?.getAttribute("href")).toBe(payAddress({ cardId: "a b", amount: 35_000 }))

@@ -41,6 +41,9 @@ test("src/pages has every page", () => {
 		"settings.astro",
 		"settings/locations.astro",
 		"transactions.astro",
+		"transactions/lists.astro",
+		"transactions/lists/edit.astro",
+		"transactions/lists/new.astro",
 	])
 })
 
@@ -132,7 +135,10 @@ test("each page keeps the width it asks for", async () => {
 		"pay.astro": "page page--narrow",
 		"settings.astro": "page",
 		"settings/locations.astro": "page page--form",
-		"transactions.astro": "page page--tx",
+		"transactions.astro": "page",
+		"transactions/lists.astro": "page",
+		"transactions/lists/edit.astro": "page page--narrow",
+		"transactions/lists/new.astro": "page page--narrow",
 	})
 })
 
@@ -146,8 +152,8 @@ test("each page marks its place in both navs, and steps + New aside when mid-tas
 		shell[page] = `${header ?? "none"}${doc.querySelector(".fab-menu") ? " +new" : ""}`
 	}
 	// The payment page sits under Transactions; a card's pages under Cards; Locations under
-	// Settings; every purchase list page under Home. + New steps aside on the payment page, the
-	// list pages and the card form (PRD DD-104).
+	// Settings; the old purchase list pages under Home, the new ones under Transactions (RD-26).
+	// + New steps aside on the payment page, the list pages and the card form (PRD DD-104).
 	expect(shell).toEqual({
 		"card.astro": "cards +new",
 		"card/edit.astro": "cards",
@@ -163,6 +169,9 @@ test("each page marks its place in both navs, and steps + New aside when mid-tas
 		"settings.astro": "settings +new",
 		"settings/locations.astro": "settings +new",
 		"transactions.astro": "transactions +new",
+		"transactions/lists.astro": "transactions +new",
+		"transactions/lists/edit.astro": "transactions",
+		"transactions/lists/new.astro": "transactions",
 	})
 })
 
@@ -184,5 +193,30 @@ test("Cards and Limits head the page with the title and the Cards · Limits tabs
 		expect(bar?.querySelector(':scope > h1 + .page-tabs__divider[aria-hidden="true"] + nav'), page).not.toBeNull()
 		// The tabs come before the island.
 		expect(main?.firstElementChild?.classList.contains("page-tabs")).toBe(true)
+	}
+})
+
+test("Ledger and Lists head the page with the title and the Ledger · Lists tabs, the one on show marked", async () => {
+	for (const [page, current, island] of [
+		["transactions.astro", "/transactions", "TransactionsPage"],
+		["transactions/lists.astro", "/transactions/lists", "ListsPage"],
+	] as const) {
+		const doc = parseHtml(await render(page))
+		const main = doc.querySelector("main#page")
+		expect(main?.querySelector(".page-tabs h1")?.getAttribute("data-i18n"), page).toBe("nav.transactions")
+		expect(main?.querySelector(".page-tabs nav")?.getAttribute("data-i18n-aria-label")).toBe("tx.tabs")
+		const links = [...(main?.querySelectorAll(".page-tabs nav a") ?? [])]
+		expect(links.map((a) => a.getAttribute("href"))).toEqual(["/transactions", "/transactions/lists"])
+		expect(main?.querySelector('.page-tabs nav a[aria-current="page"]')?.getAttribute("href"), page).toBe(current)
+		expect(main?.firstElementChild?.classList.contains("page-tabs")).toBe(true)
+		expect(await source(page)).toContain(`<${island} client:load`)
+	}
+})
+
+test("the builder and the edit page are full pages under the Lists tab's path, with no tabs", async () => {
+	expect(await source("transactions/lists/new.astro")).toContain("<ListNewPage client:load />")
+	expect(await source("transactions/lists/edit.astro")).toContain("<ListEditPage client:load />")
+	for (const page of ["transactions/lists/new.astro", "transactions/lists/edit.astro"]) {
+		expect(parseHtml(await render(page)).querySelector(".page-tabs"), page).toBeNull()
 	}
 })

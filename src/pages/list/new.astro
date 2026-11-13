@@ -6,6 +6,6 @@ import AppLayout from "#layouts/AppLayout.astro"
 <!-- A new purchase list: the picker, or at `?card=` the amounts for the cards picked; the list is the reader's data, so the page is an island. -->
 <AppLayout title="New purchase list" titleKey="title.listNew" tab="home" fab={false} mainClass="page--narrow">
 	<Fragment slot="main">
-		<ListNewPage client:load />
+		<ListNewPage client:load legacy />
 	</Fragment>
 </AppLayout>

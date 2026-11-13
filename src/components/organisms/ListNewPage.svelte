@@ -6,11 +6,13 @@
 	import ListEntryPage from "#components/organisms/ListEntryPage.svelte"
 
 	/**
-	 * A new purchase list (`/list/new`): the list itself, empty or holding the address's `card`
-	 * parameters, with cards added from the add-a-card sheet (DD-195). The picker that came first
-	 * is gone; its search and sorts live in the sheet.
+	 * A new purchase list (`/transactions/lists/new`, RD-26): the list itself, empty or holding the
+	 * address's `cards`, with cards added from the add-a-card sheet (DD-195). The picker that came
+	 * first is gone; its search and sorts live in the sheet. `legacy` is the old `/list/new?card=`,
+	 * until it retires.
 	 */
 	interface Props {
+		legacy?: boolean
 		open?: () => Promise<Opened>
 		clock?: () => Date
 		address?: AddressBar

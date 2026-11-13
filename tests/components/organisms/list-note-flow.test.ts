@@ -54,7 +54,7 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 	const repo = new InMemoryRepository()
 
 	// Enter amounts: a note under each amount, kept through Review and back and a language switch.
-	const entry = await entryPage(repo, "new", "?card=A&card=B")
+	const entry = await entryPage(repo, "new", "?cards=A&cards=B")
 	await typeField("A", "amount", "125")
 	await typeField("A", "note", "  van fuel ")
 	await typeField("B", "amount", "50")
@@ -75,12 +75,12 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 	])
 
 	// The reply shows each note and lets it change; B is not made and moves to a draft.
-	const replyPage = await setupPage(ListReplyPage, { repo, search: "?id=l1" })
+	const replyPage = await setupPage(ListReplyPage, { repo, search: "?list=l1" })
 	await press('section.line[data-card="A"] [data-answer="made"]')
 	await press('section.line[data-card="B"] [data-answer="not-made"]')
 	await typeInto("A", "note", "diesel for the van")
 	await press('[data-action="save-reply"]')
-	expect(replyPage.visited).toEqual(["/list/view?id=l1"])
+	expect(replyPage.visited).toEqual(["/transactions/lists?list=l1"])
 
 	expect((await repo.listPurchases("A")).map((p) => p.note)).toEqual(["diesel for the van"])
 	const moved = (await stored(repo)).find((l) => l.status === "draft")
@@ -93,7 +93,7 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 	// The moved draft reopens with its note, and saving it again keeps it.
 	await setupPage(ListEntryPage, {
 		repo,
-		search: `?id=${moved?.id}`,
+		search: `?list=${moved?.id}`,
 		props: { mode: "draft", share: {} },
 	})
 	expect(await fieldsOf("B", "note")).toEqual(["stamps"])

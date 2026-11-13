@@ -6,6 +6,6 @@ import AppLayout from "#layouts/AppLayout.astro"
 <!-- A stored draft to finish, send or delete (`?id=`); the list is the reader's data, so the page is an island. -->
 <AppLayout title="Draft list" titleKey="title.listDraft" tab="home" fab={false} mainClass="page--narrow">
 	<Fragment slot="main">
-		<ListEntryPage client:load mode="draft" />
+		<ListEntryPage client:load mode="draft" legacy />
 	</Fragment>
 </AppLayout>

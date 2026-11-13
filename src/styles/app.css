@@ -924,65 +924,12 @@ a:any-link:hover {
 	color: var(--cc-text-muted);
 }
 
-/*
- * Transactions: the title with a segmented switch (Ledger, Lists, Owed) beside it, then one
- * column. On a phone the Owed view shows the owed panel under the title instead of the ledger.
- * From 900px the Owed button leaves the switch and the page is two columns, the owed panel
- * beside whatever the left column shows.
- */
-.tx-grid {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr);
-	gap: var(--cc-space-5);
-	align-items: start;
-}
-
-.tx-main,
-.tx-body {
+/* A Transactions tab's island (Ledger, Lists): one column of the search row and what it lists. */
+.tx-main {
 	display: flex;
 	flex-direction: column;
 	gap: var(--cc-space-4);
 	min-inline-size: 0;
-}
-
-.tx-head {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--cc-space-2) var(--cc-space-3);
-}
-
-.tx-switch {
-	display: inline-grid;
-	grid-auto-flow: column;
-	grid-auto-columns: 1fr;
-	padding: calc(var(--cc-space-1) * 0.75);
-	background: var(--cc-surface-sunken);
-	border-radius: var(--cc-radius-sm);
-}
-
-.page .tx-switch button[data-view] {
-	align-self: stretch;
-	padding: var(--cc-space-1) var(--cc-space-3);
-	font-weight: 600;
-	color: var(--cc-text-muted);
-	text-align: center;
-	white-space: nowrap;
-	background: transparent;
-	border: 0;
-	border-radius: calc(var(--cc-radius-sm) - var(--cc-space-1) * 0.75);
-}
-
-.page .tx-switch button[data-view]:hover {
-	color: var(--cc-text);
-}
-
-.page .tx-switch button[data-view][aria-pressed="true"] {
-	color: var(--cc-text);
-	background: var(--cc-surface);
-	box-shadow: var(--cc-shadow-sm);
 }
 
 /* The search box (with its icon) and the Filter button share one row; the chips go under. */
@@ -1038,6 +985,23 @@ a:any-link:hover {
 	font-weight: 650;
 	white-space: nowrap;
 	border-color: transparent;
+}
+
+/* A tab's add button that leads to a page (_+ Add list_): a link drawn as the quiet button. */
+.page a.tx-fbtn {
+	justify-content: center;
+	font-size: var(--cc-text-sm);
+	line-height: 1.2;
+	color: var(--cc-text);
+	text-decoration: none;
+	background: var(--cc-surface-sunken);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page a.tx-fbtn:hover {
+	text-decoration: none;
+	background: var(--cc-border);
 }
 
 .tx-fbtn .icon {
@@ -1486,46 +1450,6 @@ a:any-link:hover {
 
 .tx-summary__figures b[data-tone="in"] {
 	color: var(--cc-success);
-}
-
-.tx-grid > .tx-owed {
-	display: none;
-	min-inline-size: 0;
-}
-
-.tx-grid[data-show="owed"] > .tx-owed {
-	display: block;
-}
-
-.tx-grid[data-show="owed"] .tx-body {
-	display: none;
-}
-
-@media (min-width: 900px) {
-	.tx-grid {
-		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-		gap: var(--cc-space-5) calc(var(--cc-space-5) + var(--cc-space-2));
-	}
-
-	.page .tx-switch [data-view="owed"] {
-		display: none;
-	}
-
-	/* Owed sits beside the ledger here, so the ledger button reads as the current one. */
-	.page .tx-switch button[data-view="ledger"][data-desktop-current] {
-		color: var(--cc-text);
-		background: var(--cc-surface);
-		box-shadow: var(--cc-shadow-sm);
-	}
-
-	.tx-grid[data-show] > .tx-owed {
-		display: block;
-		padding-block-start: var(--cc-space-1);
-	}
-
-	.tx-grid[data-show="owed"] .tx-body {
-		display: flex;
-	}
 }
 
 /*

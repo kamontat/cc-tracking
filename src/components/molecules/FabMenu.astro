@@ -1,6 +1,7 @@
 ---
 import Icon from "#components/atoms/Icon.astro"
 import { en } from "#lib/i18n/en"
+import { NEW_LIST_ADDRESS } from "#lib/ui/list-address"
 import { payAddress } from "#lib/ui/pay-address"
 
 /**
@@ -15,7 +16,7 @@ const MENU_ID = "fab-menu"
 <div class="fab-menu" transition:animate="none">
 	<div class="fab-menu__wrap">
 		<div class="fab-menu__list" id={MENU_ID} popover>
-			<a class="fab-menu__item" data-action="new-list" href="/list/new">
+			<a class="fab-menu__item" data-action="new-list" href={NEW_LIST_ADDRESS}>
 				<Icon name="list" />
 				<span data-i18n="fab.newList">{en["fab.newList"]}</span>
 			</a>
