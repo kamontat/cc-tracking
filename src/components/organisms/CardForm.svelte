@@ -23,8 +23,9 @@
 	 * close* or *due on day*) and *Comment*; then the submit. Archive and Delete live on the card
 	 * page's More menu, not here.
 	 *
-	 * Calls `onsave` with the card. `error` is the page's reason a write failed; what was typed
-	 * stays, since the fields fill from `card` only when it turns to another card (UI-11).
+	 * Calls `onsave` with the card; with `oncancel`, a quiet *Cancel* beside the submit calls that
+	 * (back to the card in its panel, RD-24). `error` is the page's reason a write failed; what was
+	 * typed stays, since the fields fill from `card` only when it turns to another card (UI-11).
 	 */
 	interface Props {
 		/** The card to edit; null for a new one. */
@@ -37,9 +38,11 @@
 		/** A write is under way: the submit waits. */
 		busy?: boolean
 		onsave: (card: Card) => void
+		/** Shows *Cancel* beside the submit: back to the card in its panel. */
+		oncancel?: (() => void) | undefined
 	}
 
-	const { card, groups, locations, error = "", busy = false, onsave }: Props = $props()
+	const { card, groups, locations, error = "", busy = false, onsave, oncancel }: Props = $props()
 
 	const uid = $props.id()
 	const headingId = (section: string) => `${uid}-section-${section}`
@@ -326,7 +329,12 @@
 		</article>
 	</section>
 
-	<div class="actions">
+	<div class="actions" data-twin={oncancel ? "" : undefined}>
+		{#if oncancel}
+			<button type="button" data-variant="quiet" data-action="cancel" onclick={() => oncancel()}>
+				{tr("common.cancel")}
+			</button>
+		{/if}
 		<button type="submit" disabled={busy}>{card ? tr("form.save") : tr("form.add")}</button>
 	</div>
 </form>
@@ -528,5 +536,25 @@
 		padding: var(--cc-space-3) var(--cc-space-4);
 		font-size: var(--cc-text-md);
 		font-weight: 650;
+	}
+
+	/* With *Cancel*: the two side by side, the submit taking the room. */
+	.card-form .actions[data-twin] {
+		flex-direction: row;
+		gap: var(--cc-space-3);
+	}
+
+	.card-form .actions[data-twin] > button[type="submit"] {
+		flex: 1;
+	}
+
+	.card-form .actions > button[data-variant="quiet"] {
+		color: var(--cc-text);
+		background: var(--cc-surface-sunken);
+		border-color: var(--cc-border);
+	}
+
+	.card-form .actions > button[data-variant="quiet"]:hover {
+		background: var(--cc-border);
 	}
 </style>

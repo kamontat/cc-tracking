@@ -274,3 +274,32 @@ test("a figure may wrap only after the baht sign or a comma, never inside a grou
 	expect(style).not.toContain("overflow-wrap: anywhere")
 	expect(style).toMatch(/\.stat b \{[^}]*overflow-wrap: normal/)
 })
+
+test("in the card panel: no Change without onchange, and Cancel with oncancel", async () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	let cancelled = 0
+	mounted = mount(PayForm, {
+		target: document.body,
+		props: {
+			card,
+			figures: usual,
+			today: "2026-10-31",
+			onpay: () => {},
+			oncancel: () => {
+				cancelled++
+			},
+		},
+	})
+	await settle()
+	expect(q('[data-action="change"]')).toBeNull()
+	const cancel = q('button[data-action="cancel"]')
+	expect(cancel?.getAttribute("data-variant")).toBe("quiet")
+	await click('button[data-action="cancel"]')
+	expect(cancelled).toBe(1)
+})
+
+test("no Cancel without oncancel", async () => {
+	await show()
+	expect(q('[data-action="cancel"]')).toBeNull()
+})

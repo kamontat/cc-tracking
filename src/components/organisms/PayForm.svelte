@@ -17,8 +17,9 @@
 	 * The payment sheet's second step, for one card: the card with *Change*, its owed, next bill
 	 * and credit, chips that fill the amount, the amount, the date and a note. A date after today
 	 * plans the payment instead of recording it. Sending calls `onpay` with the amount and date
-	 * (and the note when one was typed); *Change* calls `onchange` to go back to the card picker.
-	 * The page wraps it in its sheet. Renders nothing without a card.
+	 * (and the note when one was typed); *Change*, shown with `onchange`, calls it to go back to
+	 * the card picker; *Cancel*, shown with `oncancel`, calls it (back to the card in its panel,
+	 * RD-24). The page wraps it in its sheet or panel. Renders nothing without a card.
 	 */
 	interface Props {
 		card: Card | null
@@ -37,7 +38,10 @@
 		/** A save is under way; the button waits so a second tap cannot record it twice. */
 		busy?: boolean
 		onpay: (detail: PayDetail) => void
-		onchange: () => void
+		/** Shows *Change*, back to the card picker (`/pay`). */
+		onchange?: (() => void) | undefined
+		/** Shows *Cancel* beside the submit: back to the card in its panel. */
+		oncancel?: (() => void) | undefined
 	}
 
 	const {
@@ -52,6 +56,7 @@
 		busy = false,
 		onpay,
 		onchange,
+		oncancel,
 	}: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
@@ -156,9 +161,11 @@
 			<span class="what"
 				><b><span class="card-label">{cardLine(card.id, card, { short: true })}</span></b></span
 			>
-			<button type="button" data-variant="quiet" data-action="change" onclick={() => onchange()}>
-				{tr("pay.change")}
-			</button>
+			{#if onchange}
+				<button type="button" data-variant="quiet" data-action="change" onclick={() => onchange()}>
+					{tr("pay.change")}
+				</button>
+			{/if}
 		</div>
 		<div class="stats">
 			<div class="stat" data-stat="owed">
@@ -219,7 +226,16 @@
 			{#if preview?.plan}
 				<p class="note" data-note="plan">{tr("pay.note.plan", { date: displayDate(date, getLocale()) })}</p>
 			{/if}
-			<button type="submit" disabled={ready === null || busy}>{submitLabel}</button>
+			{#if oncancel}
+				<div class="pay-actions">
+					<button type="button" data-variant="quiet" data-action="cancel" onclick={() => oncancel()}>
+						{tr("common.cancel")}
+					</button>
+					<button type="submit" disabled={ready === null || busy}>{submitLabel}</button>
+				</div>
+			{:else}
+				<button type="submit" disabled={ready === null || busy}>{submitLabel}</button>
+			{/if}
 			<p class="hint">{tr("pay.dateHint")}</p>
 		</form>
 	</div>
@@ -424,6 +440,24 @@
 
 	.pay-form button[type="submit"]:hover:not(:disabled) {
 		background: var(--cc-accent-hover);
+	}
+
+	/* In the card panel: *Cancel* beside the submit, which keeps the room it needs to say what. */
+	.pay-actions {
+		display: flex;
+		flex-direction: row;
+		align-items: stretch;
+		gap: var(--cc-space-3);
+	}
+
+	.pay-form .pay-actions button[data-action="cancel"] {
+		align-self: stretch;
+		padding: var(--cc-space-3) var(--cc-space-4);
+		font-size: var(--cc-text-md);
+	}
+
+	.pay-actions button[type="submit"] {
+		flex: 1;
 	}
 
 	.hint {

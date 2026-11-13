@@ -501,3 +501,29 @@ test("a submit while busy saves nothing", async () => {
 	await submit()
 	expect(saves).toHaveLength(0)
 })
+
+test("Cancel shows only with oncancel, beside the submit, and calls it", async () => {
+	await show(stored())
+	expect($('[data-action="cancel"]')).toBeNull()
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	let cancelled = 0
+	mounted = mount(CardForm, {
+		target: document.body,
+		props: {
+			card: stored(),
+			groups,
+			locations: places,
+			onsave: () => {},
+			oncancel: () => {
+				cancelled++
+			},
+		},
+	})
+	await settle()
+	const cancel = $('.actions button[data-action="cancel"]')
+	expect(cancel?.getAttribute("type")).toBe("button")
+	expect(cancel?.getAttribute("data-variant")).toBe("quiet")
+	cancel?.click()
+	expect(cancelled).toBe(1)
+})

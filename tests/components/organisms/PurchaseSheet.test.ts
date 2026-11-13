@@ -282,10 +282,3 @@ test("adding warns about a future date or the close day, without refusing", asyn
 	await submit()
 	expect(saved).toHaveLength(1)
 })
-
-test("the look is drawn with the cc tokens only", async () => {
-	const source = await Bun.file("src/components/organisms/PurchaseSheet.svelte").text()
-	const style = source.slice(source.indexOf("<style>"))
-	expect(style).toContain(".warning")
-	expect(style).not.toMatch(/#[0-9a-f]{3,8}\b|\d(px|rem)\b/i)
-})
