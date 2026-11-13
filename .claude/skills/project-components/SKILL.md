@@ -125,10 +125,10 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.
 
 Before reaching for an island, check whether the platform already does it with no script:
-*+ New*'s menu is an HTML `popover` (`FabMenu`, PRD DD-173) — the browser opens and closes
-it, on Escape and a tap outside, and hands focus back. `@kcstyles/reset.css` makes every
-`div` `display: flex`, which outranks the browser's hiding of a closed popover, so a popover
-`div` needs `:not(:popover-open) { display: none }` of its own.
+an HTML `popover` (as the retired *+ New* menu was, PRD DD-173) is opened and closed by the
+browser, on Escape and a tap outside, which hands focus back. `@kcstyles/reset.css` makes
+every `div` `display: flex`, which outranks the browser's hiding of a closed popover, so a
+popover `div` needs `:not(:popover-open) { display: none }` of its own.
 
 ### Translated copy (PRD DD-171)
 

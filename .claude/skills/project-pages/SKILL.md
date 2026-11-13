@@ -19,16 +19,16 @@ tests live in `tests/`, never beside a page.
 ```text
 src/pages/index.astro          ->  /             (dist/index.html)
 src/pages/cards.astro          ->  /cards        (dist/cards.html)
-src/pages/card/edit.astro      ->  /card/edit    (dist/card/edit.html)
+src/pages/cards/limits.astro   ->  /cards/limits (dist/cards/limits.html)
 ```
 
 `astro.config.ts` sets `build.format: "file"` and `trailingSlash: "never"`, so Cloudflare's
-static assets serve `card/edit.html` at `/card/edit`. Link with root-relative paths that match
-exactly — `/card/edit`, never `/card/edit/`.
+static assets serve `cards/limits.html` at `/cards/limits`. Link with root-relative paths that
+match exactly — `/cards/limits`, never `/cards/limits/`.
 
 The site is `output: "static"`: a dynamic route (`[id].astro`) needs `getStaticPaths()`,
 and since cards exist only in the reader's browser there is nothing to enumerate at build
-time. A page picks its record from the query string instead (`/card?id=`); moving to path
+time. A page picks its record from the query string instead (`/cards?card=`); moving to path
 ids is the record-paths plan in `TODO.md`, an open design.
 
 ## Every address is a contract
@@ -36,44 +36,41 @@ ids is the record-paths plan in `TODO.md`, an open design.
 - An address or query key change updates `ENDPOINTS.md` in the same change.
 - Pages read state from the query string only; no page reads or writes a fragment. Unknown
   keys are ignored, and a page rewriting its own address leaves out keys at their default.
-- A removed or moved address that people may have bookmarked gets a 301 in
-  `public/_redirects` (as `/backup` → `/settings`). `astro dev` and `astro preview` ignore
-  that file; check redirects on the preview deploy.
+- A removed or moved address does not redirect (PRD RD-29): it is a 404, and `ENDPOINTS.md`
+  lists it under *Retired addresses* with where it went. There is no `public/_redirects`.
 - Behaviour a page ships goes in `PRD.md` and `PRD_TH.md` together, IDs in step.
 
 ## The shape of a page
 
 Every page is `AppLayout` (the static shell, PRD DD-173) with the page's title and its
-`titleKey`, tab, width and *+ New* choice, and in its `main` slot one Svelte island organism
+`titleKey`, tab and width, and in its `main` slot one Svelte island organism
 that renders the reader's data in the browser (PRD DD-172):
 
 ```astro
 ---
-import ListEntryPage from "#components/organisms/ListEntryPage.svelte"
+import ListNewPage from "#components/organisms/ListNewPage.svelte"
 import AppLayout from "#layouts/AppLayout.astro"
 ---
 
-<!-- A stored draft to finish, send or delete (`?id=`); the list is the reader's data, so the page is an island. -->
-<AppLayout title="Draft list" titleKey="title.listDraft" tab="home" fab={false} mainClass="page--narrow">
+<!-- A new purchase list, a full page under the Lists tab (RD-26): the builder, empty or holding the address's `cards`; the list is the reader's data, so the page is an island. -->
+<AppLayout title="New purchase list" titleKey="title.listNew" tab="transactions" mainClass="page--narrow">
 	<Fragment slot="main">
-		<ListEntryPage client:load mode="draft" />
+		<ListNewPage client:load />
 	</Fragment>
 </AppLayout>
 ```
 
 - `title` is the English tab title before the bundle runs; `titleKey` is its catalog key, which
   the copy pass translates (adding the build's mark).
-- `tab` is the place the page belongs to (the card pages under Cards, `/pay` under
-  Transactions, Locations under Settings, the list pages under Home).
-- `mainClass` is the width (`page--narrow`, `page--form`, `page--tx`, `card-page`); leave it
-  out for the full width.
-- `fab={false}` is for a page where the reader is mid-task.
+- `tab` is the place the page belongs to (`/owed` and `/ready` under Home, the list pages
+  under Transactions, `/cards/limits` under Cards, Locations under Settings).
+- `mainClass` is the width (`page--narrow`, `page--form`); leave it out for the full width.
 - The page itself stays static: no `<script>`. The island opens the store with
   `openRepository()` (`#lib/ui/startup`), loads through `createPageState`
   (`#lib/ui/page-state`) and reads and writes its address through the `AddressBar` seam
   (`#lib/ui/address-bar`); see `project-components`.
 
-`tests/pages/pages.test.ts` lists every page with the width, tab and *+ New* each asks for,
+`tests/pages/pages.test.ts` lists every page with the width and tab each asks for,
 checks each renders its content in `<main>` with a translated title and the shell, and fails
 on a page that does not reach `BaseLayout`. Add a new page to every list.
 
@@ -143,7 +140,7 @@ A page is never imported by anything and gets no directory under `src/components
 2. Write the island organism in `src/components/organisms/` (`project-components`), with its
    logic as plain functions in `src/lib/` and tests mirroring both under `tests/`.
 3. Create `src/pages/<path>.astro` in the shape above: `AppLayout` with `title`, `titleKey`,
-   `tab`, `mainClass` and `fab` as needed, and the island with `client:load` in the `main`
+   `tab` and `mainClass` as needed, and the island with `client:load` in the `main`
    slot.
 4. Add the title key and every string the island shows to both `src/lib/i18n/en.ts` and
    `th.ts`.
