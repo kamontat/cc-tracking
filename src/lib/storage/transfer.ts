@@ -1,7 +1,6 @@
 import type { MessageKey } from "#lib/i18n/catalog"
 
 import { isValidDate } from "#lib/domain/date"
-import { toLocation } from "#lib/domain/location"
 import { isStartingOwner } from "#lib/domain/owner"
 
 export const isList = (value: unknown): value is unknown[] => Array.isArray(value)
@@ -37,7 +36,7 @@ function cycleProblem(value: unknown): MessageKey | null {
 
 /**
  * An owner checked against `ownerIds` when given (a version 4 file's own owners), otherwise
- * against the closed set a version 2 or 3 file was written with (DC-06). Absent is a record
+ * against the closed set a version 3 file was written with (DC-06). Absent is a record
  * from before the field; present but unknown is a claim about whose it is that the file
  * cannot back, and silently rewriting it would lose whose account it is.
  */
@@ -49,14 +48,13 @@ function ownerProblem(owner: unknown, ownerIds?: ReadonlySet<string>): MessageKe
 
 /**
  * `null` when the card is well-formed, otherwise which catalog key names what's wrong. A card's
- * location is checked against `locationIds` when given (a version 3 or 4 file's own locations),
- * otherwise against the closed set a version 2 file was written with; its owner by
+ * location must be one of `locationIds`, the file's own locations; its owner is checked by
  * `ownerProblem`, and in a version 4 file only on a supplementary card, the one card it is read
  * on (DC-06, DC-09).
  */
 export function cardProblem(
 	value: unknown,
-	locationIds?: ReadonlySet<string>,
+	locationIds: ReadonlySet<string>,
 	ownerIds?: ReadonlySet<string>,
 ): MessageKey | null {
 	if (!isPlainObject(value)) return "backup.problem.notObject"
@@ -64,9 +62,7 @@ export function cardProblem(
 	if (!isNonEmptyString(prop(value, "name"))) return "backup.problem.missingName"
 	if (!isNonEmptyString(prop(value, "last4"))) return "backup.problem.missingLast4"
 	const location = prop(value, "location")
-	if (locationIds) {
-		if (typeof location !== "string" || !locationIds.has(location)) return "backup.problem.unknownLocation"
-	} else if (toLocation(location) === null) return "backup.problem.badLocation"
+	if (typeof location !== "string" || !locationIds.has(location)) return "backup.problem.unknownLocation"
 	if (!ownerIds || prop(value, "supplementary") === true) {
 		const problem = ownerProblem(prop(value, "owner"), ownerIds)
 		if (problem) return problem
@@ -84,34 +80,6 @@ export function purchaseProblem(value: unknown): MessageKey | null {
 	const addedAt = prop(value, "addedAt")
 	if (addedAt !== undefined && (typeof addedAt !== "string" || Number.isNaN(Date.parse(addedAt))))
 		return "backup.problem.badAddedAt"
-	return null
-}
-
-/** `null` when the payment is well-formed, otherwise which catalog key names what's wrong. */
-export function paymentProblem(value: unknown): MessageKey | null {
-	if (!isPlainObject(value)) return "backup.problem.notObject"
-	if (!isNonEmptyString(prop(value, "cardId"))) return "backup.problem.missingCardId"
-	if (!isNonEmptyString(prop(value, "period"))) return "backup.problem.missingPeriod"
-	if (!isPlainDate(prop(value, "paidAt"))) return "backup.problem.badPaidAt"
-	if (!isPlainDate(prop(value, "closeDate"))) return "backup.problem.badCloseDate"
-	if (!isPlainDate(prop(value, "dueDate"))) return "backup.problem.badDueDate"
-	// Absent is a payment from before partial payments, which paid the whole statement.
-	const parts = prop(value, "parts")
-	if (
-		parts !== undefined &&
-		!(
-			isList(parts) &&
-			parts.length > 0 &&
-			parts.every(
-				(part) =>
-					isPlainObject(part) &&
-					isPlainDate(prop(part, "paidAt")) &&
-					isInteger(prop(part, "amount")) &&
-					(prop(part, "amount") as number) > 0,
-			)
-		)
-	)
-		return "backup.problem.badParts"
 	return null
 }
 

@@ -1,10 +1,9 @@
-import type { Card, CardPayment, Purchase, PurchaseList, StatementDates, StatementPayment } from "#lib/domain/types"
+import type { Card, CardPayment, Purchase, PurchaseList, StatementDates } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
 
 import { cardLedger } from "#lib/domain/ledger"
 import { type PurgePlan, planPurge, purgeCutoff } from "#lib/domain/purge"
-import { convertPayments } from "#lib/storage/migrate-payments"
 
 const TODAY = "2026-10-30"
 // Six months back from TODAY: purchases on 2026-04-30 and later stay.
@@ -284,14 +283,22 @@ describe("planPurge", () => {
 	test("two cards with converted payments for the same period both purge", () => {
 		const cards = [kbank, scb]
 		const purchases = [purchase("k-jan", "2025-01-05", 1_000), purchase("s-jan", "2025-01-05", 2_000, "scb")]
-		const old = (cardId: string): StatementPayment => ({
+		// As the old per-statement records were converted: one paid part each, naming its period.
+		const part = (cardId: string, amount: number): CardPayment => ({
+			id: `m:${cardId}:2025-01:0`,
+			cardId,
+			date: "2025-02-01",
+			amount,
+			status: "paid",
+			period: "2025-01",
+		})
+		const kept = (cardId: string): StatementDates => ({
 			cardId,
 			period: "2025-01",
-			paidAt: "2025-02-01",
 			closeDate: "2025-01-10",
 			dueDate: "2025-02-04",
 		})
-		const converted = convertPayments(cards, purchases, [old("kbank"), old("scb")])
+		const converted = { payments: [part("kbank", 1_000), part("scb", 2_000)], dates: [kept("kbank"), kept("scb")] }
 		const p = plan(purchases, converted.payments, {
 			cards,
 			frozen: converted.dates,

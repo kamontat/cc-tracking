@@ -157,7 +157,7 @@
 		if (!waiting) return
 		return run(() =>
 			finish(waiting.file, waiting.backup, (store, backup) =>
-				replace ? replaceWithBackupV4(store, backup, storage) : importBackupV4(store, backup),
+				replace ? replaceWithBackupV4(store, backup) : importBackupV4(store, backup),
 			),
 		)
 	}

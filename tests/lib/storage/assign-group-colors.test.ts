@@ -101,14 +101,14 @@ describe("restoring colours", () => {
 		expect((await colours(merged))["g1"]).toBe("rose")
 
 		const replaced = new InMemoryRepository()
-		await replaceWithBackupV4(replaced, backupOf([group("g1", "rose")]), memoryStorage())
+		await replaceWithBackupV4(replaced, backupOf([group("g1", "rose")]))
 		expect((await colours(replaced))["g1"]).toBe("rose")
 	})
 
 	test("Replace colours a colourless file in order and leaves nothing for the marker", async () => {
 		const repo = new InMemoryRepository()
 		const storage = memoryStorage()
-		await replaceWithBackupV4(repo, backupOf([group("g1"), group("g2"), group("g3"), group("g4")]), storage)
+		await replaceWithBackupV4(repo, backupOf([group("g1"), group("g2"), group("g3"), group("g4")]))
 		const after = await colours(repo)
 		expect(["g1", "g2", "g3", "g4"].map((id) => after[id])).toEqual(["blue", "green", "purple", "orange"])
 		expect(await migrateGroupColors(repo, storage)).toBe(0)

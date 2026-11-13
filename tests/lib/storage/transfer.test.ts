@@ -1,32 +1,25 @@
-import type { Repository } from "#lib/storage/repository"
-
 import { describe, expect, test } from "vitest"
 
 import { MessageError } from "#lib/i18n/error"
-import { sampleCard, sampleLimitGroup, samplePayment, samplePurchase } from "#lib/storage/contract"
+import { sampleCard, sampleLimitGroup, sampleLocation, samplePurchase } from "#lib/storage/contract"
 import { InMemoryRepository } from "#lib/storage/repository"
 import { limitGroupProblem } from "#lib/storage/transfer"
-import { importBackupV4 as importBackup, parseAnyBackup as parseBackup } from "#lib/storage/transfer-v4"
+import { exportBackupV4, importBackupV4 as importBackup, parseAnyBackup as parseBackup } from "#lib/storage/transfer-v4"
 
-/** A version 2 file's contents, the shape the validators here are shared with. */
-const exportBackup = async (repo: Repository) => {
-	const cards = await repo.listCards()
-	const purchases = []
-	const payments = []
-	for (const card of cards) {
-		purchases.push(...(await repo.listPurchases(card.id)))
-		payments.push(...(await repo.listPayments(card.id)))
-	}
-	return {
-		version: 2,
-		exportedAt: "2026-09-21T03:00:00.000Z",
-		limitGroups: await repo.listLimitGroups(),
-		cards,
-		purchases,
-		payments,
-		settings: await repo.getSettings(),
-	}
-}
+/** A version 3 file's contents, the oldest shape the validators here still read. */
+const v3 = (patch: Record<string, unknown> = {}): string =>
+	JSON.stringify({
+		version: 3,
+		exportedAt: "2026-09-21T00:00:00.000Z",
+		limitGroups: [],
+		cards: [],
+		purchases: [],
+		payments: [],
+		statementDates: [],
+		lists: [],
+		locations: [sampleLocation()],
+		...patch,
+	})
 
 /** Runs `fn`, expecting it to throw, and returns what it threw. */
 function captureThrow(fn: () => unknown): unknown {
@@ -41,17 +34,18 @@ function captureThrow(fn: () => unknown): unknown {
 const populated = async () => {
 	const repo = new InMemoryRepository()
 	await repo.saveLimitGroup(sampleLimitGroup())
+	await repo.saveLocation(sampleLocation())
+	await repo.saveLocation(sampleLocation({ id: "phichit", name: "Phichit" }))
 	await repo.saveCard(sampleCard())
 	await repo.saveCard(sampleCard({ id: "s1", name: "SCB Mastercard", location: "phichit" }))
 	await repo.savePurchase(samplePurchase({ id: "p1" }))
 	await repo.savePurchase(samplePurchase({ id: "p2", cardId: "s1", date: "2026-09-09" }))
-	await repo.savePayment(samplePayment())
 	return repo
 }
 
 describe("parseBackup", () => {
 	test("accepts a backup this app wrote", async () => {
-		const text = JSON.stringify(await exportBackup(await populated()))
+		const text = JSON.stringify(await exportBackupV4(await populated(), new Date()))
 		expect(parseBackup(text).cards).toHaveLength(2)
 	})
 
@@ -62,17 +56,7 @@ describe("parseBackup", () => {
 	})
 
 	test("rejects a future backup version", () => {
-		const failure = captureThrow(() =>
-			parseBackup(
-				JSON.stringify({
-					version: 5,
-					cards: [],
-					purchases: [],
-					payments: [],
-					limitGroups: [],
-				}),
-			),
-		)
+		const failure = captureThrow(() => parseBackup(v3({ version: 5 })))
 		expect(failure).toBeInstanceOf(MessageError)
 		expect((failure as MessageError).key).toBe("backup.version")
 		expect((failure as MessageError).params).toEqual({
@@ -81,24 +65,36 @@ describe("parseBackup", () => {
 		})
 	})
 
+	test.each([1, 2])("rejects a version %i file as unsupported, however well formed", (version) => {
+		const failure = captureThrow(() =>
+			parseBackup(
+				JSON.stringify({
+					version,
+					exportedAt: "2026-09-21T00:00:00.000Z",
+					limitGroups: [],
+					cards: [],
+					purchases: [],
+					payments: [],
+					settings: { purchaseLocations: ["krabi"] },
+				}),
+			),
+		)
+		expect(failure).toBeInstanceOf(MessageError)
+		expect((failure as MessageError).key).toBe("backup.version")
+		expect((failure as MessageError).params).toEqual({
+			found: String(version),
+			expected: 4,
+		})
+	})
+
 	test("rejects JSON missing the expected lists", () => {
-		const failure = captureThrow(() => parseBackup(JSON.stringify({ version: 2 })))
+		const failure = captureThrow(() => parseBackup(JSON.stringify({ version: 3 })))
 		expect(failure).toBeInstanceOf(MessageError)
 		expect((failure as MessageError).key).toBe("backup.unreadable")
 	})
 
 	test("rejects a card that is missing its required fields", () => {
-		const failure = captureThrow(() =>
-			parseBackup(
-				JSON.stringify({
-					version: 2,
-					limitGroups: [],
-					cards: [{}],
-					purchases: [],
-					payments: [],
-				}),
-			),
-		)
+		const failure = captureThrow(() => parseBackup(v3({ cards: [{}] })))
 		expect(failure).toBeInstanceOf(MessageError)
 		expect((failure as MessageError).key).toBe("backup.card")
 		expect((failure as MessageError).params).toEqual({
@@ -108,45 +104,20 @@ describe("parseBackup", () => {
 	})
 
 	test("names which card is wrong, by key", () => {
-		const backup = {
-			version: 2,
-			exportedAt: "2026-09-21T00:00:00.000Z",
-			limitGroups: [],
-			cards: [{ id: "k1", name: "KBank Visa", last4: "4821" }],
-			purchases: [],
-			payments: [],
-		}
-
-		try {
-			parseBackup(JSON.stringify(backup))
-			throw new Error("expected parseBackup to throw")
-		} catch (failure) {
-			expect(failure).toBeInstanceOf(MessageError)
-			expect((failure as MessageError).key).toBe("backup.card")
-			expect((failure as MessageError).params).toEqual({
-				index: 1,
-				problem: "backup.problem.badLocation",
-			})
-		}
+		const failure = captureThrow(() => parseBackup(v3({ cards: [{ id: "1", name: "KBank Visa", last4: "4821" }] })))
+		expect(failure).toBeInstanceOf(MessageError)
+		expect((failure as MessageError).key).toBe("backup.card")
+		expect((failure as MessageError).params).toEqual({
+			index: 1,
+			problem: "backup.problem.unknownLocation",
+		})
 	})
 
 	test("rejects a purchase with a non-integer amount", () => {
 		const failure = captureThrow(() =>
 			parseBackup(
-				JSON.stringify({
-					version: 2,
-					limitGroups: [],
-					cards: [],
-					purchases: [
-						{
-							id: "p1",
-							cardId: "k1",
-							date: "2026-09-05",
-							amount: 100.5,
-							note: "",
-						},
-					],
-					payments: [],
+				v3({
+					purchases: [{ id: "p1", cardId: "1", date: "2026-09-05", amount: 100.5, note: "" }],
 				}),
 			),
 		)
@@ -159,157 +130,38 @@ describe("parseBackup", () => {
 	})
 
 	test("rejects a string version, even one that looks like the right number", () => {
-		const failure = captureThrow(() =>
-			parseBackup(
-				JSON.stringify({
-					version: "2",
-					limitGroups: [],
-					cards: [],
-					purchases: [],
-					payments: [],
-				}),
-			),
-		)
+		const failure = captureThrow(() => parseBackup(v3({ version: "3" })))
 		expect(failure).toBeInstanceOf(MessageError)
 		expect((failure as MessageError).key).toBe("backup.version")
 		expect((failure as MessageError).params).toEqual({
-			found: '"2"',
+			found: '"3"',
 			expected: 4,
 		})
 	})
 
 	test("a valid backup still round-trips", async () => {
-		const backup = await exportBackup(await populated())
+		const backup = await exportBackupV4(await populated(), new Date())
 		const parsed = parseBackup(JSON.stringify(backup))
 
 		expect(parsed.cards.map((c) => c.id)).toEqual(["k1", "s1"])
 		expect(parsed.purchases.map((p) => p.id)).toEqual(["p1", "p2"])
-		expect(parsed.payments).toHaveLength(1)
-	})
-
-	const withPayment = (payment: Record<string, unknown>) =>
-		JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-21T00:00:00.000Z",
-			limitGroups: [],
-			cards: [],
-			purchases: [],
-			payments: [
-				{
-					cardId: "k1",
-					period: "2026-09",
-					paidAt: "2026-10-01",
-					closeDate: "2026-09-18",
-					dueDate: "2026-10-03",
-					...payment,
-				},
-			],
-		})
-
-	test("rejects a payment whose partial payments are malformed", () => {
-		for (const parts of [
-			"all",
-			[],
-			[{ paidAt: "soon", amount: 100 }],
-			[{ paidAt: "2026-10-01", amount: 0 }],
-			[{ paidAt: "2026-10-01", amount: 1.5 }],
-		]) {
-			const failure = captureThrow(() => parseBackup(withPayment({ parts })))
-			expect((failure as MessageError).key).toBe("backup.payment")
-			expect((failure as MessageError).params).toEqual({
-				index: 1,
-				problem: "backup.problem.badParts",
-			})
-		}
-	})
-
-	test("rejects a backup whose card has an unknown location", () => {
-		const backup = {
-			version: 2,
-			exportedAt: "2026-09-21T00:00:00.000Z",
-			limitGroups: [sampleLimitGroup()],
-			cards: [
-				{
-					id: "k1",
-					name: "KBank Visa",
-					last4: "4821",
-					location: "Chiang Mai",
-					cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-					archived: false,
-				},
-			],
-			purchases: [],
-			payments: [],
-		}
-
-		const failure = captureThrow(() => parseBackup(JSON.stringify(backup)))
-		expect(failure).toBeInstanceOf(MessageError)
-		expect((failure as MessageError).key).toBe("backup.card")
-		expect((failure as MessageError).params).toEqual({
-			index: 1,
-			problem: "backup.problem.badLocation",
-		})
-	})
-
-	test("accepts a backup whose card location is a known key", () => {
-		const backup = {
-			version: 2,
-			exportedAt: "2026-09-21T00:00:00.000Z",
-			limitGroups: [sampleLimitGroup()],
-			cards: [
-				{
-					id: "k1",
-					name: "KBank Visa",
-					last4: "4821",
-					location: "phichit",
-					cycle: { kind: "offset", closeDay: 18, dueOffsetDays: 15 },
-					archived: false,
-					limitGroupId: "pool",
-				},
-			],
-			purchases: [],
-			payments: [],
-		}
-
-		expect(parseBackup(JSON.stringify(backup)).cards[0]?.location).toBe("phichit")
 	})
 })
 
-describe("owner in a backup", () => {
+describe("owner in a version 3 backup", () => {
+	const withGroup = (group: Record<string, unknown>) =>
+		v3({ limitGroups: [{ id: "pool", name: "KBank", limit: 500_000, ...group }] })
+
 	test("keeps a known owner on a limit group", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000, owner: "NT" }],
-			cards: [],
-			purchases: [],
-			payments: [],
-		})
-		expect(parseBackup(text).limitGroups[0]?.owner).toBe("NT")
+		expect(parseBackup(withGroup({ owner: "NT" })).limitGroups[0]?.owner).toBe("NT")
 	})
 
 	test("accepts a limit group saved before the owner field existed", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000 }],
-			cards: [],
-			purchases: [],
-			payments: [],
-		})
-		expect(parseBackup(text).limitGroups[0]?.owner).toBeUndefined()
+		expect(parseBackup(withGroup({})).limitGroups[0]?.owner).toBeUndefined()
 	})
 
 	test("rejects a limit group whose owner is outside the closed set", () => {
-		const text = JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
-			limitGroups: [{ id: "pool", name: "KBank", limit: 500_000, owner: "ZZ" }],
-			cards: [],
-			purchases: [],
-			payments: [],
-		})
-		const failure = captureThrow(() => parseBackup(text))
+		const failure = captureThrow(() => parseBackup(withGroup({ owner: "ZZ" })))
 		expect(failure).toBeInstanceOf(MessageError)
 		expect((failure as MessageError).params).toEqual({
 			index: 1,
@@ -318,13 +170,11 @@ describe("owner in a backup", () => {
 	})
 
 	const withCard = (card: Record<string, unknown>) =>
-		JSON.stringify({
-			version: 2,
-			exportedAt: "2026-09-23T00:00:00.000Z",
+		v3({
 			limitGroups: [sampleLimitGroup()],
 			cards: [
 				{
-					id: "a2",
+					id: "2",
 					name: "Card A",
 					last4: "2222",
 					location: "krabi",
@@ -334,13 +184,10 @@ describe("owner in a backup", () => {
 					...card,
 				},
 			],
-			purchases: [],
-			payments: [],
 		})
 
 	test("keeps the holder of a supplementary card", () => {
-		const text = withCard({ supplementary: true, owner: "NT" })
-		expect(parseBackup(text).cards[0]?.owner).toBe("NT")
+		expect(parseBackup(withCard({ supplementary: true, owner: "NT" })).cards[0]?.owner).toBe("NT")
 	})
 
 	test("accepts a card saved before cards had an owner", () => {
@@ -359,28 +206,14 @@ describe("owner in a backup", () => {
 
 describe("entry time in a backup", () => {
 	const withPurchase = (purchase: Record<string, unknown>) =>
-		JSON.stringify({
-			version: 2,
-			exportedAt: "2026-10-27T00:00:00.000Z",
-			limitGroups: [],
-			cards: [],
-			purchases: [
-				{
-					id: "p1",
-					cardId: "k1",
-					date: "2026-10-20",
-					amount: 100,
-					note: "",
-					...purchase,
-				},
-			],
-			payments: [],
+		v3({
+			purchases: [{ id: "p1", cardId: "1", date: "2026-10-20", amount: 100, note: "", ...purchase }],
 		})
 
 	test("imports a purchase with addedAt and keeps it", async () => {
 		const repo = new InMemoryRepository()
 		await importBackup(repo, parseBackup(withPurchase({ addedAt: "2026-10-27T03:15:00.000Z" })))
-		const [stored] = await repo.listPurchases("k1")
+		const [stored] = await repo.listPurchases("1")
 		expect(stored?.addedAt).toBe("2026-10-27T03:15:00.000Z")
 	})
 

@@ -9,18 +9,15 @@ import {
 	sampleLimitGroup,
 	sampleLocation,
 	sampleOwner,
-	samplePayment,
 	samplePurchase,
 	samplePurchaseList,
 	sampleStatementDates,
 } from "#lib/storage/contract"
-import { PAYMENTS_MIGRATION_KEY } from "#lib/storage/migrate-payments"
 import { InMemoryRepository } from "#lib/storage/repository"
 import { seedLocations } from "#lib/storage/seed-locations"
 import { seedOwners } from "#lib/storage/seed-owners"
 import {
 	BACKUP_V4,
-	type BackupV4,
 	countRecordsV4,
 	exportBackupV4,
 	importBackupV4,
@@ -58,17 +55,6 @@ const v3 = (patch: Record<string, unknown> = {}): string =>
 		statementDates: [sampleStatementDates()],
 		lists: [samplePurchaseList()],
 		locations: [sampleLocation()],
-		...patch,
-	})
-
-const v2 = (patch: Record<string, unknown> = {}): string =>
-	JSON.stringify({
-		version: 2,
-		exportedAt: NOW.toISOString(),
-		limitGroups: [sampleLimitGroup()],
-		cards: [sampleCard()],
-		purchases: [samplePurchase()],
-		payments: [samplePayment()],
 		...patch,
 	})
 
@@ -145,55 +131,6 @@ describe("backup version 3", () => {
 		expect(empty && "note" in empty).toBe(false)
 	})
 
-	test("a version 2 file converts", () => {
-		const parsed: BackupV4 = parseAnyBackup(v2())
-		expect(parsed.version).toBe(4)
-		expect(parsed.lists).toEqual([])
-		expect(parsed.payments.length).toBe(1)
-		expect(parsed.payments[0]?.status).toBe("paid")
-		expect(parsed.payments[0]?.id).toBe("m:k1:2026-09:0")
-		expect(parsed.statementDates).toEqual([
-			{
-				cardId: "k1",
-				period: "2026-09",
-				closeDate: "2026-09-18",
-				dueDate: "2026-10-03",
-			},
-		])
-		// No settings: stored locations are left alone (DC-05).
-		expect(parsed.locations).toEqual([])
-	})
-
-	test("restoring a version 2 file without settings keeps stored locations", async () => {
-		const repo = new InMemoryRepository()
-		await repo.saveLocation(sampleLocation({ id: "krabi", takesPurchases: false }))
-		await repo.saveLocation(sampleLocation({ id: "bangkok", takesPurchases: true }))
-		const before = await repo.listLocations()
-		await importBackupV4(repo, parseAnyBackup(v2()))
-		expect(await repo.listLocations()).toEqual(before)
-	})
-
-	test("a version 2 file with settings takes its locations from them", () => {
-		const parsed = parseAnyBackup(v2({ settings: { purchaseLocations: ["bangkok", "phichit"] } }))
-		expect(parsed.locations.map((l) => l.takesPurchases)).toEqual([true, true, false])
-	})
-
-	test("a version 2 file converts payments with parts", () => {
-		const parsed = parseAnyBackup(
-			v2({
-				payments: [
-					samplePayment({
-						parts: [
-							{ paidAt: "2026-10-01", amount: 4_000 },
-							{ paidAt: "2026-10-02", amount: 6_000 },
-						],
-					}),
-				],
-			}),
-		)
-		expect(parsed.payments.map((p) => p.amount)).toEqual([4_000, 6_000])
-	})
-
 	test("export writes the location records as stored, renames and ticks included", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveSettings({ purchaseLocations: ["bangkok"] })
@@ -206,7 +143,6 @@ describe("backup version 3", () => {
 			name: "Ao Nang",
 			takesPurchases: true,
 		})
-		expect("converted" in out).toBe(false)
 	})
 
 	test("export writes the starting locations, ticked from the settings, while none are stored", async () => {
@@ -291,7 +227,7 @@ describe("backup version 3", () => {
 	test("over only seeded defaults, a default a restored card uses stays", async () => {
 		const repo = new InMemoryRepository()
 		await seedLocations(repo, { getItem: () => null, setItem: () => {} })
-		// A version 2 file with settings brings all three; this one only two, and a card at Bangkok.
+		// The file brings one place, and a card at Bangkok.
 		const backup = parseAnyBackup(
 			v3({
 				cards: [sampleCard({ location: "krabi" })],
@@ -319,15 +255,6 @@ describe("backup version 3", () => {
 		expect(await repo.listLocations()).toEqual([stored])
 	})
 
-	test("over only seeded defaults, a file with no locations leaves them alone", async () => {
-		const repo = new InMemoryRepository()
-		await seedLocations(repo, { getItem: () => null, setItem: () => {} })
-		await importBackupV4(repo, parseAnyBackup(v2({ cards: [], purchases: [], payments: [] })), {
-			overSeeded: true,
-		})
-		expect(await repo.listLocations()).toHaveLength(3)
-	})
-
 	test("merge adds a location only the file has", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveLocation(sampleLocation())
@@ -348,7 +275,7 @@ describe("backup version 3", () => {
 			name: "Krabi",
 			takesPurchases: false,
 		})
-		await replaceWithBackupV4(repo, parseAnyBackup(v3({ locations: [fromFile] })), { setItem: () => {} })
+		await replaceWithBackupV4(repo, parseAnyBackup(v3({ locations: [fromFile] })))
 		expect(await repo.listLocations()).toEqual([fromFile])
 	})
 
@@ -366,28 +293,12 @@ describe("backup version 3", () => {
 				}),
 			),
 		)
-		await importBackupV4(repo, parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })))
 		expect(await repo.getSettings()).toEqual({
 			purchaseLocations: ["bangkok"],
 		})
 	})
 
-	test("a version 2 file with settings brings its locations as records", async () => {
-		const repo = new InMemoryRepository()
-		await importBackupV4(repo, parseAnyBackup(v2({ settings: { purchaseLocations: ["phichit"] } })))
-		expect((await repo.listLocations()).map((l) => [l.id, l.takesPurchases])).toEqual([
-			["bangkok", false],
-			["krabi", false],
-			["phichit", true],
-		])
-	})
-
-	test("a version 2 file is marked converted; a version 3 file is not", () => {
-		expect(parseAnyBackup(v2()).converted).toBe(true)
-		expect(parseAnyBackup(v3()).converted).toBeUndefined()
-	})
-
-	test("merging a version 3 file keeps a card's local converted parts (DD-95)", async () => {
+	test("merge deletes no stored payment, a converted part included", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveCard(sampleCard())
 		await repo.saveCardPayment(sampleCardPayment({ id: "m:k1:2026-09:1", period: "2026-09" }))
@@ -414,28 +325,22 @@ describe("backup version 3", () => {
 		Reflect.get((captureThrow(() => parseAnyBackup(text)) as MessageError).params ?? {}, "problem")
 
 	test.each(["5.", ".5", "1..2", "K1", "kbank"])("a card id %j outside the card id form is refused (RD-28)", (id) => {
-		for (const text of [v3({ cards: [sampleCard({ id })] }), v2({ cards: [sampleCard({ id })] })]) {
-			rejects(text, "backup.card", 1)
-			expect(problemOf(text)).toBe("backup.problem.badCardId")
-		}
+		const text = v3({ cards: [sampleCard({ id })] })
+		rejects(text, "backup.card", 1)
+		expect(problemOf(text)).toBe("backup.problem.badCardId")
 	})
 
 	test("a card with no limit group is refused, and nothing is written (RD-27)", async () => {
 		const { limitGroupId: _, ...loose } = sampleCard()
-		for (const text of [v3({ cards: [sampleCard({ id: "2" }), loose] }), v2({ cards: [loose] })]) {
-			rejects(text, "backup.card", text.includes('"version":3') ? 2 : 1)
-			expect(problemOf(text)).toBe("backup.problem.missingLimitGroup")
-		}
+		const text = v3({ cards: [sampleCard({ id: "2" }), loose] })
+		rejects(text, "backup.card", 2)
+		expect(problemOf(text)).toBe("backup.problem.missingLimitGroup")
 	})
 
 	test("a card naming a limit group not in the file is refused (RD-27)", () => {
-		for (const text of [
-			v3({ cards: [sampleCard({ limitGroupId: "gone" })] }),
-			v2({ cards: [sampleCard({ limitGroupId: "gone" })] }),
-		]) {
-			rejects(text, "backup.card", 1)
-			expect(problemOf(text)).toBe("backup.problem.unknownLimitGroup")
-		}
+		const text = v3({ cards: [sampleCard({ limitGroupId: "gone" })] })
+		rejects(text, "backup.card", 1)
+		expect(problemOf(text)).toBe("backup.problem.unknownLimitGroup")
 	})
 
 	test("a version 3 card may sit at any location the file carries", () => {
@@ -446,40 +351,6 @@ describe("backup version 3", () => {
 			}),
 		)
 		expect(parsed.cards[0]?.location).toBe("chiang-mai")
-	})
-
-	test("a version 2 card keeps the closed set of locations (DC-06)", () => {
-		const text = v2({ cards: [sampleCard({ location: "chiang-mai" })] })
-		rejects(text, "backup.card", 1)
-		const error = captureThrow(() => parseAnyBackup(text)) as MessageError
-		expect(Reflect.get(error.params ?? {}, "problem")).toBe("backup.problem.badLocation")
-	})
-
-	test("restoring a version 2 file over converted data leaves no stale m: parts", async () => {
-		const repo = new InMemoryRepository()
-		await repo.saveCard(sampleCard())
-		for (const index of [0, 1, 2])
-			await repo.saveCardPayment(
-				sampleCardPayment({
-					id: `m:k1:2026-09:${index}`,
-					period: "2026-09",
-				}),
-			)
-		await repo.saveCardPayment(sampleCardPayment({ id: "keep" }))
-		await importBackupV4(repo, parseAnyBackup(v2()))
-		const ids = (await repo.listCardPayments("k1")).map((p) => p.id).sort()
-		expect(ids).toEqual(["keep", "m:k1:2026-09:0"])
-	})
-
-	test("replace sets the payments marker so startup does not convert again", async () => {
-		const repo = new InMemoryRepository()
-		await repo.saveCard(sampleCard({ id: "old" }))
-		const items = new Map<string, string>()
-		await replaceWithBackupV4(repo, parseAnyBackup(v3()), {
-			setItem: (key, value) => void items.set(key, value),
-		})
-		expect(items.get(PAYMENTS_MIGRATION_KEY)).toBe("done")
-		expect((await repo.listCards()).map((c) => c.id)).toEqual(["k1"])
 	})
 
 	test("counts include lists", async () => {
@@ -494,8 +365,9 @@ describe("backup version 3", () => {
 		})
 	})
 
-	test("a version 1 file is rejected", () => {
+	test("a version 1 or 2 file is rejected as unsupported", () => {
 		rejects(JSON.stringify({ version: 1 }), "backup.version")
+		rejects(v3({ version: 2 }), "backup.version")
 		rejects(v3({ version: 5 }), "backup.version")
 	})
 
@@ -543,8 +415,6 @@ describe("backup version 3", () => {
 			v3({ statementDates: [sampleStatementDates({ dueDate: "nope" })] }),
 			"backup.statementDates",
 		],
-		["a v2 zero purchase", v2({ purchases: [samplePurchase({ amount: 0 })] }), "backup.purchase"],
-		["a v2 bad last4", v2({ cards: [sampleCard({ last4: "12" })] }), "backup.card"],
 	]
 	for (const [name, text, key] of bad) {
 		test(`rejects ${name}, naming the record`, () => {
@@ -656,14 +526,13 @@ describe("backup version 4", () => {
 		expect(await exportBackupV4(again, NOW)).toEqual(out)
 	})
 
-	test("a version 2 or 3 file carries the starting owners", () => {
+	test("a version 3 file carries the starting owners", () => {
 		const starting = [
 			{ id: "KC", name: "KC" },
 			{ id: "NT", name: "NT" },
 			{ id: "RI", name: "RI" },
 		]
 		expect(parseAnyBackup(v3()).owners).toEqual(starting)
-		expect(parseAnyBackup(v2()).owners).toEqual(starting)
 	})
 
 	test("a version 3 file keeps the closed set of owners (DC-06)", () => {
@@ -720,14 +589,14 @@ describe("backup version 4", () => {
 		const repo = new InMemoryRepository()
 		await repo.saveOwner({ id: "KC", name: "Kamontat" })
 		await repo.saveOwner(sampleOwner({ id: "zed", name: "Zed" }))
-		await replaceWithBackupV4(repo, parseAnyBackup(v4({ owners: [kc, pim] })), { setItem: () => {} })
+		await replaceWithBackupV4(repo, parseAnyBackup(v4({ owners: [kc, pim] })))
 		expect(await repo.listOwners()).toEqual([kc, pim])
 	})
 
 	test("replace with a version 3 file gives the starting owners", async () => {
 		const repo = new InMemoryRepository()
 		await repo.saveOwner(pim)
-		await replaceWithBackupV4(repo, parseAnyBackup(v3()), { setItem: () => {} })
+		await replaceWithBackupV4(repo, parseAnyBackup(v3()))
 		expect((await repo.listOwners()).map((o) => o.id)).toEqual(["KC", "NT", "RI"])
 	})
 })

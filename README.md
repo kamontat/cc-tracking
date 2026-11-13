@@ -191,7 +191,8 @@ the id `<list id>-<n>` instead of a uuid, and a draft moved from it `<list id>-<
 too, so a retried save overwrites what a failed one wrote instead of doubling it.
 
 Older records are kept but no longer read: `cc:payment:<cardId>:<period>` (the
-per-statement payments, converted to card payments once at startup), `cc:settings`
+per-statement payments of version 2; nothing converts them now, so one never converted
+is not shown), `cc:settings`
 (read only to seed the locations; nothing writes it now), and the old dashboard's
 `cc:batch-start`. A reset in Settings clears them. Those shapes hold as written
 for an ordinary card id, date, and uuid; each segment is actually percent-encoded,
@@ -231,12 +232,10 @@ language and theme stay.
 Backups are version 4 and carry limit groups (with their colours), cards,
 purchases, card payments, statement dates, purchase lists, locations and owners. A
 version 3 file still restores, with the starting owners KC, NT and RI. A
-version 2 file is converted on the way in: its payments become card payments, its
-locations come from its settings, and it has no lists. A version 1 file is
-rejected outright. A file that is not valid JSON, is missing its expected lists,
-has a record with the wrong shape, or was written by another backup version is
-rejected with a message naming what was wrong, and nothing is imported. In a
-version 3 or 4 file each card must name one of the file's own locations, and in a
+version 1 or 2 file is no longer supported. A file that is not valid JSON, is
+missing its expected lists, has a record with the wrong shape, or was written by
+any other backup version is rejected with a message naming what was wrong, and
+nothing is imported. Each card must name one of the file's own locations, and in a
 version 4 file each group and supplementary card one of its own owners; one that does
 not is rejected by its position in the file — for instance `That backup's card #1
 …` — and nothing is imported. Import itself is not atomic, though: it writes limit
