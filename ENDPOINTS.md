@@ -12,6 +12,13 @@ runs the other way.
 Keys marked _repeated_ may appear more than once (`?card=a&card=b`). Pages that rewrite their
 own address leave a key out while it holds its default, so the bare path is the default view.
 
+**Planned (PRD RD-22 to RD-29, settled 2026-11-13, not built yet).** Every address below is
+replaced by the tabs-and-panel plan: tabs as paths (`/owed`, `/ready`, `/transactions/lists`,
+`/cards/limits`), the open record in the query (`card`, `limit`, `list`), filters prefixed `f.`,
+and `/card`, `/pay`, `/list/*` and the `/backup` redirect retired. The full list is in
+`docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`. This file stays in step with the
+code: each part of the plan rewrites the addresses it changes here as it ships.
+
 ## Redirects
 
 | From      | To          | Status | Source              |

@@ -4,6 +4,42 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-13: Tabs and a detail panel, settled (not built yet)
+
+### Decisions
+
+- Nothing in the app changes yet. The plan is settled as PRD RD-22 to RD-29, with its spec and
+  mockup in `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md` and
+  `2026-11-12-tabs-and-panel-mockup.html`, to be built in six pull requests listed in `TODO.md`.
+
+- Home, Transactions and Cards show one tab at a time on every screen: Home _Needs you · Owed ·
+  Ready to use_, Transactions _Ledger · Lists_, Cards _Cards · Limits_. The desktop's two
+  columns go, because they made one address mean two layouts (RD-22).
+
+- A card, a limit group or a list opens in a panel beside its list on a desktop, in a sheet on
+  a phone, so the reader keeps their place. The card page, the card form's pages and the group
+  sheet fold into it; forms open inside the panel and stay out of the address. A ledger row
+  still opens in place, for now (RD-23, RD-24).
+
+- _Owed_ moves to Home, beside _Ready to use_: one is what to pay, the other where to spend. It
+  was on Cards for a day and stays its own tab rather than a Cards filter, as the two differ in
+  which cards, their order, the lead number and the action (RD-25).
+
+- The floating _+ New_ and the `/pay` card picker go: a list starts on the _Lists_ tab or a
+  card, a payment on a bill in _Owed_ or a card's panel (RD-25).
+
+- Every card must have a limit group, and a card id must match `^[a-z]?[0-9]+(\.[0-9]+)*$`;
+  every card in the 2026-11-07 backup already does both (RD-27, RD-28).
+
+- Ids go in the query, not the path: the open record is `card`, `limit` or `list`, filters take
+  `f.`, search is `q`, and `sort`, `dir` and `by` order and section. Every address stays a
+  static page, so no rewrite rules are needed for `_redirects`, local dev or the offline
+  worker. This replaces the record-path plan proved in PR #37, which needed rewrites in all
+  three places and a reserved word for card ids (RD-29).
+
+- `ENDPOINTS.md` is not rewritten ahead of the code: it says the plan is coming, and each part
+  updates it as it ships.
+
 ## 2026-11-12: Building a purchase list a card at a time, with each card's last 12 statements
 
 ### BREAKING CHANGES
