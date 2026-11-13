@@ -93,8 +93,8 @@
 			const takes = takesPurchases(locations, section.location)
 			return { name: placeName(section.location), extra: takes ? ` · ${t("cards.page.takesPurchases")}` : "" }
 		}
-		if (section.kind === "holder") return { name: section.owner ?? t("group.noHolder"), extra: "" }
-		return { name: section.group?.name ?? t("cards.filter.ungrouped"), extra: "" }
+		if (section.kind === "holder") return { name: section.owner, extra: "" }
+		return { name: section.group.name, extra: "" }
 	}
 
 	const facts = (card: Card, flat: boolean): string => {

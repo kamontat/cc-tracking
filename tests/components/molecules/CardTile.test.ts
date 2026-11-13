@@ -129,18 +129,20 @@ test("a figure takes line 2 in place of the room; the rail still follows the roo
 	expect(bare.querySelector(".rail")).toBeNull()
 })
 
-test("no group: says so, with no rail", () => {
+test("no room and no figure: line 2 says nothing about a group, and there is no rail (RD-27)", () => {
 	const tile = show({ room: null })
-	expect(text(tile.querySelector(".room"))).toBe("No limit group")
+	expect(tile.querySelector(".room")).toBeNull()
+	expect(text(tile)).not.toContain("No limit group")
 	expect(tile.querySelector(".rail")).toBeNull()
 })
 
 test("a language switch re-renders the words in place", () => {
-	const tile = show({ room: null })
+	const tile = show({})
+	const english = text(tile.querySelector(".room"))
 	setLocale("th")
 	flushSync()
 	expect(document.body.querySelector(".tile")).toBe(tile)
-	expect(text(tile.querySelector(".room"))).not.toBe("No limit group")
+	expect(text(tile.querySelector(".room"))).not.toBe(english)
 })
 
 // DD-151, DD-166: a card tile hovers by deepening its edge in its own colour, never an

@@ -42,7 +42,7 @@
 	/**
 	 * The Cards page's island (prototype `vCards`): the heading with *Add card*, the shared search,
 	 * filter and sort, the results, and *Limit groups* beside them from 900px. The view lives in
-	 * the address (`?view=&q=&loc=&owner=&ungrouped=&sort=`), replaced as it changes. Below 900px
+	 * the address (`?view=&q=&loc=&owner=&sort=`), replaced as it changes. Below 900px
 	 * a switch beside the title shows the cards or the limit groups (`?view=groups`), and the row
 	 * under it holds the shown view's add button. A group opens in a sheet at `?group=<id>`
 	 * (`?newGroup=1` for a blank one): tapping a panel pushes that address so Back closes it;
@@ -234,9 +234,6 @@
 				label: owner,
 				clear: () => change({ owners: view.owners.filter((o) => o !== owner) }),
 			})),
-			...(view.ungrouped
-				? [{ key: "ungrouped", label: t("cards.filter.ungrouped"), clear: () => change({ ungrouped: false }) }]
-				: []),
 		]
 	})
 

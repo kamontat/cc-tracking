@@ -113,11 +113,11 @@ test("the room is the big figure, of the limit, with the bar and the share used"
 	expect(text(root.querySelector(".used"))).toBe("69% used · buy today: closes 10 Nov 2026, due 05 Dec 2026")
 })
 
-test("a card on no group says so instead of a room", () => {
+test("a card on no group is invalid data: no hero, and nothing said about it (RD-27)", () => {
 	const root = show({ room: null })
-	expect(root.querySelector(".big")).toBeNull()
-	expect(root.querySelector(".hero")?.hasAttribute("data-g")).toBe(false)
-	expect(text(root.querySelector(".hero"))).toContain("This card draws on no limit group.")
+	expect(root.querySelector(".hero")).toBeNull()
+	expect(text(root)).not.toContain("no limit group")
+	expect(root.querySelector(".stats")).not.toBeNull()
 })
 
 test("no card renders nothing", () => {

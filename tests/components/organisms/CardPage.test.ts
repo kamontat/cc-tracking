@@ -344,22 +344,15 @@ test("a card kept where purchases are not ticked says so instead of Use on a lis
 	expect(actions?.querySelector('[data-action="settings"]')?.getAttribute("href")).toBe("/settings/locations")
 })
 
-const NO_GROUP_NOTE = "Give this card a limit group (Edit) to use it on a list."
-
-test("a card with no limit group says so instead of Use on a list", async () => {
-	const repo = new InMemoryRepository()
-	await repo.saveCard(card)
-	await open(repo)
-	expect($('[data-action="use-on-list"]')).toBeNull()
-	expect(text($(".card-actions .note"))).toBe(NO_GROUP_NOTE)
-})
-
-test("a card whose limit group was deleted says the same", async () => {
-	const repo = new InMemoryRepository()
-	await repo.saveCard({ ...card, limitGroupId: "gone" })
-	await open(repo)
-	expect($('[data-action="use-on-list"]')).toBeNull()
-	expect(text($(".card-actions .note"))).toBe(NO_GROUP_NOTE)
+test("a card in no stored group is invalid data: no hero and no note about a group (RD-27)", async () => {
+	for (const stored of [card, { ...card, limitGroupId: "gone" }]) {
+		const repo = new InMemoryRepository()
+		await repo.saveCard(stored)
+		await open(repo)
+		expect($(".hero")).toBeNull()
+		expect(document.body.textContent).not.toContain("limit group (Edit)")
+		expect(document.body.textContent).not.toContain("draws on no limit group")
+	}
 })
 
 test("an archived card says it is archived: archiving, not the place, is why", async () => {
@@ -398,10 +391,11 @@ test("the actions read Use on a list, Add purchase, Make a payment", async () =>
 
 test("a card that can't take a purchase shows the note instead of Add purchase", async () => {
 	const repo = new InMemoryRepository()
-	await repo.saveCard(card)
+	await repo.saveLimitGroup({ id: "pool", name: "Pool", limit: 500_000 })
+	await repo.saveCard({ ...card, location: "bangkok", limitGroupId: "pool" })
 	await open(repo)
 	expect($('[data-action="add-purchase"]')).toBeNull()
-	expect(text($(".card-actions .note"))).toBe(NO_GROUP_NOTE)
+	expect(text($(".card-actions .note"))).toContain("Bangkok")
 })
 
 test("Add purchase opens a blank sheet on this card; a save stores it, stays and reloads", async () => {

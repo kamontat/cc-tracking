@@ -21,7 +21,7 @@
 	 */
 	interface Props {
 		card: Card
-		/** The group's room; null for a card with no group, which says so in place of the room. */
+		/** The group's room; null leaves line 2 to the `figure`, or to the aside alone. */
 		room: GroupRoom | null
 		/** The credit the card holds, in satang, for the word under the room. */
 		credit: number
@@ -123,8 +123,6 @@
 				<small data-tone={line.word.tone ?? undefined}>{line.word.text}</small>
 			{/if}
 		</span>
-	{:else}
-		<span class="room"><small>{tr("cards.page.noGroup")}</small></span>
 	{/if}
 	{#if aside !== undefined}
 		<span class="aside" data-tone={asideTone}>{aside}</span>

@@ -135,3 +135,20 @@ test("a listener given an already-aborted signal never runs", () => {
 	setLocale("th")
 	expect(calls).toBe(0)
 })
+
+test("the words for a card without a limit group are gone from both catalogs (RD-27)", () => {
+	const gone = [
+		"card.hero.noGroup",
+		"card.noGroupNote",
+		"cards.page.noGroup",
+		"cards.filter.ungrouped",
+		"spendable.unassigned.one",
+		"spendable.unassigned.many",
+		"spendable.unassignedAction",
+		"group.noHolder",
+	]
+	for (const key of gone) {
+		expect(key in en).toBe(false)
+		expect(key in th).toBe(false)
+	}
+})

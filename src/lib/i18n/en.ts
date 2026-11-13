@@ -125,7 +125,6 @@ export const en = {
 	"group.status": "Status",
 	"group.month": "Month",
 	groupChip: "Group: {group}",
-	"group.noHolder": "No account holder",
 	"tx.lists.group.all": "All lists",
 	"sort.field.date": "Date",
 	"sort.order.date.asc": "Oldest first",
@@ -272,9 +271,7 @@ export const en = {
 	"cards.view.cards": "Cards",
 	"cards.view.groups": "Limit groups",
 	"cards.archived": "Archived",
-	"cards.filter.ungrouped": "Not in a group",
 	"cards.archivedList": "Archived ({count})",
-	"cards.page.noGroup": "No limit group",
 	"cards.page.dates": "closes {close} · due {due}",
 	"cards.locationReset":
 		"These cards were kept somewhere this app no longer recognises, so their location was set to Bangkok: {names}. Edit each one to pick the right place.",
@@ -339,14 +336,12 @@ export const en = {
 	"card.hero.shared": "shared with {cards}",
 	"card.hero.roomOf": "room of {limit}",
 	"card.hero.used": "{pct}% used · buy today: closes {close}, due {due}",
-	"card.hero.noGroup": "This card draws on no limit group.",
 	"card.stat.owed": "Owed",
 	"card.stat.next": "Next bill",
 	"card.stat.credit": "Credit",
 	"card.stat.keptIn": "Kept in",
 	"card.useOnList": "Use on a list",
 	"card.pay": "Make a payment",
-	"card.noGroupNote": "Give this card a limit group (Edit) to use it on a list.",
 	"card.archivedNote": "This card is archived, so it isn't offered on lists.",
 	"card.statements": "Statements",
 	"card.subtitle": "{id} · Kept in {location}",
@@ -570,10 +565,6 @@ export const en = {
 	"theme.light": "Light",
 	"theme.dark": "Dark",
 	"settings.error.read": "Could not read your settings.",
-
-	"spendable.unassigned.one": "1 card has no limit group yet.",
-	"spendable.unassigned.many": "{count} cards have no limit group yet.",
-	"spendable.unassignedAction": "Assign them",
 
 	"guard.cardHasPurchases": "This card has purchases, so it can't be deleted. Archive it instead.",
 	"guard.cardOnList":

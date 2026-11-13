@@ -168,6 +168,7 @@ test("close sort follows upcoming tile dates rather than day numbers", async () 
 	await setup("/cards?sort=close", {
 		skipSeed: true,
 		before: async (repo) => {
+			await repo.saveLimitGroup(G1)
 			await repo.saveCard(card("early", { cycle: { kind: "offset", closeDay: 5, dueOffsetDays: 20 } }))
 			await repo.saveCard(card("today", { cycle: { kind: "offset", closeDay: 31, dueOffsetDays: 20 } }))
 		},
@@ -180,6 +181,7 @@ test("due sort can be applied from the filter and restored from the address", as
 	const { address } = await setup("/cards?sort=close", {
 		skipSeed: true,
 		before: async (repo) => {
+			await repo.saveLimitGroup(G1)
 			await repo.saveCard(card("a", { cycle: { kind: "offset", closeDay: 5, dueOffsetDays: 30 } }))
 			await repo.saveCard(card("b", { cycle: { kind: "offset", closeDay: 10, dueOffsetDays: 1 } }))
 		},
@@ -685,7 +687,9 @@ test("?group=new opens the group whose id is new; ?newGroup=1 opens the blank sh
 	expect(sheetHeading()).toBe("Add limit group")
 })
 
-test("?ungrouped=1 lists only cards with no stored group, and shows a chip for it", async () => {
+test("a card in no stored group is left out, and ?ungrouped=1 is not read (RD-27)", async () => {
+	await setup("/cards")
+	const shown = shownTiles().sort()
 	await setup("/cards?ungrouped=1", {
 		before: async (r) => {
 			const { limitGroupId: _, ...loose } = card("N")
@@ -693,8 +697,9 @@ test("?ungrouped=1 lists only cards with no stored group, and shows a chip for i
 			await r.saveCard(card("O", { limitGroupId: "gone" }))
 		},
 	})
-	expect(shownTiles().sort()).toEqual(["N", "O"])
-	expect(document.body.textContent).toContain("Not in a group")
+	expect(shownTiles().sort()).toEqual(shown)
+	expect(document.body.textContent).not.toContain("Not in a group")
+	expect(document.body.textContent).not.toContain("No limit group")
 })
 
 test("a store that won't open shows why, with Reload, and no cards", async () => {
