@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, and a quiet test run
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, and panel and settings polish
 
 ### BREAKING CHANGES
 
@@ -28,6 +28,10 @@ reasons don't show up in the code.
 - The static `SubHeader` molecule, the `.page--form` width and the message keys
   `title.locations`, `title.owners` and `locations.takesHint` are removed.
 
+- `DetailPanel`'s `full` prop is now `form`, and the panel no longer carries `data-full`.
+  `formatBuiltLocal` takes an offset in minutes east of GMT instead of a zone name,
+  `BuiltTime`'s `timeZone` prop is now `offset`, and `viewerTimeZone` is gone.
+
 ### Features
 
 - _Manage locations_ and _Manage owners_ open their editor in the detail panel beside Settings
@@ -43,6 +47,11 @@ reasons don't show up in the code.
   planned), purchase lists by status, locations, owners, and the storage the app's `cc:` keys
   take. It counts again after a restore, a purge, a reset or a change in another panel (RD-31,
   DD-204).
+
+- Settings › About ends in _Force refresh_: it unregisters the service workers, deletes the
+  offline caches and reloads, so the page comes from the server in its newest version. Stored
+  data is untouched. Once pressed, the row reads _Refreshing…_ and takes no second press until
+  the page reloads (`forceRefresh` in `#lib/offline/register`, DD-206).
 
 ### Improvements
 
@@ -72,6 +81,27 @@ reasons don't show up in the code.
 - An empty `svelte.config.js` keeps Svelte's defaults and stops vite-plugin-svelte noting on
   every run that it found no config (`tests/config/svelte.test.ts` holds it empty).
 
+- _Delete old purchases_ is now _Clean old data_ (ล้างข้อมูลเก่า), its line naming the payments
+  and lists that go with the purchases (DD-207).
+
+- About's _Built_ names the zone by its offset from GMT, `30 Oct 2026, 14:05 (GMT+7)`, instead of
+  the zone's IANA name (DD-206).
+
+- A form in the detail panel (_Edit_, _Make a payment_, _Add purchase_) slides in from the side,
+  and ‹ back slides the record in again; reduced motion turns it off (DD-205).
+
+### Bug fixes
+
+- On a phone, opening a form in a card's or a limit's sheet no longer jumps to the full screen
+  with no motion: the sheet keeps its height, with the page still showing above it (DD-205).
+
+- A card's statement head hovers as a square band to the panel's edges, like every other row
+  list (DD-109), instead of a rounded pill that ran into the panel's border.
+
+- An unfolded statement's _Edit_ and _Delete_ no longer stack on two lines in the side column
+  from 900px: they share a line under the date and amount, and join the row only when the panel
+  itself is wide enough (a container query on the panel instead of a screen-width media query).
+
 ### Decisions
 
 - The stored-payment conversion went along with version 2 restore, rather than keeping it for
@@ -95,6 +125,12 @@ reasons don't show up in the code.
 - The summary first sat on the page as a list, then moved behind a row into a panel, as the user
   asked; once Locations and Owners became panels (DD-203) it took the same `panel=` key, so Back
   closes it and a link keeps it open, rather than staying out of the address.
+
+- A form keeps the sheet's height and slides in, the user's choice over growing the sheet to the
+  full height with an animation, or a second sheet on the first, which RD-24 rules out.
+
+- _Force refresh_ clears the service worker and its caches before reloading, since a plain
+  reload would be answered from the offline cache with the version already running.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 

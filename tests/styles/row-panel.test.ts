@@ -56,3 +56,10 @@ test.each(["src/components/molecules/DisplaySettings.svelte", "src/components/mo
 		expect(rule(style, ".set-row + .set-row").get("border-top")).toBe(DIVIDER)
 	},
 )
+
+// DD-109: a statement's hovered head is the same square band as every other row's, reaching the
+// panel's inner edges, not a rounded pill whose corners stop at the panel's border.
+test("a card's statement head hovers square, edge to edge", async () => {
+	const style = (await Bun.file("src/components/organisms/CardStatements.svelte").text()).split("<style>")[1] ?? ""
+	expect(rule(style, ".panel .crow").get("border-radius")).toBe("0")
+})

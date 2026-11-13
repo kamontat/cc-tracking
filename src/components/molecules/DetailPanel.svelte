@@ -19,7 +19,8 @@
 	 * over the panel. Typing or picking in the body (`input`, `change`, a pressed choice or a picked
 	 * radio in a form) calls `ontouch`, so the page knows a form changed. The panel takes focus as it
 	 * opens, and again when its head changes and takes the focused button with it. Every head button
-	 * is one size. With `full` (a form is open) the phone's sheet takes the whole height.
+	 * is one size. With `form` (a form is open) the sheet keeps its height and the body slides in from
+	 * the side; ‹ back slides the record in again.
 	 */
 	interface Props {
 		/** The record's name, or the form's; it names the panel. */
@@ -38,12 +39,12 @@
 		onclose: () => void
 		/** A field in the body changed. */
 		ontouch?: (() => void) | undefined
-		/** A form is open: on a phone the sheet takes the screen's full height. */
-		full?: boolean | undefined
+		/** A form is open: the body slides in when it opens and back when it closes. */
+		form?: boolean | undefined
 		children: Snippet
 	}
 
-	const { title, detail, lead, actions, onback, backLabel, onclose, ontouch, full = false, children }: Props = $props()
+	const { title, detail, lead, actions, onback, backLabel, onclose, ontouch, form = false, children }: Props = $props()
 
 	/** How far down (in CSS pixels) a swipe on the head must travel to close the sheet. */
 	const SWIPE_CLOSE = 80
@@ -59,6 +60,14 @@
 
 	let aside: HTMLElement | undefined = $state()
 	let swipeFrom: number | null = null
+
+	/** Which way the body last slid: in as a form opens, out as it goes. None while it opens. */
+	let slide = $state<"in" | "out" | undefined>()
+	let hadForm: boolean | undefined
+	$effect(() => {
+		if (hadForm !== undefined && form !== hadForm) slide = form ? "in" : "out"
+		hadForm = form
+	})
 
 	/** Whether something drawn over the panel (a sheet, a menu) owns Escape now. */
 	const covered = () =>
@@ -131,7 +140,6 @@
 <aside
 	bind:this={aside}
 	class="detail-panel"
-	data-full={full ? "" : undefined}
 	aria-labelledby={titleId}
 	tabindex="-1"
 	{@attach listen({ input: onTouch, change: onTouch, click: onTouch })}>
@@ -170,7 +178,7 @@
 			</button>
 		</div>
 	</div>
-	<div class="detail-panel__body">{@render children()}</div>
+	<div class="detail-panel__body" data-slide={slide}>{@render children()}</div>
 </aside>
 
 <style>
@@ -198,11 +206,6 @@
 		box-shadow: var(--cc-shadow-lg);
 		outline: none;
 		animation: detail-rise var(--cc-sheet-motion) var(--cc-sheet-ease);
-	}
-
-	.detail-panel[data-full] {
-		block-size: 100dvh;
-		border-radius: 0;
 	}
 
 	/* The head stays put; the body under it is what scrolls. */
@@ -305,6 +308,15 @@
 		padding: var(--cc-space-4) var(--cc-space-4) var(--cc-detail-body-end);
 	}
 
+	/* A form slides in from the end, as a page pushed on; ‹ back brings the record in from the start. */
+	.detail-panel__body[data-slide="in"] {
+		animation: detail-forward var(--cc-sheet-motion) var(--cc-sheet-ease);
+	}
+
+	.detail-panel__body[data-slide="out"] {
+		animation: detail-backward var(--cc-sheet-motion) var(--cc-sheet-ease);
+	}
+
 	/* From 900px: a column beside the list as tall as the screen leaves it, parked under the
 	   header while the list scrolls with the page. */
 	@media (min-width: 900px) {
@@ -312,8 +324,7 @@
 			display: none;
 		}
 
-		.detail-panel,
-		.detail-panel[data-full] {
+		.detail-panel {
 			position: fixed;
 			top: var(--cc-detail-column-top);
 			bottom: var(--cc-page-foot);
@@ -352,6 +363,20 @@
 		}
 	}
 
+	@keyframes detail-forward {
+		from {
+			opacity: 0;
+			transform: translateX(var(--cc-space-7));
+		}
+	}
+
+	@keyframes detail-backward {
+		from {
+			opacity: 0;
+			transform: translateX(calc(var(--cc-space-7) * -1));
+		}
+	}
+
 	@keyframes detail-fade {
 		from {
 			opacity: 0;
@@ -360,7 +385,8 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.detail-panel,
-		.detail-panel__backdrop {
+		.detail-panel__backdrop,
+		.detail-panel__body[data-slide] {
 			animation: none;
 		}
 	}

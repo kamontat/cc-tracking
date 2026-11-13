@@ -288,13 +288,16 @@ const click = async (root: HTMLElement, action: string) => {
 
 const resetText = (root: HTMLElement) => flat(root.querySelector('[data-section="reset"]'))
 
-test("the reset rows: delete old purchases, then delete all data", async () => {
+test("the reset rows: clean old data, then delete all data", async () => {
 	const root = await show()
 
 	expect(
 		[...root.querySelectorAll('[data-section="reset"] .set > .set-row')].map((found) => found.getAttribute("data-row")),
 	).toEqual(["purge", "delete-all"])
-	expect(row(root, "purge").textContent).toContain("Delete old purchases")
+	expect(row(root, "purge").textContent).toContain("Clean old data")
+	expect(row(root, "purge").textContent).toContain(
+		"Free space by removing old purchases, payments and lists on paid statements",
+	)
 	expect(row(root, "delete-all").textContent).toContain("Delete all data")
 })
 
@@ -680,7 +683,7 @@ test("the data panel counts again after a reset", async () => {
 	expect(flat(row(root, "data").querySelector(".set-row__sub"))).toMatch(/^0 cards · 0 purchases/)
 })
 
-test("the Delete old purchases row opens the purge sheet, and closing takes it away", async () => {
+test("the Clean old data row opens the purge sheet, and closing takes it away", async () => {
 	const root = await show()
 	expect(purgeSheet(root)).toBeNull()
 	expect(row(root, "purge").getAttribute("aria-expanded")).toBe("false")
@@ -785,4 +788,39 @@ describe("the locations and owners panels (RD-17, RD-30)", () => {
 		expect(root.querySelector('.detail-panel .record-row[data-owner="pim"]')).toBeNull()
 		expect(root.querySelectorAll(".detail-panel .record-row[data-owner]")).toHaveLength(3)
 	})
+})
+
+test("About ends in a Force refresh row that fetches the newest version and reloads", async () => {
+	let refreshes = 0
+	document.body.innerHTML = ""
+	history = fakeHistory("/settings")
+	mounted = mount(SettingsPanels, {
+		target: document.body,
+		props: {
+			open: async () => ({ ok: true as const, repo: new InMemoryRepository() }),
+			address: history.bar,
+			about: slot('<dl data-slot="about"></dl>'),
+			refresh: () => {
+				refreshes += 1
+			},
+		},
+	})
+	await settle()
+	const root = document.body
+	const panelRows = [...root.querySelectorAll('[data-section="about"] .set > *')]
+	expect(panelRows.at(-1)?.getAttribute("data-row")).toBe("refresh")
+	expect(flat(row(root, "refresh"))).toContain("Force refresh")
+	expect(flat(row(root, "refresh"))).toContain("Get the newest version and reload. Your data stays.")
+	expect(row(root, "refresh").tagName).toBe("BUTTON")
+	await press(row(root, "refresh"))
+	expect(refreshes).toBe(1)
+	// The reload takes a moment: the row says it is working and takes no second press.
+	expect(row(root, "refresh").getAttribute("aria-busy")).toBe("true")
+	expect((row(root, "refresh") as HTMLButtonElement).disabled).toBe(true)
+	expect(flat(row(root, "refresh").querySelector(".set-row__action"))).toBe("Refreshing…")
+	await press(row(root, "refresh"))
+	expect(refreshes).toBe(1)
+	setLocale("th")
+	await settle()
+	expect(flat(row(root, "refresh"))).not.toContain("Force refresh")
 })

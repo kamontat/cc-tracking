@@ -15,7 +15,7 @@
 	import { PURGE_AGES } from "#lib/ui/purge"
 
 	/**
-	 * *Delete old purchases* (RD-18), in a sheet. Chips pick how old (a year by default) and each
+	 * *Clean old data* (RD-18), in a sheet. Chips pick how old (a year by default) and each
 	 * choice recounts; a note says how many purchases go and before which date, and how many older
 	 * ones stay because their statement is not fully paid. *Delete N purchases…* swaps to a second
 	 * ask, *Keep them* or *Yes, delete N*. Yes writes the plan, lets the sheet slide away and calls

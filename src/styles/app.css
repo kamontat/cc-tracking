@@ -511,6 +511,11 @@ a:any-link:hover {
 	background: transparent;
 }
 
+/* A row whose action is under way (*Force refresh* while the page reloads) takes no second press. */
+.page .set-row[aria-busy="true"] {
+	cursor: progress;
+}
+
 /* After `.page .set-row`, which clears a button's own border, so the rule between rows holds. */
 .page .row-panel > * + *,
 .page .set > * + *,

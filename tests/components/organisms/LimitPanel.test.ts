@@ -186,7 +186,7 @@ test("Edit puts the group form in its place, with the address unchanged; a save 
 	expect(title()).toBe("Edit limit")
 	expect(detail()).toBe("Pool")
 	expect($('[data-action="panel-back"]')).not.toBeNull()
-	expect($(".detail-panel")?.hasAttribute("data-full")).toBe(true)
+	expect($(".detail-panel__body")?.getAttribute("data-slide")).toBe("in")
 	expect($<HTMLInputElement>('.detail-panel [name="name"]')?.value).toBe("Pool")
 	await type("name", "Pool Biz")
 	expect(panel.dirty).toBe(true)

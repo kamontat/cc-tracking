@@ -67,3 +67,30 @@ export async function watchForUpdates({ container, onUpdate, reload, events, sig
 		listening,
 	)
 }
+
+export type RefreshOptions = {
+	/** `navigator.serviceWorker`; `undefined` in a browser without service workers. */
+	container: { getRegistrations(): Promise<readonly Pick<ServiceWorkerRegistration, "unregister">[]> } | undefined
+	/** `window.caches`; `undefined` where the Cache API is missing (an insecure origin). */
+	caches: Pick<CacheStorage, "keys" | "delete"> | undefined
+	/** Loads the page again, now from the server. */
+	reload: () => void
+}
+
+/**
+ * Settings' *Force refresh*: drops every service worker and every cached file, then reloads, so
+ * the page comes from the server, newest version and all, and the next visit caches it afresh.
+ * Stored data (`localStorage`) is not touched. A step that fails is skipped: the reload still runs.
+ */
+export async function forceRefresh({ container, caches, reload }: RefreshOptions): Promise<void> {
+	const unregister = async () => {
+		const registrations = (await container?.getRegistrations()) ?? []
+		await Promise.all(registrations.map((registration) => registration.unregister()))
+	}
+	const clear = async () => {
+		const keys = (await caches?.keys()) ?? []
+		await Promise.all(keys.map((key) => caches?.delete(key)))
+	}
+	await Promise.allSettled([unregister(), clear()])
+	reload()
+}

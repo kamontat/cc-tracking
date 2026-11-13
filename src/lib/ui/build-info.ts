@@ -108,26 +108,31 @@ export function envMark(environment: Environment, pr: string): string | null {
 }
 
 /**
- * `dd MMM yyyy, HH:mm (<zone>)` on the viewer's own clock. `Intl` is not used to format
- * the date, so the year stays Gregorian in Thai.
+ * `dd MMM yyyy, HH:mm (GMT±H)` on a clock `offset` minutes east of GMT, the viewer's own unless
+ * one is given. `Intl` is not used to format the date, so the year stays Gregorian in Thai.
  */
-export function formatBuiltLocal(when: Date, locale: Locale, timeZone: string): string {
-	const date = displayDate(formatDate(when.getFullYear(), when.getMonth() + 1, when.getDate()), locale)
-	const time = `${pad(when.getHours())}:${pad(when.getMinutes())}`
-	return `${date}, ${time}${timeZone ? ` (${timeZone})` : ""}`
+export function formatBuiltLocal(when: Date, locale: Locale, offset = viewerOffset(when)): string {
+	const local = new Date(when.getTime() + offset * 60_000)
+	const date = displayDate(formatDate(local.getUTCFullYear(), local.getUTCMonth() + 1, local.getUTCDate()), locale)
+	const time = `${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`
+	return `${date}, ${time} (${gmtOffset(offset)})`
+}
+
+/** `GMT+7`, `GMT+5:30`, `GMT-3`: a zone named by its offset, `offset` minutes east of GMT. */
+export function gmtOffset(offset: number): string {
+	const sign = offset < 0 ? "-" : "+"
+	const hours = Math.floor(Math.abs(offset) / 60)
+	const minutes = Math.abs(offset) % 60
+	return `GMT${sign}${hours}${minutes ? `:${pad(minutes)}` : ""}`
+}
+
+/** How far east of GMT the viewer's clock stood at `when`, in minutes. */
+export function viewerOffset(when: Date): number {
+	return -when.getTimezoneOffset()
 }
 
 /** Where the build came from: `#<pr> · <branch>` on a preview, else the branch, else the repo. */
 export function sourceLabel(build: BuildInfo): string {
 	if (!build.branch) return new URL(REPO_URL).pathname.slice(1)
 	return build.environment === "preview" && build.pr ? `#${build.pr} · ${build.branch}` : build.branch
-}
-
-/** The viewer's IANA time zone name, or `""` when it can't be read. */
-export function viewerTimeZone(): string {
-	try {
-		return Intl.DateTimeFormat().resolvedOptions().timeZone ?? ""
-	} catch {
-		return ""
-	}
 }

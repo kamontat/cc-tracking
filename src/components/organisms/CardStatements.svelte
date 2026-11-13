@@ -310,6 +310,7 @@
 		display: flex;
 		flex-direction: column;
 		overflow: clip;
+		container: statements / inline-size;
 	}
 
 	.statement {
@@ -341,14 +342,15 @@
 		cursor: pointer;
 		background: transparent;
 		border: 0;
-		border-radius: var(--cc-radius-sm);
+		border-radius: 0;
 	}
 
 	.panel div.crow {
 		cursor: default;
 	}
 
-	/* Hover is a quiet ground, never an underline (DD-105), carried across the side padding. */
+	/* Hover is a quiet ground, never an underline (DD-105), carried across the side padding: a
+	   square band that meets the panel's edges, as every row list's does (DD-109). */
 	.panel button.crow:hover {
 		text-decoration: none;
 		background: var(--cc-surface-sunken);
@@ -463,12 +465,12 @@
 		background: var(--cc-accent-surface);
 	}
 
-	/* One grid for the whole list -- date, note, amount, actions -- that each line takes up as a
+	/* One grid for the whole list -- date, note, amount, then actions -- that each line takes up as a
 	   subgrid, so dates, notes and amounts line up from line to line, a payment line (which has
 	   no actions) included. */
 	.purchases {
 		display: grid;
-		grid-template-columns: auto minmax(0, 1fr) auto auto;
+		grid-template-columns: auto minmax(0, 1fr) auto;
 		gap: 0 var(--cc-space-3);
 		/* A gap above the items, so the head's hover tint never runs into them. */
 		padding: var(--cc-space-2) 0 var(--cc-space-3);
@@ -553,6 +555,7 @@
 		align-items: center;
 		justify-content: flex-end;
 		gap: var(--cc-space-2);
+		grid-column: 1 / -1;
 	}
 
 	.pactions button {
@@ -566,14 +569,16 @@
 		font-weight: 600;
 	}
 
-	/* On a phone the buttons take their own line under the date, note and amount. */
-	@media (max-width: 639px) {
+	/* The buttons take their own line under the date, note and amount, unless the panel is wide
+	   enough for all of it on one: the panel's width decides, since on a desktop it sits in the
+	   narrow side column. A container query takes no var(), so the width is here. */
+	@container statements (min-width: 34rem) {
 		.purchases {
-			grid-template-columns: auto minmax(0, 1fr) auto;
+			grid-template-columns: auto minmax(0, 1fr) auto auto;
 		}
 
 		.pactions {
-			grid-column: 1 / -1;
+			grid-column: auto;
 		}
 	}
 

@@ -19,6 +19,7 @@
 	import RestoreSheet from "#components/organisms/RestoreSheet.svelte"
 	import { today } from "#lib/domain/date"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
+	import { forceRefresh } from "#lib/offline/register"
 	import { SEED_KEY, seedLocations } from "#lib/storage/seed-locations"
 	import { OWNERS_SEED_KEY, seedOwners } from "#lib/storage/seed-owners"
 	import { countRecordsV4, exportBackupV4 } from "#lib/storage/transfer-v4"
@@ -50,6 +51,8 @@
 		display?: Snippet
 		/** The About section's rows. */
 		about?: Snippet
+		/** *Force refresh*: drops the offline copy and reloads; tests pass one that records. */
+		refresh?: () => void
 		/** Unused: Astro names each slotted child, but its type check still counts them as children. */
 		children?: Snippet
 	}
@@ -60,6 +63,12 @@
 		address = browserBar(),
 		display,
 		about,
+		refresh = () =>
+			void forceRefresh({
+				container: navigator.serviceWorker,
+				caches: globalThis.caches,
+				reload: () => location.reload(),
+			}),
 	}: Props = $props()
 
 	/** The panels a row opens, by the name the address gives them. */
@@ -101,6 +110,14 @@
 	const tr = (key: MessageKey, params?: Params) => {
 		void lang
 		return t(key, params)
+	}
+
+	/** *Force refresh* was pressed: the row says so and holds until the page reloads. */
+	let refreshing = $state(false)
+	const onRefresh = () => {
+		if (refreshing) return
+		refreshing = true
+		refresh()
 	}
 
 	let repo = $state<Repository | null>(null)
@@ -448,7 +465,23 @@
 			</section>
 			<section class="set-section" data-section="about">
 				<h2>{tr("about.title")}</h2>
-				<div class="set">{@render about?.()}</div>
+				<div class="set">
+					{@render about?.()}
+					<button
+						class="set-row"
+						type="button"
+						data-row="refresh"
+						disabled={refreshing}
+						aria-busy={refreshing ? "true" : undefined}
+						onclick={onRefresh}>
+						<span class="set-row__text"
+							>{tr("about.refresh")}<small class="set-row__sub">{tr("about.refreshHint")}</small></span
+						>
+						<span class="set-row__action" data-variant="quiet"
+							>{tr(refreshing ? "about.refreshing" : "about.refreshAction")}</span
+						>
+					</button>
+				</div>
 			</section>
 		</div>
 	</div>
