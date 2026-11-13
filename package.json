@@ -16,7 +16,8 @@
 		"check:type": "astro check",
 		"check:biome": "biome check",
 		"format": "biome check --unsafe --write",
-		"astro": "astro"
+		"astro": "astro",
+		"mock": "bun scripts/mock-data.ts"
 	},
 	"dependencies": {
 		"@astrojs/svelte": "9.1.2",
