@@ -11,6 +11,12 @@ export type AddressBar = {
 	 * page keeps what it holds in memory when Back returns: the client router's state is taken off
 	 * the entry underneath until then, so the router lets that Back be and does not swap in a fresh
 	 * copy of the page (DD-195). `onPop` with `ownPage` puts it back.
+	 *
+	 * The pushed entry carries no state, so the router leaves Back and Forward between such entries
+	 * to the page. A link followed from one would leave it stateless behind the next page, and Back
+	 * from there would change the address without swapping the page back in; so just before the
+	 * router next leaves (`astro:before-preparation`), an entry still without state is given the
+	 * router's own from the page's entry, and Back to it loads the page on that address (DD-196).
 	 */
 	push: (url: string, options?: { ownPage?: boolean }) => void
 	/** Rewrites this entry (`history.replaceState`), keeping the router's state. */
@@ -25,15 +31,39 @@ export type AddressBar = {
 	length: () => number
 	/** One entry back. */
 	back: () => void
+	/**
+	 * Moves `delta` entries (`history.go`), one pop for the whole move: the detail panel steps
+	 * back over every entry it pushed at once (`RecordPanel.close`). Left out of a test's bar,
+	 * the panel steps back one entry at a time.
+	 */
+	go?: (delta: number) => void
 }
 
 /** The browser's own address bar; at build time, when there is none, an empty query. */
 export const browserBar = (): AddressBar => {
 	// The router's state for the entry an own-page push went over, and that entry's address.
 	let held: { state: unknown; href: string } | null = null
+	// Whether a stamp waits for the router's next departure.
+	let armed = false
+
+	/** Gives the entry the router leaves from `state` when it has none (see `push`). */
+	const arm = (state: unknown) => {
+		if (armed || state === null || typeof state !== "object") return
+		armed = true
+		document.addEventListener(
+			"astro:before-preparation",
+			() => {
+				armed = false
+				if (history.state === null) history.replaceState({ ...state, scrollX, scrollY }, "", location.href)
+			},
+			{ once: true },
+		)
+	}
+
 	return {
 		search: () => (typeof location === "undefined" ? "" : location.search),
 		push: (url, { ownPage = false } = {}) => {
+			arm(held?.state ?? history.state)
 			if (ownPage && held === null && history.state !== null) {
 				held = { state: history.state, href: location.href }
 				history.replaceState(null, "", location.href)
@@ -54,5 +84,6 @@ export const browserBar = (): AddressBar => {
 		},
 		length: () => history.length,
 		back: () => history.back(),
+		go: (delta) => history.go(delta),
 	}
 }

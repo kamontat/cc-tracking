@@ -193,6 +193,8 @@ export const en = {
 	"lang.en": "English",
 	"lang.th": "ไทย",
 
+	"panel.discardAsk": "Discard your changes?",
+	"panel.backToRecord": "Back to {name}",
 	"common.reload": "Reload",
 	"common.retry": "Try again",
 	"common.cancel": "Cancel",

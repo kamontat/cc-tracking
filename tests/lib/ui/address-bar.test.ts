@@ -3,6 +3,8 @@ import { afterEach, expect, test } from "vitest"
 import { browserBar } from "#lib/ui/address-bar"
 
 afterEach(() => {
+	// Every bar's stamp waits for the router's next departure: let it go, as a navigation would.
+	document.dispatchEvent(new Event("astro:before-preparation"))
 	history.replaceState(null, "", "/")
 })
 
@@ -78,5 +80,44 @@ test("a plain push leaves the page's own entry to the router", () => {
 	dispatchEvent(new PopStateEvent("popstate", { state: null }))
 	remove()
 	expect(pops).toBe(1)
+	expect(history.state).toBeNull()
+})
+
+test("go moves several entries at once", () => {
+	const bar = browserBar()
+	const calls: number[] = []
+	const go = history.go
+	history.go = (delta?: number) => {
+		calls.push(delta ?? 0)
+	}
+	try {
+		bar.go?.(-2)
+	} finally {
+		history.go = go
+	}
+	expect(calls).toEqual([-2])
+})
+
+test("a pushed entry the router leaves from gets the router's state, so Back to it is the router's", () => {
+	history.replaceState({ index: 4, scrollX: 0, scrollY: 0 }, "", "/cards")
+	const bar = browserBar()
+	bar.push("/cards?card=5", { ownPage: true })
+	bar.push("/cards?card=5")
+	expect(history.state).toBeNull()
+	document.dispatchEvent(new Event("astro:before-preparation"))
+	expect(history.state).toMatchObject({ index: 4 })
+	expect(location.search).toBe("?card=5")
+})
+
+test("an entry that has the router's state is left as it is", () => {
+	history.replaceState({ index: 1, own: true }, "", "/cards")
+	const bar = browserBar()
+	bar.push("/cards?card=5")
+	history.replaceState({ index: 7 }, "", "/cards?card=5")
+	document.dispatchEvent(new Event("astro:before-preparation"))
+	expect(history.state).toEqual({ index: 7 })
+	// Stamped once only: a later departure is the next page's business.
+	history.replaceState(null, "", "/cards?card=5")
+	document.dispatchEvent(new Event("astro:before-preparation"))
 	expect(history.state).toBeNull()
 })

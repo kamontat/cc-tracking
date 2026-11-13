@@ -202,6 +202,8 @@ export const th: Catalog = {
 	"lang.en": "English",
 	"lang.th": "ไทย",
 
+	"panel.discardAsk": "ทิ้งสิ่งที่แก้ไขไว้ไหม",
+	"panel.backToRecord": "กลับไปที่ {name}",
 	"common.reload": "โหลดใหม่",
 	"common.retry": "ลองอีกครั้ง",
 	"common.cancel": "ยกเลิก",
