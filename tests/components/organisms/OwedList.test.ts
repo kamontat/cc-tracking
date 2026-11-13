@@ -1,3 +1,4 @@
+import type { Sectioned } from "#lib/domain/cards-view"
 import type { PayChoice } from "#lib/domain/pay"
 import type { GroupRoom } from "#lib/domain/room"
 import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
@@ -50,7 +51,10 @@ const rows = (): PayChoice[] => [
 ]
 
 type Props = {
+	/** The rows on show, flat; `show` passes them as results. */
 	rows: PayChoice[]
+	sections: Sectioned<PayChoice>["sections"]
+	total: number
 	groups: LimitGroup[]
 	rooms: Map<string, GroupRoom>
 	ledgers: Map<string, CardLedger>
@@ -60,13 +64,15 @@ type Props = {
 	onpay: (row: PayChoice) => void
 }
 
-const show = (props: Partial<Props> = {}) => {
+const show = ({ rows: list = rows(), sections = null, total, ...props }: Partial<Props> = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
+	const count = sections ? sections.reduce((n, s) => n + s.cards.length, 0) : list.length
 	mounted = mount(OwedList, {
 		target: document.body,
 		props: {
-			rows: rows(),
+			results: { sections, flat: sections ? null : list, count },
+			total: total ?? count,
 			groups: [],
 			rooms: new Map(),
 			ledgers: new Map(),
@@ -189,10 +195,24 @@ test("Pay follows a switch of language", () => {
 	expect(flat(root.querySelector('[data-action="pay"]'))).toBe("ชำระ")
 })
 
-test("the tiles fill the width: one column on a phone, as many as fit from 900px", async () => {
-	const source = await Bun.file("src/components/organisms/OwedList.svelte").text()
-	expect(source).toMatch(/\.tiles\s*\{[^}]*display: grid/)
-	expect(source).toMatch(
-		/@media \(min-width: 900px\)\s*\{\s*\.owed-list \.tiles\s*\{\s*grid-template-columns: repeat\(auto-fill, minmax\(var\(--cc-tile-min\), 1fr\)\)/,
-	)
+test("nothing matching the filters says so, as on Cards", () => {
+	const root = show({ rows: [], total: 2 })
+	expect(root.querySelector(".empty")?.textContent?.trim()).toBe("No card matches. Clear the search or a filter.")
+})
+
+test("grouped, the tiles sit in Cards' sections, each headed by its name and count", () => {
+	const [a, b] = rows()
+	if (!a || !b) throw new Error("no rows")
+	const root = show({
+		locations: [{ id: "krabi", name: "Krabi", takesPurchases: true }],
+		sections: [
+			{ key: "holder:KC", kind: "holder", owner: "KC", cards: [b] },
+			{ key: "holder:none", kind: "holder", owner: null, cards: [a] },
+		],
+	} as Partial<Props>)
+	expect([...root.querySelectorAll("section[data-section]")].map((el) => flat(el.querySelector("h2")))).toEqual([
+		"KC 1 card",
+		"No account holder 1 card",
+	])
+	expect(root.querySelectorAll('section[data-section] [data-action="pay"]')).toHaveLength(2)
 })

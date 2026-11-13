@@ -10,8 +10,8 @@ import { fakeHistory } from "../../lib/ui/fake-history"
 import { saveLocations } from "./list-support"
 
 /**
- * Home's _Owed_ tab (`/owed`, RD-25): only the cards that owe, in the order kept in the address
- * (`sort`, `dir`), each tile opening the card's panel over the tab (`?card=`), and _Pay_ opening
+ * Home's _Owed_ tab (`/owed`, RD-25): only the cards that owe, narrowed, ordered and grouped as
+ * kept in the address (`q`, `f.locations`, `f.owners`, `f.states`, `sort`, `dir`, `by`), each tile opening the card's panel over the tab (`?card=`), and _Pay_ opening
  * it straight on the pay form with what is left filled in.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -95,14 +95,72 @@ const sortBy = async (field: string | null, dir: string | null) => {
 	await press($("dialog [data-action=apply]"))
 }
 
-test("the sort is the shared control row's chip, as on Cards: no search, no Filter", async () => {
+test("the control row is Cards': search, Filter, then the sort and group chips", async () => {
 	await open()
+	expect($<HTMLInputElement>(".owed-main > .tx-controls input.search")?.placeholder).toBe("Name, ID, last 4 or comment")
+	expect(text($('.tx-controls [data-action="filter"]'))).toBe("Filter")
 	expect(text(sortChip())).toBe("Sort: Most urgent first ▾")
 	expect(sortChip()?.dataset["action"]).toBe("sort")
-	expect($(".tx-controls input.search")).toBeNull()
-	expect($('.tx-controls [data-action="filter"]')).toBeNull()
+	expect(text($('.tx-chips [data-action="group"]'))).toBe("Group: None ▾")
 	// The control row heads the tab's column, before the list, as on Cards.
 	expect($(".owed-main > .tx-controls + .owed-list")).not.toBeNull()
+	// Not grouped by default: one flat list, no section heads.
+	expect($(".owed-list section[data-section]")).toBeNull()
+})
+
+test("the search narrows in place, kept in the address as q", async () => {
+	const { history } = await open()
+	const box = $<HTMLInputElement>(".tx-controls input.search")
+	if (!box) throw new Error("no search")
+	box.value = "12.3"
+	box.dispatchEvent(new Event("input"))
+	await settle()
+	expect(tiles()).toEqual(["12.3"])
+	expect(history.now()).toBe("/owed?q=12.3")
+	expect(history.size()).toBe(1)
+})
+
+test("Filter opens Cards' sheet with Kept in, Account holder and Bill; a pick is a chip and an f. key", async () => {
+	const { history } = await open()
+	await press($('.tx-controls [data-action="filter"]'))
+	expect(text($("dialog h2"))).toBe("Filter owed cards")
+	expect([...document.querySelectorAll("dialog [role=tab]")].map(text)).toEqual(["Filter", "Sort", "Group"])
+	expect([...document.querySelectorAll("dialog fieldset legend")].map(text)).toContain("Bill")
+	expect([...document.querySelectorAll("dialog [data-state]")].map(text)).toEqual([
+		"Overdue",
+		"Due soon",
+		"No bill yet",
+	])
+	await press($('dialog [data-state="overdue"]'))
+	expect(text($("dialog [data-action=apply]"))).toBe("Show 1 card")
+	await press($("dialog [data-action=apply]"))
+	expect(history.now()).toBe("/owed?f.states=overdue")
+	expect(tiles()).toEqual(["7"])
+	expect(text($('.tx-controls [data-action="filter"] .tx-count'))).toBe("1")
+	const chip = $('.tx-chips [data-chip="state:overdue"]')
+	expect(text(chip)).toBe("Overdue ×")
+	await press(chip)
+	expect(history.now()).toBe("/owed")
+	expect(tiles()).toEqual(["7", "12.3"])
+})
+
+test("the group chip groups as on Cards, each section in the chosen order; by=place in the address", async () => {
+	const { history } = await open("?f.owners=KC&f.locations=krabi")
+	expect(text($('.tx-chips [data-chip="loc:krabi"]'))).toBe("Krabi ×")
+	expect(text($('.tx-chips [data-chip="owner:KC"]'))).toBe("KC ×")
+	await press($('.tx-chips [data-action="group"]'))
+	expect($('dialog [role=tab][data-tab="group"]')?.getAttribute("aria-selected")).toBe("true")
+	await press($('dialog [data-by="place"]'))
+	await press($("dialog [data-action=apply]"))
+	expect(history.now()).toBe("/owed?f.locations=krabi&f.owners=KC&by=place")
+	expect(text($('.owed-list section[data-section="place:krabi"] h2'))).toBe("Krabi 2 cards · takes purchases")
+	expect(tiles()).toEqual(["7", "12.3"])
+})
+
+test("nothing matching says so, as on Cards", async () => {
+	await open("?q=nothing")
+	expect(text($(".owed-list .empty"))).toBe("No card matches. Clear the search or a filter.")
+	expect($(".tx-controls input.search")).not.toBeNull()
 })
 
 test("the order comes from the address, and a new one is written in place, keys at default left out", async () => {

@@ -9,6 +9,7 @@ import type {
 } from "#lib/domain/types"
 
 import { canPurchase } from "#lib/domain/card"
+import { type CardListView, filterCards, type Sectioned, sectionCards } from "#lib/domain/cards-view"
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
 import { compareDates, daysBetween } from "#lib/domain/date"
 import { ledgerUrgency, nextBill, statementStart } from "#lib/domain/ledger"
@@ -104,6 +105,30 @@ export function sortReady(rows: ReadyRow[], sort: ReadySort, dir: SortDir = READ
 		return compareDates(a.dueDate, b.dueDate)
 	}
 	return [...rows].sort(directed(key, dir, (a, b) => byId(a.card, b.card)))
+}
+
+/** The _Ready to use_ tab's view (RD-29): Cards' filter, the sort and the grouping. */
+export type ReadyView = CardListView<ReadySort>
+
+/** By place, most room first. */
+export const DEFAULT_READY_VIEW: ReadyView = {
+	q: "",
+	locations: [],
+	owners: [],
+	sort: "room",
+	dir: READY_DIRS.room,
+	by: "place",
+}
+
+/** The `rows` that match the view (as on Cards), in its sort, sectioned as on Cards (`sectionCards`). */
+export function readyResults(
+	rows: ReadyRow[],
+	groups: LimitGroup[],
+	view: ReadyView,
+	locationOrder: readonly string[],
+): Sectioned<ReadyRow> {
+	const matches = filterCards(sortReady(rows, view.sort, view.dir), (row) => row.card, groups, view)
+	return sectionCards(view.by, matches, (row) => row.card, groups, locationOrder)
 }
 
 export type NeedsItem =

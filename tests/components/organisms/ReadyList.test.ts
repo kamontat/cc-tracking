@@ -1,11 +1,12 @@
-import type { ReadyRow, ReadySort } from "#lib/domain/home"
-import type { SortDir } from "#lib/domain/sort"
-import type { LimitGroup, PlainDate } from "#lib/domain/types"
+import type { Sectioned } from "#lib/domain/cards-view"
+import type { ReadyRow } from "#lib/domain/home"
+import type { LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
 
 import ReadyList from "#components/organisms/ReadyList.svelte"
+import { sortReady } from "#lib/domain/home"
 import { setLocale } from "#lib/i18n/index"
 import { flat, testGroup, testRow, testRows } from "./ready-test-rows"
 
@@ -23,30 +24,33 @@ afterEach(() => {
 })
 
 type Props = {
+	/** The rows on show, flat (most room first); `show` passes them as results. */
 	rows: ReadyRow[]
+	sections: Sectioned<ReadyRow>["sections"]
+	total: number
 	places: string[]
 	groups: LimitGroup[]
+	locations: LocationRecord[]
 	today: PlainDate
 	unassigned: number
-	sort: ReadySort
-	dir: SortDir
 	current: string | null
 	onopencard: (id: string) => void
 }
 
-const show = (props: Partial<Props> = {}) => {
+const show = ({ rows = testRows(), sections = null, total, ...props }: Partial<Props> = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
+	const list = sortReady(rows, "room")
+	const count = sections ? sections.reduce((n, s) => n + s.cards.length, 0) : list.length
 	mounted = mount(ReadyList, {
 		target: document.body,
 		props: {
-			rows: testRows(),
+			results: { sections, flat: sections ? null : list, count },
+			total: total ?? count,
 			groups: [testGroup],
 			places: ["Bangkok", "Krabi"],
 			today: "2026-10-31",
 			unassigned: 0,
-			sort: "room",
-			dir: "desc",
 			...props,
 		},
 	})
@@ -76,7 +80,7 @@ test("every ready card shows, most room first, each a tile opening the card's pa
 	const root = show({ rows: five() })
 	expect(order(root)).toEqual(["4", "B", "A", "C", "12.3"])
 	expect(root.querySelectorAll(".tiles")).toHaveLength(1)
-	expect(root.querySelector(".tiles")?.id).toBe("ready-list")
+	expect(root.querySelector("#ready-list .tiles")).not.toBeNull()
 	for (const el of root.querySelectorAll("[data-card]")) {
 		expect(el.localName).toBe("a")
 		expect(el.classList.contains("tile")).toBe(true)
@@ -102,16 +106,21 @@ test("a plain click opens the panel in place, the open card marked; a new-tab cl
 	expect(opened).toEqual(["12.3"])
 })
 
-test("sorts by room, close or due, either way", () => {
-	const rows = [
-		testRow("A", 1_00, "2026-11-12", "2026-11-30"),
-		testRow("B", 3_00, "2026-11-10", "2026-12-02"),
-		testRow("C", 2_00, "2026-11-14", "2026-11-28"),
-	]
-	expect(order(show({ rows, sort: "room", dir: "asc" }))).toEqual(["A", "C", "B"])
-	expect(order(show({ rows, sort: "close", dir: "desc" }))).toEqual(["C", "A", "B"])
-	expect(order(show({ rows, sort: "due", dir: "desc" }))).toEqual(["B", "A", "C"])
-	expect(order(show({ rows, sort: "due", dir: "asc" }))).toEqual(["C", "A", "B"])
+test("grouped, the tiles sit in Cards' sections with no count line; none matching says so", () => {
+	const [a, b, c] = testRows()
+	if (!a || !b || !c) throw new Error("no rows")
+	const root = show({
+		locations: [{ id: "krabi", name: "Krabi", takesPurchases: true }],
+		sections: [{ key: "place:krabi", kind: "place", location: "krabi", cards: [b, a, c] }],
+	} as Partial<Props>)
+	expect(flat(root.querySelector("#ready-list section[data-section='place:krabi'] h2"))).toBe(
+		"Krabi 3 cards · takes purchases",
+	)
+	expect(order(root)).toEqual(["B", "A", "C"])
+	expect(root.querySelector(".result-head")).toBeNull()
+	const none = show({ rows: [], total: 3 })
+	expect(flat(none.querySelector(".empty"))).toBe("No card matches. Clear the search or a filter.")
+	expect(none.querySelector(".note")).toBeNull()
 })
 
 test("nothing ready names the next step and offers no list", () => {

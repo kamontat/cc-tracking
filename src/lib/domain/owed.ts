@@ -1,5 +1,6 @@
-import type { Card, CardLedger, PlainDate } from "#lib/domain/types"
+import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
+import { type CardListView, filterCards, type Sectioned, sectionCards } from "#lib/domain/cards-view"
 import { compareDates } from "#lib/domain/date"
 import { type PayChoice, payChoices } from "#lib/domain/pay"
 import { directed, type SortDir } from "#lib/domain/sort"
@@ -12,6 +13,49 @@ export const OWED_SORTS: readonly OwedSort[] = ["urgency", "card", "due", "left"
 
 /** Each *Owed* sort's own direction: most urgent, card id, soonest due, most owed first. */
 export const OWED_DIRS: Record<OwedSort, SortDir> = { urgency: "asc", card: "asc", due: "asc", left: "desc" }
+
+/**
+ * Where a card's debt stands: its bill is past due, due within the pay tag's 7 days (`soon`, as
+ * `ledgerUrgency`), or it owes with no bill yet (`unbilled`: all of it on the open statement).
+ */
+export type OwedState = "overdue" | "soon" | "unbilled"
+
+export const OWED_STATES: readonly OwedState[] = ["overdue", "soon", "unbilled"]
+
+/** The row's `OwedState`; null for a bill due later than soon. */
+export function owedState(row: OwedRow): OwedState | null {
+	if (!row.bill) return "unbilled"
+	return row.urgency === "overdue" || row.urgency === "soon" ? row.urgency : null
+}
+
+/** The _Owed_ tab's view (RD-29): Cards' filter, the bill states, the sort and the grouping. */
+export type OwedView = CardListView<OwedSort> & { states: OwedState[] }
+
+/** Not grouped, most urgent first. */
+export const DEFAULT_OWED_VIEW: OwedView = {
+	q: "",
+	locations: [],
+	owners: [],
+	states: [],
+	sort: "urgency",
+	dir: OWED_DIRS.urgency,
+	by: "none",
+}
+
+/**
+ * The `rows` (already in the view's sort, `owedRows`) that match the view's search, places,
+ * holders and bill states (any of each), sectioned as on Cards (`sectionCards`).
+ */
+export function owedResults(
+	rows: OwedRow[],
+	groups: LimitGroup[],
+	view: OwedView,
+	locationOrder: readonly string[],
+): Sectioned<OwedRow> {
+	const states = (row: OwedRow) => view.states.length === 0 || view.states.includes(owedState(row) as OwedState)
+	const matches = filterCards(rows, (row) => row.card, groups, view).filter(states)
+	return sectionCards(view.by, matches, (row) => row.card, groups, locationOrder)
+}
 
 /**
  * Every card that owes, archived ones included while they owe; a card holding credit owes nothing,

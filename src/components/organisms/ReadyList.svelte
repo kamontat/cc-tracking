@@ -1,45 +1,49 @@
 <script lang="ts">
-	import type { ReadyRow, ReadySort } from "#lib/domain/home"
-	import type { SortDir } from "#lib/domain/sort"
-	import type { LimitGroup, PlainDate } from "#lib/domain/types"
+	import type { Sectioned } from "#lib/domain/cards-view"
+	import type { ReadyRow } from "#lib/domain/home"
+	import type { LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
+	import CardSections from "#components/molecules/CardSections.svelte"
 	import CardTile from "#components/molecules/CardTile.svelte"
 	import { displayDate } from "#lib/domain/date"
-	import { sortReady } from "#lib/domain/home"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { lastFour, tileTone } from "#lib/ui/card-tile"
 	import { READY_ADDRESS } from "#lib/ui/home-query"
 	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
-	 * Home's _Ready to use_ tab (RD-22), under the page's control row (its sort chip, `ReadyPage`):
-	 * the count and places, as Cards' result line, then every ready card, in `sort` and `dir` (most
-	 * room, longest to close, latest due, either way, DD-193), as a card tile (DD-151) that
+	 * Home's _Ready to use_ tab (RD-22), under the page's control row (`ReadyPage`): every ready card
+	 * that matches, in the page's sort (most room, longest to close, latest due, either way, DD-193),
+	 * in Cards' sections (`CardSections`) or, not grouped, under the count and places as Cards'
+	 * result line; with none matching it says so as Cards does. Each is a card tile (DD-151) that
 	 * opens the card's panel over the tab (`/ready?card=<id>`; a click asking for a new tab is the
 	 * browser's), the open card's tile marked. With no card ready it says so and leads to Settings.
 	 */
 	interface Props {
-		rows: ReadyRow[]
+		/** The ready cards on show, sorted, flat or sectioned. */
+		results: Sectioned<ReadyRow>
+		/** How many cards are ready at all, to tell "none ready" from "none match". */
+		total: number
 		/** The shown names of the places that take purchases, already in order. */
 		places: string[]
 		/** The stored limit groups, in order: a card's tile takes its group's colour. */
 		groups: LimitGroup[]
+		/** The stored locations: each place section's name. */
+		locations?: LocationRecord[]
 		/** Kept for the page's clock; the tiles' dates come with the rows. */
 		today: PlainDate
 		/** How many unarchived cards that could take a purchase point at no limit group. */
 		unassigned: number
-		sort: ReadySort
-		dir: SortDir
 		/** The card open in the panel now, whose tile is marked. */
 		current?: string | null
 		/** A tile's plain click: open the card's panel. */
 		onopencard?: (id: string) => void
 	}
 
-	const { rows, places, groups, unassigned, sort, dir, current = null, onopencard }: Props = $props()
+	const { results, total, places, groups, locations = [], unassigned, current = null, onopencard }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -48,8 +52,10 @@
 		return t(key, params)
 	}
 
-	const count = $derived(rows.length)
-	const sorted = $derived(sortReady(rows, sort, dir))
+	const count = $derived(results.count)
+	const head = $derived(
+		tr(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places: places.join(", ") }),
+	)
 
 	/** A tile's click: the panel opens in place, unless the reader asked the browser for a new tab. */
 	const opener = (id: string) => (event: MouseEvent) => {
@@ -71,37 +77,44 @@
 	)
 </script>
 
+{#snippet tile(row: ReadyRow)}
+	<CardTile
+		card={row.card}
+		room={row.room}
+		credit={row.credit}
+		tone={tileTone(row.card, groups)}
+		href={withRecord(READY_ADDRESS, { kind: "card", id: row.card.id })}
+		current={row.card.id === current}
+		onclick={opener(row.card.id)}
+		corner={lastFour(row.card)}
+		mono
+		facts={facts(row)}
+		plainRoom
+		quietOver />
+{/snippet}
+
 <div class="ready">
-	<section>
-		<p class="result-head">
-			{tr(count === 1 ? "ready.summary.one" : "ready.summary.many", { count, places: places.join(", ") })}
-		</p>
-		{#if count === 0}
+	{#if total === 0}
+		<section>
+			<p class="result-head">{head}</p>
 			<div class="note">
 				<p>{tr("ready.empty")}</p>
 				<p>{tr("quickAdd.noEligible")}</p>
 				<a data-action="settings" href="/settings/locations">{tr("ready.toSettings")}</a>
 			</div>
-		{:else}
-			<div class="tiles" id="ready-list">
-				{#each sorted as row (row.card.id)}
-					<CardTile
-						card={row.card}
-						room={row.room}
-						credit={row.credit}
-						tone={tileTone(row.card, groups)}
-						href={withRecord(READY_ADDRESS, { kind: "card", id: row.card.id })}
-						current={row.card.id === current}
-						onclick={opener(row.card.id)}
-						corner={lastFour(row.card)}
-						mono
-						facts={facts(row)}
-						plainRoom
-						quietOver />
-				{/each}
-			</div>
-		{/if}
-	</section>
+		</section>
+	{:else if count === 0}
+		<p class="empty">{tr("cards.page.noMatch")}</p>
+	{:else}
+		<div class="results" id="ready-list">
+			<CardSections
+				{results}
+				cardOf={(row: ReadyRow) => row.card}
+				{locations}
+				head={results.flat ? head : undefined}
+				{tile} />
+		</div>
+	{/if}
 	{#if unassigned > 0}
 		<p class="sub" data-testid="unassigned">
 			{tr(unassigned === 1 ? "spendable.unassigned.one" : "spendable.unassigned.many", { count: unassigned })}
@@ -111,8 +124,9 @@
 </div>
 
 <style>
-	/* The list's column, spaced as Cards' (`CardsList`): the result line over the tiles, then the note. */
-	.ready {
+	/* The list's column, spaced as Cards' (`CardsList`): the sections, then the note. */
+	.ready,
+	.ready .results {
 		display: flex;
 		flex-direction: column;
 		gap: var(--cc-space-4);
@@ -138,15 +152,13 @@
 		background: var(--cc-surface-sunken);
 	}
 
-	/* The tiles' grid: one column on a phone, as many as fit from 900px. */
-	.ready .tiles {
-		display: grid;
-		gap: var(--cc-space-2);
-	}
-
-	@media (min-width: 900px) {
-		.ready .tiles {
-			grid-template-columns: repeat(auto-fill, minmax(var(--cc-tile-min), 1fr));
-		}
+	.ready .empty {
+		margin: 0;
+		padding: var(--cc-space-4);
+		color: var(--cc-text-muted);
+		text-align: center;
+		background: var(--cc-surface);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
 	}
 </style>

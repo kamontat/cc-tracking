@@ -1,10 +1,21 @@
 import type { SortDir } from "#lib/domain/sort"
-import type { Card, CardPayment, Purchase } from "#lib/domain/types"
+import type { Card, CardPayment, LimitGroup, Purchase } from "#lib/domain/types"
 
 import { describe, expect, test } from "vitest"
 
 import { ledgersFor } from "#lib/domain/ledger"
-import { OWED_DIRS, OWED_SORTS, type OwedSort, owedLeft, owedRows } from "#lib/domain/owed"
+import {
+	DEFAULT_OWED_VIEW,
+	OWED_DIRS,
+	OWED_SORTS,
+	OWED_STATES,
+	type OwedSort,
+	type OwedView,
+	owedLeft,
+	owedResults,
+	owedRows,
+	owedState,
+} from "#lib/domain/owed"
 
 const TODAY = "2026-10-31"
 const mk = (id: string, extra: Partial<Card> = {}): Card => ({
@@ -91,5 +102,107 @@ describe("owedLeft", () => {
 			["a", 300],
 			["b", 70],
 		])
+	})
+})
+
+describe("owedState", () => {
+	test("overdue, due soon (within the pay tag's 7 days), unbilled (owes, no bill yet), else none", () => {
+		const cs = [
+			mk("over"),
+			mk("soon", { cycle: { kind: "offset", closeDay: 25, dueOffsetDays: 10 } }),
+			mk("later"),
+			mk("open"),
+		]
+		const ledgers = ledgersFor(
+			cs,
+			[
+				buy("p1", { cardId: "over", date: "2026-08-10" }),
+				buy("p2", { cardId: "soon", date: "2026-10-10" }),
+				buy("p3", { cardId: "later", date: "2026-10-10" }),
+				buy("p4", { cardId: "open", date: "2026-10-28" }),
+			],
+			[],
+			[],
+			TODAY,
+		)
+		const states = Object.fromEntries(owedRows(cs, ledgers, TODAY, "card").map((r) => [r.card.id, owedState(r)]))
+		expect(OWED_STATES).toEqual(["overdue", "soon", "unbilled"])
+		expect(states).toEqual({ over: "overdue", soon: "soon", later: null, open: "unbilled" })
+	})
+})
+
+describe("owedResults", () => {
+	const groups: LimitGroup[] = [
+		{ id: "g1", name: "Bee", limit: 100_000, owner: "NT" },
+		{ id: "g2", name: "Ant", limit: 100_000, owner: "KC" },
+	]
+	const cs = [
+		mk("a", { location: "krabi" }),
+		mk("b", { location: "bangkok", limitGroupId: "g2", name: "Platinum" }),
+		mk("c", { location: "krabi", limitGroupId: "g2", last4: "9876" }),
+	]
+	const ledgers = ledgersFor(
+		cs,
+		[
+			buy("p1", { cardId: "a", date: "2026-08-10", amount: 100 }), // overdue
+			buy("p2", { cardId: "b", date: "2026-10-01", amount: 900 }), // due 14 Nov
+			buy("p3", { cardId: "c", date: "2026-10-28", amount: 500 }), // no bill yet
+		],
+		[],
+		[],
+		TODAY,
+	)
+	const rows = owedRows(cs, ledgers, TODAY, "urgency")
+	const view = (extra: Partial<OwedView> = {}): OwedView => ({ ...DEFAULT_OWED_VIEW, ...extra })
+	const order = ["krabi", "bangkok"]
+	const ids = (list: { card: Card }[] | null | undefined) => list?.map((r) => r.card.id)
+
+	test("by default every row, flat, in the rows' order (most urgent first)", () => {
+		expect(DEFAULT_OWED_VIEW).toEqual({
+			q: "",
+			locations: [],
+			owners: [],
+			states: [],
+			sort: "urgency",
+			dir: "asc",
+			by: "none",
+		})
+		const all = owedResults(rows, groups, view(), order)
+		expect(all.sections).toBeNull()
+		expect(ids(all.flat)).toEqual(["a", "b", "c"])
+		expect(all.count).toBe(3)
+	})
+
+	test("search matches the card's id, name and last 4, as Cards'", () => {
+		expect(ids(owedResults(rows, groups, view({ q: "plat" }), order).flat)).toEqual(["b"])
+		expect(ids(owedResults(rows, groups, view({ q: "9876" }), order).flat)).toEqual(["c"])
+		expect(ids(owedResults(rows, groups, view({ q: " B " }), order).flat)).toEqual(["b"])
+	})
+
+	test("places, account holders and bill states narrow, each any of its picks", () => {
+		expect(ids(owedResults(rows, groups, view({ locations: ["bangkok"] }), order).flat)).toEqual(["b"])
+		expect(ids(owedResults(rows, groups, view({ owners: ["KC"] }), order).flat)).toEqual(["b", "c"])
+		expect(ids(owedResults(rows, groups, view({ states: ["overdue", "unbilled"] }), order).flat)).toEqual(["a", "c"])
+		expect(owedResults(rows, groups, view({ states: ["soon"] }), order).count).toBe(0)
+	})
+
+	test("grouped as on Cards, each section keeping the rows' order", () => {
+		const place = owedResults(rows, groups, view({ by: "place" }), order)
+		expect(place.flat).toBeNull()
+		expect(place.sections?.map((s) => [s.key, ids(s.cards)])).toEqual([
+			["place:krabi", ["a", "c"]],
+			["place:bangkok", ["b"]],
+		])
+		const holder = owedResults(rows, groups, view({ by: "holder" }), order)
+		expect(holder.sections?.map((s) => [s.key, ids(s.cards)])).toEqual([
+			["holder:KC", ["b", "c"]],
+			["holder:NT", ["a"]],
+		])
+		const limit = owedResults(rows, groups, view({ by: "limit" }), order)
+		expect(limit.sections?.map((s) => [s.key, ids(s.cards)])).toEqual([
+			["limit:g2", ["b", "c"]],
+			["limit:g1", ["a"]],
+		])
+		expect(limit.count).toBe(3)
 	})
 })

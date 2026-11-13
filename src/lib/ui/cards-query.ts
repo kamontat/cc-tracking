@@ -2,6 +2,7 @@ import {
 	CARDS_DIRS,
 	CARDS_GROUPS,
 	CARDS_SORTS,
+	type CardFilter,
 	type CardsGroup,
 	type CardsSort,
 	type CardsView,
@@ -24,6 +25,26 @@ const known = (ids: readonly string[], values: string[]): string[] =>
 	[...new Set(values)].filter((value) => ids.includes(value))
 
 /**
+ * The search and the `f.locations` and `f.owners` filters every list of cards shares (Cards,
+ * Home's _Owed_ and _Ready to use_, RD-29). An `f.locations` is kept only when it is one of
+ * `locationIds`, the stored records' ids; an unknown owner is dropped.
+ */
+export function readCardFilter(p: URLSearchParams, locationIds: readonly string[]): CardFilter {
+	return {
+		q: p.get("q") ?? "",
+		locations: known(locationIds, p.getAll("f.locations")),
+		owners: manyOf(OWNERS, p.getAll("f.owners")),
+	}
+}
+
+/** Sets `q` when there is one, then each location and owner, repeated. */
+export function writeCardFilter(p: URLSearchParams, filter: CardFilter): void {
+	if (filter.q) p.set("q", filter.q)
+	for (const l of filter.locations) p.append("f.locations", l)
+	for (const o of filter.owners) p.append("f.owners", o)
+}
+
+/**
  * The Cards tab's state from `/cards?q=&f.locations=&f.owners=&sort=&dir=&by=` (RD-29);
  * unknown values read as defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`). An
  * `f.locations` is kept only when it is one of `locationIds`, the stored records' ids.
@@ -33,9 +54,7 @@ export function readCardsView(search: string, locationIds: readonly string[]): C
 	const sort = p.get("sort")
 	const field = CARDS_SORTS.includes(sort as CardsSort) ? (sort as CardsSort) : DEFAULT_CARDS_VIEW.sort
 	return {
-		q: p.get("q") ?? "",
-		locations: known(locationIds, p.getAll("f.locations")),
-		owners: manyOf(OWNERS, p.getAll("f.owners")),
+		...readCardFilter(p, locationIds),
 		sort: field,
 		dir: readDir(p.get("dir"), field, CARDS_DIRS),
 		by: CARDS_GROUPS.includes(p.get("by") as CardsGroup) ? (p.get("by") as CardsGroup) : DEFAULT_CARDS_VIEW.by,
@@ -45,9 +64,7 @@ export function readCardsView(search: string, locationIds: readonly string[]): C
 /** `""` for the defaults, else `?` and the fields that differ, `f.locations` and `f.owners` repeated. */
 export function writeCardsView(view: CardsView): string {
 	const p = new URLSearchParams()
-	if (view.q) p.set("q", view.q)
-	for (const l of view.locations) p.append("f.locations", l)
-	for (const o of view.owners) p.append("f.owners", o)
+	writeCardFilter(p, view)
 	if (view.sort !== DEFAULT_CARDS_VIEW.sort) p.set("sort", view.sort)
 	if (view.dir !== CARDS_DIRS[view.sort]) p.set("dir", view.dir)
 	if (view.by !== DEFAULT_CARDS_VIEW.by) p.set("by", view.by)

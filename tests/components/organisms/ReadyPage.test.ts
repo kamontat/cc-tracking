@@ -10,8 +10,8 @@ import { fakeHistory } from "../../lib/ui/fake-history"
 import { saveLocations } from "./list-support"
 
 /**
- * Home's _Ready to use_ tab (`/ready`, RD-22): every ready card, in the order kept in the address
- * (`sort`, `dir`), each tile opening the card's panel over the tab (`?card=`).
+ * Home's _Ready to use_ tab (`/ready`, RD-22): every ready card, narrowed, ordered and grouped as kept
+ * in the address (`q`, `f.locations`, `f.owners`, `sort`, `dir`, `by`), each tile opening the card's panel over the tab (`?card=`).
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -80,10 +80,10 @@ const press = async (el: Element | null | undefined) => {
 
 const tiles = () => [...document.querySelectorAll("#ready-list [data-card]")].map((el) => el.getAttribute("data-card"))
 
-test("every ready card, most room first, with no See more", async () => {
+test("every ready card by place, most room first, with no See more", async () => {
 	await open()
 	expect(tiles()).toEqual(["1", "2", "3", "4", "5"])
-	expect(text($(".ready .result-head"))).toBe("5 cards in Krabi")
+	expect(text($('.ready section[data-section="place:krabi"] h2'))).toBe("Krabi 5 cards · takes purchases")
 	expect($('[data-action="more"]')).toBeNull()
 })
 
@@ -97,11 +97,14 @@ const sortBy = async (field: string | null, dir: string | null) => {
 	await press($("dialog [data-action=apply]"))
 }
 
-test("the sort is the shared control row's chip, as on Cards and Owed: no search, no Filter", async () => {
+test("the control row is Cards': search, Filter, then the sort and group chips", async () => {
 	await open()
+	expect($<HTMLInputElement>(".ready-main > .tx-controls input.search")?.placeholder).toBe(
+		"Name, ID, last 4 or comment",
+	)
+	expect(text($('.tx-controls [data-action="filter"]'))).toBe("Filter")
 	expect(text(sortChip())).toBe("Sort: Most room ▾")
-	expect($(".tx-controls input.search")).toBeNull()
-	expect($('.tx-controls [data-action="filter"]')).toBeNull()
+	expect(text($('.tx-chips [data-action="group"]'))).toBe("Group: Place ▾")
 	expect($(".ready-main > .tx-controls + .ready")).not.toBeNull()
 })
 
@@ -115,6 +118,35 @@ test("the order comes from the address, and a new one is written in place", asyn
 	expect(history.now()).toBe("/ready?dir=asc")
 	expect(history.size()).toBe(1)
 	expect(tiles()).toEqual(["3", "4", "5", "1", "2"])
+})
+
+test("Filter opens Cards' sheet, with no bill states; filters and grouping go in the address", async () => {
+	const { history } = await open()
+	await press($('.tx-controls [data-action="filter"]'))
+	expect(text($("dialog h2"))).toBe("Filter ready cards")
+	expect(document.querySelector("dialog [data-state]")).toBeNull()
+	await press($('dialog [data-owner="RI"]'))
+	expect($<HTMLButtonElement>("dialog [data-action=apply]")?.disabled).toBe(true)
+	await press($('dialog [data-owner="RI"]'))
+	await press($('dialog [data-by="limit"]'))
+	await press($("dialog [data-action=apply]"))
+	expect(history.now()).toBe("/ready?by=limit")
+	expect(
+		[...document.querySelectorAll(".ready section[data-section]")].map((el) => el.getAttribute("data-section")),
+	).toEqual(["limit:g1", "limit:g2"])
+	expect(text($('.ready section[data-section="limit:g2"] h2'))).toBe("G2 3 cards")
+})
+
+test("not grouped, the head counts the cards and their places; a search that finds nothing says so", async () => {
+	const { history } = await open("?by=none")
+	expect(text($(".ready .result-head"))).toBe("5 cards in Krabi")
+	const box = $<HTMLInputElement>(".tx-controls input.search")
+	if (!box) throw new Error("no search")
+	box.value = "zzz"
+	box.dispatchEvent(new Event("input"))
+	await settle()
+	expect(history.now()).toBe("/ready?q=zzz&by=none")
+	expect(text($(".ready .empty"))).toBe("No card matches. Clear the search or a filter.")
 })
 
 test("a tile opens the card's panel over the tab, pushing ?card=; Back closes it", async () => {
@@ -135,7 +167,7 @@ test("a pasted ?card= opens the panel at once, an archived card's too", async ()
 })
 
 test("names the places in the reader's language", async () => {
-	await open()
+	await open("?by=none")
 	setLocale("th")
 	await settle()
 	expect(text($(".ready .result-head"))).toContain("กระบี่")
