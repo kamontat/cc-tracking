@@ -4,10 +4,7 @@ import { afterEach, expect, test } from "vitest"
 import BuiltTime from "#components/atoms/BuiltTime.svelte"
 import { setLocale } from "#lib/i18n/index"
 
-// The time is read on the viewer's own clock, which the zone only names, so pin the clock's zone.
-process.env.TZ = "Asia/Bangkok"
-
-/** When the page was built, in the viewer's own zone and language, following a switch. */
+/** When the page was built, on the viewer's own clock (its zone a GMT offset) and in their language. */
 let mounted: ReturnType<typeof mount> | undefined
 
 afterEach(() => {
@@ -17,13 +14,13 @@ afterEach(() => {
 })
 
 const show = (builtAt: string) => {
-	mounted = mount(BuiltTime, { target: document.body, props: { builtAt, timeZone: "Asia/Bangkok" } })
+	mounted = mount(BuiltTime, { target: document.body, props: { builtAt, offset: 7 * 60 } })
 	flushSync()
 	return document.body.textContent?.trim()
 }
 
 test("shows the build time in the viewer's zone", () => {
-	expect(show("2026-10-30T07:05:00Z")).toBe("30 Oct 2026, 14:05 (Asia/Bangkok)")
+	expect(show("2026-10-30T07:05:00Z")).toBe("30 Oct 2026, 14:05 (GMT+7)")
 })
 
 test("follows a language switch", () => {
@@ -31,7 +28,7 @@ test("follows a language switch", () => {
 	setLocale("th")
 	flushSync()
 	expect(document.body.textContent).not.toContain("Oct")
-	expect(document.body.textContent).toContain("Asia/Bangkok")
+	expect(document.body.textContent).toContain("(GMT+7)")
 })
 
 test("an unreadable stamp shows nothing, never Invalid or NaN", () => {

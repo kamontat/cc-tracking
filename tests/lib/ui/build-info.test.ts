@@ -8,12 +8,12 @@ import {
 	commitUrl,
 	envMark,
 	formatBuiltLocal,
+	gmtOffset,
 	parseBuiltAt,
 	REPO_URL,
 	shortCommit,
 	sourceLabel,
 	titleMark,
-	viewerTimeZone,
 } from "#lib/ui/build-info"
 
 const SHA = "7ba698c1d4f0a2b3c4d5e6f708192a3b4c5d6e7f"
@@ -115,15 +115,21 @@ test("header mark per environment reads as the title mark", () => {
 	expect(envMark("preview", "")).toBe("(preview)")
 })
 
-test("built time reads in the viewer's zone", () => {
+test("built time reads on the viewer's clock, its zone as a GMT offset", () => {
 	const when = new Date("2026-10-30T07:05:00Z")
-	expect(formatBuiltLocal(when, "en", "Asia/Bangkok")).toBe("30 Oct 2026, 14:05 (Asia/Bangkok)")
-	expect(formatBuiltLocal(when, "en", "")).toBe("30 Oct 2026, 14:05")
-	expect(formatBuiltLocal(when, "th", "")).toBe(`${displayDate("2026-10-30", "th")}, 14:05`)
+	expect(formatBuiltLocal(when, "en", 7 * 60)).toBe("30 Oct 2026, 14:05 (GMT+7)")
+	expect(formatBuiltLocal(when, "th", 7 * 60)).toBe(`${displayDate("2026-10-30", "th")}, 14:05 (GMT+7)`)
+	// The offset moves the clock across midnight, and the date with it.
+	expect(formatBuiltLocal(new Date("2026-10-30T20:05:00Z"), "en", 7 * 60)).toBe("31 Oct 2026, 03:05 (GMT+7)")
+	expect(formatBuiltLocal(when, "en", -3 * 60)).toBe("30 Oct 2026, 04:05 (GMT-3)")
 })
 
-test("viewerTimeZone names a zone or falls back to empty", () => {
-	expect(typeof viewerTimeZone()).toBe("string")
+test("gmtOffset names whole hours, minutes when there are any, and zero as GMT+0", () => {
+	expect(gmtOffset(7 * 60)).toBe("GMT+7")
+	expect(gmtOffset(5 * 60 + 30)).toBe("GMT+5:30")
+	expect(gmtOffset(-(9 * 60 + 30))).toBe("GMT-9:30")
+	expect(gmtOffset(-3 * 60)).toBe("GMT-3")
+	expect(gmtOffset(0)).toBe("GMT+0")
 })
 
 test("source label", () => {
