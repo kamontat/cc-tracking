@@ -21,7 +21,7 @@ Arguments pass through: `bun run test tests/lib/gtm.test.ts`, `bun run dev --por
 | `check` | `check:type` (`astro check`) then `check:biome` (`biome check`) |
 | `format` | `biome check --unsafe --write`; read the diff after, unsafe fixes can change behaviour |
 | `astro` | passthrough: `bun run astro add <integration>`, `bun run astro sync` |
-| `mock` | writes `cc-tracking-mock-<today>.json`, a version 4 backup with every scenario and over three years of history, built around today (`--today YYYY-MM-DD`, `--out <file>`); restore it from Settings |
+| `mock` | writes `cc-tracking-mock-<today>-<seed>.json`, a version 4 backup with every scenario and over three years of history, built around today; names, ids, amounts, history lengths and extra cards, groups, owners, places, lists and plans are drawn from a random seed it prints (`--seed <text>` draws the same file again, `--today YYYY-MM-DD`, `--out <file>`); restore it from Settings |
 
 **Every script runs on Bun.** `astro` and `vitest` have a `node` shebang; `bunfig.toml`'s
 `[run] bun = true` runs them on Bun instead, which is also why tests can use `Bun.file` and
