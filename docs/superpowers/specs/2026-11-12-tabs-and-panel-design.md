@@ -81,7 +81,11 @@ Each has a recommendation, drawn in the mockup.
    what happened. Its tiles open the card's panel, whose home is Cards. It sits second,
    _Cards · Owed · Limits_. Lost: a payment landing in the ledger next to what is owed; the pay
    form returns to the card's panel, which shows what is left. Decided by the user, 2026-11-13.
-   Not a Cards filter (`?owing=1`): an owed tile leads with the bill, a card tile with the room.
+   Not merged into _Cards_ (decided by the user, 2026-11-13): the two differ in which cards
+   (every card, or those that owe), their order (by place, or most urgent first, flat), the
+   tile's lead number (room, or the bill) and its action (none, or _Pay_). Merged, the bills
+   view would be `/cards?owing=1&sort=urgency&by=none` on every visit, over 76 cards, with a
+   tile carrying both numbers; and _+ New › Pay_ would land on a view no tab shows.
 2. **The card page and the card form become the card panel**, as the limit group's summary and
    form are. `/card`, `/card/new` and `/card/edit` go; the Cards tab is one page. Recommended:
    yes (the user asked, 2026-11-13). Cost: the unsaved-changes prompt above, which no page has
