@@ -355,3 +355,13 @@ test("a store the browser refuses shows why, with Reload, and no rows", async ()
 	expect(flat(document.querySelector(".error-banner button"))).toBe("Reload")
 	expect(document.querySelector(".record-row")).toBeNull()
 })
+
+test("the note on what can't be deleted comes first, before the list", async () => {
+	const { root } = await setup()
+	const records = root.querySelector(".records")
+	const first = records?.firstElementChild
+	expect(first?.classList.contains("set-note")).toBe(true)
+	expect(flat(first)).toMatch(/can't be deleted/)
+	expect(first?.nextElementSibling?.classList.contains("set")).toBe(true)
+	expect(records?.querySelectorAll(":scope > .set-note")).toHaveLength(1)
+})
