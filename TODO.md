@@ -7,58 +7,17 @@
   that cap, split by kind (cards, purchases, card payments, statement dates, limit groups,
   purchase lists, locations), so the reader sees which data grows and how close they are to
   the limit before a save fails. `cc:settings` is no longer written; a leftover one is small.
-- Move the addresses to record paths with ids in the path, so an address says what it opens
-  and the same record keeps one address. Nothing is built yet. PR #37 was the proof of
-  concept (`/poc/items/<id>`); it is closed, and its branch `redesign/endpoints` is kept so
-  it can be reopened to bring its preview back.
-
-  Decided:
-  - Records own their paths: `/cards/*`, `/payments/*`, `/purchases/*`. Ids go in the path,
-    served by `public/_redirects` 200 rewrites (fixed paths above `:id` rules; the first
-    match wins). PR #37 showed this works on Workers, encoded ids (`x%2Fy%23z`) included.
-  - Every page needs `<base href="/">`: built pages load `../chunk-*.js`, which under
-    `/cards/<id>` would hit the `:id` rule and get HTML back, breaking the page silently.
-  - Sheets have their own paths. Opening one is `pushState` with the sheet sliding up over a
-    page that is drawn once and never redrawn; Back slides it down. A reload or a pasted
-    address opens the sheet at once, as `/pay?card=` does today.
-  - No redirects for old addresses, and the `/backup` redirect goes (DC-17 retires).
-  - Keys: `owed` becomes `owedSort`, `loc` becomes `location`, `view` goes (phone views
-    become paths), `id` and `group`/`newGroup` move into the path. Filters, search and sort
-    stay in the query.
-
-  Draft:
-
-  | Address                                            | Was                                        | Tab          |
-  | -------------------------------------------------- | ------------------------------------------ | ------------ |
-  | `/`                                                | `/`                                        | Home         |
-  | `/transactions`                                    | `/transactions`                            | Transactions |
-  | `/transactions/owed`                               | `/transactions?view=owed`                  | Transactions |
-  | `/transactions/lists`                              | `/transactions?view=lists`                 | Transactions |
-  | `/payments/new`                                    | `/pay`                                     | Transactions |
-  | `/purchases/new?type=list`                         | `/list/new`                                | Home         |
-  | `/purchases/<id>`                                  | `/list/draft`, `/list/reply`, `/list/view` | Home         |
-  | `/cards`                                           | `/cards`                                   | Cards        |
-  | `/cards/groups`                                    | `/cards?view=groups`                       | Cards        |
-  | `/cards/groups/<id>`, `/cards/groups/new` (sheets) | `/cards?group=`, `?newGroup=1`             | Cards        |
-  | `/cards/new`                                       | `/card/new`                                | Cards        |
-  | `/cards/<id>`                                      | `/card?id=`                                | Cards        |
-  | `/cards/<id>/edit`                                 | `/card/edit?id=`                           | Cards        |
-  | `/cards/<id>/purchase` (sheet)                     | not in the address                         | Cards        |
-  | `/settings`, `/settings/locations`                 | same                                       | Settings     |
-
-  `/purchases/<id>` keeps one address while a list goes from draft to sent to saved; the
-  page picks its step by status.
-
-  Open, to settle before building:
-  1. `type=single`: build a single-purchase page now, or only reserve the key, keeping the
-     single purchase as the `/cards/<id>/purchase` sheet (suggested).
-  2. Tabs: `/purchases/*` on Home and `/payments/*` on Transactions?
-  3. The lists overview: `/transactions/lists`, or `/purchases?type=list`?
-  4. The payment sheet: `/payments/<cardId>` over the picker (suggested), or
-     `/cards/<id>/pay` over the card page. `?amount=` stays a query either way.
-  5. Trailing slash: `/cards/abc/` is a 404 on Workers; add `/:id/` rules or never write one.
-  6. Local dev: `astro dev` and `astro preview` ignore `public/_redirects`, so the deeper
-     paths 404 locally. Use Astro's `redirects` config or dynamic routes, or develop with
-     `wrangler dev`.
-
-  Then update `ENDPOINTS.md`, `PRD.md` and `PRD_TH.md` together, and build it test-first.
+- Build the tabs and detail panel (PRD RD-22 to RD-29, settled 2026-11-13). The spec, with every
+  address and query key, is `docs/superpowers/specs/2026-11-12-tabs-and-panel-design.md`, and its
+  mockup is `2026-11-12-tabs-and-panel-mockup.html` beside it. It replaces the record-path plan
+  (ids in the path, PR #37's proof of concept): ids now go in the query, so no rewrite rules are
+  needed. Six pull requests, each test-first, each updating `ENDPOINTS.md`, `PRD.md` and
+  `PRD_TH.md` as it ships:
+  1. The card id format and a required limit group (RD-27, RD-28): the card form and restore.
+  2. The panel molecule and the card panel on `/cards` (RD-23, RD-24).
+  3. Tabs and addresses for Cards: `/cards`, `/cards/limits` (RD-22, RD-29).
+  4. Transactions and the purchase list pages: `/transactions`, `/transactions/lists`,
+     `/transactions/lists/new`, `/transactions/lists/edit` (RD-22, RD-26).
+  5. Home's tabs, `/owed` and `/ready` among them, and its panel (RD-22, RD-25).
+  6. Retire `/card`, `/card/new`, `/card/edit`, `/pay`, `/list/*`, the floating _+ New_ and the
+     `/backup` redirect.
