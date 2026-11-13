@@ -814,6 +814,12 @@ test("About ends in a Force refresh row that fetches the newest version and relo
 	expect(row(root, "refresh").tagName).toBe("BUTTON")
 	await press(row(root, "refresh"))
 	expect(refreshes).toBe(1)
+	// The reload takes a moment: the row says it is working and takes no second press.
+	expect(row(root, "refresh").getAttribute("aria-busy")).toBe("true")
+	expect((row(root, "refresh") as HTMLButtonElement).disabled).toBe(true)
+	expect(flat(row(root, "refresh").querySelector(".set-row__action"))).toBe("Refreshing…")
+	await press(row(root, "refresh"))
+	expect(refreshes).toBe(1)
 	setLocale("th")
 	await settle()
 	expect(flat(row(root, "refresh"))).not.toContain("Force refresh")

@@ -220,6 +220,7 @@ export const th: Catalog = {
 	"about.refresh": "บังคับรีเฟรช",
 	"about.refreshHint": "โหลดเวอร์ชันล่าสุดแล้วรีเฟรช ข้อมูลของคุณยังอยู่ครบ",
 	"about.refreshAction": "รีเฟรช",
+	"about.refreshing": "กำลังรีเฟรช…",
 
 	"relative.today": "วันนี้",
 	"relative.inDays": "อีก {days} วัน",

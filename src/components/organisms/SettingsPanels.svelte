@@ -112,6 +112,14 @@
 		return t(key, params)
 	}
 
+	/** *Force refresh* was pressed: the row says so and holds until the page reloads. */
+	let refreshing = $state(false)
+	const onRefresh = () => {
+		if (refreshing) return
+		refreshing = true
+		refresh()
+	}
+
 	let repo = $state<Repository | null>(null)
 	let locations = $state<LocationRecord[]>([])
 	let owners = $state<OwnerRecord[]>([])
@@ -459,11 +467,19 @@
 				<h2>{tr("about.title")}</h2>
 				<div class="set">
 					{@render about?.()}
-					<button class="set-row" type="button" data-row="refresh" onclick={() => refresh()}>
+					<button
+						class="set-row"
+						type="button"
+						data-row="refresh"
+						disabled={refreshing}
+						aria-busy={refreshing ? "true" : undefined}
+						onclick={onRefresh}>
 						<span class="set-row__text"
 							>{tr("about.refresh")}<small class="set-row__sub">{tr("about.refreshHint")}</small></span
 						>
-						<span class="set-row__action" data-variant="quiet">{tr("about.refreshAction")}</span>
+						<span class="set-row__action" data-variant="quiet"
+							>{tr(refreshing ? "about.refreshing" : "about.refreshAction")}</span
+						>
 					</button>
 				</div>
 			</section>

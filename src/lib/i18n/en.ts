@@ -211,6 +211,7 @@ export const en = {
 	"about.refresh": "Force refresh",
 	"about.refreshHint": "Get the newest version and reload. Your data stays.",
 	"about.refreshAction": "Refresh",
+	"about.refreshing": "Refreshing…",
 
 	"relative.today": "today",
 	"relative.inDays": "in {days} days",
