@@ -377,10 +377,21 @@ export const en = {
 	"backup.clipboardRefused": "The browser would not read the clipboard. Paste the text here instead.",
 	"backup.fromLink": "From a link",
 	"backup.linkLabel": "Link to a backup file",
-	"backup.linkHint": "The site must let other sites read the file, as a raw GitHub or gist link does.",
+	"backup.linkHint":
+		"The site must let other sites read the file. Save the copy on {gist} or {pastefox}, then paste its link.",
+	"backup.linkHint.gist": "GitHub Gist",
+	"backup.linkHint.pastefox": "PasteFox",
 	"backup.link.notAddress": "That is not a web address (https://…).",
 	"backup.link.unreachable":
-		"Could not reach that link. The site may not let other sites read it; download the file and choose it instead.",
+		"Could not reach that link. The site may not let other sites read it; save the copy on GitHub Gist or PasteFox, or download the file and choose it instead.",
+	"backup.link.platform.unreachable": "Could not reach {platform}. Check the connection and try again.",
+	"backup.link.platform.missing":
+		"{platform} has nothing at that link. Check the link, and that the copy was not deleted or has not expired.",
+	"backup.link.platform.private":
+		"{platform} would not share that copy: it may be private or need a password. Make it public or unlisted, then try again.",
+	"backup.link.platform.status": "{platform} answered with error {status}. Try again in a moment.",
+	"backup.link.platform.notBackup":
+		"That {platform} link does not hold a backup. Save the text from Copy as text there, then paste its link.",
 	"backup.link.status": "That link answered with error {status}.",
 	"backup.question.file": "Restore {file}?",
 	"backup.question.pasted": "Restore pasted text?",

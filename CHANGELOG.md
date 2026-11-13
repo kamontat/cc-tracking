@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included
 
 ### BREAKING CHANGES
 
@@ -72,6 +72,20 @@ reasons don't show up in the code.
   nothing (DD-208). Keys added: `backup.fromLink`, `backup.linkLabel`, `backup.linkHint`,
   `backup.link.notAddress`, `backup.link.unreachable` and `backup.link.status`.
 
+- _From a link_ reads GitHub Gist and PasteFox share links from their raw file:
+  `gist.github.com/<user>/<id>#file-gistfile1-json` from
+  `gist.githubusercontent.com/<user>/<id>/raw/gistfile1.json` (with no anchor, the gist's first
+  file), and `pastefox.com/<code>` from `pastefox.com/api/pastes/<code>/raw`. The copy is named by
+  the gist's file or the paste's code. A link typed without `https://` gets it (DD-208).
+
+- The link step's hint names where to keep a copy, as links that open in a new tab: GitHub Gist
+  and PasteFox (no account needed). Keys added: `backup.linkHint.gist`, `backup.linkHint.pastefox`.
+
+- On Gist and PasteFox a failed link names the site and what to check: nothing there (deleted or
+  expired), private or behind a password, another error, unreachable, or not a backup at all.
+  Elsewhere an unreachable link also suggests the two sites. Keys added under
+  `backup.link.platform.*`.
+
 ### Improvements
 
 - Beside an open panel, Settings stacks its two columns into one when the page has less than
@@ -136,6 +150,10 @@ reasons don't show up in the code.
 - _Choose a file_ in the restore sheet is as tall as the buttons beside it: as a label it took
   the body's line height.
 
+- JSON that is not a backup and has no `version` (pasted, a file or a link) says it is not a
+  readable backup, instead of "This backup is version undefined, but this app reads versions
+  3–4."
+
 ### Decisions
 
 - The stored-payment conversion went along with version 2 restore, rather than keeping it for
@@ -174,6 +192,14 @@ reasons don't show up in the code.
   into an app link. The browser does the fetch, so only sites that allow cross-site reads work
   (a raw GitHub or gist link does); share links (Google Drive, Dropbox) are not rewritten into
   direct downloads, and the message points to downloading the file instead.
+
+- PasteFox was added beside GitHub Gist at the user's suggestion, as a place to keep a copy with no
+  account. Only its `pastefox.com/api/pastes/<code>/raw` address lets other sites read it; its
+  `api.pastefox.com/v1` API allows pastefox.com alone, so the app reads the former.
+
+- A gist's anchor gives its file back by turning the last dash into a dot, the rule the user gave.
+  A name with another dot does not come back and answers 404, which the message covers; the raw
+  link still works for it.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
