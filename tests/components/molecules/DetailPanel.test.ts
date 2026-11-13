@@ -201,3 +201,45 @@ test("the close label follows a language switch", () => {
 	flushSync()
 	expect($('[data-action="close-panel"]')?.getAttribute("aria-label")).toBe("ปิด")
 })
+
+test("a form opening slides the body in, ‹ back slides it out; the panel's first form does not", () => {
+	const values = new SvelteMap<string, boolean>([["form", false]])
+	mounted = mount(DetailPanel, {
+		target: document.body,
+		props: {
+			title: "KBank Visa",
+			get form() {
+				return values.get("form") ?? false
+			},
+			onclose: () => {},
+			children: raw("<p>body</p>"),
+		},
+	})
+	flushSync()
+	const body = () => $(".detail-panel__body")
+	expect(body()?.hasAttribute("data-slide")).toBe(false)
+	values.set("form", true)
+	flushSync()
+	expect(body()?.getAttribute("data-slide")).toBe("in")
+	values.set("form", false)
+	flushSync()
+	expect(body()?.getAttribute("data-slide")).toBe("out")
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	mounted = mount(DetailPanel, {
+		target: document.body,
+		props: { title: "New card", form: true, onclose: () => {}, children: raw("<p>body</p>") },
+	})
+	flushSync()
+	expect(body()?.hasAttribute("data-slide")).toBe(false)
+})
+
+// A form stays in the sheet over the list: the sheet keeps its height, its rounded top and the
+// page behind it, rather than jumping to the full screen with no motion.
+test("a form keeps the phone's sheet at one height", async () => {
+	const style = (await Bun.file("src/components/molecules/DetailPanel.svelte").text()).split("<style>")[1] ?? ""
+	expect(style).not.toContain("data-full")
+	expect(style).not.toContain("100dvh")
+	expect(style).toMatch(/\.detail-panel__body\[data-slide="in"\]\s*\{[^}]*animation:/)
+	expect(style).toMatch(/\.detail-panel__body\[data-slide="out"\]\s*\{[^}]*animation:/)
+})

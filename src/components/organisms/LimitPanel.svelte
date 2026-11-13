@@ -256,7 +256,7 @@
 		backLabel={head.back && group ? tr("panel.backToRecord", { name: group.name }) : undefined}
 		onclose={() => panel.close()}
 		ontouch={() => panel.touch()}
-		full={form !== null || current.id === null}>
+		form={form !== null || current.id === null}>
 		{#if !formFailed && !busy}
 			<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 		{/if}
