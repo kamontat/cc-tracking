@@ -25,12 +25,14 @@
 		 * (a save in flight) never sees its sheet slide away first.
 		 */
 		held?: boolean
+		/** From 900px, the wide dialog (`--cc-sheet-wide-max`) rather than the payment sheet's width. */
+		wide?: boolean
 		/** Asked once the exit has played; the page renders the sheet away. */
 		onclose: () => void
 		children: Snippet
 	}
 
-	const { heading, held = false, onclose, children }: Props = $props()
+	const { heading, held = false, wide = false, onclose, children }: Props = $props()
 
 	const uid = $props.id()
 	const headingId = `${uid}-heading`
@@ -111,7 +113,12 @@
 	})
 </script>
 
-<dialog bind:this={dialog} aria-labelledby={headingId} oncancel={onCancel} onclose={onDialogClose}>
+<dialog
+	bind:this={dialog}
+	aria-labelledby={headingId}
+	data-wide={wide || undefined}
+	oncancel={onCancel}
+	onclose={onDialogClose}>
 	<div class="body">
 		<span class="grab" aria-hidden="true"></span>
 		<header>
@@ -246,6 +253,10 @@
 			margin: auto;
 			border-radius: var(--cc-radius-md);
 			box-shadow: var(--cc-shadow-lg);
+		}
+
+		dialog[data-wide] {
+			inline-size: min(100% - 2 * var(--cc-space-4), var(--cc-sheet-wide-max));
 		}
 
 		.body {

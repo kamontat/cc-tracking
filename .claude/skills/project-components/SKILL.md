@@ -93,16 +93,42 @@ An island that reads the reader's data follows `LocationsEditor.svelte` (PRD DD-
   sub-header with a title from the reader's data, a `detail` line and an `actions` snippet;
   the static `SubHeader.astro` takes a catalog key instead), and `#lib/ui/card-label` (a
   card's name in its text forms; never copy it), and `ActionRow.svelte` (molecule; the row that
-  opens in place, with `TwoStepButtons` for a two-step _Delete_ or _Confirm_).
+  opens in place, with `TwoStepButtons` for a two-step _Delete_ or _Confirm_; with `onopen` and
+  `current` the same row opens its record in the detail panel instead, as a list's row does on
+  the Lists tab).
+- The detail panel (PRD RD-23, DD-196) is three pieces; never build another. `RecordPanel`
+  (`#lib/ui/record-panel.svelte`) is the open record in the address (`card`, `limit`, `list`)
+  and every step through history: the page makes one over its `AddressBar` (`path`, `kinds`),
+  calls `start()` in `onMount`, writes its own address through `panel.keep(url)`, and calls
+  `show(ref)` from a list, `deeper(ref)` from inside a panel, `openForm`, `blank(kind)`, `back`,
+  `close`, `created(ref)`. `DetailPanel.svelte` (molecule) draws the column or sheet and its
+  head; the page wraps its list and the panel in `.panel-layout` (`data-panel` while open,
+  app.css). A kind's content is an organism that reads the store itself, as `CardPanel.svelte`,
+  `LimitPanel.svelte` and `ListPanel.svelte` do, so any page can hold it. `PurchaseForm.svelte` and
+  `GroupForm.svelte` are the purchase and group forms without a sheet.
+- A page with tabs (PRD RD-22) heads its `main` slot with `PageTabs.astro` (molecule, static):
+  one bar on one rule, the title (`--cc-text-xl`), an `aria-hidden` divider, then one link per tab,
+  each tab its own page, the one on show marked `aria-current="page"` and underlined on the bar's
+  rule; only the links scroll sideways (never wrapping), on every width (`<PageTabs
+  title="cards.title" label="cards.tabs" tabs={CARDS_TABS} current="/cards" />`). A tab list is a
+  `PageTab[]` in `#lib/ui/page-tabs` (`CARDS_TABS`, `TRANSACTIONS_TABS`, `HOME_TABS`). A tab listing
+  cards (Cards, Home's _Owed_ and _Ready to use_) heads its list with `FilterControls` and opens
+  `CardListFilter.svelte` (organism: Cards' _Filter · Sort · Group_ sheet, its `filters` snippet for
+  a list's own sections), and draws its results with `CardSections.svelte` (molecule: Cards'
+  sections or flat grid of tiles). Never draw a sort control of its own. A tile that needs a button
+  (_Pay_ on an owed tile) passes it as `CardTile`'s `action` snippet, drawn beside the tile's link,
+  never inside it. A tab's add button goes at the end of its search row, through `FilterControls`'
+  `end` snippet, as a quiet `button.tx-fbtn` (_+ Add card_, _+ Add limit_), or an `a.btn.tx-fbtn`
+  when it leads to a page (_+ Add list_).
 - An island's top-level code also runs at build time, where there is no `location`,
   `history` or `localStorage`: read them in `onMount`, or through a seam that has a
   build-time answer (`browserBar().search()` is `""` there). `bun run build` fails on it.
 
 Before reaching for an island, check whether the platform already does it with no script:
-*+ New*'s menu is an HTML `popover` (`FabMenu`, PRD DD-173) — the browser opens and closes
-it, on Escape and a tap outside, and hands focus back. `@kcstyles/reset.css` makes every
-`div` `display: flex`, which outranks the browser's hiding of a closed popover, so a popover
-`div` needs `:not(:popover-open) { display: none }` of its own.
+an HTML `popover` (as the retired *+ New* menu was, PRD DD-173) is opened and closed by the
+browser, on Escape and a tap outside, which hands focus back. `@kcstyles/reset.css` makes
+every `div` `display: flex`, which outranks the browser's hiding of a closed popover, so a
+popover `div` needs `:not(:popover-open) { display: none }` of its own.
 
 ### Translated copy (PRD DD-171)
 

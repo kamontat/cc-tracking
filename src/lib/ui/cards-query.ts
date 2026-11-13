@@ -2,11 +2,19 @@ import {
 	CARDS_DIRS,
 	CARDS_GROUPS,
 	CARDS_SORTS,
+	type CardFilter,
 	type CardsGroup,
 	type CardsSort,
 	type CardsView,
 	DEFAULT_CARDS_VIEW,
 } from "#lib/domain/cards-view"
+import {
+	DEFAULT_LIMITS_VIEW,
+	LIMITS_DIRS,
+	LIMITS_SORTS,
+	type LimitsSort,
+	type LimitsView,
+} from "#lib/domain/limits-view"
 import { OWNERS } from "#lib/domain/owner"
 import { readDir } from "#lib/domain/sort"
 
@@ -17,45 +25,46 @@ const known = (ids: readonly string[], values: string[]): string[] =>
 	[...new Set(values)].filter((value) => ids.includes(value))
 
 /**
- * The Cards page's state from `/cards?q=&loc=&owner=&sort=&dir=&by=`; unknown values read as
- * defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`).
- * A `loc` is kept only when it is one of `locationIds`, the stored records' ids.
+ * The search and the `f.locations` and `f.owners` filters every list of cards shares (Cards,
+ * Home's _Owed_ and _Ready to use_, RD-29). An `f.locations` is kept only when it is one of
+ * `locationIds`, the stored records' ids; an unknown owner is dropped.
+ */
+export function readCardFilter(p: URLSearchParams, locationIds: readonly string[]): CardFilter {
+	return {
+		q: p.get("q") ?? "",
+		locations: known(locationIds, p.getAll("f.locations")),
+		owners: manyOf(OWNERS, p.getAll("f.owners")),
+	}
+}
+
+/** Sets `q` when there is one, then each location and owner, repeated. */
+export function writeCardFilter(p: URLSearchParams, filter: CardFilter): void {
+	if (filter.q) p.set("q", filter.q)
+	for (const l of filter.locations) p.append("f.locations", l)
+	for (const o of filter.owners) p.append("f.owners", o)
+}
+
+/**
+ * The Cards tab's state from `/cards?q=&f.locations=&f.owners=&sort=&dir=&by=` (RD-29);
+ * unknown values read as defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`). An
+ * `f.locations` is kept only when it is one of `locationIds`, the stored records' ids.
  */
 export function readCardsView(search: string, locationIds: readonly string[]): CardsView {
 	const p = new URLSearchParams(search)
 	const sort = p.get("sort")
 	const field = CARDS_SORTS.includes(sort as CardsSort) ? (sort as CardsSort) : DEFAULT_CARDS_VIEW.sort
 	return {
-		q: p.get("q") ?? "",
-		locations: known(locationIds, p.getAll("loc")),
-		owners: manyOf(OWNERS, p.getAll("owner")),
+		...readCardFilter(p, locationIds),
 		sort: field,
 		dir: readDir(p.get("dir"), field, CARDS_DIRS),
 		by: CARDS_GROUPS.includes(p.get("by") as CardsGroup) ? (p.get("by") as CardsGroup) : DEFAULT_CARDS_VIEW.by,
 	}
 }
 
-/** Where the limit groups are listed: the Cards page's groups view. */
-export const LIMITS_ADDRESS = "/cards?view=groups"
-
-/** What the Cards page shows below 900px: the cards, or the limit groups (`?view=groups`). */
-export type CardsShow = "cards" | "groups"
-
-/** The phone view from the address; anything but `?view=groups` reads as the cards. */
-export function readCardsShow(search: string): CardsShow {
-	return new URLSearchParams(search).get("view") === "groups" ? "groups" : "cards"
-}
-
-/**
- * `""` for the defaults, else `?` and the fields that differ, `loc` and `owner` repeated, and
- * `view=groups` first when the phone view shows the groups.
- */
-export function writeCardsView(view: CardsView, show: CardsShow = "cards"): string {
+/** `""` for the defaults, else `?` and the fields that differ, `f.locations` and `f.owners` repeated. */
+export function writeCardsView(view: CardsView): string {
 	const p = new URLSearchParams()
-	if (show === "groups") p.set("view", "groups")
-	if (view.q) p.set("q", view.q)
-	for (const l of view.locations) p.append("loc", l)
-	for (const o of view.owners) p.append("owner", o)
+	writeCardFilter(p, view)
 	if (view.sort !== DEFAULT_CARDS_VIEW.sort) p.set("sort", view.sort)
 	if (view.dir !== CARDS_DIRS[view.sort]) p.set("dir", view.dir)
 	if (view.by !== DEFAULT_CARDS_VIEW.by) p.set("by", view.by)
@@ -63,30 +72,35 @@ export function writeCardsView(view: CardsView, show: CardsShow = "cards"): stri
 	return text ? `?${text}` : ""
 }
 
-/** What `readGroupSheet` returns for the blank sheet, which no group id can equal. */
-export const NEW_GROUP = Symbol("new group")
+/** The Limits tab (RD-22): Cards' second tab, every limit group. */
+export const LIMITS_ADDRESS = "/cards/limits"
+
+/** A limit group's panel on the Limits tab. */
+export const limitAddress = (id: string): string => `${LIMITS_ADDRESS}?${new URLSearchParams({ limit: id })}`
 
 /**
- * The group the sheet is open on: its id (`?group=<id>`, any string, `new` included),
- * `NEW_GROUP` for a blank one (`?newGroup=1`), or `null` when closed.
+ * The Limits tab's state from `/cards/limits?q=&f.owners=&sort=&dir=` (RD-29); unknown values read
+ * as defaults, and a missing `dir` as the sort's own (`LIMITS_DIRS`).
  */
-export function readGroupSheet(search: string): string | typeof NEW_GROUP | null {
+export function readLimitsView(search: string): LimitsView {
 	const p = new URLSearchParams(search)
-	if (p.get("newGroup") === "1") return NEW_GROUP
-	const group = p.get("group")
-	return group === null || group === "" ? null : group
+	const sort = p.get("sort")
+	const field = LIMITS_SORTS.includes(sort as LimitsSort) ? (sort as LimitsSort) : DEFAULT_LIMITS_VIEW.sort
+	return {
+		q: p.get("q") ?? "",
+		owners: manyOf(OWNERS, p.getAll("f.owners")),
+		sort: field,
+		dir: readDir(p.get("dir"), field, LIMITS_DIRS),
+	}
 }
 
-/**
- * The query string with the sheet opened on a group (`?group=<id>`, `NEW_GROUP` for a blank
- * one as `?newGroup=1`) or, for `null`, closed. Every other key is kept as it was.
- */
-export function groupSheetAddress(search: string, id: string | typeof NEW_GROUP | null): string {
-	const p = new URLSearchParams(search)
-	p.delete("group")
-	p.delete("newGroup")
-	if (id === NEW_GROUP) p.set("newGroup", "1")
-	else if (id !== null) p.set("group", id)
+/** `""` for the defaults, else `?` and the fields that differ, `f.owners` repeated. */
+export function writeLimitsView(view: LimitsView): string {
+	const p = new URLSearchParams()
+	if (view.q) p.set("q", view.q)
+	for (const o of view.owners) p.append("f.owners", o)
+	if (view.sort !== DEFAULT_LIMITS_VIEW.sort) p.set("sort", view.sort)
+	if (view.dir !== LIMITS_DIRS[view.sort]) p.set("dir", view.dir)
 	const text = p.toString()
 	return text ? `?${text}` : ""
 }

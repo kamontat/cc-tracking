@@ -10,6 +10,7 @@ import {
 	cardsResults,
 	cardUsePct,
 	DEFAULT_CARDS_VIEW,
+	filterCards,
 	groupPanels,
 	matchesCard,
 } from "#lib/domain/cards-view"
@@ -351,4 +352,12 @@ test("name sort compares with the UI locale", () => {
 		String.prototype.localeCompare = original
 		setLocale("en")
 	}
+})
+
+test("filterCards leaves out a card in no stored limit group: invalid data (RD-27)", () => {
+	const { limitGroupId: _, ...loose } = card("L")
+	const items = [card("A"), loose, card("B", { limitGroupId: "gone" })]
+	expect(filterCards(items, (c) => c, [group("g")], { q: "", locations: [], owners: [] }).map((c) => c.id)).toEqual([
+		"A",
+	])
 })

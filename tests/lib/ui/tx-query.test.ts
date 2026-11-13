@@ -1,20 +1,31 @@
 import { describe, expect, test } from "vitest"
 
-import { DEFAULT_TX_VIEW, readTxView, type TxView, writeTxView } from "#lib/ui/tx-query"
+import {
+	DEFAULT_LEDGER_VIEW,
+	DEFAULT_LISTS_VIEW,
+	LEDGER_ADDRESS,
+	type LedgerView,
+	LISTS_ADDRESS,
+	type ListsView,
+	readLedgerView,
+	readListsView,
+	writeLedgerView,
+	writeListsView,
+} from "#lib/ui/tx-query"
 
-describe("tx-query", () => {
-	test("defaults write as an empty string and read back", () => {
-		expect(writeTxView(DEFAULT_TX_VIEW)).toBe("")
-		expect(readTxView("")).toEqual(DEFAULT_TX_VIEW)
+describe("the Ledger tab's address (/transactions)", () => {
+	test("is /transactions, and its defaults write as an empty string and read back", () => {
+		expect(LEDGER_ADDRESS).toBe("/transactions")
+		expect(writeLedgerView(DEFAULT_LEDGER_VIEW)).toBe("")
+		expect(readLedgerView("")).toEqual(DEFAULT_LEDGER_VIEW)
 	})
 
-	test("round trips every field, with a card id full of punctuation", () => {
-		const view: TxView = {
-			view: "lists",
+	test("round trips every field, filters under f., the repeating ones repeated", () => {
+		const view: LedgerView = {
 			filter: {
 				q: "ตั๋ว & lunch",
 				types: ["purchase", "payment"],
-				cards: ["a&b:c d", "kbank"],
+				cards: ["12.3", "k1.2"],
 				range: "custom",
 				from: "2026-10-01",
 				to: "2026-10-31",
@@ -22,68 +33,79 @@ describe("tx-query", () => {
 			sort: "amount",
 			dir: "asc",
 			by: "card",
-			owedSort: "left",
-			owedDir: "asc",
-			listsBy: "month",
-			lists: {
+		}
+		const search = writeLedgerView(view)
+		expect(search).toBe(
+			"?q=%E0%B8%95%E0%B8%B1%E0%B9%8B%E0%B8%A7+%26+lunch&f.types=purchase&f.types=payment&f.cards=12.3&f.cards=k1.2&f.range=custom&f.from=2026-10-01&f.to=2026-10-31&sort=amount&dir=asc&by=card",
+		)
+		expect(readLedgerView(search)).toEqual(view)
+	})
+
+	test("unknown values fall back to defaults, and the retired keys are ignored", () => {
+		expect(readLedgerView("?sort=zzz&dir=up&f.range=forever&f.types=bogus&f.from=notadate&by=month")).toEqual(
+			DEFAULT_LEDGER_VIEW,
+		)
+		expect(readLedgerView("?view=lists&type=payment&card=A&range=week&from=2026-10-01&to=2026-10-02")).toEqual(
+			DEFAULT_LEDGER_VIEW,
+		)
+	})
+
+	test("the open card's key is not a filter", () => {
+		expect(readLedgerView("?card=12.3").filter.cards).toEqual([])
+	})
+
+	test("sorts by date or amount, each with its own default direction", () => {
+		expect(DEFAULT_LEDGER_VIEW).toMatchObject({ sort: "date", dir: "desc", by: "day" })
+		expect(readLedgerView("?sort=amount")).toMatchObject({ sort: "amount", dir: "desc" })
+		expect(readLedgerView("?dir=asc")).toMatchObject({ sort: "date", dir: "asc" })
+		expect(writeLedgerView({ ...DEFAULT_LEDGER_VIEW, dir: "asc" })).toBe("?dir=asc")
+		expect(writeLedgerView({ ...DEFAULT_LEDGER_VIEW, sort: "amount", dir: "desc" })).toBe("?sort=amount")
+		for (const old of ["new", "old", "big", "small"]) {
+			expect(readLedgerView(`?sort=${old}`)).toMatchObject({ sort: "date", dir: "desc" })
+		}
+	})
+
+	test("a card picked twice is kept once", () => {
+		expect(readLedgerView("?f.cards=A&f.cards=A&f.cards=").filter.cards).toEqual(["A"])
+	})
+})
+
+describe("the Lists tab's address (/transactions/lists)", () => {
+	test("is /transactions/lists, and its defaults write as an empty string and read back", () => {
+		expect(LISTS_ADDRESS).toBe("/transactions/lists")
+		expect(writeListsView(DEFAULT_LISTS_VIEW)).toBe("")
+		expect(readListsView("")).toEqual(DEFAULT_LISTS_VIEW)
+	})
+
+	test("round trips every field: q, f.statuses, f.cards, f.range, f.from, f.to and by", () => {
+		const view: ListsView = {
+			filter: {
 				q: "fuel & stamps",
 				status: ["draft", "saved"],
-				cards: ["x/y", "kbank"],
+				cards: ["12.3", "7"],
 				range: "custom",
 				from: "2026-11-01",
 				to: "2026-11-09",
 			},
+			by: "month",
 		}
-		const search = writeTxView(view)
-		expect(search.startsWith("?")).toBe(true)
-		expect(readTxView(search)).toEqual(view)
-	})
-
-	test("unknown values fall back to defaults", () => {
-		const view = readTxView(
-			"?sort=zzz&dir=up&odir=x&view=nope&owed=x&range=forever&type=bogus&status=x&from=notadate&lrange=forever&lfrom=nope",
+		const search = writeListsView(view)
+		expect(search).toBe(
+			"?q=fuel+%26+stamps&f.statuses=draft&f.statuses=saved&f.cards=12.3&f.cards=7&f.range=custom&f.from=2026-11-01&f.to=2026-11-09&by=month",
 		)
-		expect(view).toEqual(DEFAULT_TX_VIEW)
+		expect(readListsView(search)).toEqual(view)
 	})
 
-	test("the Lists view keeps its own search and filters, apart from the ledger's", () => {
-		const view = readTxView("?view=lists&lq=fuel&status=sent&lcard=A&lrange=week")
-		expect(view.filter).toEqual(DEFAULT_TX_VIEW.filter)
-		expect(view.lists).toEqual({ q: "fuel", status: ["sent"], cards: ["A"], range: "week", from: "", to: "" })
-		expect(writeTxView(view)).toBe("?view=lists&lq=fuel&status=sent&lcard=A&lrange=week")
+	test("unknown values fall back to defaults, and the retired keys are ignored", () => {
+		expect(readListsView("?f.statuses=x&f.range=forever&f.from=nope&by=card")).toEqual(DEFAULT_LISTS_VIEW)
+		expect(readListsView("?lq=fuel&status=sent&lcard=A&lrange=week&lfrom=2026-11-01&lby=month")).toEqual(
+			DEFAULT_LISTS_VIEW,
+		)
 	})
 
-	test("the ledger sorts by date or amount, each with its own default direction", () => {
-		expect(DEFAULT_TX_VIEW).toMatchObject({ sort: "date", dir: "desc", owedSort: "urgency", owedDir: "asc" })
-		expect(readTxView("?sort=amount")).toMatchObject({ sort: "amount", dir: "desc" })
-		expect(readTxView("?dir=asc")).toMatchObject({ sort: "date", dir: "asc" })
-		expect(writeTxView({ ...DEFAULT_TX_VIEW, dir: "asc" })).toBe("?dir=asc")
-		expect(writeTxView({ ...DEFAULT_TX_VIEW, sort: "amount", dir: "desc" })).toBe("?sort=amount")
-	})
-
-	test("the retired ledger sorts read as the default", () => {
-		for (const old of ["new", "old", "big", "small"]) {
-			expect(readTxView(`?sort=${old}`)).toMatchObject({ sort: "date", dir: "desc" })
-		}
-	})
-
-	test("Owed keeps its own direction, odir, read against its sort", () => {
-		expect(readTxView("?owed=left")).toMatchObject({ owedSort: "left", owedDir: "desc" })
-		expect(readTxView("?owed=left&odir=asc")).toMatchObject({ owedSort: "left", owedDir: "asc" })
-		expect(writeTxView({ ...DEFAULT_TX_VIEW, owedDir: "desc" })).toBe("?odir=desc")
-	})
-
-	test("the ledger groups by day by default and the Lists view by status, each with its own key", () => {
-		expect(DEFAULT_TX_VIEW).toMatchObject({ by: "day", listsBy: "status" })
-		expect(readTxView("?by=card&lby=month")).toMatchObject({ by: "card", listsBy: "month" })
-		expect(readTxView("?by=month&lby=card")).toMatchObject({ by: "day", listsBy: "status" })
-		expect(writeTxView({ ...DEFAULT_TX_VIEW, by: "none", listsBy: "none" })).toBe("?by=none&lby=none")
-	})
-
-	test("a lone preset range is kept", () => {
-		const view = readTxView("?range=month&type=payment")
-		expect(view.filter.range).toBe("month")
-		expect(view.filter.types).toEqual(["payment"])
-		expect(writeTxView(view)).toBe("?type=payment&range=month")
+	test("groups by status by default; the open list's key is not a filter", () => {
+		expect(DEFAULT_LISTS_VIEW.by).toBe("status")
+		expect(writeListsView({ ...DEFAULT_LISTS_VIEW, by: "none" })).toBe("?by=none")
+		expect(readListsView("?list=abc&card=7")).toEqual(DEFAULT_LISTS_VIEW)
 	})
 })

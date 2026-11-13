@@ -113,10 +113,6 @@ test("leaves an unsupplied placeholder alone rather than printing undefined", ()
 	expect(t("form.deleteAsk")).toBe("Delete {name}?")
 })
 
-test("the Thai card title differs from the Cards title", () => {
-	expect(th["title.card"]).not.toBe(th["title.cards"])
-})
-
 test("a listener given a signal is dropped once the signal aborts", () => {
 	const controller = new AbortController()
 	let calls = 0

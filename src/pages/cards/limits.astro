@@ -1,0 +1,15 @@
+---
+import PageTabs from "#components/molecules/PageTabs.astro"
+import LimitsPage from "#components/organisms/LimitsPage.svelte"
+import AppLayout from "#layouts/AppLayout.astro"
+import { LIMITS_ADDRESS } from "#lib/ui/cards-query"
+import { CARDS_TABS } from "#lib/ui/page-tabs"
+---
+
+<!-- Cards, its Limits tab (RD-22): the title and the tabs are static; the limit groups are the reader's data, so they are an island. -->
+<AppLayout title="Limits" titleKey="title.limits" tab="cards">
+	<Fragment slot="main">
+		<PageTabs title="cards.title" label="cards.tabs" tabs={CARDS_TABS} current={LIMITS_ADDRESS} />
+		<LimitsPage client:load />
+	</Fragment>
+</AppLayout>

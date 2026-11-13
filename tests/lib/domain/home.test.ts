@@ -3,6 +3,7 @@ import type { Card, CardPayment, LimitGroup, LocationRecord, Purchase, PurchaseL
 import { describe, expect, test } from "vitest"
 
 import {
+	DEFAULT_READY_VIEW,
 	isReady,
 	needsYou,
 	overRoom,
@@ -10,6 +11,8 @@ import {
 	READY_SORTS,
 	type ReadyData,
 	type ReadyRow,
+	type ReadyView,
+	readyResults,
 	readyRows,
 	roomFor,
 	sortReady,
@@ -385,5 +388,68 @@ describe("needsYou", () => {
 
 	test("a quiet day needs nothing", () => {
 		expect(needsYou(data([mk("A")]), TODAY)).toEqual([])
+	})
+})
+
+describe("readyResults", () => {
+	const groups: LimitGroup[] = [
+		{ id: "g1", name: "Bee", limit: 100_000, owner: "NT" },
+		{ id: "g2", name: "Ant", limit: 100_000, owner: "KC" },
+	]
+	const row = (id: string, room: number, extra: Partial<Card> = {}): ReadyRow => ({
+		card: mk(id, extra),
+		room: { room } as unknown as ReadyRow["room"],
+		closeDate: "2026-11-25",
+		dueDate: "2026-12-15",
+		overdue: false,
+		billDue: null,
+		credit: 0,
+	})
+	const rows = [
+		row("a", 1, { location: "krabi" }),
+		row("b", 3, { location: "phuket", limitGroupId: "g2", name: "Platinum" }),
+		row("c", 2, { location: "krabi", limitGroupId: "g2", last4: "9876" }),
+	]
+	const view = (extra: Partial<ReadyView> = {}): ReadyView => ({ ...DEFAULT_READY_VIEW, ...extra })
+	const order = ["krabi", "phuket"]
+	const ids = (list: { card: Card }[] | null | undefined) => list?.map((r) => r.card.id)
+
+	test("by default by place, most room first in each", () => {
+		expect(DEFAULT_READY_VIEW).toEqual({ q: "", locations: [], owners: [], sort: "room", dir: "desc", by: "place" })
+		const all = readyResults(rows, groups, view(), order)
+		expect(all.flat).toBeNull()
+		expect(all.sections?.map((s) => [s.key, ids(s.cards)])).toEqual([
+			["place:krabi", ["c", "a"]],
+			["place:phuket", ["b"]],
+		])
+		expect(all.count).toBe(3)
+	})
+
+	test("not grouped is one list in the chosen sort", () => {
+		expect(ids(readyResults(rows, groups, view({ by: "none" }), order).flat)).toEqual(["b", "c", "a"])
+		expect(ids(readyResults(rows, groups, view({ by: "none", dir: "asc" }), order).flat)).toEqual(["a", "c", "b"])
+	})
+
+	test("search, places and account holders narrow, as on Cards", () => {
+		const flat = (extra: Partial<ReadyView>) =>
+			ids(readyResults(rows, groups, view({ by: "none", ...extra }), order).flat)
+		expect(flat({ q: "plat" })).toEqual(["b"])
+		expect(flat({ q: "9876" })).toEqual(["c"])
+		expect(flat({ locations: ["phuket"] })).toEqual(["b"])
+		expect(flat({ owners: ["NT"] })).toEqual(["a"])
+		expect(readyResults(rows, groups, view({ owners: ["RI"] }), order).count).toBe(0)
+	})
+
+	test("by holder and by limit group, in Cards' order", () => {
+		const holder = readyResults(rows, groups, view({ by: "holder" }), order)
+		expect(holder.sections?.map((s) => [s.key, ids(s.cards)])).toEqual([
+			["holder:KC", ["b", "c"]],
+			["holder:NT", ["a"]],
+		])
+		const limit = readyResults(rows, groups, view({ by: "limit" }), order)
+		expect(limit.sections?.map((s) => [s.key, ids(s.cards)])).toEqual([
+			["limit:g2", ["b", "c"]],
+			["limit:g1", ["a"]],
+		])
 	})
 })

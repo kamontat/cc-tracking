@@ -27,13 +27,15 @@
 		credit: number
 		/** The group's colour name (`tileTone`); left out, the tile wears none. */
 		tone?: GroupColor | undefined
-		/** The card page to open; left out, the tile is a button. */
+		/** The card's panel to open; left out, the tile is a button. */
 		href?: string | undefined
+		/** The card open in the detail panel now (`aria-current`). */
+		current?: boolean | undefined
 		/** The picker's toggle state, as `aria-pressed`; only on the button form. */
 		pressed?: boolean | undefined
 		/** The tile's accessible name, when its text alone does not say enough. */
 		label?: string | undefined
-		onclick?: (() => void) | undefined
+		onclick?: ((event: MouseEvent) => void) | undefined
 		/** Line 1, before `id) name`: the picker's tick. */
 		lead?: Snippet | undefined
 		/** Line 1, at the right: the last 4 (`mono`) or who holds the card. */
@@ -56,6 +58,11 @@
 		plainRoom?: boolean
 		/** Home: past the limit the amount turns red and has no word under it. */
 		quietOver?: boolean
+		/**
+		 * A button at the end of the last line (Owed's _Pay_): drawn beside the link, over the tile,
+		 * never inside it, so the tile stays one link with nothing interactive in it.
+		 */
+		action?: Snippet | undefined
 	}
 
 	const {
@@ -64,6 +71,7 @@
 		credit,
 		tone,
 		href,
+		current,
 		pressed,
 		label,
 		onclick,
@@ -77,6 +85,7 @@
 		foot,
 		plainRoom = false,
 		quietOver = false,
+		action,
 	}: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
@@ -141,19 +150,41 @@
 	{/if}
 {/snippet}
 
-{#if href !== undefined}
-	<a class="tile" data-g={tone} data-card={card.id} aria-label={label} {href} {onclick}>{@render body()}</a>
+{#snippet tile()}
+	{#if href !== undefined}
+		<a
+			class="tile"
+			data-g={tone}
+			data-card={card.id}
+			data-act={action ? "" : undefined}
+			aria-label={label}
+			aria-current={current ? "true" : undefined}
+			{href}
+			{onclick}
+			>{@render body()}</a
+		>
+	{:else}
+		<button
+			type="button"
+			class="tile"
+			data-g={tone}
+			data-card={card.id}
+			data-act={action ? "" : undefined}
+			aria-pressed={pressed === undefined ? undefined : pressed ? "true" : "false"}
+			aria-label={label}
+			{onclick}>
+			{@render body()}
+		</button>
+	{/if}
+{/snippet}
+
+{#if action}
+	<div class="tile-box" block>
+		{@render tile()}
+		<span class="tile-act">{@render action()}</span>
+	</div>
 {:else}
-	<button
-		type="button"
-		class="tile"
-		data-g={tone}
-		data-card={card.id}
-		aria-pressed={pressed === undefined ? undefined : pressed ? "true" : "false"}
-		aria-label={label}
-		{onclick}>
-		{@render body()}
-	</button>
+	{@render tile()}
 {/if}
 
 <style>
@@ -359,6 +390,33 @@
 	.tile :global(.tick .icon) {
 		inline-size: var(--cc-icon-size-sm);
 		block-size: var(--cc-icon-size-sm);
+	}
+
+	/* A tile with an action: the box holds the tile and the button over its last line's end, and
+	   that line keeps room for it, level with it. */
+	.tile-box {
+		position: relative;
+		display: block;
+	}
+
+	.tile[data-act] .facts {
+		display: flex;
+		align-items: center;
+		min-block-size: var(--cc-tile-act-height);
+		padding-inline-end: calc(var(--cc-tile-act-width) + var(--cc-space-2));
+	}
+
+	.tile-act {
+		position: absolute;
+		inset-block-end: calc(var(--cc-space-2) + var(--cc-space-1));
+		inset-inline-end: var(--cc-space-3);
+		display: flex;
+	}
+
+	.tile-act > :global(*) {
+		box-sizing: border-box;
+		min-inline-size: var(--cc-tile-act-width);
+		block-size: var(--cc-tile-act-height);
 	}
 
 	@media (forced-colors: active) {

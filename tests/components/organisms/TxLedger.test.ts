@@ -107,12 +107,14 @@ const show = async (initial: Shown = {}) => {
 		marked: [] as CardPayment[],
 		deleted: [] as CardPayment[],
 		confirmed: [] as PurchaseList[],
+		cards: [] as string[],
 		more: 0,
 	}
 	const props: Record<string, unknown> = {
 		onmarkpaid: (p: CardPayment) => calls.marked.push(p),
 		ondeletepayment: (p: CardPayment) => calls.deleted.push(p),
 		onconfirmlist: (l: PurchaseList) => calls.confirmed.push(l),
+		onopencard: (id: string) => calls.cards.push(id),
 		onshowmore: () => {
 			calls.more++
 		},
@@ -217,7 +219,7 @@ test("an opened purchase on an open statement draws its billing cycle and says t
 	const fromList = { ...list("L1"), date: "2026-10-29" as const }
 	const listed = purchase("L1-0", 300_00, "gift")
 	if (listed.kind === "purchase") listed.purchase.date = "2026-10-29"
-	const { root } = await show({
+	const { root, calls } = await show({
 		entries: [...entries, listed],
 		lists: [fromList],
 		ledgers: books,
@@ -239,10 +241,12 @@ test("an opened purchase on an open statement draws its billing cycle and says t
 	expect([...(shown(root)?.querySelectorAll(".a-say .a-money") ?? [])].map((e) => e.textContent)).toEqual(["฿1,000.00"])
 	const plain = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])]
 	expect(plain.map((b) => b.getAttribute("data-action"))).toEqual(["open-card"])
-	expect(plain[0]?.localName).toBe("a")
+	// The card opens in its panel over the ledger (RD-23): a button, not a page.
+	expect(plain[0]?.localName).toBe("button")
 	expect(plain[0]?.getAttribute("data-variant")).toBe("quiet")
-	expect(plain[0]?.getAttribute("href")).toBe("/card?id=A")
 	expect(plain[0]?.textContent?.trim()).toBe("Open card")
+	;(plain[0] as HTMLElement).click()
+	expect(calls.cards).toEqual(["A"])
 
 	await tap("buy:A:L1-0")
 	expect(head(root, "buy:A:x")?.getAttribute("aria-expanded")).toBe("false")
@@ -250,7 +254,7 @@ test("an opened purchase on an open statement draws its billing cycle and says t
 	expect(row?.textContent?.split("From list").length).toBe(2)
 	const both = [...(shown(root)?.querySelectorAll(".a-btns > *") ?? [])]
 	expect(both.map((b) => b.getAttribute("data-action"))).toEqual(["open-card", "open-list"])
-	expect(both[1]?.getAttribute("href")).toBe("/list/view?id=L1")
+	expect(both[1]?.getAttribute("href")).toBe("/transactions/lists?list=L1")
 	expect(both[1]?.getAttribute("data-variant")).toBe("quiet")
 	expect(both[1]?.textContent?.trim()).toBe("Open list")
 })
@@ -376,7 +380,7 @@ test("a purchase named like a list id opens to its card alone when no such list 
 	})
 	await tap("buy:A/1:L9-1")
 	expect(root.querySelector("[data-action=open-list]")).toBeNull()
-	expect(shown(root)?.querySelector("[data-action=open-card]")?.getAttribute("href")).toBe("/card?id=A%2F1")
+	expect(shown(root)?.querySelector("[data-action=open-card]")).not.toBeNull()
 	expect(root.querySelector("[data-action=delete]")).toBeNull()
 })
 
@@ -596,7 +600,7 @@ test("Upcoming rows open in place: a waiting list with Record reply and Confirm,
 	])
 	expect(sentence(root)).toBe("Sent 30 Oct. Confirm saves every line as made.")
 	const reply = shown(root)?.querySelector("[data-action=record-reply]")
-	expect(reply?.getAttribute("href")).toBe("/list/reply?id=w1")
+	expect(reply?.getAttribute("href")).toBe("/transactions/lists/edit?list=w1")
 	expect(reply?.textContent?.trim()).toBe("Record reply")
 	expect(text(shown(root) as HTMLElement, "[data-action=confirm-list]")).toBe("Confirm")
 

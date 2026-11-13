@@ -1,0 +1,15 @@
+---
+import PageTabs from "#components/molecules/PageTabs.astro"
+import OwedPage from "#components/organisms/OwedPage.svelte"
+import AppLayout from "#layouts/AppLayout.astro"
+import { OWED_ADDRESS } from "#lib/ui/home-query"
+import { HOME_TABS } from "#lib/ui/page-tabs"
+---
+
+<!-- Home, its Owed tab (RD-22, RD-25): the title and the tabs are static; what each card owes is the reader's data, so it is an island. -->
+<AppLayout title="Owed" titleKey="title.owed" tab="home">
+	<Fragment slot="main">
+		<PageTabs title="nav.home" label="home.tabs" tabs={HOME_TABS} current={OWED_ADDRESS} />
+		<OwedPage client:load />
+	</Fragment>
+</AppLayout>

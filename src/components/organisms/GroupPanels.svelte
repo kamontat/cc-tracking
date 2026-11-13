@@ -4,28 +4,28 @@
 
 	import { onMount } from "svelte"
 
-	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import { toGroupColor } from "#lib/domain/group-color"
 	import { formatAmount } from "#lib/domain/money"
 	import { ownerOf } from "#lib/domain/owner"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 
 	/**
-	 * The Cards page's *Limit groups* (prototype `vCards` aside): one heading row (`.sec-head`,
-	 * which the page hides on a phone) with the count and *Add group* (`onaddgroup`) at its end,
-	 * then a panel per group -- `name (holder)`, `room of limit`, the bar in the tiles' rail
-	 * colours, its cards' ids, `N% used` and *getting full* from 80%, or *over limit* -- each a
-	 * button that calls `onopengroup` with the group's id.
+	 * The Limits tab's groups (RD-22), a card list: a panel per group -- `name (holder)`, `room of
+	 * limit`, the bar in the tiles' rail colours, its cards' ids, `N% used` and *getting full* from
+	 * 80%, or *over limit* -- each a button that calls `onopengroup` with the group's id, the one
+	 * open in the detail panel marked (`current`). With no panel, `empty` says why.
 	 */
 	interface Props {
 		panels: GroupPanel[]
+		/** What to say when there is no panel: no group yet, or none matches. */
+		empty: string
+		/** The group open in the detail panel now (`aria-current`). */
+		current?: string | null | undefined
 		/** A panel was tapped: open its group. */
 		onopengroup: (id: string) => void
-		/** *Add group* was tapped. */
-		onaddgroup: () => void
 	}
 
-	const { panels, onopengroup, onaddgroup }: Props = $props()
+	const { panels, empty, current = null, onopengroup }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -59,17 +59,8 @@
 </script>
 
 <div class="group-panels">
-	<div class="sec-head" part="head">
-		<span class="sec-title">
-			<h2>{tr("limits.title")}</h2>
-			<small>{panels.length}</small>
-		</span>
-		<button type="button" data-variant="quiet" data-action="add-group" onclick={() => onaddgroup()}>
-			<SvgIcon name="plus" />{tr("cards.group.add")}
-		</button>
-	</div>
 	{#if panels.length === 0}
-		<p class="empty">{tr("cards.group.empty")}</p>
+		<p class="empty">{empty}</p>
 	{:else}
 		<!-- Unkeyed, as the Lit list was: a group id is unique in the store, but nothing here relies on it. -->
 		{#each panels as panel}
@@ -79,6 +70,7 @@
 				class="gpanel"
 				data-group={group.id}
 				data-g={toGroupColor(group.color) ?? undefined}
+				aria-current={group.id === current ? "true" : undefined}
 				onclick={() => onopengroup(group.id)}>
 				<span class="ghead">
 					<span class="gname">{group.name} ({ownerOf(group)})</span>
@@ -101,49 +93,6 @@
 		flex-direction: column;
 		gap: var(--cc-space-3);
 		min-inline-size: 0;
-	}
-
-	.sec-head {
-		display: flex;
-		flex-direction: row;
-		flex-wrap: wrap;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--cc-space-2) var(--cc-space-3);
-	}
-
-	.sec-title {
-		display: flex;
-		flex-direction: row;
-		align-items: baseline;
-		gap: var(--cc-space-2);
-	}
-
-	/* Two classes, to outrank app.css's `.page h2` and `.page small`. */
-	.sec-title h2 {
-		margin: 0;
-		font-size: var(--cc-text-lg);
-		font-weight: 700;
-	}
-
-	.sec-head small {
-		font-size: var(--cc-text-xs);
-		color: var(--cc-text-muted);
-	}
-
-	/* Out-ranks app.css's `.page button[data-variant="quiet"]`, which would start it at the top. */
-	.sec-head button[data-action="add-group"] {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--cc-space-1);
-		align-self: center;
-		white-space: nowrap;
-		cursor: pointer;
-	}
-
-	.sec-head [data-action="add-group"] :global(.icon) {
-		inline-size: var(--cc-icon-size-sm);
-		block-size: var(--cc-icon-size-sm);
 	}
 
 	/* A card list (one panel per group); two classes out-rank app.css's `.page button`. */
@@ -181,6 +130,12 @@
 
 	.gpanel[data-g]:hover {
 		border-color: color-mix(in oklab, var(--g-fg) 55%, transparent);
+	}
+
+	/* The group open in the panel: an accent outline that shifts nothing, as a ticked tile's. */
+	.gpanel[aria-current="true"] {
+		border-color: var(--cc-accent);
+		outline: var(--cc-border-width) solid var(--cc-accent);
 	}
 
 	.ghead {

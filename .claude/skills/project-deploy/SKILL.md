@@ -1,6 +1,6 @@
 ---
 name: project-deploy
-description: Use when changing `bun run build`, `bun run dev`, `bun run preview`, astro.config.ts, the build stamps, public/ (_headers, _redirects), wrangler.jsonc, the dist/ output shape, or anything under .github/workflows/ — including bumping a pinned action SHA, changing Google Tag Manager, or debugging a Cloudflare deploy.
+description: Use when changing `bun run build`, `bun run dev`, `bun run preview`, astro.config.ts, the build stamps, public/ (_headers, a _redirects), wrangler.jsonc, the dist/ output shape, or anything under .github/workflows/ — including bumping a pinned action SHA, changing Google Tag Manager, or debugging a Cloudflare deploy.
 ---
 
 # Build and deployment
@@ -17,8 +17,8 @@ scripts and styles in `dist/_astro/` under hashed names, and copies `public/` to
 HTML, so a grep for something baked into a script must read the HTML too.
 
 `astro.config.ts` fixes the output shape: `output: "static"` (no adapter, no server code),
-`build.format: "file"` (`card/edit.astro` → `dist/card/edit.html`) and
-`trailingSlash: "never"`. Cloudflare serves `card/edit.html` at `/card/edit`, so the three
+`build.format: "file"` (`cards/limits.astro` → `dist/cards/limits.html`) and
+`trailingSlash: "never"`. Cloudflare serves `cards/limits.html` at `/cards/limits`, so the three
 change together; an adapter or `output: "server"` would make the deploy a Worker script,
 which `wrangler.jsonc` is not set up for.
 
@@ -50,8 +50,10 @@ reports `development` with no stamps on `astro dev`. Every `PUBLIC_*` is declare
 - `astro.config.ts` prefetches every link as it comes into view (`prefetch`, DD-178), so the
   ClientRouter swaps in HTML already fetched; the browser keeps a prefetch for a few minutes
   even at `max-age=0`.
-- `_redirects` holds the 301s for old addresses (`/backup` → `/settings`). Neither file does
-  anything on `astro dev` or `astro preview`; check them on the preview deploy.
+- There is no `_redirects`: no old address redirects (PRD RD-29, DD-200), so a retired page
+  is a 404, and `tests/config/redirects.test.ts` holds that. Adding one back is a product
+  decision, settled in `PRD.md` first. Neither `_headers` nor a `_redirects` does anything on
+  `astro dev` or `astro preview`; check them on the preview deploy.
 
 ## Deployment
 

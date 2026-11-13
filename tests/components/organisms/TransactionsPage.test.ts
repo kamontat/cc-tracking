@@ -1,5 +1,4 @@
 import type { Card, PurchaseList } from "#lib/domain/types"
-import type { AddressBar } from "#lib/ui/address-bar"
 
 import { flushSync, mount, unmount } from "svelte"
 import { afterEach, expect, test } from "vitest"
@@ -9,11 +8,12 @@ import { defaultLocations } from "#lib/domain/locations"
 import { DEFAULT_SETTINGS } from "#lib/domain/settings"
 import { setLocale } from "#lib/i18n/index"
 import { InMemoryRepository, type Repository } from "#lib/storage/repository"
+import { fakeHistory } from "../../lib/ui/fake-history"
 
 /**
- * Transactions' island: the ledger, the purchase lists and what is owed, with the view kept in
- * the address. Ported from the legacy route's tests; where those read a child element's
- * properties, these read what the child draws, and drive the real rows and sheet.
+ * The Ledger tab's island (`/transactions`, RD-22): the ledger with its search, filters, sort and
+ * grouping in the address (`q`, `f.*`, `sort`, `dir`, `by`), and a purchase's _Open card_
+ * opening the card's panel over it (`?card=`). The Lists tab and what is owed are not here.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -78,39 +78,27 @@ const seed = async (repo: Repository) => {
 	await repo.savePurchaseList(list("w1", "sent", ["B"]))
 }
 
-/** An address bar that records every replace. */
-const fakeBar = (start: string) => {
-	let entry = start
-	const written: string[] = []
-	const bar: AddressBar = {
-		search: () => entry,
-		push: (url) => {
-			entry = url.slice(url.indexOf("?") === -1 ? url.length : url.indexOf("?"))
-		},
-		replace: (url) => {
-			const q = url.indexOf("?")
-			entry = q === -1 ? "" : url.slice(q)
-			written.push(entry)
-		},
-		onPop: () => () => {},
-		length: () => 1,
-		back: () => {},
-	}
-	return { bar, written }
-}
-
 const open = async (search = "", extra: (repo: Repository) => Promise<void> = async () => {}) => {
 	setLocale("en")
 	const repo = new InMemoryRepository()
 	await seed(repo)
 	await extra(repo)
-	const { bar, written } = fakeBar(search)
+	const history = fakeHistory(`/transactions${search}`)
+	// Every query the page wrote in place, as `written` was: what follows `/transactions`.
+	const written = new Proxy([] as string[], {
+		get: (_, key) => {
+			const list = history.calls
+				.filter((call) => call.startsWith("replace "))
+				.map((call) => call.slice("replace /transactions".length))
+			return Reflect.get(list, key)
+		},
+	})
 	mounted = mount(TransactionsPage, {
 		target: document.body,
-		props: { open: async () => ({ ok: true, repo }), clock: CLOCK, address: bar },
+		props: { open: async () => ({ ok: true, repo }), clock: CLOCK, address: history.bar },
 	})
 	await settle()
-	return { repo, written }
+	return { repo, written, history }
 }
 
 const type = async (value: string) => {
@@ -129,13 +117,14 @@ const press = async (el: Element | null | undefined) => {
 
 /** The opened row's details. */
 const shown = ".a-details:not([hidden])"
-const ledgerRows = () => $$('.tx-body :is([data-item="purchase"], [data-item="payment"])')
+const ledgerRows = () => $$('.tx-main :is([data-item="purchase"], [data-item="payment"])')
 const dayHeadings = () => $$("section.day h3").map((h) => text(h))
 
 test("the default view shows the summary, upcoming and the ledger by day", async () => {
 	const { written } = await open()
-	expect($("h1")?.textContent).toBe("Transactions")
-	expect($('[data-view="ledger"]')?.getAttribute("aria-pressed")).toBe("true")
+	// The title and the tabs are the page's, static (PageTabs); the island has no switch.
+	expect($("h1")).toBeNull()
+	expect($("fieldset.tx-switch, [data-view]")).toBeNull()
 	const summary = $('[data-testid="summary"]')
 	expect(text(summary)).toContain("฿1,250.00")
 	expect(text(summary)).toContain("฿300.00")
@@ -163,10 +152,10 @@ test("searching writes ?q= and hides the summary", async () => {
 })
 
 test("removing a chip drops that filter", async () => {
-	const { written } = await open("?type=payment&card=A")
+	const { written } = await open("?f.types=payment&f.cards=A")
 	expect(ledgerRows()).toHaveLength(1)
 	await press($('[data-chip="type:payment"]'))
-	expect(written.at(-1)).toBe("?card=A")
+	expect(written.at(-1)).toBe("?f.cards=A")
 	expect(ledgerRows()).toHaveLength(2)
 	await press($('[data-chip="card:A"]'))
 	expect(written.at(-1)).toBe("")
@@ -178,7 +167,7 @@ test("the filter sheet applies a filter and a sort", async () => {
 	await press($('dialog [data-type="payment"]'))
 	await press($('dialog [data-action="apply"]'))
 	await exit()
-	expect(written.at(-1)).toBe("?type=payment")
+	expect(written.at(-1)).toBe("?f.types=payment")
 	expect($("dialog")).toBeNull()
 	expect(ledgerRows()).toHaveLength(1)
 })
@@ -220,130 +209,61 @@ test("the ledger groups by card from the sheet, kept in the address as by", asyn
 	expect($(".ledger section.card")).not.toBeNull()
 })
 
-test("the Lists view groups by month, kept in the address as lby", async () => {
-	const { written } = await open("?view=lists")
-	expect($('.tx-body [data-action="group"]')?.textContent).toContain("Group: Status")
-	await press($('.tx-body [data-action="filter"]'))
-	await press($('dialog [data-by="month"]'))
-	await press($('dialog [data-action="apply"]'))
-	await exit()
-	expect(written.at(-1)).toBe("?view=lists&lby=month")
-})
-
-test("the Lists view has a search box and a Filter button, but no sort", async () => {
-	await open("?view=lists")
-	expect($('.tx-body input[name="q"]')?.getAttribute("placeholder")).toBe("Search card or note")
-	expect($('.tx-body [data-action="filter"]')).not.toBeNull()
-	expect($('.tx-body [data-action="sort"]')).toBeNull()
-	expect($(".tx-body [data-status]")).toBeNull()
-})
-
-test("the Lists view's search narrows the lists and lives in its own key", async () => {
-	const { written } = await open("?view=lists&q=ledger-only", async (r) => {
-		await r.savePurchaseList({ ...list("d9", "draft", ["A"]), lines: [{ cardId: "A", amount: 100, note: "toner" }] })
-	})
-	expect($$('.tx-body [data-row^="list:"]')).toHaveLength(2)
-	await type("toner")
-	expect(written.at(-1)).toBe("?view=lists&q=ledger-only&lq=toner")
-	expect($$('.tx-body [data-row^="list:"]').map((r) => r.getAttribute("data-row"))).toEqual(["list:d9"])
-})
-
-test("the Lists view's filter sheet applies a status, shown as a removable chip", async () => {
-	const { written } = await open("?view=lists")
-	await press($('[data-action="filter"]'))
-	expect(text($("dialog h2"))).toBe("Filter lists")
-	await press($('dialog [data-status="saved"]'))
-	expect(text($('dialog [data-action="apply"]'))).toBe("Nothing matches")
-	await press($('dialog [data-status="sent"]'))
-	await press($('dialog [data-action="apply"]'))
-	await exit()
-	expect(written.at(-1)).toBe("?view=lists&status=saved&status=sent")
-	expect($('[data-action="filter"] .tx-count')?.textContent).toBe("2")
-	expect(text($('[data-chip="status:sent"]'))).toContain("Waiting for the spender")
-	await press($('[data-chip="status:sent"]'))
-	await press($('[data-chip="status:saved"]'))
-	expect(written.at(-1)).toBe("?view=lists")
-	expect($$('.tx-body [data-row^="list:"]')).toHaveLength(1)
-})
-
-test("the Lists view's card and date filters show as chips", async () => {
-	await open("?view=lists&lcard=B&lrange=month")
-	expect($('[data-chip="card:B"]')).not.toBeNull()
-	expect(text($('[data-chip="range"]'))).toContain("This month")
-	expect($$('.tx-body [data-row^="list:"]')).toHaveLength(1)
-})
-
-test("the Lists view's Confirm saves a sent list after the second step", async () => {
-	const { repo } = await open("?view=lists")
-	await press($('[data-row="list:w1"] .a-hit'))
-	await press($(`${shown} [data-action="confirm-list"]`))
-	expect((await repo.listPurchaseLists()).find((l) => l.id === "w1")?.status).toBe("sent")
-	await press($('[data-action="save-list"]'))
-	expect((await repo.listPurchaseLists()).find((l) => l.id === "w1")?.status).toBe("saved")
-})
-
-test("the Lists view's Delete removes a draft in one step", async () => {
-	const { repo } = await open("?view=lists", async (r) => {
-		await r.savePurchaseList(list("d9", "draft", ["A"]))
-	})
-	await press($('[data-row="list:d9"] .a-hit'))
-	await press($(`${shown} [data-action="delete-draft"]`))
-	expect((await repo.listPurchaseLists()).map((l) => l.id)).toEqual(["w1"])
-	expect($('[data-row="list:d9"]')).toBeNull()
-})
-
-test("the Lists view's Merge joins two same-day waiting lists into one", async () => {
-	const { repo } = await open("?view=lists", async (r) => {
-		await r.savePurchaseList(list("w2", "sent", ["A"]))
-	})
-	await press($('[data-row="list:w1"] .a-hit'))
-	await press($(`${shown} [data-action="merge"]`))
-	const stored = await repo.listPurchaseLists()
-	expect(stored.map((l) => l.id)).toEqual(["w1"])
-	expect(stored[0]?.lines.map((l) => l.cardId)).toEqual(["B", "A"])
-	expect($('[data-row="list:w2"]')).toBeNull()
-})
-
-test("the switch changes the view and the address", async () => {
-	const { written } = await open()
-	await press($('[data-view="lists"]'))
-	expect(written.at(-1)).toBe("?view=lists")
-	expect($('.tx-body [data-row="list:w1"]')).not.toBeNull()
-	expect($("fieldset.tx-switch")).not.toBeNull()
-})
-
-test("with Owed open the Ledger button is marked current for wide screens", async () => {
+test("what is owed is not on Transactions any more: no owed column, no Lists view", async () => {
 	await open("?view=owed")
-	expect($('.tx-switch [data-view="ledger"]')?.hasAttribute("data-desktop-current")).toBe(true)
-	if (mounted) unmount(mounted)
-	mounted = undefined
-	await open("?view=lists")
-	expect($('.tx-switch [data-view="ledger"]')?.hasAttribute("data-desktop-current")).toBe(false)
+	expect($(".tx-owed, .tx-grid, .tile")).toBeNull()
+	expect($('[data-row^="list:"]:not([data-row="list:w1"])')).toBeNull()
+	expect(ledgerRows()).toHaveLength(3)
 })
 
-test("Owed tiles lead to the payment sheet on the card, with each group's room", async () => {
-	await open("?view=owed")
-	const tile = $<HTMLAnchorElement>('.tx-owed a[data-card="A"]')
-	expect(tile?.getAttribute("href")).toBe("/pay?card=A")
-	expect(tile?.querySelector(".rail")?.getAttribute("aria-label")).toMatch(/of the limit used$/)
+test("a purchase's Open card opens the card's panel over the ledger, and Back closes it", async () => {
+	const { history } = await open("?f.types=purchase", async (r) => {
+		await r.saveCard(card("7"))
+		await r.savePurchase({ id: "p7", cardId: "7", date: "2026-10-31", amount: 70_00, note: "seven" })
+	})
+	await press($('[data-row="buy:7:p7"] .a-hit'))
+	await press($(`${shown} [data-action="open-card"]`))
+	expect(history.now()).toBe("/transactions?f.types=purchase&card=7")
+	expect($(".detail-panel")).not.toBeNull()
+	expect($(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+	history.userBack()
+	await settle()
+	expect(history.now()).toBe("/transactions?f.types=purchase")
+	expect($(".detail-panel")).toBeNull()
 })
 
-test("the Owed order switch reverses the order, kept in the address as odir", async () => {
-	const { written } = await open("?view=owed")
-	await press($('.tx-owed [data-dir="desc"]'))
-	expect(written.at(-1)).toBe("?view=owed&odir=desc")
-	expect($('.tx-owed [data-dir="desc"]')?.getAttribute("aria-pressed")).toBe("true")
+test("a pasted ?card= opens the panel at once, and a filter change keeps it", async () => {
+	const { history } = await open("?card=7", async (r) => {
+		await r.saveCard(card("7"))
+	})
+	expect($(".detail-panel")).not.toBeNull()
+	await type("fuel")
+	expect(history.now()).toBe("/transactions?q=fuel&card=7")
+	expect($(".detail-panel")).not.toBeNull()
 })
 
-test("Mark paid moves a plan into the ledger and lowers owed", async () => {
+test("Back and Forward between the page's own entries read the ledger's settings again", async () => {
+	const { history } = await open("", async (r) => {
+		await r.saveCard(card("7"))
+		await r.savePurchase({ id: "p7", cardId: "7", date: "2026-10-31", amount: 70_00, note: "seven" })
+	})
+	await press($('[data-row="buy:7:p7"] .a-hit'))
+	await press($(`${shown} [data-action="open-card"]`))
+	await type("seven")
+	expect(history.now()).toBe("/transactions?q=seven&card=7")
+	history.userBack()
+	await settle()
+	// The entry under the panel still holds the address before the search.
+	expect($<HTMLInputElement>('input[name="q"]')?.value).toBe("")
+})
+
+test("Mark paid moves a plan into the ledger", async () => {
 	const { repo } = await open()
-	const owedBefore = text($('.tx-owed a[data-card="A"]'))
 	await press($('[data-item="planned"]'))
 	await press($('[data-action="mark-paid"]'))
 	const planned = (await repo.listCardPayments("A")).find((p) => p.id === "c2")
 	expect(planned).toMatchObject({ id: "c2", status: "paid", date: "2026-10-31" })
 	expect($('[data-item="planned"]')).toBeNull()
-	expect(text($('.tx-owed a[data-card="A"]'))).not.toBe(owedBefore)
 })
 
 test("Confirm saves a waiting list as is: every line made, under the list's own ids", async () => {
@@ -394,11 +314,11 @@ test("re-renders in Thai", async () => {
 	await open()
 	setLocale("th")
 	flushSync()
-	expect($("h1")?.textContent).toBe("รายการเคลื่อนไหว")
+	expect($('input[name="q"]')?.getAttribute("placeholder")).toBe("ค้นหาบัตร บันทึก หรือจำนวนเงิน")
 })
 
 test("a custom range chip shows display dates", async () => {
-	await open("?from=2026-10-30&to=2026-10-31")
+	await open("?f.from=2026-10-30&f.to=2026-10-31")
 	const chip = $('[data-chip="range"]')
 	expect(chip?.textContent).not.toContain("2026-10-30")
 	expect(chip?.textContent).toContain("30")
@@ -425,7 +345,7 @@ test("a failed mark paid names the marking, not a save, and the row stays open",
 })
 
 test("the Filter button counts the filters in use and the sort chip opens the sheet", async () => {
-	await open("?type=payment&card=A")
+	await open("?f.types=payment&f.cards=A")
 	expect($('[data-action="filter"] .tx-count')?.textContent).toBe("2")
 	const cardChip = $('[data-chip="card:A"]')
 	expect(cardChip?.querySelector(".cl-full")?.textContent).toBe("A) A card (1234)")
@@ -449,13 +369,6 @@ test("the summary names the month and signs its figures", async () => {
 	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿1,250.00")
 	expect(summary?.querySelector('[data-field="purchases"] b')?.getAttribute("data-tone")).toBe("out")
 	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe("+฿300.00")
-})
-
-test("the Owed view keeps the title and switch above the owed panel", async () => {
-	await open("?view=owed")
-	expect($("h1")?.textContent).toBe("Transactions")
-	expect($(".tx-grid")?.getAttribute("data-show")).toBe("owed")
-	expect($(".tx-owed .tile")).not.toBeNull()
 })
 
 /** 117 purchases on top of the three in `seed`: 120 ledger entries, two a day back from October. */

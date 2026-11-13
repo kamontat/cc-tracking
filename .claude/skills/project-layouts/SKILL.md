@@ -51,20 +51,19 @@ It lays out, in `<body>`:
   build stamps), today's date (the `HeaderDate` island, `transition:persist` so it survives
   navigation) and the header tabs;
 - `<main id="page">` with `page` plus the page's `mainClass` (`page--narrow`,
-  `page--form`, `page--tx`, `card-page`), holding the page's `main` slot (its island);
-- the `TabBar` organism (`#tabbar`): the bottom tabs and, unless `fab={false}`, the floating
-  *+ New* menu (`FabMenu`);
+  `page--form`), holding the page's `main` slot (its island);
+- the `TabBar` organism (`#tabbar`): the bottom tabs (nothing floats beside them: the
+  *+ New* menu retired, PRD DD-200);
 - the default `<slot />`, after the tab bar, for anything a page needs outside `<main>`.
 
-The header, the bottom bar's `nav` (`Tabs`) and `FabMenu` carry `transition:animate="none"`: on
-a navigation the page's content cross-fades while the shell holds still. Put it on the box that
-paints, not on a wrapper: `#tabbar` holds only `position: fixed` children, so it has no height,
-and naming it let the bar and *+ New* fade out with the page.
+The header and the bottom bar's `nav` (`Tabs`) carry `transition:animate="none"`: on a
+navigation the page's content cross-fades while the shell holds still. Put it on the box that
+paints, not on a wrapper: `#tabbar` holds only a `position: fixed` child, so it has no height,
+and naming it let the bar fade out with the page.
 
 Props: `title` and `titleKey` (forwarded to `BaseLayout`), `tab` (the page's place, marked
-in both navs), `mainClass`, and `fab` (default `true`; `false` where the reader is mid-task: the list pages,
-`/pay`, the card form). `tests/layouts/AppLayout.test.ts` covers it, and
-`tests/pages/pages.test.ts` holds every page to its tab and *+ New*.
+in both navs) and `mainClass`. `tests/layouts/AppLayout.test.ts` covers it, and
+`tests/pages/pages.test.ts` holds every page to its tab.
 
 ## Rules
 

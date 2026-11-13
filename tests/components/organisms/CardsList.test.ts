@@ -63,6 +63,8 @@ type Props = {
 	locations: LocationRecord[]
 	total: number
 	today: PlainDate
+	onopen: (id: string) => void
+	current: string | null
 }
 
 const show = (view: Partial<CardsView> = {}, props: Partial<Props> = {}, list: Card[] = cards) => {
@@ -131,10 +133,10 @@ test("by limit group: a section per group A to Z, and no section for a card in n
 	expect(root.querySelector('a[data-card="D"]')).toBeNull()
 })
 
-test("tiles link to the card page, encoded, in the group's colour", () => {
+test("tiles link to the card's panel on Cards, encoded, in the group's colour", () => {
 	const { root } = show()
 	const links = [...root.querySelectorAll<HTMLAnchorElement>("section a.tile[data-card]")]
-	expect(links.map((a) => a.getAttribute("href"))).toEqual(["/card?id=A", "/card?id=B%2F2", "/card?id=C"])
+	expect(links.map((a) => a.getAttribute("href"))).toEqual(["/cards?card=A", "/cards?card=B%2F2", "/cards?card=C"])
 	expect(links.map((a) => a.dataset["g"])).toEqual(["blue", "rose", "blue"])
 	expect(root.querySelectorAll("section .tiles")).toHaveLength(2)
 })
@@ -264,4 +266,24 @@ test("a group with a colour that is not in the palette gives a tile with no colo
 	const { root } = show({}, { groups: [{ ...g1, color: "nope" as never }, g2] }, [card("A")])
 	const tile = root.querySelector<HTMLElement>('a[data-card="A"]')
 	expect(tile?.dataset["g"]).toBeUndefined()
+})
+
+test("a plain click on a tile opens its panel in place; a click with a modifier is the browser's", () => {
+	const opened: string[] = []
+	const { root } = show({}, { onopen: (id: string) => opened.push(id) })
+	const tile = root.querySelector<HTMLAnchorElement>('a[data-card="A"]')
+	const plain = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 })
+	tile?.dispatchEvent(plain)
+	expect(opened).toEqual(["A"])
+	expect(plain.defaultPrevented).toBe(true)
+	const meta = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, metaKey: true })
+	tile?.dispatchEvent(meta)
+	expect(opened).toEqual(["A"])
+	expect(meta.defaultPrevented).toBe(false)
+})
+
+test("the card open in the panel is marked on its tile", () => {
+	const { root } = show({}, { current: "C" })
+	expect(root.querySelector('a[data-card="C"]')?.getAttribute("aria-current")).toBe("true")
+	expect(root.querySelector('a[data-card="A"]')?.hasAttribute("aria-current")).toBe(false)
 })

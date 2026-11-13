@@ -16,24 +16,26 @@
 	import { MessageError } from "#lib/i18n/error"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
-	import { listId, listPageAddress } from "#lib/ui/list-address"
+	import { listKey, listPageAddress } from "#lib/ui/list-address"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { writeListReply } from "#lib/ui/save-list-reply"
 	import { openRepository } from "#lib/ui/startup"
+	import { LISTS_ADDRESS } from "#lib/ui/tx-query"
 
 	/**
-	 * The spender's reply to the waiting list named by the address's `id` (`/list/reply?id=`).
-	 * Saving writes the purchases and the saved list, then leaves for the saved list's own page;
-	 * *Cancel list* deletes the waiting list and goes Home. A list in any other state (or none)
-	 * says so and links to where it can be opened. Everything here is the reader's data (DD-172).
+	 * The spender's reply to the waiting list named by the address's `list`
+	 * (`/transactions/lists/edit?list=`, RD-26). Saving writes the purchases and the saved list,
+	 * then leaves for the Lists tab with the saved list open in its panel; *Cancel list* deletes the
+	 * waiting list and leaves for the Lists tab. A list in any other state (or none) says so and
+	 * links to where it can be opened. Everything here is the reader's data (DD-172).
 	 */
 	interface Props {
 		/** Opens the store; tests pass one over an in-memory repository. */
 		open?: () => Promise<Opened>
 		/** The page's only clock reading: today's date, and when the reply is saved. */
 		clock?: () => Date
-		/** The address bar, read once for the list's `id`. */
+		/** The address bar, read once for the list's `list`. */
 		address?: AddressBar
 		/** Leaves after a write; `location.replace`, so Back does not reopen the list just written. */
 		navigate?: (url: string) => void
@@ -53,7 +55,9 @@
 	}
 
 	const now = today(clock())
-	const id = listId(address.search())
+	const id = listKey(address.search())
+	/** Where ‹ and a cancel lead: the Lists tab. */
+	const home = LISTS_ADDRESS
 	let repo: Repository | null = null
 	let data = $state.raw<MoneyData | null>(null)
 	// What the page shows: frozen once a write succeeds, so the page keeps the reply on its way
@@ -116,7 +120,7 @@
 			cancelled = true
 			leaving = true
 		}, "reply.error.cancel")
-		if (cancelled) navigate("/")
+		if (cancelled) navigate(home)
 	}
 
 	const detail = $derived.by(() => {
@@ -142,7 +146,7 @@
 </script>
 
 {#if shown && list?.status === "sent"}
-	<SubHeaderBar title={tr("reply.title")} {detail} back="/" />
+	<SubHeaderBar title={tr("reply.title")} {detail} back={home} />
 	<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
 	<ListReply {list} cards={shown.cards} groups={shown.groups} onsavereply={saveReply}>
 		{#snippet side()}

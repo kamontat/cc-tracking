@@ -39,7 +39,7 @@ A *program* (generates or migrates something) is a file under `scripts/`.
 | Components | `src/components/{atoms,molecules,organisms}/` (`project-components`) |
 | Domain, storage, i18n, UI helpers | `src/lib/{domain,storage,i18n,ui}/` |
 | Styles | `src/styles/` (`tokens.css`, `app.css`) |
-| Static files | `public/` (`_headers`, `_redirects`, favicon) |
+| Static files | `public/` (`_headers`, favicon) |
 | Tests | `tests/`, mirroring `src/` (`src/lib/gtm.ts` → `tests/lib/gtm.test.ts`); `scripts/` → `tests/scripts/` |
 
 Aliases (`package.json` `imports`): `#lib/*` adds `.ts`, so a rune module

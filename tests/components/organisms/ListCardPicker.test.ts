@@ -10,7 +10,7 @@ import { cardUsage } from "#lib/domain/usage"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * The add-a-card sheet's picker (DD-195): a search, the sorts as pills, and every ready card as
+ * The add-a-card sheet's picker (DD-195, DD-198): a search, the sorts always shown as pills, and every ready card as
  * a tile with its last 12 statements under it. A tap picks the card; a card already on the list
  * says so, with its amount.
  */
@@ -74,17 +74,29 @@ const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g
 const order = () => [...document.querySelectorAll(".tile")].map((el) => el.getAttribute("data-card"))
 
 const type = (value: string) => {
-	const input = $<HTMLInputElement>('[data-field="search"]')
+	const input = $<HTMLInputElement>(".tx-search input")
 	if (!input) throw new Error("no search")
 	input.value = value
 	input.dispatchEvent(new Event("input", { bubbles: true }))
 	flushSync()
 }
 
-const sortBy = (sort: string) => {
-	$<HTMLButtonElement>(`[data-sort="${sort}"]`)?.click()
+const click = (selector: string) => {
+	$<HTMLButtonElement>(selector)?.click()
 	flushSync()
 }
+
+const sortBy = (sort: string) => click(`[data-sort="${sort}"]`)
+const pressed = () => [...document.querySelectorAll("[data-sort]")].map((p) => p.getAttribute("aria-pressed"))
+
+test("the search box is the list pages' own, with no Filter button and no sort chip", () => {
+	show()
+	const bar = $(".tx-controls")
+	expect(bar?.querySelector(".tx-ctl .tx-search input[type=search]")?.getAttribute("placeholder")).toBe("Search card")
+	expect($('[data-action="filter"]')).toBeNull()
+	expect($('[data-action="sort"]')).toBeNull()
+	expect($(".tx-chips")).toBeNull()
+})
 
 test("every ready card as a tile, most room first, with its last 12 statements under it", () => {
 	show()
@@ -97,16 +109,24 @@ test("every ready card as a tile, most room first, with its last 12 statements u
 	expect(text($('.tile[data-card="1"] .facts'))).toBe("closes 25 Nov · due 15 Dec")
 })
 
-test("the sorts are pills, room picked first; each reorders the tiles", () => {
+test("the five sorts are always shown as pills under the search box, most room picked first", () => {
 	show()
-	const pills = [...document.querySelectorAll("[data-sort]")]
+	const group = $(".tx-controls + .filter-group")
+	expect(group?.querySelector("legend")?.textContent).toBe("Sort")
+	const pills = [...(group?.querySelectorAll(".filter-chips [data-sort]") ?? [])]
 	expect(pills.map(text)).toEqual(["Most room", "Least used", "Longest unused", "Longest to close", "Latest due"])
-	expect(pills.map((p) => p.getAttribute("aria-pressed"))).toEqual(["true", "false", "false", "false", "false"])
+	expect(pressed()).toEqual(["true", "false", "false", "false", "false"])
+})
+
+test("picking a sort reorders the tiles and marks its pill, and the pills stay", () => {
+	show()
 	sortBy("least")
 	expect(order()).toEqual(["3", "2", "1"])
-	expect($('[data-sort="least"]')?.getAttribute("aria-pressed")).toBe("true")
+	expect(document.querySelectorAll("[data-sort]")).toHaveLength(5)
+	expect(pressed()).toEqual(["false", "true", "false", "false", "false"])
 	sortBy("idle")
 	expect(order()).toEqual(["3", "2", "1"])
+	expect(pressed()).toEqual(["false", "false", "true", "false", "false"])
 })
 
 test("the search narrows the tiles, and a search that finds nothing says so", () => {
@@ -145,6 +165,7 @@ test("with no ready card it says why and leads to Locations", () => {
 test("reads in Thai", () => {
 	setLocale("th")
 	show()
+	expect(text($(".filter-group > legend"))).toBe("เรียง")
 	expect(text($('[data-sort="room"]'))).toBe("วงเงินเหลือมากสุด")
 	expect(text($('.tile[data-card="3"] .foot'))).toBe("ไม่ได้ใช้ใน 12 รอบบิล")
 })

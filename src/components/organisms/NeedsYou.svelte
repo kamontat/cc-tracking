@@ -11,12 +11,10 @@
 	import TwoStepButtons from "#components/molecules/TwoStepButtons.svelte"
 	import { addDays } from "#lib/domain/date"
 	import { formatAmount, MINUS } from "#lib/domain/money"
-	import { listTotal, mergeCandidates } from "#lib/domain/purchase-list"
+	import { listTotal } from "#lib/domain/purchase-list"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { PAST_TODAY } from "#lib/ui/cycle-line"
-	import { listPageAddress } from "#lib/ui/list-address"
 	import { OpenRows } from "#lib/ui/open-row.svelte"
-	import { payAddress } from "#lib/ui/pay-address"
 	import {
 		draftText,
 		listParts,
@@ -31,16 +29,15 @@
 	import { TwoStep } from "#lib/ui/two-step.svelte"
 
 	/**
-	 * What needs doing on Home, money at risk first (DD-62): bills past due, late plans, replies
-	 * to record, payments planned soon, drafts to finish. Each is the shared opening row
-	 * (`ActionRow`, DD-108): its icon says the kind and the amount sits on the right. A row opens
-	 * in place (one at a time) to a drawer of one sentence and its buttons (DD-165): an overdue
-	 * bill its billing cycle line, red up to today, *Pay* the amount left and *Open card*; a plan
-	 * *Paid* (`onmarkpaid`) and a two-step *Delete* (`ondeletepayment`); a waiting list its lines,
-	 * *Record reply* and a two-step *Confirm* (`onconfirmlist`); a draft its lines, *Continue* and
-	 * a one-step *Delete* (`ondeletedraft`, DD-74); a waiting list or draft that shares its day
-	 * with another of its status also *Merge* (`onmergelists`, DD-187). Home writes them. More than five show the
-	 * first five and *See more (N)*, which opens the rest in place, in the same order.
+	 * Home's *Needs you* tab, money at risk first (DD-62): bills past due, late plans, replies to
+	 * record, payments planned soon, drafts to finish, every one of them (the tab has the screen to
+	 * itself, so there is no *See more*). Each is the shared row (`ActionRow`, DD-108): its icon says
+	 * the kind and the amount sits on the right. A bill or a plan opens in place (one at a time) to
+	 * a drawer of one sentence and its buttons (DD-165): an overdue bill its billing cycle line, red
+	 * up to today, *Pay* the amount left (`onpay`, the card's panel on its pay form) and *Open card*
+	 * (`onopencard`, the card's panel); a plan *Paid* (`onmarkpaid`) and a two-step *Delete*
+	 * (`ondeletepayment`). A waiting list or a draft opens the list's panel (`onopenlist`), which
+	 * holds its lines and its actions; the open list's row is marked (`current`). Home writes them.
 	 */
 	interface Props {
 		items?: NeedsItem[]
@@ -50,16 +47,18 @@
 		groups?: LimitGroup[]
 		/** Today, to say how far off a planned payment is. */
 		today?: PlainDate
+		/** The list open in the panel now, whose row is marked. */
+		current?: string | null
 		/** *Paid* on a planned payment. */
 		onmarkpaid?: ((payment: CardPayment) => void) | undefined
 		/** The second *Delete* on a planned payment. */
 		ondeletepayment?: ((payment: CardPayment) => void) | undefined
-		/** The second *Confirm* on a waiting list. */
-		onconfirmlist?: ((list: PurchaseList) => void) | undefined
-		/** *Delete* on a draft. */
-		ondeletedraft?: ((list: PurchaseList) => void) | undefined
-		/** *Merge* on a waiting list or draft: the other same-day lists of its status go into it. */
-		onmergelists?: ((list: PurchaseList) => void) | undefined
+		/** A waiting list's or a draft's row: open the list's panel. */
+		onopenlist?: ((list: PurchaseList) => void) | undefined
+		/** *Open card* on an overdue bill: open the card's panel. */
+		onopencard?: ((id: string) => void) | undefined
+		/** *Pay* on an overdue bill: the card's panel on its pay form, with `amount` (satang) filled in. */
+		onpay?: ((card: Card, amount: number) => void) | undefined
 	}
 
 	const {
@@ -67,18 +66,13 @@
 		cards = [],
 		groups = [],
 		today = "",
+		current = null,
 		onmarkpaid,
 		ondeletepayment,
-		onconfirmlist,
-		ondeletedraft,
-		onmergelists,
+		onopenlist,
+		onopencard,
+		onpay,
 	}: Props = $props()
-
-	/** Every waiting list and draft on Home, folded or not, to find a list's merge partners. */
-	const lists = $derived(items.flatMap((item) => (item.kind === "waiting" || item.kind === "draft" ? [item.list] : [])))
-
-	/** How many things show before *See more*. */
-	const SHOWN = 5
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -88,7 +82,7 @@
 	}
 
 	let root = $state<HTMLElement | undefined>()
-	/** The two-step *Delete* and *Confirm* swaps, shared with the ledger. */
+	/** The two-step *Delete* swap on a plan, shared with the ledger. */
 	const steps = new TwoStep(() => root)
 	/** The one open row, by `rowId`; a swap ends when its row closes. */
 	const rows = new OpenRows(
@@ -96,9 +90,6 @@
 		() => root,
 		() => steps.reset(),
 	)
-
-	/** Whether the things past the first `SHOWN` are open (DD-106). */
-	let expanded = $state(false)
 
 	/** A row's id in the open-row controller, unique across kinds (a payment's id repeats across cards). */
 	const rowId = (item: NeedsItem): string => {
@@ -117,8 +108,6 @@
 		const ids = items.map(rowId)
 		untrack(() => rows.prune(ids))
 	})
-
-	const shown = $derived(expanded ? items : items.slice(0, SHOWN))
 
 	const heading = $derived(
 		items.length === 0
@@ -202,89 +191,64 @@
 </script>
 
 <div class="needs" bind:this={root}>
-	<h1 tabindex="-1" data-refocus="needs">{heading}</h1>
+	<h2 tabindex="-1" data-refocus="needs">{heading}</h2>
 	{#if items.length === 0}
 		<p class="note" data-tone="ok">{tr("home.caughtUpDetail")}</p>
 	{:else}
 		<div class="row-panel panel" id="needs-list">
-			{#each shown as item (rowId(item))}
+			{#each items as item (rowId(item))}
 				{@const id = rowId(item)}
 				{@const words = wordsOf(item)}
-				<ActionRow
-					kind={words.kind}
-					title={words.title}
-					subtitle={words.subtitle}
-					{id}
-					detailsId={rows.detailsId(id)}
-					expanded={rows.isOpen(id)}
-					ontoggle={() => rows.toggle(id)}
-					amount={words.amount}
-					cycle={words.cycle}
-					parts={words.parts}
-					say={words.say}>
-					{#snippet actions()}
-						{#snippet merge(list: PurchaseList)}
-							{@const others = mergeCandidates(list, lists).length}
-							{#if others > 0}
-								<button type="button" data-variant="quiet" data-action="merge" onclick={() => onmergelists?.(list)}>
-									{others === 1 ? tr("row.merge.one") : tr("row.merge.many", { count: others })}
+				{#if item.kind === "waiting" || item.kind === "draft"}
+					{@const list = item.list}
+					<ActionRow
+						kind={words.kind}
+						title={words.title}
+						subtitle={words.subtitle}
+						{id}
+						amount={words.amount}
+						current={current === list.id}
+						onopen={() => onopenlist?.(list)} />
+				{:else}
+					<ActionRow
+						kind={words.kind}
+						title={words.title}
+						subtitle={words.subtitle}
+						{id}
+						detailsId={rows.detailsId(id)}
+						expanded={rows.isOpen(id)}
+						ontoggle={() => rows.toggle(id)}
+						amount={words.amount}
+						cycle={words.cycle}
+						parts={words.parts}
+						say={words.say}>
+						{#snippet actions()}
+							{#if item.kind === "overdue"}
+								{@const due = item}
+								<button type="button" data-action="pay" onclick={() => onpay?.(due.card, due.remaining)}>
+									{tr("row.payAmount", { amount: formatAmount(due.remaining) })}
+								</button><button
+									type="button"
+									data-variant="quiet"
+									data-action="open-card"
+									onclick={() => onopencard?.(due.card.id)}>
+									{tr("row.openCard")}
 								</button>
+							{:else if item.kind === "planned"}
+								{@const payment = item.payment}
+								<TwoStepButtons
+									{steps}
+									kind="plan"
+									{payment}
+									card={item.card}
+									onpaid={() => onmarkpaid?.(payment)}
+									onremove={() => ondeletepayment?.(payment)} />
 							{/if}
 						{/snippet}
-						{#if item.kind === "waiting"}
-							{@const list = item.list}
-							<a class="btn" data-action="record-reply" href={listPageAddress(list)}>{tr("row.recordReply")}</a>
-							{@render merge(list)}
-							<TwoStepButtons {steps} kind="list" {list} onconfirm={() => onconfirmlist?.(list)} />
-						{:else if item.kind === "overdue"}
-							<a class="btn" data-action="pay" href={payAddress({ cardId: item.card.id, amount: item.remaining })}
-								>{tr("row.payAmount", { amount: formatAmount(item.remaining) })}</a
-							><a
-								class="btn"
-								data-variant="quiet"
-								data-action="open-card"
-								href={`/card?id=${encodeURIComponent(item.card.id)}`}
-								>{tr("row.openCard")}</a
-							>
-						{:else if item.kind === "planned"}
-							{@const payment = item.payment}
-							<TwoStepButtons
-								{steps}
-								kind="plan"
-								{payment}
-								card={item.card}
-								onpaid={() => onmarkpaid?.(payment)}
-								onremove={() => ondeletepayment?.(payment)} />
-						{:else}
-							{@const list = item.list}
-							<a class="btn" data-action="continue" href={listPageAddress(list)}>{tr("row.continue")}</a>
-							{@render merge(list)}
-							<button
-								type="button"
-								data-variant="danger"
-								data-action="delete-draft"
-								onclick={() => ondeletedraft?.(list)}>
-								{tr("common.delete")}
-							</button>
-						{/if}
-					{/snippet}
-				</ActionRow>
+					</ActionRow>
+				{/if}
 			{/each}
 		</div>
-		{#if items.length > SHOWN}
-			<button
-				type="button"
-				class="more"
-				data-variant="quiet"
-				data-action="more"
-				aria-controls="needs-list"
-				aria-expanded={expanded ? "true" : "false"}
-				onclick={() => {
-					expanded = !expanded
-				}}>
-				{expanded ? tr("common.showLess") : tr("common.seeMore", { count: items.length - SHOWN })}
-			</button>
-		{/if}
 	{/if}
 </div>
 
@@ -296,9 +260,9 @@
 		min-inline-size: 0;
 	}
 
-	/* Two classes, to outrank app.css's `.page h1`. */
-	.needs h1 {
-		font-size: var(--cc-text-2xl);
+	/* Two classes, to outrank app.css's `.page h2`; a section heading under the page's title and tabs. */
+	.needs h2 {
+		font-size: var(--cc-text-lg);
 		font-weight: 700;
 	}
 
@@ -318,10 +282,5 @@
 
 	.needs .note[data-tone="ok"] {
 		background: var(--cc-accent-surface);
-	}
-
-	/* Two classes, to outrank app.css's `.page button` (which starts a button at the column's start). */
-	.needs .more {
-		align-self: center;
 	}
 </style>

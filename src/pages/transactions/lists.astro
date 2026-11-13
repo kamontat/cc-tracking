@@ -1,0 +1,15 @@
+---
+import PageTabs from "#components/molecules/PageTabs.astro"
+import ListsPage from "#components/organisms/ListsPage.svelte"
+import AppLayout from "#layouts/AppLayout.astro"
+import { TRANSACTIONS_TABS } from "#lib/ui/page-tabs"
+import { LISTS_ADDRESS } from "#lib/ui/tx-query"
+---
+
+<!-- Transactions, its Lists tab (RD-22): the title and the tabs are static; the purchase lists are the reader's data, so they are an island. -->
+<AppLayout title="Lists" titleKey="title.lists" tab="transactions">
+	<Fragment slot="main">
+		<PageTabs title="nav.transactions" label="tx.tabs" tabs={TRANSACTIONS_TABS} current={LISTS_ADDRESS} />
+		<ListsPage client:load />
+	</Fragment>
+</AppLayout>

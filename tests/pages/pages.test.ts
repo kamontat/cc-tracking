@@ -3,6 +3,7 @@
 
 import type { AstroComponentFactory } from "astro/runtime/server/index.js"
 
+import { existsSync } from "node:fs"
 import { expect, test } from "vitest"
 
 import { createContainer, parseHtml } from "../container"
@@ -27,20 +28,27 @@ const render = async (page: string) => {
 
 test("src/pages has every page", () => {
 	expect(pages).toEqual([
-		"card.astro",
-		"card/edit.astro",
-		"card/new.astro",
 		"cards.astro",
+		"cards/limits.astro",
 		"index.astro",
-		"list/draft.astro",
-		"list/new.astro",
-		"list/reply.astro",
-		"list/view.astro",
-		"pay.astro",
+		"owed.astro",
+		"ready.astro",
 		"settings.astro",
 		"settings/locations.astro",
 		"transactions.astro",
+		"transactions/lists.astro",
+		"transactions/lists/edit.astro",
+		"transactions/lists/new.astro",
 	])
+})
+
+// The card page, the card form's pages, the payment page and the old list pages retired with the
+// tabs and the detail panel (RD-23, RD-25, RD-26): no file serves them and nothing redirects.
+test("the retired addresses are not built", () => {
+	for (const gone of ["card.astro", "card", "pay.astro", "list", "list.astro", "backup.astro"]) {
+		expect(existsSync(`src/pages/${gone}`), gone).toBe(false)
+	}
+	expect(pages.some((page) => /^(card|pay|list)[./]/.test(page))).toBe(false)
 })
 
 const layouts = Array.from(new Bun.Glob("*.astro").scanSync({ cwd: "src/layouts" })).map((file) =>
@@ -118,47 +126,107 @@ test("each page keeps the width it asks for", async () => {
 		widths[page] = (await render(page)).match(/<main class="([^"]*)"/)?.[1] ?? ""
 	}
 	expect(widths).toEqual({
-		"card.astro": "page card-page",
-		"card/edit.astro": "page page--form",
-		"card/new.astro": "page page--form",
 		"cards.astro": "page",
+		"cards/limits.astro": "page",
 		"index.astro": "page",
-		"list/draft.astro": "page page--narrow",
-		"list/new.astro": "page page--narrow",
-		"list/reply.astro": "page page--narrow",
-		"list/view.astro": "page page--narrow",
-		"pay.astro": "page page--narrow",
+		"owed.astro": "page",
+		"ready.astro": "page",
 		"settings.astro": "page",
 		"settings/locations.astro": "page page--form",
-		"transactions.astro": "page page--tx",
+		"transactions.astro": "page",
+		"transactions/lists.astro": "page",
+		"transactions/lists/edit.astro": "page page--narrow",
+		"transactions/lists/new.astro": "page page--narrow",
 	})
 })
 
-test("each page marks its place in both navs, and steps + New aside when mid-task", async () => {
+test("each page marks its place in both navs, and none has a floating + New (it retired, RD-25)", async () => {
 	const shell: Record<string, string> = {}
 	for (const page of pages) {
 		const doc = parseHtml(await render(page))
 		const header = doc.querySelector('.site-header__tabs [aria-current="page"]')?.getAttribute("data-tab")
 		const bar = doc.querySelector('.tabbar [aria-current="page"]')?.getAttribute("data-tab")
 		expect(bar, page).toBe(header)
-		shell[page] = `${header ?? "none"}${doc.querySelector(".fab-menu") ? " +new" : ""}`
+		expect(doc.querySelector(".fab-menu, .fab"), page).toBeNull()
+		shell[page] = header ?? "none"
 	}
-	// The payment page sits under Transactions; a card's pages under Cards; Locations under
-	// Settings; every purchase list page under Home. + New steps aside on the payment page, the
-	// list pages and the card form (PRD DD-104).
+	// Home's three tabs under Home; the purchase list pages under Transactions (RD-26); Locations
+	// under Settings.
 	expect(shell).toEqual({
-		"card.astro": "cards +new",
-		"card/edit.astro": "cards",
-		"card/new.astro": "cards",
-		"cards.astro": "cards +new",
-		"index.astro": "home +new",
-		"list/draft.astro": "home",
-		"list/new.astro": "home",
-		"list/reply.astro": "home",
-		"list/view.astro": "home",
-		"pay.astro": "transactions",
-		"settings.astro": "settings +new",
-		"settings/locations.astro": "settings +new",
-		"transactions.astro": "transactions +new",
+		"cards.astro": "cards",
+		"cards/limits.astro": "cards",
+		"index.astro": "home",
+		"owed.astro": "home",
+		"ready.astro": "home",
+		"settings.astro": "settings",
+		"settings/locations.astro": "settings",
+		"transactions.astro": "transactions",
+		"transactions/lists.astro": "transactions",
+		"transactions/lists/edit.astro": "transactions",
+		"transactions/lists/new.astro": "transactions",
 	})
+})
+
+test("Cards and Limits head the page with the title and the Cards · Limits tabs, the one on show marked", async () => {
+	for (const [page, current] of [
+		["cards.astro", "/cards"],
+		["cards/limits.astro", "/cards/limits"],
+	] as const) {
+		const doc = parseHtml(await render(page))
+		const main = doc.querySelector("main#page")
+		expect(main?.querySelector(".page-tabs h1")?.getAttribute("data-i18n"), page).toBe("cards.title")
+		const links = [...(main?.querySelectorAll(".page-tabs nav a") ?? [])]
+		expect(links.map((a) => a.getAttribute("href"))).toEqual(["/cards", "/cards/limits"])
+		expect(main?.querySelector('.page-tabs nav a[aria-current="page"]')?.getAttribute("href"), page).toBe(current)
+		// The title, a divider and the tabs share one bar.
+		const bar = main?.querySelector(".page-tabs")
+		expect(main?.querySelector(".page-tabs h1")?.parentElement, page).toBe(bar)
+		expect(main?.querySelector(".page-tabs nav")?.parentElement, page).toBe(bar)
+		expect(bar?.querySelector(':scope > h1 + .page-tabs__divider[aria-hidden="true"] + nav'), page).not.toBeNull()
+		// The tabs come before the island.
+		expect(main?.firstElementChild?.classList.contains("page-tabs")).toBe(true)
+	}
+})
+
+test("Ledger and Lists head the page with the title and the Ledger · Lists tabs, the one on show marked", async () => {
+	for (const [page, current, island] of [
+		["transactions.astro", "/transactions", "TransactionsPage"],
+		["transactions/lists.astro", "/transactions/lists", "ListsPage"],
+	] as const) {
+		const doc = parseHtml(await render(page))
+		const main = doc.querySelector("main#page")
+		expect(main?.querySelector(".page-tabs h1")?.getAttribute("data-i18n"), page).toBe("nav.transactions")
+		expect(main?.querySelector(".page-tabs nav")?.getAttribute("data-i18n-aria-label")).toBe("tx.tabs")
+		const links = [...(main?.querySelectorAll(".page-tabs nav a") ?? [])]
+		expect(links.map((a) => a.getAttribute("href"))).toEqual(["/transactions", "/transactions/lists"])
+		expect(main?.querySelector('.page-tabs nav a[aria-current="page"]')?.getAttribute("href"), page).toBe(current)
+		expect(main?.firstElementChild?.classList.contains("page-tabs")).toBe(true)
+		expect(await source(page)).toContain(`<${island} client:load`)
+	}
+})
+
+test("the builder and the edit page are full pages under the Lists tab's path, with no tabs", async () => {
+	expect(await source("transactions/lists/new.astro")).toContain("<ListNewPage client:load />")
+	expect(await source("transactions/lists/edit.astro")).toContain("<ListEditPage client:load />")
+	for (const page of ["transactions/lists/new.astro", "transactions/lists/edit.astro"]) {
+		expect(parseHtml(await render(page)).querySelector(".page-tabs"), page).toBeNull()
+	}
+})
+
+test("Needs you, Owed and Ready to use head the page with the title and Home's tabs, the one on show marked", async () => {
+	for (const [page, current, island] of [
+		["index.astro", "/", "HomePage"],
+		["owed.astro", "/owed", "OwedPage"],
+		["ready.astro", "/ready", "ReadyPage"],
+	] as const) {
+		const doc = parseHtml(await render(page))
+		const main = doc.querySelector("main#page")
+		expect(main?.querySelector(".page-tabs h1")?.getAttribute("data-i18n"), page).toBe("nav.home")
+		expect(main?.querySelector(".page-tabs nav")?.getAttribute("data-i18n-aria-label")).toBe("home.tabs")
+		const links = [...(main?.querySelectorAll(".page-tabs nav a") ?? [])]
+		expect(links.map((a) => a.getAttribute("href"))).toEqual(["/", "/owed", "/ready"])
+		expect(main?.querySelector('.page-tabs nav a[aria-current="page"]')?.getAttribute("href"), page).toBe(current)
+		expect(main?.firstElementChild?.classList.contains("page-tabs")).toBe(true)
+		expect(await source(page)).toContain(`<${island} client:load`)
+	}
 })

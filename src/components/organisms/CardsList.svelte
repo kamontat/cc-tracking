@@ -1,26 +1,27 @@
 <script lang="ts">
-	import type { CardsResults, CardsRooms, CardsSection } from "#lib/domain/cards-view"
+	import type { CardsResults, CardsRooms } from "#lib/domain/cards-view"
 	import type { Card, CardLedger, LimitGroup, LocationRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
 	import { onMount } from "svelte"
 
+	import CardSections from "#components/molecules/CardSections.svelte"
 	import CardTile from "#components/molecules/CardTile.svelte"
 	import { cardOpenDates } from "#lib/domain/cards-view"
 	import { displayDate, today as todayOf } from "#lib/domain/date"
-	import { takesPurchases } from "#lib/domain/locations"
 	import { cardOwnerOf } from "#lib/domain/owner"
 	import { nameOfLocation } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { lastFour, tileTone } from "#lib/ui/card-tile"
 	import { panelOpen, rememberPanel } from "#lib/ui/panel"
+	import { withRecord } from "#lib/ui/record-panel.svelte"
 
 	/**
 	 * The Cards page's results (DD prototype `cardResults`), in sections (DD-192): by place, a
 	 * section per location headed by its name, its count and whether it takes purchases; by account
 	 * holder or limit group, a section per holder or group headed by it and its count; not grouped,
 	 * one flat list headed by its count. Outside the place sections the tiles also say the place. Archived matches fold at the end
-	 * (`cc:panel:cards-archive`). Each card is a card tile (DD-151) that opens its card page: the
+	 * (`cc:panel:cards-archive`). Each card is a card tile (DD-151) that opens its card's panel (RD-23): the
 	 * last 4, the group's room and its word, the cardholder (`· Sub` for a supplementary card),
 	 * and the open period's dates.
 	 */
@@ -39,6 +40,13 @@
 		total?: number
 		/** Today, which picks each card's open period for the tile's close and due dates. */
 		today?: PlainDate
+		/**
+		 * Opens a card's panel in place (RD-23): a plain click on a tile calls it instead of
+		 * following the link; a click with a modifier (a new tab) is left to the browser.
+		 */
+		onopen?: ((id: string) => void) | undefined
+		/** The card open in the panel now, marked on its tile. */
+		current?: string | null | undefined
 	}
 
 	const {
@@ -50,6 +58,8 @@
 		locations = [],
 		total = 0,
 		today = todayOf(new Date()),
+		onopen,
+		current = null,
 	}: Props = $props()
 
 	const ARCHIVE_PANEL = "cards-archive"
@@ -60,9 +70,6 @@
 		void lang
 		return t(key, params)
 	}
-
-	const cardsCount = (count: number) =>
-		count === 1 ? tr("cards.page.count.one") : tr("cards.page.count.many", { count })
 
 	const placeName = (id: string) => {
 		void lang
@@ -86,20 +93,20 @@
 		return card.supplementary ? [owner, tr("tile.sub")].filter(Boolean).join(" · ") : owner
 	}
 
-	/** A section's heading: its place, holder or limit group, and what is said after the count. */
-	const sectionHead = (section: CardsSection): { name: string; extra: string } => {
-		void lang
-		if (section.kind === "place") {
-			const takes = takesPurchases(locations, section.location)
-			return { name: placeName(section.location), extra: takes ? ` · ${t("cards.page.takesPurchases")}` : "" }
-		}
-		if (section.kind === "holder") return { name: section.owner, extra: "" }
-		return { name: section.group.name, extra: "" }
+	const cardsCount = (count: number) =>
+		count === 1 ? tr("cards.page.count.one") : tr("cards.page.count.many", { count })
+
+	/** Line 3, with the place when no section head names it. */
+	const facts = (card: Card, unplaced: boolean): string => {
+		const place = unplaced ? placeName(card.location) : ""
+		return place ? `${dates(card)} · ${place}` : dates(card)
 	}
 
-	const facts = (card: Card, flat: boolean): string => {
-		const place = flat ? placeName(card.location) : ""
-		return place ? `${dates(card)} · ${place}` : dates(card)
+	/** A tile's click: the panel opens in place, unless the reader asked the browser for a new tab. */
+	const opener = (id: string) => (event: MouseEvent) => {
+		if (!onopen || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+		event.preventDefault()
+		onopen(id)
 	}
 
 	onMount(() =>
@@ -109,47 +116,39 @@
 	)
 </script>
 
-{#snippet tiles(cards: Card[], flat: boolean)}
-	<div class="tiles">
-		{#each cards as card (card.id)}
-			<CardTile
-				{card}
-				href={`/card?id=${encodeURIComponent(card.id)}`}
-				tone={tileTone(card, groups)}
-				room={(card.limitGroupId ? rooms.get(card.limitGroupId) : null) ?? null}
-				credit={credits.get(card.id) ?? 0}
-				corner={lastFour(card)}
-				mono
-				aside={holder(card)}
-				facts={facts(card, flat)} />
-		{/each}
-	</div>
+{#snippet tile(card: Card, unplaced: boolean)}
+	<CardTile
+		{card}
+		href={withRecord("/cards", { kind: "card", id: card.id })}
+		current={card.id === current}
+		onclick={opener(card.id)}
+		tone={tileTone(card, groups)}
+		room={(card.limitGroupId ? rooms.get(card.limitGroupId) : null) ?? null}
+		credit={credits.get(card.id) ?? 0}
+		corner={lastFour(card)}
+		mono
+		aside={holder(card)}
+		facts={facts(card, unplaced)} />
 {/snippet}
 
 <div class="cards-list">
 	{#if results.count === 0}
 		<p class="empty">{total === 0 ? tr("cards.page.empty") : tr("cards.page.noMatch")}</p>
 	{/if}
-	{#each results.sections ?? [] as section (section.key)}
-		{@const head = sectionHead(section)}
-		<section data-section={section.key} data-location={section.kind === "place" ? section.location : undefined}>
-			<h2 class="place">
-				<b>{head.name}</b>
-				<small>{cardsCount(section.cards.length)}{head.extra}</small>
-			</h2>
-			{@render tiles(section.cards, section.kind !== "place")}
-		</section>
-	{/each}
-	{#if results.flat && results.flat.length > 0}
-		<section>
-			<p class="result-head">{cardsCount(results.flat.length)}</p>
-			{@render tiles(results.flat, true)}
-		</section>
-	{/if}
+	<CardSections
+		{results}
+		cardOf={(card: Card) => card}
+		{locations}
+		head={results.flat ? cardsCount(results.flat.length) : undefined}
+		{tile} />
 	{#if results.archived.length > 0}
 		<details class="archive" open={panelOpen(ARCHIVE_PANEL, false)} ontoggle={rememberPanel(ARCHIVE_PANEL)}>
 			<summary>{tr("cards.archivedList", { count: results.archived.length })}</summary>
-			{@render tiles(results.archived, true)}
+			<CardSections
+				results={{ sections: null, flat: results.archived, count: results.archived.length }}
+				cardOf={(card: Card) => card}
+				{locations}
+				{tile} />
 		</details>
 	{/if}
 </div>
@@ -160,47 +159,6 @@
 		flex-direction: column;
 		gap: var(--cc-space-4);
 		min-inline-size: 0;
-	}
-
-	section {
-		display: flex;
-		flex-direction: column;
-		gap: var(--cc-space-1);
-	}
-
-	/* The tiles' grid: one column on a phone, as many as fit from 900px. */
-	.tiles {
-		display: grid;
-		gap: var(--cc-space-2);
-	}
-
-	@media (min-width: 900px) {
-		.tiles {
-			grid-template-columns: repeat(auto-fill, minmax(var(--cc-tile-min), 1fr));
-		}
-	}
-
-	/* Two classes, to outrank app.css's `.page h2` and `.page small`. */
-	.place {
-		display: flex;
-		flex-direction: row;
-		flex-wrap: wrap;
-		align-items: baseline;
-		gap: var(--cc-space-2);
-		margin: 0;
-		font-size: var(--cc-text-md);
-		font-weight: 400;
-	}
-
-	.place small,
-	.result-head {
-		font-size: var(--cc-text-xs);
-		color: var(--cc-text-muted);
-	}
-
-	.result-head {
-		margin: 0;
-		font-size: var(--cc-text-sm);
 	}
 
 	details.archive {
@@ -216,7 +174,7 @@
 		cursor: pointer;
 	}
 
-	details.archive > summary + * {
+	details.archive > summary + :global(*) {
 		margin-top: var(--cc-space-2);
 	}
 

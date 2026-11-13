@@ -7,7 +7,7 @@ const SKIP = new Set(["_headers", "_redirects", "sw.js"])
 
 /**
  * The address each build file is served at, which is what the worker caches. Cloudflare serves
- * `card/edit.html` at `/card/edit` and `index.html` at `/` (`build.format: "file"`); asking for
+ * `cards/limits.html` at `/cards/limits` and `index.html` at `/` (`build.format: "file"`); asking for
  * the `.html` address gets a redirect, which a cache cannot answer a page with.
  */
 export function precacheUrls(paths: readonly string[]): string[] {

@@ -27,9 +27,9 @@ test("marks the page's tab in both navs", async () => {
 	}
 })
 
-test("shows + New unless the page says it is mid-task", async () => {
-	expect((await render({ tab: "home" })).querySelector(".fab-menu")).not.toBeNull()
-	expect((await render({ tab: "home", fab: false })).querySelector(".fab-menu")).toBeNull()
+test("has no floating + New, and no prop to ask for one (RD-25)", async () => {
+	expect((await render({ tab: "home" })).querySelector(".fab-menu, .fab")).toBeNull()
+	expect(await Bun.file("src/layouts/AppLayout.astro").text()).not.toMatch(/\bfab\b/)
 })
 
 // A page renders into <main> itself, through the `main` slot.

@@ -18,7 +18,7 @@
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { cardLine, groupColor } from "#lib/ui/card-label"
 	import { entryId, paymentDrawer, planId, purchaseDrawer, shownGroups } from "#lib/ui/ledger-drawer"
-	import { listPageAddress } from "#lib/ui/list-address"
+	import { listPageAddress, listPanelAddress } from "#lib/ui/list-address"
 	import { OpenRows } from "#lib/ui/open-row.svelte"
 	import { listParts, plannedSay, plannedText, say, sentWords, waitingText } from "#lib/ui/row-text"
 	import { TwoStep } from "#lib/ui/two-step.svelte"
@@ -30,7 +30,8 @@
 	 * rows. Every row is the shared opening row (`ActionRow`): its head is one button and it opens
 	 * in place, one row at a time across Upcoming and every day, to a drawer of one sentence and
 	 * its buttons (DD-165). A purchase opens to its statement's billing cycle line and what that
-	 * statement holds, with *Open card* and, when from a list, *Open list*; a paid payment to how
+	 * statement holds, with *Open card* (the card's panel over the page, `onopencard`) and, when
+	 * from a list, *Open list* (its panel on the Lists tab); a paid payment to how
 	 * much reached each statement and any credit kept, with a two-step *Delete* (DD-77). In
 	 * Upcoming a waiting list opens to its lines, *Record reply* and a two-step *Confirm*
 	 * (`onconfirmlist`); a planned payment to its date, *Paid* (`onmarkpaid`) and a two-step
@@ -61,6 +62,8 @@
 		ondeletepayment?: ((payment: CardPayment) => void) | undefined
 		/** *Show more* under the rows. */
 		onshowmore?: (() => void) | undefined
+		/** A purchase's *Open card*: the card's panel, by id. */
+		onopencard?: ((cardId: string) => void) | undefined
 	}
 
 	const {
@@ -77,6 +80,7 @@
 		onconfirmlist,
 		ondeletepayment,
 		onshowmore,
+		onopencard,
 	}: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
@@ -225,19 +229,12 @@
 		{/snippet}
 		{#snippet actions()}
 			{#if entry.kind === "purchase"}
-				<a
-					class="btn"
-					data-variant="quiet"
-					data-action="open-card"
-					href={`/card?id=${encodeURIComponent(entry.purchase.cardId)}`}
-					>{tr("row.openCard")}</a
-				>
+				{@const cardId = entry.purchase.cardId}
+				<button type="button" data-variant="quiet" data-action="open-card" onclick={() => onopencard?.(cardId)}>
+					{tr("row.openCard")}
+				</button>
 				{#if list}
-					<a
-						class="btn"
-						data-variant="quiet"
-						data-action="open-list"
-						href={`/list/view?id=${encodeURIComponent(list.id)}`}
+					<a class="btn" data-variant="quiet" data-action="open-list" href={listPanelAddress(list.id)}
 						>{tr("row.openList")}</a
 					>
 				{/if}

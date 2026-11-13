@@ -22,7 +22,7 @@
 	 */
 	interface Props {
 		heading: string
-		/** The tab to open on; Filter when absent, or when that part is left out. */
+		/** The tab to open on; Filter when absent, or the first part there is when that part is left out. */
 		tab?: SheetTab
 		/** How many the draft would show; none disables the apply button. */
 		shown: number
@@ -33,8 +33,8 @@
 		onapply: () => void
 		/** The reader closed it; the page takes it off screen. */
 		onclose: () => void
-		/** The *Filter* tab's sections. */
-		filterPart: Snippet
+		/** The *Filter* tab's sections; none, no Filter tab (a tab with only a sort). */
+		filterPart?: Snippet
 		/** The *Sort* tab's section; none, no Sort tab. */
 		sortPart?: Snippet
 		/** The *Group* tab's section; none, no Group tab. */
@@ -60,7 +60,7 @@
 
 	// svelte-ignore state_referenced_locally
 	let current = $state<SheetTab>(tab)
-	const active = $derived(tabs.includes(current) ? current : "filter")
+	const active = $derived(tabs.includes(current) ? current : (tabs[0] ?? "filter"))
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())

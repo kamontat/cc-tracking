@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest"
 import TabBar from "#components/organisms/TabBar.astro"
 import { createContainer, parseHtml } from "../../container"
 
-const render = async (props: { current?: string; fab?: boolean } = {}) =>
+const render = async (props: { current?: string } = {}) =>
 	parseHtml(await (await createContainer()).renderToString(TabBar, { props }))
 
 describe("TabBar", () => {
@@ -22,20 +22,13 @@ describe("TabBar", () => {
 		expect(doc.querySelector(".tabbar a")?.getAttribute("aria-current")).toBe("page")
 	})
 
-	test("one floating + New menu, outside the nav", async () => {
-		const doc = await render({ current: "home" })
-		const menus = doc.querySelectorAll(".fab-menu")
-		expect(menus).toHaveLength(1)
-		expect(menus[0]?.closest("nav")).toBeNull()
+	test("holds the nav alone: the floating + New retired (RD-25)", async () => {
+		const bar = (await render({ current: "home" })).querySelector("#tabbar")
+		expect([...(bar?.children ?? [])].map((child) => child.className)).toEqual(["tabbar"])
+		expect(bar?.querySelector(".fab-menu, .fab, [popover]")).toBeNull()
 	})
 
-	test("a page mid-task leaves + New out", async () => {
-		const doc = await render({ current: "home", fab: false })
-		expect(doc.querySelector(".fab-menu")).toBeNull()
-		expect(doc.querySelector(".tabbar")).not.toBeNull()
-	})
-
-	test("holds no stray text beside the nav and the menu", async () => {
+	test("holds no stray text beside the nav", async () => {
 		const bar = (await render()).querySelector("#tabbar")
 		const text = [...(bar?.childNodes ?? [])]
 			.filter((node) => node.nodeType === 3)

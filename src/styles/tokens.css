@@ -12,6 +12,8 @@
 	--cc-text-sm: 0.8125rem;
 	--cc-text-md: 0.9375rem;
 	--cc-text-lg: 1.125rem;
+	/* A title that shares its line with tabs (`PageTabs`). */
+	--cc-text-xl: 1.375rem;
 	--cc-text-2xl: 1.75rem;
 
 	--cc-space-1: 0.25rem;
@@ -69,13 +71,14 @@
 
 	--cc-icon-size: 1.375rem;
 	--cc-icon-size-sm: 1.0625rem;
+	/* An icon control (‹, ⋯, ×): the icon and its padding, square; a text button beside one
+	   (the detail panel's *Edit*) takes the same height. */
+	--cc-control-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
 	/* The four-tab bar measured 69px at 390px in English and Thai (no label wraps), before the
-	   bottom safe-area inset. The floating + New menu sits this far up, plus a gap. */
+	   bottom safe-area inset. */
 	--cc-tabbar-height: 4.375rem;
-	/* One height for the floating + New button (the round button's diameter, the pill's
-	   height) and the selection bars at the foot of a page, so the two read as one family. */
+	/* The least height of the selection bars at the foot of a list page. */
 	--cc-bar-height: 3.125rem;
-	--cc-fab-shadow: 0 8px 18px color-mix(in oklab, var(--cc-accent) 40%, transparent);
 
 	/* How strongly a non-production build tints the page, and the width of its top rule. */
 	--cc-env-tint: 16%;
@@ -87,6 +90,10 @@
 	/* The payment sheet's width from 900px, where it becomes a centred dialog; on a phone it is
 	   a bottom sheet the screen's full width. */
 	--cc-sheet-max: 32.5rem;
+
+	/* A wide sheet's width from 900px (the add-a-card sheet): its card tiles two to a row, under
+	   the control bar the list pages share. */
+	--cc-sheet-wide-max: 50rem;
 
 	/* The widest the new-version bar grows (DD-181): the message and its button on one line. */
 	--cc-update-bar-width: 28rem;
@@ -132,9 +139,34 @@
 
 	/* The narrowest a card tile gets in the tiles grid from 900px (DD-151). */
 	--cc-tile-min: 16rem;
+	/* A tile's action (Owed's _Pay_): the room its last line keeps for it at the end, and its
+	   height, so the facts sit level with it. */
+	--cc-tile-act-width: 5.5rem;
+	--cc-tile-act-height: 2rem;
 
 	/* The purchase list's side panel from 900px: the date, the summary and the one action. */
 	--cc-side-panel: 20rem;
+
+	/* The detail panel (RD-23): its column beside the list from 900px, and how much of the
+	   screen's height its sheet takes below that. */
+	--cc-detail-panel: 25rem;
+	--cc-detail-sheet-height: 92dvh;
+
+	/* From 900px a page's bottom padding: its own margin, past a home indicator. */
+	--cc-page-foot: calc(var(--cc-space-7) + env(safe-area-inset-bottom, 0px));
+
+	/* The detail panel's column from 900px is fixed to the screen: from where the page's content
+	   starts (under the header and the page's top padding) to where it ends (above the page's
+	   foot), at the page's content edge, whatever sits above the list (a page's tab bar). So
+	   reading it never scrolls the page; its body scrolls instead. The end edge is the page's
+	   centring (up to --cc-page-width) plus its padding; a fixed box's 100% is the screen's width
+	   without its scrollbar. */
+	--cc-detail-column-top: calc(var(--cc-header-height) + var(--cc-space-5));
+	--cc-detail-column-end: calc((100% - min(100%, var(--cc-page-width))) / 2 + var(--cc-space-4));
+
+	/* The room under the panel body's last line, past a phone's home indicator. A form's sticky
+	   save sinks through it, so it parks at the panel's very foot. */
+	--cc-detail-body-end: calc(var(--cc-space-5) + env(safe-area-inset-bottom, 0px));
 
 	/* A `select` left at `appearance: auto` reserves its own arrow area — about 20px in Chrome,
 	   more in Safari — inside the border box and on top of whatever padding we set, so its right

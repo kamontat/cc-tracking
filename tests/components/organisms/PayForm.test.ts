@@ -49,7 +49,6 @@ const show = async (figures: PayFigures = usual, amount = "", extra: Record<stri
 		Object.entries({ card, groups: [], figures, today: "2026-10-31", amount, error: "", busy: false, ...extra }),
 	)
 	const sent: PayDetail[] = []
-	let changes = 0
 	mounted = mount(PayForm, {
 		target: document.body,
 		props: {
@@ -81,15 +80,11 @@ const show = async (figures: PayFigures = usual, amount = "", extra: Record<stri
 				return (values.get("startNote") as string | undefined) ?? ""
 			},
 			onpay: (detail: PayDetail) => sent.push(detail),
-			onchange: () => {
-				changes += 1
-			},
 		},
 	})
 	await settle()
 	return {
 		sent,
-		changes: () => changes,
 		set: async (next: Record<string, unknown>) => {
 			for (const [key, value] of Object.entries(next)) values.set(key, value)
 			await settle()
@@ -117,16 +112,15 @@ const click = async (selector: string) => {
 	await settle()
 }
 
-test("shows the card in the panel form, its figures, and Change asks for the picker", async () => {
-	const { changes } = await show()
+test("shows the card in the panel form and its figures, with no Change: the card picker retired", async () => {
+	await show()
 	expect(flat(q(".paycard b"))).toBe("A) Alpha")
 	expect(flat(q(".paycard .mini[data-big]"))).toBe("1234")
 	expect(flat(q('[data-stat="owed"]'))).toBe("Owed ฿500.00")
 	expect(flat(q('[data-stat="bill"]'))).toBe("Next bill ฿300.00")
 	expect(flat(q('[data-stat="credit"]'))).toBe("Credit ฿0.00")
 	expect(q('[data-stat="bill"] b')?.hasAttribute("data-overdue")).toBe(false)
-	await click('[data-action="change"]')
-	expect(changes()).toBe(1)
+	expect(q('[data-action="change"]')).toBeNull()
 	expect(flat(q(".hint"))).toBe("Any day of the month. A later date saves it as a plan.")
 })
 
@@ -273,4 +267,32 @@ test("a figure may wrap only after the baht sign or a comma, never inside a grou
 	const style = (await Bun.file("src/components/organisms/PayForm.svelte").text()).split("<style>")[1] ?? ""
 	expect(style).not.toContain("overflow-wrap: anywhere")
 	expect(style).toMatch(/\.stat b \{[^}]*overflow-wrap: normal/)
+})
+
+test("in the card panel: Cancel with oncancel", async () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	let cancelled = 0
+	mounted = mount(PayForm, {
+		target: document.body,
+		props: {
+			card,
+			figures: usual,
+			today: "2026-10-31",
+			onpay: () => {},
+			oncancel: () => {
+				cancelled++
+			},
+		},
+	})
+	await settle()
+	const cancel = q('button[data-action="cancel"]')
+	expect(cancel?.getAttribute("data-variant")).toBe("quiet")
+	await click('button[data-action="cancel"]')
+	expect(cancelled).toBe(1)
+})
+
+test("no Cancel without oncancel", async () => {
+	await show()
+	expect(q('[data-action="cancel"]')).toBeNull()
 })

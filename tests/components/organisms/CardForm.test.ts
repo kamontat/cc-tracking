@@ -8,7 +8,7 @@ import CardForm from "#components/organisms/CardForm.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * The card form, the whole of `/card/new` and `/card/edit` under their sub-header. Ported from
+ * The card form, as the card's panel shows it for a new card or an edit (RD-24). Ported from
  * the legacy `cc-card-form` tests; where those read the element's state, these read what it draws.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -180,7 +180,7 @@ test("with no group stored, says to add one first and links to Limits instead of
 	await show(null, [])
 	expect($('[name="limitGroupId"]')).toBeNull()
 	expect($("[data-no-groups]")?.textContent).toContain("Add one first")
-	expect($<HTMLAnchorElement>("[data-no-groups] a")?.getAttribute("href")).toBe("/cards?view=groups")
+	expect($<HTMLAnchorElement>("[data-no-groups] a")?.getAttribute("href")).toBe("/cards/limits")
 })
 
 test("the placeholder cannot be picked: the group is required (RD-27)", async () => {
@@ -449,7 +449,7 @@ test("a new card has no archive, no delete and no cancel -- the sub-header leave
 	expect($('button[type="submit"]')?.textContent?.trim()).toBe("Add card")
 })
 
-test("editing saves changes, with no Archive or Delete -- they live on the card page", async () => {
+test("editing saves changes, with no Archive or Delete -- they live on the card panel", async () => {
 	await show(stored())
 	expect($('button[type="submit"]')?.textContent?.trim()).toBe("Save changes")
 	expect($('[data-action="archive"]')).toBeNull()
@@ -500,4 +500,30 @@ test("a submit while busy saves nothing", async () => {
 	const { saves } = await show(stored(), groups, { busy: true })
 	await submit()
 	expect(saves).toHaveLength(0)
+})
+
+test("Cancel shows only with oncancel, beside the submit, and calls it", async () => {
+	await show(stored())
+	expect($('[data-action="cancel"]')).toBeNull()
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	let cancelled = 0
+	mounted = mount(CardForm, {
+		target: document.body,
+		props: {
+			card: stored(),
+			groups,
+			locations: places,
+			onsave: () => {},
+			oncancel: () => {
+				cancelled++
+			},
+		},
+	})
+	await settle()
+	const cancel = $('.actions button[data-action="cancel"]')
+	expect(cancel?.getAttribute("type")).toBe("button")
+	expect(cancel?.getAttribute("data-variant")).toBe("quiet")
+	cancel?.click()
+	expect(cancelled).toBe(1)
 })

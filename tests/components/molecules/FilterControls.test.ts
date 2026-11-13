@@ -157,3 +157,66 @@ test("with no sort given, there is no sort chip", () => {
 	expect(document.querySelector('[data-action="sort"]')).toBeNull()
 	expect(document.querySelector('[data-action="filter"]')).not.toBeNull()
 })
+
+test("with no onopen, it is the search box alone: no Filter button and no chip row", () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	const searched: string[] = []
+	mounted = mount(FilterControls, {
+		target: document.body,
+		props: { q: "", placeholder: "Search card", onsearch: (q: string) => searched.push(q) },
+	})
+	flushSync()
+	expect(document.querySelector(".tx-controls .tx-ctl label.tx-search input.search")).not.toBeNull()
+	expect(document.querySelector(".tx-ctl")?.children).toHaveLength(1)
+	expect(document.querySelector('[data-action="filter"]')).toBeNull()
+	expect(document.querySelector(".tx-chips")).toBeNull()
+	const input = document.querySelector<HTMLInputElement>("input.search")
+	if (input) input.value = "uob"
+	input?.dispatchEvent(new Event("input"))
+	expect(searched).toEqual(["uob"])
+})
+
+test("with no search (a tab with only a sort), only the chip row: the sort chip, as on Cards", () => {
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	const tabs: string[] = []
+	mounted = mount(FilterControls, {
+		target: document.body,
+		props: { onopen: (tab: string) => tabs.push(tab), sort: "Most urgent first" },
+	})
+	flushSync()
+	expect(document.querySelector(".tx-controls")).not.toBeNull()
+	expect(document.querySelector(".tx-ctl")).toBeNull()
+	expect(document.querySelector("input.search")).toBeNull()
+	expect(document.querySelector('[data-action="filter"]')).toBeNull()
+	const sort = document.querySelector<HTMLButtonElement>(".tx-controls > .tx-chips > button.tx-chip.tx-sort")
+	expect(text(sort)).toBe("Sort: Most urgent first ▾")
+	sort?.click()
+	expect(tabs).toEqual(["sort"])
+})
+
+test("an end snippet sits at the end of the search row, after Filter", async () => {
+	const { createRawSnippet } = await import("svelte")
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	mounted = mount(FilterControls, {
+		target: document.body,
+		props: {
+			q: "",
+			placeholder: "Search cards",
+			onsearch: () => {},
+			onopen: () => {},
+			count: 0,
+			chips: [],
+			end: createRawSnippet(() => ({ render: () => '<button type="button" data-action="add">Add card</button>' })),
+		},
+	})
+	flushSync()
+	const row = [...(document.querySelector(".tx-ctl")?.children ?? [])]
+	expect(row.map((el) => el.getAttribute("data-action") ?? el.tagName.toLowerCase())).toEqual([
+		"label",
+		"filter",
+		"add",
+	])
+})

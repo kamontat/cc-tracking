@@ -22,10 +22,10 @@ const writeDist = async (files: Record<string, string>) => {
 }
 
 test("a page is cached at the address Cloudflare serves it from, without .html", () => {
-	expect(precacheUrls(["index.html", "card.html", "card/edit.html", "settings/locations.html"])).toEqual([
+	expect(precacheUrls(["index.html", "cards.html", "cards/limits.html", "settings/locations.html"])).toEqual([
 		"/",
-		"/card",
-		"/card/edit",
+		"/cards",
+		"/cards/limits",
 		"/settings/locations",
 	])
 })
@@ -53,12 +53,12 @@ test("the version follows the files' content, so any change to the site is a new
 test("writes dist/sw.js carrying the build's files and their version", async () => {
 	await writeDist({
 		"index.html": "<h1>home</h1>",
-		"card/edit.html": "<h1>edit</h1>",
+		"cards/limits.html": "<h1>limits</h1>",
 		"_astro/page.abc.js": "console.log(1)",
 		_headers: "",
 	})
 	const { version, urls } = await writeServiceWorker(dist)
-	expect(urls.toSorted()).toEqual(["/", "/_astro/page.abc.js", "/card/edit"])
+	expect(urls.toSorted()).toEqual(["/", "/_astro/page.abc.js", "/cards/limits"])
 	const script = await Bun.file(join(dist, "sw.js")).text()
 	expect(script).toContain(JSON.stringify(version))
 	for (const url of urls) expect(script).toContain(JSON.stringify(url))

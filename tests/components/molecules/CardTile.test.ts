@@ -55,9 +55,9 @@ const show = (props: Record<string, unknown>) => {
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
 test("with an href it is a link in its tone, carrying the card's id", () => {
-	const tile = show({ href: "/card?id=A", tone: "blue", mono: true })
+	const tile = show({ href: "/cards?card=A", tone: "blue", mono: true })
 	expect(tile.tagName).toBe("A")
-	expect(tile.getAttribute("href")).toBe("/card?id=A")
+	expect(tile.getAttribute("href")).toBe("/cards?card=A")
 	expect(tile.dataset["g"]).toBe("blue")
 	expect(tile.dataset["card"]).toBe("A")
 	expect(tile.querySelector(".corner")?.hasAttribute("data-mono")).toBe(true)
@@ -164,4 +164,30 @@ test("a foot adds a last line under the facts, across the tile", () => {
 	expect(text(foot)).toBe("฿12,000.00 in 12 statements")
 	expect(tile.querySelector(".facts + .foot")).toBe(foot)
 	expect(show({}).querySelector(".foot")).toBeNull()
+})
+
+test("the card open in the detail panel is marked current", () => {
+	expect(show({ href: "/cards?card=A", current: true }).getAttribute("aria-current")).toBe("true")
+	expect(show({ href: "/cards?card=A" }).hasAttribute("aria-current")).toBe(false)
+})
+
+test("an action sits on the tile's last line, beside the link and not inside it", () => {
+	show({
+		href: "/owed?card=A",
+		facts: "Bill closed 18 Sep 2026",
+		action: createRawSnippet(() => ({ render: () => `<button type="button" data-action="pay">Pay</button>` })),
+	})
+	const box = document.body.querySelector(".tile-box") as HTMLElement
+	const link = box.querySelector("a.tile") as HTMLElement
+	expect(link.hasAttribute("data-act")).toBe(true)
+	expect(link.querySelector("button")).toBeNull()
+	const button = box.querySelector(".tile-act > [data-action=pay]")
+	expect(button).not.toBeNull()
+	expect(link.contains(button)).toBe(false)
+})
+
+test("with no action the tile has no box around it", () => {
+	const tile = show({ href: "/cards?card=A" })
+	expect(tile.parentElement?.classList.contains("tile-box")).toBe(false)
+	expect(tile.hasAttribute("data-act")).toBe(false)
 })

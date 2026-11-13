@@ -21,8 +21,8 @@ Default to using Bun instead of Node.js.
 - `bun run dev` (dev server on 4321, `--port` to change it), `bun run build` (`astro build`
   into `dist/`) and `bun run preview` (serves the build). `astro.config.ts` stamps the
   `PUBLIC_*` build info (`scripts/build-env.ts`) before Vite inlines it.
-- Deployed as Cloudflare static assets: `wrangler.jsonc` serves `dist/`, and
-  `public/_redirects` holds the redirects.
+- Deployed as Cloudflare static assets: `wrangler.jsonc` serves `dist/`. No old address
+  redirects (PRD RD-29), so there is no `public/_redirects`.
 - Navigation is client-side through Astro's `<ClientRouter />` (PRD DD-174): every address is
   still a static page, and its islands mount on each visit and clean up in `onMount`'s return
   (`project-pages` has the rules).

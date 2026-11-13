@@ -1,56 +1,44 @@
 import type { PurchaseList } from "#lib/domain/types"
 
-/**
- * Each case of a purchase list has its own page, so a link says what it opens: a new list
- * (`/list/new`), a draft to edit (`/list/draft`), the spender's reply to a waiting list
- * (`/list/reply`) and a saved list (`/list/view`).
- */
-const PAGE: Record<PurchaseList["status"], string> = {
-	draft: "/list/draft",
-	sent: "/list/reply",
-	saved: "/list/view",
-}
+import { LISTS_ADDRESS } from "#lib/ui/tx-query"
 
 /**
- * A new purchase list for `cardIds`, one `card` parameter each, in the order given. Any other
- * parameter in `search` is kept, ahead of the cards.
+ * A purchase list's addresses (RD-26), under the Lists tab's path: a new list is the builder
+ * (`/transactions/lists/new?cards=…`), a draft or a waiting list is worked on at
+ * `/transactions/lists/edit?list=<id>` (the builder on a draft, the reply on a waiting list), and
+ * a saved list has only its panel on the Lists tab (`/transactions/lists?list=<id>`).
  */
-export function newListAddress(cardIds: string[], search = ""): string {
-	const query = new URLSearchParams(search)
-	query.delete("card")
-	for (const id of cardIds) query.append("card", id)
-	const text = query.toString()
-	return text ? `/list/new?${text}` : "/list/new"
-}
+export const NEW_LIST_ADDRESS = `${LISTS_ADDRESS}/new`
+export const EDIT_LIST_ADDRESS = `${LISTS_ADDRESS}/edit`
 
-/** The page a stored list opens on, by its status. */
-export function listPageAddress(list: Pick<PurchaseList, "id" | "status">) {
-	return `${PAGE[list.status]}?id=${encodeURIComponent(list.id)}`
-}
-
-/**
- * The add-a-card sheet over a new list or a draft: its picker (`add=1`), or one card's orders
- * (`open=<card id>`), which wins when both are there. Null when no sheet is open.
- */
-export type ListSheet = { kind: "pick" } | { kind: "card"; cardId: string } | null
-
-export function readListSheet(search: string): ListSheet {
-	const query = new URLSearchParams(search)
-	const cardId = query.get("open")
-	if (cardId) return { kind: "card", cardId }
-	return query.has("add") ? { kind: "pick" } : null
-}
-
-/** `path` with `search`'s other keys kept and the sheet's key written after them. */
-export function listSheetAddress(path: string, search: string, sheet: ListSheet): string {
-	const query = new URLSearchParams(search)
-	query.delete("add")
-	query.delete("open")
-	if (sheet?.kind === "pick") query.set("add", "1")
-	if (sheet?.kind === "card") query.set("open", sheet.cardId)
+const withQuery = (path: string, query: URLSearchParams) => {
 	const text = query.toString()
 	return text ? `${path}?${text}` : path
 }
 
-/** The `id` of the stored list a page opens, or null when the address has none. */
-export const listId = (search: string): string | null => new URLSearchParams(search).get("id")
+/** A new purchase list for `cardIds`, one `cards` key each, in the order given. */
+export function newListAddress(cardIds: string[]): string {
+	const query = new URLSearchParams()
+	for (const id of cardIds) query.append("cards", id)
+	return withQuery(NEW_LIST_ADDRESS, query)
+}
+
+/** Where a draft or a waiting list is worked on. */
+export const listEditAddress = (id: string) => withQuery(EDIT_LIST_ADDRESS, new URLSearchParams({ list: id }))
+
+/** The Lists tab with the list open in its panel. */
+export const listPanelAddress = (id: string) => withQuery(LISTS_ADDRESS, new URLSearchParams({ list: id }))
+
+/** Where a link to a stored list goes: a draft or a waiting list to its edit page, a saved list to its panel. */
+export function listPageAddress(list: Pick<PurchaseList, "id" | "status">) {
+	return list.status === "saved" ? listPanelAddress(list.id) : listEditAddress(list.id)
+}
+
+/** The `list` the edit page works on, or null when the address has none. */
+export const listKey = (search: string): string | null => new URLSearchParams(search).get("list") || null
+
+/**
+ * The add-a-card sheet over the builder: its picker, or one card's orders. Null when no sheet is
+ * open. Not in the address (DD-195 as amended by RD-26).
+ */
+export type ListSheet = { kind: "pick" } | { kind: "card"; cardId: string } | null

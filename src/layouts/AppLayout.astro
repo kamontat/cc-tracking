@@ -15,17 +15,15 @@ interface Props {
 	tab?: Tab
 	/** Classes on `<main>` after `page`, the width a page asks for (`page--narrow`, ...). */
 	mainClass?: string
-	/** Whether the floating *+ New* menu shows; off where the reader is mid-task (PRD DD-104). */
-	fab?: boolean
 }
 
-const { title, titleKey, tab, mainClass, fab = true } = Astro.props
+const { title, titleKey, tab, mainClass } = Astro.props
 ---
 
 <!-- The app shell every page shares: the header, the page's own main, and the tab bar. -->
 <BaseLayout title={title} titleKey={titleKey}>
 	<SiteHeader current={tab} />
 	<main class:list={["page", mainClass]} id="page"><slot name="main" /></main>
-	<TabBar current={tab} fab={fab} />
+	<TabBar current={tab} />
 	<slot />
 </BaseLayout>

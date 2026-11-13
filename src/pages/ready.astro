@@ -1,0 +1,15 @@
+---
+import PageTabs from "#components/molecules/PageTabs.astro"
+import ReadyPage from "#components/organisms/ReadyPage.svelte"
+import AppLayout from "#layouts/AppLayout.astro"
+import { READY_ADDRESS } from "#lib/ui/home-query"
+import { HOME_TABS } from "#lib/ui/page-tabs"
+---
+
+<!-- Home, its Ready to use tab (RD-22): the title and the tabs are static; the ready cards are the reader's data, so they are an island. -->
+<AppLayout title="Ready to use" titleKey="title.ready" tab="home">
+	<Fragment slot="main">
+		<PageTabs title="nav.home" label="home.tabs" tabs={HOME_TABS} current={READY_ADDRESS} />
+		<ReadyPage client:load />
+	</Fragment>
+</AppLayout>

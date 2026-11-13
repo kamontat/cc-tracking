@@ -6,9 +6,9 @@
 
 	import { onMount } from "svelte"
 
-	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import UsageSpark from "#components/atoms/UsageSpark.svelte"
 	import CardTile from "#components/molecules/CardTile.svelte"
+	import FilterControls from "#components/molecules/FilterControls.svelte"
 	import { dayMonth } from "#lib/domain/date"
 	import { formatAmount } from "#lib/domain/money"
 	import { cardOwnerOf, ownerOf } from "#lib/domain/owner"
@@ -18,8 +18,10 @@
 	import { tileTone } from "#lib/ui/card-tile"
 
 	/**
-	 * The add-a-card sheet's picker (DD-195): a search box, the sorts as pills (most room, least
-	 * used, longest unused, longest to close, latest due; most room first), then every ready card
+	 * The add-a-card sheet's picker (DD-195, DD-198): the list pages' search box (`FilterControls` with
+	 * no `onopen`, so no *Filter* and no sort chip), the sorts always shown under it as a filter sheet's
+	 * pills (most room, least used, longest unused, longest to close, latest due; most room first), so
+	 * picking one never changes the sheet's height, then every ready card
 	 * as a card tile (DD-151) with its last 12 statements under it: the bars on one scale for all
 	 * the cards, the 12-statement total and the day it was last used. A tap calls `onpick`. A card
 	 * already on the list says so at the right of its room, with what it holds there.
@@ -97,31 +99,28 @@
 	</div>
 {:else}
 	<div class="pick">
-		<label class="tx-search"
-			><SvgIcon name="search" />
-			<input
-				type="search"
-				data-field="search"
-				value={query}
-				aria-label={tr("ready.search")}
-				placeholder={tr("ready.search")}
-				oninput={(e) => {
-					query = e.currentTarget.value
-				}}></label
-		>
-		<fieldset class="filter-chips" aria-label={tr("purchaseList.sort")}>
-			{#each PICK_SORTS as value (value)}
-				<button
-					type="button"
-					data-variant="quiet"
-					data-sort={value}
-					aria-pressed={sort === value ? "true" : "false"}
-					onclick={() => {
-						sort = value
-					}}>
-					{tr(`purchaseList.sort.${value}`)}
-				</button>
-			{/each}
+		<FilterControls
+			q={query}
+			placeholder={tr("ready.search")}
+			onsearch={(q: string) => {
+				query = q
+			}} />
+		<fieldset class="filter-group">
+			<legend>{tr("purchaseList.sort")}</legend>
+			<div class="filter-chips">
+				{#each PICK_SORTS as value (value)}
+					<button
+						type="button"
+						data-variant="quiet"
+						data-sort={value}
+						aria-pressed={sort === value ? "true" : "false"}
+						onclick={() => {
+							sort = value
+						}}>
+						{tr(`purchaseList.sort.${value}`)}
+					</button>
+				{/each}
+			</div>
 		</fieldset>
 		{#if shown.length === 0}
 			<p class="placeholder" data-empty="no-match">{tr("ready.noMatch")}</p>
@@ -160,17 +159,18 @@
 		gap: var(--cc-space-3);
 	}
 
-	/* The sort pills are app.css's `.filter-chips`, in a fieldset that draws nothing of its own. */
-	fieldset {
-		min-inline-size: 0;
-		margin: 0;
-		padding: 0;
-		border: 0;
-	}
+	/* The search box and the sorts are app.css's `.tx-controls` and `.filter-group`. */
 
 	.tiles {
 		display: grid;
 		gap: var(--cc-space-2);
+	}
+
+	/* The wide sheet holds the tiles two to a row, as Cards' grid does. */
+	@media (min-width: 900px) {
+		.tiles {
+			grid-template-columns: repeat(auto-fill, minmax(var(--cc-tile-min), 1fr));
+		}
 	}
 
 	.placeholder {

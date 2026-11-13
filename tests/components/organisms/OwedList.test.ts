@@ -1,7 +1,6 @@
+import type { Sectioned } from "#lib/domain/cards-view"
 import type { PayChoice } from "#lib/domain/pay"
 import type { GroupRoom } from "#lib/domain/room"
-import type { SortDir } from "#lib/domain/sort"
-import type { OwedSort } from "#lib/domain/transactions"
 import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
 import { flushSync, mount, unmount } from "svelte"
@@ -11,8 +10,8 @@ import OwedList from "#components/organisms/OwedList.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * "Owed on each card": a heading with its sort chip, then one column of pay tiles, each a link
- * to the payment sheet on its card. Ported from the legacy `cc-owed-list` tests.
+ * Home's _Owed_ tab (RD-25): the pay tiles of the cards that owe, each opening the
+ * card's panel over the tab, with _Pay_ on its last line opening the panel on its pay form.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -42,40 +41,42 @@ const rows = (): PayChoice[] => [
 		days: 3,
 	} as PayChoice,
 	{
-		card: card("B/2"),
-		owed: 0,
-		credit: 120_00,
+		card: card("B.2"),
+		owed: 120_00,
+		credit: 0,
 		bill: null,
-		urgency: "none",
+		urgency: "due",
 		days: 0,
 	} as PayChoice,
 ]
 
 type Props = {
+	/** The rows on show, flat; `show` passes them as results. */
 	rows: PayChoice[]
+	sections: Sectioned<PayChoice>["sections"]
+	total: number
 	groups: LimitGroup[]
 	rooms: Map<string, GroupRoom>
 	ledgers: Map<string, CardLedger>
 	today: PlainDate
-	sort: OwedSort
-	dir: SortDir
-	onsort: (sort: OwedSort, dir: SortDir) => void
+	current: string | null
+	onopencard: (id: string) => void
+	onpay: (row: PayChoice) => void
 }
 
-const show = (props: Partial<Props> = {}) => {
+const show = ({ rows: list = rows(), sections = null, total, ...props }: Partial<Props> = {}) => {
 	if (mounted) unmount(mounted)
 	document.body.innerHTML = ""
+	const count = sections ? sections.reduce((n, s) => n + s.cards.length, 0) : list.length
 	mounted = mount(OwedList, {
 		target: document.body,
 		props: {
-			rows: rows(),
+			results: { sections, flat: sections ? null : list, count },
+			total: total ?? count,
 			groups: [],
 			rooms: new Map(),
 			ledgers: new Map(),
 			today: "2026-11-04",
-			sort: "urgency",
-			dir: "asc",
-			onsort: () => {},
 			...props,
 		},
 	})
@@ -85,69 +86,51 @@ const show = (props: Partial<Props> = {}) => {
 
 const flat = (e: Element | null | undefined) => e?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
-test("each row leads to the payment sheet on its card", () => {
-	const root = show()
+test("each tile opens the card's panel over the tab; a plain click opens it in place", () => {
+	const opened: string[] = []
+	const root = show({ onopencard: (id) => opened.push(id) })
 	const links = Array.from(root.querySelectorAll<HTMLAnchorElement>("a[data-card]"))
-	expect(links.map((link) => link.getAttribute("href"))).toEqual(["/pay?card=A", "/pay?card=B%2F2"])
+	expect(links.map((link) => link.getAttribute("href"))).toEqual(["/owed?card=A", "/owed?card=B.2"])
 	expect(links[0]?.textContent).toContain("฿500.00")
 	expect(links[0]?.textContent).toContain("Overdue 3 days")
-	expect(links[1]?.textContent).toContain("Credit ฿120.00")
 	expect(links[0]?.querySelector("[data-numeric]")).not.toBeNull()
+	const click = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 })
+	links[1]?.dispatchEvent(click)
+	expect(click.defaultPrevented).toBe(true)
+	expect(opened).toEqual(["B.2"])
+	// A click asking for a new tab is the browser's.
+	const tab = new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, metaKey: true })
+	links[0]?.dispatchEvent(tab)
+	expect(tab.defaultPrevented).toBe(false)
+	expect(opened).toEqual(["B.2"])
 })
 
-test("the sort chip calls onsort with the chosen sort, in its own direction", () => {
-	const sorts: [OwedSort, SortDir][] = []
-	const root = show({ onsort: (sort, dir) => sorts.push([sort, dir]) })
-	const chip = root.querySelector("label.chip") as HTMLElement
-	expect(chip.hasAttribute("data-active")).toBe(false)
-	expect(flat(chip).startsWith("Sort")).toBe(true)
-	const select = root.querySelector("select[name=sort]") as HTMLSelectElement
-	expect(Array.from(select.options).map((o) => o.value)).toEqual(["urgency", "card", "due", "left"])
-	expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(["Urgency", "Card", "Due date", "Owed"])
-	expect(select.value).toBe("urgency")
-	select.value = "left"
-	select.dispatchEvent(new Event("change", { bubbles: true }))
-	expect(sorts).toEqual([["left", "desc"]])
+test("the open card's tile is marked", () => {
+	const root = show({ current: "A" })
+	expect(root.querySelector('a[data-card="A"]')?.getAttribute("aria-current")).toBe("true")
+	expect(root.querySelector('a[data-card="B.2"]')?.hasAttribute("aria-current")).toBe(false)
 })
 
-test("the order switch shows both ways, the field's own first, and picks one", () => {
-	const sorts: [OwedSort, SortDir][] = []
-	const root = show({ sort: "left", dir: "desc", onsort: (sort, dir) => sorts.push([sort, dir]) })
-	const group = root.querySelector("fieldset.filter-seg")
-	expect(group?.getAttribute("aria-label")).toBe("Order")
-	const ways = [...root.querySelectorAll<HTMLButtonElement>(".filter-seg button[data-dir]")]
-	expect(
-		ways.map((b) => [b.dataset["dir"], flat(b), b.getAttribute("aria-label"), b.getAttribute("aria-pressed")]),
-	).toEqual([
-		["desc", "↓", "Most owed", "true"],
-		["asc", "↑", "Least owed", "false"],
-	])
-	expect(ways[0]?.getAttribute("type")).toBe("button")
-	ways[1]?.click()
-	expect(sorts).toEqual([["left", "asc"]])
+test("Pay sits on each tile's last line, outside its link, and hands over the row", () => {
+	const paid: string[] = []
+	const root = show({ onpay: (row) => paid.push(row.card.id) })
+	const pays = [...root.querySelectorAll<HTMLButtonElement>('.tile-box [data-action="pay"]')]
+	expect(pays).toHaveLength(2)
+	expect(pays.every((b) => b.closest("a") === null)).toBe(true)
+	expect(pays[0]?.getAttribute("type")).toBe("button")
+	expect(flat(pays[0])).toBe("Pay")
+	expect(pays[0]?.getAttribute("aria-label")).toBe("Pay ฿500.00, A) Card A")
+	pays[1]?.click()
+	expect(paid).toEqual(["B.2"])
 })
 
-test("the default sort run the other way marks the chip active", () => {
-	const root = show({ sort: "urgency", dir: "desc" })
-	expect(root.querySelector("label.chip")?.hasAttribute("data-active")).toBe(true)
-	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
-})
-
-test("a sort other than urgency marks the chip active and selects it", () => {
-	const root = show({ sort: "due" })
-	expect(root.querySelector("label.chip")?.hasAttribute("data-active")).toBe(true)
-	expect((root.querySelector("select[name=sort]") as HTMLSelectElement).value).toBe("due")
-})
-
-test("empty says nothing is owed, with no sort chip", () => {
+test("empty says nothing is owed", () => {
 	const root = show({ rows: [] })
 	expect(root.querySelector(".empty")?.textContent?.trim()).toBe("Nothing owed on any card.")
-	expect(root.querySelector("select[name=sort]")).toBeNull()
-	expect(root.querySelector(".filter-seg")).toBeNull()
 	expect(root.querySelector(".tiles")).toBeNull()
 })
 
-test("heads the list and draws each card as a wallet tile in one column", () => {
+test("draws each card as a wallet tile, with no heading (the tab names it)", () => {
 	const root = show({
 		groups: [{ id: "g1", name: "One", limit: 1_000_00, color: "blue" }],
 		rooms: new Map([
@@ -185,11 +168,11 @@ test("heads the list and draws each card as a wallet tile in one column", () => 
 				: r,
 		) as PayChoice[],
 	})
-	expect(root.querySelector("h2")?.textContent).toBe("Owed on each card")
+	expect(root.querySelector("h2")).toBeNull()
 	expect(root.querySelector(".panel")).toBeNull()
 	expect(root.querySelector(".row-panel")).toBeNull()
 	expect(root.querySelectorAll(".tiles")).toHaveLength(1)
-	const [a, b] = Array.from(root.querySelectorAll<HTMLAnchorElement>(".tiles > a.tile[data-card]"))
+	const [a, b] = Array.from(root.querySelectorAll<HTMLAnchorElement>(".tiles a.tile[data-card]"))
 	expect(flat(a?.querySelector(".name"))).toBe("A) Card A")
 	expect(flat(a?.querySelector(".corner"))).toBe("•••• 1111")
 	expect(a?.getAttribute("data-g")).toBe("blue")
@@ -199,31 +182,37 @@ test("heads the list and draws each card as a wallet tile in one column", () => 
 	expect(flat(a?.querySelector(".facts"))).toBe("Bill closed 18 Sep 2026 · ฿500.00 left")
 	expect(a?.querySelector(".rail")?.getAttribute("aria-label")).toBe("25% of the limit used")
 	expect(a?.getAttribute("aria-label")).toBe("Card A, ฿500.00 owed")
-	expect(flat(b?.querySelector(".room"))).toBe("Credit ฿120.00")
+	expect(flat(b?.querySelector(".room"))).toBe("฿120.00 owed")
 	expect(flat(b?.querySelector(".facts"))).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
 	expect(b?.hasAttribute("data-g")).toBe(false)
 	expect(b?.querySelector(".rail")).toBeNull()
 })
 
-test("the heading follows a switch of language", () => {
+test("Pay follows a switch of language", () => {
 	const root = show()
 	setLocale("th")
 	flushSync()
-	expect(root.querySelector("h2")?.textContent).not.toBe("Owed on each card")
+	expect(flat(root.querySelector('[data-action="pay"]'))).toBe("ชำระ")
 })
 
-test("the tiles sit in a single column", async () => {
-	const source = await Bun.file("src/components/organisms/OwedList.svelte").text()
-	expect(source).toMatch(/\.tiles\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/)
+test("nothing matching the filters says so, as on Cards", () => {
+	const root = show({ rows: [], total: 2 })
+	expect(root.querySelector(".empty")?.textContent?.trim()).toBe("No card matches. Clear the search or a filter.")
 })
 
-// The legacy shadow root painted every select's chevron (`controls`); in the light DOM the sort
-// chip's select paints its own, with a token gutter, as the card form's selects do.
-test("the sort chip's select paints its own chevron", async () => {
-	const source = await Bun.file("src/components/organisms/OwedList.svelte").text()
-	expect(source).toMatch(/\.chip select\s*\{[^}]*appearance: none/)
-	expect(source).toMatch(/\.chip select\s*\{[^}]*background-image: var\(--cc-select-chevron\)/)
-	expect(source).toMatch(
-		/\.chip select\s*\{[^}]*padding-inline-end: calc\(var\(--cc-space-3\) \* 2 \+ var\(--cc-select-chevron-size\)\)/,
-	)
+test("grouped, the tiles sit in Cards' sections, each headed by its name and count", () => {
+	const [a, b] = rows()
+	if (!a || !b) throw new Error("no rows")
+	const root = show({
+		locations: [{ id: "krabi", name: "Krabi", takesPurchases: true }],
+		sections: [
+			{ key: "holder:KC", kind: "holder", owner: "KC", cards: [b] },
+			{ key: "holder:RI", kind: "holder", owner: "RI", cards: [a] },
+		],
+	} as Partial<Props>)
+	expect([...root.querySelectorAll("section[data-section]")].map((el) => flat(el.querySelector("h2")))).toEqual([
+		"KC 1 card",
+		"RI 1 card",
+	])
+	expect(root.querySelectorAll('section[data-section] [data-action="pay"]')).toHaveLength(2)
 })

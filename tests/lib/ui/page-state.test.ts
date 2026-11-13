@@ -25,7 +25,7 @@ test("load translates a MessageError's key and substitutes its parameters", asyn
 	setLocale("en")
 	const state = createPageState({
 		fetch: async () => {
-			throw new MessageError("card.error.notFound", { id: "kbank" })
+			throw new MessageError("cards.error.duplicateId", { id: "kbank" })
 		},
 		fallbackKey: "cards.error.read",
 		paint: () => {},
@@ -33,7 +33,7 @@ test("load translates a MessageError's key and substitutes its parameters", asyn
 
 	await state.load()
 
-	expect(state.error).toBe("No card with the id kbank.")
+	expect(state.error).toBe('A card with id "kbank" already exists. Card ids must be unique.')
 })
 
 test("load falls back to the translated fallbackKey for a non-Error rejection", async () => {

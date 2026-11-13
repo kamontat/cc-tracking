@@ -14,15 +14,23 @@
 	 * interactive sits inside it. It toggles the drawer under it: an optional billing cycle line
 	 * (`cycle`) or parts (`parts`), then a foot of one sentence (`say`) and the buttons (`actions`).
 	 * The owner keeps one row open (`OpenRows`) and passes words already in the reader's language.
+	 *
+	 * With `onopen` the row opens its record in the detail panel instead (a list on the Lists tab,
+	 * RD-23): the head is the same button, with no drawer under it, `aria-current` while its
+	 * record is the one open (`current`), and a chevron pointing on rather than down.
 	 */
 	interface Props {
 		kind: ActionKind
 		title: string | Snippet
 		subtitle: string | Snippet
 		/** The details region's id (`OpenRows.detailsId`); the head is `${detailsId}-head`. */
-		detailsId: string
-		expanded: boolean
-		ontoggle: () => void
+		detailsId?: string
+		expanded?: boolean
+		ontoggle?: () => void
+		/** Opens the row's record in the panel, in place of the drawer. */
+		onopen?: () => void
+		/** Whether the row's record is the one open in the panel. */
+		current?: boolean
 		/** Names the row for tests and the page: `data-row`. */
 		id?: string
 		/** Drawn in place of the kind's icon (a ledger row's card chip). */
@@ -32,13 +40,28 @@
 		cycle?: CycleInput | undefined
 		parts?: RowPart[] | undefined
 		/** The one sentence; money figures strong, a late phrase red, the rest muted. */
-		say: string | Say
+		say?: string | Say
 		/** The buttons, at the end of the opened row's foot (DD-110). */
 		actions?: Snippet
 	}
 
-	const { kind, title, subtitle, detailsId, expanded, ontoggle, id, lead, amount, cycle, parts, say, actions }: Props =
-		$props()
+	const {
+		kind,
+		title,
+		subtitle,
+		detailsId = "",
+		expanded = false,
+		ontoggle,
+		onopen,
+		current = false,
+		id,
+		lead,
+		amount,
+		cycle,
+		parts,
+		say = "",
+		actions,
+	}: Props = $props()
 
 	const ICONS: Record<ActionKind, IconName> = {
 		waiting: "clock",
@@ -58,11 +81,13 @@
 		<button
 			type="button"
 			class="a-hit"
-			id={`${detailsId}-head`}
+			id={onopen ? undefined : `${detailsId}-head`}
 			data-item={kind}
-			aria-expanded={expanded ? "true" : "false"}
-			aria-controls={detailsId}
-			onclick={() => ontoggle()}>
+			data-opens={onopen ? "panel" : undefined}
+			aria-expanded={onopen ? undefined : expanded ? "true" : "false"}
+			aria-controls={onopen ? undefined : detailsId}
+			aria-current={onopen && current ? "true" : undefined}
+			onclick={() => (onopen ? onopen() : ontoggle?.())}>
 			{#if lead}
 				{@render lead()}
 			{:else}
@@ -90,34 +115,36 @@
 			<span class="a-chev"><SvgIcon name="chevron" /></span>
 		</button>
 	</div>
-	<section class="a-details" id={detailsId} aria-labelledby={`${detailsId}-head`} hidden={!expanded}>
-		{#if cycle}
-			<CycleLine input={cycle} />
-		{/if}
-		{#if parts && parts.length > 0}
-			<div class="a-parts">
-				{#each parts as part, i (i)}
-					<div class="a-part"><span>{part.label}</span><span data-numeric>{part.amount}</span></div>
-				{/each}
-			</div>
-		{/if}
-		<div class="a-foot">
-			<p class="a-say">
-				{#each pieces as piece, i (i)}
-					{#if typeof piece === "string"}
-						{piece}
-					{:else if "money" in piece}
-						<span class="a-money" data-numeric>{piece.money}</span>
-					{:else}
-						<span class="a-late">{piece.late}</span>
-					{/if}
-				{/each}
-			</p>
-			{#if actions}
-				<div class="a-btns">{@render actions()}</div>
+	{#if !onopen}
+		<section class="a-details" id={detailsId} aria-labelledby={`${detailsId}-head`} hidden={!expanded}>
+			{#if cycle}
+				<CycleLine input={cycle} />
 			{/if}
-		</div>
-	</section>
+			{#if parts && parts.length > 0}
+				<div class="a-parts">
+					{#each parts as part, i (i)}
+						<div class="a-part"><span>{part.label}</span><span data-numeric>{part.amount}</span></div>
+					{/each}
+				</div>
+			{/if}
+			<div class="a-foot">
+				<p class="a-say">
+					{#each pieces as piece, i (i)}
+						{#if typeof piece === "string"}
+							{piece}
+						{:else if "money" in piece}
+							<span class="a-money" data-numeric>{piece.money}</span>
+						{:else}
+							<span class="a-late">{piece.late}</span>
+						{/if}
+					{/each}
+				</p>
+				{#if actions}
+					<div class="a-btns">{@render actions()}</div>
+				{/if}
+			</div>
+		</section>
+	{/if}
 </div>
 
 <style>
@@ -224,6 +251,18 @@
 
 	[aria-expanded="true"] .a-chev {
 		rotate: 0.5turn;
+	}
+
+	/* A row that opens a panel points on, and its open record keeps the hover's ground. */
+	[data-opens="panel"] .a-chev {
+		rotate: -0.25turn;
+	}
+
+	.a-row:has(> button.a-hit[aria-current="true"]) {
+		background: var(--cc-surface-sunken);
+		box-shadow:
+			calc(var(--cc-space-4) * -1) 0 0 var(--cc-surface-sunken),
+			var(--cc-space-4) 0 0 var(--cc-surface-sunken);
 	}
 
 	@media (prefers-reduced-motion: reduce) {

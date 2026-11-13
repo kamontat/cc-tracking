@@ -142,3 +142,31 @@ test("the head hovers with a ground to the panel's edges and keeps a focus ring"
 	expect(source).toMatch(/\.a-hit:focus-visible\s*\{\s*box-shadow: var\(--cc-focus-ring\)/)
 	expect(source).not.toMatch(/:hover[^{]*\{[^}]*text-decoration: underline/)
 })
+
+test("a row that opens a panel (onopen) has no drawer: its head opens the record, marked while it is open", () => {
+	let opens = 0
+	mounted = mount(ActionRow, {
+		target: document.body,
+		props: {
+			kind: "draft",
+			title: "Draft list",
+			subtitle: "30 Oct",
+			id: "list:d1",
+			amount: { text: "−100.00", tone: "muted" },
+			onopen: () => {
+				opens++
+			},
+			current: true,
+		},
+	})
+	flushSync()
+	const head = document.querySelector<HTMLElement>(".a-hit")
+	expect(head?.localName).toBe("button")
+	expect(head?.hasAttribute("aria-expanded")).toBe(false)
+	expect(head?.hasAttribute("aria-controls")).toBe(false)
+	expect(head?.getAttribute("aria-current")).toBe("true")
+	expect(head?.getAttribute("data-opens")).toBe("panel")
+	expect(document.querySelector(".a-details")).toBeNull()
+	head?.click()
+	expect(opens).toBe(1)
+})
