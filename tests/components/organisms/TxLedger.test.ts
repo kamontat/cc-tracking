@@ -500,17 +500,13 @@ test("a flat list shows the date on each row", async () => {
 	expect(root.querySelector("[data-item]")?.textContent).toContain("31 Oct 2026")
 })
 
-test("a filtered ledger heads with the count and the signed total", async () => {
+test("a filtered ledger has no results line: the glance panel above it counts and sums the matches", async () => {
 	const { root } = await show({
 		entries: [purchase("x", 100_00), payEntry("p", 30_00)],
 		filtered: true,
 	})
-	expect(text(root, ".result-head")).toBe("2 results · −฿70.00")
-	const net = await show({
-		entries: [payEntry("p", 30_00)],
-		filtered: true,
-	})
-	expect(text(net.root, ".result-head")).toBe("1 result · +฿30.00")
+	expect(root.querySelector(".result-head")).toBeNull()
+	expect(root.querySelectorAll("[data-item]")).toHaveLength(2)
 })
 
 test("an empty ledger names the way on", async () => {

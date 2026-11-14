@@ -21,11 +21,11 @@
 	import { formatAmount, MINUS } from "#lib/domain/money"
 	import { plannedOf } from "#lib/domain/pay"
 	import {
+		entriesSummary,
 		type TxFilter as Filter,
 		filterEntries,
 		groupEntries,
 		ledgerEntries,
-		matchSummary,
 		monthSummary,
 		sortEntries,
 		type TxGroup,
@@ -195,9 +195,7 @@
 		void lang
 		if (!data) return null
 		if (narrowed && rows.length === 0) return null
-		const figures = narrowed
-			? matchSummary(rows, data.ledgers, view.filter.cards)
-			: monthSummary(all, data.ledgers, now)
+		const figures = narrowed ? entriesSummary(rows) : monthSummary(all, now)
 		const count = rows.length
 		return {
 			title: narrowed
@@ -216,7 +214,12 @@
 					text: `${figures.payments ? "+" : ""}${formatAmount(figures.payments)}`,
 					...(figures.payments ? { tone: "in" as const } : {}),
 				},
-				{ field: "owed", label: t("tx.summary.owed"), text: formatAmount(figures.owed) },
+				{
+					field: "net",
+					label: t("tx.summary.net"),
+					text: `${figures.net < 0 ? MINUS : figures.net > 0 ? "+" : ""}${formatAmount(Math.abs(figures.net))}`,
+					...(figures.net < 0 ? { tone: "out" as const } : figures.net > 0 ? { tone: "in" as const } : {}),
+				},
 			] satisfies GlanceFigure[],
 		}
 	})

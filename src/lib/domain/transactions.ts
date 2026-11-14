@@ -1,4 +1,4 @@
-import type { Card, CardLedger, CardPayment, ListStatus, PlainDate, Purchase, PurchaseList } from "#lib/domain/types"
+import type { Card, CardPayment, ListStatus, PlainDate, Purchase, PurchaseList } from "#lib/domain/types"
 
 import { compareDates } from "#lib/domain/date"
 import { formatAmount, sumAmounts } from "#lib/domain/money"
@@ -175,43 +175,23 @@ export function byDay(entries: TxEntry[]): Extract<LedgerSection, { kind: "day" 
 	return days
 }
 
-/** Payments count plus, purchases minus. */
-export function entriesTotal(entries: TxEntry[]): number {
-	return sumAmounts(entries.map((e) => (e.kind === "payment" ? 1 : -1) * entryAmount(e)))
-}
+/** What a set of ledger entries comes to: how many, their purchases and payments, and payments less purchases. */
+export type EntriesSummary = { count: number; purchases: number; payments: number; net: number }
 
-export function monthSummary(
-	entries: TxEntry[],
-	ledgers: Map<string, CardLedger>,
-	today: PlainDate,
-): { purchases: number; payments: number; owed: number } {
-	const { from, to } = presetRange("month", today)
-	const inMonth = entries.filter((e) => compareDates(entryDate(e), from) >= 0 && compareDates(entryDate(e), to) <= 0)
-	const total = (kind: TxEntry["kind"]): number => sumAmounts(inMonth.filter((e) => e.kind === kind).map(entryAmount))
-	return {
-		purchases: total("purchase"),
-		payments: total("payment"),
-		owed: sumAmounts([...ledgers.values()].map((l) => l.owed)),
-	}
-}
-
-/**
- * The summary of a searched or filtered ledger (DD-210): how many entries match, their purchases
- * and payments whatever their month, and what the filtered `cards` owe now (every card when none).
- */
-export function matchSummary(
-	entries: TxEntry[],
-	ledgers: Map<string, CardLedger>,
-	cards: readonly string[],
-): { count: number; purchases: number; payments: number; owed: number } {
+/** The glance panel's figures over `entries`, whatever their month (DD-210). */
+export function entriesSummary(entries: TxEntry[]): EntriesSummary {
 	const total = (kind: TxEntry["kind"]): number => sumAmounts(entries.filter((e) => e.kind === kind).map(entryAmount))
-	const owing = [...ledgers].filter(([id]) => cards.length === 0 || cards.includes(id))
-	return {
-		count: entries.length,
-		purchases: total("purchase"),
-		payments: total("payment"),
-		owed: sumAmounts(owing.map(([, l]) => l.owed)),
-	}
+	const purchases = total("purchase")
+	const payments = total("payment")
+	return { count: entries.length, purchases, payments, net: payments - purchases }
+}
+
+/** `entriesSummary` over this month's entries so far: the unfiltered ledger's glance panel. */
+export function monthSummary(entries: TxEntry[], today: PlainDate): EntriesSummary {
+	const { from, to } = presetRange("month", today)
+	return entriesSummary(
+		entries.filter((e) => compareDates(entryDate(e), from) >= 0 && compareDates(entryDate(e), to) <= 0),
+	)
 }
 
 /** A purchase made from a list is `<listId>-<n>`; null when the id has no such tail. */

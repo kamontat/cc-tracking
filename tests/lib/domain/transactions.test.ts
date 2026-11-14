@@ -2,12 +2,11 @@ import type { Card, CardPayment, Purchase, PurchaseList } from "#lib/domain/type
 
 import { describe, expect, test } from "vitest"
 
-import { ledgersFor } from "#lib/domain/ledger"
 import {
 	byDay,
 	DEFAULT_LISTS_FILTER,
 	DEFAULT_TX_FILTER,
-	entriesTotal,
+	entriesSummary,
 	filterEntries,
 	filterLists,
 	groupEntries,
@@ -16,7 +15,6 @@ import {
 	listGroups,
 	listIdOf,
 	listRows,
-	matchSummary,
 	monthSummary,
 	sortEntries,
 	TX_DIRS,
@@ -182,40 +180,24 @@ describe("sortEntries and byDay", () => {
 		expect(groups?.[0]).toMatchObject({ kind: "card", cardId: "a" })
 		expect(groupEntries(both, "none", "date", "desc")).toBeNull()
 	})
-	test("total: payments plus, purchases minus", () => {
-		expect(entriesTotal(entries)).toBe(900 - 600)
-	})
 })
 
 describe("monthSummary", () => {
-	test("counts only this month", () => {
+	test("counts only this month, and nets payments against purchases", () => {
 		const purchases = [buy("p1", { amount: 1000 }), buy("p2", { date: "2026-09-30", amount: 5000 })]
 		const payments = [pay("m1", { amount: 200 }), pay("m2", { date: "2026-09-01", amount: 700 })]
 		const entries = ledgerEntries(cards, purchases, payments)
-		const ledgers = ledgersFor(cards, purchases, payments, [], TODAY)
-		const out = monthSummary(entries, ledgers, TODAY)
-		expect(out.purchases).toBe(1000)
-		expect(out.payments).toBe(200)
-		expect(out.owed).toBe(6000 - 900)
+		expect(monthSummary(entries, TODAY)).toEqual({ count: 2, purchases: 1000, payments: 200, net: -800 })
 	})
 })
 
-describe("matchSummary", () => {
-	test("sums the entries given, whatever their month, and what the filtered cards owe", () => {
+describe("entriesSummary", () => {
+	test("sums the entries given, whatever their month: the count, purchases, payments and net", () => {
 		const purchases = [buy("p1", { amount: 1000 }), buy("p2", { date: "2026-09-30", amount: 5000 })]
-		const payments = [pay("m1", { amount: 200 })]
+		const payments = [pay("m1", { amount: 7000 })]
 		const entries = ledgerEntries(cards, purchases, payments)
-		const ledgers = ledgersFor(cards, purchases, payments, [], TODAY)
-		expect(matchSummary(entries, ledgers, [])).toEqual({ count: 3, purchases: 6000, payments: 200, owed: 5800 })
-		const onlyOld = entries.filter((e) => e.kind === "purchase" && e.purchase.id === "p2")
-		expect(matchSummary(onlyOld, ledgers, [])).toEqual({ count: 1, purchases: 5000, payments: 0, owed: 5800 })
-	})
-	test("with a card filter, owed now is only those cards'", () => {
-		const purchases = [buy("p1", { amount: 1000 }), buy("p2", { cardId: "b", amount: 400 })]
-		const ledgers = ledgersFor(cards, purchases, [], [], TODAY)
-		const entries = ledgerEntries(cards, purchases, [])
-		expect(matchSummary(entries, ledgers, ["b"]).owed).toBe(400)
-		expect(matchSummary(entries, ledgers, ["zzz"]).owed).toBe(0)
+		expect(entriesSummary(entries)).toEqual({ count: 3, purchases: 6000, payments: 7000, net: 1000 })
+		expect(entriesSummary([])).toEqual({ count: 0, purchases: 0, payments: 0, net: 0 })
 	})
 })
 
