@@ -221,6 +221,14 @@
 		transform: rotate(-90deg);
 	}
 
+	/* No month that way: dimmed and still, as the sheets' disabled buttons are. */
+	.owed-cal .nav:disabled,
+	.owed-cal .nav:disabled:hover {
+		cursor: default;
+		opacity: 0.55;
+		background: var(--cc-surface-sunken);
+	}
+
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.2fr);
