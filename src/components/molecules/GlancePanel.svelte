@@ -5,7 +5,8 @@
 	 * A glance panel, the one Cards and Transactions share (DD-210): one panel, a small title (and an aside, its dates, at the row's end), then
 	 * its figures in a grid split by hairlines, each a label over its figure (in its tone), with a
 	 * note or a usage bar under it. Two to a row on a phone (an odd last one across the row) and all
-	 * in one row from 900px.
+	 * in one row from 900px. A figure that opens something (`open`) is a button around its figure,
+	 * marked `aria-current` while what it opens is open.
 	 */
 	interface Props {
 		title: string
@@ -33,7 +34,20 @@
 			<div data-field={figure.field}>
 				<dt>{figure.label}</dt>
 				<dd>
-					<b data-numeric data-tone={figure.tone}>{figure.text}</b>
+					{#if figure.open}
+						{@const open = figure.open}
+						<button
+							type="button"
+							class="glance__open"
+							aria-label={open.label}
+							aria-current={open.current ? "true" : undefined}
+							onclick={() => open.run()}>
+							<b data-numeric data-tone={figure.tone}>{figure.text}</b>
+							<span class="glance__chev" aria-hidden="true">›</span>
+						</button>
+					{:else}
+						<b data-numeric data-tone={figure.tone}>{figure.text}</b>
+					{/if}
 					{#if figure.note}
 						<small class="glance__note">{figure.note}</small>
 					{/if}
@@ -132,6 +146,35 @@
 		font-size: var(--cc-text-lg);
 		font-weight: 700;
 		overflow-wrap: anywhere;
+	}
+
+	/* A figure that opens something: the figure and a chevron, no button chrome. Two classes, to
+	   outrank app.css's `.page button`. */
+	.glance .glance__open {
+		display: inline-flex;
+		flex-direction: row;
+		align-items: baseline;
+		align-self: flex-start;
+		gap: var(--cc-space-1);
+		margin-inline: calc(var(--cc-space-1) * -1);
+		padding: 0 var(--cc-space-1);
+		font: inherit;
+		color: inherit;
+		text-align: start;
+		background: transparent;
+		border: 0;
+		border-radius: var(--cc-radius-xs);
+		cursor: pointer;
+	}
+
+	/* Hover is the ground, never an underline (DD-105); so is the figure whose panel is open. */
+	.glance .glance__open:hover,
+	.glance .glance__open[aria-current="true"] {
+		background: var(--cc-surface-sunken);
+	}
+
+	.glance__chev {
+		color: var(--cc-text-muted);
 	}
 
 	/* Money out reads red and in green, each beside its label (UI-07); a warning in its tone. */

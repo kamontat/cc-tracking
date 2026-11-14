@@ -22,6 +22,11 @@ export type GlanceFigure = {
 	note?: string
 	/** A usage bar under the figure: its share of 100 (wider is capped), its level and its words. */
 	bar?: { share: number; level: RoomLevel; label: string }
+	/**
+	 * What pressing the figure opens (the _Owed_ tab's late money): the figure becomes a button
+	 * named `label`, marked `current` while what it opens is open.
+	 */
+	open?: { run: () => void; label: string; current?: boolean }
 }
 
 const cardsCount = (count: number) => (count === 1 ? t("cards.page.count.one") : t("cards.page.count.many", { count }))
