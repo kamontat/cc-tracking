@@ -40,10 +40,10 @@ export function countWords(
 /**
  * The list as words, in the current locale: the table, the text and the image all read it. A
  * saved list shows what was really bought: a made line at its real amount, a not-made line
- * marked so, and a total of the made lines only. Any other list shows its planned amounts.
+ * marked _Moved_ when it went to a draft, else _Not made_, and a total of the made lines only. Any other list shows its planned amounts.
  */
 export function shareTable(
-	list: Pick<PurchaseList, "date" | "lines"> & { status?: ListStatus },
+	list: Pick<PurchaseList, "date" | "lines" | "movedTo"> & { status?: ListStatus },
 	cards: Card[],
 ): ShareTable {
 	const saved = list.status === "saved"
@@ -59,7 +59,7 @@ export function shareTable(
 			? formatAmount(line.amount)
 			: line.made
 				? formatAmount(line.actual ?? line.amount)
-				: t("reply.notMade")
+				: t(list.movedTo ? "reply.moved" : "reply.notMade")
 		return [line.cardId, name, amount]
 	})
 	const total = listTotal({ ...list, id: "", status: list.status ?? "draft" })

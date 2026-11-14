@@ -1577,16 +1577,6 @@ a:any-link:hover {
 	border-radius: var(--cc-radius-pill);
 }
 
-.list-layout a[data-action="open-draft"] {
-	display: grid;
-	gap: var(--cc-space-1);
-	padding: var(--cc-space-3) var(--cc-space-4);
-	color: var(--cc-text);
-	background: var(--cc-surface);
-	border: var(--cc-border-width) solid var(--cc-border);
-	border-radius: var(--cc-radius-md);
-}
-
 /* Cards (prototype `vCards`, RD-22): the controls and the results in one column, under the
    page's title and tabs (`PageTabs`). */
 .cards-main,

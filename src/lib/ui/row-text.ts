@@ -161,8 +161,8 @@ export type RowPart = { label: string; amount: string }
 
 /**
  * An opened list row's parts: each line's card in the line form and its amount (the row's head
- * already carries the total). A saved list shows what was bought: the real amount, or "Not
- * made" (the reply page's words). Missing cards keep their id (`cardLine`).
+ * already carries the total). A saved list shows what was bought: the real amount, or "Moved"
+ * when its unmade lines went to a draft, else "Not made" (the reply page's words). Missing cards keep their id (`cardLine`).
  */
 export function listParts(list: PurchaseList, cards: Card[]): RowPart[] {
 	const byId = new Map(cards.map((card) => [card.id, card]))
@@ -175,6 +175,6 @@ export function listParts(list: PurchaseList, cards: Card[]): RowPart[] {
 				: t("common.none")
 			: line.made
 				? formatAmount(line.actual ?? line.amount)
-				: t("reply.notMade"),
+				: t(list.movedTo ? "reply.moved" : "reply.notMade"),
 	}))
 }

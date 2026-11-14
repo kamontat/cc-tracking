@@ -890,6 +890,7 @@ export const en = {
 	"reply.wasMade": "Was it made?",
 	"reply.made": "Made",
 	"reply.notMade": "Not made",
+	"reply.moved": "Moved",
 	"reply.actual": "Real amount",
 	"reply.diff": "{diff} vs plan",
 	"reply.move": "Move {cards} to a draft for {date}",
@@ -904,6 +905,4 @@ export const en = {
 	"reply.error.notWaiting": "This list is no longer waiting for a reply, so it was not cancelled.",
 	"saved.summary.one": "Saved 1 purchase, {total}. It counts against the card's room now.",
 	"saved.summary.many": "Saved {count} purchases, {total}. They count against each card's room now.",
-	"saved.moved": "{cards} moved to a draft for {date}",
-	"saved.openDraft": "Open it when you're ready to send",
 } as const
