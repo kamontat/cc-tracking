@@ -57,6 +57,9 @@ describe("owedEntries", () => {
 		const entries = setup([mk("a")], [buy("p1", "a", "2026-10-10", 500), buy("p2", "a", "2026-10-28", 200)])
 		expect(entries.map(brief)).toEqual(["a bill 2026-11-14 500", "a open 2026-12-15 200"])
 		expect(entries[0]?.due).toBe("2026-11-14")
+		// The statement it pays, for the billing cycle line.
+		expect(entries[0]?.statement).toEqual({ start: "2026-09-26", close: "2026-10-25", due: "2026-11-14" })
+		expect(entries[1]?.statement).toEqual({ start: "2026-10-26", close: "2026-11-25", due: "2026-12-15" })
 	})
 
 	test("a planned payment counts on its own date and comes off the oldest bill first", () => {
@@ -68,6 +71,7 @@ describe("owedEntries", () => {
 		// September's bill (due 15 Oct) is paid by the plan, and 100 of it goes on to October's.
 		expect(entries.map(brief)).toEqual(["a plan 2026-11-05 400", "a bill 2026-11-14 400"])
 		expect(entries[0]?.due).toBe("2026-10-15")
+		expect(entries[0]?.statement?.close).toBe("2026-09-25")
 		expect(entries[0]?.payment?.id).toBe("m1")
 	})
 

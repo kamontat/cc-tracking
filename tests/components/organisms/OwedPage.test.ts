@@ -88,7 +88,21 @@ const press = async (el: Element | null | undefined) => {
 }
 
 const total = (name: string) => text($(`.owed-totals [data-total="${name}"] b`))
-const lines = (root: string) => $$(`${root} .owed-line`).map((el) => `${el.dataset["card"]} ${el.dataset["kind"]}`)
+/** The panel's rows (`<kind>:<card>:<key>`), as `card kind`. */
+const lines = (root: string) =>
+	$$(`${root} .owed-lines [data-row]`).map((el) => {
+		const [kind, card] = (el.dataset["row"] ?? "").split(":")
+		return `${card} ${kind}`
+	})
+
+/** Opens a card's row in the panel (the shared opening row), then presses its Pay. */
+const payIn = async (cardId: string) => {
+	const row = $(`.detail-panel .owed-lines [data-row*=":${cardId}:"]`)
+	const head = row?.querySelector<HTMLButtonElement>("button.a-hit")
+	if (head?.getAttribute("aria-expanded") !== "true") await press(head)
+	expect(row?.querySelector("[hidden]")).toBeNull()
+	await press(row?.querySelector('[data-action="pay"]'))
+}
 
 test("the calendar is the default: the totals and the next paying day's month, no day open", async () => {
 	const { history } = await open()
@@ -130,11 +144,16 @@ test("a day in the calendar opens its cards in the panel, kept as day; another r
 test("Pay in a day's panel opens the card's pay form a step deeper; Back returns to the day", async () => {
 	const { history } = await open("?day=2026-11-14")
 	expect(lines(".detail-panel")).toEqual(["12.3 bill", "21 bill"])
-	await press($('.detail-panel .owed-line[data-card="21"] [data-action="pay"]'))
+	await payIn("21")
 	expect(history.now()).toBe("/owed?card=21")
 	expect($<HTMLInputElement>('.detail-panel input[name="amount"]')?.value).toBe("800")
 	history.userBack()
 	await settle()
+	expect(history.now()).toBe("/owed?day=2026-11-14")
+	expect(lines(".detail-panel")).toEqual(["12.3 bill", "21 bill"])
+	// The pay form's ‹ goes back to the day too, not to the card.
+	await payIn("21")
+	await press($('.detail-panel [data-action="panel-back"]'))
 	expect(history.now()).toBe("/owed?day=2026-11-14")
 	expect(lines(".detail-panel")).toEqual(["12.3 bill", "21 bill"])
 })
@@ -146,7 +165,14 @@ test("late money is a total that opens its cards in the panel", async () => {
 	expect(history.now()).toBe("/owed?day=late")
 	expect(text($(".detail-panel h2"))).toBe("Late")
 	expect(lines(".detail-panel")).toEqual(["7 bill"])
-	await press($('.detail-panel .owed-line[data-card="7"] [data-action="pay"]'))
+	// A row is the shared opening row: its drawer holds the billing cycle line, a sentence, Pay and Open card.
+	const head = $(".detail-panel .owed-lines button.a-hit")
+	await press(head)
+	expect(head?.getAttribute("aria-expanded")).toBe("true")
+	expect($(".detail-panel .owed-lines .a-cycle")).not.toBeNull()
+	expect(text($(".detail-panel .owed-lines .a-say"))).toBe("฿1,000.00 left, 16 days late")
+	expect($('.detail-panel .owed-lines [data-action="open-card"]')).not.toBeNull()
+	await payIn("7")
 	expect(history.now()).toBe("/owed?card=7")
 	expect($<HTMLInputElement>('.detail-panel input[name="amount"]')?.value).toBe("1000")
 })

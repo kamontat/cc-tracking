@@ -2,7 +2,7 @@ import type { Card, CardLedger, CardPayment, LimitGroup, Period, PlainDate } fro
 
 import { type CardFilter, filterCards } from "#lib/domain/cards-view"
 import { addDays, compareDates, daysInMonth, formatDate, parseDate, periodOf } from "#lib/domain/date"
-import { ledgerUrgency } from "#lib/domain/ledger"
+import { ledgerUrgency, statementStart } from "#lib/domain/ledger"
 import { sumAmounts } from "#lib/domain/money"
 import { plannedOf } from "#lib/domain/pay"
 
@@ -25,9 +25,14 @@ export type OwedEntry = {
 	date: PlainDate
 	/** The due date of the statement it pays (a plan's: the first statement it comes off); null for a plan with nothing owed. */
 	due: PlainDate | null
+	/** The statement it pays (a plan's: the first it comes off), for the billing cycle line; null for a plan with nothing owed. */
+	statement: OwedStatement | null
 	/** The planned payment, for a plan. */
 	payment?: CardPayment
 }
+
+/** A statement's dates: the day it opened, the day it closes (or closed) and the day it is due. */
+export type OwedStatement = { start: PlainDate; close: PlainDate; due: PlainDate }
 
 const byId = (a: Card, b: Card): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
 
@@ -45,7 +50,11 @@ export function owedEntries(
 		const statements = [...(ledger?.statements ?? [])]
 			.filter((s) => s.remaining > 0)
 			.sort((a, b) => compareDates(a.dueDate, b.dueDate))
-			.map((s) => ({ due: s.dueDate, left: s.remaining, open: ledgerUrgency(s, today) === "open" }))
+			.map((s) => ({
+				dates: { start: statementStart(card, ledger?.statements ?? [], s.period), close: s.closeDate, due: s.dueDate },
+				left: s.remaining,
+				open: ledgerUrgency(s, today) === "open",
+			}))
 		for (const payment of plannedOf(payments.filter((p) => p.cardId === card.id))) {
 			let rest = payment.amount
 			const first = statements.find((s) => s.left > 0)
@@ -54,10 +63,26 @@ export function owedEntries(
 				s.left -= part
 				rest -= part
 			}
-			entries.push({ card, kind: "plan", amount: payment.amount, date: payment.date, due: first?.due ?? null, payment })
+			entries.push({
+				card,
+				kind: "plan",
+				amount: payment.amount,
+				date: payment.date,
+				due: first?.dates.due ?? null,
+				statement: first?.dates ?? null,
+				payment,
+			})
 		}
 		for (const s of statements) {
-			if (s.left > 0) entries.push({ card, kind: s.open ? "open" : "bill", amount: s.left, date: s.due, due: s.due })
+			if (s.left <= 0) continue
+			entries.push({
+				card,
+				kind: s.open ? "open" : "bill",
+				amount: s.left,
+				date: s.dates.due,
+				due: s.dates.due,
+				statement: s.dates,
+			})
 		}
 	}
 	return entries

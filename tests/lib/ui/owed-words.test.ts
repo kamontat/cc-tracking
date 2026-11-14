@@ -16,6 +16,7 @@ const entry = (extra: Partial<OwedEntry>): OwedEntry => ({
 	amount: 100,
 	date: "2026-11-14",
 	due: "2026-11-14",
+	statement: null,
 	...extra,
 })
 

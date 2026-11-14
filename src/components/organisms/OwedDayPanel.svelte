@@ -18,7 +18,8 @@
 	 * The _Owed_ tab's day panel (`?day=<date>`, or `?day=late`), beside the calendar or the list from
 	 * 900px and over it below, as a list opens on the Lists tab: the day's date and how far off, its
 	 * firm total (or the open statements' estimate), what is needed in all by then, and its cards
-	 * with _Pay_. The late money is the same panel under *Late*. A day the plan no longer holds (a
+	 * as the shared opening row (`OwedLines`), each with _Pay_ and _Open card_. The late money is the
+	 * same panel under *Late*. A day the plan no longer holds (a
 	 * filter took it out) says there is nothing to pay. _Pay_ opens the card's pay form a step
 	 * deeper (`panel.deeper`), so Back returns here.
 	 */
@@ -82,7 +83,12 @@
 				{/if}
 			{/if}
 			{#if entries.length > 0}
-				<OwedLines {entries} {groups} {today} onpay={pay} />
+				<OwedLines
+					{entries}
+					{groups}
+					{today}
+					onpay={pay}
+					onopencard={(cardId: string) => panel.deeper({ kind: "card", id: cardId })} />
 			{:else}
 				<p class="none">{tr("owed.plan.nothingThatDay")}</p>
 			{/if}
