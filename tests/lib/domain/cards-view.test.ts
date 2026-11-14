@@ -7,6 +7,7 @@ import {
 	CARDS_DIRS,
 	CARDS_GROUPS,
 	CARDS_SORTS,
+	CARDS_USAGES,
 	cardsResults,
 	cardUsePct,
 	DEFAULT_CARDS_VIEW,
@@ -125,10 +126,11 @@ describe("cardsResults", () => {
 		expect(r.flat?.map((c) => c.id)).toEqual(["b", "a", "c"])
 	})
 	test("each sort has its default direction; the default view is by card, grouped by place", () => {
-		expect(DEFAULT_CARDS_VIEW).toMatchObject({ sort: "card", dir: "asc", by: "place" })
-		expect(CARDS_SORTS).toEqual(["card", "room", "name", "close", "due"])
+		expect(DEFAULT_CARDS_VIEW).toMatchObject({ sort: "card", dir: "asc", by: "place", usage: [] })
+		expect(CARDS_SORTS).toEqual(["card", "room", "name", "close", "due", "used"])
 		expect(CARDS_GROUPS).toEqual(["place", "holder", "limit", "none"])
-		expect(CARDS_DIRS).toEqual({ card: "asc", room: "desc", name: "asc", close: "asc", due: "asc" })
+		expect(CARDS_USAGES).toEqual(["used", "unused"])
+		expect(CARDS_DIRS).toEqual({ card: "asc", room: "desc", name: "asc", close: "asc", due: "asc", used: "desc" })
 	})
 	test("a sort runs inside each place", () => {
 		const r = cardsResults(cards, [g], rooms, view({ sort: "name", dir: "desc" }), order)
@@ -265,6 +267,47 @@ describe("cardsResults", () => {
 		const r = cardsResults(cs, [g], rooms, view({ q: "B" }), order)
 		expect(r.archived.map((c) => c.id)).toEqual(["z"])
 		expect(r.count).toBe(0)
+	})
+	test("used: what each card owes now, its own and not its group's, most first, ties by id", () => {
+		const cs = [card("a"), card("b"), card("c"), card("d")]
+		const purchase = (cardId: string, amount: number) => ({
+			id: `p-${cardId}`,
+			cardId,
+			date: "2026-10-20",
+			amount,
+			note: "",
+		})
+		const credit = { id: "pay-d", cardId: "d", date: "2026-10-20", amount: 500, status: "paid" as const }
+		const ledgers = new Map([
+			["a", cardLedger(cs[0] as Card, [purchase("a", 300)], [], [], "2026-11-01")],
+			["b", cardLedger(cs[1] as Card, [purchase("b", 900)], [], [], "2026-11-01")],
+			["d", cardLedger(cs[3] as Card, [], [credit], [], "2026-11-01")],
+		])
+		// One group's room is the same for every card on it, so it cannot tell them apart.
+		const ids = (dir: "asc" | "desc") =>
+			cardsResults(cs, [g], rooms, view({ by: "none", sort: "used", dir }), order, "2026-11-01", ledgers).flat?.map(
+				(c) => c.id,
+			)
+		expect(ids("desc")).toEqual(["b", "a", "c", "d"])
+		expect(ids("asc")).toEqual(["d", "c", "a", "b"])
+	})
+	test("usage: used is a card with a purchase, paid off or not; unused has none; both or neither is any", () => {
+		const cs = [card("a"), card("b"), card("c"), card("x", { archived: true })]
+		const purchase = { id: "p", cardId: "a", date: "2026-09-01", amount: 300, note: "" }
+		const paid = { id: "pay", cardId: "a", date: "2026-10-01", amount: 300, status: "paid" as const }
+		const credit = { id: "pay-b", cardId: "b", date: "2026-10-01", amount: 300, status: "paid" as const }
+		const ledgers = new Map([
+			["a", cardLedger(cs[0] as Card, [purchase], [paid], [], "2026-11-01")],
+			["b", cardLedger(cs[1] as Card, [], [credit], [], "2026-11-01")],
+		])
+		const shown = (usage: ("used" | "unused")[]) => {
+			const r = cardsResults(cs, [g], rooms, view({ by: "none", usage }), order, "2026-11-01", ledgers)
+			return [...(r.flat ?? []), ...r.archived].map((c) => c.id)
+		}
+		expect(shown(["used"])).toEqual(["a"])
+		expect(shown(["unused"])).toEqual(["b", "c", "x"])
+		expect(shown([])).toEqual(["a", "b", "c", "x"])
+		expect(shown(["used", "unused"])).toEqual(["a", "b", "c", "x"])
 	})
 	test("nothing matches or no cards", () => {
 		const r = cardsResults([], [], new Map(), view(), order)

@@ -36,7 +36,7 @@
 	 * *Filter* and *+ Add card* at its end), the sort and group chips and the filter chips, then the
 	 * results. The page's static head holds the title and the tabs (_Cards · Limits_, `PageTabs`);
 	 * the limit groups are the Limits tab's (`LimitsPage`). The view lives in the address
-	 * (`?q=&f.locations=&f.owners=&sort=&dir=&by=`, RD-29), rewritten in place as it
+	 * (`?q=&f.locations=&f.owners=&f.usage=&sort=&dir=&by=`, RD-29), rewritten in place as it
 	 * changes. Everything here is the reader's data (PRD DD-172).
 	 *
 	 * A card opens in its detail panel (RD-23, `CardPanel`) at `?card=<id>`, beside the list from
@@ -142,6 +142,11 @@
 				key: `owner:${owner}`,
 				label: ownerName(owner, data?.money.owners),
 				clear: () => change({ owners: view.owners.filter((o) => o !== owner) }),
+			})),
+			...view.usage.map((usage) => ({
+				key: `usage:${usage}`,
+				label: t(`cards.usage.${usage}`),
+				clear: () => change({ usage: view.usage.filter((u) => u !== usage) }),
 			})),
 		]
 	})

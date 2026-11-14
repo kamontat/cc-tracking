@@ -2,6 +2,7 @@ import {
 	CARDS_DIRS,
 	CARDS_GROUPS,
 	CARDS_SORTS,
+	CARDS_USAGES,
 	type CardFilter,
 	type CardsGroup,
 	type CardsSort,
@@ -50,9 +51,10 @@ export function writeCardFilter(p: URLSearchParams, filter: CardFilter): void {
 }
 
 /**
- * The Cards tab's state from `/cards?q=&f.locations=&f.owners=&sort=&dir=&by=` (RD-29);
+ * The Cards tab's state from `/cards?q=&f.locations=&f.owners=&f.usage=&sort=&dir=&by=` (RD-29);
  * unknown values read as defaults, and a missing `dir` as the sort's own (`CARDS_DIRS`). An
- * `f.locations` is kept only when it is one of `locationIds`, an `f.owners` one of `ownerIds`.
+ * `f.locations` is kept only when it is one of `locationIds`, an `f.owners` one of `ownerIds`;
+ * `f.usage` reads in `CARDS_USAGES`' order, once each.
  */
 export function readCardsView(
 	search: string,
@@ -62,18 +64,21 @@ export function readCardsView(
 	const p = new URLSearchParams(search)
 	const sort = p.get("sort")
 	const field = CARDS_SORTS.includes(sort as CardsSort) ? (sort as CardsSort) : DEFAULT_CARDS_VIEW.sort
+	const usage = p.getAll("f.usage")
 	return {
 		...readCardFilter(p, locationIds, ownerIds),
+		usage: CARDS_USAGES.filter((value) => usage.includes(value)),
 		sort: field,
 		dir: readDir(p.get("dir"), field, CARDS_DIRS),
 		by: CARDS_GROUPS.includes(p.get("by") as CardsGroup) ? (p.get("by") as CardsGroup) : DEFAULT_CARDS_VIEW.by,
 	}
 }
 
-/** `""` for the defaults, else `?` and the fields that differ, `f.locations` and `f.owners` repeated. */
+/** `""` for the defaults, else `?` and the fields that differ, `f.locations`, `f.owners` and `f.usage` repeated. */
 export function writeCardsView(view: CardsView): string {
 	const p = new URLSearchParams()
 	writeCardFilter(p, view)
+	for (const usage of view.usage) p.append("f.usage", usage)
 	if (view.sort !== DEFAULT_CARDS_VIEW.sort) p.set("sort", view.sort)
 	if (view.dir !== CARDS_DIRS[view.sort]) p.set("dir", view.dir)
 	if (view.by !== DEFAULT_CARDS_VIEW.by) p.set("by", view.by)
