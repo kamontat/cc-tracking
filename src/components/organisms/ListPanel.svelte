@@ -11,11 +11,11 @@
 	import DetailPanel from "#components/molecules/DetailPanel.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import TwoStepButtons from "#components/molecules/TwoStepButtons.svelte"
-	import { addDays, headerDate, today } from "#lib/domain/date"
+	import { headerDate, today } from "#lib/domain/date"
 	import { formatAmount } from "#lib/domain/money"
 	import { listCount, listTotal, mergeCandidates } from "#lib/domain/purchase-list"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
-	import { cardLine, cardLines, groupColor } from "#lib/ui/card-label"
+	import { cardLine, groupColor } from "#lib/ui/card-label"
 	import { listEditAddress } from "#lib/ui/list-address"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
@@ -27,9 +27,9 @@
 	 * The list panel (PRD RD-23, RD-26): a purchase list in the detail panel, over whichever page
 	 * holds `panel` (`?list=<id>`). The head is the list's date over its status and how many cards
 	 * it has. The body is its lines as a row list (the card, its note, and what it is for, or for a
-	 * saved list what was bought, or _Not made_), each opening its card's panel a step deeper
-	 * (`panel.deeper`), so Back returns here; then the total; a saved list's summary and the draft
-	 * its unmade lines moved to. Then the actions its status allows: a draft's _Continue_ and a
+	 * saved list what was bought, or _Moved_ when its unmade lines went to the next day's draft,
+	 * else _Not made_), each opening its card's panel a step deeper (`panel.deeper`), so Back
+	 * returns here; then the total; a saved list's summary (DD-212). Then the actions its status allows: a draft's _Continue_ and a
 	 * waiting list's _Record reply_ leave for the edit page (writing a list is a page, decision
 	 * 4); _Merge_ when other lists of its status share its day (DD-187); a draft's one-step
 	 * _Delete_ (DD-74), which closes the panel; a waiting list's two-step _Confirm_, which saves it
@@ -194,33 +194,18 @@
 					: line.amount > 0
 						? formatAmount(line.amount)
 						: undefined,
-				missing: saved ? t("reply.notMade") : t("purchaseList.row.noAmount"),
+				missing: saved ? t(list.movedTo ? "reply.moved" : "reply.notMade") : t("purchaseList.row.noAmount"),
 			}
 		})
 	})
 
-	/** A saved list's summary, and the draft its unmade lines moved to. */
+	/** A saved list's summary: how many purchases it saved, and their total. */
 	const saved = $derived.by(() => {
 		void lang
-		if (list?.status !== "saved" || !data) return null
+		if (list?.status !== "saved") return null
 		const made = list.lines.filter((line) => line.made).length
 		const total = formatAmount(listTotal(list))
-		return {
-			summary: made === 1 ? t("saved.summary.one", { total }) : t("saved.summary.many", { count: made, total }),
-			moved: list.movedTo
-				? {
-						id: list.movedTo,
-						says: t("saved.moved", {
-							cards: cardLines(
-								[...new Set(list.lines.filter((line) => !line.made).map((line) => line.cardId))],
-								data.cards,
-								{ short: true },
-							),
-							date: headerDate(addDays(list.date, 1), getLocale(), false),
-						}),
-					}
-				: null,
-		}
+		return made === 1 ? t("saved.summary.one", { total }) : t("saved.summary.many", { count: made, total })
 	})
 
 	const others = $derived(list && data && list.status !== "saved" ? mergeCandidates(list, data.lists).length : 0)
@@ -253,7 +238,7 @@
 			{@const current = list}
 			<div class="list-detail" bind:this={root}>
 				{#if saved}
-					<p class="note" data-tone="ok" data-place="start">{saved.summary}</p>
+					<p class="note" data-tone="ok" data-place="start">{saved}</p>
 				{/if}
 				<section class="list-lines">
 					<h3>{tr("listPanel.lines")}</h3>
@@ -291,18 +276,6 @@
 						</div>
 					</div>
 				</section>
-				{#if saved?.moved}
-					{@const moved = saved.moved}
-					<button
-						type="button"
-						class="list-moved"
-						data-variant="quiet"
-						data-action="open-draft"
-						onclick={() => panel.deeper({ kind: "list", id: moved.id })}>
-						<b>{moved.says}</b>
-						<small>{tr("saved.openDraft")}</small>
-					</button>
-				{/if}
 				{#if current.status !== "saved"}
 					<div class="list-actions">
 						{#if current.status === "draft"}
@@ -381,20 +354,6 @@
 
 	.list-lines .list-total {
 		justify-content: space-between;
-	}
-
-	/* The draft a saved list's unmade lines moved to: what moved, over how to open it. */
-	.list-detail .list-moved {
-		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		align-self: stretch;
-		gap: var(--cc-space-1);
-		text-align: start;
-	}
-
-	.list-moved small {
-		color: var(--cc-text-muted);
 	}
 
 	/* The actions, in a row that wraps; a page is a link drawn as the primary button. */

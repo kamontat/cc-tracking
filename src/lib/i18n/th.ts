@@ -921,6 +921,7 @@ export const th: Catalog = {
 	"reply.wasMade": "ซื้อแล้วหรือยัง",
 	"reply.made": "ซื้อแล้ว",
 	"reply.notMade": "ไม่ได้ซื้อ",
+	"reply.moved": "ย้ายแล้ว",
 	"reply.actual": "ยอดจริง",
 	"reply.diff": "{diff} เทียบกับที่วางไว้",
 	"reply.move": "ย้าย {cards} ไปเป็นฉบับร่างของวันที่ {date}",
@@ -940,6 +941,4 @@ export const th: Catalog = {
 	"reply.error.notWaiting": "ใบรายการนี้ไม่ได้รอคำตอบแล้ว จึงไม่ได้ยกเลิก",
 	"saved.summary.one": "บันทึก 1 รายการ รวม {total} แล้ว ยอดนี้นับรวมในวงเงินของบัตรแล้ว",
 	"saved.summary.many": "บันทึก {count} รายการ รวม {total} แล้ว ยอดเหล่านี้นับรวมในวงเงินของแต่ละบัตรแล้ว",
-	"saved.moved": "ย้าย {cards} ไปเป็นฉบับร่างของวันที่ {date} แล้ว",
-	"saved.openDraft": "เปิดเมื่อพร้อมส่ง",
 }
