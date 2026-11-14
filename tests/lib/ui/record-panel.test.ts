@@ -196,6 +196,16 @@ describe("RecordPanel", () => {
 		expect(panel.view?.id).toBe("5")
 	})
 
+	test("‹ on a form opened a step deeper (a day's Pay) steps back to the record it came from", () => {
+		const { history, panel } = setup()
+		panel.show(card("5"))
+		panel.deeper(card("7"), { name: "pay", arg: "800" })
+		expect(history.calls.at(-1)).toBe("push /cards?card=7")
+		panel.back()
+		expect(history.calls.at(-1)).toBe("go -1")
+		expect(panel.view).toEqual({ kind: "card", id: "5", form: null })
+	})
+
 	test("a blank form opens with the address unchanged; adding the record writes its address", () => {
 		const { history, panel } = setup("/cards?q=a")
 		panel.blank("card")

@@ -115,6 +115,8 @@ export class RecordPanel {
 	readonly #ask: () => boolean
 	/** The entries since the page started, as the panel saw them, and the one showing. */
 	#entries: (PanelView | null)[] = [null]
+	/** Forms opened a step deeper from another record (a day's _Pay_): their ‹ steps back to it. */
+	readonly #deep = new WeakSet<PanelView>()
 	#at = 0
 	/** Where a move the panel asked for (`go`) lands, and what to do once it has. */
 	#landing: { at: number; then?: () => void } | null = null
@@ -167,7 +169,9 @@ export class RecordPanel {
 	/** Goes deeper to another record from inside the panel (a group's card): pushes, so Back returns. */
 	deeper(ref: RecordRef, form: PanelForm | null = null): void {
 		if (!this.#mayLeave()) return
-		this.#push({ ...ref, form })
+		const view: PanelView = { ...ref, form }
+		if (form) this.#deep.add(view)
+		this.#push(view)
 	}
 
 	/** Opens a form over the open record: pushes an entry with the address unchanged. */
@@ -190,14 +194,16 @@ export class RecordPanel {
 
 	/**
 	 * Back to the record from its form (‹, _Cancel_, a save): a step back over the form's entry,
-	 * or, when the record's own entry is not under it, the summary swapped in place. Never asks.
+	 * or, when the record's own entry is not under it, the summary swapped in place. A form opened a
+	 * step deeper from another record (`deeper` with a form) steps back to that record. Never asks.
 	 */
 	back(): void {
 		const view = this.view
 		if (!view?.form || view.id === null) return
 		this.dirty = false
 		const below = this.#entries[this.#at - 1]
-		if (below && !below.form && sameRef(refOf(below), refOf(view))) this.#go(-1)
+		const deep = this.#deep.has(view) && below !== undefined && below !== null
+		if (deep || (below && !below.form && sameRef(refOf(below), refOf(view)))) this.#go(-1)
 		else this.#replace({ ...view, form: null })
 	}
 
