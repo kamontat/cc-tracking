@@ -161,22 +161,25 @@ test("a waiting list offers Record reply at the edit page and a two-step Confirm
 	expect(actions()).toEqual([])
 })
 
-test("a saved list: what was bought, what was not, and the draft its unmade lines moved to", async () => {
-	const { history } = await show(await stocked(), "/transactions/lists?list=s1")
+test("a saved list: what was bought, and the unmade lines marked Moved, with no link to the draft", async () => {
+	await show(await stocked(), "/transactions/lists?list=s1")
 	expect(detail()).toBe("Saved · 2 cards")
 	const lines = $$(".list-lines [data-card]")
 	expect(text(lines[0])).toContain("฿90.00")
 	expect(text(lines[0])).toContain("planned ฿100.00")
-	expect(text(lines[1])).toContain("Not made")
+	expect(text(lines[1])).toContain("Moved")
+	expect(text(lines[1])).not.toContain("Not made")
 	expect(text($(".list-total"))).toBe("Total ฿90.00")
 	expect(text($('[data-tone="ok"]'))).toContain("Saved 1 purchase, ฿90.00")
 	expect(actions()).toEqual([])
-	await press('[data-action="open-draft"]')
-	expect(history.now()).toBe("/transactions/lists?list=d1")
-	expect(title()).toBe("List for Sat, 31 Oct 2026")
-	history.userBack()
-	await settle()
-	expect(history.now()).toBe("/transactions/lists?list=s1")
+	expect($('[data-action="open-draft"]')).toBeNull()
+	expect(text($(".list-detail"))).not.toContain("moved to a draft")
+})
+
+test("a saved list whose unmade lines stayed says Not made", async () => {
+	const { movedTo: _, ...stayed } = SAVED
+	await show(await stocked([stayed]), "/transactions/lists?list=s1")
+	expect(text($$(".list-lines [data-card]")[1])).toContain("Not made")
 })
 
 test("a line opens its card's panel a step deeper, so Back returns to the list", async () => {
