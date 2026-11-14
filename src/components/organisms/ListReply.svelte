@@ -3,7 +3,7 @@
 	import type { Card, LimitGroup, ListLine, PurchaseList } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 
-	import { onMount, untrack } from "svelte"
+	import { onMount, tick, untrack } from "svelte"
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import Sheet from "#components/molecules/Sheet.svelte"
@@ -16,8 +16,9 @@
 	/**
 	 * The spender's reply to a sent list, drawn as the builder is (DD-195): a row per card in one
 	 * row panel, each saying what was answered and what was made, opening its card's sheet. The
-	 * sheet answers each of the card's orders, Made or Not made, with the real amount of a made one
-	 * and a note, and steps ‹ › to the card before or after. Saving waits until every line is
+	 * sheet is headed by the card and steps ‹ › to the card before or after; each of the card's
+	 * orders is a Made / Not made toggle, then what was planned beside the real amount (the box to
+	 * type in once made, with *Use planned* when it is off the plan), and a note. Saving waits until every line is
 	 * answered and every real amount is money; a not-made line can move to tomorrow's draft. The
 	 * sheet is the page's to keep in history: every change asks `onsheet`. `side` takes the page's
 	 * own actions, after Save (Cancel list).
@@ -73,6 +74,7 @@
 	})
 
 	let sheetRef = $state<ReturnType<typeof Sheet> | undefined>()
+	let stepRoot = $state<HTMLElement | undefined>()
 
 	const setAnswer = (index: number, change: Partial<Answer>) => {
 		answers = answers.map((answer, i) => (i === index ? { ...answer, ...change } : answer))
@@ -127,7 +129,6 @@
 			cardId,
 			indexes,
 			card: byId.get(cardId),
-			planned,
 			pending,
 			unmade,
 			bad,
@@ -182,6 +183,14 @@
 		return () => input.removeEventListener("input", handle)
 	}
 
+	/** Made: the real amount's box shows, and takes the focus, as the builder's first amount does. */
+	const answerMade = async (index: number) => {
+		setAnswer(index, { made: true })
+		await tick()
+		const order = list.lines.slice(0, index).filter((l) => l.cardId === list.lines[index]?.cardId).length
+		stepRoot?.querySelector<HTMLInputElement>(`[data-order="${order}"] [data-field="actual"]`)?.focus()
+	}
+
 	/** Plays the sheet's exit, then closes it; at once with no sheet. */
 	const closeSheet = () => {
 		if (sheetRef) sheetRef.leave(() => onsheet(null))
@@ -223,16 +232,10 @@
 
 {#snippet cardStep(view: ReturnType<typeof viewOf>)}
 	{@const many = view.indexes.length > 1}
-	<div class="card-step" data-card={view.cardId}>
-		<div class="card-title" row>
-			<span class="card-panel">
-				{@render chip(view.cardId, view.card)}
-				<span class="what">
-					<b class="card-label">{panelLabel(view.cardId)}</b>
-					<small class="planned">{tr("reply.planned", { amount: formatAmount(view.planned) })}</small>
-				</span>
-			</span>
-			{#if views.length > 1}
+	<div class="card-step" data-card={view.cardId} bind:this={stepRoot}>
+		{#if views.length > 1}
+			<div class="nav" row>
+				<span class="position">{tr("reply.position", { n: at + 1, count: views.length })}</span>
 				<span class="steps" row>
 					<button
 						type="button"
@@ -259,55 +262,75 @@
 						<SvgIcon name="back" />
 					</button>
 				</span>
-			{/if}
-		</div>
+			</div>
+		{/if}
 		{#each view.indexes as index, order (index)}
 			{@const line = list.lines[index]}
+			{@const planned = line?.amount ?? 0}
 			{@const answer = answers[index] ?? { made: undefined, text: "", note: "" }}
 			{@const amount = real(index)}
-			{@const diff = amount === null || !line ? 0 : amount - line.amount}
+			{@const diff = amount === null ? 0 : amount - planned}
 			<div class="order" data-order={order}>
 				{#if many}
-					<div class="order-head" row>
-						<span>{tr("purchaseList.order", { n: order + 1 })}</span>
-						<span class="planned">{tr("reply.planned", { amount: formatAmount(line?.amount ?? 0) })}</span>
-					</div>
+					<div class="order-head">{tr("purchaseList.order", { n: order + 1 })}</div>
 				{/if}
-				<fieldset class="pair" aria-label={tr("reply.wasMade")}>
+				<fieldset class="pair toggle" aria-label={tr("reply.wasMade")}>
 					<button
 						type="button"
+						data-variant="quiet"
 						data-answer="made"
 						aria-pressed={answer.made === true ? "true" : "false"}
-						data-variant={answer.made === true ? undefined : "quiet"}
-						onclick={() => setAnswer(index, { made: true })}>
-						{tr("reply.made")}
+						onclick={() => answerMade(index)}>
+						<SvgIcon name="check" />{tr("reply.made")}
 					</button>
 					<button
 						type="button"
+						data-variant="quiet"
 						data-answer="not-made"
 						aria-pressed={answer.made === false ? "true" : "false"}
-						data-variant={answer.made === false ? "danger" : "quiet"}
 						onclick={() => setAnswer(index, { made: false })}>
-						{tr("reply.notMade")}
+						<SvgIcon name="close" />{tr("reply.notMade")}
 					</button>
 				</fieldset>
-				{#if answer.made === true}
-					<label class="bigin">
-						<span>฿</span>
-						<input
-							inputmode="decimal"
-							enterkeyhint="done"
-							data-field="actual"
-							aria-label={tr("reply.actual")}
-							value={answer.text}
-							{@attach typed(index, "text")}
-							onkeydown={onEnter}>
-					</label>
-					{#if amount === null}
-						<p class="error">{tr("quickAdd.error.badAmount")}</p>
-					{:else if diff !== 0}
-						<p class="diff">{diffText(diff)}</p>
+				<div class="figures">
+					<div data-figure="planned">
+						<small>{tr("reply.figure.planned")}</small>
+						<b>{formatAmount(planned)}</b>
+					</div>
+					{#if answer.made === true}
+						<label data-figure="real" data-bad={amount === null ? "" : undefined}>
+							<small>{tr("reply.actual")}</small>
+							<span class="real-input" row>
+								<span aria-hidden="true">฿</span>
+								<input
+									inputmode="decimal"
+									enterkeyhint="done"
+									data-field="actual"
+									value={answer.text}
+									{@attach typed(index, "text")}
+									onkeydown={onEnter}>
+							</span>
+						</label>
+					{:else}
+						<div data-figure="real" data-answer={answer.made === false ? "not-made" : undefined}>
+							<small>{tr("reply.actual")}</small>
+							<b>{answer.made === false ? tr("reply.notMade") : "—"}</b>
+						</div>
 					{/if}
+				</div>
+				{#if answer.made === true && amount === null}
+					<p class="error">{tr("quickAdd.error.badAmount")}</p>
+				{:else if answer.made === true && diff !== 0}
+					<div class="off-plan" row>
+						<p class="diff">{diffText(diff)}</p>
+						<button
+							type="button"
+							data-variant="quiet"
+							data-action="use-planned"
+							onclick={() => setAnswer(index, { text: formatAmountInput(planned) })}>
+							{tr("reply.usePlanned", { amount: formatAmount(planned) })}
+						</button>
+					</div>
 				{/if}
 				<label class="line-note">
 					{tr("purchaseList.noteLabel")}
@@ -378,7 +401,12 @@
 </div>
 
 {#if sheetView}
-	<Sheet bind:this={sheetRef} wide heading={tr("reply.wasMade")} onclose={() => onsheet(null)}>
+	<Sheet bind:this={sheetRef} wide heading={panelLabel(sheetView.cardId)} onclose={() => onsheet(null)}>
+		{#snippet lead()}
+			<span class="mini" data-g={groupColor(sheetView.card, groups) ?? undefined} aria-hidden="true"
+				>{sheetView.card?.last4 ?? ""}</span
+			>
+		{/snippet}
 		{@render cardStep(sheetView)}
 	</Sheet>
 {/if}
@@ -505,18 +533,23 @@
 		transform: rotate(-90deg);
 	}
 
-	/* One card in the sheet: its name and what it was planned at, its orders, and Done at the foot. One track that shrinks
-	   to the sheet, so a long unspaced Thai run never widens it past a phone's edge. */
+	/* One card in the sheet: where it is on the list, its orders, and Done at the foot. One track
+	   that shrinks to the sheet, so a long unspaced Thai run never widens it past a phone's edge. */
 	.card-step {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: var(--cc-space-3);
+		gap: var(--cc-space-4);
 	}
 
-	.card-title {
+	.nav {
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--cc-space-3);
+	}
+
+	.position {
+		font-size: var(--cc-text-sm);
+		color: var(--cc-text-muted);
 	}
 
 	.steps {
@@ -536,7 +569,8 @@
 		opacity: 0.4;
 	}
 
-	.steps :global(.icon) {
+	.steps :global(.icon),
+	.toggle :global(.icon) {
 		inline-size: var(--cc-icon-size-sm);
 		block-size: var(--cc-icon-size-sm);
 	}
@@ -546,7 +580,7 @@
 		transform: scaleX(-1);
 	}
 
-	/* An order: what was planned, the answer, the real amount and the note, a line before the next. */
+	/* An order: the answer, the figures, the note, a line before the next. */
 	.order {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
@@ -554,71 +588,148 @@
 	}
 
 	.order + .order {
-		padding-block-start: var(--cc-space-3);
+		padding-block-start: var(--cc-space-4);
 		border-top: var(--cc-border-width) solid var(--cc-border);
 	}
 
 	.order-head {
-		align-items: baseline;
-		justify-content: space-between;
-		gap: var(--cc-space-3);
 		font-size: var(--cc-text-sm);
 		font-weight: 600;
 		color: var(--cc-text-muted);
 	}
 
-	.planned {
-		font-size: var(--cc-text-xs);
-		font-weight: 400;
-		color: var(--cc-text-muted);
-		font-variant-numeric: tabular-nums;
-	}
-
-	/* A choice group without a fieldset's frame. */
-	.pair {
+	/* Made / Not made: one segmented toggle on a sunken track, the picked half raised and tinted,
+	   so it never reads as the sheet's primary button. */
+	.toggle {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: var(--cc-space-2);
+		gap: var(--cc-space-1);
 		min-inline-size: 0;
-		padding: 0;
+		padding: var(--cc-space-1);
 		margin: 0;
-		border: 0;
-	}
-
-	.pair button {
-		justify-content: center;
-		padding-block: var(--cc-space-3);
-		text-align: center;
-	}
-
-	.pair button[data-variant="danger"][aria-pressed="true"] {
-		color: var(--cc-accent-text);
-		background: var(--cc-danger);
-	}
-
-	.bigin {
-		flex-direction: row;
-		align-items: baseline;
-		gap: var(--cc-space-2);
-		padding: var(--cc-space-1) var(--cc-space-4);
 		background: var(--cc-surface-sunken);
+		border: var(--cc-border-width) solid var(--cc-border);
+		border-radius: var(--cc-radius-md);
+	}
+
+	.toggle button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--cc-space-2);
+		padding-block: var(--cc-space-2);
+		color: var(--cc-text-muted);
+		background: transparent;
+		border-color: transparent;
+	}
+
+	.toggle button:hover {
+		color: var(--cc-text);
+		background: var(--cc-surface);
+	}
+
+	.toggle button[data-answer="made"][aria-pressed="true"] {
+		color: var(--cc-accent);
+		background: var(--cc-accent-surface);
+		border-color: var(--cc-accent);
+	}
+
+	.toggle button[data-answer="not-made"][aria-pressed="true"] {
+		color: var(--cc-danger);
+		background: var(--cc-danger-surface);
+		border-color: var(--cc-danger);
+	}
+
+	/* Planned beside the real amount: two quiet boxes, as the builder's figures are. */
+	.figures {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: var(--cc-space-2);
+	}
+
+	.figures > * {
+		display: flex;
+		flex-direction: column;
+		gap: 0;
+		min-inline-size: 0;
+		padding: var(--cc-space-2) var(--cc-space-3);
+		background: var(--cc-surface-sunken);
+		border: var(--cc-border-width) solid transparent;
 		border-radius: var(--cc-radius-sm);
 	}
 
-	.bigin span {
-		font-size: var(--cc-text-lg);
+	.figures small {
+		font-size: var(--cc-text-xs);
 		color: var(--cc-text-muted);
 	}
 
-	.bigin input {
-		flex: 1;
-		min-inline-size: 0;
-		padding: var(--cc-space-1) 0;
-		font-size: var(--cc-text-2xl);
-		font-weight: 700;
+	.figures b {
+		font-size: var(--cc-text-lg);
 		font-variant-numeric: tabular-nums;
+	}
+
+	.figures [data-answer="not-made"] b {
+		color: var(--cc-danger);
+	}
+
+	/* The real amount once made: the box to type in, outlined so it reads as a field. */
+	.figures label {
+		cursor: text;
+		background: var(--cc-surface);
+		border-color: var(--cc-border);
+	}
+
+	.figures label:focus-within {
+		border-color: var(--cc-accent);
+	}
+
+	.figures label[data-bad] {
+		border-color: var(--cc-danger);
+	}
+
+	.real-input {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		align-items: baseline;
+		gap: var(--cc-space-1);
+		font-size: var(--cc-text-lg);
+		font-weight: 700;
+	}
+
+	.real-input > span {
+		color: var(--cc-text-muted);
+	}
+
+	.real-input input {
+		flex: 1 1 0;
+		inline-size: 100%;
+		min-inline-size: 0;
+		padding: 0;
+		font: inherit;
+		font-variant-numeric: tabular-nums;
+		color: var(--cc-text);
 		background: transparent;
 		border: none;
+		border-radius: 0;
+		outline: none;
+	}
+
+	/* The box around it shows the focus (its border turns the accent), so the field has no ring. */
+	.real-input input:focus-visible {
+		box-shadow: none;
+	}
+
+	.off-plan {
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--cc-space-2);
+	}
+
+	.off-plan button {
+		padding: var(--cc-space-1) var(--cc-space-2);
+		font-size: var(--cc-text-xs);
 	}
 
 	.diff {

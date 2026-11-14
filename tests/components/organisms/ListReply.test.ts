@@ -164,7 +164,10 @@ test("a row opens its card's sheet, and Done closes it", async () => {
 	row("B")?.click()
 	await settle()
 	expect(sheetOf("B")).toBeInstanceOf(HTMLElement)
-	expect(flat(root.querySelector("dialog h2"))).toBe("Was it made?")
+	// The sheet is headed by its card: the chip, then `id) name`.
+	expect(flat(root.querySelector("dialog h2 .words"))).toBe("B) Card B")
+	expect(root.querySelector("dialog h2 .mini")?.getAttribute("aria-hidden")).toBe("true")
+	expect(flat(sheetOf("B")?.querySelector(".position"))).toBe("Card 2 of 3")
 	await done()
 	expect(root.querySelector("dialog")).toBeNull()
 })
@@ -181,10 +184,15 @@ test("the sheet steps to the card before or after", async () => {
 	expect(sheetOf("B")).toBeInstanceOf(HTMLElement)
 })
 
+test("a card alone on the list has no place to step to", async () => {
+	await show({ ...w1, lines: [{ cardId: "A", amount: 100 }] })
+	expect((await open("A")).querySelector(".position")).toBeNull()
+	expect(root.querySelector('dialog [data-action="next-card"]')).toBeNull()
+})
+
 test("save waits for every answer", async () => {
 	await show()
-	expect(flat((await open("A")).querySelector(".card-title .planned"))).toBe("planned ฿12,500.00")
-	// One order has no heading of its own: the card's title says what it was planned at.
+	// One order has no heading of its own.
 	expect((await open("A")).querySelector(".order-head")).toBeNull()
 	const group = (await orderOf("A")).querySelector("fieldset.pair")
 	expect(group?.getAttribute("aria-label")).toBe("Was it made?")
@@ -197,15 +205,46 @@ test("save waits for every answer", async () => {
 	expect(root.querySelector(".action-bar .summary")?.classList.contains("warned")).toBe(true)
 })
 
-test("the answer buttons take the variants: quiet until pressed, danger for not made", async () => {
+test("Made and Not made are one toggle: quiet buttons with an icon each, the pressed one marked", async () => {
 	await show()
-	expect((await answerButton("A", "made")).getAttribute("data-variant")).toBe("quiet")
-	expect((await answerButton("A", "not-made")).getAttribute("data-variant")).toBe("quiet")
-	await answer("A", "made")
-	expect((await answerButton("A", "made")).hasAttribute("data-variant")).toBe(false)
+	const made = await answerButton("A", "made")
+	const notMade = await answerButton("A", "not-made")
+	expect(made.closest("fieldset.pair.toggle")).toBeInstanceOf(HTMLElement)
+	expect(made.getAttribute("data-variant")).toBe("quiet")
+	expect(notMade.getAttribute("data-variant")).toBe("quiet")
+	expect(made.querySelector("svg.icon")).toBeInstanceOf(SVGElement)
+	expect(notMade.querySelector("svg.icon")).toBeInstanceOf(SVGElement)
 	await answer("A", "not-made")
-	expect((await answerButton("A", "made")).getAttribute("data-variant")).toBe("quiet")
-	expect((await answerButton("A", "not-made")).getAttribute("data-variant")).toBe("danger")
+	expect((await answerButton("A", "made")).getAttribute("aria-pressed")).toBe("false")
+	expect((await answerButton("A", "not-made")).getAttribute("aria-pressed")).toBe("true")
+	expect((await answerButton("A", "not-made")).getAttribute("data-variant")).toBe("quiet")
+})
+
+test("the planned and real figures sit side by side, the real one the box to type in once made", async () => {
+	await show()
+	const figure = async (name: string) => flat((await orderOf("A")).querySelector(`.figures [data-figure="${name}"]`))
+	expect(await figure("planned")).toBe("Planned ฿12,500.00")
+	expect(await figure("real")).toBe("Real amount —")
+	await answer("A", "not-made")
+	expect(await figure("real")).toBe("Real amount Not made")
+	await answer("A", "made")
+	expect((await orderOf("A")).querySelector('.figures [data-figure="real"] [data-field="actual"]')).toBeInstanceOf(
+		HTMLInputElement,
+	)
+})
+
+test("a real amount off the plan offers the planned one back", async () => {
+	await show()
+	await answer("A", "made")
+	expect((await orderOf("A")).querySelector('[data-action="use-planned"]')).toBeNull()
+	await typeInto(await actual("A"), "13000")
+	const use = (await orderOf("A")).querySelector<HTMLButtonElement>('[data-action="use-planned"]')
+	expect(flat(use)).toBe("Use planned ฿12,500.00")
+	expect(use?.getAttribute("data-variant")).toBe("quiet")
+	use?.click()
+	await settle()
+	expect((await actual("A"))?.value).toBe("12500")
+	expect(flat(await orderOf("A"))).not.toContain("vs plan")
 })
 
 test("a made line takes the real amount", async () => {
@@ -356,7 +395,8 @@ test("a row and its sheet are headed by the card in the panel form", async () =>
 	expect(flat(row("C")?.querySelector(".card-label"))).toBe("C) —")
 	expect(row("C")?.querySelector(".mini")?.getAttribute("aria-hidden")).toBe("true")
 	expect(row("A")?.querySelector(".mini")?.hasAttribute("aria-hidden")).toBe(false)
-	expect(flat((await open("A")).querySelector(".card-title .card-label"))).toBe("A) Card A")
+	await open("A")
+	expect(flat(root.querySelector("dialog h2 .words"))).toBe("A) Card A")
 })
 
 test("the card chip wears its group's colour", async () => {
@@ -439,10 +479,10 @@ test("a card's orders share its row and its sheet, each answered on its own", as
 	expect(flat(row("B")?.querySelector(".sum"))).toBe("฿3,000.00")
 	expect(flat(row("B")?.querySelector(".what small"))).toBe("2 orders · Not answered")
 	const sheet = await open("B")
-	expect(flat(sheet.querySelector(".card-title .planned"))).toBe("planned ฿3,000.00")
-	expect([...sheet.querySelectorAll(".order-head")].map(flat)).toEqual([
-		"Order 1 planned ฿1,000.00",
-		"Order 2 planned ฿2,000.00",
+	expect([...sheet.querySelectorAll(".order-head")].map(flat)).toEqual(["Order 1", "Order 2"])
+	expect([...sheet.querySelectorAll('[data-figure="planned"]')].map(flat)).toEqual([
+		"Planned ฿1,000.00",
+		"Planned ฿2,000.00",
 	])
 	await answer("B", "not-made", 0)
 	await done()
