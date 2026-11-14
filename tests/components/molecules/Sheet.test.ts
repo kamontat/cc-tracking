@@ -189,3 +189,19 @@ test("a sheet is not wide unless asked", () => {
 	show()
 	expect(dialog().hasAttribute("data-wide")).toBe(false)
 })
+
+test("a lead goes before the heading's words, inside the heading", () => {
+	mounted = mount(Sheet, {
+		target: document.body,
+		props: {
+			heading: "s1) CardX",
+			lead: createRawSnippet(() => ({ render: () => `<span class="mini" aria-hidden="true">9623</span>` })),
+			onclose: () => {},
+			children: body,
+		},
+	}) as Instance
+	flushSync()
+	const heading = dialog().querySelector("h2")
+	expect(heading?.firstElementChild?.classList.contains("mini")).toBe(true)
+	expect(heading?.querySelector(".words")?.textContent).toBe("s1) CardX")
+})
