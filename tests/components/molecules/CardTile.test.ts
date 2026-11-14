@@ -8,8 +8,7 @@ import CardTile from "#components/molecules/CardTile.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * One card tile (DD-151): `id) name` and its corner, the group's room and its word or the
- * picker's figure, the aside, the facts, and a rail in the group's use. The Cards page, Home's
+ * One card tile (DD-151): `id) name` and its corner, the group's room and its word, the aside, the facts, and a rail in the group's use. The Cards page, Home's
  * *Ready to use* and the pickers fill it each their own way.
  */
 let mounted: ReturnType<typeof mount> | undefined
@@ -119,17 +118,7 @@ test("quiet over: past the limit the amount turns red with no word under it", ()
 	expect(quiet.querySelector<HTMLElement>(".rail")?.dataset["level"]).toBe("over")
 })
 
-test("a figure takes line 2 in place of the room; the rail still follows the room", () => {
-	const tile = show({ figure: { amount: "฿1,000.00", word: "owed" } })
-	expect(text(tile.querySelector(".room"))).toBe("฿1,000.00 owed")
-	expect(tile.querySelector(".rail")).not.toBeNull()
-	const bare = show({ room: null, figure: { word: "nothing owed" } })
-	expect(bare.querySelector(".room b")).toBeNull()
-	expect(text(bare.querySelector(".room"))).toBe("nothing owed")
-	expect(bare.querySelector(".rail")).toBeNull()
-})
-
-test("no room and no figure: line 2 says nothing about a group, and there is no rail (RD-27)", () => {
+test("no room: line 2 says nothing about a group, and there is no rail (RD-27)", () => {
 	const tile = show({ room: null })
 	expect(tile.querySelector(".room")).toBeNull()
 	expect(text(tile)).not.toContain("No limit group")
@@ -169,25 +158,4 @@ test("a foot adds a last line under the facts, across the tile", () => {
 test("the card open in the detail panel is marked current", () => {
 	expect(show({ href: "/cards?card=A", current: true }).getAttribute("aria-current")).toBe("true")
 	expect(show({ href: "/cards?card=A" }).hasAttribute("aria-current")).toBe(false)
-})
-
-test("an action sits on the tile's last line, beside the link and not inside it", () => {
-	show({
-		href: "/owed?card=A",
-		facts: "Bill closed 18 Sep 2026",
-		action: createRawSnippet(() => ({ render: () => `<button type="button" data-action="pay">Pay</button>` })),
-	})
-	const box = document.body.querySelector(".tile-box") as HTMLElement
-	const link = box.querySelector("a.tile") as HTMLElement
-	expect(link.hasAttribute("data-act")).toBe(true)
-	expect(link.querySelector("button")).toBeNull()
-	const button = box.querySelector(".tile-act > [data-action=pay]")
-	expect(button).not.toBeNull()
-	expect(link.contains(button)).toBe(false)
-})
-
-test("with no action the tile has no box around it", () => {
-	const tile = show({ href: "/cards?card=A" })
-	expect(tile.parentElement?.classList.contains("tile-box")).toBe(false)
-	expect(tile.hasAttribute("data-act")).toBe(false)
 })

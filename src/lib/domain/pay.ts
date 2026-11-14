@@ -1,63 +1,9 @@
-import type { Card, CardLedger, CardPayment, LedgerStatement, PlainDate } from "#lib/domain/types"
+import type { Card, CardLedger, CardPayment, PlainDate } from "#lib/domain/types"
 
-import { addDays, compareDates, daysBetween } from "#lib/domain/date"
+import { addDays, compareDates } from "#lib/domain/date"
 import { ledgerUrgency, nextBill } from "#lib/domain/ledger"
 
-export type PayChoice = {
-	card: Card
-	owed: number
-	credit: number
-	bill: LedgerStatement | null
-	urgency: "overdue" | "soon" | "due" | "none"
-	/** Days overdue for overdue, days left otherwise, 0 for none. */
-	days: number
-}
-
 const byId = (a: { id: string }, b: { id: string }): number => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-
-const RANK = { overdue: 0, soon: 1, due: 2, none: 2 } as const
-
-/**
- * The cards a payment can go to: unarchived ones, plus archived ones while they owe.
- * Overdue first (most days), then due soon, then most owed, ties by id.
- */
-export function payChoices(cards: Card[], ledgers: Map<string, CardLedger>, today: PlainDate): PayChoice[] {
-	const choices: PayChoice[] = []
-	for (const card of cards) {
-		const ledger = ledgers.get(card.id)
-		const owed = ledger?.owed ?? 0
-		if (card.archived && owed <= 0) continue
-		const bill = ledger ? nextBill(ledger, today) : null
-		let urgency: PayChoice["urgency"] = "none"
-		let days = 0
-		if (bill) {
-			const u = ledgerUrgency(bill, today)
-			if (u === "overdue") {
-				urgency = u
-				days = daysBetween(bill.dueDate, today)
-			} else if (u === "soon" || u === "due") {
-				urgency = u
-				days = daysBetween(today, bill.dueDate)
-			}
-		}
-		choices.push({
-			card,
-			owed,
-			credit: ledger?.credit ?? 0,
-			bill,
-			urgency,
-			days,
-		})
-	}
-	return choices.sort(
-		(a, b) =>
-			RANK[a.urgency] - RANK[b.urgency] ||
-			(a.urgency === "overdue" ? b.days - a.days : 0) ||
-			(a.urgency === "soon" ? a.days - b.days : 0) ||
-			b.owed - a.owed ||
-			byId(a.card, b.card),
-	)
-}
 
 /** Id, name or last four digits, ignoring case. A blank query matches every card. */
 export function matchesCard(card: Card, query: string): boolean {
