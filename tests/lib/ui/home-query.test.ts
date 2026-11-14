@@ -22,13 +22,13 @@ describe("the Owed tab's address (/owed)", () => {
 	const read = (search: string) => readOwedPlan(search, places)
 
 	test("the defaults write nothing: the calendar, the next 30 days, every kind, today's month", () => {
-		expect(read("")).toEqual({ view: DEFAULT_OWED_PLAN, month: null, day: null })
-		expect(writeOwedPlan(DEFAULT_OWED_PLAN, null, null)).toBe("")
+		expect(read("")).toEqual({ view: DEFAULT_OWED_PLAN, month: null })
+		expect(writeOwedPlan(DEFAULT_OWED_PLAN, null)).toBe("")
 	})
 
-	test("search, places, holders, range, kinds, layout, month and day, the f. keys repeated", () => {
+	test("search, places, holders, range, kinds, layout and month, the f. keys repeated", () => {
 		const search =
-			"?q=kbank&f.locations=krabi&f.owners=KC&f.owners=NT&f.range=14&f.shows=bill&f.shows=plan&view=week&month=2026-12&day=2026-12-02"
+			"?q=kbank&f.locations=krabi&f.owners=KC&f.owners=NT&f.range=14&f.shows=bill&f.shows=plan&view=week&month=2026-12"
 		const plan = read(search)
 		expect(plan).toEqual({
 			view: {
@@ -40,22 +40,20 @@ describe("the Owed tab's address (/owed)", () => {
 				layout: "week",
 			},
 			month: "2026-12",
-			day: "2026-12-02",
 		})
-		expect(writeOwedPlan(plan.view, plan.month, plan.day)).toBe(search)
-		expect(writeOwedPlan({ ...DEFAULT_OWED_PLAN, range: "all" }, null, null)).toBe("?f.range=all")
+		expect(writeOwedPlan(plan.view, plan.month)).toBe(search)
+		expect(writeOwedPlan({ ...DEFAULT_OWED_PLAN, range: "all" }, null)).toBe("?f.range=all")
 	})
 
 	test("a value it does not know reads as the default", () => {
-		expect(read("?f.range=9&f.shows=cash&view=grid&month=2026-13&day=31-12-2026&f.locations=mars")).toEqual({
+		expect(read("?f.range=9&f.shows=cash&view=grid&month=2026-13&f.locations=mars")).toEqual({
 			view: DEFAULT_OWED_PLAN,
 			month: null,
-			day: null,
 		})
 	})
 
-	test("the open card is not the plan's to read", () => {
-		expect(read("?card=7")).toEqual({ view: DEFAULT_OWED_PLAN, month: null, day: null })
+	test("the open card and day are the panel's, not the plan's to read", () => {
+		expect(read("?card=7&day=2026-11-14")).toEqual({ view: DEFAULT_OWED_PLAN, month: null })
 	})
 })
 

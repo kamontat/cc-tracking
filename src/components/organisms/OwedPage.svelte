@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { OwedDay, OwedEntry, OwedLayout, OwedPlanView } from "#lib/domain/owed-plan"
-	import type { Period, PlainDate } from "#lib/domain/types"
+	import type { OwedDay, OwedLayout, OwedPlanView } from "#lib/domain/owed-plan"
+	import type { Period } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
@@ -13,10 +13,10 @@
 	import FilterControls from "#components/molecules/FilterControls.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import OwedCalendar from "#components/organisms/OwedCalendar.svelte"
+	import OwedDayPanel from "#components/organisms/OwedDayPanel.svelte"
 	import OwedDays from "#components/organisms/OwedDays.svelte"
 	import OwedFilter from "#components/organisms/OwedFilter.svelte"
-	import OwedLines from "#components/organisms/OwedLines.svelte"
-	import { addDays, dayMonth, displayDate, periodOf, today } from "#lib/domain/date"
+	import { addDays, dayMonth, periodOf, today } from "#lib/domain/date"
 	import { formatAmount, sumAmounts } from "#lib/domain/money"
 	import {
 		DEFAULT_OWED_PLAN,
@@ -37,19 +37,19 @@
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { rangeWords } from "#lib/ui/owed-words"
 	import { createPageState } from "#lib/ui/page-state"
-	import { RecordPanel } from "#lib/ui/record-panel.svelte"
+	import { LATE_DAY, RecordPanel } from "#lib/ui/record-panel.svelte"
 	import { whenWords } from "#lib/ui/row-text"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * Home's _Owed_ tab (`/owed`, RD-25): the money to have ready each day, so it can be moved in
-	 * time. Cards' search and *Filter* (`OwedFilter`: range, places, holders, kinds; no sort, no
-	 * group) and the view (calendar, by week, by month); late money apart, with _Pay_ per card; the
-	 * totals (the range, the next paying day, the next 7 days, the biggest day); then the calendar
-	 * with the picked day's cards beside it from 900px and under it below, or the days in week or
-	 * month sections (`OwedDays`). Everything is in the address
-	 * (`?q=&f.locations=&f.owners=&f.range=&f.shows=&view=&month=&day=`, rewritten in place). _Pay_
-	 * opens the card's panel over the tab on its pay form with the amount filled in (`?card=`).
+	 * Home's _Owed_ tab (`/owed`, RD-25, DD-205): the money to have ready each day, so it can be
+	 * moved in time. Cards' search and *Filter* (`OwedFilter`: range, places, holders, kinds; no sort,
+	 * no group) and the view (calendar, by week, by month); the totals (the range, the next paying
+	 * day, the next 7 days, the biggest day, and the late money while any is late); then the
+	 * calendar (`OwedCalendar`) or the days in week or month sections (`OwedDays`). A day, or the
+	 * late money, opens its cards in the panel (`OwedDayPanel`, `?day=`) as a list does on the Lists
+	 * tab; its _Pay_ opens the card's pay form a step deeper (`?card=`, `CardPanel`). The view is in
+	 * the address (`?q=&f.locations=&f.owners=&f.range=&f.shows=&view=&month=`, rewritten in place).
 	 */
 	interface Props {
 		/** Opens the store; tests pass one over an in-memory repository. */
@@ -76,7 +76,7 @@
 	}
 
 	/** The open card, in the address and history (RD-23). */
-	const panel = untrack(() => new RecordPanel({ address, path: OWED_ADDRESS, kinds: ["card"] }))
+	const panel = untrack(() => new RecordPanel({ address, path: OWED_ADDRESS, kinds: ["card", "day"] }))
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -125,24 +125,26 @@
 	const totals = $derived(owedTotals(plan.days, now))
 	const late = $derived(sumAmounts(plan.late.map((e) => e.amount)))
 
-	// The calendar: the month in the address, else the picked day's, else the next paying day's.
+	/** The day open in the panel: a date, or `late`. */
+	const openDay = $derived(panel.record?.kind === "day" ? panel.record.id : null)
+
+	// The calendar: the month in the address, else the open day's, else the next paying day's.
 	const months = $derived(owedMonths(plan.days, now))
 	const month = $derived.by((): Period => {
-		const wanted = state.month ?? (state.day ? periodOf(state.day) : periodOf(totals.next?.date ?? now))
+		const day = openDay && openDay !== LATE_DAY ? openDay : null
+		const wanted = state.month ?? (day ? periodOf(day) : periodOf(totals.next?.date ?? now))
 		return months.includes(wanted) ? wanted : (months[0] ?? periodOf(now))
 	})
 	const weeks = $derived(owedMonth(plan.days, month))
-	/** The day picked in the address while it is in the month shown, else the month's first paying day. */
-	const picked = $derived.by((): OwedDay | null => {
-		const inMonth = plan.days.filter((d) => periodOf(d.date) === month)
-		return inMonth.find((d) => d.date === state.day) ?? inMonth.find((d) => d.firm > 0) ?? inMonth[0] ?? null
-	})
 	const sections = $derived(view.layout === "calendar" ? [] : owedSections(plan.days, view.layout))
 
-	const write = (next: { view?: OwedPlanView; month?: Period | null; day?: PlainDate | null }) => {
+	const write = (next: { view?: OwedPlanView; month?: Period | null }) => {
 		state = { ...state, ...next }
-		address.replace(panel.keep(`${OWED_ADDRESS}${writeOwedPlan(state.view, state.month, state.day)}`))
+		address.replace(panel.keep(`${OWED_ADDRESS}${writeOwedPlan(state.view, state.month)}`))
 	}
+
+	/** Opens a day (or the late money) in the panel. */
+	const openPanel = (id: string) => panel.show({ kind: "day", id })
 	const change = (patch: Partial<OwedPlanView>) => write({ view: { ...view, ...patch } })
 
 	/** The active filters as removable chips; each clears only itself. */
@@ -170,15 +172,6 @@
 			})),
 		]
 	})
-
-	/** _Pay_: the card's panel straight on its pay form, the amount filled in. */
-	const pay = (entry: OwedEntry) =>
-		panel.show({ kind: "card", id: entry.card.id }, { name: "pay", arg: `${entry.amount}` })
-
-	const dateOf = (day: OwedDay) => {
-		void lang
-		return displayDate(day.date, getLocale())
-	}
 
 	const dayWhen = (day: OwedDay | null) => {
 		void lang
@@ -237,17 +230,11 @@
 							type="button"
 							data-layout={layout}
 							aria-pressed={view.layout === layout ? "true" : "false"}
-							onclick={() => write({ view: { ...view, layout: layout as OwedLayout }, day: null })}>
+							onclick={() => write({ view: { ...view, layout: layout as OwedLayout } })}>
 							{tr(`owed.plan.layout.${layout}`)}
 						</button>
 					{/each}
 				</fieldset>
-				{#if plan.late.length > 0}
-					<section class="owed-late">
-						<h2>{tr("owed.plan.late", { amount: formatAmount(late) })}</h2>
-						<OwedLines entries={plan.late} groups={data.groups} today={now} onpay={pay} />
-					</section>
-				{/if}
 				<section class="panel owed-totals" aria-label={tr("owed.plan.totals")}>
 					<div data-total="range">
 						<small>{rangeWords(view.range)}</small>
@@ -276,45 +263,35 @@
 						<b data-numeric>{totals.biggest ? formatAmount(totals.biggest.firm) : tr("common.none")}</b>
 						<span>{totals.biggest ? dayWhen(totals.biggest) : tr("owed.plan.none")}</span>
 					</div>
+					{#if late > 0}
+						<button
+							type="button"
+							data-total="late"
+							data-variant="quiet"
+							aria-current={openDay === LATE_DAY ? "true" : undefined}
+							onclick={() => openPanel(LATE_DAY)}>
+							<small>{tr("owed.plan.lateTitle")}</small>
+							<b data-numeric>{formatAmount(late)}</b>
+							<span>{tr("owed.plan.lateNote")}</span>
+						</button>
+					{/if}
 				</section>
 				{#if plan.days.length === 0}
 					<p class="empty">{tr("owed.plan.empty")}</p>
 				{:else if view.layout === "calendar"}
-					<div class="owed-calwrap">
-						<OwedCalendar
-							{weeks}
-							{month}
-							{months}
-							selected={picked?.date ?? null}
-							today={now}
-							{late}
-							groups={data.groups}
-							onmonth={(next: Period) => write({ month: next, day: null })}
-							onpick={(date: PlainDate) => write({ day: date })} />
-						<section class="panel owed-day">
-							{#if picked}
-								<h3>
-									<span>{dateOf(picked)}</span>
-									<b data-numeric
-										>{picked.firm > 0
-											? formatAmount(picked.firm)
-											: tr("owed.plan.soFar", { amount: formatAmount(picked.estimate) })}</b
-									>
-								</h3>
-								{#if picked.firm > 0}
-									<p class="by-then">
-										<span>{tr("owed.plan.byThen")}</span>
-										<b data-numeric data-by-then>{formatAmount(picked.byThen)}</b>
-									</p>
-								{/if}
-								<OwedLines entries={picked.entries} groups={data.groups} today={now} onpay={pay} />
-							{:else}
-								<p class="muted">{tr("owed.plan.pick")}</p>
-							{/if}
-						</section>
-					</div>
+					<OwedCalendar
+						{weeks}
+						{month}
+						{months}
+						selected={openDay}
+						today={now}
+						{late}
+						groups={data.groups}
+						onmonth={(next: Period) => write({ month: next })}
+						onpick={openPanel}
+						onlate={() => openPanel(LATE_DAY)} />
 				{:else}
-					<OwedDays {sections} by={view.layout} today={now} groups={data.groups} onpay={pay} />
+					<OwedDays {sections} by={view.layout} today={now} current={openDay} onopen={openPanel} />
 				{/if}
 			{/if}
 			{#if filterOpen}
@@ -333,6 +310,9 @@
 			{/if}
 		{/if}
 	</div>
+	{#if data}
+		<OwedDayPanel {panel} days={plan.days} late={plan.late} groups={data.groups} today={now} />
+	{/if}
 	<CardPanel {panel} open={openOnce} {clock} {newId} onchange={() => void page.load()} />
 </div>
 
@@ -348,13 +328,9 @@
 		align-self: flex-start;
 	}
 
-	.empty,
-	.muted {
+	.empty {
 		margin: 0;
 		color: var(--cc-text-muted);
-	}
-
-	.empty {
 		padding: var(--cc-space-4);
 		text-align: center;
 		background: var(--cc-surface);
@@ -362,24 +338,10 @@
 		border-radius: var(--cc-radius-md);
 	}
 
-	.owed-late {
-		display: flex;
-		flex-direction: column;
-		gap: var(--cc-space-2);
-	}
-
-	.owed-late h2 {
-		margin: 0;
-		padding: var(--cc-space-3) var(--cc-space-4);
-		font-size: var(--cc-text-md);
-		color: var(--cc-danger);
-		background: var(--cc-danger-surface);
-		border-radius: var(--cc-radius-md);
-	}
-
+	/* As many totals to a row as fit, the range's two wide; the late money wraps under them. */
 	.owed-totals {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(var(--cc-total-min), 1fr));
 		gap: var(--cc-space-4);
 		padding: var(--cc-panel-padding);
 		background: var(--cc-surface);
@@ -387,7 +349,8 @@
 		border-radius: var(--cc-radius-md);
 	}
 
-	.owed-totals div {
+	.owed-totals div,
+	.owed-totals button {
 		display: flex;
 		flex-direction: column;
 		min-inline-size: 0;
@@ -411,47 +374,8 @@
 		color: var(--cc-text-muted);
 	}
 
-	.owed-calwrap {
-		display: grid;
-		gap: var(--cc-space-4);
-		align-items: start;
-	}
-
-	.owed-day {
-		display: flex;
-		flex-direction: column;
-		gap: var(--cc-space-3);
-		padding: var(--cc-panel-padding);
-		background: var(--cc-surface);
-		border: var(--cc-border-width) solid var(--cc-border);
-		border-radius: var(--cc-radius-md);
-	}
-
-	.owed-day h3,
-	.by-then {
-		display: flex;
-		gap: var(--cc-space-2);
-		align-items: baseline;
-		justify-content: space-between;
-		margin: 0;
-	}
-
-	.owed-day h3 {
-		font-size: var(--cc-text-md);
-	}
-
-	.owed-day h3 b {
-		font-size: var(--cc-text-xl);
-		font-weight: 800;
-	}
-
-	.by-then {
-		font-size: var(--cc-text-sm);
-		color: var(--cc-text-muted);
-	}
-
-	.owed-day .by-then b {
-		color: var(--cc-text);
+	.owed-totals [data-total="range"] {
+		grid-column: span 2;
 	}
 
 	.owed-totals [data-total="range"] b {
@@ -463,18 +387,26 @@
 		color: var(--cc-accent);
 	}
 
-	@media (min-width: 900px) {
-		.owed-totals {
-			grid-template-columns: repeat(4, minmax(0, 1fr));
-		}
+	/* The late money opens its panel: a quiet button in the danger tone, scoped twice to outrank
+	   app.css's `.page button`. */
+	.owed-totals button[data-total="late"] {
+		align-items: flex-start;
+		gap: 0;
+		padding: var(--cc-space-2) var(--cc-space-3);
+		font-weight: 400;
+		text-align: start;
+		white-space: normal;
+		color: var(--cc-danger);
+		background: var(--cc-danger-surface);
+		border-color: transparent;
+	}
 
-		.owed-calwrap {
-			grid-template-columns: minmax(0, 1fr) var(--cc-detail-panel);
-		}
+	.owed-totals button[data-total="late"] small,
+	.owed-totals button[data-total="late"] span {
+		color: inherit;
+	}
 
-		.owed-day {
-			position: sticky;
-			top: var(--cc-detail-column-top);
-		}
+	.owed-totals button[data-total="late"][aria-current="true"] {
+		box-shadow: 0 0 0 var(--cc-ring-width) var(--cc-danger);
 	}
 </style>

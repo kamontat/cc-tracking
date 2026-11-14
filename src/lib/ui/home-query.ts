@@ -1,7 +1,6 @@
-import type { Period, PlainDate } from "#lib/domain/types"
+import type { Period } from "#lib/domain/types"
 
 import { CARDS_GROUPS, type CardsGroup } from "#lib/domain/cards-view"
-import { isValidDate } from "#lib/domain/date"
 import { DEFAULT_READY_VIEW, READY_DIRS, READY_SORTS, type ReadyView } from "#lib/domain/home"
 import { DEFAULT_OWED_PLAN, OWED_KINDS, OWED_LAYOUTS, OWED_RANGES, type OwedPlanView } from "#lib/domain/owed-plan"
 import { readDir, type SortDir } from "#lib/domain/sort"
@@ -42,13 +41,13 @@ const query = (p: URLSearchParams): string => {
 	return text ? `?${text}` : ""
 }
 
-/** What `/owed` holds: the view, the month the calendar shows and the day picked (null for their defaults). */
-export type OwedPlanAddress = { view: OwedPlanView; month: Period | null; day: PlainDate | null }
+/** What `/owed` holds: the view and the month the calendar shows (null for its default). The open day is the panel's (`?day=`). */
+export type OwedPlanAddress = { view: OwedPlanView; month: Period | null }
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
 
 /**
- * The _Owed_ tab from `/owed?q=&f.locations=&f.owners=&f.range=&f.shows=&view=&month=&day=`
+ * The _Owed_ tab from `/owed?q=&f.locations=&f.owners=&f.range=&f.shows=&view=&month=`
  * (RD-25, RD-29): unknown values read as the defaults (`DEFAULT_OWED_PLAN`); an `f.locations`
  * is kept only when it is one of `locationIds`, an `f.owners` one of `ownerIds`.
  */
@@ -62,7 +61,6 @@ export function readOwedPlan(
 	const shows = OWED_KINDS.filter((kind) => p.getAll("f.shows").includes(kind))
 	const layout = OWED_LAYOUTS.find((l) => l === p.get("view")) ?? DEFAULT_OWED_PLAN.layout
 	const month = p.get("month") ?? ""
-	const day = p.get("day") ?? ""
 	return {
 		view: {
 			...readCardFilter(p, locationIds, ownerIds),
@@ -71,19 +69,17 @@ export function readOwedPlan(
 			layout,
 		},
 		month: MONTH_PATTERN.test(month) ? month : null,
-		day: isValidDate(day) ? day : null,
 	}
 }
 
 /** `""` for the defaults, else `?` and the keys that differ, the `f.` keys repeated. */
-export function writeOwedPlan(view: OwedPlanView, month: Period | null, day: PlainDate | null): string {
+export function writeOwedPlan(view: OwedPlanView, month: Period | null): string {
 	const p = new URLSearchParams()
 	writeCardFilter(p, view)
 	if (view.range !== DEFAULT_OWED_PLAN.range) p.set("f.range", String(view.range))
 	if (view.shows.length < OWED_KINDS.length) for (const kind of view.shows) p.append("f.shows", kind)
 	if (view.layout !== DEFAULT_OWED_PLAN.layout) p.set("view", view.layout)
 	if (month) p.set("month", month)
-	if (day) p.set("day", day)
 	return query(p)
 }
 

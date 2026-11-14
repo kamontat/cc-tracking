@@ -56,28 +56,30 @@ back in place.
 ### `/owed`
 
 _Owed_: the money to have ready each day (DD-205): a calendar, or the days by week or by month,
-with the totals over it and late money apart. Cards' search and _Filter_, with no sort and no
-group.
+under the totals. Cards' search and _Filter_, with no sort and no group. A day, or the late
+money, opens in the detail panel, as a list does on `/transactions/lists`.
 
-| Key           | Values                             | Default         | Notes                                                                                                                                 |
-| ------------- | ---------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `q`           | text                               | empty           | Search: the card's id, name, last 4 or comment, as on `/cards`.                                                                       |
-| `f.locations` | stored location id, _repeated_     | any             | Only cards kept there. An id with no stored location is dropped.                                                                      |
-| `f.owners`    | stored owner id, _repeated_        | any             | Only cards held by them (a supplementary card's own holder, else its limit group's owner).                                            |
-| `f.range`     | `7`, `14`, `30`, `60`, `all`       | `30`            | How far ahead from today; `all` is everything owed. Late money shows whatever the range.                                              |
-| `f.shows`     | `bill`, `plan`, `open`, _repeated_ | all three       | Which money: closed bills, planned payments, open statements (estimates). Written only when not all three; none reads as all three.   |
-| `view`        | `calendar`, `week`, `month`        | `calendar`      | The calendar, or the days in week or month sections.                                                                                  |
-| `month`       | `YYYY-MM`                          | the day's month | The calendar's month; without it, the picked day's month, else the next paying day's. A month with nothing in range reads as today's. |
-| `day`         | `YYYY-MM-DD`                       | none            | The calendar's picked day; without it (or when it has nothing), the shown month's first paying day.                                   |
-| `card`        | card id                            | none            | Opens the card's panel (_Pay_ on a card). An invalid id or a card not stored opens nothing, and the key goes.                         |
+| Key           | Values                             | Default    | Notes                                                                                                                                 |
+| ------------- | ---------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `q`           | text                               | empty      | Search: the card's id, name, last 4 or comment, as on `/cards`.                                                                       |
+| `f.locations` | stored location id, _repeated_     | any        | Only cards kept there. An id with no stored location is dropped.                                                                      |
+| `f.owners`    | stored owner id, _repeated_        | any        | Only cards held by them (a supplementary card's own holder, else its limit group's owner).                                            |
+| `f.range`     | `7`, `14`, `30`, `60`, `all`       | `30`       | How far ahead from today; `all` is everything owed. Late money counts whatever the range.                                             |
+| `f.shows`     | `bill`, `plan`, `open`, _repeated_ | all three  | Which money: closed bills, planned payments, open statements (estimates). Written only when not all three; none reads as all three.   |
+| `view`        | `calendar`, `week`, `month`        | `calendar` | The calendar, or the days in week or month sections.                                                                                  |
+| `month`       | `YYYY-MM`                          | see notes  | The calendar's month; without it, the open day's month, else the next paying day's. A month with nothing in range reads as today's.   |
+| `day`         | `YYYY-MM-DD`, `late`               | none       | Opens the day's panel (its cards, each with _Pay_), or the late money's. An invalid value opens nothing, and the key goes.            |
+| `card`        | card id                            | none       | Opens the card's panel (_Pay_ in a day's panel). Wins over `day`. An invalid id or a card not stored opens nothing, and the key goes. |
 
 A search, filter or view change rewrites the address (`replaceState`), keys at their default left
-out, keeping `card`; picking a day writes `day`, and ‹ or › writes `month` and drops `day`.
-Switching the view drops `day`. _Pay_ opens the card's panel on its pay form with the amount
-filled in, with no address of its own (`/owed?card=<id>`). Example:
-`/owed?f.owners=KC&f.range=14&view=week`. The per-card keys `f.states`, `sort`, `dir` and `by` are
-retired here (ignored like any unknown key); what each card owes moves to `/cards` as a filter in
-a change of its own.
+out, keeping the open `day` or `card`; ‹ or › writes `month`. A calendar day, a list row, _Late_
+in the totals or today's red cell opens the panel the way a list's row does on the Lists tab:
+pushing `day` from nothing, rewriting it when a panel is open; × steps back over it. _Pay_ in the
+panel pushes `?card=<id>` in place of `day` on the card's pay form with the amount filled in, so
+Back returns to the day. No day is open at first. Example:
+`/owed?f.owners=KC&f.range=14&view=week&day=2026-11-18`. The per-card keys `f.states`, `sort`,
+`dir` and `by` are retired here (ignored like any unknown key); what each card owes moves to
+`/cards` as a filter in a change of its own.
 
 ### `/ready`
 

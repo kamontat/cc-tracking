@@ -149,6 +149,8 @@
 	/* A day in the _Owed_ calendar: room for its number, its compact total and its dots; taller
 	   from 900px (see the media query after this block). */
 	--cc-cal-cell: 3.375rem;
+	/* The narrowest a total on the _Owed_ tab gets before the totals wrap to another row. */
+	--cc-total-min: 9.5rem;
 
 	/* The detail panel (RD-23): its column beside the list from 900px, and how much of the
 	   screen's height its sheet takes below that. */

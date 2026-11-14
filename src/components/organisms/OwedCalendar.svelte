@@ -10,13 +10,15 @@
 	import { formatAmount, formatCompact, sumAmounts } from "#lib/domain/money"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { groupColor } from "#lib/ui/card-label"
+	import { LATE_DAY } from "#lib/ui/record-panel.svelte"
 
 	/**
 	 * The _Owed_ tab's calendar: one month (`month`), ‹ and › to the one before and after among
 	 * `months`, its firm total under its name. Monday to Sunday, then each week's firm total. A
 	 * paying day is a button with its total (compact), shaded darker the more it is, and a dot per
 	 * card in its group's colour; a day holding only an open statement is dashed with `~`. Today
-	 * is ringed, in red with the late money while any is late. Picking a day calls `onpick`.
+	 * is ringed, in red with the late money while any is late, and then opens it (`onlate`). Picking a
+	 * day calls `onpick`; the day open in the panel (`selected`, or `late`) is pressed.
 	 */
 	interface Props {
 		weeks: OwedWeek[]
@@ -29,9 +31,10 @@
 		groups: LimitGroup[]
 		onmonth: (month: Period) => void
 		onpick: (date: PlainDate) => void
+		onlate: () => void
 	}
 
-	const { weeks, month, months, selected, today, late, groups, onmonth, onpick }: Props = $props()
+	const { weeks, month, months, selected, today, late, groups, onmonth, onpick, onlate }: Props = $props()
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -130,18 +133,27 @@
 							{/each}
 						</span>
 					</button>
+				{:else if isToday && late > 0 && cell.inMonth}
+					<button
+						type="button"
+						class="cell"
+						data-date={cell.date}
+						data-today=""
+						data-late=""
+						aria-pressed={selected === LATE_DAY ? "true" : "false"}
+						aria-label={`${displayDate(cell.date, getLocale())}, ${tr("owed.plan.lateTitle")} ${formatAmount(late)}`}
+						onclick={onlate}>
+						<span class="n">{n}</span>
+						<span class="v" data-numeric>{formatCompact(late)}</span>
+					</button>
 				{:else}
 					<span
 						class="cell"
 						data-date={cell.date}
 						data-out={cell.inMonth ? undefined : ""}
 						data-today={isToday ? "" : undefined}
-						data-late={isToday && late > 0 ? "" : undefined}
 						data-past={cell.date < today ? "" : undefined}>
 						<span class="n">{n}</span>
-						{#if isToday && late > 0}
-							<span class="v" data-numeric>{formatCompact(late)}</span>
-						{/if}
 					</span>
 				{/if}
 			{/each}
@@ -290,6 +302,10 @@
 
 	.grid .cell[data-today] {
 		border: var(--cc-ring-width) solid var(--cc-accent);
+	}
+
+	.grid button.cell[data-late] {
+		background: var(--cc-danger-surface);
 	}
 
 	.grid .cell[data-late] {
