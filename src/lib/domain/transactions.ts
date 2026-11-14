@@ -195,6 +195,25 @@ export function monthSummary(
 	}
 }
 
+/**
+ * The summary of a searched or filtered ledger (DD-210): how many entries match, their purchases
+ * and payments whatever their month, and what the filtered `cards` owe now (every card when none).
+ */
+export function matchSummary(
+	entries: TxEntry[],
+	ledgers: Map<string, CardLedger>,
+	cards: readonly string[],
+): { count: number; purchases: number; payments: number; owed: number } {
+	const total = (kind: TxEntry["kind"]): number => sumAmounts(entries.filter((e) => e.kind === kind).map(entryAmount))
+	const owing = [...ledgers].filter(([id]) => cards.length === 0 || cards.includes(id))
+	return {
+		count: entries.length,
+		purchases: total("purchase"),
+		payments: total("payment"),
+		owed: sumAmounts(owing.map(([, l]) => l.owed)),
+	}
+}
+
 /** A purchase made from a list is `<listId>-<n>`; null when the id has no such tail. */
 export function listIdOf(purchaseId: string): string | null {
 	const match = /^(.+)-\d+$/.exec(purchaseId)

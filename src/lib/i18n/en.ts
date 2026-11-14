@@ -96,6 +96,8 @@ export const en = {
 	"tx.chip.remove": "Remove {filter}",
 	"tx.fromList": "From list {date}",
 	"tx.summary.title": "{month} so far",
+	"tx.summary.match.one": "1 matching entry",
+	"tx.summary.match.many": "{count} matching entries",
 	"tx.sortChip": "Sort: {sort}",
 	"filter.group": "Group by",
 	"filter.tab.filter": "Filter",

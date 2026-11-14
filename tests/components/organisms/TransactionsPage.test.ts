@@ -142,13 +142,33 @@ test("the default view shows the summary, upcoming and the ledger by day", async
 	expect(written).toEqual([])
 })
 
-test("searching writes ?q= and hides the summary", async () => {
+test("searching writes ?q= and the summary turns to the matching entries", async () => {
 	const { written } = await open()
 	await type("fuel")
 	expect(written.at(-1)).toBe("?q=fuel")
-	expect($('[data-testid="summary"]')).toBeNull()
+	const summary = $('[data-testid="summary"]')
+	expect(summary?.querySelector("h2")?.textContent).toBe("1 matching entry")
+	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿1,000.00")
+	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe("฿0.00")
+	// Nothing paid is no money in: no green.
+	expect(summary?.querySelector('[data-field="payments"] b')?.hasAttribute("data-tone")).toBe(false)
 	expect($(".result-head")).not.toBeNull()
 	expect(ledgerRows()).toHaveLength(1)
+	await type("zzz")
+	expect($('[data-testid="summary"]')).toBeNull()
+})
+
+test("a card filter sums that card's entries, and owed now is only that card's", async () => {
+	await open("?f.cards=B")
+	const summary = $('[data-testid="summary"]')
+	expect(summary?.querySelector("h2")?.textContent).toBe("1 matching entry")
+	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿250.00")
+	expect(summary?.querySelector('[data-field="owed"] b')?.textContent).toBe("฿250.00")
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	await open("?f.cards=A")
+	expect($('[data-testid="summary"] h2')?.textContent).toBe("2 matching entries")
+	expect($('[data-testid="summary"] [data-field="payments"] b')?.textContent).toBe("+฿300.00")
 })
 
 test("removing a chip drops that filter", async () => {

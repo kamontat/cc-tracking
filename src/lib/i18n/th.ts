@@ -105,6 +105,8 @@ export const th: Catalog = {
 	"tx.chip.remove": "เอาออก {filter}",
 	"tx.fromList": "จากใบรายการซื้อ {date}",
 	"tx.summary.title": "{month} จนถึงวันนี้",
+	"tx.summary.match.one": "ตรงกัน 1 รายการ",
+	"tx.summary.match.many": "ตรงกัน {count} รายการ",
 	"tx.sortChip": "เรียง: {sort}",
 	"filter.group": "จัดกลุ่มตาม",
 	"filter.tab.filter": "กรอง",

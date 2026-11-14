@@ -16,6 +16,7 @@ import {
 	listGroups,
 	listIdOf,
 	listRows,
+	matchSummary,
 	monthSummary,
 	sortEntries,
 	TX_DIRS,
@@ -196,6 +197,25 @@ describe("monthSummary", () => {
 		expect(out.purchases).toBe(1000)
 		expect(out.payments).toBe(200)
 		expect(out.owed).toBe(6000 - 900)
+	})
+})
+
+describe("matchSummary", () => {
+	test("sums the entries given, whatever their month, and what the filtered cards owe", () => {
+		const purchases = [buy("p1", { amount: 1000 }), buy("p2", { date: "2026-09-30", amount: 5000 })]
+		const payments = [pay("m1", { amount: 200 })]
+		const entries = ledgerEntries(cards, purchases, payments)
+		const ledgers = ledgersFor(cards, purchases, payments, [], TODAY)
+		expect(matchSummary(entries, ledgers, [])).toEqual({ count: 3, purchases: 6000, payments: 200, owed: 5800 })
+		const onlyOld = entries.filter((e) => e.kind === "purchase" && e.purchase.id === "p2")
+		expect(matchSummary(onlyOld, ledgers, [])).toEqual({ count: 1, purchases: 5000, payments: 0, owed: 5800 })
+	})
+	test("with a card filter, owed now is only those cards'", () => {
+		const purchases = [buy("p1", { amount: 1000 }), buy("p2", { cardId: "b", amount: 400 })]
+		const ledgers = ledgersFor(cards, purchases, [], [], TODAY)
+		const entries = ledgerEntries(cards, purchases, [])
+		expect(matchSummary(entries, ledgers, ["b"]).owed).toBe(400)
+		expect(matchSummary(entries, ledgers, ["zzz"]).owed).toBe(0)
 	})
 })
 

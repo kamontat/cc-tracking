@@ -25,6 +25,7 @@
 		filterEntries,
 		groupEntries,
 		ledgerEntries,
+		matchSummary,
 		monthSummary,
 		sortEntries,
 		type TxGroup,
@@ -43,7 +44,7 @@
 	import { LEDGER_ADDRESS, LEDGER_PAGE, type LedgerView, readLedgerView, writeLedgerView } from "#lib/ui/tx-query"
 
 	/**
-	 * The Ledger tab's island (`/transactions`, PRD RD-22): the search row, the month's summary (the glance panel Cards shares, `GlancePanel`, DD-210),
+	 * The Ledger tab's island (`/transactions`, PRD RD-22): the search row, the summary (the glance panel Cards shares, `GlancePanel`: the month so far, or the matching entries once searched or filtered, DD-210),
 	 * _Upcoming_ and the ledger. Its settings live in the address
 	 * (`?q=&f.types=&f.cards=&f.range=&f.from=&f.to=&sort=&dir=&by=`, RD-29), rewritten in place
 	 * as they change, so a reload or a shared link lands in the same place. Rows open in place
@@ -189,24 +190,31 @@
 	const rows = $derived(sortEntries(filterEntries(all, view.filter, now), view.sort, view.dir))
 	const sections = $derived(groupEntries(rows, view.by, view.sort, view.dir))
 
+	// The month so far, or once searched or filtered the matching entries (DD-210); none when nothing matches.
 	const summary = $derived.by(() => {
 		void lang
-		if (!data || narrowed) return null
-		const figures = monthSummary(all, data.ledgers, now)
+		if (!data) return null
+		if (narrowed && rows.length === 0) return null
+		const figures = narrowed
+			? matchSummary(rows, data.ledgers, view.filter.cards)
+			: monthSummary(all, data.ledgers, now)
+		const count = rows.length
 		return {
-			title: t("tx.summary.title", { month: monthName(now, getLocale()) }),
+			title: narrowed
+				? t(count === 1 ? "tx.summary.match.one" : "tx.summary.match.many", { count })
+				: t("tx.summary.title", { month: monthName(now, getLocale()) }),
 			figures: [
 				{
 					field: "purchases",
 					label: t("tx.summary.purchases"),
 					text: `${figures.purchases ? MINUS : ""}${formatAmount(figures.purchases)}`,
-					tone: "out" as const,
+					...(figures.purchases ? { tone: "out" as const } : {}),
 				},
 				{
 					field: "payments",
 					label: t("tx.summary.payments"),
 					text: `${figures.payments ? "+" : ""}${formatAmount(figures.payments)}`,
-					tone: "in" as const,
+					...(figures.payments ? { tone: "in" as const } : {}),
 				},
 				{ field: "owed", label: t("tx.summary.owed"), text: formatAmount(figures.owed) },
 			] satisfies GlanceFigure[],
