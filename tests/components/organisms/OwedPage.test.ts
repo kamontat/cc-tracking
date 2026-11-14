@@ -10,9 +10,10 @@ import { fakeHistory } from "../../lib/ui/fake-history"
 import { saveLocations } from "./list-support"
 
 /**
- * Home's _Owed_ tab (`/owed`, RD-25): only the cards that owe, narrowed, ordered and grouped as
- * kept in the address (`q`, `f.locations`, `f.owners`, `f.states`, `sort`, `dir`, `by`), each tile opening the card's panel over the tab (`?card=`), and _Pay_ opening
- * it straight on the pay form with what is left filled in.
+ * Home's _Owed_ tab (`/owed`, RD-25): the money to have ready each day. A calendar by default
+ * (or the days by week or by month), the totals over it, late money apart with _Pay_, and the
+ * view kept in the address (`q`, `f.locations`, `f.owners`, `f.range`, `f.shows`, `view`,
+ * `month`, `day`). _Pay_ opens the card's panel on its pay form (`?card=`).
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -31,6 +32,7 @@ const settle = async (rounds = 20) => {
 }
 
 const $ = <E extends Element = HTMLElement>(selector: string) => document.querySelector<E>(selector)
+const $$ = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)]
 const text = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
 
 const card = (id: string, extra: Partial<Card> = {}): Card => ({
@@ -44,14 +46,21 @@ const card = (id: string, extra: Partial<Card> = {}): Card => ({
 	...extra,
 })
 
+// Today is 31 Oct 2026. Each card closes on the 25th and is due 20 days later.
 const seed = async (repo: Repository) => {
-	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00 })
-	for (const id of ["7", "12.3", "20"]) await repo.saveCard(card(id))
+	await repo.saveLimitGroup({ id: "g1", name: "G1", limit: 100_000_00, owner: "KC" })
+	await repo.saveLimitGroup({ id: "g2", name: "G2", limit: 100_000_00, owner: "NT" })
+	for (const c of [card("7"), card("12.3"), card("20"), card("21", { limitGroupId: "g2" })]) await repo.saveCard(c)
 	await saveLocations(repo, ["krabi"])
-	// 7: a bill overdue since early October; 12.3: a bill due in November; 20 owes nothing.
+	// 7: September's bill, due 15 Oct, is late.
 	await repo.savePurchase({ id: "p1", cardId: "7", date: "2026-09-10", amount: 1_000_00, note: "" })
+	// 12.3: 5,000 due 14 Nov, 2,000 of it planned for 5 Nov.
 	await repo.savePurchase({ id: "p2", cardId: "12.3", date: "2026-10-10", amount: 5_000_00, note: "" })
-	await repo.saveCardPayment({ id: "m1", cardId: "20", date: "2026-10-01", amount: 50_00, status: "paid" })
+	await repo.saveCardPayment({ id: "m1", cardId: "12.3", date: "2026-11-05", amount: 2_000_00, status: "planned" })
+	// 20: still open, due 15 Dec, past the 30 days.
+	await repo.savePurchase({ id: "p3", cardId: "20", date: "2026-10-28", amount: 400_00, note: "" })
+	// 21 (NT's): 800 due 14 Nov.
+	await repo.savePurchase({ id: "p4", cardId: "21", date: "2026-10-12", amount: 800_00, note: "" })
 }
 
 const open = async (search = "") => {
@@ -77,142 +86,105 @@ const press = async (el: Element | null | undefined) => {
 	await settle()
 }
 
-const tiles = () => [...document.querySelectorAll(".owed-list a.tile")].map((el) => el.getAttribute("data-card"))
+const total = (name: string) => text($(`.owed-totals [data-total="${name}"] b`))
+const lines = (root: string) => $$(`${root} .owed-line`).map((el) => `${el.dataset["card"]} ${el.dataset["kind"]}`)
 
-test("only the cards that owe, most urgent first", async () => {
-	await open()
-	expect(tiles()).toEqual(["7", "12.3"])
-	expect($('.owed-list a[data-card="7"]')?.getAttribute("href")).toBe("/owed?card=7")
+test("the calendar is the default: the totals, the next paying day's month and that day's cards", async () => {
+	const { history } = await open()
+	expect(total("range")).toBe("฿5,800.00")
+	expect(total("next")).toBe("฿2,000.00")
+	expect(total("week")).toBe("฿2,000.00")
+	expect(total("biggest")).toBe("฿3,800.00")
+	expect(text($(".owed-cal h3"))).toContain("November 2026")
+	expect(text($('.owed-cal [data-date="2026-11-14"] .v'))).toBe("3.8K")
+	// A week's total is the last column.
+	expect(text($('.owed-cal [data-week="2026-11-09"]'))).toBe("3.8K")
+	// The next paying day is picked, and the address stays bare.
+	expect($('.owed-cal [data-date="2026-11-05"]')?.getAttribute("aria-pressed")).toBe("true")
+	expect(lines(".owed-day")).toEqual(["12.3 plan"])
+	expect(history.now()).toBe("/owed")
 })
 
-const sortChip = () => $<HTMLButtonElement>(".owed-main > .tx-controls > .tx-chips > button.tx-chip.tx-sort")
+test("late money sits apart, its Pay opening the card's panel on the pay form", async () => {
+	const { history } = await open()
+	expect(text($(".owed-late h2"))).toBe("฿1,000.00 is late: pay it today")
+	expect(lines(".owed-late")).toEqual(["7 bill"])
+	await press($('.owed-late .owed-line[data-card="7"] [data-action="pay"]'))
+	expect(history.now()).toBe("/owed?card=7")
+	expect($<HTMLInputElement>('.detail-panel input[name="amount"]')?.value).toBe("1000")
+})
 
-/** Opens the sort sheet from the chip, picks a field (or keeps it) and a way, and applies. */
-const sortBy = async (field: string | null, dir: string | null) => {
-	await press(sortChip())
-	if (field) await press($(`dialog [data-sort="${field}"]`))
-	if (dir) await press($(`dialog [data-dir="${dir}"]`))
+test("a day picked in the calendar shows its cards, kept in the address as day", async () => {
+	const { history } = await open()
+	await press($('.owed-cal [data-date="2026-11-14"]'))
+	expect(history.now()).toBe("/owed?day=2026-11-14")
+	expect(lines(".owed-day")).toEqual(["12.3 bill", "21 bill"])
+	expect(text($(".owed-day [data-by-then]"))).toBe("฿5,800.00")
+	// A day with nothing to pay is not a button.
+	expect($('.owed-cal [data-date="2026-11-15"]')?.tagName).not.toBe("BUTTON")
+})
+
+test("the month before and after page through, kept as month", async () => {
+	const { history } = await open()
+	expect($<HTMLButtonElement>('.owed-cal [data-action="month-after"]')?.disabled).toBe(true)
+	await press($('.owed-cal [data-action="month-before"]'))
+	expect(text($(".owed-cal h3"))).toContain("October 2026")
+	expect(history.now()).toBe("/owed?month=2026-10")
+	expect($<HTMLButtonElement>('.owed-cal [data-action="month-before"]')?.disabled).toBe(true)
+})
+
+test("By week lists the days under each week's total; a day opens in place to its cards and Pay", async () => {
+	const { history } = await open()
+	await press($('.owed-layout [data-layout="week"]'))
+	expect(history.now()).toBe("/owed?view=week")
+	expect($(".owed-cal")).toBeNull()
+	expect($$(".owed-days .owed-head").map(text)).toEqual([
+		"Next week 2 Nov – 8 Nov ฿2,000.00",
+		"Week of 9 Nov 9 Nov – 15 Nov ฿3,800.00",
+	])
+	const row = $('.owed-days [data-row="day:2026-11-14"]')
+	await press(row?.querySelector("button.a-hit"))
+	expect(row?.querySelector("button.a-hit")?.getAttribute("aria-expanded")).toBe("true")
+	expect([...(row?.querySelectorAll('[data-action="pay"]') ?? [])].map((b) => b.getAttribute("data-card"))).toEqual([
+		"12.3",
+		"21",
+	])
+	await press($('.owed-layout [data-layout="month"]'))
+	expect($$(".owed-days .owed-head").map(text)).toEqual(["November 2026 ฿5,800.00"])
+})
+
+test("Filter: range, places, holders and kinds; a pick is a chip and an f. key", async () => {
+	const { history } = await open()
+	await press($('.tx-controls [data-action="filter"]'))
+	expect(text($("dialog h2"))).toBe("Filter what to pay")
+	expect($$("dialog fieldset legend").map(text)).toEqual(["Range", "Kept in", "Account holder", "Shows"])
+	await press($('dialog [data-range="all"]'))
+	await press($('dialog [data-owner="KC"]'))
 	await press($("dialog [data-action=apply]"))
-}
-
-test("the control row is Cards': search, Filter, then the sort and group chips", async () => {
-	await open()
-	expect($<HTMLInputElement>(".owed-main > .tx-controls input.search")?.placeholder).toBe("Name, ID, last 4 or comment")
-	expect(text($('.tx-controls [data-action="filter"]'))).toBe("Filter")
-	expect(text(sortChip())).toBe("Sort: Most urgent first ▾")
-	expect(sortChip()?.dataset["action"]).toBe("sort")
-	expect(text($('.tx-chips [data-action="group"]'))).toBe("Group: None ▾")
-	// The control row heads the tab's column, before the list, as on Cards.
-	expect($(".owed-main > .tx-controls + .owed-list")).not.toBeNull()
-	// Not grouped by default: one flat list, no section heads.
-	expect($(".owed-list section[data-section]")).toBeNull()
+	expect(history.now()).toBe("/owed?f.owners=KC&f.range=all")
+	// Card 20's open statement is in range now, an estimate apart from the total.
+	expect(total("range")).toBe("฿5,000.00")
+	expect(text($('.owed-totals [data-total="range"]'))).toContain("~฿400.00 more still open")
+	expect($$(".tx-chips [data-chip]").map(text)).toEqual(["KC ×", "Everything owed ×"])
+	await press($('.tx-chips [data-chip="range"]'))
+	expect(history.now()).toBe("/owed?f.owners=KC")
 })
 
-test("the search narrows in place, kept in the address as q", async () => {
+test("the search narrows in place, kept as q", async () => {
 	const { history } = await open()
 	const box = $<HTMLInputElement>(".tx-controls input.search")
 	if (!box) throw new Error("no search")
-	box.value = "12.3"
+	box.value = "21"
 	box.dispatchEvent(new Event("input"))
 	await settle()
-	expect(tiles()).toEqual(["12.3"])
-	expect(history.now()).toBe("/owed?q=12.3")
-	expect(history.size()).toBe(1)
+	expect(history.now()).toBe("/owed?q=21")
+	expect(total("range")).toBe("฿800.00")
+	expect($(".owed-late")).toBeNull()
 })
 
-test("Filter opens Cards' sheet with Kept in, Account holder and Bill; a pick is a chip and an f. key", async () => {
-	const { history } = await open()
-	await press($('.tx-controls [data-action="filter"]'))
-	expect(text($("dialog h2"))).toBe("Filter owed cards")
-	expect([...document.querySelectorAll("dialog [role=tab]")].map(text)).toEqual(["Filter", "Sort", "Group"])
-	expect([...document.querySelectorAll("dialog fieldset legend")].map(text)).toContain("Bill")
-	expect([...document.querySelectorAll("dialog [data-state]")].map(text)).toEqual([
-		"Overdue",
-		"Due soon",
-		"No bill yet",
-	])
-	await press($('dialog [data-state="overdue"]'))
-	expect(text($("dialog [data-action=apply]"))).toBe("Show 1 card")
-	await press($("dialog [data-action=apply]"))
-	expect(history.now()).toBe("/owed?f.states=overdue")
-	expect(tiles()).toEqual(["7"])
-	expect(text($('.tx-controls [data-action="filter"] .tx-count'))).toBe("1")
-	const chip = $('.tx-chips [data-chip="state:overdue"]')
-	expect(text(chip)).toBe("Overdue ×")
-	await press(chip)
-	expect(history.now()).toBe("/owed")
-	expect(tiles()).toEqual(["7", "12.3"])
-})
-
-test("the group chip groups as on Cards, each section in the chosen order; by=place in the address", async () => {
-	const { history } = await open("?f.owners=KC&f.locations=krabi")
-	expect(text($('.tx-chips [data-chip="loc:krabi"]'))).toBe("Krabi ×")
-	expect(text($('.tx-chips [data-chip="owner:KC"]'))).toBe("KC ×")
-	await press($('.tx-chips [data-action="group"]'))
-	expect($('dialog [role=tab][data-tab="group"]')?.getAttribute("aria-selected")).toBe("true")
-	await press($('dialog [data-by="place"]'))
-	await press($("dialog [data-action=apply]"))
-	expect(history.now()).toBe("/owed?f.locations=krabi&f.owners=KC&by=place")
-	expect(text($('.owed-list section[data-section="place:krabi"] h2'))).toBe("Krabi 2 cards · takes purchases")
-	expect(tiles()).toEqual(["7", "12.3"])
-})
-
-test("nothing matching says so, as on Cards", async () => {
-	await open("?q=nothing")
-	expect(text($(".owed-list .empty"))).toBe("No card matches. Clear the search or a filter.")
-	expect($(".tx-controls input.search")).not.toBeNull()
-})
-
-test("the order comes from the address, and a new one is written in place, keys at default left out", async () => {
-	const { history } = await open("?sort=left")
-	expect(tiles()).toEqual(["12.3", "7"])
-	expect(text(sortChip())).toBe("Sort: Most owed ▾")
-	await sortBy(null, "asc")
-	expect(history.now()).toBe("/owed?sort=left&dir=asc")
-	expect(history.size()).toBe(1)
-	expect(tiles()).toEqual(["7", "12.3"])
-	await sortBy("urgency", null)
-	expect(history.now()).toBe("/owed")
-	history.userBack()
-	await settle()
-})
-
-test("a tile opens the card's panel over the tab, pushing ?card=; the sort keeps it", async () => {
-	const { history } = await open("?sort=card")
-	await press($('.owed-list a[data-card="12.3"]'))
-	expect(history.now()).toBe("/owed?sort=card&card=12.3")
-	expect(history.size()).toBe(2)
-	expect($(".panel-layout")?.hasAttribute("data-panel")).toBe(true)
+test("a pasted ?card= opens the panel at once", async () => {
+	await open("?view=week&card=20")
 	expect($(".detail-panel .card-hero")).not.toBeNull()
-	expect($('.owed-list a[data-card="12.3"]')?.getAttribute("aria-current")).toBe("true")
-	await sortBy(null, "desc")
-	expect(history.now()).toBe("/owed?sort=card&dir=desc&card=12.3")
-	history.userBack()
-	await settle()
-	expect($(".detail-panel")).toBeNull()
-})
-
-test("Pay opens the card's panel on its pay form with what is left; saving returns to the card and the tile goes", async () => {
-	const { repo, history } = await open()
-	await press($('.owed-list .tile-box:has([data-card="7"]) [data-action="pay"]'))
-	expect(history.now()).toBe("/owed?card=7")
-	expect($<HTMLInputElement>('.detail-panel input[name="amount"]')?.value).toBe("1000")
-	$(".detail-panel form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }))
-	await settle()
-	expect(await repo.listCardPayments("7")).toMatchObject([{ id: "id-1", amount: 1_000_00, status: "paid" }])
-	expect($(".detail-panel .card-hero")).not.toBeNull()
-	expect(history.now()).toBe("/owed?card=7")
-	expect(tiles()).toEqual(["12.3"])
-})
-
-test("a pasted ?card= opens the panel at once; an unknown card opens nothing and its key goes", async () => {
-	await open("?card=20")
-	expect($(".detail-panel .card-hero")).not.toBeNull()
-	if (mounted) unmount(mounted)
-	mounted = undefined
-	const { history } = await open("?sort=due&card=99")
-	expect($(".detail-panel")).toBeNull()
-	expect(history.now()).toBe("/owed?sort=due")
 })
 
 test("nothing owed says so", async () => {
@@ -224,7 +196,8 @@ test("nothing owed says so", async () => {
 		props: { open: async () => ({ ok: true as const, repo }), address: fakeHistory("/owed").bar },
 	})
 	await settle()
-	expect(text($(".owed-list .empty"))).toBe("Nothing owed on any card.")
+	expect(text($(".owed-main .empty"))).toBe("Nothing owed on any card.")
+	expect($(".tx-controls")).toBeNull()
 })
 
 test("a store that will not open shows the banner", async () => {
