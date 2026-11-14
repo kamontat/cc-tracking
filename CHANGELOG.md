@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day, and moved list lines marked Moved, and the unused per-card Owed code removed
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day, and moved list lines marked Moved, and the unused per-card Owed code removed, and the spender's reply drawn as the new list page is
 
 ### BREAKING CHANGES
 
@@ -140,6 +140,12 @@ reasons don't show up in the code.
   the title row), _Next_, _Next 7 days_, _Biggest day_ and, while anything is late, a red _Late_
   that opens the late panel. A glance figure can now open something (`GlanceFigure.open`).
 
+- In the spender's reply, a made order whose real amount is off the plan offers a quiet _Use
+  planned ฿X_ beside the difference, which puts the planned amount back (`reply.usePlanned`).
+
+- `Sheet` takes an optional `lead` snippet drawn inside its heading before the words, so a sheet
+  can be headed by a card's chip and name.
+
 ### Improvements
 
 - Beside an open panel, Settings stacks its two columns into one when the page has less than
@@ -204,6 +210,22 @@ reasons don't show up in the code.
 
 - The saved list panel's note under the lines (_… moved to a draft for {date}_, _Open it when
   you're ready to send_), which opened the draft, is gone; the panel ends at the saved summary.
+
+- The spender's reply (`/transactions/lists/edit` on a waiting list) is drawn as the builder is:
+  a row per card in one row panel, each with its chip and `id) name`, what was answered (_Not
+  answered_, _1 of 2 answered_, _Made_, _Not made_, _1 made · 1 not made_), the difference from
+  the plan or _not an amount_ with the amber bar, its notes, and the planned sum (muted) until
+  answered, then what was made, or the plan struck through when nothing was (DD-213).
+
+- A reply row opens its card's sheet, narrow and compact, headed by the card with _Card N of M_
+  and ‹ › to the card before or after. Each order is a _Made_ / _Not made_ toggle (one segmented
+  control with a ✓ and a ✕, tinted when picked), then _Planned_ beside _Real amount_, which is the
+  box to type in once made and takes the focus. Back closes the sheet, as on the builder.
+
+- The reply's side panel takes the builder's bar: the move checkbox, then _Answer every line (N of
+  M)_ until all are answered, then _N made · M not made_, the made total, and _Save N purchases_
+  (_Save reply_ when nothing was made). The save button no longer repeats the total, and the hint
+  reads _Open each card to record whether it was made_.
 
 ### Bug fixes
 
@@ -305,6 +327,11 @@ reasons don't show up in the code.
   the note took its date from the list's day plus one, not the draft's, and opened nothing once
   the draft was deleted or merged. Keeping the note beside the _Moved_ lines and making a
   _Moved_ line open the draft were rejected (DD-212).
+
+- The reply follows the builder, rows that open a sheet per card, as the user asked, rather than
+  a card list with every order open at once. Of the sheet changes offered, the user chose the card
+  as heading, the toggle and the planned-beside-real figures, and passed on a _Next card_ button
+  and a note on what _Not made_ does; they then asked for the sheet narrower and shorter.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
