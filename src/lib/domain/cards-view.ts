@@ -9,19 +9,28 @@ import { directed, type SortDir } from "#lib/domain/sort"
 import { openPeriod } from "#lib/domain/statement"
 import { getLocale } from "#lib/i18n/index"
 
-/** How the Cards page orders its cards, in each section; `card` (by id) is the default. */
-export type CardsSort = "card" | "room" | "name" | "close" | "due"
+/**
+ * How the Cards page orders its cards, in each section; `card` (by id) is the default. `used` is
+ * what the card itself owes now, less its credit, not its limit group's total.
+ */
+export type CardsSort = "card" | "room" | "name" | "close" | "due" | "used"
 
-export const CARDS_SORTS: readonly CardsSort[] = ["card", "room", "name", "close", "due"]
+export const CARDS_SORTS: readonly CardsSort[] = ["card", "room", "name", "close", "due", "used"]
 
-/** Each Cards sort's own direction: by id, most room, A to Z, soonest close and due. */
+/** Each Cards sort's own direction: by id, most room, A to Z, soonest close and due, most used. */
 export const CARDS_DIRS: Record<CardsSort, SortDir> = {
 	card: "asc",
 	room: "desc",
 	name: "asc",
 	close: "asc",
 	due: "asc",
+	used: "desc",
 }
+
+/** Whether a card has ever been used: `used` has at least one purchase, `unused` none. */
+export type CardsUsage = "used" | "unused"
+
+export const CARDS_USAGES: readonly CardsUsage[] = ["used", "unused"]
 
 /**
  * What narrows any list of cards (Cards, Home's _Owed_ and _Ready to use_, RD-29): the search,
@@ -33,8 +42,8 @@ export type CardFilter = {
 	owners: Owner[]
 }
 
-/** What narrows the Cards page: Cards' search, places and holders. */
-export type CardsFilter = CardFilter
+/** What narrows the Cards page: Cards' search, places and holders, and whether a card was used (any of each). */
+export type CardsFilter = CardFilter & { usage: CardsUsage[] }
 
 /** What the Cards page sections its cards by: place (the default), account holder, limit group, or not at all. */
 export type CardsGroup = "place" | "holder" | "limit" | "none"
@@ -50,6 +59,7 @@ export const DEFAULT_CARDS_VIEW: CardsView = {
 	q: "",
 	locations: [],
 	owners: [],
+	usage: [],
 	sort: "card",
 	dir: "asc",
 	by: "place",
@@ -136,11 +146,17 @@ function sortKey(
 	ledgers: ReadonlyMap<string, CardLedger>,
 ): (a: Card, b: Card) => number {
 	const roomOf = (c: Card): number => (c.limitGroupId ? rooms.get(c.limitGroupId)?.room : undefined) ?? 0
+	const usedOf = (c: Card): number => {
+		const ledger = ledgers.get(c.id)
+		return ledger ? ledger.owed - ledger.credit : 0
+	}
 	switch (sort) {
 		case "room":
 			return (a, b) => roomOf(a) - roomOf(b)
 		case "name":
 			return (a, b) => a.name.localeCompare(b.name, getLocale())
+		case "used":
+			return (a, b) => usedOf(a) - usedOf(b)
 		case "close":
 		case "due": {
 			const field = sort === "close" ? "closeDate" : "dueDate"
@@ -217,6 +233,11 @@ export function filterCards<T>(items: T[], cardOf: (item: T) => Card, groups: Li
 	})
 }
 
+/** `used` when any of the card's statements holds a purchase, paid off or not; else `unused`. */
+export function usageOf(ledger?: CardLedger): CardsUsage {
+	return ledger?.statements.some((s) => s.purchases.length > 0) ? "used" : "unused"
+}
+
 export function cardsResults(
 	cards: Card[],
 	groups: LimitGroup[],
@@ -228,7 +249,9 @@ export function cardsResults(
 	ownerOrder?: readonly Owner[],
 ): CardsResults {
 	// A card in no stored group is invalid data (RD-27): left out, like one kept at no stored place.
-	const matches = filterCards(cards, (c) => c, groups, view)
+	const matches = filterCards(cards, (c) => c, groups, view).filter(
+		(c) => view.usage.length === 0 || view.usage.includes(usageOf(ledgers.get(c.id))),
+	)
 	const compare = directed(sortKey(view.sort, rooms, today, ledgers), view.dir, byId)
 	const archived = matches.filter((c) => c.archived).sort(compare)
 	const live = matches.filter((c) => !c.archived).sort(compare)

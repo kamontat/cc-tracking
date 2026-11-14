@@ -77,6 +77,7 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 	expect([...root.querySelectorAll("legend")].map((l) => text(l))).toEqual([
 		"Kept in",
 		"Account holder",
+		"Usage",
 		"Sort by",
 		"Group by",
 	])
@@ -99,7 +100,9 @@ test("offers Kept in, Account holder and Sort by, counting cards live", () => {
 		"Name",
 		"Close date",
 		"Due date",
+		"Used",
 	])
+	expect([...root.querySelectorAll("[data-usage]")].map((b) => text(b))).toEqual(["Used", "Not used"])
 	expect(root.querySelector("[data-sort=card]")?.getAttribute("aria-pressed")).toBe("true")
 	expect([...root.querySelectorAll("[data-dir]")].map((b) => text(b))).toEqual(["↑ First", "↓ Last"])
 	expect(text(root.querySelector("[data-action=apply]"))).toBe("Show 5 cards")
@@ -154,6 +157,8 @@ test("apply lets the sheet go, then hands back the draft view", async () => {
 	click("[data-owner=RI]")
 	click("[data-sort=room]")
 	click("[data-by=limit]")
+	click("[data-usage=unused]")
+	expect(root.querySelector("[data-usage=unused]")?.getAttribute("aria-pressed")).toBe("true")
 	expect(root.querySelector("[data-sort=room]")?.getAttribute("aria-pressed")).toBe("true")
 	expect(root.querySelector("[data-dir=desc]")?.getAttribute("aria-pressed")).toBe("true")
 	click("[data-action=apply]")
@@ -163,6 +168,7 @@ test("apply lets the sheet go, then hands back the draft view", async () => {
 			q: "kb",
 			locations: ["krabi"],
 			owners: ["RI"],
+			usage: ["unused"],
 			sort: "room",
 			dir: "desc",
 			by: "limit",
@@ -184,6 +190,7 @@ test("Clear all resets the draft but keeps the search", async () => {
 			q: "kb",
 			locations: ["krabi"],
 			owners: ["KC"],
+			usage: ["used"],
 			sort: "name",
 			dir: "desc",
 			by: "holder",

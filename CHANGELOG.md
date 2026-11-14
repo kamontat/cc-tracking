@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, and a Cards usage filter and used sort
 
 ### BREAKING CHANGES
 
@@ -85,6 +85,11 @@ reasons don't show up in the code.
   expired), private or behind a password, another error, unreachable, or not a backup at all.
   Elsewhere an unreachable link also suggests the two sites. Keys added under
   `backup.link.platform.*`.
+
+- The Cards tab's filter sheet has a _Usage_ section: _Used_ (a card with at least one purchase,
+  paid off or not) and _Not used_, kept in the address as `f.usage` and shown as removable chips.
+  Its sorts add _Used_ (`sort=used`, most used first), what each card owes now less its own
+  credit; ties by card id (DD-209).
 
 ### Improvements
 
@@ -200,6 +205,10 @@ reasons don't show up in the code.
 - A gist's anchor gives its file back by turning the last dash into a dot, the rule the user gave.
   A name with another dot does not come back and answers 404, which the message covers; the raw
   link still works for it.
+
+- _Used_ sorts by what the card itself owes now, less its credit, rather than its limit group's
+  used, which every card on a group shares and Limits already sorts by. _Usage_ is two chips
+  rather than one _Used only_ toggle, so the cards never used can be found too (DD-209).
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 

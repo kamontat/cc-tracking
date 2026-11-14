@@ -385,6 +385,27 @@ test("the filter sheet applies a whole view, shown as chips that clear one at a 
 	expect(address.now()).toBe("/cards?sort=room")
 })
 
+test("Usage and the used sort are applied from the sheet, kept in the address, and the usage shown as a chip", async () => {
+	const { address } = await setup("/cards?by=none", {
+		before: async (repo) => {
+			await repo.savePurchase({ id: "p1", cardId: "B", date: "2026-10-20", amount: 900_00, note: "" })
+		},
+	})
+	expect(shownTiles()).toEqual(["A", "B"])
+	await press('[data-action="filter"]')
+	await press('dialog [data-usage="used"]')
+	await press('dialog [data-sort="used"]')
+	await press("dialog [data-action=apply]")
+	await exit()
+	expect(address.now()).toBe("/cards?f.usage=used&sort=used&by=none")
+	expect(shownTiles()).toEqual(["B"])
+	expect(flat($('[data-chip="usage:used"]'))).toBe("Used ×")
+	expect(flat($('[data-action="sort"]'))).toContain("Most used")
+	await press('[data-chip="usage:used"]')
+	expect(address.now()).toBe("/cards?sort=used&by=none")
+	expect(shownTiles()).toEqual(["B", "A"])
+})
+
 test("Group by is applied from the sheet, kept in the address, and named on its chip", async () => {
 	const { address } = await setup()
 	expect(flat($('[data-action="group"]'))).toBe("Group: Place ▾")
