@@ -17,8 +17,8 @@ afterEach(() => {
 	document.body.innerHTML = ""
 })
 
-const show = (title: string, figures: GlanceFigure[], testid?: string) => {
-	mounted = mount(GlancePanel, { target: document.body, props: { title, figures, testid } })
+const show = (title: string, figures: GlanceFigure[], testid?: string, aside?: string) => {
+	mounted = mount(GlancePanel, { target: document.body, props: { title, figures, testid, aside } })
 	flushSync()
 	return document.querySelector<HTMLElement>("section.glance")
 }
@@ -46,6 +46,13 @@ test("a titled panel of figures: a label, the figure in its tone, and its note",
 	expect(flat(soon?.querySelector(".glance__note"))).toBe("1 card")
 	expect(panel?.querySelector('[data-field="purchases"] .glance__note')).toBeNull()
 	expect(panel?.querySelector(".glance__bar")).toBeNull()
+	expect(panel?.querySelector(".glance__aside")).toBeNull()
+})
+
+test("an aside, when given, ends the title row: the dates the figures cover", () => {
+	const panel = show("23 matching entries", [], undefined, "1 Nov – 30 Nov 2026")
+	expect(flat(panel?.querySelector(".glance__head h2"))).toBe("23 matching entries")
+	expect(flat(panel?.querySelector(".glance__head .glance__aside"))).toBe("1 Nov – 30 Nov 2026")
 })
 
 test("a usage bar, its width the share (capped at 100) and its level, named for a screen reader", () => {

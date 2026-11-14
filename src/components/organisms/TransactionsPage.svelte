@@ -4,7 +4,6 @@
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
-	import type { GlanceFigure } from "#lib/ui/glance"
 	import type { MoneyData } from "#lib/ui/money-data"
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
@@ -28,12 +27,14 @@
 		ledgerEntries,
 		monthSummary,
 		sortEntries,
+		summaryRange,
 		type TxGroup,
 		type TxSort,
 	} from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { cardLine } from "#lib/ui/card-label"
+	import { type GlanceFigure, rangeText } from "#lib/ui/glance"
 	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
@@ -197,7 +198,9 @@
 		if (narrowed && rows.length === 0) return null
 		const figures = narrowed ? entriesSummary(rows) : monthSummary(all, now)
 		const count = rows.length
+		const range = narrowed ? summaryRange(rows, view.filter, now) : null
 		return {
+			aside: range ? rangeText(range, getLocale()) : undefined,
 			title: narrowed
 				? t(count === 1 ? "tx.summary.match.one" : "tx.summary.match.many", { count })
 				: t("tx.summary.title", { month: monthName(now, getLocale()) }),
@@ -296,7 +299,7 @@
 				group={groupLabel}
 				{chips} />
 			{#if summary}
-				<GlancePanel title={summary.title} figures={summary.figures} testid="summary" />
+				<GlancePanel title={summary.title} aside={summary.aside} figures={summary.figures} testid="summary" />
 			{/if}
 			<TxLedger
 				groups={sections}

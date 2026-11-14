@@ -148,6 +148,8 @@ test("searching writes ?q= and the summary turns to the matching entries", async
 	expect(written.at(-1)).toBe("?q=fuel")
 	const summary = $('[data-testid="summary"]')
 	expect(summary?.querySelector("h2")?.textContent).toBe("1 matching entry")
+	// No date filter: the one matching entry's day.
+	expect(text(summary?.querySelector(".glance__aside"))).toBe("30 Oct 2026")
 	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿1,000.00")
 	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe("฿0.00")
 	// Nothing paid is no money in: no green.
@@ -159,6 +161,15 @@ test("searching writes ?q= and the summary turns to the matching entries", async
 	expect(ledgerRows()).toHaveLength(1)
 	await type("zzz")
 	expect($('[data-testid="summary"]')).toBeNull()
+})
+
+test("a date filter names its range in the panel; the month so far names none", async () => {
+	await open("?f.range=month")
+	expect(text($('[data-testid="summary"] .glance__aside'))).toBe("1 Oct – 31 Oct 2026")
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	await open()
+	expect($('[data-testid="summary"] .glance__aside')).toBeNull()
 })
 
 test("a card filter sums that card's entries, netting its payments against its purchases", async () => {

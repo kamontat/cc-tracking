@@ -2,25 +2,32 @@
 	import type { GlanceFigure } from "#lib/ui/glance"
 
 	/**
-	 * A glance panel, the one Cards and Transactions share (DD-210): one panel, a small title, then
+	 * A glance panel, the one Cards and Transactions share (DD-210): one panel, a small title (and an aside, its dates, at the row's end), then
 	 * its figures in a grid split by hairlines, each a label over its figure (in its tone), with a
 	 * note or a usage bar under it. Two to a row on a phone (an odd last one across the row) and all
 	 * in one row from 900px.
 	 */
 	interface Props {
 		title: string
+		/** A short muted line at the end of the title row: the dates the figures cover. */
+		aside?: string | undefined
 		figures: GlanceFigure[]
 		/** A test hook, kept from the panel this replaced. */
 		testid?: string | undefined
 	}
 
-	const { title, figures, testid }: Props = $props()
+	const { title, aside, figures, testid }: Props = $props()
 
 	const id = $props.id()
 </script>
 
 <section class="glance" aria-labelledby="{id}-title" data-testid={testid}>
-	<h2 id="{id}-title" class="glance__title">{title}</h2>
+	<div class="glance__head">
+		<h2 id="{id}-title" class="glance__title">{title}</h2>
+		{#if aside}
+			<small class="glance__aside">{aside}</small>
+		{/if}
+	</div>
 	<dl class="glance__figures" data-count={figures.length}>
 		{#each figures as figure (figure.field)}
 			<div data-field={figure.field}>
@@ -51,10 +58,24 @@
 		border-radius: var(--cc-radius-md);
 	}
 
+	.glance__head {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 0 var(--cc-space-2);
+		padding: var(--cc-space-2) var(--cc-space-3) 0;
+	}
+
+	.glance__aside {
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
+	}
+
 	/* Two classes, to outrank app.css's `.page h2`. */
 	.glance .glance__title {
 		margin: 0;
-		padding: var(--cc-space-2) var(--cc-space-3) 0;
 		font-size: var(--cc-text-xs);
 		font-weight: 600;
 		color: var(--cc-text-muted);

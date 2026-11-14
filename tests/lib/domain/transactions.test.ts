@@ -17,6 +17,7 @@ import {
 	listRows,
 	monthSummary,
 	sortEntries,
+	summaryRange,
 	TX_DIRS,
 	TX_GROUPS,
 	TX_SORTS,
@@ -198,6 +199,34 @@ describe("entriesSummary", () => {
 		const entries = ledgerEntries(cards, purchases, payments)
 		expect(entriesSummary(entries)).toEqual({ count: 3, purchases: 6000, payments: 7000, net: 1000 })
 		expect(entriesSummary([])).toEqual({ count: 0, purchases: 0, payments: 0, net: 0 })
+	})
+})
+
+describe("summaryRange", () => {
+	const none = { q: "", types: [], cards: [], range: "", from: "", to: "" } as const
+	const entries = ledgerEntries(
+		cards,
+		[buy("p1", { date: "2026-10-03" }), buy("p2", { date: "2026-09-20" })],
+		[pay("m1", { date: "2026-10-12" })],
+	)
+	test("no date filter: the matching entries' first and last days", () => {
+		expect(summaryRange(entries, none, TODAY)).toEqual({ from: "2026-09-20", to: "2026-10-12" })
+	})
+	test("a preset is its own range, whatever the entries span", () => {
+		expect(summaryRange(entries, { ...none, range: "month" }, TODAY)).toEqual({ from: "2026-10-01", to: "2026-10-31" })
+	})
+	test("a custom range open on one side takes that side from the entries", () => {
+		expect(summaryRange(entries, { ...none, range: "custom", from: "2026-09-01" }, TODAY)).toEqual({
+			from: "2026-09-01",
+			to: "2026-10-12",
+		})
+		expect(summaryRange(entries, { ...none, range: "custom", to: "2026-10-05" }, TODAY)).toEqual({
+			from: "2026-09-20",
+			to: "2026-10-05",
+		})
+	})
+	test("no entries and no date filter: no range", () => {
+		expect(summaryRange([], none, TODAY)).toBeNull()
 	})
 })
 

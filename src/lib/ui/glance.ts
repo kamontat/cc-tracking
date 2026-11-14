@@ -1,6 +1,9 @@
 import type { CardsGlance } from "#lib/domain/cards-glance"
+import type { PlainDate } from "#lib/domain/types"
+import type { Locale } from "#lib/i18n/catalog"
 import type { RoomLevel } from "#lib/ui/room-note"
 
+import { dayMonth, parseDate } from "#lib/domain/date"
 import { formatAmount } from "#lib/domain/money"
 import { t } from "#lib/i18n/index"
 import { WARN_PCT } from "#lib/ui/room-note"
@@ -53,4 +56,17 @@ export function cardsGlanceFigures(glance: CardsGlance): GlanceFigure[] {
 					},
 				},
 	]
+}
+
+/**
+ * A glance panel's dates in words: one day alone (*30 Oct 2026*), a range within a year with the
+ * year once (*1 Oct – 31 Oct 2026*), across years with both (*20 Dec 2025 – 5 Jan 2026*).
+ */
+export function rangeText(range: { from: PlainDate; to: PlainDate }, locale: Locale): string {
+	const fromYear = parseDate(range.from).year
+	const toYear = parseDate(range.to).year
+	const end = `${dayMonth(range.to, locale)} ${toYear}`
+	if (range.from === range.to) return end
+	const start = fromYear === toYear ? dayMonth(range.from, locale) : `${dayMonth(range.from, locale)} ${fromYear}`
+	return `${start} – ${end}`
 }

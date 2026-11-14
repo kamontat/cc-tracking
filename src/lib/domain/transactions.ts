@@ -194,6 +194,22 @@ export function monthSummary(entries: TxEntry[], today: PlainDate): EntriesSumma
 	)
 }
 
+/**
+ * The dates a searched or filtered ledger's glance panel covers (DD-210): the date filter's range,
+ * any side it leaves open taken from the matching `entries`' first or last day; null with neither.
+ */
+export function summaryRange(
+	entries: TxEntry[],
+	filter: { range: RangePreset | ""; from: PlainDate | ""; to: PlainDate | "" },
+	today: PlainDate,
+): { from: PlainDate; to: PlainDate } | null {
+	const range = dateRange(filter, today)
+	const days = entries.map(entryDate).sort(compareDates)
+	const from = range.from || days[0]
+	const to = range.to || days.at(-1)
+	return from && to ? { from, to } : null
+}
+
 /** A purchase made from a list is `<listId>-<n>`; null when the id has no such tail. */
 export function listIdOf(purchaseId: string): string | null {
 	const match = /^(.+)-\d+$/.exec(purchaseId)
