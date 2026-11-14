@@ -517,8 +517,8 @@
 			{#each view.orders as bad, order (order)}
 				{@const named = { card: cardName(card.id, card), n: order + 1 }}
 				<div class="order" data-order={order}>
-					<div class="order-fields" data-bad={bad ? "" : undefined}>
-						<label class="amount">
+					<div class="order-fields amount-box" data-bad={bad ? "" : undefined}>
+						<label class="amount-in">
 							<span aria-hidden="true">฿</span>
 							<input
 								inputmode="decimal"
@@ -929,59 +929,18 @@
 		gap: var(--cc-space-2);
 	}
 
-	/* An order is one box: the amount, the note beside it after a rule, and its × once there are
-	   two. The box draws the focus, so its fields draw none of their own. */
+	/* An order is one of app.css's amount boxes: the amount, the note beside it after a rule, and
+	   its × once there are two. */
 	.order {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: var(--cc-space-1);
 	}
 
-	.order-fields {
+	/* Under `.order`, to outrank app.css's flex box at any load order. */
+	.order .order-fields {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-		align-items: center;
-		background: var(--cc-surface-sunken);
-		border: var(--cc-border-width) solid var(--cc-border);
-		border-radius: var(--cc-radius-sm);
-	}
-
-	.order-fields:has(input:focus-visible) {
-		border-color: var(--cc-accent);
-		box-shadow: var(--cc-focus-ring);
-	}
-
-	.order-fields[data-bad] {
-		border-color: var(--cc-danger);
-	}
-
-	.order-fields input {
-		min-inline-size: 0;
-		background: transparent;
-		border: 0;
-		border-radius: 0;
-		outline: none;
-		box-shadow: none;
-	}
-
-	.amount {
-		flex-direction: row;
-		align-items: baseline;
-		gap: var(--cc-space-1);
-		padding-inline-start: var(--cc-space-3);
-	}
-
-	.amount span {
-		font-size: var(--cc-text-md);
-		color: var(--cc-text-muted);
-	}
-
-	.amount input {
-		flex: 1;
-		padding: var(--cc-space-2) var(--cc-space-2) var(--cc-space-2) 0;
-		font-size: var(--cc-text-xl);
-		font-weight: 700;
-		font-variant-numeric: tabular-nums;
 	}
 
 	.order-fields .note-in {

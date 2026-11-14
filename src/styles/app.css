@@ -1786,3 +1786,69 @@ a:any-link:hover {
 	align-self: center;
 	margin-block-start: var(--cc-space-2);
 }
+
+/* An amount field, the one look wherever money is typed (DD-214): `.amount-in` is `฿` then the
+   figure, large and bold; `.amount-box` is the sunken box around it, which draws the focus and
+   turns red on text that is not money (`data-bad`), so its fields draw neither. The box may hold
+   more beside the amount (the builder's note); one holding only the amount takes both classes.
+   Scoped under `.page` to outrank `.page label` and `.page input`. */
+.page .amount-box {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	min-inline-size: 0;
+	background: var(--cc-surface-sunken);
+	border: var(--cc-border-width) solid var(--cc-border);
+	border-radius: var(--cc-radius-sm);
+}
+
+.page .amount-box:has(input:focus-visible) {
+	border-color: var(--cc-accent);
+	box-shadow: var(--cc-focus-ring);
+}
+
+.page .amount-box[data-bad] {
+	border-color: var(--cc-danger);
+}
+
+.page .amount-box input {
+	min-inline-size: 0;
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+}
+
+.page .amount-box input:focus-visible {
+	box-shadow: none;
+}
+
+.page .amount-in {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: var(--cc-space-1);
+	min-inline-size: 0;
+	padding-inline-start: var(--cc-space-3);
+	font-size: var(--cc-text-md);
+	color: var(--cc-text-muted);
+}
+
+/* The figure is large, yet the box keeps a plain field's height (`--cc-amount-height`), so it
+   lines up with a date or a note beside it. */
+.page .amount-in input {
+	flex: 1;
+	inline-size: 100%;
+	block-size: var(--cc-amount-height);
+	padding: 0 var(--cc-space-2) 0 0;
+	font-size: var(--cc-text-xl);
+	font-weight: 700;
+	line-height: 1;
+	font-variant-numeric: tabular-nums;
+	color: var(--cc-text);
+}
+
+/* What it waits for reads as a hint, not as a figure already typed. */
+.page .amount-in input::placeholder {
+	font-weight: 400;
+	color: var(--cc-text-muted);
+}

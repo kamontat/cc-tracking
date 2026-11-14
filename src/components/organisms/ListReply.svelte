@@ -298,9 +298,9 @@
 						<b>{formatAmount(planned)}</b>
 					</div>
 					{#if answer.made === true}
-						<label data-figure="real" data-bad={amount === null ? "" : undefined}>
+						<label data-figure="real">
 							<small>{tr("reply.actual")}</small>
-							<span class="real-input" row>
+							<span class="amount-box amount-in" data-bad={amount === null ? "" : undefined}>
 								<span aria-hidden="true">฿</span>
 								<input
 									inputmode="decimal"
@@ -640,7 +640,8 @@
 		border-color: var(--cc-danger);
 	}
 
-	/* Planned beside the real amount: two quiet boxes, as the builder's figures are, kept short. */
+	/* Planned beside the real amount: a caption over a box each, the real one app.css's amount
+	   field once made, the planned one a box of the same size, so the two figures line up. */
 	.figures {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -650,12 +651,8 @@
 	.figures > * {
 		display: flex;
 		flex-direction: column;
-		gap: 0;
+		gap: var(--cc-space-1);
 		min-inline-size: 0;
-		padding: var(--cc-space-1) var(--cc-space-3);
-		background: var(--cc-surface-sunken);
-		border: var(--cc-border-width) solid transparent;
-		border-radius: var(--cc-radius-sm);
 	}
 
 	.figures small {
@@ -664,60 +661,22 @@
 	}
 
 	.figures b {
-		font-size: var(--cc-text-md);
+		display: flex;
+		align-items: center;
+		block-size: calc(var(--cc-amount-height) + 2 * var(--cc-border-width));
+		padding: 0 var(--cc-space-3);
+		font-size: var(--cc-text-xl);
+		line-height: 1;
 		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+		color: var(--cc-text-muted);
+		background: var(--cc-surface-sunken);
+		border: var(--cc-border-width) solid transparent;
+		border-radius: var(--cc-radius-sm);
 	}
 
 	.figures [data-answer="not-made"] b {
 		color: var(--cc-danger);
-	}
-
-	/* The real amount once made: the box to type in, outlined so it reads as a field. */
-	.figures label {
-		cursor: text;
-		background: var(--cc-surface);
-		border-color: var(--cc-border);
-	}
-
-	.figures label:focus-within {
-		border-color: var(--cc-accent);
-	}
-
-	.figures label[data-bad] {
-		border-color: var(--cc-danger);
-	}
-
-	.real-input {
-		display: flex;
-		flex-direction: row;
-		flex-wrap: nowrap;
-		align-items: baseline;
-		gap: var(--cc-space-1);
-		font-size: var(--cc-text-md);
-		font-weight: 700;
-	}
-
-	.real-input > span {
-		color: var(--cc-text-muted);
-	}
-
-	.real-input input {
-		flex: 1 1 0;
-		inline-size: 100%;
-		min-inline-size: 0;
-		padding: 0;
-		font: inherit;
-		font-variant-numeric: tabular-nums;
-		color: var(--cc-text);
-		background: transparent;
-		border: none;
-		border-radius: 0;
-		outline: none;
-	}
-
-	/* The box around it shows the focus (its border turns the accent), so the field has no ring. */
-	.real-input input:focus-visible {
-		box-shadow: none;
 	}
 
 	.off-plan {
