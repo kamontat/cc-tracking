@@ -21,7 +21,7 @@
 	 */
 	interface Props {
 		card: Card
-		/** The group's room; null leaves line 2 to the `figure`, or to the aside alone. */
+		/** The group's room; null leaves line 2 to the aside alone. */
 		room: GroupRoom | null
 		/** The credit the card holds, in satang, for the word under the room. */
 		credit: number
@@ -45,11 +45,6 @@
 		aside?: string | undefined
 		/** The aside's colour: `bad` red, `warn` amber; left out, muted. */
 		asideTone?: "bad" | "warn" | undefined
-		/**
-		 * The payment picker: line 2's own figure and word (what is owed) in place of the room, with
-		 * or without a group; the rail still comes from `room`.
-		 */
-		figure?: { amount?: string; word?: string } | undefined
 		/** Line 3, muted: `closes … · due …`. Left out on Home. */
 		facts?: string | undefined
 		/** A last line across the tile, under the facts: the new-list sheet's 12-statement use. */
@@ -58,11 +53,6 @@
 		plainRoom?: boolean
 		/** Home: past the limit the amount turns red and has no word under it. */
 		quietOver?: boolean
-		/**
-		 * A button at the end of the last line (Owed's _Pay_): drawn beside the link, over the tile,
-		 * never inside it, so the tile stays one link with nothing interactive in it.
-		 */
-		action?: Snippet | undefined
 	}
 
 	const {
@@ -80,12 +70,10 @@
 		mono = false,
 		aside,
 		asideTone,
-		figure,
 		facts,
 		foot,
 		plainRoom = false,
 		quietOver = false,
-		action,
 	}: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
@@ -116,16 +104,7 @@
 		>{@render lead?.()}<span class="label"><span class="id">{card.id})</span> {card.name}</span></span
 	>
 	<span class="corner" data-mono={mono ? "" : undefined}>{corner}</span>
-	{#if figure}
-		<span class="room">
-			{#if figure.amount !== undefined}
-				<b data-numeric>{figure.amount}</b>
-			{/if}
-			{#if figure.word !== undefined}
-				<small>{figure.word}</small>
-			{/if}
-		</span>
-	{:else if room && line}
+	{#if room && line}
 		<span class="room" data-tone={line.over ? "bad" : undefined}>
 			<b data-numeric>{formatAmount(room.room)}</b>
 			{#if line.word}
@@ -156,7 +135,6 @@
 			class="tile"
 			data-g={tone}
 			data-card={card.id}
-			data-act={action ? "" : undefined}
 			aria-label={label}
 			aria-current={current ? "true" : undefined}
 			{href}
@@ -169,7 +147,6 @@
 			class="tile"
 			data-g={tone}
 			data-card={card.id}
-			data-act={action ? "" : undefined}
 			aria-pressed={pressed === undefined ? undefined : pressed ? "true" : "false"}
 			aria-label={label}
 			{onclick}>
@@ -178,14 +155,7 @@
 	{/if}
 {/snippet}
 
-{#if action}
-	<div class="tile-box" block>
-		{@render tile()}
-		<span class="tile-act">{@render action()}</span>
-	</div>
-{:else}
-	{@render tile()}
-{/if}
+{@render tile()}
 
 <style>
 	/*
@@ -390,33 +360,6 @@
 	.tile :global(.tick .icon) {
 		inline-size: var(--cc-icon-size-sm);
 		block-size: var(--cc-icon-size-sm);
-	}
-
-	/* A tile with an action: the box holds the tile and the button over its last line's end, and
-	   that line keeps room for it, level with it. */
-	.tile-box {
-		position: relative;
-		display: block;
-	}
-
-	.tile[data-act] .facts {
-		display: flex;
-		align-items: center;
-		min-block-size: var(--cc-tile-act-height);
-		padding-inline-end: calc(var(--cc-tile-act-width) + var(--cc-space-2));
-	}
-
-	.tile-act {
-		position: absolute;
-		inset-block-end: calc(var(--cc-space-2) + var(--cc-space-1));
-		inset-inline-end: var(--cc-space-3);
-		display: flex;
-	}
-
-	.tile-act > :global(*) {
-		box-sizing: border-box;
-		min-inline-size: var(--cc-tile-act-width);
-		block-size: var(--cc-tile-act-height);
 	}
 
 	@media (forced-colors: active) {
