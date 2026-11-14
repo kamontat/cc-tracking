@@ -139,10 +139,6 @@
 
 	/* The narrowest a card tile gets in the tiles grid from 900px (DD-151). */
 	--cc-tile-min: 16rem;
-	/* A tile's action (Owed's _Pay_): the room its last line keeps for it at the end, and its
-	   height, so the facts sit level with it. */
-	--cc-tile-act-width: 5.5rem;
-	--cc-tile-act-height: 2rem;
 
 	/* The purchase list's side panel from 900px: the date, the summary and the one action. */
 	--cc-side-panel: 20rem;

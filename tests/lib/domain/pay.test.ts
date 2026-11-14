@@ -3,7 +3,7 @@ import type { Card, CardPayment, Purchase } from "#lib/domain/types"
 import { describe, expect, test } from "vitest"
 
 import { ledgersFor } from "#lib/domain/ledger"
-import { markPaid, matchesCard, payChoices, payFigures, payPreview, plannedOf } from "#lib/domain/pay"
+import { markPaid, matchesCard, payFigures, payPreview, plannedOf } from "#lib/domain/pay"
 
 const TODAY = "2026-10-31"
 const mk = (id: string, extra: Partial<Card> = {}): Card => ({
@@ -29,36 +29,6 @@ const pay = (id: string, date: string, status: CardPayment["status"] = "planned"
 	date,
 	amount: 100,
 	status,
-})
-
-describe("payChoices", () => {
-	test("overdue, then soon, then most owed, then id; archived without debt left out", () => {
-		const cards = [
-			mk("a"), // bought in Aug: closed 25 Aug, due 14 Sep -> overdue 47 days
-			mk("b"), // bought Sep 20: closes 25 Sep, due 15 Oct -> overdue 16 days
-			mk("c"), // bought Oct 1: closed 25 Oct, due 14 Nov -> 14 days: due
-			mk("d", { cycle: { kind: "offset", closeDay: 15, dueOffsetDays: 20 } }), // bought Oct 1: closes 15 Oct, due 4 Nov -> soon
-			mk("e"), // nothing owed
-			mk("f", { archived: true }), // archived, nothing owed
-			mk("g", { archived: true }), // archived, owes
-		]
-		const purchases = [
-			buy("p1", "a", "2026-08-10", 100),
-			buy("p2", "b", "2026-09-20", 100),
-			buy("p3", "c", "2026-10-01", 500),
-			buy("p4", "d", "2026-10-01", 50),
-			buy("p5", "g", "2026-10-01", 900),
-		]
-		const ledgers = ledgersFor(cards, purchases, [], [], TODAY)
-		const out = payChoices(cards, ledgers, TODAY)
-		expect(out.map((c) => c.card.id)).toEqual(["a", "b", "d", "g", "c", "e"])
-		expect(out[0]?.urgency).toBe("overdue")
-		expect(out[0]?.days).toBe(47)
-		expect(out[2]?.urgency).toBe("soon")
-		expect(out[2]?.days).toBe(4)
-		expect(out.at(-1)?.urgency).toBe("none")
-		expect(out.at(-1)?.days).toBe(0)
-	})
 })
 
 describe("pay helpers", () => {
