@@ -4,6 +4,7 @@
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
 	import type { AddressBar } from "#lib/ui/address-bar"
+	import type { GlanceFigure } from "#lib/ui/glance"
 	import type { MoneyData } from "#lib/ui/money-data"
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 	import type { Opened } from "#lib/ui/startup"
@@ -12,6 +13,7 @@
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
+	import GlancePanel from "#components/molecules/GlancePanel.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import TxFilter from "#components/organisms/TxFilter.svelte"
 	import TxLedger from "#components/organisms/TxLedger.svelte"
@@ -41,7 +43,7 @@
 	import { LEDGER_ADDRESS, LEDGER_PAGE, type LedgerView, readLedgerView, writeLedgerView } from "#lib/ui/tx-query"
 
 	/**
-	 * The Ledger tab's island (`/transactions`, PRD RD-22): the search row, the month's summary,
+	 * The Ledger tab's island (`/transactions`, PRD RD-22): the search row, the month's summary (the glance panel Cards shares, `GlancePanel`, DD-210),
 	 * _Upcoming_ and the ledger. Its settings live in the address
 	 * (`?q=&f.types=&f.cards=&f.range=&f.from=&f.to=&sort=&dir=&by=`, RD-29), rewritten in place
 	 * as they change, so a reload or a shared link lands in the same place. Rows open in place
@@ -198,16 +200,16 @@
 					field: "purchases",
 					label: t("tx.summary.purchases"),
 					text: `${figures.purchases ? MINUS : ""}${formatAmount(figures.purchases)}`,
-					tone: "out",
+					tone: "out" as const,
 				},
 				{
 					field: "payments",
 					label: t("tx.summary.payments"),
 					text: `${figures.payments ? "+" : ""}${formatAmount(figures.payments)}`,
-					tone: "in",
+					tone: "in" as const,
 				},
-				{ field: "owed", label: t("tx.summary.owed"), text: formatAmount(figures.owed), tone: undefined },
-			],
+				{ field: "owed", label: t("tx.summary.owed"), text: formatAmount(figures.owed) },
+			] satisfies GlanceFigure[],
 		}
 	})
 
@@ -283,17 +285,7 @@
 				group={groupLabel}
 				{chips} />
 			{#if summary}
-				<section class="tx-summary" data-testid="summary">
-					<div class="tx-summary__head"><h2>{summary.title}</h2></div>
-					<div class="tx-summary__figures">
-						{#each summary.figures as figure (figure.field)}
-							<div data-field={figure.field}>
-								<small>{figure.label}</small>
-								<b data-numeric data-tone={figure.tone}>{figure.text}</b>
-							</div>
-						{/each}
-					</div>
-				</section>
+				<GlancePanel title={summary.title} figures={summary.figures} testid="summary" />
 			{/if}
 			<TxLedger
 				groups={sections}

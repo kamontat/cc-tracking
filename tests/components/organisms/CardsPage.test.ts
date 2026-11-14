@@ -414,7 +414,8 @@ test("the glance panels sum the shown cards, follow the filter, and each section
 			await repo.savePurchase({ id: "p2", cardId: "B", date: "2026-10-20", amount: 300_00, note: "" })
 		},
 	})
-	const figure = (field: string) => flat($(`.cards-glance [data-field="${field}"] b`))
+	expect(flat($(".cards-body section.glance h2"))).toBe("At a glance")
+	const figure = (field: string) => flat($(`.cards-body .glance [data-field="${field}"] b`))
 	expect(figure("count")).toBe("2")
 	expect(figure("owed")).toBe("฿1,300.00")
 	expect(flat($('section[data-location="krabi"] .section-glance'))).toBe(
@@ -436,7 +437,7 @@ test("the glance panels sum the shown cards, follow the filter, and each section
 
 test("no matching card shows no glance panels", async () => {
 	await setup("/cards?q=zzz")
-	expect($(".cards-glance")).toBeNull()
+	expect($("section.glance")).toBeNull()
 })
 
 test("Group by is applied from the sheet, kept in the address, and named on its chip", async () => {

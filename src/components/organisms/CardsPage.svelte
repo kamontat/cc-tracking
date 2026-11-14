@@ -10,9 +10,9 @@
 	import { onMount, untrack } from "svelte"
 
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
-	import CardsGlance from "#components/molecules/CardsGlance.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
+	import GlancePanel from "#components/molecules/GlancePanel.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import CardsFilter from "#components/organisms/CardsFilter.svelte"
 	import CardsList from "#components/organisms/CardsList.svelte"
@@ -26,6 +26,7 @@
 	import { takeResetNotice } from "#lib/storage/migrate-locations"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { readCardsView, writeCardsView } from "#lib/ui/cards-query"
+	import { cardsGlanceFigures } from "#lib/ui/glance"
 	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
@@ -190,6 +191,11 @@
 			: null,
 	)
 
+	const glanceFigures = $derived.by(() => {
+		void lang
+		return glance ? cardsGlanceFigures(glance) : null
+	})
+
 	const countFor = (draft: CardsView) =>
 		data
 			? cardsResults(data.money.cards, data.money.groups, data.rooms, draft, order, now, data.money.ledgers, ownerOrder)
@@ -280,8 +286,8 @@
 						</button>
 					{/snippet}
 				</FilterControls>
-				{#if glance}
-					<CardsGlance {glance} />
+				{#if glanceFigures}
+					<GlancePanel title={tr("cards.glance.label")} figures={glanceFigures} />
 				{/if}
 				<CardsList
 					{results}

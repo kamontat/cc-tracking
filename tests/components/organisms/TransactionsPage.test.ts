@@ -364,7 +364,9 @@ test("the summary names the month and signs its figures", async () => {
 	await open()
 	const summary = $('[data-testid="summary"]')
 	expect(summary?.querySelector("h2")?.textContent).toBe("October so far")
-	expect(summary?.querySelector(".tx-summary__head small")).toBeNull()
+	// The glance panel Cards shares (DD-210).
+	expect(summary?.matches("section.glance")).toBe(true)
+	expect(summary?.querySelector(".glance__note")).toBeNull()
 	expect(text(summary)).not.toContain(" · ")
 	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿1,250.00")
 	expect(summary?.querySelector('[data-field="purchases"] b')?.getAttribute("data-tone")).toBe("out")
