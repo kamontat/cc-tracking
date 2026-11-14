@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day, and moved list lines marked Moved
 
 ### BREAKING CHANGES
 
@@ -39,6 +39,9 @@ reasons don't show up in the code.
 - `/owed` no longer shows a tile per card, and its per-card keys `f.states`, `sort`, `dir` and
   `by` are ignored there now. A link that used them lands on the new calendar; for what each card
   owes, use Cards' balance filter (DD-211).
+
+- Message keys `saved.moved` and `saved.openDraft` are removed, with the `.list-moved` and
+  `open-draft` styles.
 
 ### Features
 
@@ -188,6 +191,13 @@ reasons don't show up in the code.
 - The ledger's `N results · ±฿X` line under the summary is gone: the panel's title counts the
   matches and _Net_ is their total.
 
+- On a saved list whose unmade lines went to the next day's draft, each of those lines says
+  _Moved_ (`reply.moved`, ย้ายแล้ว) instead of _Not made_, in the list panel, an opened list row
+  and the list's table, text and image. A saved list that kept them still says _Not made_.
+
+- The saved list panel's note under the lines (_… moved to a draft for {date}_, _Open it when
+  you're ready to send_), which opened the draft, is gone; the panel ends at the saved summary.
+
 ### Bug fixes
 
 - On a phone, opening a form in a card's or a limit's sheet no longer jumps to the full screen
@@ -283,6 +293,11 @@ reasons don't show up in the code.
 
 - The old per-card tiles (`OwedList`, `owed.ts`, `pay-tile`) are no longer used by any page; they
   were left for a follow-up rather than removed here.
+
+- A saved list's moved lines say _Moved_ rather than keeping a note that links to the draft:
+  the note took its date from the list's day plus one, not the draft's, and opened nothing once
+  the draft was deleted or merged. Keeping the note beside the _Moved_ lines and making a
+  _Moved_ line open the draft were rejected (DD-212).
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 
