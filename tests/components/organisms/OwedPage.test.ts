@@ -87,7 +87,8 @@ const press = async (el: Element | null | undefined) => {
 	await settle()
 }
 
-const total = (name: string) => text($(`.owed-totals [data-total="${name}"] b`))
+/** A figure in the glance panel (the one Cards and Transactions share). */
+const total = (name: string) => text($(`[data-testid="owed-glance"] [data-field="${name}"] b`))
 /** The panel's rows (`<kind>:<card>:<key>`), as `card kind`. */
 const lines = (root: string) =>
 	$$(`${root} .owed-lines [data-row]`).map((el) => {
@@ -106,7 +107,9 @@ const payIn = async (cardId: string) => {
 
 test("the calendar is the default: the totals and the next paying day's month, no day open", async () => {
 	const { history } = await open()
-	expect(total("range")).toBe("฿5,800.00")
+	expect(text($('[data-testid="owed-glance"] h2'))).toBe("Next 30 days")
+	expect(text($('[data-testid="owed-glance"] .glance__aside'))).toBe("31 Oct – 30 Nov 2026")
+	expect(total("total")).toBe("฿5,800.00")
 	expect(total("next")).toBe("฿2,000.00")
 	expect(total("week")).toBe("฿2,000.00")
 	expect(total("biggest")).toBe("฿3,800.00")
@@ -161,7 +164,7 @@ test("Pay in a day's panel opens the card's pay form a step deeper; Back returns
 test("late money is a total that opens its cards in the panel", async () => {
 	const { history } = await open()
 	expect(total("late")).toBe("฿1,000.00")
-	await press($('.owed-totals [data-total="late"]'))
+	await press($('[data-testid="owed-glance"] [data-field="late"] button'))
 	expect(history.now()).toBe("/owed?day=late")
 	expect(text($(".detail-panel h2"))).toBe("Late")
 	expect(lines(".detail-panel")).toEqual(["7 bill"])
@@ -219,8 +222,10 @@ test("Filter: range, places, holders and kinds; a pick is a chip and an f. key",
 	await press($("dialog [data-action=apply]"))
 	expect(history.now()).toBe("/owed?f.owners=KC&f.range=all")
 	// Card 20's open statement is in range now, an estimate apart from the total.
-	expect(total("range")).toBe("฿5,000.00")
-	expect(text($('.owed-totals [data-total="range"]'))).toContain("~฿400.00 more still open")
+	expect(total("total")).toBe("฿5,000.00")
+	expect(text($('[data-testid="owed-glance"] [data-field="total"] .glance__note'))).toBe(
+		"2 paying days · ~฿400.00 more still open",
+	)
 	expect($$(".tx-chips [data-chip]").map(text)).toEqual(["KC ×", "Everything owed ×"])
 	await press($('.tx-chips [data-chip="range"]'))
 	expect(history.now()).toBe("/owed?f.owners=KC")
@@ -234,8 +239,8 @@ test("the search narrows in place, kept as q", async () => {
 	box.dispatchEvent(new Event("input"))
 	await settle()
 	expect(history.now()).toBe("/owed?q=21")
-	expect(total("range")).toBe("฿800.00")
-	expect($('.owed-totals [data-total="late"]')).toBeNull()
+	expect(total("total")).toBe("฿800.00")
+	expect($('[data-testid="owed-glance"] [data-field="late"]')).toBeNull()
 })
 
 test("a pasted ?card= opens the panel at once", async () => {

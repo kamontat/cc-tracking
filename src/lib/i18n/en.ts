@@ -685,6 +685,7 @@ export const en = {
 	"owed.plan.lateTitle": "Late",
 	"owed.plan.lateDetail": "Past its date: pay it today",
 	"owed.plan.lateNote": "needed now",
+	"owed.plan.lateOpen": "Open the late money",
 	"owed.plan.toPay": "To pay",
 	"owed.plan.nothingThatDay": "Nothing to pay on this day.",
 	"owed.plan.say.bill": "{amount} to pay by {date}",

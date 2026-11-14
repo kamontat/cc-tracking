@@ -699,6 +699,7 @@ export const th: Catalog = {
 	"owed.plan.lateTitle": "เลยกำหนด",
 	"owed.plan.lateDetail": "เลยวันครบกำหนดแล้ว ชำระวันนี้",
 	"owed.plan.lateNote": "ต้องจ่ายตอนนี้",
+	"owed.plan.lateOpen": "เปิดยอดที่เลยกำหนด",
 	"owed.plan.toPay": "ยอดที่ต้องจ่าย",
 	"owed.plan.nothingThatDay": "ไม่มียอดที่ต้องจ่ายในวันนี้",
 	"owed.plan.say.bill": "ต้องจ่าย {amount} ภายใน {date}",

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { OwedDay, OwedLayout, OwedPlanView } from "#lib/domain/owed-plan"
+	import type { OwedLayout, OwedPlanView } from "#lib/domain/owed-plan"
 	import type { Period } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { Repository } from "#lib/storage/repository"
@@ -11,13 +11,14 @@
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
+	import GlancePanel from "#components/molecules/GlancePanel.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import OwedCalendar from "#components/organisms/OwedCalendar.svelte"
 	import OwedDayPanel from "#components/organisms/OwedDayPanel.svelte"
 	import OwedDays from "#components/organisms/OwedDays.svelte"
 	import OwedFilter from "#components/organisms/OwedFilter.svelte"
-	import { addDays, dayMonth, periodOf, today } from "#lib/domain/date"
-	import { formatAmount, sumAmounts } from "#lib/domain/money"
+	import { periodOf, today } from "#lib/domain/date"
+	import { sumAmounts } from "#lib/domain/money"
 	import {
 		DEFAULT_OWED_PLAN,
 		OWED_KINDS,
@@ -35,14 +36,13 @@
 	import { browserBar } from "#lib/ui/address-bar"
 	import { OWED_ADDRESS, readOwedPlan, writeOwedPlan } from "#lib/ui/home-query"
 	import { loadMoneyData } from "#lib/ui/money-data"
-	import { rangeWords } from "#lib/ui/owed-words"
+	import { owedGlance, rangeWords } from "#lib/ui/owed-words"
 	import { createPageState } from "#lib/ui/page-state"
 	import { LATE_DAY, RecordPanel } from "#lib/ui/record-panel.svelte"
-	import { whenWords } from "#lib/ui/row-text"
 	import { openRepository } from "#lib/ui/startup"
 
 	/**
-	 * Home's _Owed_ tab (`/owed`, RD-25, DD-205): the money to have ready each day, so it can be
+	 * Home's _Owed_ tab (`/owed`, RD-25, DD-211): the money to have ready each day, so it can be
 	 * moved in time. Cards' search and *Filter* (`OwedFilter`: range, places, holders, kinds; no sort,
 	 * no group) and the view (calendar, by week, by month); the totals (the range, the next paying
 	 * day, the next 7 days, the biggest day, and the late money while any is late); then the
@@ -125,6 +125,12 @@
 	const totals = $derived(owedTotals(plan.days, now))
 	const late = $derived(sumAmounts(plan.late.map((e) => e.amount)))
 
+	/** The totals, in the glance panel Cards and Transactions share; *Late* opens the late money. */
+	const glance = $derived.by(() => {
+		void lang
+		return owedGlance(totals, view.range, late, now, () => openPanel(LATE_DAY), openDay === LATE_DAY)
+	})
+
 	/** The day open in the panel: a date, or `late`. */
 	const openDay = $derived(panel.record?.kind === "day" ? panel.record.id : null)
 
@@ -172,11 +178,6 @@
 			})),
 		]
 	})
-
-	const dayWhen = (day: OwedDay | null) => {
-		void lang
-		return day ? tr("owed.plan.dayWhen", { date: dayMonth(day.date, getLocale()), when: whenWords(day.date, now) }) : ""
-	}
 
 	const onRetry = () => {
 		if (startupFailure) location.reload()
@@ -235,47 +236,7 @@
 						</button>
 					{/each}
 				</fieldset>
-				<section class="panel owed-totals" aria-label={tr("owed.plan.totals")}>
-					<div data-total="range">
-						<small>{rangeWords(view.range)}</small>
-						<b data-numeric>{formatAmount(totals.total)}</b>
-						<span>
-							{tr(totals.payingDays === 1 ? "owed.plan.days.one" : "owed.plan.days.many", {
-								count: totals.payingDays,
-							})}
-							{#if totals.estimate > 0}
-								· {tr("owed.plan.openSoFar", { amount: formatAmount(totals.estimate) })}
-							{/if}
-						</span>
-					</div>
-					<div data-total="next">
-						<small>{tr("owed.plan.next")}</small>
-						<b data-numeric>{totals.next ? formatAmount(totals.next.firm) : tr("common.none")}</b>
-						<span>{totals.next ? dayWhen(totals.next) : tr("owed.plan.none")}</span>
-					</div>
-					<div data-total="week">
-						<small>{tr("owed.plan.week")}</small>
-						<b data-numeric>{formatAmount(totals.week)}</b>
-						<span>{tr("owed.plan.weekTo", { date: dayMonth(addDays(now, 7), getLocale()) })}</span>
-					</div>
-					<div data-total="biggest">
-						<small>{tr("owed.plan.biggest")}</small>
-						<b data-numeric>{totals.biggest ? formatAmount(totals.biggest.firm) : tr("common.none")}</b>
-						<span>{totals.biggest ? dayWhen(totals.biggest) : tr("owed.plan.none")}</span>
-					</div>
-					{#if late > 0}
-						<button
-							type="button"
-							data-total="late"
-							data-variant="quiet"
-							aria-current={openDay === LATE_DAY ? "true" : undefined}
-							onclick={() => openPanel(LATE_DAY)}>
-							<small>{tr("owed.plan.lateTitle")}</small>
-							<b data-numeric>{formatAmount(late)}</b>
-							<span>{tr("owed.plan.lateNote")}</span>
-						</button>
-					{/if}
-				</section>
+				<GlancePanel title={glance.title} aside={glance.aside} figures={glance.figures} testid="owed-glance" />
 				{#if plan.days.length === 0}
 					<p class="empty">{tr("owed.plan.empty")}</p>
 				{:else if view.layout === "calendar"}
@@ -336,77 +297,5 @@
 		background: var(--cc-surface);
 		border: var(--cc-border-width) solid var(--cc-border);
 		border-radius: var(--cc-radius-md);
-	}
-
-	/* As many totals to a row as fit, the range's two wide; the late money wraps under them. */
-	.owed-totals {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(var(--cc-total-min), 1fr));
-		gap: var(--cc-space-4);
-		padding: var(--cc-panel-padding);
-		background: var(--cc-surface);
-		border: var(--cc-border-width) solid var(--cc-border);
-		border-radius: var(--cc-radius-md);
-	}
-
-	.owed-totals div,
-	.owed-totals button {
-		display: flex;
-		flex-direction: column;
-		min-inline-size: 0;
-	}
-
-	.owed-totals small {
-		font-size: var(--cc-text-2xs);
-		font-weight: 700;
-		color: var(--cc-text-muted);
-		text-transform: uppercase;
-		letter-spacing: var(--cc-tracking-caps);
-	}
-
-	.owed-totals b {
-		font-size: var(--cc-text-lg);
-		font-weight: 780;
-	}
-
-	.owed-totals span {
-		font-size: var(--cc-text-xs);
-		color: var(--cc-text-muted);
-	}
-
-	.owed-totals [data-total="range"] {
-		grid-column: span 2;
-	}
-
-	.owed-totals [data-total="range"] b {
-		font-size: var(--cc-text-2xl);
-		line-height: var(--cc-hero-amount-leading);
-	}
-
-	.owed-totals [data-total="next"] b {
-		color: var(--cc-accent);
-	}
-
-	/* The late money opens its panel: a quiet button in the danger tone, scoped twice to outrank
-	   app.css's `.page button`. */
-	.owed-totals button[data-total="late"] {
-		align-items: flex-start;
-		gap: 0;
-		padding: var(--cc-space-2) var(--cc-space-3);
-		font-weight: 400;
-		text-align: start;
-		white-space: normal;
-		color: var(--cc-danger);
-		background: var(--cc-danger-surface);
-		border-color: transparent;
-	}
-
-	.owed-totals button[data-total="late"] small,
-	.owed-totals button[data-total="late"] span {
-		color: inherit;
-	}
-
-	.owed-totals button[data-total="late"][aria-current="true"] {
-		box-shadow: 0 0 0 var(--cc-ring-width) var(--cc-danger);
 	}
 </style>

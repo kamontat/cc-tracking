@@ -4,7 +4,7 @@ import type { Card } from "#lib/domain/types"
 import { afterEach, describe, expect, test } from "vitest"
 
 import { setLocale } from "#lib/i18n/index"
-import { entryNote, rangeWords, sectionName } from "#lib/ui/owed-words"
+import { entryNote, owedGlance, rangeWords, sectionName } from "#lib/ui/owed-words"
 
 afterEach(() => setLocale("en"))
 
@@ -52,5 +52,44 @@ describe("sectionName", () => {
 
 	test("a month in full, with its year", () => {
 		expect(sectionName(section("2026-11-01"), "month", TODAY)).toBe("November 2026")
+	})
+})
+
+describe("owedGlance", () => {
+	const day = (date: string, firm: number) => ({ date, entries: [], firm, estimate: 0, byThen: firm })
+	const totals = {
+		total: 580_000,
+		estimate: 40_000,
+		payingDays: 2,
+		next: day("2026-11-05", 200_000),
+		week: 200_000,
+		biggest: day("2026-11-14", 380_000),
+	}
+
+	test("the range and its dates, then what to pay, the next day, the next 7 days and the biggest day", () => {
+		const glance = owedGlance(totals, 30, 0, TODAY, null)
+		expect(glance.title).toBe("Next 30 days")
+		expect(glance.aside).toBe("31 Oct – 30 Nov 2026")
+		expect(glance.figures.map((f) => [f.field, f.label, f.text, f.note])).toEqual([
+			["total", "To pay", "฿5,800.00", "2 paying days · ~฿400.00 more still open"],
+			["next", "Next", "฿2,000.00", "5 Nov · in 5 days"],
+			["week", "Next 7 days", "฿2,000.00", "to 7 Nov"],
+			["biggest", "Biggest day", "฿3,800.00", "14 Nov · in 14 days"],
+		])
+		expect(owedGlance(totals, "all", 0, TODAY, null).aside).toBeUndefined()
+	})
+
+	test("late money is one more figure, red, that opens its panel", () => {
+		let opened = 0
+		const late = owedGlance(totals, 30, 100_000, TODAY, () => opened++, true).figures.at(-1)
+		expect(late).toMatchObject({ field: "late", label: "Late", text: "฿1,000.00", tone: "out", note: "needed now" })
+		expect(late?.open?.current).toBe(true)
+		late?.open?.run()
+		expect(opened).toBe(1)
+	})
+
+	test("nothing due reads as a dash", () => {
+		const none = owedGlance({ ...totals, next: null, biggest: null }, 30, 0, TODAY, null).figures
+		expect(none.find((f) => f.field === "next")).toMatchObject({ text: "—", note: "Nothing due" })
 	})
 })
