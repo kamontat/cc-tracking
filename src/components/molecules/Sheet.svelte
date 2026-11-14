@@ -20,6 +20,8 @@
 	 */
 	interface Props {
 		heading: string
+		/** Drawn inside the heading before its words: a card's chip, say. */
+		lead?: Snippet
 		/**
 		 * Held open: Escape, the backdrop and Close do nothing, so a page that would refuse to close
 		 * (a save in flight) never sees its sheet slide away first.
@@ -32,7 +34,7 @@
 		children: Snippet
 	}
 
-	const { heading, held = false, wide = false, onclose, children }: Props = $props()
+	const { heading, lead, held = false, wide = false, onclose, children }: Props = $props()
 
 	const uid = $props.id()
 	const headingId = `${uid}-heading`
@@ -122,7 +124,11 @@
 	<div class="body">
 		<span class="grab" aria-hidden="true"></span>
 		<header>
-			<h2 id={headingId}>{heading}</h2>
+			{#if lead}
+				<h2 id={headingId} data-lead="">{@render lead()}<span class="words">{heading}</span></h2>
+			{:else}
+				<h2 id={headingId}>{heading}</h2>
+			{/if}
 			<button type="button" data-variant="quiet" data-action="close" onclick={requestClose}>
 				{tr("common.close")}
 			</button>
@@ -166,6 +172,18 @@
 		margin: 0;
 		font-size: var(--cc-text-lg);
 		font-weight: 700;
+	}
+
+	/* A lead sits beside the words on their line, centred on it. */
+	h2[data-lead] {
+		display: flex;
+		align-items: center;
+		gap: var(--cc-space-2);
+		min-inline-size: 0;
+	}
+
+	.words {
+		min-inline-size: 0;
 	}
 
 	.grab {
