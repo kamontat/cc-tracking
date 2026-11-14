@@ -1,6 +1,9 @@
+import type { Period, PlainDate } from "#lib/domain/types"
+
 import { CARDS_GROUPS, type CardsGroup } from "#lib/domain/cards-view"
+import { isValidDate } from "#lib/domain/date"
 import { DEFAULT_READY_VIEW, READY_DIRS, READY_SORTS, type ReadyView } from "#lib/domain/home"
-import { DEFAULT_OWED_VIEW, OWED_DIRS, OWED_SORTS, OWED_STATES, type OwedView } from "#lib/domain/owed"
+import { DEFAULT_OWED_PLAN, OWED_KINDS, OWED_LAYOUTS, OWED_RANGES, type OwedPlanView } from "#lib/domain/owed-plan"
 import { readDir, type SortDir } from "#lib/domain/sort"
 import { readCardFilter, writeCardFilter } from "#lib/ui/cards-query"
 
@@ -39,27 +42,48 @@ const query = (p: URLSearchParams): string => {
 	return text ? `?${text}` : ""
 }
 
+/** What `/owed` holds: the view, the month the calendar shows and the day picked (null for their defaults). */
+export type OwedPlanAddress = { view: OwedPlanView; month: Period | null; day: PlainDate | null }
+
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
+
 /**
- * The _Owed_ tab's view from `/owed?q=&f.locations=&f.owners=&f.states=&sort=&dir=&by=` (RD-29);
- * unknown values read as defaults (`DEFAULT_OWED_VIEW`), and an `f.locations` is kept only when it
- * is one of `locationIds`, the stored records' ids.
+ * The _Owed_ tab from `/owed?q=&f.locations=&f.owners=&f.range=&f.shows=&view=&month=&day=`
+ * (RD-25, RD-29): unknown values read as the defaults (`DEFAULT_OWED_PLAN`); an `f.locations`
+ * is kept only when it is one of `locationIds`, an `f.owners` one of `ownerIds`.
  */
-export function readOwedView(search: string, locationIds: readonly string[], ownerIds?: readonly string[]): OwedView {
+export function readOwedPlan(
+	search: string,
+	locationIds: readonly string[],
+	ownerIds?: readonly string[],
+): OwedPlanAddress {
 	const p = new URLSearchParams(search)
-	const states = p.getAll("f.states")
+	const range = OWED_RANGES.find((r) => String(r) === p.get("f.range")) ?? DEFAULT_OWED_PLAN.range
+	const shows = OWED_KINDS.filter((kind) => p.getAll("f.shows").includes(kind))
+	const layout = OWED_LAYOUTS.find((l) => l === p.get("view")) ?? DEFAULT_OWED_PLAN.layout
+	const month = p.get("month") ?? ""
+	const day = p.get("day") ?? ""
 	return {
-		...readCardFilter(p, locationIds, ownerIds),
-		states: OWED_STATES.filter((state) => states.includes(state)),
-		...readOrder(p, OWED_SORTS, OWED_DIRS, DEFAULT_OWED_VIEW),
+		view: {
+			...readCardFilter(p, locationIds, ownerIds),
+			range,
+			shows: shows.length > 0 ? shows : [...DEFAULT_OWED_PLAN.shows],
+			layout,
+		},
+		month: MONTH_PATTERN.test(month) ? month : null,
+		day: isValidDate(day) ? day : null,
 	}
 }
 
 /** `""` for the defaults, else `?` and the keys that differ, the `f.` keys repeated. */
-export function writeOwedView(view: OwedView): string {
+export function writeOwedPlan(view: OwedPlanView, month: Period | null, day: PlainDate | null): string {
 	const p = new URLSearchParams()
 	writeCardFilter(p, view)
-	for (const state of view.states) p.append("f.states", state)
-	writeOrder(p, view, OWED_DIRS, DEFAULT_OWED_VIEW)
+	if (view.range !== DEFAULT_OWED_PLAN.range) p.set("f.range", String(view.range))
+	if (view.shows.length < OWED_KINDS.length) for (const kind of view.shows) p.append("f.shows", kind)
+	if (view.layout !== DEFAULT_OWED_PLAN.layout) p.set("view", view.layout)
+	if (month) p.set("month", month)
+	if (day) p.set("day", day)
 	return query(p)
 }
 

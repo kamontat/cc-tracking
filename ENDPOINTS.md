@@ -1,7 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: `/settings?panel=data`, the data summary panel, 2026-11-14, PRD DD-204). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: `/owed`, the calendar of what to pay each day, 2026-11-14, PRD DD-205). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -55,26 +55,29 @@ back in place.
 
 ### `/owed`
 
-_Owed_: every card that owes, as payment tiles, under Cards' control row (search, _Filter_, the
-sort and group chips, a chip per filter) and Cards' _Filter · Sort · Group_ sheet, with _Bill_
-added.
+_Owed_: the money to have ready each day (DD-205): a calendar, or the days by week or by month,
+with the totals over it and late money apart. Cards' search and _Filter_, with no sort and no
+group.
 
-| Key           | Values                                    | Default        | Notes                                                                                                                                                 |
-| ------------- | ----------------------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `q`           | text                                      | empty          | Search: the card's id, name, last 4 or comment, as on `/cards`.                                                                                       |
-| `f.locations` | stored location id, _repeated_            | any            | Only cards kept there. An id with no stored location is dropped.                                                                                      |
-| `f.owners`    | `KC`, `NT`, `RI`, _repeated_              | any            | Only cards held by them (a supplementary card's own holder, else its limit group's owner).                                                            |
-| `f.states`    | `overdue`, `soon`, `unbilled`, _repeated_ | any            | Only cards whose bill is past due, due within 7 days (the pay tag's _Due in N days_), or that owe with no bill yet (all of it on the open statement). |
-| `sort`        | `urgency`, `card`, `due`, `left`          | `urgency`      | Order: most urgent (overdue, due within 7 days, then most owed), card id, due date, or what is owed.                                                  |
-| `dir`         | `asc`, `desc`                             | the sort's own | Direction: `left` defaults to `desc` (most owed first), the rest to `asc`.                                                                            |
-| `by`          | `place`, `holder`, `limit`, `none`        | `none`         | Sections, as on `/cards`: places in order, holders then none, limit groups A to Z then none; each keeps the order. `none` is one flat list.           |
-| `card`        | card id                                   | none           | Opens the card's panel (a tile, or _Pay_ on it). An invalid id or a card not stored opens nothing, and the key goes.                                  |
+| Key           | Values                             | Default         | Notes                                                                                                                                 |
+| ------------- | ---------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `q`           | text                               | empty           | Search: the card's id, name, last 4 or comment, as on `/cards`.                                                                       |
+| `f.locations` | stored location id, _repeated_     | any             | Only cards kept there. An id with no stored location is dropped.                                                                      |
+| `f.owners`    | stored owner id, _repeated_        | any             | Only cards held by them (a supplementary card's own holder, else its limit group's owner).                                            |
+| `f.range`     | `7`, `14`, `30`, `60`, `all`       | `30`            | How far ahead from today; `all` is everything owed. Late money shows whatever the range.                                              |
+| `f.shows`     | `bill`, `plan`, `open`, _repeated_ | all three       | Which money: closed bills, planned payments, open statements (estimates). Written only when not all three; none reads as all three.   |
+| `view`        | `calendar`, `week`, `month`        | `calendar`      | The calendar, or the days in week or month sections.                                                                                  |
+| `month`       | `YYYY-MM`                          | the day's month | The calendar's month; without it, the picked day's month, else the next paying day's. A month with nothing in range reads as today's. |
+| `day`         | `YYYY-MM-DD`                       | none            | The calendar's picked day; without it (or when it has nothing), the shown month's first paying day.                                   |
+| `card`        | card id                            | none            | Opens the card's panel (_Pay_ on a card). An invalid id or a card not stored opens nothing, and the key goes.                         |
 
-A search, filter, sort or grouping change rewrites the address (`replaceState`), keys at their
-default left out, keeping `card`. A tile pushes `card`; _Pay_ on a tile opens the card's panel on
-its pay form with what is left on the bill filled in, with no address of its own. Example:
-`/owed?f.states=overdue&f.states=soon&by=holder&card=12.3`. Replaces Transactions' old
-`?view=owed` (and its `owed` and `odir` keys).
+A search, filter or view change rewrites the address (`replaceState`), keys at their default left
+out, keeping `card`; picking a day writes `day`, and ‹ or › writes `month` and drops `day`.
+Switching the view drops `day`. _Pay_ opens the card's panel on its pay form with the amount
+filled in, with no address of its own (`/owed?card=<id>`). Example:
+`/owed?f.owners=KC&f.range=14&view=week`. The per-card keys `f.states`, `sort`, `dir` and `by` are
+retired here (ignored like any unknown key); what each card owes moves to `/cards` as a filter in
+a change of its own.
 
 ### `/ready`
 
