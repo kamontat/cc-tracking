@@ -9,14 +9,14 @@ import { InMemoryRepository, type Repository } from "#lib/storage/repository"
 import { type BackupV4, exportBackupV4, importBackupV4, parseAnyBackup } from "#lib/storage/transfer-v4"
 import { RecordPanel } from "#lib/ui/record-panel.svelte"
 import { fakeHistory } from "../../lib/ui/fake-history"
-import { cleanup, click, closeCard, fieldsOf, settle, setupPage, stored, typeField } from "./list-support"
+import { cleanup, click, closeCard, fieldsOf, openCard, settle, setupPage, stored, typeField } from "./list-support"
 
 /** A line's note across every list page, the list's panel and a backup. Ported from the legacy `note-flow` test. */
 afterEach(cleanup)
 
-/** Types into a field of a reply's line, by card and field. */
+/** Types into a field in a reply's card sheet, by card and field. */
 const typeInto = async (cardId: string, field: string, text: string) => {
-	const input = document.querySelector<HTMLInputElement>(`section.line[data-card="${cardId}"] [data-field="${field}"]`)
+	const input = (await openCard(cardId)).querySelector<HTMLInputElement>(`[data-field="${field}"]`)
 	if (!input) throw new Error(`no ${field} for ${cardId}`)
 	input.value = text
 	input.dispatchEvent(new Event("input", { bubbles: true }))
@@ -79,9 +79,11 @@ test("a line's note goes from Enter amounts through Review, the send and the rep
 
 	// The reply shows each note and lets it change; B is not made and moves to a draft.
 	const replyPage = await setupPage(ListReplyPage, { repo, search: "?list=l1" })
-	await press('section.line[data-card="A"] [data-answer="made"]')
-	await press('section.line[data-card="B"] [data-answer="not-made"]')
+	;(await openCard("A")).querySelector<HTMLElement>('[data-answer="made"]')?.click()
 	await typeInto("A", "note", "diesel for the van")
+	await closeCard()
+	;(await openCard("B")).querySelector<HTMLElement>('[data-answer="not-made"]')?.click()
+	await closeCard()
 	await press('[data-action="save-reply"]')
 	expect(replyPage.visited).toEqual(["/transactions/lists?list=l1"])
 

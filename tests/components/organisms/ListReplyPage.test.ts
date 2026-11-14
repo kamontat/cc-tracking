@@ -10,8 +10,10 @@ import {
 	card,
 	cleanup,
 	click,
+	closeCard,
 	draft,
 	elsewhereLink,
+	openCard,
 	saved,
 	settle,
 	setupPage,
@@ -56,20 +58,20 @@ const answers: ListLine[] = [
 	{ cardId: "C", amount: 2200000, made: true },
 ]
 
-/** Answers every line on the form as `lines` says, ticks or unticks the move, then saves. */
+/** Answers every line in its card's sheet as `lines` says, ticks or unticks the move, then saves. */
 const sendReply = async (root: ParentNode, moveUnmade: boolean, lines: ListLine[] = answers) => {
 	for (const line of lines) {
-		const section = root.querySelector(`.line[data-card="${line.cardId}"]`)
-		if (!section) throw new Error(`no line for ${line.cardId}`)
-		section.querySelector<HTMLElement>(`[data-answer="${line.made ? "made" : "not-made"}"]`)?.click()
+		const sheet = await openCard(line.cardId)
+		sheet.querySelector<HTMLElement>(`[data-answer="${line.made ? "made" : "not-made"}"]`)?.click()
 		await settle(2)
 		if (line.made) {
-			const input = section.querySelector<HTMLInputElement>('[data-field="actual"]')
+			const input = sheet.querySelector<HTMLInputElement>('[data-field="actual"]')
 			if (!input) throw new Error(`no amount for ${line.cardId}`)
 			input.value = formatAmountInput(line.actual ?? line.amount)
 			input.dispatchEvent(new Event("input", { bubbles: true }))
 			await settle(2)
 		}
+		await closeCard()
 	}
 	const move = root.querySelector<HTMLInputElement>('[data-field="move"]')
 	if (move && move.checked !== moveUnmade) {
@@ -303,4 +305,23 @@ test("an old `id` is not read", async () => {
 	const { root } = await setup({ search: "?id=w1" })
 	expect(root.querySelector(".line[data-card]")).toBeNull()
 	expect(root.textContent).toContain("This list no longer exists.")
+})
+
+test("a card's sheet is in history: Back closes it, and Done steps back over it", async () => {
+	const { root, now, back, entries, popOptions, pushOptions } = await setup()
+	expect(popOptions).toEqual([{ ownPage: true }])
+	await openCard("A")
+	expect(pushOptions).toEqual([{ ownPage: true }])
+	expect(entries).toEqual(["?list=w1", "/transactions/lists/edit?list=w1"])
+	// The card before or after changes nothing in history.
+	await click(root, "next-card")
+	expect(entries).toHaveLength(2)
+	back()
+	await settle()
+	expect(root.querySelector("dialog")).toBeNull()
+	expect(now()).toBe("?list=w1")
+	await openCard("B")
+	await closeCard()
+	expect(root.querySelector("dialog")).toBeNull()
+	expect(now()).toBe("?list=w1")
 })

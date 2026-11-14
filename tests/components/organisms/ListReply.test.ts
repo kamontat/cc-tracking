@@ -8,8 +8,8 @@ import ListReply from "#components/organisms/ListReply.svelte"
 import { setLocale } from "#lib/i18n/index"
 
 /**
- * The spender's reply to a sent list. Ported from the legacy `cc-list-reply` tests, against the
- * same markup.
+ * The spender's reply to a sent list: a row per card, as the builder's (DD-195), each opening its
+ * card's sheet, where every order is answered.
  */
 let mounted: ReturnType<typeof mount> | undefined
 
@@ -51,13 +51,13 @@ const w1: PurchaseList = {
 
 type Reply = { lines: ListLine[]; moveUnmade: boolean }
 
-/** Mounts the reply; `set` changes a prop afterwards, as the page would. */
+/** Mounts the reply, the open sheet held as the page holds it; `set` changes a prop afterwards. */
 const show = async (list: PurchaseList = w1, extra: Record<string, unknown> = {}) => {
 	if (mounted) unmount(mounted)
 	setLocale("en")
 	document.body.innerHTML = ""
 	const values = new SvelteMap<string, unknown>(
-		Object.entries({ list, cards: [card("A"), card("B")], groups: [], ...extra }),
+		Object.entries({ list, cards: [card("A"), card("B")], groups: [], sheet: null, ...extra }),
 	)
 	const seen: Reply[] = []
 	mounted = mount(ListReply, {
@@ -72,6 +72,10 @@ const show = async (list: PurchaseList = w1, extra: Record<string, unknown> = {}
 			get groups() {
 				return values.get("groups") as LimitGroup[]
 			},
+			get sheet() {
+				return values.get("sheet") as string | null
+			},
+			onsheet: (next: string | null) => values.set("sheet", next),
 			side: createRawSnippet(() => ({
 				render: () => '<button type="button" data-action="cancel-list">Cancel list</button>',
 			})),
@@ -90,79 +94,171 @@ const show = async (list: PurchaseList = w1, extra: Record<string, unknown> = {}
 
 const root = document.body
 const flat = (el: Element | null | undefined) => el?.textContent?.replace(/\s+/g, " ").trim() ?? ""
-const line = (id: string) => root.querySelector(`section.line[data-card="${id}"]`) as HTMLElement
-const answerButton = (id: string, answer: string) =>
-	line(id).querySelector(`[data-answer="${answer}"]`) as HTMLButtonElement
-const actual = (id: string) => line(id).querySelector('[data-field="actual"]') as HTMLInputElement
-const noteOf = (id: string) => line(id).querySelector('[data-field="note"]') as HTMLInputElement
+const row = (id: string) => root.querySelector(`.lines > button.line[data-card="${id}"]`) as HTMLButtonElement | null
+const rows = () => [...root.querySelectorAll(".lines > button.line")].map((el) => el.getAttribute("data-card"))
+const sheetOf = (id: string) => root.querySelector<HTMLElement>(`dialog .card-step[data-card="${id}"]`)
+
+/** Opens a card's sheet from its row, unless it is open already. */
+const open = async (id: string) => {
+	if (!sheetOf(id)) {
+		const target = row(id)
+		if (!target) throw new Error(`no row for ${id}`)
+		target.click()
+		await settle()
+	}
+	const sheet = sheetOf(id)
+	if (!sheet) throw new Error(`no sheet for ${id}`)
+	return sheet
+}
+
+/** A card's order (the first unless `order`) in its sheet, opening it. */
+const orderOf = async (id: string, order = 0) => {
+	const found = (await open(id)).querySelector<HTMLElement>(`.order[data-order="${order}"]`)
+	if (!found) throw new Error(`no order ${order} for ${id}`)
+	return found
+}
+
+const answerButton = async (id: string, answer: string, order = 0) =>
+	(await orderOf(id, order)).querySelector(`[data-answer="${answer}"]`) as HTMLButtonElement
+const actual = async (id: string, order = 0) =>
+	(await orderOf(id, order)).querySelector('[data-field="actual"]') as HTMLInputElement | null
+const noteOf = async (id: string, order = 0) =>
+	(await orderOf(id, order)).querySelector('[data-field="note"]') as HTMLInputElement
 const saveButton = () => root.querySelector('[data-action="save-reply"]') as HTMLButtonElement
 const move = () => root.querySelector('[data-field="move"]') as HTMLInputElement | null
+const summary = () => flat(root.querySelector(".action-bar .summary"))
+const total = () => flat(root.querySelector(".action-bar .total"))
 
-const answer = async (id: string, which: "made" | "not-made") => {
-	answerButton(id, which).click()
+const done = async () => {
+	root.querySelector<HTMLElement>('dialog [data-action="done"]')?.click()
 	await settle()
 }
 
-const typeInto = async (input: HTMLInputElement, text: string) => {
+const answer = async (id: string, which: "made" | "not-made", order = 0) => {
+	;(await answerButton(id, which, order)).click()
+	await settle()
+}
+
+const typeInto = async (input: HTMLInputElement | null, text: string) => {
+	if (!input) throw new Error("no input")
 	input.value = text
 	input.dispatchEvent(new Event("input", { bubbles: true }))
 	await settle()
 }
 
+test("the list is a row per card in one row panel, and no sheet is open at first", async () => {
+	await show()
+	expect(flat(root.querySelector(".list-layout__main p.note"))).toBe(
+		"Open each card to record whether it was made. Change the amount if the real one differs.",
+	)
+	expect(root.querySelector(".list-layout__main .row-panel.lines")).toBeInstanceOf(HTMLElement)
+	expect(rows()).toEqual(["A", "B", "C"])
+	expect(root.querySelector("dialog")).toBeNull()
+	expect(flat(row("A")?.querySelector(".what small"))).toBe("Not answered")
+	expect(flat(row("A")?.querySelector(".sum"))).toBe("฿12,500.00")
+	expect(row("A")?.querySelector(".sum")?.hasAttribute("data-pending")).toBe(true)
+})
+
+test("a row opens its card's sheet, and Done closes it", async () => {
+	await show()
+	row("B")?.click()
+	await settle()
+	expect(sheetOf("B")).toBeInstanceOf(HTMLElement)
+	expect(flat(root.querySelector("dialog h2"))).toBe("Was it made?")
+	await done()
+	expect(root.querySelector("dialog")).toBeNull()
+})
+
+test("the sheet steps to the card before or after", async () => {
+	await show()
+	await open("B")
+	root.querySelector<HTMLElement>('dialog [data-action="next-card"]')?.click()
+	await settle()
+	expect(sheetOf("C")).toBeInstanceOf(HTMLElement)
+	expect(root.querySelector<HTMLButtonElement>('dialog [data-action="next-card"]')?.disabled).toBe(true)
+	root.querySelector<HTMLElement>('dialog [data-action="prev-card"]')?.click()
+	await settle()
+	expect(sheetOf("B")).toBeInstanceOf(HTMLElement)
+})
+
 test("save waits for every answer", async () => {
 	await show()
-	expect(flat(root.querySelector("p.note"))).toBe(
-		"Record the spender's reply for each line. Change the amount if the real one differs.",
-	)
-	expect(flat(line("A"))).toContain("planned ฿12,500.00")
-	const group = line("A").querySelector("fieldset.pair")
+	expect(flat((await open("A")).querySelector(".card-title .planned"))).toBe("planned ฿12,500.00")
+	// One order has no heading of its own: the card's title says what it was planned at.
+	expect((await open("A")).querySelector(".order-head")).toBeNull()
+	const group = (await orderOf("A")).querySelector("fieldset.pair")
 	expect(group?.getAttribute("aria-label")).toBe("Was it made?")
 	await answer("A", "made")
-	expect(answerButton("A", "made").getAttribute("aria-pressed")).toBe("true")
-	expect(answerButton("A", "not-made").getAttribute("aria-pressed")).toBe("false")
+	expect((await answerButton("A", "made")).getAttribute("aria-pressed")).toBe("true")
+	expect((await answerButton("A", "not-made")).getAttribute("aria-pressed")).toBe("false")
 	expect(saveButton().disabled).toBe(true)
-	expect(flat(saveButton())).toBe("Answer every line (1 of 3)")
+	expect(flat(saveButton())).toBe("Save reply")
+	expect(summary()).toBe("Answer every line (1 of 3)")
+	expect(root.querySelector(".action-bar .summary")?.classList.contains("warned")).toBe(true)
 })
 
 test("the answer buttons take the variants: quiet until pressed, danger for not made", async () => {
 	await show()
-	expect(answerButton("A", "made").getAttribute("data-variant")).toBe("quiet")
-	expect(answerButton("A", "not-made").getAttribute("data-variant")).toBe("quiet")
+	expect((await answerButton("A", "made")).getAttribute("data-variant")).toBe("quiet")
+	expect((await answerButton("A", "not-made")).getAttribute("data-variant")).toBe("quiet")
 	await answer("A", "made")
-	expect(answerButton("A", "made").hasAttribute("data-variant")).toBe(false)
+	expect((await answerButton("A", "made")).hasAttribute("data-variant")).toBe(false)
 	await answer("A", "not-made")
-	expect(answerButton("A", "made").getAttribute("data-variant")).toBe("quiet")
-	expect(answerButton("A", "not-made").getAttribute("data-variant")).toBe("danger")
+	expect((await answerButton("A", "made")).getAttribute("data-variant")).toBe("quiet")
+	expect((await answerButton("A", "not-made")).getAttribute("data-variant")).toBe("danger")
 })
 
 test("a made line takes the real amount", async () => {
 	await show()
-	expect(actual("A")).toBeNull()
+	expect(await actual("A")).toBeNull()
 	await answer("A", "made")
-	expect(actual("A").value).toBe("12500")
-	expect(flat(line("A"))).not.toContain("vs plan")
-	await typeInto(actual("A"), "13000")
-	expect(flat(line("A"))).toContain("+฿500.00 vs plan")
-	expect(line("A").querySelector("p.diff")).toBeInstanceOf(HTMLElement)
-	await typeInto(actual("A"), "12000")
-	expect(flat(line("A"))).toContain("−฿500.00 vs plan")
+	expect((await actual("A"))?.value).toBe("12500")
+	expect(flat(await orderOf("A"))).not.toContain("vs plan")
+	await typeInto(await actual("A"), "13000")
+	expect(flat(await orderOf("A"))).toContain("+฿500.00 vs plan")
+	expect((await orderOf("A")).querySelector("p.diff")).toBeInstanceOf(HTMLElement)
+	await typeInto(await actual("A"), "12000")
+	expect(flat(await orderOf("A"))).toContain("−฿500.00 vs plan")
 })
 
 test("a real amount typed without a bubbling event still counts", async () => {
 	await show()
 	await answer("A", "made")
-	const input = actual("A")
+	const input = (await actual("A")) as HTMLInputElement
 	input.value = "13000"
 	input.dispatchEvent(new Event("input"))
 	await settle()
-	expect(flat(line("A"))).toContain("+฿500.00 vs plan")
+	expect(flat(await orderOf("A"))).toContain("+฿500.00 vs plan")
+})
+
+test("a row says what was answered and sums what was made", async () => {
+	await show()
+	await answer("A", "made")
+	await typeInto(await actual("A"), "13000")
+	await answer("B", "not-made")
+	await done()
+	expect(flat(row("A")?.querySelector(".what small"))).toBe("Made · +฿500.00 vs plan")
+	expect(flat(row("A")?.querySelector(".sum"))).toBe("฿13,000.00")
+	expect(row("A")?.querySelector(".sum")?.hasAttribute("data-pending")).toBe(false)
+	expect(flat(row("B")?.querySelector(".what small"))).toBe("Not made")
+	expect(row("B")?.querySelector(".sum")?.hasAttribute("data-unmade")).toBe(true)
+	expect(total()).toBe("฿13,000.00")
+})
+
+test("a row with a real amount that is not money has the warning bar", async () => {
+	await show()
+	await answer("A", "made")
+	await typeInto(await actual("A"), "abc")
+	await done()
+	expect(row("A")?.hasAttribute("data-warn")).toBe(true)
+	expect(flat(row("A")?.querySelector(".what small"))).toBe("Made · not an amount")
 })
 
 test("not made offers the move, ticked", async () => {
 	await show()
 	expect(move()).toBeNull()
 	await answer("B", "not-made")
-	expect(actual("B")).toBeNull()
+	expect(await actual("B")).toBeNull()
 	expect(move()?.checked).toBe(true)
 	expect(flat(move()?.closest("label"))).toBe("Move Card B to a draft for Sat, 31 Oct")
 })
@@ -170,15 +266,18 @@ test("not made offers the move, ticked", async () => {
 test("saving sends the answers", async () => {
 	const { seen } = await show()
 	await answer("A", "made")
-	await typeInto(actual("A"), "13000")
+	await typeInto(await actual("A"), "13000")
 	await answer("B", "not-made")
 	await answer("C", "made")
+	await done()
 	const box = move() as HTMLInputElement
 	box.checked = false
 	box.dispatchEvent(new Event("change", { bubbles: true }))
 	await settle()
 	expect(saveButton().disabled).toBe(false)
-	expect(flat(saveButton())).toBe("Save 2 purchases · ฿35,000.00")
+	expect(flat(saveButton())).toBe("Save 2 purchases")
+	expect(summary()).toBe("2 made · 1 not made")
+	expect(total()).toBe("฿35,000.00")
 	saveButton().click()
 	expect(seen).toEqual([
 		{
@@ -192,13 +291,16 @@ test("saving sends the answers", async () => {
 	])
 })
 
-test("one made line says purchase", async () => {
+test("one made line says purchase, none says reply", async () => {
 	await show()
 	await answer("A", "made")
 	await answer("B", "not-made")
 	await answer("C", "not-made")
-	expect(flat(saveButton())).toBe("Save 1 purchase · ฿12,500.00")
+	expect(flat(saveButton())).toBe("Save 1 purchase")
 	expect(flat(move()?.closest("label"))).toBe("Move Card B, c-[C] to a draft for Sat, 31 Oct")
+	await answer("A", "not-made")
+	expect(flat(saveButton())).toBe("Save reply")
+	expect(saveButton().disabled).toBe(false)
 })
 
 test("a real amount that is not money stops the save", async () => {
@@ -207,53 +309,54 @@ test("a real amount that is not money stops the save", async () => {
 	await answer("B", "made")
 	await answer("C", "made")
 	expect(saveButton().disabled).toBe(false)
-	await typeInto(actual("A"), "abc")
-	expect(flat(line("A"))).toContain("Enter the amount in baht, like 1234.56.")
-	expect(line("A").querySelector("p.error")).toBeInstanceOf(HTMLElement)
+	await typeInto(await actual("A"), "abc")
+	expect(flat(await orderOf("A"))).toContain("Enter the amount in baht, like 1234.56.")
+	expect((await orderOf("A")).querySelector("p.error")).toBeInstanceOf(HTMLElement)
 	expect(saveButton().disabled).toBe(true)
-	await typeInto(actual("A"), "")
+	await typeInto(await actual("A"), "")
 	expect(saveButton().disabled).toBe(true)
 })
 
 test("answers survive a language switch", async () => {
 	await show()
 	await answer("A", "made")
+	await typeInto(await actual("A"), "13000")
 	await answer("B", "not-made")
-	await typeInto(actual("A"), "13000")
 	setLocale("th")
 	await settle()
-	expect(answerButton("A", "made").getAttribute("aria-pressed")).toBe("true")
-	expect(answerButton("B", "not-made").getAttribute("aria-pressed")).toBe("true")
-	expect(answerButton("C", "made").getAttribute("aria-pressed")).toBe("false")
-	expect(actual("A").value).toBe("13000")
-	expect(flat(answerButton("A", "made"))).toBe("ซื้อแล้ว")
+	expect((await answerButton("B", "not-made")).getAttribute("aria-pressed")).toBe("true")
+	expect((await answerButton("A", "made")).getAttribute("aria-pressed")).toBe("true")
+	expect((await actual("A"))?.value).toBe("13000")
+	expect(flat(await answerButton("A", "made"))).toBe("ซื้อแล้ว")
+	expect((await answerButton("C", "made")).getAttribute("aria-pressed")).toBe("false")
 })
 
 test("a fresh copy of the same list keeps the answers; a different list starts afresh", async () => {
 	const { set } = await show()
 	await answer("A", "made")
-	await typeInto(actual("A"), "13000")
-	await typeInto(noteOf("B"), "later")
+	await typeInto(await actual("A"), "13000")
+	await typeInto(await noteOf("B"), "later")
 	await set({ list: { ...w1, lines: w1.lines.map((l) => ({ ...l })) }, cards: [card("A"), card("B")] })
-	expect(answerButton("A", "made").getAttribute("aria-pressed")).toBe("true")
-	expect(actual("A").value).toBe("13000")
-	expect(noteOf("B").value).toBe("later")
-	await set({ list: { ...w1, id: "w2", lines: [{ cardId: "A", amount: 100, note: "fuel" }] } })
-	expect(answerButton("A", "made").getAttribute("aria-pressed")).toBe("false")
-	expect(noteOf("A").value).toBe("fuel")
-	expect(line("B")).toBeNull()
-	expect(flat(saveButton())).toBe("Answer every line (0 of 1)")
+	expect((await noteOf("B")).value).toBe("later")
+	expect((await answerButton("A", "made")).getAttribute("aria-pressed")).toBe("true")
+	expect((await actual("A"))?.value).toBe("13000")
+	await set({ sheet: null, list: { ...w1, id: "w2", lines: [{ cardId: "A", amount: 100, note: "fuel" }] } })
+	expect(rows()).toEqual(["A"])
+	expect((await answerButton("A", "made")).getAttribute("aria-pressed")).toBe("false")
+	expect((await noteOf("A")).value).toBe("fuel")
+	expect(summary()).toBe("Answer every line (0 of 1)")
 })
 
-test("a line is headed by the card in the panel form", async () => {
+test("a row and its sheet are headed by the card in the panel form", async () => {
 	await show(w1, { groups: [{ id: "g1", name: "KBank", limit: 100_000_00, color: "teal" }] })
-	expect(flat(line("A").querySelector(".card-label"))).toBe("A) Card A")
-	expect(flat(line("A").querySelector(".mini"))).toBe("1111")
-	expect(line("A").querySelector(".mini")?.hasAttribute("data-g")).toBe(false)
+	expect(flat(row("A")?.querySelector(".card-label"))).toBe("A) Card A")
+	expect(flat(row("A")?.querySelector(".mini"))).toBe("1111")
+	expect(row("A")?.querySelector(".mini")?.hasAttribute("data-g")).toBe(false)
 	// C is no longer stored: its id stays, with a dash for the name.
-	expect(flat(line("C").querySelector(".card-label"))).toBe("C) —")
-	expect(line("C").querySelector(".mini")?.getAttribute("aria-hidden")).toBe("true")
-	expect(line("A").querySelector(".mini")?.hasAttribute("aria-hidden")).toBe(false)
+	expect(flat(row("C")?.querySelector(".card-label"))).toBe("C) —")
+	expect(row("C")?.querySelector(".mini")?.getAttribute("aria-hidden")).toBe("true")
+	expect(row("A")?.querySelector(".mini")?.hasAttribute("aria-hidden")).toBe(false)
+	expect(flat((await open("A")).querySelector(".card-title .card-label"))).toBe("A) Card A")
 })
 
 test("the card chip wears its group's colour", async () => {
@@ -261,17 +364,18 @@ test("the card chip wears its group's colour", async () => {
 		cards: [{ ...card("A"), limitGroupId: "g1" }, card("B")],
 		groups: [{ id: "g1", name: "KBank", limit: 100_000_00, color: "teal" }],
 	})
-	expect(line("A").querySelector(".card-panel .mini")?.getAttribute("data-g")).toBe("teal")
+	expect(row("A")?.querySelector(".mini")?.getAttribute("data-g")).toBe("teal")
 })
 
-test("the move checkbox and Save sit in the side panel, the lines in the main column", async () => {
+test("the move checkbox and Save sit in the side panel, the rows in the main column", async () => {
 	await show()
 	await answer("B", "not-made")
+	await done()
 	const main = root.querySelector(".list-layout > .list-layout__main")
 	const side = root.querySelector(".list-layout > .list-layout__side")
-	expect(main?.querySelectorAll("section.line")).toHaveLength(3)
+	expect(main?.querySelectorAll("button.line")).toHaveLength(3)
 	expect(side?.querySelector('[data-field="move"]')).toBeInstanceOf(HTMLElement)
-	expect(side?.querySelector('[data-action="save-reply"]')).toBeInstanceOf(HTMLElement)
+	expect(side?.querySelector('.action-bar [data-action="save-reply"]')).toBeInstanceOf(HTMLElement)
 })
 
 test("the side panel takes the page's own actions after Save", async () => {
@@ -281,7 +385,7 @@ test("the side panel takes the page's own actions after Save", async () => {
 	expect(cancel?.previousElementSibling?.classList.contains("action-bar")).toBe(true)
 })
 
-test("each line shows its note to edit, made or not, and saving sends it trimmed", async () => {
+test("each order shows its note to edit, made or not, the row shows it, and saving sends it trimmed", async () => {
 	const { seen } = await show({
 		...w1,
 		lines: [
@@ -290,22 +394,23 @@ test("each line shows its note to edit, made or not, and saving sends it trimmed
 			{ cardId: "C", amount: 300 },
 		],
 	})
+	expect(flat(row("A")?.querySelector(".what small"))).toBe("Not answered · fuel")
 	// Shown before any answer, so the note can be read and changed first.
-	expect(noteOf("A").value).toBe("fuel")
-	expect(flat(noteOf("A").closest("label"))).toBe("Note (optional)")
-	expect(noteOf("A").getAttribute("placeholder")).toBeTruthy()
-	expect(noteOf("C").value).toBe("")
+	expect((await noteOf("A")).value).toBe("fuel")
+	expect(flat((await noteOf("A")).closest("label"))).toBe("Note (optional)")
+	expect((await noteOf("A")).getAttribute("placeholder")).toBeTruthy()
+	expect((await noteOf("C")).value).toBe("")
 	await answer("A", "made")
+	await typeInto(await noteOf("A"), "  diesel ")
 	await answer("B", "not-made")
+	await typeInto(await noteOf("B"), "   ")
 	await answer("C", "made")
-	await typeInto(noteOf("A"), "  diesel ")
-	await typeInto(noteOf("B"), "   ")
-	await typeInto(noteOf("C"), "cash back")
+	await typeInto(await noteOf("C"), "cash back")
 	// A language switch keeps the typed notes.
 	setLocale("th")
 	await settle()
-	expect(noteOf("A").value).toBe("  diesel ")
-	expect(noteOf("C").value).toBe("cash back")
+	expect((await noteOf("C")).value).toBe("cash back")
+	expect((await noteOf("A")).value).toBe("  diesel ")
 	saveButton().click()
 	expect(seen[0]?.lines).toEqual([
 		{ cardId: "A", amount: 100, made: true, note: "diesel" },
@@ -316,29 +421,43 @@ test("each line shows its note to edit, made or not, and saving sends it trimmed
 
 test("each note box is named for its card", async () => {
 	await show()
-	expect(noteOf("A").getAttribute("aria-label")).toBe("Note for Card A")
+	expect((await noteOf("A")).getAttribute("aria-label")).toBe("Note for Card A")
 	// A card no longer stored keeps its id.
-	expect(noteOf("C").getAttribute("aria-label")).toBe("Note for c-[C]")
+	expect((await noteOf("C")).getAttribute("aria-label")).toBe("Note for c-[C]")
 })
 
-test("each order on a card is answered on its own, and the move names the card once", async () => {
+test("a card's orders share its row and its sheet, each answered on its own", async () => {
 	const { seen } = await show({
 		...w1,
 		lines: [
 			{ cardId: "B", amount: 1_000_00 },
-			{ cardId: "B", amount: 2_000_00 },
 			{ cardId: "A", amount: 500_00 },
+			{ cardId: "B", amount: 2_000_00 },
 		],
 	})
-	const notMade = [...root.querySelectorAll<HTMLButtonElement>('section.line[data-card="B"] [data-answer="not-made"]')]
-	expect(notMade).toHaveLength(2)
-	for (const button of notMade) button.click()
+	expect(rows()).toEqual(["B", "A"])
+	expect(flat(row("B")?.querySelector(".sum"))).toBe("฿3,000.00")
+	expect(flat(row("B")?.querySelector(".what small"))).toBe("2 orders · Not answered")
+	const sheet = await open("B")
+	expect(flat(sheet.querySelector(".card-title .planned"))).toBe("planned ฿3,000.00")
+	expect([...sheet.querySelectorAll(".order-head")].map(flat)).toEqual([
+		"Order 1 planned ฿1,000.00",
+		"Order 2 planned ฿2,000.00",
+	])
+	await answer("B", "not-made", 0)
+	await done()
+	expect(flat(row("B")?.querySelector(".what small"))).toBe("2 orders · 1 of 2 answered")
+	await answer("B", "made", 1)
+	await done()
+	expect(flat(row("B")?.querySelector(".what small"))).toBe("2 orders · 1 made · 1 not made")
+	expect(flat(row("B")?.querySelector(".sum"))).toBe("฿2,000.00")
+	await answer("B", "not-made", 1)
 	await answer("A", "made")
 	expect(flat(move()?.closest("label"))).toBe("Move Card B to a draft for Sat, 31 Oct")
 	saveButton().click()
 	expect(seen.at(-1)?.lines).toEqual([
 		{ cardId: "B", amount: 1_000_00, made: false },
-		{ cardId: "B", amount: 2_000_00, made: false },
 		{ cardId: "A", amount: 500_00, made: true },
+		{ cardId: "B", amount: 2_000_00, made: false },
 	])
 })

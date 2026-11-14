@@ -183,6 +183,9 @@ written (or the one it merged into) open in its panel, so Back does not reopen t
 The add-a-card sheet works as on `/transactions/lists/new`; a draft's cards come from the stored
 draft, so the address stays as it is. A save leaves for `/transactions/lists?list=<id>`; deleting
 the draft or cancelling the waiting list, for `/transactions/lists`. ‹ leads to the Lists tab.
+The reply's card sheet is not in the address either: opening a card's row pushes an entry with
+the address unchanged, so Back closes it; the card before or after changes nothing in history;
+_Done_ and Close step back over its entry.
 
 ## Cards
 

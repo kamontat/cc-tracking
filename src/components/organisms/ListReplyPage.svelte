@@ -16,7 +16,7 @@
 	import { MessageError } from "#lib/i18n/error"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
-	import { listKey, listPageAddress } from "#lib/ui/list-address"
+	import { EDIT_LIST_ADDRESS, listKey, listPageAddress } from "#lib/ui/list-address"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
 	import { writeListReply } from "#lib/ui/save-list-reply"
@@ -29,6 +29,10 @@
 	 * then leaves for the Lists tab with the saved list open in its panel; *Cancel list* deletes the
 	 * waiting list and leaves for the Lists tab. A list in any other state (or none) says so and
 	 * links to where it can be opened. Everything here is the reader's data (DD-172).
+	 *
+	 * A card's sheet is not in the address, as the builder's is not: opening it pushes an entry
+	 * with the address unchanged, so Back closes it; ‹ › within it change nothing in history;
+	 * *Done* and Close step back over its entry.
 	 */
 	interface Props {
 		/** Opens the store; tests pass one over an in-memory repository. */
@@ -66,6 +70,11 @@
 	let leaving = false
 	let startupFailure = $state<(() => string) | null>(null)
 	let painted = $state(0)
+	/** The card whose sheet is open, in memory only. */
+	let sheet = $state<string | null>(null)
+	// Whether this page pushed the entry now showing: closing the sheet then steps back, so the
+	// reply is not in history twice.
+	let pushed = false
 
 	const page = createPageState({
 		fetch: async () => {
@@ -91,6 +100,21 @@
 	}
 
 	const list = $derived(shown?.lists.find((l) => l.id === id))
+
+	/** Opens, moves or closes a card's sheet, keeping history in step. */
+	const onSheet = (next: string | null) => {
+		if (next !== null && sheet === null) {
+			pushed = true
+			// The page's own entry: Back to the reply must not have the router swap in a fresh page.
+			address.push(`${EDIT_LIST_ADDRESS}${address.search()}`, { ownPage: true })
+		} else if (next === null && sheet !== null && pushed) {
+			pushed = false
+			// The pop that follows closes the sheet.
+			address.back()
+			return
+		}
+		sheet = next
+	}
 
 	/** Writes the reply (`writeListReply`), then leaves for the saved list's own page. */
 	const saveReply = async ({ lines, moveUnmade }: { lines: ListLine[]; moveUnmade: boolean }) => {
@@ -132,6 +156,14 @@
 		const unsubscribe = subscribe(() => {
 			lang = getLocale()
 		})
+		const removePop = address.onPop(
+			() => {
+				// Back over the sheet's entry closes it; Forward onto it leaves it closed.
+				sheet = null
+				pushed = false
+			},
+			{ ownPage: true },
+		)
 		void (async () => {
 			const opened = await open()
 			if (!opened.ok) {
@@ -141,14 +173,17 @@
 			repo = opened.repo
 			await page.load()
 		})()
-		return unsubscribe
+		return () => {
+			unsubscribe()
+			removePop()
+		}
 	})
 </script>
 
 {#if shown && list?.status === "sent"}
 	<SubHeaderBar title={tr("reply.title")} {detail} back={home} />
 	<ErrorBanner message={error} retryLabel={tr("common.reload")} onretry={onRetry} />
-	<ListReply {list} cards={shown.cards} groups={shown.groups} onsavereply={saveReply}>
+	<ListReply {list} cards={shown.cards} groups={shown.groups} {sheet} onsheet={onSheet} onsavereply={saveReply}>
 		{#snippet side()}
 			<button type="button" data-variant="danger" data-action="cancel-list" onclick={cancelList}>
 				{tr("reply.cancel")}
