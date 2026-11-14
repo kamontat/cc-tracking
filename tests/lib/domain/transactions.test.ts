@@ -2,12 +2,11 @@ import type { Card, CardPayment, Purchase, PurchaseList } from "#lib/domain/type
 
 import { describe, expect, test } from "vitest"
 
-import { ledgersFor } from "#lib/domain/ledger"
 import {
 	byDay,
 	DEFAULT_LISTS_FILTER,
 	DEFAULT_TX_FILTER,
-	entriesTotal,
+	entriesSummary,
 	filterEntries,
 	filterLists,
 	groupEntries,
@@ -18,6 +17,7 @@ import {
 	listRows,
 	monthSummary,
 	sortEntries,
+	summaryRange,
 	TX_DIRS,
 	TX_GROUPS,
 	TX_SORTS,
@@ -181,21 +181,52 @@ describe("sortEntries and byDay", () => {
 		expect(groups?.[0]).toMatchObject({ kind: "card", cardId: "a" })
 		expect(groupEntries(both, "none", "date", "desc")).toBeNull()
 	})
-	test("total: payments plus, purchases minus", () => {
-		expect(entriesTotal(entries)).toBe(900 - 600)
-	})
 })
 
 describe("monthSummary", () => {
-	test("counts only this month", () => {
+	test("counts only this month, and nets payments against purchases", () => {
 		const purchases = [buy("p1", { amount: 1000 }), buy("p2", { date: "2026-09-30", amount: 5000 })]
 		const payments = [pay("m1", { amount: 200 }), pay("m2", { date: "2026-09-01", amount: 700 })]
 		const entries = ledgerEntries(cards, purchases, payments)
-		const ledgers = ledgersFor(cards, purchases, payments, [], TODAY)
-		const out = monthSummary(entries, ledgers, TODAY)
-		expect(out.purchases).toBe(1000)
-		expect(out.payments).toBe(200)
-		expect(out.owed).toBe(6000 - 900)
+		expect(monthSummary(entries, TODAY)).toEqual({ count: 2, purchases: 1000, payments: 200, net: -800 })
+	})
+})
+
+describe("entriesSummary", () => {
+	test("sums the entries given, whatever their month: the count, purchases, payments and net", () => {
+		const purchases = [buy("p1", { amount: 1000 }), buy("p2", { date: "2026-09-30", amount: 5000 })]
+		const payments = [pay("m1", { amount: 7000 })]
+		const entries = ledgerEntries(cards, purchases, payments)
+		expect(entriesSummary(entries)).toEqual({ count: 3, purchases: 6000, payments: 7000, net: 1000 })
+		expect(entriesSummary([])).toEqual({ count: 0, purchases: 0, payments: 0, net: 0 })
+	})
+})
+
+describe("summaryRange", () => {
+	const none = { q: "", types: [], cards: [], range: "", from: "", to: "" } as const
+	const entries = ledgerEntries(
+		cards,
+		[buy("p1", { date: "2026-10-03" }), buy("p2", { date: "2026-09-20" })],
+		[pay("m1", { date: "2026-10-12" })],
+	)
+	test("no date filter: the matching entries' first and last days", () => {
+		expect(summaryRange(entries, none, TODAY)).toEqual({ from: "2026-09-20", to: "2026-10-12" })
+	})
+	test("a preset is its own range, whatever the entries span", () => {
+		expect(summaryRange(entries, { ...none, range: "month" }, TODAY)).toEqual({ from: "2026-10-01", to: "2026-10-31" })
+	})
+	test("a custom range open on one side takes that side from the entries", () => {
+		expect(summaryRange(entries, { ...none, range: "custom", from: "2026-09-01" }, TODAY)).toEqual({
+			from: "2026-09-01",
+			to: "2026-10-12",
+		})
+		expect(summaryRange(entries, { ...none, range: "custom", to: "2026-10-05" }, TODAY)).toEqual({
+			from: "2026-09-20",
+			to: "2026-10-05",
+		})
+	})
+	test("no entries and no date filter: no range", () => {
+		expect(summaryRange([], none, TODAY)).toBeNull()
 	})
 })
 

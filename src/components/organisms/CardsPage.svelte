@@ -12,9 +12,11 @@
 	import SvgIcon from "#components/atoms/SvgIcon.svelte"
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
+	import GlancePanel from "#components/molecules/GlancePanel.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import CardsFilter from "#components/organisms/CardsFilter.svelte"
 	import CardsList from "#components/organisms/CardsList.svelte"
+	import { cardsGlance } from "#lib/domain/cards-glance"
 	import { cardsResults } from "#lib/domain/cards-view"
 	import { today } from "#lib/domain/date"
 	import { ownerName, sortOwners } from "#lib/domain/owner"
@@ -24,6 +26,7 @@
 	import { takeResetNotice } from "#lib/storage/migrate-locations"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { readCardsView, writeCardsView } from "#lib/ui/cards-query"
+	import { cardsGlanceFigures } from "#lib/ui/glance"
 	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
@@ -33,10 +36,10 @@
 
 	/**
 	 * The Cards tab's island (`/cards`, prototype `vCards`, PRD RD-22): the search row (search,
-	 * *Filter* and *+ Add card* at its end), the sort and group chips and the filter chips, then the
-	 * results. The page's static head holds the title and the tabs (_Cards · Limits_, `PageTabs`);
+	 * *Filter* and *+ Add card* at its end), the sort and group chips and the filter chips, the glance
+	 * panels over the shown cards (DD-210), then the results. The page's static head holds the title and the tabs (_Cards · Limits_, `PageTabs`);
 	 * the limit groups are the Limits tab's (`LimitsPage`). The view lives in the address
-	 * (`?q=&f.locations=&f.owners=&f.usage=&sort=&dir=&by=`, RD-29), rewritten in place as it
+	 * (`?q=&f.locations=&f.owners=&f.usage=&f.states=&sort=&dir=&by=`, RD-29), rewritten in place as it
 	 * changes. Everything here is the reader's data (PRD DD-172).
 	 *
 	 * A card opens in its detail panel (RD-23, `CardPanel`) at `?card=<id>`, beside the list from
@@ -148,6 +151,11 @@
 				label: t(`cards.usage.${usage}`),
 				clear: () => change({ usage: view.usage.filter((u) => u !== usage) }),
 			})),
+			...view.states.map((state) => ({
+				key: `state:${state}`,
+				label: t(`cards.state.${state}`),
+				clear: () => change({ states: view.states.filter((s) => s !== state) }),
+			})),
 		]
 	})
 
@@ -170,6 +178,23 @@
 			? cardsResults(data.money.cards, data.money.groups, data.rooms, view, order, now, data.money.ledgers, ownerOrder)
 			: null,
 	)
+
+	// The unarchived cards on show, whatever the grouping; the sort leaves the sums alone.
+	const glance = $derived(
+		data && results && results.count > 0
+			? cardsGlance(
+					results.flat ?? (results.sections ?? []).flatMap((section) => section.cards),
+					data.rooms,
+					data.money.ledgers,
+					now,
+				)
+			: null,
+	)
+
+	const glanceFigures = $derived.by(() => {
+		void lang
+		return glance ? cardsGlanceFigures(glance) : null
+	})
 
 	const countFor = (draft: CardsView) =>
 		data
@@ -261,6 +286,9 @@
 						</button>
 					{/snippet}
 				</FilterControls>
+				{#if glanceFigures}
+					<GlancePanel title={tr("cards.glance.label")} figures={glanceFigures} />
+				{/if}
 				<CardsList
 					{results}
 					groups={data.money.groups}

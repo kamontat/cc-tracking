@@ -7,8 +7,10 @@
 
 	import CardSections from "#components/molecules/CardSections.svelte"
 	import CardTile from "#components/molecules/CardTile.svelte"
+	import { cardsGlance } from "#lib/domain/cards-glance"
 	import { cardOpenDates } from "#lib/domain/cards-view"
 	import { displayDate, today as todayOf } from "#lib/domain/date"
+	import { formatAmount } from "#lib/domain/money"
 	import { cardOwnerOf, ownerName } from "#lib/domain/owner"
 	import { nameOfLocation } from "#lib/i18n/format"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
@@ -20,7 +22,8 @@
 	 * The Cards page's results (DD prototype `cardResults`), in sections (DD-192): by place, a
 	 * section per location headed by its name, its count and whether it takes purchases; by account
 	 * holder or limit group, a section per holder or group headed by it and its count; not grouped,
-	 * one flat list headed by its count. Outside the place sections the tiles also say the place. Archived matches fold at the end
+	 * one flat list headed by its count. Each section's head is followed by its totals: what its
+	 * cards owe, what is due on them in 7 days and their groups' used share (DD-210). Outside the place sections the tiles also say the place. Archived matches fold at the end
 	 * (`cc:panel:cards-archive`). Each card is a card tile (DD-151) that opens its card's panel (RD-23): the
 	 * last 4, the group's room and its word, the cardholder (`· Sub` for a supplementary card),
 	 * and the open period's dates.
@@ -106,6 +109,16 @@
 		return place ? `${dates(card)} · ${place}` : dates(card)
 	}
 
+	/** A section's totals line, as the glance panels count them. */
+	const totals = (cards: Card[]): string => {
+		const glance = cardsGlance(cards, rooms, ledgers, today)
+		return tr("cards.glance.section", {
+			owed: formatAmount(glance.owed),
+			soon: formatAmount(glance.soon.amount),
+			used: glance.usedPct === null ? "—" : `${glance.usedPct}%`,
+		})
+	}
+
 	/** A tile's click: the panel opens in place, unless the reader asked the browser for a new tab. */
 	const opener = (id: string) => (event: MouseEvent) => {
 		if (!onopen || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
@@ -119,6 +132,10 @@
 		}),
 	)
 </script>
+
+{#snippet summary(cards: Card[])}
+	{totals(cards)}
+{/snippet}
 
 {#snippet tile(card: Card, unplaced: boolean)}
 	<CardTile
@@ -145,7 +162,8 @@
 		{locations}
 		{owners}
 		head={results.flat ? cardsCount(results.flat.length) : undefined}
-		{tile} />
+		{tile}
+		{summary} />
 	{#if results.archived.length > 0}
 		<details class="archive" open={panelOpen(ARCHIVE_PANEL, false)} ontoggle={rememberPanel(ARCHIVE_PANEL)}>
 			<summary>{tr("cards.archivedList", { count: results.archived.length })}</summary>

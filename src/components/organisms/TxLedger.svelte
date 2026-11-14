@@ -22,7 +22,7 @@
 	import { displayDate, headerDate } from "#lib/domain/date"
 	import { formatAmount, MINUS } from "#lib/domain/money"
 	import { listTotal } from "#lib/domain/purchase-list"
-	import { entriesTotal, entryAmount, entryDate, listIdOf, type TxEntry } from "#lib/domain/transactions"
+	import { entryAmount, entryDate, listIdOf, type TxEntry } from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { cardLine, groupColor } from "#lib/ui/card-label"
 	import { entryId, paymentDrawer, planId, purchaseDrawer, shownGroups } from "#lib/ui/ledger-drawer"
@@ -178,15 +178,6 @@
 		return section.date === today ? tr("tx.today", { date: words }) : words
 	}
 
-	const resultHead = $derived.by(() => {
-		const total = entriesTotal(all)
-		const sign = total < 0 ? MINUS : "+"
-		return tr(all.length === 1 ? "tx.results.one" : "tx.results.many", {
-			count: all.length,
-			total: `${sign}${formatAmount(Math.abs(total))}`,
-		})
-	})
-
 	/** *Show 50 more · N left*, or *Show N more* when fewer than a page are left. */
 	const left = $derived(all.length - limit)
 	const moreLabel = $derived(
@@ -313,9 +304,6 @@
 			</div>
 		</section>
 	{/if}
-	{#if filtered}
-		<p class="result-head">{resultHead}</p>
-	{/if}
 	{#if all.length === 0}
 		<p class="empty" tabindex="-1" data-refocus="ledger">{tr(filtered ? "tx.noResults" : "tx.empty")}</p>
 	{:else if days}
@@ -380,11 +368,6 @@
 		display: flex;
 		flex-direction: column;
 		overflow: clip;
-	}
-
-	.result-head {
-		font-size: var(--cc-text-sm);
-		color: var(--cc-text-muted);
 	}
 
 	.ledger .more {

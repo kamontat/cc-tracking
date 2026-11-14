@@ -142,13 +142,48 @@ test("the default view shows the summary, upcoming and the ledger by day", async
 	expect(written).toEqual([])
 })
 
-test("searching writes ?q= and hides the summary", async () => {
+test("searching writes ?q= and the summary turns to the matching entries", async () => {
 	const { written } = await open()
 	await type("fuel")
 	expect(written.at(-1)).toBe("?q=fuel")
-	expect($('[data-testid="summary"]')).toBeNull()
-	expect($(".result-head")).not.toBeNull()
+	const summary = $('[data-testid="summary"]')
+	expect(summary?.querySelector("h2")?.textContent).toBe("1 matching entry")
+	// No date filter: the one matching entry's day.
+	expect(text(summary?.querySelector(".glance__aside"))).toBe("30 Oct 2026")
+	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿1,000.00")
+	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe("฿0.00")
+	// Nothing paid is no money in: no green.
+	expect(summary?.querySelector('[data-field="payments"] b')?.hasAttribute("data-tone")).toBe(false)
+	expect(summary?.querySelector('[data-field="net"] b')?.textContent).toBe("−฿1,000.00")
+	expect(summary?.querySelector('[data-field="net"] b')?.getAttribute("data-tone")).toBe("out")
+	expect(summary?.querySelector('[data-field="owed"]')).toBeNull()
+	expect($(".result-head")).toBeNull()
 	expect(ledgerRows()).toHaveLength(1)
+	await type("zzz")
+	expect($('[data-testid="summary"]')).toBeNull()
+})
+
+test("a date filter names its range in the panel; the month so far names none", async () => {
+	await open("?f.range=month")
+	expect(text($('[data-testid="summary"] .glance__aside'))).toBe("1 Oct – 31 Oct 2026")
+	if (mounted) unmount(mounted)
+	mounted = undefined
+	await open()
+	expect($('[data-testid="summary"] .glance__aside')).toBeNull()
+})
+
+test("a card filter sums that card's entries, netting its payments against its purchases", async () => {
+	await open("?f.cards=A")
+	const summary = $('[data-testid="summary"]')
+	expect(summary?.querySelector("h2")?.textContent).toBe("2 matching entries")
+	expect([...(summary?.querySelectorAll("[data-field]") ?? [])].map((f) => f.getAttribute("data-field"))).toEqual([
+		"purchases",
+		"payments",
+		"net",
+	])
+	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿1,000.00")
+	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe("+฿300.00")
+	expect(summary?.querySelector('[data-field="net"] b')?.textContent).toBe("−฿700.00")
 })
 
 test("removing a chip drops that filter", async () => {
@@ -364,11 +399,15 @@ test("the summary names the month and signs its figures", async () => {
 	await open()
 	const summary = $('[data-testid="summary"]')
 	expect(summary?.querySelector("h2")?.textContent).toBe("October so far")
-	expect(summary?.querySelector(".tx-summary__head small")).toBeNull()
+	// The glance panel Cards shares (DD-210).
+	expect(summary?.matches("section.glance")).toBe(true)
+	expect(summary?.querySelector(".glance__note")).toBeNull()
 	expect(text(summary)).not.toContain(" · ")
 	expect(summary?.querySelector('[data-field="purchases"] b')?.textContent).toBe("−฿1,250.00")
 	expect(summary?.querySelector('[data-field="purchases"] b')?.getAttribute("data-tone")).toBe("out")
 	expect(summary?.querySelector('[data-field="payments"] b')?.textContent).toBe("+฿300.00")
+	expect(summary?.querySelector('[data-field="net"] b')?.textContent).toBe("−฿950.00")
+	expect(summary?.querySelector('[data-field="owed"]')).toBeNull()
 })
 
 /** 117 purchases on top of the three in `seed`: 120 ledger entries, two a day back from October. */
@@ -428,8 +467,8 @@ test("a search, filter or sort change starts the ledger at 50 again; the address
 	expect(written.every((w) => !w.includes("50"))).toBe(true)
 })
 
-test("the results line counts every match, not only the rows shown", async () => {
+test("the glance panel counts every match, not only the rows shown", async () => {
 	await open("?q=bulk", bulk)
 	expect(ledgerRows()).toHaveLength(50)
-	expect(text($(".result-head"))).toContain("117")
+	expect(text($('[data-testid="summary"] h2'))).toBe("117 matching entries")
 })

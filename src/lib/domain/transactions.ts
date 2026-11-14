@@ -1,4 +1,4 @@
-import type { Card, CardLedger, CardPayment, ListStatus, PlainDate, Purchase, PurchaseList } from "#lib/domain/types"
+import type { Card, CardPayment, ListStatus, PlainDate, Purchase, PurchaseList } from "#lib/domain/types"
 
 import { compareDates } from "#lib/domain/date"
 import { formatAmount, sumAmounts } from "#lib/domain/money"
@@ -175,24 +175,39 @@ export function byDay(entries: TxEntry[]): Extract<LedgerSection, { kind: "day" 
 	return days
 }
 
-/** Payments count plus, purchases minus. */
-export function entriesTotal(entries: TxEntry[]): number {
-	return sumAmounts(entries.map((e) => (e.kind === "payment" ? 1 : -1) * entryAmount(e)))
+/** What a set of ledger entries comes to: how many, their purchases and payments, and payments less purchases. */
+export type EntriesSummary = { count: number; purchases: number; payments: number; net: number }
+
+/** The glance panel's figures over `entries`, whatever their month (DD-210). */
+export function entriesSummary(entries: TxEntry[]): EntriesSummary {
+	const total = (kind: TxEntry["kind"]): number => sumAmounts(entries.filter((e) => e.kind === kind).map(entryAmount))
+	const purchases = total("purchase")
+	const payments = total("payment")
+	return { count: entries.length, purchases, payments, net: payments - purchases }
 }
 
-export function monthSummary(
-	entries: TxEntry[],
-	ledgers: Map<string, CardLedger>,
-	today: PlainDate,
-): { purchases: number; payments: number; owed: number } {
+/** `entriesSummary` over this month's entries so far: the unfiltered ledger's glance panel. */
+export function monthSummary(entries: TxEntry[], today: PlainDate): EntriesSummary {
 	const { from, to } = presetRange("month", today)
-	const inMonth = entries.filter((e) => compareDates(entryDate(e), from) >= 0 && compareDates(entryDate(e), to) <= 0)
-	const total = (kind: TxEntry["kind"]): number => sumAmounts(inMonth.filter((e) => e.kind === kind).map(entryAmount))
-	return {
-		purchases: total("purchase"),
-		payments: total("payment"),
-		owed: sumAmounts([...ledgers.values()].map((l) => l.owed)),
-	}
+	return entriesSummary(
+		entries.filter((e) => compareDates(entryDate(e), from) >= 0 && compareDates(entryDate(e), to) <= 0),
+	)
+}
+
+/**
+ * The dates a searched or filtered ledger's glance panel covers (DD-210): the date filter's range,
+ * any side it leaves open taken from the matching `entries`' first or last day; null with neither.
+ */
+export function summaryRange(
+	entries: TxEntry[],
+	filter: { range: RangePreset | ""; from: PlainDate | ""; to: PlainDate | "" },
+	today: PlainDate,
+): { from: PlainDate; to: PlainDate } | null {
+	const range = dateRange(filter, today)
+	const days = entries.map(entryDate).sort(compareDates)
+	const from = range.from || days[0]
+	const to = range.to || days.at(-1)
+	return from && to ? { from, to } : null
 }
 
 /** A purchase made from a list is `<listId>-<n>`; null when the id has no such tail. */
