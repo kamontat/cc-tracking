@@ -65,3 +65,33 @@ test("a usage bar, its width the share (capped at 100) and its level, named for 
 	expect(bar?.getAttribute("aria-label")).toBe("112% used")
 	expect(bar?.querySelector<HTMLElement>("span")?.style.inlineSize).toBe("100%")
 })
+
+test("a figure that opens something is a button with its figure, pressed while what it opens is open", () => {
+	let opened = 0
+	const panel = show("Next 30 days", [
+		{ field: "range", label: "To pay", text: "฿5,800.00" },
+		{
+			field: "late",
+			label: "Late",
+			text: "฿1,000.00",
+			tone: "out",
+			note: "needed now",
+			open: {
+				run: () => {
+					opened++
+				},
+				label: "Open the late money",
+				current: true,
+			},
+		},
+	])
+	expect(panel?.querySelector('[data-field="range"] button')).toBeNull()
+	const button = panel?.querySelector<HTMLButtonElement>('[data-field="late"] dd button')
+	expect(button?.getAttribute("aria-label")).toBe("Open the late money")
+	expect(button?.getAttribute("aria-current")).toBe("true")
+	expect(button?.querySelector("b")?.textContent).toBe("฿1,000.00")
+	expect(button?.querySelector("b")?.getAttribute("data-tone")).toBe("out")
+	expect(flat(panel?.querySelector('[data-field="late"] .glance__note'))).toBe("needed now")
+	button?.click()
+	expect(opened).toBe(1)
+})

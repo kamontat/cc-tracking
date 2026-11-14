@@ -35,8 +35,8 @@
 		id?: string
 		/** Drawn in place of the kind's icon (a ledger row's card chip). */
 		lead?: Snippet
-		/** The right-hand figure, already signed, and its tone. */
-		amount?: { text: string; tone: "out" | "in" | "muted" | "danger" }
+		/** The right-hand figure, already signed, and its tone (`plain`: the text's own colour). */
+		amount?: { text: string; tone: "out" | "in" | "muted" | "danger" | "plain" }
 		cycle?: CycleInput | undefined
 		parts?: RowPart[] | undefined
 		/** The one sentence; money figures strong, a late phrase red, the rest muted. */

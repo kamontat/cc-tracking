@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vitest"
 
 import { DEFAULT_READY_VIEW } from "#lib/domain/home"
-import { DEFAULT_OWED_VIEW } from "#lib/domain/owed"
+import { DEFAULT_OWED_PLAN } from "#lib/domain/owed-plan"
 import {
 	NEEDS_ADDRESS,
 	OWED_ADDRESS,
 	READY_ADDRESS,
-	readOwedView,
+	readOwedPlan,
 	readReadyView,
-	writeOwedView,
+	writeOwedPlan,
 	writeReadyView,
 } from "#lib/ui/home-query"
 
@@ -19,38 +19,41 @@ test("Home's three tabs are top-level paths: /, /owed and /ready", () => {
 const places = ["krabi", "bangkok"]
 
 describe("the Owed tab's address (/owed)", () => {
-	test("the defaults write nothing: not grouped, most urgent first", () => {
-		expect(writeOwedView(DEFAULT_OWED_VIEW)).toBe("")
-		expect(readOwedView("", places)).toEqual(DEFAULT_OWED_VIEW)
+	const read = (search: string) => readOwedPlan(search, places)
+
+	test("the defaults write nothing: the calendar, the next 30 days, every kind, today's month", () => {
+		expect(read("")).toEqual({ view: DEFAULT_OWED_PLAN, month: null })
+		expect(writeOwedPlan(DEFAULT_OWED_PLAN, null)).toBe("")
 	})
-	test("sort and dir, each sort with its own default direction", () => {
-		expect(readOwedView("?sort=left", places)).toMatchObject({ sort: "left", dir: "desc" })
-		expect(writeOwedView({ ...DEFAULT_OWED_VIEW, sort: "left", dir: "desc" })).toBe("?sort=left")
-		expect(readOwedView("?sort=left&dir=asc", places)).toMatchObject({ sort: "left", dir: "asc" })
-		expect(writeOwedView({ ...DEFAULT_OWED_VIEW, sort: "due", dir: "desc" })).toBe("?sort=due&dir=desc")
-		expect(readOwedView("?sort=nope&dir=up&by=day&f.states=late", places)).toEqual(DEFAULT_OWED_VIEW)
+
+	test("search, places, holders, range, kinds, layout and month, the f. keys repeated", () => {
+		const search =
+			"?q=kbank&f.locations=krabi&f.owners=KC&f.owners=NT&f.range=14&f.shows=bill&f.shows=plan&view=week&month=2026-12"
+		const plan = read(search)
+		expect(plan).toEqual({
+			view: {
+				q: "kbank",
+				locations: ["krabi"],
+				owners: ["KC", "NT"],
+				range: 14,
+				shows: ["bill", "plan"],
+				layout: "week",
+			},
+			month: "2026-12",
+		})
+		expect(writeOwedPlan(plan.view, plan.month)).toBe(search)
+		expect(writeOwedPlan({ ...DEFAULT_OWED_PLAN, range: "all" }, null)).toBe("?f.range=all")
 	})
-	test("search, places, holders and bill states, the repeating keys repeated; a group by", () => {
-		const view = {
-			...DEFAULT_OWED_VIEW,
-			q: "plat",
-			locations: ["krabi", "bangkok"],
-			owners: ["KC" as const, "RI" as const],
-			states: ["overdue" as const, "unbilled" as const],
-			by: "place" as const,
-		}
-		const written = writeOwedView(view)
-		expect(written).toBe(
-			"?q=plat&f.locations=krabi&f.locations=bangkok&f.owners=KC&f.owners=RI&f.states=overdue&f.states=unbilled&by=place",
-		)
-		expect(readOwedView(written, places)).toEqual(view)
-		expect(readOwedView("?f.locations=mars&f.owners=XX&f.states=soon&by=none", places)).toEqual({
-			...DEFAULT_OWED_VIEW,
-			states: ["soon"],
+
+	test("a value it does not know reads as the default", () => {
+		expect(read("?f.range=9&f.shows=cash&view=grid&month=2026-13&f.locations=mars")).toEqual({
+			view: DEFAULT_OWED_PLAN,
+			month: null,
 		})
 	})
-	test("the open card is not the list's to read", () => {
-		expect(readOwedView("?card=12.3", places)).toEqual(DEFAULT_OWED_VIEW)
+
+	test("the open card and day are the panel's, not the plan's to read", () => {
+		expect(read("?card=7&day=2026-11-14")).toEqual({ view: DEFAULT_OWED_PLAN, month: null })
 	})
 })
 

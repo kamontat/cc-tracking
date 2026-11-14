@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day
 
 ### BREAKING CHANGES
 
@@ -35,6 +35,10 @@ reasons don't show up in the code.
 - Message keys removed: `tx.summary.owed`, `tx.results.one` and `tx.results.many`.
   `entriesTotal` is gone, `monthSummary` takes only the entries and today and returns
   `{ count, purchases, payments, net }`, and the `.tx-summary` styles are removed from `app.css`.
+
+- `/owed` no longer shows a tile per card, and its per-card keys `f.states`, `sort`, `dir` and
+  `by` are ignored there now. A link that used them lands on the new calendar; for what each card
+  owes, use Cards' balance filter (DD-211).
 
 ### Features
 
@@ -103,6 +107,28 @@ reasons don't show up in the code.
   (each group once, with a card tile's rail). It follows search and filters, not the sort, and when
   grouped each section head gets the same totals on one line. It is one panel split by
   hairlines, the `GlancePanel` molecule, shared with Transactions.
+
+- Home's _Owed_ tab is a calendar of the money to have ready each day: one month at a time with
+  ‹ and ›, each paying day's total in its cell (darker the more it is, a dot per card), a last
+  column with each week's total, and today ringed, red with the late amount while anything is
+  late. _By week_ and _By month_ list the same days under each section's total (DD-211).
+
+- What counts on each day: a closed bill's amount left on its due date; a planned payment on its
+  own date, taken off the card's oldest bill first so nothing counts twice; an open statement as
+  a `~` estimate on its due date that never goes into a total.
+
+- The tab keeps Cards' search and _Filter_ (_Range_ 7, 14, 30 or 60 days or everything owed,
+  _Kept in_, _Account holder_ and _Shows_ bills, plans or open statements), with no sort or
+  group, and keeps it all in the address (`f.range`, `f.shows`, `view`, `month`).
+
+- A day, or the late money, opens in the detail panel as a list does on the Lists tab
+  (`/owed?day=2026-11-18`, `?day=late`): its total, what is needed in all by then, and each card
+  as the shared opening row with its billing cycle line, _Pay_ and _Open card_. _Pay_ opens the
+  card's pay form a step deeper, so Back and the form's ‹ both return to the day.
+
+- The tab's totals are the shared glance panel: _To pay_ over the range (its dates at the end of
+  the title row), _Next_, _Next 7 days_, _Biggest day_ and, while anything is late, a red _Late_
+  that opens the late panel. A glance figure can now open something (`GlanceFigure.open`).
 
 ### Improvements
 
@@ -181,6 +207,9 @@ reasons don't show up in the code.
   readable backup, instead of "This backup is version undefined, but this app reads versions
   3–4."
 
+- ‹ on a form opened a step deeper from another panel (a day's _Pay_) goes back to that panel
+  instead of the card's summary.
+
 ### Decisions
 
 - The stored-payment conversion went along with version 2 restore, rather than keeping it for
@@ -240,6 +269,20 @@ reasons don't show up in the code.
 - The glance is one panel split by hairlines rather than four boxes, the user having asked for a
   better design; an odd last figure spans the row on a phone so three amounts never squeeze into
   thirds (DD-210).
+
+- The money to prepare is shown by day rather than by card, after three rounds of mockups
+  (`docs/superpowers/specs/2026-11-14-owed-calendar-mockup.html`). The calendar was kept as the
+  main view, with week and month lists beside it; the bar chart, a separate _Prepare_ tab, sort
+  and group, a red late banner, _Copy plan_ and the side panels for each holder and a text to
+  send were dropped along the way at the user's request.
+
+- A planned payment counts on its own date, since that is when the money leaves, and it comes off
+  the oldest bill so the bill's own due date shows only what the plan leaves.
+
+- Open statements are shown but never totalled, because they can still grow before they close.
+
+- The old per-card tiles (`OwedList`, `owed.ts`, `pay-tile`) are no longer used by any page; they
+  were left for a follow-up rather than removed here.
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 

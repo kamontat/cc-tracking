@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owed: money to prepare, by day</title>
+<style>
+/* What to have ready each day. Colours, radii and type are the app's own tokens (src/styles/tokens.css). The data is made up; today is Sat 14 Nov 2026. */
+:root {
+	--bg: #f6f7f3; --surface: #ffffff; --sunken: #eef1ea; --border: #e1e6de;
+	--text: #22302a; --muted: #5f6b65; --accent: #367d5f; --accent-text: #ffffff; --accent-surface: #e2f0e8;
+	--danger: #a8403d; --danger-surface: #f8e2e0; --warning: #95591a; --warning-surface: #fbecd9;
+	--backdrop: rgb(10 20 15 / 0.42); --shadow-lg: 0 16px 40px rgb(34 48 42 / 0.18);
+	--blue: #e3e9fb; --blue-t: #3552b8; --green: #dff1e7; --green-t: #2f7457; --purple: #efe5f7; --purple-t: #7a45a8;
+	--orange: #fbe6dd; --orange-t: #a74e2c; --teal: #ddf8f7; --teal-t: #217370; --rose: #fbdae2; --rose-t: #9c1c3c;
+	--sans: system-ui, -apple-system, "Segoe UI", Roboto, "IBM Plex Sans Thai", "Noto Sans Thai", sans-serif;
+	--mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+	--r-xs: 6px; --r-sm: 12px; --r-md: 18px;
+	color-scheme: light;
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--bg: #121815; --surface: #1b231f; --sunken: #24302a; --border: #2c3832;
+	--text: #e6ede8; --muted: #9aa9a1; --accent: #74c9a1; --accent-text: #0f1a14; --accent-surface: #1d3328;
+	--danger: #ef8a86; --danger-surface: #3b1e1d; --warning: #e7a55e; --warning-surface: #3a2a18;
+	--backdrop: rgb(0 0 0 / 0.6); --shadow-lg: 0 16px 40px rgb(0 0 0 / 0.5);
+	--blue: #1f2944; --blue-t: #9fb3f5; --green: #1b3328; --green-t: #8ed7b4; --purple: #2e2240; --purple-t: #cfa6ef;
+	--orange: #3a241b; --orange-t: #f2a882; --teal: #17312f; --teal-t: #8fe0da; --rose: #3a1c25; --rose-t: #f3a0b6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5; padding: 28px 16px 72px; }
+button, input { font: inherit; color: inherit; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 20px; }
+h1 { font-size: 1.75rem; margin: 0; }
+p { margin: 0; max-width: 82ch; }
+.lead { color: var(--muted); }
+.opts { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); font-size: 0.8125rem; }
+.opts label { display: flex; gap: 8px; align-items: center; color: var(--muted); font-weight: 650; }
+.seg { display: inline-grid; grid-auto-flow: column; padding: 3px; background: var(--sunken); border-radius: 12px; font-size: 0.8125rem; font-weight: 600; }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: 9px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.explain { display: grid; gap: 8px; padding: 16px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.explain h2 { font-size: 1.125rem; margin: 0; }
+.explain ul { margin: 0; padding-left: 20px; display: grid; gap: 3px; }
+code { font-family: var(--mono); font-size: 0.8125em; background: var(--sunken); border-radius: 5px; padding: 0 4px; }
+
+/* the device */
+.stage { overflow-x: auto; padding-bottom: 6px; }
+.device { position: relative; margin: 0 auto; inline-size: 390px; block-size: 844px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 28px; overflow: hidden; background: var(--bg); }
+.device.desk { inline-size: 1180px; block-size: 820px; border-radius: 16px; }
+.url { padding: 8px 12px; background: var(--sunken); border-bottom: 1px solid var(--border); flex: none; }
+.url output { display: block; font: 600 0.75rem var(--mono); background: var(--surface); border-radius: 8px; padding: 5px 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.url .q { color: var(--accent); }
+.appbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 2px solid var(--text); background: var(--surface); font-size: 0.8125rem; flex: none; }
+.desk .appbar { padding-inline: 32px; }
+.brand { font-family: var(--mono); font-weight: 700; }
+.brand b { background: var(--text); color: var(--bg); border-radius: 5px; padding: 0 4px; }
+.navtabs { display: flex; gap: 22px; font-weight: 600; color: var(--muted); }
+.navtabs .on { color: var(--text); }
+.phone .navtabs { display: none; }
+.tabbar { display: none; flex: none; border-top: 1px solid var(--border); background: var(--surface); }
+.phone .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); }
+.tabbar span { text-align: center; padding: 10px 0 14px; font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+.tabbar .on { color: var(--accent); }
+.main { flex: 1; min-block-size: 0; overflow: auto; padding: 16px; display: grid; gap: 14px; align-content: start; grid-auto-rows: max-content; }
+.desk .main { padding: 20px 32px 32px; }
+.title h2 { margin: 0; font-size: 1.375rem; }
+.ptabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); overflow-x: auto; margin-top: -4px; scrollbar-width: none; }
+.ptabs span { padding: 8px 10px; font-weight: 650; font-size: 0.9375rem; color: var(--muted); border-bottom: 2.5px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.ptabs .on { color: var(--text); border-bottom-color: var(--accent); }
+
+.btn { border: 1px solid transparent; background: var(--accent); color: var(--accent-text); font-size: 0.8125rem; font-weight: 600; padding: 8px 12px; border-radius: var(--r-sm); cursor: pointer; white-space: nowrap; }
+.btn[data-variant="quiet"] { background: var(--sunken); color: var(--text); border-color: var(--border); }
+.btn.small { padding: 4px 10px; font-size: 0.75rem; }
+.muted { color: var(--muted); }
+.money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+.c-blue { --g: var(--blue); --gt: var(--blue-t); } .c-green { --g: var(--green); --gt: var(--green-t); }
+.c-purple { --g: var(--purple); --gt: var(--purple-t); } .c-orange { --g: var(--orange); --gt: var(--orange-t); }
+.c-teal { --g: var(--teal); --gt: var(--teal-t); } .c-rose { --g: var(--rose); --gt: var(--rose-t); }
+.chip { flex: none; inline-size: 38px; block-size: 24px; border-radius: var(--r-xs); font: 700 0.625rem var(--mono); display: grid; place-items: end start; padding: 2px 4px; background: var(--g); color: var(--gt); }
+.tag { display: inline-block; font-size: 0.6875rem; font-weight: 700; border-radius: 999px; padding: 0 7px; background: var(--sunken); color: var(--muted); }
+.tag.plan { background: var(--accent-surface); color: var(--accent); }
+.tag.late { background: var(--danger-surface); color: var(--danger); }
+.tag.soon { background: var(--warning-surface); color: var(--warning); }
+
+/* the shared control row (FilterControls): search and Filter, then sort, group and a chip per filter */
+.tx-controls { display: grid; gap: 8px; }
+.tx-ctl { display: flex; gap: 8px; align-items: center; }
+.tx-search { flex: 1; min-inline-size: 0; display: flex; gap: 8px; align-items: center; border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 0 12px; color: var(--muted); }
+.tx-search input { flex: 1; min-inline-size: 0; border: 0; background: none; padding: 9px 0; font-size: 0.875rem; outline: none; }
+.tx-count { display: inline-grid; place-items: center; min-inline-size: 18px; block-size: 18px; border-radius: 9px; background: var(--accent); color: var(--accent-text); font-size: 0.6875rem; margin-left: 4px; padding: 0 5px; }
+.tx-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tx-row .seg.view { font-size: 0.75rem; }
+.tx-row .seg.view button { padding: 4px 10px; }
+.tx-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.tx-chip { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; font-weight: 650; cursor: pointer; white-space: nowrap; }
+
+/* late: a banner, never mixed into the plan */
+.now-wrap { display: grid; gap: 8px; }
+.now-wrap > .lines { border-color: var(--danger-surface); }
+.now { inline-size: 100%; border: 0; text-align: start; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: var(--r-md); background: var(--danger-surface); color: var(--danger); }
+.now .i { inline-size: 32px; block-size: 32px; border-radius: 50%; background: var(--danger); color: var(--surface); display: grid; place-items: center; font-weight: 800; }
+.now b { display: block; font-size: 0.9375rem; }
+.now small { display: block; font-size: 0.75rem; opacity: 0.85; }
+.now .chev { transition: transform 160ms; }
+.now[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+/* the totals */
+.totals { display: grid; gap: 14px; padding: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.desk .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.kpi small { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.kpi b { display: block; font-size: 1.25rem; font-weight: 780; font-variant-numeric: tabular-nums; }
+.kpi span { font-size: 0.75rem; color: var(--muted); }
+.kpi.hero b { font-size: 1.75rem; line-height: 1.15; }
+.kpi.next b { color: var(--accent); }
+
+/* the list views */
+.groups { display: grid; gap: 16px; }
+.desk .groups.list { max-inline-size: 760px; }
+.grp { display: grid; gap: 6px; }
+.ghead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 0 4px; }
+.ghead b { font-size: 0.8125rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.ghead b span { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.ghead .money { font-weight: 780; font-size: 0.9375rem; }
+.days > * + * { border-top: 1px solid var(--border); }
+.day { inline-size: 100%; border: 0; background: none; text-align: start; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 14px; cursor: pointer; }
+.days > :first-child .day { border-radius: var(--r-md) var(--r-md) 0 0; }
+.day:hover { background: color-mix(in oklab, var(--sunken) 60%, transparent); }
+.day.sel { background: var(--accent-surface); }
+.date { display: grid; justify-items: center; line-height: 1.05; padding: 6px 0; border-radius: 12px; background: var(--sunken); }
+.date small { font-size: 0.625rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.date b { font-size: 1.375rem; font-weight: 800; }
+.date.soon { background: var(--warning-surface); }
+.date.soon small, .date.soon b { color: var(--warning); }
+.date.est { background: none; border: 1.5px dashed var(--border); }
+.who { min-inline-size: 0; display: grid; gap: 5px; }
+.who .t { font-size: 0.8125rem; color: var(--muted); }
+.who .t strong { color: var(--text); font-weight: 650; }
+.stack { display: flex; block-size: 8px; border-radius: 4px; overflow: hidden; gap: 2px; }
+.stack i { display: block; background: var(--gt); opacity: 0.75; }
+.stack i.est { background: repeating-linear-gradient(45deg, var(--muted) 0 3px, transparent 3px 6px); opacity: 0.6; }
+.tot { text-align: end; }
+.tot b { display: block; font-size: 1.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tot b.est { color: var(--muted); font-weight: 650; font-size: 1.0625rem; }
+.tot small { display: block; font-size: 0.6875rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.drawer { padding: 2px 14px 14px; display: grid; gap: 10px; background: var(--accent-surface); }
+.desk .drawer { padding-left: 80px; }
+.lines { display: grid; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface); }
+.lines > * + * { border-top: 1px solid var(--border); }
+.line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 10px; font-size: 0.875rem; }
+.line small { display: block; font-size: 0.75rem; color: var(--muted); }
+.line .n { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.line .pay { display: flex; gap: 10px; align-items: center; }
+.line .money { font-weight: 700; }
+.line.est .money { color: var(--muted); font-weight: 600; }
+.foot { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; font-size: 0.8125rem; color: var(--muted); }
+.foot strong { color: var(--text); }
+
+/* the calendar */
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.6875rem; color: var(--muted); }
+.legend i { display: inline-block; inline-size: 12px; block-size: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+.legend i.h { background: color-mix(in oklab, var(--accent) 40%, var(--surface)); }
+.legend i.e { border: 1.5px dashed var(--muted); }
+.calwrap { display: grid; gap: 14px; }
+.desk .calwrap { grid-template-columns: minmax(0, 1fr) 380px; align-items: start; }
+.cal { padding: 14px; display: grid; gap: 10px; }
+.desk .cal { padding: 18px 20px; }
+.calhead { display: flex; align-items: center; gap: 8px; }
+.calhead h3 { margin: 0; font-size: 1.0625rem; flex: 1; }
+.calhead h3 small { display: block; font-size: 0.75rem; font-weight: 500; color: var(--muted); }
+.nav { border: 1px solid var(--border); background: var(--surface); border-radius: 10px; inline-size: 34px; block-size: 34px; cursor: pointer; font-weight: 700; }
+.nav:disabled { opacity: 0.35; cursor: default; }
+.grid8 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 3px; }
+.desk .grid8 { gap: 6px; }
+.dow { font-size: 0.625rem; font-weight: 750; color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: 0.06em; padding-bottom: 2px; }
+.dow.wk { text-align: end; padding-right: 4px; }
+.cell { position: relative; min-block-size: 54px; border: 1px solid transparent; border-radius: 9px; padding: 3px 4px; display: grid; align-content: space-between; text-align: start; background: none; font-size: 0.6875rem; }
+.desk .cell { min-block-size: 82px; padding: 6px 8px; font-size: 0.8125rem; }
+.cell .n { font-weight: 650; color: var(--muted); }
+.cell .v { font-weight: 780; font-variant-numeric: tabular-nums; font-size: 0.6875rem; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; }
+.desk .cell .v { font-size: 0.875rem; letter-spacing: -0.01em; }
+.cell .dots { display: flex; gap: 2px; }
+.cell .dots i { inline-size: 6px; block-size: 6px; border-radius: 50%; background: var(--gt); }
+.desk .cell .dots i { inline-size: 8px; block-size: 8px; }
+.cell.out { visibility: hidden; }
+.cell.past .n { opacity: 0.45; }
+.cell.has { cursor: pointer; background: color-mix(in oklab, var(--accent) calc(var(--heat) * 1%), var(--surface)); }
+.cell.has:hover { border-color: var(--accent); }
+.cell.estonly { background: none; border: 1.5px dashed var(--border); }
+.cell.estonly .v { color: var(--muted); font-weight: 600; }
+.cell.beyond { opacity: 0.4; }
+.cell.today { border-color: var(--accent); border-width: 2px; }
+.cell.today .n { color: var(--accent); font-weight: 800; }
+.cell.late { border-color: var(--danger); border-width: 2px; }
+.cell.late .n { color: var(--danger); }
+.cell.sel { box-shadow: 0 0 0 2px var(--text); }
+.wk { display: grid; align-content: center; justify-items: end; padding-right: 4px; font-variant-numeric: tabular-nums; border-left: 1px solid var(--border); }
+.wk b { font-size: 0.6875rem; font-weight: 800; }
+.desk .wk b { font-size: 0.875rem; }
+.wk small { font-size: 0.5625rem; color: var(--muted); }
+.desk .wk small { font-size: 0.6875rem; }
+.dayp { padding: 14px 16px; display: grid; gap: 10px; }
+.desk .dayp { position: sticky; top: 0; }
+.dayp h3 { margin: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 1.0625rem; }
+.dayp h3 .money { font-size: 1.375rem; font-weight: 800; }
+.dayp .sub { display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--muted); }
+.dayp .sub b { color: var(--text); font-variant-numeric: tabular-nums; }
+.empty { padding: 18px; text-align: center; color: var(--muted); font-size: 0.875rem; }
+
+/* the filter sheet: Filter, Sort and Group tabs */
+.scrim { position: absolute; inset: 0; background: var(--backdrop); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-block-size: 86%; overflow: auto; background: var(--surface); border-radius: 22px 22px 0 0; z-index: 6; box-shadow: var(--shadow-lg); display: grid; align-content: start; animation: up 220ms ease-out; }
+.desk .sheet { left: 50%; right: auto; bottom: auto; top: 50%; transform: translate(-50%, -50%); inline-size: 520px; border-radius: 18px; animation: none; }
+@keyframes up { from { transform: translateY(40px); opacity: 0.4; } }
+.sh-head { position: sticky; top: 0; background: var(--surface); padding: 14px 16px 0; display: grid; gap: 10px; border-bottom: 1px solid var(--border); }
+.sh-head .t { display: flex; justify-content: space-between; align-items: center; }
+.sh-head .t b { font-size: 1.0625rem; }
+.sh-body { padding: 16px; display: grid; gap: 16px; }
+.fs { display: grid; gap: 8px; border: 0; margin: 0; padding: 0; }
+.fs legend { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); padding: 0; margin-bottom: 8px; }
+.pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.pill { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+.pill[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.pill small { display: block; font-size: 0.6875rem; font-weight: 500; opacity: 0.8; }
+.sh-foot { position: sticky; bottom: 0; background: var(--surface); padding: 12px 16px; display: flex; gap: 8px; border-top: 1px solid var(--border); }
+.sh-foot .btn { flex: 1; padding: 11px; }
+.toast { position: absolute; left: 50%; bottom: 80px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 999px; font-size: 0.8125rem; font-weight: 600; z-index: 9; white-space: nowrap; box-shadow: var(--shadow-lg); }
+.desk .toast { bottom: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<h1>Owed: money to prepare, by day</h1>
+	<p class="lead">Home's <em>Owed</em> tab (<code>/owed</code>) is a calendar of what to pay each day, so the money is ready in time. The same plan reads as a list by week or by month. Today is Sat 14 Nov 2026; the data is made up.</p>
+
+	<div class="opts">
+		<label>Device <span class="seg" data-k="device"><button data-v="phone">Phone</button><button data-v="desk">Desktop</button></span></label>
+		<label>Theme <span class="seg" data-k="theme"><button data-v="light">Light</button><button data-v="dark">Dark</button></span></label>
+	</div>
+
+	<div class="stage"><div class="device" id="dev"></div></div>
+
+	<section class="explain">
+		<h2>Reading it</h2>
+		<ul>
+			<li><strong>The control row</strong> is the shared one with no sort and no group: search (a card's id, name or last 4) and <em>Filter</em> with its count, then the view switch and a removable chip per filter in use.</li>
+			<li><strong>Filter</strong>: <em>Range</em> (7, 14, 30 (default), 60 days, or everything owed), <em>Account holder</em>, <em>Kept in</em>, and <em>Shows</em> (bills, planned payments, open statements).</li>
+			<li><strong>View</strong>: <em>Calendar</em> (default), <em>By week</em> or <em>By month</em>. Every view runs in date order.</li>
+			<li><strong>Calendar</strong>: a month at a time (‹ ›) with the month's total; a paying day shows its total, darker the more it is, and a dot per card; the last column is each week's total. The day picked (the next paying day at first) shows its cards with <em>Pay</em>, under the month on a phone and beside it on a desktop.</li>
+			<li><strong>By week / By month</strong>: one row per day under a heading with that week's or month's total; a row opens in place to its cards with <em>Pay</em>.</li>
+			<li><strong>A planned payment counts on its own date</strong>; what it leaves of the bill stays on the due date (<code>7) KBank</code>: ฿3,000 on 16 Nov, ฿3,400 on 18 Nov).</li>
+			<li><strong>Late money</strong> is a red banner on top that opens to its cards with <em>Pay</em>; in the calendar, today carries a red ring and the late amount.</li>
+			<li><strong>Open statements</strong> are dashed and muted with <code>~</code>: they can still grow, so they are never in a total.</li>
+			<li>Address: <code>/owed?q=&amp;f.owners=KC&amp;f.range=14&amp;f.shows=bill&amp;view=week&amp;month=2026-12&amp;day=2026-11-18</code>, each left out at its default.</li>
+		</ul>
+	</section>
+</div>
+<script>
+const TODAY = "2026-11-14"
+const CARDS = [
+	{ id: "1", name: "SCB Krabi", last4: "1029", holder: "KC", color: "blue", place: "Krabi" },
+	{ id: "7", name: "KBank Platinum", last4: "4410", holder: "KC", color: "green", place: "Bangkok" },
+	{ id: "12.3", name: "Krungsri Bangkok", last4: "8812", holder: "RI", color: "rose", place: "Bangkok" },
+	{ id: "3", name: "UOB Yolo", last4: "2231", holder: "NT", color: "purple", place: "Phichit" },
+	{ id: "5", name: "TTB Absolute", last4: "7781", holder: "NT", color: "orange", place: "Phichit" },
+	{ id: "9", name: "Citi Cash Back", last4: "3390", holder: "KC", color: "teal", place: "Bangkok" },
+	{ id: "14", name: "BBL Visa", last4: "6402", holder: "RI", color: "blue", place: "Krabi" },
+	{ id: "2", name: "KTC Proud", last4: "5120", holder: "NT", color: "green", place: "Bangkok" },
+	{ id: "21", name: "Amex Gold", last4: "1004", holder: "KC", color: "purple", place: "Bangkok" },
+	{ id: "4", name: "KBank Shopee", last4: "9018", holder: "RI", color: "orange", place: "Phichit" },
+	{ id: "8", name: "Krungthai Travel", last4: "3015", holder: "KC", color: "teal", place: "Krabi" },
+	{ id: "11", name: "TTB Reserve", last4: "6064", holder: "KC", color: "green", place: "Bangkok" },
+]
+const BILLS = [
+	{ card: "3", left: 4100, due: "2026-11-10" },
+	{ card: "5", left: 2000, due: "2026-11-12" },
+	{ card: "1", left: 12000, due: "2026-11-18" },
+	{ card: "7", left: 6400, due: "2026-11-18" },
+	{ card: "12.3", left: 3000, due: "2026-11-18" },
+	{ card: "9", left: 5000, due: "2026-11-22" },
+	{ card: "14", left: 8750, due: "2026-11-25" },
+	{ card: "8", left: 4300, due: "2026-11-25" },
+	{ card: "2", left: 15200, due: "2026-12-02" },
+	{ card: "21", left: 9900, due: "2026-12-05" },
+	{ card: "4", left: 2450, due: "2026-12-11" },
+]
+const PLANS = [
+	{ card: "7", amount: 3000, date: "2026-11-16" },
+	{ card: "12.3", amount: 3000, date: "2026-11-17" },
+	{ card: "9", amount: 5000, date: "2026-11-21" },
+]
+const OPEN = [
+	{ card: "1", sofar: 4200, due: "2026-12-18" },
+	{ card: "7", sofar: 2100, due: "2026-12-18" },
+	{ card: "12.3", sofar: 5600, due: "2026-12-17" },
+	{ card: "3", sofar: 1500, due: "2026-12-10" },
+	{ card: "14", sofar: 3300, due: "2026-12-25" },
+	{ card: "8", sofar: 1900, due: "2026-12-25" },
+	{ card: "11", sofar: 6200, due: "2026-12-08" },
+]
+const PLACES = ["Bangkok", "Krabi", "Phichit"]
+const KINDS = [["bill", "Bills"], ["plan", "Planned payments"], ["est", "Open statements"]]
+const DEF = { range: 30, view: "calendar", kinds: ["bill", "plan", "est"] }
+
+const state = {
+	device: "phone", theme: "light",
+	q: "", owners: [], places: [], range: DEF.range, kinds: [...DEF.kinds], view: DEF.view,
+	sel: null, month: "2026-11", sheet: false, lateOpen: false, toast: "",
+}
+
+const card = (id) => CARDS.find((c) => c.id === id)
+const baht = (n) => "฿" + Math.round(n).toLocaleString("en-US")
+const kb = (n) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(n))
+const D = (s) => new Date(s + "T00:00:00Z")
+const iso = (d) => d.toISOString().slice(0, 10)
+const add = (s, n) => { const d = D(s); d.setUTCDate(d.getUTCDate() + n); return iso(d) }
+const diff = (a, b) => Math.round((D(b) - D(a)) / 86400000)
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const MONTH = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+const dd = (s) => { const d = D(s); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON[d.getUTCMonth()]}` }
+const dm = (s) => { const d = D(s); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}` }
+const far = (s) => { const n = diff(TODAY, s); return n === 0 ? "today" : n === 1 ? "tomorrow" : n < 0 ? `${-n} days ago` : `in ${n} days` }
+const END = () => (state.range ? add(TODAY, state.range) : "9999-12-31")
+const rangeWord = () => (state.range ? `Next ${state.range} days` : "Everything owed")
+const weekStart = (s) => { const d = D(s); d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return iso(d) }
+
+function matches(id) {
+	const c = card(id)
+	const q = state.q.trim().toLowerCase()
+	if (q && !`${c.id} ${c.name} ${c.last4}`.toLowerCase().includes(q)) return false
+	if (state.owners.length && !state.owners.includes(c.holder)) return false
+	if (state.places.length && !state.places.includes(c.place)) return false
+	return true
+}
+
+/**
+ * Every amount on its day (kind bill | plan | est). A planned payment counts on its own date and
+ * takes its amount off the bill; what it leaves stays on the due date. Late ones go to `now`.
+ */
+function entries() {
+	const out = [], now = []
+	for (const b of BILLS) {
+		if (!matches(b.card)) continue
+		let left = b.left
+		for (const p of PLANS.filter((p) => p.card === b.card)) {
+			const amt = Math.min(p.amount, left); if (amt <= 0) continue
+			left -= amt
+			if (state.kinds.includes("plan")) (p.date < TODAY ? now : out).push({ card: b.card, amount: amt, date: p.date, kind: "plan", due: b.due })
+		}
+		if (left > 0 && state.kinds.includes("bill")) (b.due < TODAY ? now : out).push({ card: b.card, amount: left, date: b.due, kind: "bill", due: b.due })
+	}
+	if (state.kinds.includes("est")) for (const o of OPEN) if (matches(o.card)) out.push({ card: o.card, amount: o.sofar, date: o.due, kind: "est", due: o.due })
+	return { now, out: out.filter((e) => e.date <= END()) }
+}
+
+/** The days in date order, each with its firm total, its estimate and the running total by then. */
+function byDay(list) {
+	const m = new Map()
+	for (const e of list) { if (!m.has(e.date)) m.set(e.date, []); m.get(e.date).push(e) }
+	let run = 0
+	return [...m.keys()].sort().map((k) => {
+		const items = m.get(k).sort((a, b) => (a.kind === "est") - (b.kind === "est") || b.amount - a.amount)
+		const firm = items.filter((e) => e.kind !== "est").reduce((s, e) => s + e.amount, 0)
+		const est = items.filter((e) => e.kind === "est").reduce((s, e) => s + e.amount, 0)
+		run += firm
+		return { key: k, items, firm, est, run }
+	})
+}
+
+// ---------- the control row: search and Filter, the view, a chip per filter ----------
+function filterChips() {
+	const chips = []
+	if (state.range !== DEF.range) chips.push(["range", state.range ? `Next ${state.range} days` : "Everything owed"])
+	for (const o of state.owners) chips.push([`owner:${o}`, o])
+	for (const p of state.places) chips.push([`place:${p}`, p])
+	for (const [k, l] of KINDS) if (!state.kinds.includes(k)) chips.push([`kind:${k}`, `No ${l.toLowerCase()}`])
+	return chips
+}
+
+function controls() {
+	const chips = filterChips()
+	return `<div class="tx-controls">
+		<div class="tx-ctl"><label class="tx-search">⌕<input data-q value="${state.q}" placeholder="Search cards"></label><button class="btn" data-variant="quiet" data-sheet>⚲ Filter${chips.length ? `<b class="tx-count">${chips.length}</b>` : ""}</button></div>
+		<div class="tx-row">
+			<span class="seg view" role="group" aria-label="View">${[["calendar", "Calendar"], ["week", "By week"], ["month", "By month"]].map(([v, l]) => `<button data-view="${v}" aria-pressed="${state.view === v}">${l}</button>`).join("")}</span>
+			${chips.length ? `<span class="tx-chips">${chips.map(([k, l]) => `<button class="tx-chip" data-clear="${k}">${l} ×</button>`).join("")}</span>` : ""}
+		</div>
+	</div>`
+}
+
+function sheet() {
+	if (!state.sheet) return ""
+	const pill = (on, attr, label) => `<button class="pill" ${attr} aria-pressed="${on}">${label}</button>`
+	const n = byDay(entries().out).length
+	return `<div class="scrim" data-close></div>
+		<div class="sheet" role="dialog" aria-label="Filter">
+			<div class="sh-head"><div class="t"><b>Filter</b><button class="nav" data-close aria-label="Close">×</button></div></div>
+			<div class="sh-body">
+				<fieldset class="fs"><legend>Range</legend><div class="pills">${[7, 14, 30, 60, 0].map((r) => pill(state.range === r, `data-f-range="${r}"`, r ? `${r} days` : "Everything owed")).join("")}</div></fieldset>
+				<fieldset class="fs"><legend>Account holder</legend><div class="pills">${["KC", "NT", "RI"].map((o) => pill(state.owners.includes(o), `data-f-owner="${o}"`, o)).join("")}</div></fieldset>
+				<fieldset class="fs"><legend>Kept in</legend><div class="pills">${PLACES.map((p) => pill(state.places.includes(p), `data-f-place="${p}"`, p)).join("")}</div></fieldset>
+				<fieldset class="fs"><legend>Shows</legend><div class="pills">${KINDS.map(([k, l]) => pill(state.kinds.includes(k), `data-f-kind="${k}"`, l)).join("")}</div></fieldset>
+			</div>
+			<div class="sh-foot"><button class="btn" data-variant="quiet" data-reset>Reset</button><button class="btn" data-close>Show ${n} day${n === 1 ? "" : "s"}</button></div>
+		</div>`
+}
+
+// ---------- the totals ----------
+function totals(days) {
+	const firm = days.filter((d) => d.firm)
+	const next = firm[0]
+	const total = firm.reduce((s, d) => s + d.firm, 0)
+	const est = days.reduce((s, d) => s + d.est, 0)
+	const week = firm.filter((d) => d.key <= add(TODAY, 7)).reduce((s, d) => s + d.firm, 0)
+	const big = firm.reduce((m, d) => (!m || d.firm > m.firm ? d : m), null)
+	return `<div class="panel totals"><div class="kpis">
+		<div class="kpi hero"><small>${rangeWord()}</small><b>${baht(total)}</b><span>${firm.length} paying days${est ? ` · ~${baht(est)} more still open` : ""}</span></div>
+		<div class="kpi next"><small>Next</small><b>${next ? baht(next.firm) : "—"}</b><span>${next ? `${dd(next.key)} · ${far(next.key)}` : "nothing due"}</span></div>
+		<div class="kpi"><small>Next 7 days</small><b>${baht(week)}</b><span>to ${dd(add(TODAY, 7))}</span></div>
+		<div class="kpi"><small>Biggest day</small><b>${big ? baht(big.firm) : "—"}</b><span>${big ? `${dd(big.key)} · ${far(big.key)}` : "nothing due"}</span></div>
+	</div></div>`
+}
+
+// ---------- late: a banner that opens to its cards ----------
+function lateBanner(now) {
+	if (!now.length) return ""
+	const late = now.reduce((s, e) => s + e.amount, 0)
+	return `<div class="now-wrap">
+		<button class="now" data-late aria-expanded="${state.lateOpen}"><span class="i">!</span><span><b>${baht(late)} is late: pay it today</b><small>${now.map((e) => card(e.card).name).join(", ")}</small></span><span class="chev">▾</span></button>
+		${state.lateOpen ? `<div class="lines">${now.map(line).join("")}</div>` : ""}
+	</div>`
+}
+
+// ---------- a day ----------
+function line(e) {
+	const c = card(e.card)
+	const late = e.date < TODAY
+	const what = e.kind === "plan" ? `<span class="tag ${late ? "late" : "plan"}">Planned${late ? ` ${dm(e.date)}` : ""}</span> bill due ${dm(e.due)}` : e.kind === "est" ? `<span class="tag">Still open</span> spent so far` : late ? `<span class="tag late">${diff(e.due, TODAY)} days late</span> ${c.holder}` : `Bill · ${c.holder}`
+	const pay = e.kind === "est" ? "" : `<button class="btn small" data-pay="${c.id}" data-amount="${e.amount}">Pay</button>`
+	return `<div class="line ${e.kind === "est" ? "est" : ""}"><span class="chip c-${c.color}">${c.last4}</span><span><span class="n"><span class="muted">${c.id})</span> ${c.name}</span><small>${what}</small></span><span class="pay"><span class="money">${e.kind === "est" ? "~" : ""}${baht(e.amount)}</span>${pay}</span></div>`
+}
+
+function daySay(d) {
+	return d.firm
+		? `<span>Have <strong>${baht(d.firm)}</strong> ready on ${dd(d.key)}; <strong>${baht(d.run)}</strong> in all from today.</span>`
+		: `<span>Firm once the statements close.</span>`
+}
+
+function dayRow(d) {
+	const sel = state.sel === d.key
+	const dt = D(d.key)
+	const soon = diff(TODAY, d.key) <= 3 && d.firm
+	const firmItems = d.items.filter((e) => e.kind !== "est")
+	const names = firmItems.map((e) => card(e.card).name)
+	const who = firmItems.length ? `<strong>${names.slice(0, 2).join(", ")}</strong>${names.length > 2 ? ` +${names.length - 2} more` : ""}` : `<strong>Statements still open</strong>`
+	const sum = d.firm + d.est
+	const stack = d.items.map((e) => `<i class="c-${card(e.card).color} ${e.kind === "est" ? "est" : ""}" style="flex:${e.amount / sum}"></i>`).join("")
+	const tot = d.firm
+		? `<b>${baht(d.firm)}</b><small>${baht(d.run)} by then</small>${d.est ? `<small>+ ~${baht(d.est)} open</small>` : ""}`
+		: `<b class="est">~${baht(d.est)}</b><small>not final</small>`
+	return `<div>
+		<button class="day ${sel ? "sel" : ""}" data-day="${d.key}" aria-expanded="${sel}" id="day-${d.key}">
+			<span class="date ${soon ? "soon" : ""} ${d.firm ? "" : "est"}"><small>${DOW[dt.getUTCDay()]}</small><b>${dt.getUTCDate()}</b><small>${MON[dt.getUTCMonth()]}</small></span>
+			<span class="who"><span class="t">${who} · ${far(d.key)}</span><span class="stack">${stack}</span></span>
+			<span class="tot">${tot}</span>
+		</button>
+		${sel ? `<div class="drawer"><div class="lines">${d.items.map(line).join("")}</div><div class="foot">${daySay(d)}<button class="btn small" data-variant="quiet" data-copy="${d.key}">Copy day</button></div></div>` : ""}
+	</div>`
+}
+
+/** The list: days in date order, a heading with its total each week or month. */
+function listView(days) {
+	if (!days.length) return `<div class="panel empty">Nothing to pay. Try a longer range.</div>`
+	const keyOf = state.view === "week" ? (d) => weekStart(d.key) : (d) => d.key.slice(0, 7)
+	const groups = new Map()
+	for (const d of days) { const k = keyOf(d); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(d) }
+	const name = (k) => {
+		if (state.view === "week") { const n = diff(weekStart(TODAY), k) / 7; return `${n === 0 ? "This week" : n === 1 ? "Next week" : `Week of ${dm(k)}`} <span>· ${dm(k)} – ${dm(add(k, 6))}</span>` }
+		const [y, m] = k.split("-"); return `${MONTH[+m - 1]} <span>${y}</span>`
+	}
+	return `<div class="groups list">${[...groups].map(([k, ds]) => {
+		const t = ds.reduce((s, d) => s + d.firm, 0)
+		return `<section class="grp"><div class="ghead"><b>${name(k)}</b><span class="money">${t ? baht(t) : `<span class="muted">~${baht(ds.reduce((s, d) => s + d.est, 0))}</span>`}</span></div><div class="panel days">${ds.map(dayRow).join("")}</div></section>`
+	}).join("")}</div>`
+}
+
+// ---------- the calendar ----------
+function calendarView(days, now) {
+	const map = new Map(days.map((d) => [d.key, d]))
+	const months = [...new Set([TODAY.slice(0, 7), ...days.map((d) => d.key.slice(0, 7))])].sort()
+	if (!months.includes(state.month)) state.month = months[0]
+	const mi = months.indexOf(state.month)
+	const [y, m] = state.month.split("-").map(Number)
+	const nDays = new Date(Date.UTC(y, m, 0)).getUTCDate()
+	const max = Math.max(1, ...days.map((d) => d.firm))
+	const monthTotal = days.filter((d) => d.key.startsWith(state.month)).reduce((s, d) => s + d.firm, 0)
+	const late = now.reduce((s, e) => s + e.amount, 0)
+	const desk = state.device === "desk"
+	let cells = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((w) => `<span class="dow">${desk ? w : w[0]}</span>`).join("") + `<span class="dow wk">Week</span>`
+	let k = weekStart(`${state.month}-01`)
+	while (k <= `${state.month}-${String(nDays).padStart(2, "0")}`) {
+		let wk = 0, wkEst = 0
+		for (let i = 0; i < 7; i++, k = add(k, 1)) {
+			const d = map.get(k)
+			const inMonth = k.startsWith(state.month)
+			if (d && inMonth) { wk += d.firm; wkEst += d.est }
+			const cls = ["cell", !inMonth && "out", k < TODAY && "past", k === TODAY && (late ? "late" : "today"), d && "has", d && !d.firm && "estonly", k > END() && "beyond", state.sel === k && "sel"].filter(Boolean).join(" ")
+			const heat = d && d.firm ? Math.round(10 + (d.firm / max) * 50) : 0
+			const dots = d ? `<span class="dots">${d.items.slice(0, desk ? 5 : 3).map((e) => `<i class="c-${card(e.card).color}"></i>`).join("")}</span>` : ""
+			const v = d ? `<span class="v">${d.firm ? (desk ? baht(d.firm) : kb(d.firm)) : "~" + kb(d.est)}</span>` : k === TODAY && late ? `<span class="v" style="color:var(--danger)">${desk ? baht(late) : kb(late)}</span>` : ""
+			cells += `<button class="${cls}" style="--heat:${heat}" ${d ? `data-day="${k}"` : k === TODAY && late ? "data-late" : "disabled"}><span class="n">${D(k).getUTCDate()}</span>${v}${dots}</button>`
+		}
+		cells += `<span class="wk">${wk ? `<b>${desk ? baht(wk) : kb(wk)}</b>` : wkEst ? `<small>~${kb(wkEst)}</small>` : `<small>—</small>`}</span>`
+	}
+	const sel = map.get(state.sel)
+	const pick = sel
+		? `<div class="panel dayp"><h3><span>${dd(sel.key)} <span class="muted" style="font-size:0.8125rem;font-weight:500">· ${far(sel.key)}</span></span><span class="money">${sel.firm ? baht(sel.firm) : "~" + baht(sel.est)}</span></h3>
+			${sel.firm ? `<div class="sub"><span>Needed in all by then</span><b>${baht(sel.run)}</b></div>` : ""}
+			<div class="lines">${sel.items.map(line).join("")}</div>
+			<div class="foot">${daySay(sel)}<button class="btn small" data-variant="quiet" data-copy="${sel.key}">Copy day</button></div></div>`
+		: `<div class="panel dayp empty">Tap a day to see what to pay.</div>`
+	return `<div class="calwrap">
+		<div class="panel cal">
+			<div class="calhead"><button class="nav" data-month="${months[mi - 1] ?? ""}" ${mi > 0 ? "" : "disabled"} aria-label="Month before">‹</button><h3>${MONTH[m - 1]} ${y}<small>${baht(monthTotal)} to pay this month</small></h3><button class="nav" data-month="${months[mi + 1] ?? ""}" ${mi < months.length - 1 ? "" : "disabled"} aria-label="Month after">›</button></div>
+			<div class="grid8">${cells}</div>
+			<div class="legend"><span><i class="h"></i>to pay (darker is more)</span><span><i class="e"></i>open statement only</span><span>Week: that week's total</span></div>
+		</div>
+		${pick}
+	</div>`
+}
+
+// ---------- the page ----------
+function owedPage() {
+	const { now, out } = entries()
+	const days = byDay(out)
+	// The calendar always shows a day: the one picked, else the next paying day.
+	if (state.view === "calendar" && !days.some((d) => d.key === state.sel)) state.sel = days.find((d) => d.firm)?.key ?? null
+	return `
+		${controls()}
+		${lateBanner(now)}
+		${totals(days)}
+		${state.view === "calendar" ? calendarView(days, now) : listView(days)}`
+}
+
+function address() {
+	const q = new URLSearchParams()
+	if (state.q) q.set("q", state.q)
+	for (const o of state.owners) q.append("f.owners", o)
+	for (const p of state.places) q.append("f.locations", p.toLowerCase())
+	if (state.range !== DEF.range) q.set("f.range", state.range || "all")
+	if (state.kinds.length !== 3) for (const k of state.kinds) q.append("f.shows", k)
+	if (state.view !== DEF.view) q.set("view", state.view)
+	if (state.view === "calendar" && state.month !== TODAY.slice(0, 7)) q.set("month", state.month)
+	if (state.sel) q.set("day", state.sel)
+	return q
+}
+
+function render() {
+	const focus = document.activeElement?.hasAttribute?.("data-q")
+	document.documentElement.dataset.theme = state.theme
+	for (const seg of document.querySelectorAll(".opts .seg")) for (const b of seg.children) b.setAttribute("aria-pressed", String(state[seg.dataset.k] === b.dataset.v))
+	const dev = document.getElementById("dev")
+	const scroll = document.getElementById("main")?.scrollTop ?? 0
+	const page = owedPage()
+	const q = address()
+	dev.className = `device ${state.device}`
+	dev.innerHTML = `
+		<div class="url"><output>cc.example/owed${q.size ? `<span class="q">?${q.toString().replaceAll("&", "&amp;")}</span>` : ""}</output></div>
+		<div class="appbar"><span class="brand"><b>cc</b> tracking</span><nav class="navtabs"><span class="on">Home</span><span>Transactions</span><span>Cards</span><span>Settings</span></nav></div>
+		<div class="main" id="main">
+			<div class="title"><h2>Home</h2></div>
+			<div class="ptabs"><span>Needs you</span><span class="on">Owed</span><span>Ready to use</span></div>
+			${page}
+		</div>
+		<div class="tabbar"><span class="on">Home</span><span>Transactions</span><span>Cards</span><span>Settings</span></div>
+		${sheet()}
+		${state.toast ? `<div class="toast">${state.toast}</div>` : ""}`
+	document.getElementById("main").scrollTop = scroll
+	if (focus) { const i = dev.querySelector("[data-q]"); i.focus(); i.setSelectionRange(i.value.length, i.value.length) }
+}
+
+function flash(text) {
+	state.toast = text
+	render()
+	clearTimeout(window.__t)
+	window.__t = setTimeout(() => { state.toast = ""; render() }, 2000)
+}
+const toggle = (list, v) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
+
+document.addEventListener("input", (ev) => {
+	if (ev.target.hasAttribute("data-q")) { state.q = ev.target.value; render() }
+})
+document.addEventListener("click", (ev) => {
+	const t = ev.target.closest("button, .scrim")
+	if (!t) return
+	const d = t.dataset
+	const seg = t.closest(".opts .seg")
+	if (seg) { state[seg.dataset.k] = d.v; state.sheet = false; return render() }
+	if ("close" in d) { state.sheet = false; return render() }
+	if ("sheet" in d) { state.sheet = true; return render() }
+	if ("reset" in d) { Object.assign(state, { range: DEF.range, owners: [], places: [], kinds: [...DEF.kinds] }); return render() }
+	if (d.view) { state.view = d.view; state.sel = null; return render() }
+	if (d.fRange !== undefined) { state.range = Number(d.fRange); return render() }
+	if (d.fOwner) { state.owners = toggle(state.owners, d.fOwner); return render() }
+	if (d.fPlace) { state.places = toggle(state.places, d.fPlace); return render() }
+	if (d.fKind) { state.kinds = toggle(state.kinds, d.fKind); return render() }
+	if (d.clear) {
+		const [k, v] = d.clear.split(":")
+		if (k === "range") state.range = DEF.range
+		if (k === "owner") state.owners = state.owners.filter((x) => x !== v)
+		if (k === "place") state.places = state.places.filter((x) => x !== v)
+		if (k === "kind") state.kinds = [...state.kinds, v]
+		return render()
+	}
+	if (d.month) { state.month = d.month; state.sel = null; return render() }
+	if ("late" in d) { state.lateOpen = !state.lateOpen; render(); document.querySelector(".now-wrap")?.scrollIntoView({ block: "nearest" }); return }
+	if (d.pay) return flash(`Opens ${card(d.pay).name}'s pay form with ${baht(Number(d.amount))}`)
+	if (d.copy) {
+		const x = byDay(entries().out).find((x) => x.key === d.copy)
+		const text = `${dd(x.key)}: ${baht(x.firm)}\n` + x.items.filter((e) => e.kind !== "est").map((e) => `  ${card(e.card).id}) ${card(e.card).name} (${card(e.card).holder})  ${baht(e.amount)}`).join("\n")
+		navigator.clipboard?.writeText(text).catch(() => {})
+		return flash("Copied the day as text")
+	}
+	if (d.day) {
+		const fromCal = t.classList.contains("cell")
+		state.sel = fromCal || state.sel !== d.day ? d.day : null
+		render()
+		if (fromCal && state.device === "phone") document.querySelector(".dayp")?.scrollIntoView({ block: "nearest" })
+	}
+})
+render()
+</script>
+</body>
+</html>

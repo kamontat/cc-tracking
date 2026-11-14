@@ -45,6 +45,14 @@ describe("readRecord", () => {
 		expect(withRecord("/settings", { kind: "panel", id: "owners" })).toBe("/settings?panel=owners")
 	})
 
+	test("reads the Owed tab's day by its date, or late; the card still wins", () => {
+		expect(readRecord("?day=2026-11-14", ["card", "day"])).toEqual({ kind: "day", id: "2026-11-14" })
+		expect(readRecord("?day=late", ["card", "day"])).toEqual({ kind: "day", id: "late" })
+		expect(readRecord("?day=2026-11-14&card=7", ["card", "day"])).toEqual({ kind: "card", id: "7" })
+		for (const id of ["2026-13-01", "14-11-2026", "soon"]) expect(readRecord(`?day=${id}`, ["day"])).toBeNull()
+		expect(withRecord("/owed?view=week", { kind: "day", id: "late" })).toBe("/owed?view=week&day=late")
+	})
+
 	test("ignores a key the page does not take", () => {
 		expect(readRecord("?limit=g1", ["card"])).toBeNull()
 		expect(readRecord("?limit=g1&card=5", ["limit"])).toEqual({ kind: "limit", id: "g1" })
@@ -186,6 +194,16 @@ describe("RecordPanel", () => {
 		expect(history.calls.at(-1)).toBe("push /cards?card=7")
 		history.userBack()
 		expect(panel.view?.id).toBe("5")
+	})
+
+	test("‹ on a form opened a step deeper (a day's Pay) steps back to the record it came from", () => {
+		const { history, panel } = setup()
+		panel.show(card("5"))
+		panel.deeper(card("7"), { name: "pay", arg: "800" })
+		expect(history.calls.at(-1)).toBe("push /cards?card=7")
+		panel.back()
+		expect(history.calls.at(-1)).toBe("go -1")
+		expect(panel.view).toEqual({ kind: "card", id: "5", form: null })
 	})
 
 	test("a blank form opens with the address unchanged; adding the record writes its address", () => {

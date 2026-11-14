@@ -29,7 +29,7 @@
 	 * it has. The body is its lines as a row list (the card, its note, and what it is for, or for a
 	 * saved list what was bought, or _Moved_ when its unmade lines went to the next day's draft,
 	 * else _Not made_), each opening its card's panel a step deeper (`panel.deeper`), so Back
-	 * returns here; then the total; a saved list's summary (DD-211). Then the actions its status allows: a draft's _Continue_ and a
+	 * returns here; then the total; a saved list's summary (DD-212). Then the actions its status allows: a draft's _Continue_ and a
 	 * waiting list's _Record reply_ leave for the edit page (writing a list is a page, decision
 	 * 4); _Merge_ when other lists of its status share its day (DD-187); a draft's one-step
 	 * _Delete_ (DD-74), which closes the panel; a waiting list's two-step _Confirm_, which saves it
