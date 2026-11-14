@@ -513,52 +513,51 @@
 		{#if of}
 			<UsageChart usage={of} room={rooms.get(card.id)?.room} tone={tileTone(card, groups)} />
 		{/if}
-		{#each view.orders as bad, order (order)}
-			{@const named = { card: cardName(card.id, card), n: order + 1 }}
-			<div class="order" data-order={order}>
-				{#if many}
-					<div class="order-head" row>
-						<span>{tr("purchaseList.order", { n: order + 1 })}</span>
-						<button
-							type="button"
-							data-variant="quiet"
-							data-action="remove-order"
-							aria-label={tr("purchaseList.removeOrderFor", named)}
-							onclick={() => removeOrder(card.id, order)}>
-							<SvgIcon name="close" />
-						</button>
+		<div class="orders">
+			{#each view.orders as bad, order (order)}
+				{@const named = { card: cardName(card.id, card), n: order + 1 }}
+				<div class="order" data-order={order}>
+					<div class="order-fields amount-box" data-bad={bad ? "" : undefined}>
+						<label class="amount-in">
+							<span aria-hidden="true">฿</span>
+							<input
+								inputmode="decimal"
+								enterkeyhint={adding ? "next" : "done"}
+								data-field="amount"
+								placeholder="0"
+								aria-label={many ? tr("purchaseList.amountForOrder", named) : tr("purchaseList.amountFor", named)}
+								value={typed[card.id]?.[order] ?? ""}
+								oninput={(e) => setAmount(card.id, order, e.currentTarget.value)}
+								onkeydown={(e) => onEnter(e, card)}>
+						</label>
+						<input
+							class="note-in"
+							data-field="note"
+							placeholder={tr("purchaseList.noteLabel")}
+							aria-label={many ? tr("purchaseList.noteForOrder", named) : tr("purchaseList.noteFor", named)}
+							value={typedNotes[card.id]?.[order] ?? ""}
+							oninput={(e) => setNote(card.id, order, e.currentTarget.value)}
+							onkeydown={(e) => onEnter(e, card)}>
+						{#if many}
+							<button
+								type="button"
+								data-variant="quiet"
+								data-action="remove-order"
+								aria-label={tr("purchaseList.removeOrderFor", named)}
+								onclick={() => removeOrder(card.id, order)}>
+								<SvgIcon name="close" />
+							</button>
+						{/if}
 					</div>
-				{/if}
-				<label class="bigin">
-					<span>฿</span>
-					<input
-						inputmode="decimal"
-						enterkeyhint={adding ? "next" : "done"}
-						data-field="amount"
-						placeholder="0"
-						aria-label={many ? tr("purchaseList.amountForOrder", named) : tr("purchaseList.amountFor", named)}
-						value={typed[card.id]?.[order] ?? ""}
-						oninput={(e) => setAmount(card.id, order, e.currentTarget.value)}
-						onkeydown={(e) => onEnter(e, card)}>
-				</label>
-				{#if bad}
-					<p class="error">{tr("quickAdd.error.badAmount")}</p>
-				{/if}
-				<label class="line-note">
-					{tr("purchaseList.noteLabel")}
-					<input
-						data-field="note"
-						placeholder={tr("purchaseList.notePlaceholder")}
-						aria-label={many ? tr("purchaseList.noteForOrder", named) : tr("purchaseList.noteFor", named)}
-						value={typedNotes[card.id]?.[order] ?? ""}
-						oninput={(e) => setNote(card.id, order, e.currentTarget.value)}
-						onkeydown={(e) => onEnter(e, card)}>
-				</label>
-			</div>
-		{/each}
-		<button type="button" data-variant="quiet" data-action="add-order" onclick={() => addOrder(card.id)}>
-			+ {tr("purchaseList.addOrder")}
-		</button>
+					{#if bad}
+						<p class="error">{tr("quickAdd.error.badAmount")}</p>
+					{/if}
+				</div>
+			{/each}
+			<button type="button" class="add-row" data-action="add-order" onclick={() => addOrder(card.id)}>
+				<SvgIcon name="plus" />{tr("purchaseList.addOrder")}
+			</button>
+		</div>
 		<div class="after" row>
 			<span>{tr("purchaseList.roomAfter")}</span>
 			<b>{view.after}</b>
@@ -618,13 +617,9 @@
 					</button>
 				{/each}
 			</div>
-			<button
-				type="button"
-				class="add-card"
-				data-variant="quiet"
-				data-action="add-card"
-				onclick={() => onsheet({ kind: "pick" })}>
-				+ {tr("purchaseList.addCard")}
+			<button type="button" class="add-row add-card" data-action="add-card" onclick={() => onsheet({ kind: "pick" })}>
+				<span class="add-mark"><SvgIcon name="plus" /></span>
+				<b class="what">{tr("purchaseList.addCard")}</b>
 			</button>
 		{/if}
 	</div>
@@ -797,9 +792,64 @@
 		transform: rotate(-90deg);
 	}
 
-	.add-card {
+	/* An add row (+ Add a card, + Add order): a dashed outline over no ground, in the accent's
+	   colour, so it reads as the next row to fill rather than one more button. */
+	.add-row {
+		display: flex;
+		align-items: center;
 		align-self: stretch;
-		padding: var(--cc-space-3);
+		gap: var(--cc-space-2);
+		padding: var(--cc-space-2) var(--cc-space-3);
+		font-size: var(--cc-text-sm);
+		font-weight: 600;
+		color: var(--cc-accent);
+		text-align: start;
+		cursor: pointer;
+		background: transparent;
+		border: var(--cc-border-width) dashed var(--cc-accent);
+		border-radius: var(--cc-radius-sm);
+	}
+
+	.add-row:hover {
+		background: var(--cc-accent-surface);
+	}
+
+	.add-row :global(.icon) {
+		flex: none;
+		inline-size: var(--cc-icon-size-sm);
+		block-size: var(--cc-icon-size-sm);
+	}
+
+	/* + Add a card is the list's next row: the row panel's side padding and corners, the plus in
+	   a box the chip's size, and a card row's height (its padding, its two lines, the panel's
+	   borders), so the two line up. */
+	.add-card {
+		gap: var(--cc-space-3);
+		min-block-size: calc(
+			2 *
+			var(--cc-border-width) +
+			2 *
+			var(--cc-space-3) +
+			(var(--cc-text-md) + var(--cc-text-xs)) *
+			1.35
+		);
+		padding: var(--cc-space-3) var(--cc-space-4);
+		font-size: var(--cc-text-md);
+		border-radius: var(--cc-radius-md);
+	}
+
+	.add-mark {
+		display: inline-grid;
+		place-items: center;
+		flex: none;
+		inline-size: calc(var(--cc-space-5) + var(--cc-space-3));
+		block-size: calc(var(--cc-space-5) + var(--cc-space-1) / 2);
+		background: var(--cc-accent-surface);
+		border-radius: var(--cc-radius-xs);
+	}
+
+	.add-card b {
+		font-weight: 650;
 	}
 
 	/* An empty list is one large target to add the first card. */
@@ -872,68 +922,48 @@
 		block-size: var(--cc-icon-size-sm);
 	}
 
-	.bigin {
-		flex-direction: row;
-		align-items: baseline;
+	/* The orders and + Add order sit close, one group under the chart. */
+	.orders {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: var(--cc-space-2);
-		padding: var(--cc-space-1) var(--cc-space-4);
-		background: var(--cc-surface-sunken);
-		border-radius: var(--cc-radius-sm);
 	}
 
-	.bigin span {
-		font-size: var(--cc-text-lg);
-		color: var(--cc-text-muted);
-	}
-
-	.bigin input {
-		flex: 1;
-		min-inline-size: 0;
-		padding: var(--cc-space-1) 0;
-		font-size: var(--cc-text-2xl);
-		font-weight: 700;
-		font-variant-numeric: tabular-nums;
-		background: transparent;
-		border: none;
-	}
-
-	/* An order: its amount and note, a line between it and the next. */
+	/* An order is one of app.css's amount boxes: the amount, the note beside it after a rule, and
+	   its × once there are two. */
 	.order {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: var(--cc-space-3);
+		gap: var(--cc-space-1);
 	}
 
-	.order + .order {
-		padding-block-start: var(--cc-space-3);
-		border-top: var(--cc-border-width) solid var(--cc-border);
+	/* Under `.order`, to outrank app.css's flex box at any load order. */
+	.order .order-fields {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
 	}
 
-	.order-head {
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--cc-space-3);
+	.order-fields .note-in {
+		align-self: stretch;
+		padding: var(--cc-space-2) var(--cc-space-3);
 		font-size: var(--cc-text-sm);
-		font-weight: 600;
-		color: var(--cc-text-muted);
-	}
-
-	button[data-action="add-order"] {
-		justify-self: start;
-		padding: var(--cc-space-1) var(--cc-space-2);
-		font-size: var(--cc-text-xs);
+		border-inline-start: var(--cc-border-width) solid var(--cc-border);
 	}
 
 	/* A small × with no word, so it never reads as a second Remove beside the card's own. */
-	.order-head button {
+	button[data-action="remove-order"] {
 		display: inline-grid;
 		place-items: center;
+		align-self: center;
+		margin-inline-end: var(--cc-space-1);
 		padding: var(--cc-space-1);
 		line-height: 0;
+		background: transparent;
+		border: 0;
 		border-radius: var(--cc-radius-pill);
 	}
 
-	.order-head button :global(.icon) {
+	button[data-action="remove-order"] :global(.icon) {
 		inline-size: var(--cc-icon-size-sm);
 		block-size: var(--cc-icon-size-sm);
 	}
@@ -953,18 +983,6 @@
 	.error {
 		font-size: var(--cc-text-sm);
 		color: var(--cc-danger);
-	}
-
-	.line-note {
-		gap: var(--cc-space-1);
-		font-size: var(--cc-text-sm);
-		color: var(--cc-text-muted);
-	}
-
-	.line-note input {
-		min-inline-size: 0;
-		font-size: var(--cc-text-md);
-		color: var(--cc-text);
 	}
 
 	.list-layout .note,
