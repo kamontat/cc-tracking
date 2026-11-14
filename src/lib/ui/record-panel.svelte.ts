@@ -1,6 +1,7 @@
 import type { AddressBar } from "#lib/ui/address-bar"
 
 import { isCardId } from "#lib/domain/card"
+import { isValidDate } from "#lib/domain/date"
 import { t } from "#lib/i18n/index"
 
 /*
@@ -9,7 +10,8 @@ import { t } from "#lib/i18n/index"
  * is an organism per kind (`CardPanel`, and later the limit and list panels). This module only
  * knows which record is open, what is being done in it, and how each step moves through history:
  *
- * - The address names the open record by kind (`?card=<id>`, `?limit=<id>`, `?list=<id>`), never
+ * - The address names the open record by kind (`?card=<id>`, `?limit=<id>`, `?list=<id>`, the
+ *   _Owed_ tab's `?day=<date>`), never
  *   a form inside it. When a page takes more than one key, `card` wins. Settings' panels
  *   (`?panel=locations`, `?panel=owners`) are named the same way, the panel's name as its id.
  * - Opening a record from nothing pushes an entry, so Back closes it; showing another one from
@@ -29,8 +31,11 @@ import { t } from "#lib/i18n/index"
  * read as it is.
  */
 
-/** The kinds of record with a panel, in the order their keys win (`card` first); `panel` is Settings'. */
-export const RECORD_KINDS = ["card", "limit", "list", "panel"] as const
+/**
+ * The kinds of record with a panel, in the order their keys win (`card` first); `panel` is
+ * Settings', `day` the _Owed_ tab's (a date, or `late` for the money already late).
+ */
+export const RECORD_KINDS = ["card", "limit", "list", "day", "panel"] as const
 
 export type RecordKind = (typeof RECORD_KINDS)[number]
 
@@ -43,8 +48,18 @@ export type PanelForm = { name: string; arg?: string }
 /** What the panel shows: a record (or, for a blank form, its kind alone) and any form over it. */
 export type PanelView = { kind: RecordKind; id: string | null; form: PanelForm | null }
 
-/** Whether `id` can name a record of `kind`: a card id in its format (`isCardId`, RD-28); any other, not empty. */
-export const isRecordId = (kind: RecordKind, id: string): boolean => (kind === "card" ? isCardId(id) : id !== "")
+/** The _Owed_ tab's day that holds the money already late. */
+export const LATE_DAY = "late"
+
+/**
+ * Whether `id` can name a record of `kind`: a card id in its format (`isCardId`, RD-28); a day a
+ * real date or `late`; any other, not empty.
+ */
+export function isRecordId(kind: RecordKind, id: string): boolean {
+	if (kind === "card") return isCardId(id)
+	if (kind === "day") return id === LATE_DAY || isValidDate(id)
+	return id !== ""
+}
 
 /**
  * The record the query names among the `kinds` a page takes, `card` winning; an empty or invalid
