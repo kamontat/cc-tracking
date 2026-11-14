@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day, and moved list lines marked Moved
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day, and moved list lines marked Moved, and the unused per-card Owed code removed
 
 ### BREAKING CHANGES
 
@@ -42,6 +42,13 @@ reasons don't show up in the code.
 
 - Message keys `saved.moved` and `saved.openDraft` are removed, with the `.list-moved` and
   `open-draft` styles.
+
+- The per-card Owed code is gone: `OwedList`, `#lib/domain/owed`, `#lib/ui/pay-tile`,
+  `#lib/ui/pay-tag`, `PayChoice` and `payChoices`, `CardTile`'s `figure` and `action` props, the
+  `--cc-tile-act-width` and `--cc-tile-act-height` tokens, and the `urgency` and `left` sort
+  fields. Message keys removed: `pay.tag.nothing`, `pay.tag.credit`, `pay.owedUnder`,
+  `pay.pickName`, `pay.tile.bill`, `owed.filter.title`, `owed.filter.state`, `owed.state.*` and
+  the `sort.*.urgency` and `sort.*.left` words. Nothing on screen changes.
 
 ### Features
 
@@ -291,8 +298,8 @@ reasons don't show up in the code.
 
 - Open statements are shown but never totalled, because they can still grow before they close.
 
-- The old per-card tiles (`OwedList`, `owed.ts`, `pay-tile`) are no longer used by any page; they
-  were left for a follow-up rather than removed here.
+- The old per-card tiles (`OwedList`, `owed.ts`, `pay-tile`) were removed in a follow-up once
+  Cards' balance filter (DD-210) turned out not to need them.
 
 - A saved list's moved lines say _Moved_ rather than keeping a note that links to the draft:
   the note took its date from the list's day plus one, not the draft's, and opened nothing once
