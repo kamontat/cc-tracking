@@ -146,6 +146,11 @@
 
 	/* The purchase list's side panel from 900px: the date, the summary and the one action. */
 	--cc-side-panel: 20rem;
+	/* A day in the _Owed_ calendar: room for its number, its compact total and its dots; taller
+	   from 900px (see the media query after this block). */
+	--cc-cal-cell: 3.375rem;
+	/* The narrowest a total on the _Owed_ tab gets before the totals wrap to another row. */
+	--cc-total-min: 9.5rem;
 
 	/* The detail panel (RD-23): its column beside the list from 900px, and how much of the
 	   screen's height its sheet takes below that. */
@@ -259,6 +264,12 @@
 @media (min-width: 640px) {
 	:root {
 		--cc-panel-padding: var(--cc-space-5);
+	}
+}
+
+@media (min-width: 900px) {
+	:root {
+		--cc-cal-cell: 5rem;
 	}
 }
 
