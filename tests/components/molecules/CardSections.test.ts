@@ -33,7 +33,7 @@ const tile = createRawSnippet((item: () => Card, unplaced: () => boolean) => ({
 	render: () => `<a data-card="${item().id}" data-unplaced="${unplaced()}">${item().id}</a>`,
 }))
 
-const show = (results: Sectioned<Card>, head?: string) => {
+const show = (results: Sectioned<Card>, head?: string, summary?: Parameters<typeof mount>[1]["props"]) => {
 	mounted = mount(CardSections<Card>, {
 		target: document.body,
 		props: {
@@ -42,6 +42,7 @@ const show = (results: Sectioned<Card>, head?: string) => {
 			locations: [{ id: "krabi", name: "Krabi", takesPurchases: true }],
 			head,
 			tile,
+			...summary,
 		},
 	})
 	flushSync()
@@ -81,6 +82,25 @@ test("holders and limit groups head their sections by name (every card has both,
 	})
 	expect([...root.querySelectorAll("section h2")].map(flat)).toEqual(["KC 1 card", "SCB Pool 1 card"])
 	expect(root.querySelector('[data-card="A"]')?.getAttribute("data-unplaced")).toBe("true")
+})
+
+test("a section's summary, when given, sits under its head, told the section's items", () => {
+	const summary = createRawSnippet((items: () => Card[]) => ({
+		render: () =>
+			`<span>${items()
+				.map((c) => c.id)
+				.join("+")}</span>`,
+	}))
+	const results: Sectioned<Card> = {
+		sections: [{ key: "place:krabi", kind: "place", location: "krabi", cards: [card("A"), card("B")] }],
+		flat: null,
+		count: 2,
+	}
+	const root = show(results, undefined, { summary })
+	expect(flat(root.querySelector("section .section-glance"))).toBe("A+B")
+	if (mounted) unmount(mounted)
+	document.body.innerHTML = ""
+	expect(show(results).querySelector(".section-glance")).toBeNull()
 })
 
 test("flat: the line over the grid when given, else the grid alone", () => {

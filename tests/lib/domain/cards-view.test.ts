@@ -7,7 +7,9 @@ import {
 	CARDS_DIRS,
 	CARDS_GROUPS,
 	CARDS_SORTS,
+	CARDS_STATES,
 	CARDS_USAGES,
+	cardStates,
 	cardsResults,
 	cardUsePct,
 	DEFAULT_CARDS_VIEW,
@@ -126,7 +128,8 @@ describe("cardsResults", () => {
 		expect(r.flat?.map((c) => c.id)).toEqual(["b", "a", "c"])
 	})
 	test("each sort has its default direction; the default view is by card, grouped by place", () => {
-		expect(DEFAULT_CARDS_VIEW).toMatchObject({ sort: "card", dir: "asc", by: "place", usage: [] })
+		expect(DEFAULT_CARDS_VIEW).toMatchObject({ sort: "card", dir: "asc", by: "place", usage: [], states: [] })
+		expect(CARDS_STATES).toEqual(["owes", "overdue", "soon", "credit"])
 		expect(CARDS_SORTS).toEqual(["card", "room", "name", "close", "due", "used"])
 		expect(CARDS_GROUPS).toEqual(["place", "holder", "limit", "none"])
 		expect(CARDS_USAGES).toEqual(["used", "unused"])
@@ -308,6 +311,31 @@ describe("cardsResults", () => {
 		expect(shown(["unused"])).toEqual(["b", "c", "x"])
 		expect(shown([])).toEqual(["a", "b", "c", "x"])
 		expect(shown(["used", "unused"])).toEqual(["a", "b", "c", "x"])
+	})
+	test("states: owes, a bill past due, a bill due in 7 days, or credit; any of the picked ones", () => {
+		const today = "2026-10-25"
+		const cs = [card("a"), card("b"), card("c"), card("d"), card("e")]
+		const buy = (cardId: string, date: string) => ({ id: `p-${cardId}`, cardId, date, amount: 1_000, note: "" })
+		const credit = { id: "pay-d", cardId: "d", date: "2026-10-01", amount: 500, status: "paid" as const }
+		const ledgers = new Map([
+			["a", cardLedger(cs[0] as Card, [buy("a", "2026-09-05")], [], [], today)],
+			["b", cardLedger(cs[1] as Card, [buy("b", "2026-10-05")], [], [], today)],
+			["c", cardLedger(cs[2] as Card, [buy("c", "2026-10-20")], [], [], today)],
+			["d", cardLedger(cs[3] as Card, [], [credit], [], today)],
+		])
+		expect(cs.map((c) => cardStates(ledgers.get(c.id), today))).toEqual([
+			["owes", "overdue"],
+			["owes", "soon"],
+			["owes"],
+			["credit"],
+			[],
+		])
+		const shown = (states: ("owes" | "overdue" | "soon" | "credit")[]) =>
+			cardsResults(cs, [g], rooms, view({ by: "none", states }), order, today, ledgers).flat?.map((c) => c.id)
+		expect(shown([])).toEqual(["a", "b", "c", "d", "e"])
+		expect(shown(["owes"])).toEqual(["a", "b", "c"])
+		expect(shown(["overdue", "soon"])).toEqual(["a", "b"])
+		expect(shown(["credit"])).toEqual(["d"])
 	})
 	test("nothing matches or no cards", () => {
 		const r = cardsResults([], [], new Map(), view(), order)

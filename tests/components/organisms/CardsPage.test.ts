@@ -406,6 +406,39 @@ test("Usage and the used sort are applied from the sheet, kept in the address, a
 	expect(shownTiles()).toEqual(["B", "A"])
 })
 
+test("the glance panels sum the shown cards, follow the filter, and each section heads its own totals", async () => {
+	const { address } = await setup("/cards", {
+		before: async (repo) => {
+			// A's September statement (closes 25 Sep, due 15 Oct) is past due on 31 Oct; B's is on the open one.
+			await repo.savePurchase({ id: "p1", cardId: "A", date: "2026-09-20", amount: 1_000_00, note: "" })
+			await repo.savePurchase({ id: "p2", cardId: "B", date: "2026-10-20", amount: 300_00, note: "" })
+		},
+	})
+	const figure = (field: string) => flat($(`.cards-glance [data-field="${field}"] b`))
+	expect(figure("count")).toBe("2")
+	expect(figure("owed")).toBe("฿1,300.00")
+	expect(flat($('section[data-location="krabi"] .section-glance'))).toBe(
+		"฿1,000.00 owed · ฿0.00 due in 7 days · 1% used",
+	)
+	expect(flat($('section[data-location="bangkok"] .section-glance'))).toBe(
+		"฿300.00 owed · ฿0.00 due in 7 days · 1% used",
+	)
+	await press('[data-action="filter"]')
+	await press('dialog [data-state="overdue"]')
+	await press("dialog [data-action=apply]")
+	await exit()
+	expect(address.now()).toBe("/cards?f.states=overdue")
+	expect(shownTiles()).toEqual(["A"])
+	expect(flat($('[data-chip="state:overdue"]'))).toBe("Overdue ×")
+	expect(figure("count")).toBe("1")
+	expect(figure("owed")).toBe("฿1,000.00")
+})
+
+test("no matching card shows no glance panels", async () => {
+	await setup("/cards?q=zzz")
+	expect($(".cards-glance")).toBeNull()
+})
+
 test("Group by is applied from the sheet, kept in the address, and named on its chip", async () => {
 	const { address } = await setup()
 	expect(flat($('[data-action="group"]'))).toBe("Group: Place ▾")
