@@ -58,6 +58,8 @@ test("a list's parts are its lines, missing cards keep their id, and a saved lis
 		] as PurchaseList["lines"],
 	})
 	expect(listParts(saved, cards).map((p) => p.amount)).toEqual(["฿480.00", "Not made"])
+	const moved = { ...saved, movedTo: "d1" }
+	expect(listParts(moved, cards).map((p) => p.amount)).toEqual(["฿480.00", "Moved"])
 })
 
 test("a draft's card with no amount yet reads as a dash", () => {

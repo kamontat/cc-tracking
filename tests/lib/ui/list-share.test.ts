@@ -178,6 +178,20 @@ test("a saved list totals only what was made, at the real amount", () => {
 	)
 })
 
+test("a saved list whose unmade lines moved to a draft says Moved, not Not made", () => {
+	setLocale("en")
+	const saved = {
+		date: "2026-10-31",
+		status: "saved" as const,
+		movedTo: "d1",
+		lines: [
+			{ cardId: "KB-F", amount: 12_500_00, made: true },
+			{ cardId: "UOB-K", amount: 4_800_00, made: false },
+		],
+	}
+	expect(shareTable(saved, cards).rows.map((row) => row[2])).toEqual(["฿12,500.00", "Moved"])
+})
+
 test("a sent list keeps its planned amounts", () => {
 	setLocale("en")
 	const table = shareTable({ ...list, status: "sent" }, cards)
