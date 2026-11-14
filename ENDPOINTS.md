@@ -1,7 +1,7 @@
 # Endpoints
 
 Every address the app answers, kept in step with the code: a change to an address or a query
-key updates this file in the same change (last: `/owed`, the calendar of what to pay each day, 2026-11-14, PRD DD-205). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
+key updates this file in the same change (last: `/owed`, the calendar of what to pay each day, 2026-11-14, PRD DD-211). The site is static: each page is `src/pages/<path>.astro`, built to `dist/<path>.html` and
 served at `/<path>` (`index.astro` at `/`), never with a trailing slash. The pages read their state from the query string only; no page reads
 or writes a fragment (`#...`).
 
@@ -55,7 +55,7 @@ back in place.
 
 ### `/owed`
 
-_Owed_: the money to have ready each day (DD-205): a calendar, or the days by week or by month,
+_Owed_: the money to have ready each day (DD-211): a calendar, or the days by week or by month,
 under the totals. Cards' search and _Filter_, with no sort and no group. A day, or the late
 money, opens in the detail panel, as a list does on `/transactions/lists`.
 
@@ -78,8 +78,8 @@ pushing `day` from nothing, rewriting it when a panel is open; × steps back ove
 panel pushes `?card=<id>` in place of `day` on the card's pay form with the amount filled in, so
 Back returns to the day. No day is open at first. Example:
 `/owed?f.owners=KC&f.range=14&view=week&day=2026-11-18`. The per-card keys `f.states`, `sort`,
-`dir` and `by` are retired here (ignored like any unknown key); what each card owes moves to
-`/cards` as a filter in a change of its own.
+`dir` and `by` are retired here (ignored like any unknown key); what each card owes is
+`/cards`' balance filter (DD-210).
 
 ### `/ready`
 
