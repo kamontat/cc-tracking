@@ -401,7 +401,7 @@
 </div>
 
 {#if sheetView}
-	<Sheet bind:this={sheetRef} wide heading={panelLabel(sheetView.cardId)} onclose={() => onsheet(null)}>
+	<Sheet bind:this={sheetRef} heading={panelLabel(sheetView.cardId)} onclose={() => onsheet(null)}>
 		{#snippet lead()}
 			<span class="mini" data-g={groupColor(sheetView.card, groups) ?? undefined} aria-hidden="true"
 				>{sheetView.card?.last4 ?? ""}</span
@@ -538,7 +538,7 @@
 	.card-step {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: var(--cc-space-4);
+		gap: var(--cc-space-3);
 	}
 
 	.nav {
@@ -560,7 +560,7 @@
 	.steps button {
 		display: inline-grid;
 		place-items: center;
-		padding: var(--cc-space-2);
+		padding: var(--cc-space-1);
 		line-height: 0;
 	}
 
@@ -584,11 +584,11 @@
 	.order {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: var(--cc-space-3);
+		gap: var(--cc-space-2);
 	}
 
 	.order + .order {
-		padding-block-start: var(--cc-space-4);
+		padding-block-start: var(--cc-space-3);
 		border-top: var(--cc-border-width) solid var(--cc-border);
 	}
 
@@ -617,7 +617,7 @@
 		align-items: center;
 		justify-content: center;
 		gap: var(--cc-space-2);
-		padding-block: var(--cc-space-2);
+		padding-block: var(--cc-space-1);
 		color: var(--cc-text-muted);
 		background: transparent;
 		border-color: transparent;
@@ -640,7 +640,7 @@
 		border-color: var(--cc-danger);
 	}
 
-	/* Planned beside the real amount: two quiet boxes, as the builder's figures are. */
+	/* Planned beside the real amount: two quiet boxes, as the builder's figures are, kept short. */
 	.figures {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -652,7 +652,7 @@
 		flex-direction: column;
 		gap: 0;
 		min-inline-size: 0;
-		padding: var(--cc-space-2) var(--cc-space-3);
+		padding: var(--cc-space-1) var(--cc-space-3);
 		background: var(--cc-surface-sunken);
 		border: var(--cc-border-width) solid transparent;
 		border-radius: var(--cc-radius-sm);
@@ -664,7 +664,7 @@
 	}
 
 	.figures b {
-		font-size: var(--cc-text-lg);
+		font-size: var(--cc-text-md);
 		font-variant-numeric: tabular-nums;
 	}
 
@@ -693,7 +693,7 @@
 		flex-wrap: nowrap;
 		align-items: baseline;
 		gap: var(--cc-space-1);
-		font-size: var(--cc-text-lg);
+		font-size: var(--cc-text-md);
 		font-weight: 700;
 	}
 
@@ -751,19 +751,20 @@
 
 	.line-note input {
 		min-inline-size: 0;
+		padding-block: var(--cc-space-1);
 		font-size: var(--cc-text-md);
 		color: var(--cc-text);
 	}
 
 	.step-actions {
 		gap: var(--cc-space-2);
-		padding-block-start: var(--cc-space-2);
+		padding-block-start: var(--cc-space-1);
 	}
 
 	.step-actions button {
 		flex: 1 1 0;
 		justify-content: center;
-		padding-block: var(--cc-space-3);
+		padding-block: var(--cc-space-2);
 	}
 
 	/* The move checkbox sits beside its words, not above them. */

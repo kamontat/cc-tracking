@@ -164,6 +164,8 @@ test("a row opens its card's sheet, and Done closes it", async () => {
 	row("B")?.click()
 	await settle()
 	expect(sheetOf("B")).toBeInstanceOf(HTMLElement)
+	// The compact sheet: the payment sheet's width, not the builder's wide one.
+	expect(root.querySelector("dialog")?.hasAttribute("data-wide")).toBe(false)
 	// The sheet is headed by its card: the chip, then `id) name`.
 	expect(flat(root.querySelector("dialog h2 .words"))).toBe("B) Card B")
 	expect(root.querySelector("dialog h2 .mini")?.getAttribute("aria-hidden")).toBe("true")
