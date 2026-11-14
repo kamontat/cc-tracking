@@ -1231,61 +1231,6 @@ a:any-link:hover {
 	flex: 1 1 auto;
 }
 
-/* The month so far: a title, then three figures in a row. */
-.tx-summary {
-	display: flex;
-	flex-direction: column;
-	gap: var(--cc-space-2);
-	padding: var(--cc-space-3) var(--cc-space-4);
-	background: var(--cc-surface);
-	border: var(--cc-border-width) solid var(--cc-border);
-	border-radius: var(--cc-radius-md);
-}
-
-.tx-summary__head {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	align-items: baseline;
-	justify-content: space-between;
-	gap: var(--cc-space-1) var(--cc-space-2);
-}
-
-.page .tx-summary h2 {
-	font-size: var(--cc-text-lg);
-	font-weight: 700;
-}
-
-.page .tx-summary small {
-	font-size: var(--cc-text-xs);
-}
-
-.tx-summary__figures {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--cc-space-2);
-}
-
-.tx-summary__figures > div {
-	display: flex;
-	flex-direction: column;
-	min-inline-size: 0;
-	line-height: 1.35;
-}
-
-.tx-summary__figures b {
-	overflow-wrap: anywhere;
-}
-
-/* Purchases read red and payments green, each beside its label (UI-07). */
-.tx-summary__figures b[data-tone="out"] {
-	color: var(--cc-danger);
-}
-
-.tx-summary__figures b[data-tone="in"] {
-	color: var(--cc-success);
-}
-
 /*
  * A list page's bar (the amounts step's and the reply's): what the list holds on the left, its
  * actions on the right. It sticks to the bottom of the page as it scrolls, above the phone's tab

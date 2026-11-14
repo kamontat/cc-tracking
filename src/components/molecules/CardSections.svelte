@@ -15,7 +15,7 @@
 	 * A list of cards in its sections (DD-192), drawn the one way Cards, Home's _Owed_ and _Ready to
 	 * use_ share: by place, a section per location headed by its name, its count and whether it takes
 	 * purchases; by account holder or limit group, a section per holder or group headed by it and its
-	 * count; not grouped, one list under `head` (none: the grid alone, no section). Each section's items are a grid of
+	 * count, then `summary`'s line when given; not grouped, one list under `head` (none: the grid alone, no section). Each section's items are a grid of
 	 * tiles, one column on a phone and as many as fit from 900px; the page draws each tile (`tile`,
 	 * told whether the item's place is left out of its section's head).
 	 */
@@ -31,9 +31,11 @@
 		head?: string | undefined
 		/** One tile; `unplaced` when no section head names its place. */
 		tile: Snippet<[item: T, unplaced: boolean]>
+		/** A line under each section's head, given its items (Cards' totals); none, no line. */
+		summary?: Snippet<[items: T[]]>
 	}
 
-	const { results, cardOf, locations, owners = [], head, tile }: Props = $props()
+	const { results, cardOf, locations, owners = [], head, tile, summary }: Props = $props()
 
 	/** The reader's language; reading it makes a translation follow a switch. */
 	let lang = $state(getLocale())
@@ -84,6 +86,9 @@
 			<b>{name.name}</b>
 			<small>{cardsCount(section.cards.length)}{name.extra}</small>
 		</h2>
+		{#if summary}
+			<p class="section-glance">{@render summary(section.cards)}</p>
+		{/if}
 		{@render tiles(section.cards, section.kind !== "place")}
 	</section>
 {/each}
@@ -131,6 +136,12 @@
 	}
 
 	.card-section .place small {
+		font-size: var(--cc-text-xs);
+		color: var(--cc-text-muted);
+	}
+
+	.card-section .section-glance {
+		margin: 0;
 		font-size: var(--cc-text-xs);
 		color: var(--cc-text-muted);
 	}

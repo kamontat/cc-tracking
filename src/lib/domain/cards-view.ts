@@ -3,25 +3,44 @@ import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
 import { compareDates, today as todayOf } from "#lib/domain/date"
+import { ledgerUrgency, nextBill } from "#lib/domain/ledger"
 import { byGroupName } from "#lib/domain/list-view"
 import { cardOwnerOf, DEFAULT_OWNERS, type Owner } from "#lib/domain/owner"
 import { directed, type SortDir } from "#lib/domain/sort"
 import { openPeriod } from "#lib/domain/statement"
 import { getLocale } from "#lib/i18n/index"
 
-/** How the Cards page orders its cards, in each section; `card` (by id) is the default. */
-export type CardsSort = "card" | "room" | "name" | "close" | "due"
+/**
+ * How the Cards page orders its cards, in each section; `card` (by id) is the default. `used` is
+ * what the card itself owes now, less its credit, not its limit group's total.
+ */
+export type CardsSort = "card" | "room" | "name" | "close" | "due" | "used"
 
-export const CARDS_SORTS: readonly CardsSort[] = ["card", "room", "name", "close", "due"]
+export const CARDS_SORTS: readonly CardsSort[] = ["card", "room", "name", "close", "due", "used"]
 
-/** Each Cards sort's own direction: by id, most room, A to Z, soonest close and due. */
+/** Each Cards sort's own direction: by id, most room, A to Z, soonest close and due, most used. */
 export const CARDS_DIRS: Record<CardsSort, SortDir> = {
 	card: "asc",
 	room: "desc",
 	name: "asc",
 	close: "asc",
 	due: "asc",
+	used: "desc",
 }
+
+/** Whether a card has ever been used: `used` has at least one purchase, `unused` none. */
+export type CardsUsage = "used" | "unused"
+
+export const CARDS_USAGES: readonly CardsUsage[] = ["used", "unused"]
+
+/**
+ * Where a card's balance stands; a card can be in more than one. `owes`: it owes now; `overdue`
+ * and `soon`: its oldest unpaid bill is past due, or due within 7 days (`ledgerUrgency`, as on
+ * _Owed_); `credit`: it holds credit.
+ */
+export type CardsState = "owes" | "overdue" | "soon" | "credit"
+
+export const CARDS_STATES: readonly CardsState[] = ["owes", "overdue", "soon", "credit"]
 
 /**
  * What narrows any list of cards (Cards, Home's _Owed_ and _Ready to use_, RD-29): the search,
@@ -33,8 +52,8 @@ export type CardFilter = {
 	owners: Owner[]
 }
 
-/** What narrows the Cards page: Cards' search, places and holders. */
-export type CardsFilter = CardFilter
+/** What narrows the Cards page: Cards' search, places and holders, whether a card was used, and its balance (any of each). */
+export type CardsFilter = CardFilter & { usage: CardsUsage[]; states: CardsState[] }
 
 /** What the Cards page sections its cards by: place (the default), account holder, limit group, or not at all. */
 export type CardsGroup = "place" | "holder" | "limit" | "none"
@@ -50,6 +69,8 @@ export const DEFAULT_CARDS_VIEW: CardsView = {
 	q: "",
 	locations: [],
 	owners: [],
+	usage: [],
+	states: [],
 	sort: "card",
 	dir: "asc",
 	by: "place",
@@ -136,11 +157,17 @@ function sortKey(
 	ledgers: ReadonlyMap<string, CardLedger>,
 ): (a: Card, b: Card) => number {
 	const roomOf = (c: Card): number => (c.limitGroupId ? rooms.get(c.limitGroupId)?.room : undefined) ?? 0
+	const usedOf = (c: Card): number => {
+		const ledger = ledgers.get(c.id)
+		return ledger ? ledger.owed - ledger.credit : 0
+	}
 	switch (sort) {
 		case "room":
 			return (a, b) => roomOf(a) - roomOf(b)
 		case "name":
 			return (a, b) => a.name.localeCompare(b.name, getLocale())
+		case "used":
+			return (a, b) => usedOf(a) - usedOf(b)
 		case "close":
 		case "due": {
 			const field = sort === "close" ? "closeDate" : "dueDate"
@@ -217,6 +244,23 @@ export function filterCards<T>(items: T[], cardOf: (item: T) => Card, groups: Li
 	})
 }
 
+/** `used` when any of the card's statements holds a purchase, paid off or not; else `unused`. */
+export function usageOf(ledger?: CardLedger): CardsUsage {
+	return ledger?.statements.some((s) => s.purchases.length > 0) ? "used" : "unused"
+}
+
+/** Every `CardsState` the card's ledger is in today, in `CARDS_STATES`' order; none without a ledger. */
+export function cardStates(ledger: CardLedger | undefined, today: PlainDate): CardsState[] {
+	if (!ledger) return []
+	const bill = nextBill(ledger, today)
+	const urgency = bill ? ledgerUrgency(bill, today) : null
+	return CARDS_STATES.filter((state) => {
+		if (state === "owes") return ledger.owed > 0
+		if (state === "credit") return ledger.credit > 0
+		return urgency === state
+	})
+}
+
 export function cardsResults(
 	cards: Card[],
 	groups: LimitGroup[],
@@ -228,7 +272,11 @@ export function cardsResults(
 	ownerOrder?: readonly Owner[],
 ): CardsResults {
 	// A card in no stored group is invalid data (RD-27): left out, like one kept at no stored place.
-	const matches = filterCards(cards, (c) => c, groups, view)
+	const matches = filterCards(cards, (c) => c, groups, view).filter((c) => {
+		const ledger = ledgers.get(c.id)
+		if (view.usage.length > 0 && !view.usage.includes(usageOf(ledger))) return false
+		return view.states.length === 0 || cardStates(ledger, today).some((state) => view.states.includes(state))
+	})
 	const compare = directed(sortKey(view.sort, rooms, today, ledgers), view.dir, byId)
 	const archived = matches.filter((c) => c.archived).sort(compare)
 	const live = matches.filter((c) => !c.archived).sort(compare)

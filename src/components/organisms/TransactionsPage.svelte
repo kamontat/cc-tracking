@@ -12,6 +12,7 @@
 
 	import ErrorBanner from "#components/molecules/ErrorBanner.svelte"
 	import FilterControls from "#components/molecules/FilterControls.svelte"
+	import GlancePanel from "#components/molecules/GlancePanel.svelte"
 	import CardPanel from "#components/organisms/CardPanel.svelte"
 	import TxFilter from "#components/organisms/TxFilter.svelte"
 	import TxLedger from "#components/organisms/TxLedger.svelte"
@@ -19,18 +20,21 @@
 	import { formatAmount, MINUS } from "#lib/domain/money"
 	import { plannedOf } from "#lib/domain/pay"
 	import {
+		entriesSummary,
 		type TxFilter as Filter,
 		filterEntries,
 		groupEntries,
 		ledgerEntries,
 		monthSummary,
 		sortEntries,
+		summaryRange,
 		type TxGroup,
 		type TxSort,
 	} from "#lib/domain/transactions"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
 	import { browserBar } from "#lib/ui/address-bar"
 	import { cardLine } from "#lib/ui/card-label"
+	import { type GlanceFigure, rangeText } from "#lib/ui/glance"
 	import { groupingLabel } from "#lib/ui/group-label"
 	import { loadMoneyData } from "#lib/ui/money-data"
 	import { createPageState } from "#lib/ui/page-state"
@@ -41,7 +45,7 @@
 	import { LEDGER_ADDRESS, LEDGER_PAGE, type LedgerView, readLedgerView, writeLedgerView } from "#lib/ui/tx-query"
 
 	/**
-	 * The Ledger tab's island (`/transactions`, PRD RD-22): the search row, the month's summary,
+	 * The Ledger tab's island (`/transactions`, PRD RD-22): the search row, the summary (the glance panel Cards shares, `GlancePanel`: the month so far, or the matching entries once searched or filtered, DD-210),
 	 * _Upcoming_ and the ledger. Its settings live in the address
 	 * (`?q=&f.types=&f.cards=&f.range=&f.from=&f.to=&sort=&dir=&by=`, RD-29), rewritten in place
 	 * as they change, so a reload or a shared link lands in the same place. Rows open in place
@@ -187,27 +191,39 @@
 	const rows = $derived(sortEntries(filterEntries(all, view.filter, now), view.sort, view.dir))
 	const sections = $derived(groupEntries(rows, view.by, view.sort, view.dir))
 
+	// The month so far, or once searched or filtered the matching entries (DD-210); none when nothing matches.
 	const summary = $derived.by(() => {
 		void lang
-		if (!data || narrowed) return null
-		const figures = monthSummary(all, data.ledgers, now)
+		if (!data) return null
+		if (narrowed && rows.length === 0) return null
+		const figures = narrowed ? entriesSummary(rows) : monthSummary(all, now)
+		const count = rows.length
+		const range = narrowed ? summaryRange(rows, view.filter, now) : null
 		return {
-			title: t("tx.summary.title", { month: monthName(now, getLocale()) }),
+			aside: range ? rangeText(range, getLocale()) : undefined,
+			title: narrowed
+				? t(count === 1 ? "tx.summary.match.one" : "tx.summary.match.many", { count })
+				: t("tx.summary.title", { month: monthName(now, getLocale()) }),
 			figures: [
 				{
 					field: "purchases",
 					label: t("tx.summary.purchases"),
 					text: `${figures.purchases ? MINUS : ""}${formatAmount(figures.purchases)}`,
-					tone: "out",
+					...(figures.purchases ? { tone: "out" as const } : {}),
 				},
 				{
 					field: "payments",
 					label: t("tx.summary.payments"),
 					text: `${figures.payments ? "+" : ""}${formatAmount(figures.payments)}`,
-					tone: "in",
+					...(figures.payments ? { tone: "in" as const } : {}),
 				},
-				{ field: "owed", label: t("tx.summary.owed"), text: formatAmount(figures.owed), tone: undefined },
-			],
+				{
+					field: "net",
+					label: t("tx.summary.net"),
+					text: `${figures.net < 0 ? MINUS : figures.net > 0 ? "+" : ""}${formatAmount(Math.abs(figures.net))}`,
+					...(figures.net < 0 ? { tone: "out" as const } : figures.net > 0 ? { tone: "in" as const } : {}),
+				},
+			] satisfies GlanceFigure[],
 		}
 	})
 
@@ -283,17 +299,7 @@
 				group={groupLabel}
 				{chips} />
 			{#if summary}
-				<section class="tx-summary" data-testid="summary">
-					<div class="tx-summary__head"><h2>{summary.title}</h2></div>
-					<div class="tx-summary__figures">
-						{#each summary.figures as figure (figure.field)}
-							<div data-field={figure.field}>
-								<small>{figure.label}</small>
-								<b data-numeric data-tone={figure.tone}>{figure.text}</b>
-							</div>
-						{/each}
-					</div>
-				</section>
+				<GlancePanel title={summary.title} aside={summary.aside} figures={summary.figures} testid="summary" />
 			{/if}
 			<TxLedger
 				groups={sections}

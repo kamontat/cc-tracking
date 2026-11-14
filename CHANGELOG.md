@@ -4,7 +4,7 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
-## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included
+## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter
 
 ### BREAKING CHANGES
 
@@ -31,6 +31,10 @@ reasons don't show up in the code.
 - `DetailPanel`'s `full` prop is now `form`, and the panel no longer carries `data-full`.
   `formatBuiltLocal` takes an offset in minutes east of GMT instead of a zone name,
   `BuiltTime`'s `timeZone` prop is now `offset`, and `viewerTimeZone` is gone.
+
+- Message keys removed: `tx.summary.owed`, `tx.results.one` and `tx.results.many`.
+  `entriesTotal` is gone, `monthSummary` takes only the entries and today and returns
+  `{ count, purchases, payments, net }`, and the `.tx-summary` styles are removed from `app.css`.
 
 ### Features
 
@@ -86,6 +90,20 @@ reasons don't show up in the code.
   Elsewhere an unreachable link also suggests the two sites. Keys added under
   `backup.link.platform.*`.
 
+- The Cards tab's filter sheet has a _Usage_ section: _Used_ (a card with at least one purchase,
+  paid off or not) and _Not used_, kept in the address as `f.usage` and shown as removable chips.
+  Its sorts add _Used_ (`sort=used`, most used first), what each card owes now less its own
+  credit; ties by card id (DD-209).
+
+- The Cards tab's filter sheet has a _Balance_ section: _Owes_, _Overdue_, _Due in 7 days_ (the
+  _Owed_ tab's rule) and _Has credit_, kept as `f.states` and shown as removable chips (DD-210).
+
+- A glance panel under the Cards control row sums the cards on show: _Cards_, _Owed_ (each card's
+  own, less its credit), _Due in 7 days_ (warning-toned, with how many cards) and _Used of limit_
+  (each group once, with a card tile's rail). It follows search and filters, not the sort, and when
+  grouped each section head gets the same totals on one line. It is one panel split by
+  hairlines, the `GlancePanel` molecule, shared with Transactions.
+
 ### Improvements
 
 - Beside an open panel, Settings stacks its two columns into one when the page has less than
@@ -134,6 +152,15 @@ reasons don't show up in the code.
   (clipboard, file, link, back, restore; new `clipboard`, `file`, `link`, `keyboard` and
   `restore` icons). _Paste by hand_ stays a text link, with a keyboard icon, and _Merge_ stays
   primary. The Settings row reads "From pasted text, a file or a link".
+
+- Transactions' month summary is the same glance panel, and follows search and filters: titled
+  _N matching entries_, it sums the matching entries' _Purchases_ and _Payments_ from any month and
+  names the dates covered (`1 Oct – 31 Oct 2026`: the date filter's range, an open side taken from
+  the entries). Its third figure is _Net_ (payments less purchases, signed and toned) instead of
+  _Owed now_, a zero figure is plain, and it hides only when nothing matches (DD-87, DD-210).
+
+- The ledger's `N results · ±฿X` line under the summary is gone: the panel's title counts the
+  matches and _Net_ is their total.
 
 ### Bug fixes
 
@@ -200,6 +227,19 @@ reasons don't show up in the code.
 - A gist's anchor gives its file back by turning the last dash into a dot, the rule the user gave.
   A name with another dot does not come back and answers 404, which the message covers; the raw
   link still works for it.
+
+- _Used_ sorts by what the card itself owes now, less its credit, rather than its limit group's
+  used, which every card on a group shares and Limits already sorts by. _Usage_ is two chips
+  rather than one _Used only_ toggle, so the cards never used can be found too (DD-209).
+
+- Transactions' summary now follows the filters, reversing DD-87 at the user's request. Its title
+  turns to _N matching entries_ and names its dates, so a filtered sum is not read as the
+  month's total. _Net_ replaced _Owed now_ there because what each card owes already lives on
+  Home's _Owed_ and the Cards glance, and it carries the total the dropped results line showed.
+
+- The glance is one panel split by hairlines rather than four boxes, the user having asked for a
+  better design; an odd last figure spans the row on a phone so three amounts never squeeze into
+  thirds (DD-210).
 
 ## 2026-11-13: Tabs and a detail panel, card ids and limit groups enforced, and owners managed in settings
 

@@ -28,6 +28,8 @@ test("round trip with repeated f.locations and f.owners", () => {
 		q: "kb x",
 		locations: ["bangkok", "krabi"],
 		owners: ["KC", "RI"],
+		usage: [],
+		states: [],
 		sort: "close",
 		dir: "desc",
 		by: "holder",
@@ -37,6 +39,25 @@ test("round trip with repeated f.locations and f.owners", () => {
 		"?q=kb+x&f.locations=bangkok&f.locations=krabi&f.owners=KC&f.owners=RI&sort=close&dir=desc&by=holder",
 	)
 	expect(readCardsView(text, ["bangkok", "krabi"])).toEqual(view)
+})
+
+test("f.usage repeats, read in the usages' order once each; unknown ones are ignored", () => {
+	const view: CardsView = { ...DEFAULT_CARDS_VIEW, usage: ["used", "unused"] }
+	expect(writeCardsView(view)).toBe("?f.usage=used&f.usage=unused")
+	expect(readCardsView("?f.usage=unused&f.usage=zzz&f.usage=used&f.usage=used", [])).toEqual(view)
+	expect(readCardsView("?f.usage=unused", []).usage).toEqual(["unused"])
+})
+
+test("f.states repeats, read in the states' order once each; unknown ones are ignored", () => {
+	const view: CardsView = { ...DEFAULT_CARDS_VIEW, states: ["owes", "soon"] }
+	expect(writeCardsView(view)).toBe("?f.states=owes&f.states=soon")
+	expect(readCardsView("?f.states=soon&f.states=unbilled&f.states=owes&f.states=owes", [])).toEqual(view)
+})
+
+test("the used sort runs most used first, and survives a round trip", () => {
+	expect(readCardsView("?sort=used", [])).toMatchObject({ sort: "used", dir: "desc" })
+	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, sort: "used", dir: "desc" })).toBe("?sort=used")
+	expect(writeCardsView({ ...DEFAULT_CARDS_VIEW, sort: "used", dir: "asc" })).toBe("?sort=used&dir=asc")
 })
 
 test("unknown sort, owner and place are ignored, as are the retired keys", () => {

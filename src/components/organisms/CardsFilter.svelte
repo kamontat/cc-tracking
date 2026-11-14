@@ -1,18 +1,22 @@
 <script lang="ts">
-	import type { CardsView } from "#lib/domain/cards-view"
+	import type { CardsState, CardsUsage, CardsView } from "#lib/domain/cards-view"
 	import type { LocationRecord, OwnerRecord } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { SheetTab } from "#lib/ui/sheet-tab"
 
 	import { onMount } from "svelte"
 
+	import FilterChips from "#components/molecules/FilterChips.svelte"
 	import CardListFilter from "#components/organisms/CardListFilter.svelte"
-	import { CARDS_DIRS, CARDS_SORTS, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
+	import { CARDS_DIRS, CARDS_SORTS, CARDS_STATES, CARDS_USAGES, DEFAULT_CARDS_VIEW } from "#lib/domain/cards-view"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
+	import { toggled } from "#lib/ui/toggle"
 
 	/**
 	 * The Cards page's filter sheet: the sheet every list of cards shares (`CardListFilter`) under
-	 * the heading *Filter cards*, with Cards' sorts.
+	 * the heading *Filter cards*, with Cards' sorts and a *Usage* section (*Used*, *Not used*: a card
+	 * with a purchase or with none; neither or both is any) and a *Balance* section (*Owes*,
+	 * *Overdue*, *Due in 7 days*, *Has credit*; any of the picked ones).
 	 * Only the apply button hands the draft back, once the sheet has slid away (`onapply`). Close,
 	 * Escape and the backdrop call `onclose`.
 	 */
@@ -41,6 +45,16 @@
 		return t(key, params)
 	}
 
+	const usageOptions = $derived.by(() => {
+		void lang
+		return CARDS_USAGES.map((value) => ({ value, label: t(`cards.usage.${value}`) }))
+	})
+
+	const stateOptions = $derived.by(() => {
+		void lang
+		return CARDS_STATES.map((value) => ({ value, label: t(`cards.state.${value}`) }))
+	})
+
 	onMount(() =>
 		subscribe(() => {
 			lang = getLocale()
@@ -59,4 +73,19 @@
 	{owners}
 	{count}
 	{onapply}
-	{onclose} />
+	{onclose}>
+	{#snippet filters(draft: CardsView, set: (patch: Partial<CardsView>) => void)}
+		<FilterChips
+			legend={tr("cards.filter.usage")}
+			name="usage"
+			options={usageOptions}
+			selected={draft.usage}
+			ontoggle={(usage: string) => set({ usage: toggled(draft.usage, usage as CardsUsage) })} />
+		<FilterChips
+			legend={tr("cards.filter.state")}
+			name="state"
+			options={stateOptions}
+			selected={draft.states}
+			ontoggle={(state: string) => set({ states: toggled(draft.states, state as CardsState) })} />
+	{/snippet}
+</CardListFilter>
