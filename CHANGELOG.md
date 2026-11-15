@@ -4,6 +4,37 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-15: A compact amount entry, easy-to-spot add rows, and one amount field everywhere
+
+### BREAKING CHANGES
+
+- In the purchase list builder an order no longer has an _Order N_ heading (`.order-head`) or a
+  visible _Note (optional)_ label; the note's label is its placeholder. Its × (`remove-order`)
+  now sits inside the order's box (`.order-fields`).
+
+### Improvements
+
+- In a card's sheet on the purchase list builder each order is one compact box: `฿ amount`
+  and the note side by side, with the order's × at the end once there are two. An amount that
+  is not money turns the box red, its message under it (DD-214).
+- _+ Add order_ is a full-width row right under the orders, and _+ Add a card_ the same row on
+  the list: a dashed outline in the accent colour with a plus icon. _+ Add a card_ has a card
+  row's height and a plus where the chip sits, so it reads as the list's next row.
+- Every amount field has the same look: the builder's orders, the reply's real amount, the add
+  purchase form and the pay form. It is app.css's `.amount-box` and `.amount-in`, held to it
+  by `tests/styles/amount-field.test.ts`. The box keeps a plain field's height
+  (`--cc-amount-height`) and its placeholder reads as a hint, not a typed figure.
+- The amount is as wide as `10,000,000.00` and no wider (`--cc-amount-width`); the note or date
+  beside it takes the rest. In the reply the planned figure is a box as wide as its own text
+  beside the real one, which keeps its width before the order is answered, so nothing moves.
+
+### Decisions
+
+- One shared amount style in `app.css` rather than each component's own, so a change to the
+  amount field reaches every place at once; the user asked for every amount field to match.
+- 10 million is the widest figure the field is sized for, as the user asked: wide enough for
+  any purchase or payment, and it leaves room for the note or date on the same line.
+
 ## 2026-11-14: Data versions 1 and 2 removed, locations and owners in a panel over settings, a data summary, a quiet test run, panel and settings polish, a mock backup script, statements listed newest first, and restore from a link, GitHub Gist and PasteFox included, a Cards usage filter and used sort, and glance panels with a balance filter, and Owed as a calendar of what to pay each day, and moved list lines marked Moved, and the unused per-card Owed code removed, and the spender's reply drawn as the new list page is
 
 ### BREAKING CHANGES

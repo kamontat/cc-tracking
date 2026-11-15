@@ -160,13 +160,16 @@
 			</label>
 			<label>
 				{tr("quickAdd.amount")}
-				<input
-					name="amount"
-					type="text"
-					inputmode="decimal"
-					placeholder={tr("quickAdd.amountPlaceholder")}
-					autocomplete="off"
-					bind:value={amount}>
+				<span class="amount-box amount-in">
+					<span aria-hidden="true">฿</span>
+					<input
+						name="amount"
+						type="text"
+						inputmode="decimal"
+						placeholder={tr("quickAdd.amountPlaceholder")}
+						autocomplete="off"
+						bind:value={amount}>
+				</span>
 			</label>
 			<label class="wide">
 				{tr("quickAdd.note")}
@@ -231,7 +234,7 @@
 
 	.fields {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: minmax(0, 1fr) auto;
 		gap: var(--cc-space-3);
 	}
 
@@ -247,7 +250,8 @@
 		grid-column: 1 / -1;
 	}
 
-	.fields input {
+	/* The plain fields; the amount is app.css's amount field. */
+	.fields > label > input {
 		min-inline-size: 0;
 		padding: var(--cc-space-3);
 		font: inherit;

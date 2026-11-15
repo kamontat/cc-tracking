@@ -74,6 +74,12 @@
 	/* An icon control (‹, ⋯, ×): the icon and its padding, square; a text button beside one
 	   (the detail panel's *Edit*) takes the same height. */
 	--cc-control-size: calc(var(--cc-icon-size) + 2 * var(--cc-space-2));
+	/* An amount field's inside (app.css's `.amount-in`): a form field's line and padding, so its
+	   larger figure keeps the height of the date or note beside it. */
+	--cc-amount-height: calc(var(--cc-text-md) * var(--cc-leading) + 2 * var(--cc-space-3));
+	/* Its figure's width, in the figure's own `ch`: 10,000,000.00 (ten tabular digits and three
+	   narrower marks), the most a purchase or a payment needs. */
+	--cc-amount-width: 11.5ch;
 	/* The four-tab bar measured 69px at 390px in English and Thai (no label wraps), before the
 	   bottom safe-area inset. */
 	--cc-tabbar-height: 4.375rem;

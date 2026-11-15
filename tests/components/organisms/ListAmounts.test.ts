@@ -479,6 +479,17 @@ test("a card's sheet shows its dates and its last 12 statements", async () => {
 	expect(flat(sheet.querySelector(".usage .stats"))).toContain("Room now ฿50,000.00")
 })
 
+test("+ Add a card under the rows is drawn as a row: a plus where the chip sits, then the words", async () => {
+	await show({ cards: [A, B] })
+	const add = root.querySelector('.list-layout__main > [data-action="add-card"]') as HTMLButtonElement
+	expect(add.classList.contains("add-card")).toBe(true)
+	expect(add.querySelector(".add-mark svg")).not.toBeNull()
+	expect(flat(add.querySelector(".what"))).toBe("Add a card")
+	// The row's height is the card row's, so the two line up (checked by eye on the preview).
+	const source = await Bun.file(`${import.meta.dirname}/../../../src/components/organisms/ListAmounts.svelte`).text()
+	expect(source).toMatch(/\.add-card\s*\{[^}]*min-block-size/)
+})
+
 test("an empty list is one button to add the first card", async () => {
 	const { sheets } = await show({ cards: [] })
 	const empty = root.querySelector(".empty-add") as HTMLButtonElement
@@ -584,12 +595,11 @@ test("no planned note when nothing is planned by then", async () => {
 	expect(step("A").querySelector('[data-part="planned"]')).toBeNull()
 })
 
-test("each card has an optional Note under its amount, sent with the entries and shown on its row", async () => {
+test("each card has an optional Note beside its amount, sent with the entries and shown on its row", async () => {
 	const { changes } = await show({ cards: [A, B] })
-	const label = (await noteInput("A")).closest("label")
-	expect(flat(label)).toBe("Note (optional)")
-	// The note follows the amount.
-	const fields = [...step("A").querySelectorAll(".order [data-field]")].map(
+	// One compact box per order: the amount, then the note, its label the placeholder.
+	expect((await noteInput("A")).placeholder).toBe("Note (optional)")
+	const fields = [...step("A").querySelectorAll(".order .order-fields [data-field]")].map(
 		(el) => (el as HTMLElement).dataset["field"],
 	)
 	expect(fields).toEqual(["amount", "note"])
@@ -608,7 +618,7 @@ test("starting notes show, and a language switch keeps a typed note", async () =
 	await settle()
 	expect((await noteInput("A")).value).toBe("office")
 	expect((await noteInput("B")).value).toBe("van fuel")
-	expect(flat((await noteInput("B")).closest("label"))).toBe("หมายเหตุ (ไม่บังคับ)")
+	expect((await noteInput("B")).placeholder).toBe("หมายเหตุ (ไม่บังคับ)")
 })
 
 test("each amount and note box is named for its card", async () => {
@@ -631,7 +641,11 @@ test("a card with one order shows no order heading and no Remove order", async (
 	expect(amountsOf("A")).toHaveLength(1)
 	expect(step("A").querySelector(".order-head")).toBeNull()
 	expect(step("A").querySelector('[data-action="remove-order"]')).toBeNull()
-	expect(flat(step("A").querySelector('[data-action="add-order"]'))).toBe("+ Add order")
+	// Add order is a row of its own under the orders: a plus icon and the words.
+	const add = step("A").querySelector('[data-action="add-order"]')
+	expect(flat(add)).toBe("Add order")
+	expect(add?.querySelector("svg")).not.toBeNull()
+	expect(add?.previousElementSibling?.classList.contains("order")).toBe(true)
 })
 
 test("Add order puts another amount and note in the card's sheet, and the row counts them", async () => {
@@ -641,10 +655,13 @@ test("Add order puts another amount and note in the card's sheet, and the row co
 	expect(amountsOf("A")).toHaveLength(2)
 	expect(notesOf("A")).toHaveLength(2)
 	expect(document.activeElement).toBe(amountsOf("A")[1])
-	expect([...step("A").querySelectorAll(".order-head")].map((el) => flat(el.querySelector("span")))).toEqual([
-		"Order 1",
-		"Order 2",
-	])
+	// No heading row: each order's × sits at the end of its own box.
+	expect(step("A").querySelector(".order-head")).toBeNull()
+	expect(
+		[...step("A").querySelectorAll(".order")].map((el) =>
+			el.querySelector('.order-fields [data-action="remove-order"]') ? "×" : "",
+		),
+	).toEqual(["×", "×"])
 	await fill(amountsOf("A")[1] as HTMLInputElement, "200")
 	await fill(notesOf("A")[1] as HTMLInputElement, "tyres")
 	expect(changes.at(-1)?.entries["A"]).toEqual(["100", "200"])
@@ -703,7 +720,7 @@ test("each order's boxes and Remove are named for the card and the order", async
 	setLocale("th")
 	await settle()
 	expect(amountsOf("A")[1]?.getAttribute("aria-label")).toBe("จำนวนเงินของ Card A รายการที่ 2")
-	expect(flat(step("A").querySelector('[data-action="add-order"]'))).toBe("+ เพิ่มรายการ")
+	expect(flat(step("A").querySelector('[data-action="add-order"]'))).toBe("เพิ่มรายการ")
 })
 
 test("the layout, the side panel and the row panel are app.css's, not a local copy", async () => {

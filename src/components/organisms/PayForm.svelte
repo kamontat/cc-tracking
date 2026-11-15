@@ -198,7 +198,10 @@
 			<div class="fields">
 				<label>
 					{tr("pay.amount")}
-					<input name="amount" inputmode="decimal" placeholder={tr("quickAdd.amountPlaceholder")} bind:value={text}>
+					<span class="amount-box amount-in">
+						<span aria-hidden="true">฿</span>
+						<input name="amount" inputmode="decimal" placeholder={tr("quickAdd.amountPlaceholder")} bind:value={text}>
+					</span>
 				</label>
 				<label>
 					{tr("pay.date")}
@@ -375,7 +378,7 @@
 
 	.fields {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: auto minmax(0, 1fr);
 		gap: var(--cc-space-3);
 	}
 
@@ -391,7 +394,8 @@
 		grid-column: 1 / -1;
 	}
 
-	.fields input {
+	/* The plain fields; the amount is app.css's amount field. */
+	.fields > label > input {
 		width: 100%;
 		min-inline-size: 0;
 		padding: var(--cc-space-3);
