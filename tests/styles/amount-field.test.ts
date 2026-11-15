@@ -24,6 +24,14 @@ test("app.css holds the amount field's look: the box and the baht-then-figure li
 	expect(app).toMatch(/\.amount-in input\s*\{[^}]*font-size: var\(--cc-text-xl\)/)
 })
 
+test("the figure is as wide as 10,000,000.00 and no wider; a box of the amount alone fits it", async () => {
+	const app = await read("src/styles/app.css")
+	const tokens = await read("src/styles/tokens.css")
+	expect(tokens).toMatch(/--cc-amount-width: [^;]*ch;/)
+	expect(app).toMatch(/\.amount-in input\s*\{[^}]*inline-size: calc\(var\(--cc-amount-width\)/)
+	expect(app).toMatch(/\.amount-box\.amount-in\s*\{[^}]*inline-size: fit-content/)
+})
+
 for (const [path, field] of Object.entries(FIELDS)) {
 	test(`${path.split("/").at(-1)}: its amount sits in .amount-in inside an .amount-box, with no local look`, async () => {
 		const source = await read(path)

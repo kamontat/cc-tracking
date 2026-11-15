@@ -640,11 +640,14 @@
 		border-color: var(--cc-danger);
 	}
 
-	/* Planned beside the real amount: a caption over a box each, the real one app.css's amount
-	   field once made, the planned one a box of the same size, so the two figures line up. */
+	/* Planned beside the real amount: a caption over a box each, of one height. The real one is
+	   app.css's amount field once made, and a box of its width before, so nothing moves when the
+	   order is answered; the planned one is as wide as its figure. A planned figure too wide for
+	   both on one line puts the real one under it. */
 	.figures {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
 		gap: var(--cc-space-2);
 	}
 
@@ -673,6 +676,10 @@
 		background: var(--cc-surface-sunken);
 		border: var(--cc-border-width) solid transparent;
 		border-radius: var(--cc-radius-sm);
+	}
+
+	.figures [data-figure="real"] b {
+		min-inline-size: calc(var(--cc-amount-width) + 3 * var(--cc-space-3));
 	}
 
 	.figures [data-answer="not-made"] b {

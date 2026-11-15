@@ -1836,8 +1836,8 @@ a:any-link:hover {
 /* The figure is large, yet the box keeps a plain field's height (`--cc-amount-height`), so it
    lines up with a date or a note beside it. */
 .page .amount-in input {
-	flex: 1;
-	inline-size: 100%;
+	flex: 0 1 auto;
+	inline-size: calc(var(--cc-amount-width) + var(--cc-space-2));
 	block-size: var(--cc-amount-height);
 	padding: 0 var(--cc-space-2) 0 0;
 	font-size: var(--cc-text-xl);
@@ -1851,4 +1851,11 @@ a:any-link:hover {
 .page .amount-in input::placeholder {
 	font-weight: 400;
 	color: var(--cc-text-muted);
+}
+
+/* A box of the amount alone is as wide as its figure, never wider than its column; what sits
+   beside it takes the rest. */
+.page .amount-box.amount-in {
+	inline-size: fit-content;
+	max-inline-size: 100%;
 }

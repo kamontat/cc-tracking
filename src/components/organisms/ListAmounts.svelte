@@ -940,7 +940,7 @@
 	/* Under `.order`, to outrank app.css's flex box at any load order. */
 	.order .order-fields {
 		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+		grid-template-columns: auto minmax(0, 1fr) auto;
 	}
 
 	.order-fields .note-in {
