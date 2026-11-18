@@ -1,6 +1,6 @@
 [tools]
 bun            = "1.4.4"
-claude         = "2.1.319"
+claude         = "2.1.326"
 opencode       = "2.2.6"
 playwright-cli = "0.1.23"
 

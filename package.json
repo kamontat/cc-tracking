@@ -20,21 +20,21 @@
 		"mock": "bun scripts/mock-data.ts"
 	},
 	"dependencies": {
-		"@astrojs/svelte": "9.1.2",
-		"@kcstyles/reset.css": "2.1.0",
-		"astro": "7.4.5",
-		"svelte": "5.57.3"
+		"@astrojs/svelte": "9.1.6",
+		"@kcstyles/reset.css": "2.1.2",
+		"astro": "7.4.12",
+		"svelte": "5.58.0"
 	},
 	"devDependencies": {
 		"@astrojs/check": "0.9.12",
-		"@biomejs/biome": "2.6.5",
+		"@biomejs/biome": "2.6.8",
 		"@kcconfigs/biome": "4.2.2",
-		"@kcconfigs/tsconfig": "2.1.3",
+		"@kcconfigs/tsconfig": "2.1.5",
 		"@types/bun": "1.4.4",
 		"happy-dom": "21.0.4",
 		"typescript": "6.0.3",
-		"typescript-language-server": "6.0.2",
+		"typescript-language-server": "6.1.0",
 		"vitest": "5.1.0",
-		"wrangler": "4.158.0"
+		"wrangler": "4.164.0"
 	}
 }

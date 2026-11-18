@@ -950,32 +950,32 @@ The redesign is done when all of these hold.
 - [ ] Every user story (US-01 to US-25) can be walked through in the new design.
 - [ ] Every functional requirement is still met, or is retired here with a reason.
 - [x] Domain rule tests in `src/lib/domain/` pass, and an expectation changed only where a recorded
-  decision changed the rule (such as RD-11, payments to a card, and RD-17, location records).
-  _(Amended and checked 2026-11-03.)_
+      decision changed the rule (such as RD-11, payments to a card, and RD-17, location records).
+      _(Amended and checked 2026-11-03.)_
 - [x] The storage contract suite passes, and data saved by the current version loads unchanged.
-  _(Checked 2026-11-03: `main-data.test.ts` opens localStorage as main 4876074 saved it.)_
+      _(Checked 2026-11-03: `main-data.test.ts` opens localStorage as main 4876074 saved it.)_
 - [x] A version 2 backup from the current version restores, with and without `settings`, and
-  with payments both with and without `parts`. _(Dropped 2026-11-14: version 2 is no longer read, DD-202.)_
+      with payments both with and without `parts`. _(Dropped 2026-11-14: version 2 is no longer read, DD-202.)_
 - [ ] _(Dropped 2026-10-30, question 15.)_ `/cards` links with a query and `/cards?edit=<id>`
-  still open the same view.
+      still open the same view.
 - [x] The delete guards in DR-19 still hold (DC-13). _(Checked 2026-11-02: the contract suite refuses both.)_
 - [x] Every interface rule (UI-01 to UI-22) holds, checked in English and Thai, light and dark,
-  at phone and desktop widths. _(Checked 2026-11-04: the controller checked screenshots of
+      at phone and desktop widths. _(Checked 2026-11-04: the controller checked screenshots of
       every changed screen at 390 and 1280, in English and Thai, light and dark, during phases 1
       to 7.)_
 - [x] Each decision that changed has a dated entry in `CHANGELOG.md` saying what replaced it
-  and why, and is updated here. _(Checked 2026-11-04: the entry "2026-11-04: The redesign
+      and why, and is updated here. _(Checked 2026-11-04: the entry "2026-11-04: The redesign
       ships".)_
 - [ ] _(Dropped 2026-10-30, question 15.)_ Retired page addresses redirect.
 - [x] A purchase list for three cards takes no more than: tick the cards, enter the amounts,
-  review, mark sent; then _Made_ or _Not made_ per line and save (G3). _(Checked 2026-11-04:
+      review, mark sent; then _Made_ or _Not made_ per line and save (G3). _(Checked 2026-11-04:
       the user walked the main flows on the preview and approved them.)_
 - [x] Payment records saved before RD-11 load as card payments, and every statement's paid
-  and left amounts stay the same.
+      and left amounts stay the same.
 - [x] Every decided change (RD-03 to RD-21) is built, and the rows it names are updated or
-  retired. _(Checked 2026-11-02: each row carries its phase.)_
+      retired. _(Checked 2026-11-02: each row carries its phase.)_
 - [x] The user has walked the main flows on the preview, on a phone and a desktop, and
-  approved them. _(Checked 2026-11-04: the user approved on 2026-11-04.)_
+      approved them. _(Checked 2026-11-04: the user approved on 2026-11-04.)_
 
 ## Constraints and known limits
 
