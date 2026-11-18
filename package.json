@@ -34,7 +34,7 @@
 		"happy-dom": "21.0.4",
 		"typescript": "6.0.3",
 		"typescript-language-server": "6.1.0",
-		"vitest": "5.1.0",
+		"vitest": "5.1.1",
 		"wrangler": "4.164.0"
 	}
 }
