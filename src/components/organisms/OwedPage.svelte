@@ -272,7 +272,7 @@
 		{/if}
 	</div>
 	{#if data}
-		<OwedDayPanel {panel} days={plan.days} late={plan.late} groups={data.groups} today={now} />
+		<OwedDayPanel {panel} days={plan.days} late={plan.late} groups={data.groups} owners={data.owners} today={now} />
 	{/if}
 	<CardPanel {panel} open={openOnce} {clock} {newId} onchange={() => void page.load()} />
 </div>

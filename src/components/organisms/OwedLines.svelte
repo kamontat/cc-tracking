@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { OwedEntry } from "#lib/domain/owed-plan"
-	import type { LimitGroup, PlainDate } from "#lib/domain/types"
+	import type { LimitGroup, OwnerRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { CycleInput } from "#lib/ui/cycle-line"
 
@@ -10,7 +10,7 @@
 	import { addDays, compareDates, dayMonth, daysBetween } from "#lib/domain/date"
 	import { formatAmount } from "#lib/domain/money"
 	import { getLocale, subscribe, t } from "#lib/i18n/index"
-	import { cardLine, cardName, groupColor } from "#lib/ui/card-label"
+	import { cardName, cardOwnerLine, groupColor } from "#lib/ui/card-label"
 	import { PAST_TODAY } from "#lib/ui/cycle-line"
 	import { OpenRows } from "#lib/ui/open-row.svelte"
 	import { entryNote } from "#lib/ui/owed-words"
@@ -19,19 +19,21 @@
 	/**
 	 * The cards behind a day's money (or the late money) in the _Owed_ day panel, as the shared row
 	 * that opens in place (`ActionRow`, one open at a time, as in Needs you and the ledger): the
-	 * card's chip and line, what the amount is (a bill, a plan, an open statement, how late) and
+	 * card's chip and line with its holder (`cardOwnerLine`), what the amount is (a bill, a plan, an open statement, how late) and
 	 * the amount (red when late, `~` and muted for an estimate). Opened, the statement's billing
 	 * cycle line, one sentence, then _Pay_ for money that is firm and _Open card_.
 	 */
 	interface Props {
 		entries: OwedEntry[]
 		groups: LimitGroup[]
+		/** The stored owners, to name each card's holder by its record. */
+		owners?: readonly OwnerRecord[]
 		today: PlainDate
 		onpay: (entry: OwedEntry) => void
 		onopencard: (cardId: string) => void
 	}
 
-	const { entries, groups, today, onpay, onopencard }: Props = $props()
+	const { entries, groups, owners = [], today, onpay, onopencard }: Props = $props()
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -113,7 +115,7 @@
 		{@const w = words(entry)}
 		<ActionRow
 			kind={isLate(entry) ? "overdue" : "planned"}
-			title={cardLine(entry.card.id, entry.card, { short: true })}
+			title={cardOwnerLine(entry.card, groups, owners)}
 			subtitle={w.subtitle}
 			{id}
 			detailsId={rows.detailsId(id)}

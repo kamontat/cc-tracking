@@ -144,6 +144,21 @@ test("a day in the calendar opens its cards in the panel, kept as day; another r
 	expect($(".detail-panel")).toBeNull()
 })
 
+test("a day's rows name each card with its holder after it", async () => {
+	await open("?day=2026-11-14")
+	expect($$(".detail-panel .owed-lines .a-title").map(text)).toEqual(["12.3) Card 12.3 · KC", "21) Card 21 · NT"])
+})
+
+test("an open statement's day shows its estimate and says it is still open, in English and Thai", async () => {
+	await open("?f.range=all&day=2026-12-15")
+	expect(text($(".detail-panel .total b"))).toBe("~฿400.00")
+	expect(text($(".detail-panel .owed-lines .a-sub"))).toBe("Still open")
+	setLocale("th")
+	await settle()
+	expect(text($(".detail-panel .total b"))).toBe("ราว ฿400.00")
+	expect(text($(".detail-panel .owed-lines .a-sub"))).toBe("ยังไม่ปิดรอบ")
+})
+
 test("Pay in a day's panel opens the card's pay form a step deeper; Back returns to the day", async () => {
 	const { history } = await open("?day=2026-11-14")
 	expect(lines(".detail-panel")).toEqual(["12.3 bill", "21 bill"])
