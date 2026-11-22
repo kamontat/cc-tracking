@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest"
 import { ledgersFor } from "#lib/domain/ledger"
 import {
 	DEFAULT_OWED_PLAN,
+	OWED_KINDS,
 	type OwedDay,
 	type OwedEntry,
 	owedEntries,
@@ -116,13 +117,15 @@ describe("owedPlan", () => {
 	})
 
 	test("a longer range takes in the open statement as an estimate, never in a total", () => {
-		const { days } = owedPlan(entries, groups, { ...DEFAULT_OWED_PLAN, range: 60 }, TODAY)
+		const { days } = owedPlan(entries, groups, { ...DEFAULT_OWED_PLAN, shows: [...OWED_KINDS], range: 60 }, TODAY)
 		expect(days.at(-1)).toMatchObject({ date: "2026-12-15", firm: 0, estimate: 50, byThen: 1200 })
-		expect(owedPlan(entries, groups, { ...DEFAULT_OWED_PLAN, range: "all" }, TODAY).days).toHaveLength(3)
+		expect(
+			owedPlan(entries, groups, { ...DEFAULT_OWED_PLAN, shows: [...OWED_KINDS], range: "all" }, TODAY).days,
+		).toHaveLength(3)
 	})
 
 	test("the card filter, the search and what to show narrow every part", () => {
-		const view = { ...DEFAULT_OWED_PLAN, owners: ["NT"], range: "all" as const }
+		const view = { ...DEFAULT_OWED_PLAN, shows: [...OWED_KINDS], owners: ["NT"], range: "all" as const }
 		expect(owedPlan(entries, groups, view, TODAY).days.flatMap((d) => d.entries.map(brief))).toEqual([
 			"b bill 2026-11-14 500",
 			"b open 2026-12-15 50",

@@ -171,11 +171,21 @@
 			...(view.range === DEFAULT_OWED_PLAN.range
 				? []
 				: [{ key: "range", label: rangeWords(view.range), clear: () => change({ range: DEFAULT_OWED_PLAN.range }) }]),
-			...OWED_KINDS.filter((kind) => !view.shows.includes(kind)).map((kind) => ({
-				key: `kind:${kind}`,
-				label: t(`owed.plan.hide.${kind}`),
-				clear: () => change({ shows: OWED_KINDS.filter((k) => k === kind || view.shows.includes(k)) }),
-			})),
+			// A kind shown or hidden against the default: hiding a default one reads *No bills*,
+			// showing open statements (hidden by default) reads *Open statements*.
+			...OWED_KINDS.filter((kind) => view.shows.includes(kind) !== DEFAULT_OWED_PLAN.shows.includes(kind)).map(
+				(kind) => {
+					const shown = view.shows.includes(kind)
+					return {
+						key: `kind:${kind}`,
+						label: shown ? t(`owed.plan.kind.${kind}`) : t(`owed.plan.hide.${kind}`),
+						clear: () =>
+							change({
+								shows: OWED_KINDS.filter((k) => (k === kind ? !shown : view.shows.includes(k))),
+							}),
+					}
+				},
+			),
 		]
 	})
 

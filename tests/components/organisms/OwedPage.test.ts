@@ -150,7 +150,7 @@ test("a day's rows name each card with its holder after it", async () => {
 })
 
 test("an open statement's day shows its estimate and says it is still open, in English and Thai", async () => {
-	await open("?f.range=all&day=2026-12-15")
+	await open("?f.range=all&f.shows=bill&f.shows=plan&f.shows=open&day=2026-12-15")
 	expect(text($(".detail-panel .total b"))).toBe("~฿400.00")
 	expect(text($(".detail-panel .owed-lines .a-sub"))).toBe("Still open")
 	setLocale("th")
@@ -236,13 +236,21 @@ test("Filter: range, places, holders and kinds; a pick is a chip and an f. key",
 	await press($('dialog [data-owner="KC"]'))
 	await press($("dialog [data-action=apply]"))
 	expect(history.now()).toBe("/owed?f.owners=KC&f.range=all")
+	// Open statements are hidden by default: card 20's is in range but not shown.
+	expect(text($('[data-testid="owed-glance"] [data-field="total"] .glance__note'))).toBe("2 paying days")
+	await press($('.tx-controls [data-action="filter"]'))
+	await press($('dialog [data-kind="open"]'))
+	await press($("dialog [data-action=apply]"))
+	expect(history.now()).toBe("/owed?f.owners=KC&f.range=all&f.shows=bill&f.shows=plan&f.shows=open")
 	// Card 20's open statement is in range now, an estimate apart from the total.
 	expect(total("total")).toBe("฿5,000.00")
 	expect(text($('[data-testid="owed-glance"] [data-field="total"] .glance__note'))).toBe(
 		"2 paying days · ~฿400.00 more still open",
 	)
-	expect($$(".tx-chips [data-chip]").map(text)).toEqual(["KC ×", "Everything owed ×"])
+	expect($$(".tx-chips [data-chip]").map(text)).toEqual(["KC ×", "Everything owed ×", "Open statements ×"])
 	await press($('.tx-chips [data-chip="range"]'))
+	expect(history.now()).toBe("/owed?f.owners=KC&f.shows=bill&f.shows=plan&f.shows=open")
+	await press($('.tx-chips [data-chip="kind:open"]'))
 	expect(history.now()).toBe("/owed?f.owners=KC")
 })
 
