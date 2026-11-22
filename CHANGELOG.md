@@ -4,6 +4,37 @@ This changelog is built from the design specs written for each stage of the proj
 are newest first. Each one says what changed and keeps the decisions behind it, because the
 reasons don't show up in the code.
 
+## 2026-11-22: Owed names each card's holder and hides open statements by default, and Cards dates follow the bill still to pay
+
+### BREAKING CHANGES
+
+- `/owed` without `f.shows` now shows bills and planned payments only; open statements need
+  `f.shows=bill&f.shows=plan&f.shows=open` (or picking them in _Filter_). An address that
+  wrote `f.shows=bill&f.shows=plan` now reads as the default and is written as nothing.
+
+### Features
+
+- Owed hides open statements until they are picked in _Filter_ > _Shows_; showing them is an
+  _Open statements_ × chip like any other filter (DD-216).
+
+### Improvements
+
+- A row in Owed's day panel names the card with its holder: `46) UOB Preferred Platinum · Dad`,
+  the holder by its stored name (`cardOwnerLine`, DD-215).
+- An open statement's row says just _Still open_ (_ยังไม่ปิดรอบ_), and an estimate reads
+  `~฿90,000.00` (_ราว ฿90,000.00_) without _so far_ (DD-215).
+- A Cards tile's `closes … · due …` line shows the oldest closed statement that still owes
+  money, past its due date too, and moves to the next statement only once that one is paid off
+  (`cardShownDates` over `nextBill`). _Soonest due_ sorts by that shown due date (DD-217).
+
+### Decisions
+
+- _Soonest to close_ keeps sorting by the next close date not yet passed, so cards whose bill
+  has already closed do not jump to the top of a close-date sort.
+- With several unpaid closed statements a tile shows the oldest, the bill to pay first.
+- Open statements are hidden by default because they are estimates that can still grow; the
+  `~` already says so, which is also why _so far_ was dropped.
+
 ## 2026-11-15: A compact amount entry, easy-to-spot add rows, and one amount field everywhere
 
 ### BREAKING CHANGES
