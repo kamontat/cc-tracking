@@ -202,6 +202,7 @@ export const th: Catalog = {
 	"about.commit": "commit",
 	"about.changelog": "บันทึกการเปลี่ยนแปลง",
 	"about.whatsNew": "มีอะไรใหม่",
+	"about.changelogUrl": "https://github.com/kamontat/cc-tracking/blob/main/CHANGELOG_TH.md",
 	"about.refresh": "บังคับรีเฟรช",
 	"about.refreshHint": "โหลดเวอร์ชันล่าสุดแล้วรีเฟรช ข้อมูลของคุณยังอยู่ครบ",
 	"about.refreshAction": "รีเฟรช",

@@ -49,7 +49,7 @@ size or "just" are not permission. When they do skip one, say which in the PR te
    over.
 7. **Commit.** Conventional commits, lower case, scoped to the area:
    `feat(cards): ...`, `fix(purchases): ...`, `ci: ...`. One logical change per commit.
-   Do not touch `CHANGELOG.md` yet — that happens when landing.
+   Do not touch `CHANGELOG.md` or `CHANGELOG_TH.md` yet — that happens when landing.
 8. **Push.** `git push -u origin HEAD` (SSH push works without a token).
 9. **Pull request.** GitHub API calls need the personal account token:
    ```sh

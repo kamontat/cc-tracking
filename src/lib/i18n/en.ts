@@ -193,6 +193,7 @@ export const en = {
 	"about.commit": "Commit",
 	"about.changelog": "Changelog",
 	"about.whatsNew": "What's new",
+	"about.changelogUrl": "https://github.com/kamontat/cc-tracking/blob/main/CHANGELOG.md",
 	"about.refresh": "Force refresh",
 	"about.refreshHint": "Get the newest version and reload. Your data stays.",
 	"about.refreshAction": "Refresh",
