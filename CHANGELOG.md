@@ -4,7 +4,7 @@ What changed in cc-tracking, newest first, and why. Each update says what you wi
 differently; the last part of each, _Technical_, is for developers. อ่านภาษาไทยได้ที่
 [`CHANGELOG_TH.md`](CHANGELOG_TH.md).
 
-## 2026-11-22: Owed names each card's holder and hides open statements by default, and Cards dates follow the bill still to pay
+## 2026-11-22: Owed names each card's holder and hides open statements by default, and Cards dates follow the bill still to pay, and What's new is written for you, in English and Thai
 
 ### BREAKING CHANGES
 
@@ -16,6 +16,7 @@ differently; the last part of each, _Technical_, is for developers. อ่าน
 
 - _Owed_ hides open statements until you pick them in _Filter_ > _Shows_. Once shown, they
   appear as an _Open statements_ × chip you can remove like any other filter.
+- _What's new_ in _Settings_ > _About_ opens this history in Thai when the app is in Thai.
 
 ### Improvements
 
@@ -26,6 +27,9 @@ differently; the last part of each, _Technical_, is for developers. อ่าน
 - A card's `closes … · due …` line on _Cards_ shows the oldest closed statement that still owes
   money, even past its due date, and moves on to the next statement only once that one is paid
   off. _Soonest due_ sorts by that due date, so the bill to pay comes first.
+- This history is now written for the people who use the app: each update says what you will
+  see or do differently, in the app's own words. Developer detail sits in each update's last
+  part, _Technical_.
 
 ### Decisions
 
@@ -45,6 +49,13 @@ differently; the last part of each, _Technical_, is for developers. อ่าน
   Thai) are DD-215.
 - A Cards tile's dates come from `cardShownDates`, built on `nextBill`, and _Soonest due_ sorts
   by the shown due date (DD-217).
+- `CHANGELOG_TH.md` holds every entry of `CHANGELOG.md` in Thai, same dates and sections; each
+  file links the other. About's link carries `data-i18n-href="about.changelogUrl"`, which
+  `applyCopy` swaps with the locale; the `CHANGELOG_URL` constant is gone (DD-218).
+- Every entry was rewritten for users, with code names, query keys, PRD IDs, refactors, tests and
+  deploys moved to a new last `### Technical` section. `tests/changelog.test.ts` keeps both
+  files' entries and sections in step and rejects a PRD ID or camelCase code name before
+  Technical; `project-changelog` describes the voice.
 
 ## 2026-11-15: A compact amount entry, easy-to-spot add rows, and one amount field everywhere
 
