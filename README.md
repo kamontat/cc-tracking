@@ -296,4 +296,5 @@ Read it before refactoring or redesigning anything.
 
 ## Changelog
 
-What changed at each stage, and the decisions behind it, is in [`CHANGELOG.md`](CHANGELOG.md).
+What changed at each stage, and the decisions behind it, is in [`CHANGELOG.md`](CHANGELOG.md), and in
+Thai in [`CHANGELOG_TH.md`](CHANGELOG_TH.md).

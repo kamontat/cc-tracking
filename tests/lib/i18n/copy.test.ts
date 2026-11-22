@@ -112,6 +112,25 @@ describe("applyCopy on an aria-label", () => {
 	})
 })
 
+describe("applyCopy on a link", () => {
+	// A page kept in each language (the changelog) is linked by a catalog key, not a fixed href.
+	test("swaps a keyed href to the reader's locale and leaves the text", () => {
+		document.body.innerHTML = `<a data-i18n-href="about.changelogUrl" href="${en["about.changelogUrl"]}">Log</a>`
+		setLocale("th")
+		applyCopy(document)
+		const anchor = document.querySelector("a")
+		expect(anchor?.getAttribute("href")).toBe(th["about.changelogUrl"])
+		expect(anchor?.textContent).toBe("Log")
+	})
+
+	test("keeps the shipped href for a key the catalog lacks", () => {
+		document.body.innerHTML = `<a data-i18n-href="no.such.key" href="/kept">Log</a>`
+		setLocale("th")
+		applyCopy(document)
+		expect(document.querySelector("a")?.getAttribute("href")).toBe("/kept")
+	})
+})
+
 describe("startCopy across a ClientRouter swap", () => {
 	// A swap brings the next page's English markup and resets <html>'s attributes to the shipped
 	// ones (lang="en", no data-i18n-ready), so the pass runs again after the swap (PRD DD-174).

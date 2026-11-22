@@ -8,6 +8,9 @@ export const COPY_ATTRIBUTE = "data-i18n"
 /** The attribute carrying the catalog key of an element's `aria-label`. */
 export const LABEL_ATTRIBUTE = "data-i18n-aria-label"
 
+/** The attribute carrying the catalog key of a link's `href`, for a page kept in each language. */
+export const HREF_ATTRIBUTE = "data-i18n-href"
+
 /** The attribute on `<title>` carrying its catalog key; the build's mark is added after it. */
 export const TITLE_ATTRIBUTE = "data-i18n-title"
 
@@ -17,8 +20,9 @@ export const READY_ATTRIBUTE = "data-i18n-ready"
 const isKey = (key: string): key is MessageKey => key in en
 
 /**
- * Swaps the text of every `[data-i18n]` element, and the `aria-label` of every
- * `[data-i18n-aria-label]` element, under `root` to the reader's locale. A key the catalog
+ * Swaps the text of every `[data-i18n]` element, the `aria-label` of every
+ * `[data-i18n-aria-label]` element, and the `href` of every `[data-i18n-href]` link, under
+ * `root` to the reader's locale. A key the catalog
  * does not know leaves the shipped English in place rather than blanking it.
  */
 export function applyCopy(root: ParentNode): void {
@@ -29,6 +33,10 @@ export function applyCopy(root: ParentNode): void {
 	for (const element of root.querySelectorAll<HTMLElement>(`[${LABEL_ATTRIBUTE}]`)) {
 		const key = element.getAttribute(LABEL_ATTRIBUTE) ?? ""
 		if (isKey(key)) element.setAttribute("aria-label", t(key))
+	}
+	for (const element of root.querySelectorAll<HTMLElement>(`[${HREF_ATTRIBUTE}]`)) {
+		const key = element.getAttribute(HREF_ATTRIBUTE) ?? ""
+		if (isKey(key)) element.setAttribute("href", t(key))
 	}
 	// The document title, with the build's mark after it.
 	const title = root.querySelector<HTMLTitleElement>(`title[${TITLE_ATTRIBUTE}]`)

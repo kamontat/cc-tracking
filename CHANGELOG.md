@@ -2,7 +2,7 @@
 
 This changelog is built from the design specs written for each stage of the project. Entries
 are newest first. Each one says what changed and keeps the decisions behind it, because the
-reasons don't show up in the code.
+reasons don't show up in the code. The same history in Thai is [`CHANGELOG_TH.md`](CHANGELOG_TH.md).
 
 ## 2026-11-22: Owed names each card's holder and hides open statements by default, and Cards dates follow the bill still to pay
 

@@ -10,6 +10,20 @@ don't show up in the code, so the changelog is where they live. Keep that purpos
 entry that only lists files touched is worth much less than one that says what a reader of the
 app, the data or the code will now see differently.
 
+## The Thai twin
+
+`CHANGELOG_TH.md` is the same history in Thai: the same entries, dates and order, and the same
+bullets in the same sections. About's _Changelog_ link opens it for a Thai reader (PRD DD-218).
+Every entry you add or change in `CHANGELOG.md` is added or changed in `CHANGELOG_TH.md` in the
+same commit.
+
+- Headings keep `## YYYY-MM-DD: ` and translate the summary. Sections map exactly:
+  BREAKING CHANGES `### การเปลี่ยนแปลงที่ไม่เข้ากับของเดิม`, Features `### ฟีเจอร์ใหม่`,
+  Improvements `### การปรับปรุง`, Bug fixes `### แก้ไขข้อผิดพลาด`, Decisions `### การตัดสินใจ`.
+- A UI label in _italics_ uses the Thai label from `src/lib/i18n/th.ts`; other terms follow
+  `PRD_TH.md`. Backticks, IDs, dates and amounts stay as written.
+- One line per bullet (Thai is not hard-wrapped), with a space between Thai and English or code.
+
 ## Entry format
 
 Entries are newest first, directly under the file's intro paragraph.

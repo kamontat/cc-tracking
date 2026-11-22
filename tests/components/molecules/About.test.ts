@@ -4,7 +4,9 @@ import type { BuildInfo } from "#lib/ui/build-info"
 import { expect, test } from "vitest"
 
 import About from "#components/molecules/About.astro"
-import { CHANGELOG_URL, commitUrl, REPO_URL } from "#lib/ui/build-info"
+import { en } from "#lib/i18n/en"
+import { th } from "#lib/i18n/th"
+import { commitUrl, REPO_URL } from "#lib/ui/build-info"
 import { createContainer, parseHtml } from "../../container"
 
 /**
@@ -42,7 +44,7 @@ test("production shows every row", async () => {
 	expect(link(doc, "source")?.getAttribute("href")).toBe(REPO_URL)
 	expect(link(doc, "commit")?.textContent?.trim()).toBe("3270f3d")
 	expect(link(doc, "commit")?.getAttribute("href")).toBe(commitUrl(SHA))
-	expect(link(doc, "changelog")?.getAttribute("href")).toBe(CHANGELOG_URL)
+	expect(link(doc, "changelog")?.getAttribute("href")).toBe(`${REPO_URL}/blob/main/CHANGELOG.md`)
 })
 
 test("the build time is an island carrying the stamp", async () => {
@@ -65,6 +67,16 @@ test("every label and translated value carries its key", async () => {
 		"about.env.production",
 	)
 	expect(link(doc, "changelog")?.getAttribute("data-i18n")).toBe("about.whatsNew")
+	expect(link(doc, "changelog")?.getAttribute("data-i18n-href")).toBe("about.changelogUrl")
+})
+
+// The changelog is kept in both languages; the copy pass points a Thai reader at the Thai one.
+test("the changelog link follows the reader's language", async () => {
+	const doc = await render(production)
+
+	expect(link(doc, "changelog")?.getAttribute("href")).toBe(en["about.changelogUrl"])
+	expect(th["about.changelogUrl"]).toBe(`${REPO_URL}/blob/main/CHANGELOG_TH.md`)
+	expect(await Bun.file("CHANGELOG_TH.md").exists()).toBe(true)
 })
 
 test("links open in a new tab", async () => {

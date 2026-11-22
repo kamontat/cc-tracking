@@ -6,7 +6,6 @@ import { en } from "#lib/i18n/en"
 import {
 	type BuildInfo,
 	buildInfo,
-	CHANGELOG_URL,
 	commitUrl,
 	type Environment,
 	parseBuiltAt,
@@ -17,7 +16,7 @@ import {
 
 /**
  * Names the build the page is served from: where it runs, when it was built, and links to the
- * source, the commit and the changelog. Each row shows only when it has something true to say
+ * source, the commit and the changelog (the Thai one for a Thai reader, through `data-i18n-href`). Each row shows only when it has something true to say
  * for this environment. All of it is known when the page is built, so it is static, except the
  * build time, which reads in the viewer's zone (`BuiltTime`). Drawn as settings rows; the page
  * supplies the section's heading and its `.set` panel.
@@ -73,7 +72,12 @@ const envKey = ENV_KEYS[environment]
 		<div class="set-row" data-row="changelog">
 			<dt data-i18n="about.changelog">{en["about.changelog"]}</dt>
 			<dd>
-				<a href={CHANGELOG_URL} target="_blank" rel="noreferrer" data-i18n="about.whatsNew">
+				<a
+					href={en["about.changelogUrl"]}
+					target="_blank"
+					rel="noreferrer"
+					data-i18n="about.whatsNew"
+					data-i18n-href="about.changelogUrl">
 					{en["about.whatsNew"]}
 				</a>
 			</dd>

@@ -17,9 +17,10 @@ commit: changelog entry first, then merge, then cleanup, ending back on an up-to
    `git merge origin/main`, so the changelog edit sees entries other PRs landed. Resolve
    conflicts, rerun `bun run check` and `bun run test`. Check that `PRD.md` and
    `PRD_TH.md` were updated together for any behaviour the change ships.
-2. **Changelog entry, on the PR branch.** Edit `CHANGELOG.md` following
-   the `project-changelog` skill, which owns the entry format (`## YYYY-MM-DD: <title>` with
-   BREAKING CHANGES, Features, Improvements, Bug fixes and Decisions). The date is today's.
+2. **Changelog entry, on the PR branch.** Edit `CHANGELOG.md` and its Thai twin
+   `CHANGELOG_TH.md` following the `project-changelog` skill, which owns the entry format
+   (`## YYYY-MM-DD: <title>` with BREAKING CHANGES, Features, Improvements, Bug fixes and
+   Decisions). The date is today's.
 3. **Commit and push.** `docs(changelog): <title>`, then `git push`. Wait for checks:
    `GH_TOKEN=$(gh auth token --user kamontat) gh pr checks <number> --watch`. A failing
    check stops the landing — fix it on the branch first.
