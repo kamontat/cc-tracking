@@ -106,7 +106,8 @@ export const DEFAULT_OWED_PLAN: OwedPlanView = {
 	locations: [],
 	owners: [],
 	range: 30,
-	shows: [...OWED_KINDS],
+	// Open statements are only estimates, so they are hidden until asked for (DD-216).
+	shows: ["bill", "plan"],
 	layout: "calendar",
 }
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { OwedDay, OwedEntry } from "#lib/domain/owed-plan"
-	import type { LimitGroup, PlainDate } from "#lib/domain/types"
+	import type { LimitGroup, OwnerRecord, PlainDate } from "#lib/domain/types"
 	import type { MessageKey, Params } from "#lib/i18n/index"
 	import type { RecordPanel } from "#lib/ui/record-panel.svelte"
 
@@ -28,10 +28,12 @@
 		days: OwedDay[]
 		late: OwedEntry[]
 		groups: LimitGroup[]
+		/** The stored owners, to name each card's holder by its record. */
+		owners?: readonly OwnerRecord[]
 		today: PlainDate
 	}
 
-	const { panel, days, late, groups, today }: Props = $props()
+	const { panel, days, late, groups, owners = [], today }: Props = $props()
 
 	let lang = $state(getLocale())
 	const tr = (key: MessageKey, params?: Params) => {
@@ -86,6 +88,7 @@
 				<OwedLines
 					{entries}
 					{groups}
+					{owners}
 					{today}
 					onpay={pay}
 					onopencard={(cardId: string) => panel.deeper({ kind: "card", id: cardId })} />

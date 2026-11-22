@@ -154,7 +154,7 @@ test("holders show by their owner record's name, in sections and on tiles", () =
 	expect(text(root.querySelector('a[data-card="S"] .aside'))).toBe("Nat · Sub")
 })
 
-test("a tile: id) name and the last 4, the room and its word with the cardholder, then the open period's dates", () => {
+test("a tile: id) name and the last 4, the room and its word with the cardholder, then its statement's dates", () => {
 	const list = [card("A"), card("S", { supplementary: true, owner: "NT" }), card("N", { last4: "" })]
 	const { root } = show({}, { today: "2026-10-30" }, list)
 	const tile = (id: string) => root.querySelector(`a[data-card="${id}"]`)
@@ -171,6 +171,20 @@ test("a tile: id) name and the last 4, the room and its word with the cardholder
 	expect(text(thai.root.querySelector('a[data-card="S"] .aside'))).toBe("NT · เสริม")
 })
 
+test("line 3 shows a closed statement until it is paid off, past its due date too, then the open period's", () => {
+	const a = card("A")
+	const buy = [{ id: "p", cardId: "A", date: "2026-11-01", amount: 100, note: "" }]
+	const paid = [{ id: "c", cardId: "A", date: "2026-11-25", amount: 100, status: "paid" as const }]
+	const at = (today: string, payments: typeof paid = []) => {
+		const ledgers = new Map([["A", cardLedger(a, buy, payments, [], today)]])
+		return text(show({}, { today, ledgers }, [a]).root.querySelector('a[data-card="A"] .facts'))
+	}
+	expect(at("2026-11-18")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	expect(at("2026-11-20")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	expect(at("2026-12-10")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	expect(at("2026-11-26", paid)).toBe("closes 18 Dec 2026 · due 02 Jan 2027")
+})
+
 test("line 3 takes the open period's dates from the ledger, a paid one's frozen dates included", () => {
 	const a = card("A")
 	const frozen = [{ cardId: "A", period: "2026-11", closeDate: "2026-11-20", dueDate: "2026-12-07" }]
@@ -182,11 +196,11 @@ test("line 3 takes the open period's dates from the ledger, a paid one's frozen 
 				[{ id: "p", cardId: "A", date: "2026-10-28", amount: 100, note: "" }],
 				[{ id: "c", cardId: "A", date: "2026-10-29", amount: 100, status: "paid" }],
 				frozen,
-				"2026-10-30",
+				"2026-11-03",
 			),
 		],
 	])
-	const { root } = show({}, { today: "2026-10-30", ledgers }, [a])
+	const { root } = show({}, { today: "2026-11-03", ledgers }, [a])
 	expect(text(root.querySelector('a[data-card="A"] .facts'))).toBe("closes 20 Nov 2026 · due 07 Dec 2026")
 })
 

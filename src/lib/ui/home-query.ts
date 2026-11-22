@@ -77,7 +77,9 @@ export function writeOwedPlan(view: OwedPlanView, month: Period | null): string 
 	const p = new URLSearchParams()
 	writeCardFilter(p, view)
 	if (view.range !== DEFAULT_OWED_PLAN.range) p.set("f.range", String(view.range))
-	if (view.shows.length < OWED_KINDS.length) for (const kind of view.shows) p.append("f.shows", kind)
+	const defaultShows = DEFAULT_OWED_PLAN.shows
+	const sameShows = view.shows.length === defaultShows.length && view.shows.every((k) => defaultShows.includes(k))
+	if (!sameShows) for (const kind of view.shows) p.append("f.shows", kind)
 	if (view.layout !== DEFAULT_OWED_PLAN.layout) p.set("view", view.layout)
 	if (month) p.set("month", month)
 	return query(p)

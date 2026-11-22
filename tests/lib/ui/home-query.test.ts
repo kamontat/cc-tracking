@@ -21,14 +21,14 @@ const places = ["krabi", "bangkok"]
 describe("the Owed tab's address (/owed)", () => {
 	const read = (search: string) => readOwedPlan(search, places)
 
-	test("the defaults write nothing: the calendar, the next 30 days, every kind, today's month", () => {
+	test("the defaults write nothing: the calendar, the next 30 days, bills and plans, today's month", () => {
+		expect(DEFAULT_OWED_PLAN.shows).toEqual(["bill", "plan"])
 		expect(read("")).toEqual({ view: DEFAULT_OWED_PLAN, month: null })
 		expect(writeOwedPlan(DEFAULT_OWED_PLAN, null)).toBe("")
 	})
 
 	test("search, places, holders, range, kinds, layout and month, the f. keys repeated", () => {
-		const search =
-			"?q=kbank&f.locations=krabi&f.owners=KC&f.owners=NT&f.range=14&f.shows=bill&f.shows=plan&view=week&month=2026-12"
+		const search = "?q=kbank&f.locations=krabi&f.owners=KC&f.owners=NT&f.range=14&f.shows=bill&view=week&month=2026-12"
 		const plan = read(search)
 		expect(plan).toEqual({
 			view: {
@@ -36,13 +36,21 @@ describe("the Owed tab's address (/owed)", () => {
 				locations: ["krabi"],
 				owners: ["KC", "NT"],
 				range: 14,
-				shows: ["bill", "plan"],
+				shows: ["bill"],
 				layout: "week",
 			},
 			month: "2026-12",
 		})
 		expect(writeOwedPlan(plan.view, plan.month)).toBe(search)
 		expect(writeOwedPlan({ ...DEFAULT_OWED_PLAN, range: "all" }, null)).toBe("?f.range=all")
+	})
+
+	test("open statements are hidden by default: showing them writes every kind shown", () => {
+		const all = "?f.shows=bill&f.shows=plan&f.shows=open"
+		expect(read(all).view.shows).toEqual(["bill", "plan", "open"])
+		expect(writeOwedPlan({ ...DEFAULT_OWED_PLAN, shows: ["bill", "plan", "open"] }, null)).toBe(all)
+		expect(writeOwedPlan({ ...DEFAULT_OWED_PLAN, shows: ["open"] }, null)).toBe("?f.shows=open")
+		expect(read("?f.shows=plan&f.shows=bill").view).toEqual(DEFAULT_OWED_PLAN)
 	})
 
 	test("a value it does not know reads as the default", () => {

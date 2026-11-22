@@ -149,6 +149,16 @@ export function cardOpenDates(card: Card, today: PlainDate, ledger?: CardLedger)
 	}
 }
 
+/**
+ * The dates a Cards tile shows (DD-217): the statement still to pay, the oldest closed one that
+ * still owes money (`nextBill`), past its due date too; once it is paid off, or there is none,
+ * the open period's (`cardOpenDates`).
+ */
+export function cardShownDates(card: Card, today: PlainDate, ledger?: CardLedger) {
+	const bill = ledger ? nextBill(ledger, today) : null
+	return bill ? { closeDate: bill.closeDate, dueDate: bill.dueDate } : cardOpenDates(card, today, ledger)
+}
+
 /** The sort's key, ascending; `cardsResults` runs it in the view's direction, ties by id. */
 function sortKey(
 	sort: CardsSort,
@@ -170,12 +180,12 @@ function sortKey(
 			return (a, b) => usedOf(a) - usedOf(b)
 		case "close":
 		case "due": {
-			const field = sort === "close" ? "closeDate" : "dueDate"
-			return (a, b) =>
-				compareDates(
-					cardOpenDates(a, today, ledgers.get(a.id))[field],
-					cardOpenDates(b, today, ledgers.get(b.id))[field],
-				)
+			// Soonest to close: the next close. Soonest due: the due date the tile shows (DD-217).
+			const dateOf =
+				sort === "close"
+					? (c: Card) => cardOpenDates(c, today, ledgers.get(c.id)).closeDate
+					: (c: Card) => cardShownDates(c, today, ledgers.get(c.id)).dueDate
+			return (a, b) => compareDates(dateOf(a), dateOf(b))
 		}
 		default:
 			return () => 0

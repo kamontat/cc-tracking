@@ -72,6 +72,17 @@ export function cardTitle(card: Card, groups: LimitGroup[], owners: readonly Own
 	return `${card.name}${holder}${digits}`
 }
 
+/**
+ * The short line form with the holder after it, for rows that draw the last 4 as a chip (the
+ * _Owed_ day panel): `10) Krungsri Bangkok · RI`. The holder is `cardOwnerOf` (DR-13) and is
+ * left out, with its `·`, when unknown.
+ */
+export function cardOwnerLine(card: Card, groups: LimitGroup[], owners: readonly OwnerRecord[] = []): string {
+	const group = groups.find((g) => g.id === card.limitGroupId) ?? null
+	const owner = cardOwnerOf(card, group)
+	return `${card.id}) ${card.name}${owner ? ` · ${ownerName(owner, owners)}` : ""}`
+}
+
 /** The Cards page row's title: `10) Krungsri Bangkok · RI (4412)`. */
 export const cardRowTitle = (card: Card, groups: LimitGroup[], owners: readonly OwnerRecord[] = []): string =>
 	`${card.id}) ${cardTitle(card, groups, owners)}`

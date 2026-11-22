@@ -8,7 +8,7 @@
 	import CardSections from "#components/molecules/CardSections.svelte"
 	import CardTile from "#components/molecules/CardTile.svelte"
 	import { cardsGlance } from "#lib/domain/cards-glance"
-	import { cardOpenDates } from "#lib/domain/cards-view"
+	import { cardShownDates } from "#lib/domain/cards-view"
 	import { displayDate, today as todayOf } from "#lib/domain/date"
 	import { formatAmount } from "#lib/domain/money"
 	import { cardOwnerOf, ownerName } from "#lib/domain/owner"
@@ -82,9 +82,12 @@
 		return nameOfLocation(locations, id)
 	}
 
-	/** Line 3: the open period's close and due dates; the ledger's kept dates win over the cycle's. */
+	/**
+	 * Line 3: the close and due dates of the closed statement still to pay, until it is paid off,
+	 * then the open period's (`cardShownDates`); the ledger's kept dates win over the cycle's.
+	 */
 	const dates = (card: Card): string => {
-		const { closeDate, dueDate } = cardOpenDates(card, today, ledgers.get(card.id))
+		const { closeDate, dueDate } = cardShownDates(card, today, ledgers.get(card.id))
 		const locale = lang
 		return tr("cards.page.dates", {
 			close: displayDate(closeDate, locale),

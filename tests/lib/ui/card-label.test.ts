@@ -7,6 +7,7 @@ import {
 	cardLine,
 	cardLines,
 	cardName,
+	cardOwnerLine,
 	cardOwnerName,
 	cardRowTitle,
 	cardShort,
@@ -74,6 +75,13 @@ test("cardOwnerName adds the cardholder: the group's owner, or a supplementary c
 	const { limitGroupId: _unused, ...noGroup } = card
 	expect(cardOwnerName("10", noGroup, owned)).toBe("Card A10")
 	expect(cardOwnerName("10", undefined, owned)).toBe("c-[10]")
+})
+
+test("cardOwnerLine is the short line form with the holder, by its stored name, after a ·", () => {
+	const owned: LimitGroup[] = [{ id: "g2", name: "G", limit: 1, owner: "RI" }]
+	expect(cardOwnerLine(card, owned)).toBe("10) Card A10 · RI")
+	expect(cardOwnerLine(card, owned, [{ id: "RI", name: "Rin" }])).toBe("10) Card A10 · Rin")
+	expect(cardOwnerLine(ungrouped, owned)).toBe("10) Card A10")
 })
 
 test("card titles read name · holder (last4); holder and digits drop out when unknown", () => {

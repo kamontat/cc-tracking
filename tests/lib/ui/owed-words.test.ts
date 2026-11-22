@@ -30,7 +30,9 @@ describe("entryNote", () => {
 		expect(entryNote(entry({}), TODAY)).toBe("Bill due 14 Nov")
 		expect(entryNote(entry({ kind: "plan", date: "2026-11-05" }), TODAY)).toBe("Planned · bill due 14 Nov")
 		expect(entryNote(entry({ kind: "plan", due: null }), TODAY)).toBe("Planned")
-		expect(entryNote(entry({ kind: "open" }), TODAY)).toBe("Still open · spent so far")
+		expect(entryNote(entry({ kind: "open" }), TODAY)).toBe("Still open")
+		setLocale("th")
+		expect(entryNote(entry({ kind: "open" }), TODAY)).toBe("ยังไม่ปิดรอบ")
 	})
 
 	test("how late, once its day has passed", () => {
