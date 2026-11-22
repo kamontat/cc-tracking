@@ -2,7 +2,7 @@ import type { GroupRoom } from "#lib/domain/room"
 import type { Card, CardLedger, LimitGroup, PlainDate } from "#lib/domain/types"
 
 import { closeDateOf, dueDateOf } from "#lib/domain/cycle"
-import { addPeriods, compareDates, today as todayOf } from "#lib/domain/date"
+import { compareDates, today as todayOf } from "#lib/domain/date"
 import { ledgerUrgency, nextBill } from "#lib/domain/ledger"
 import { byGroupName } from "#lib/domain/list-view"
 import { cardOwnerOf, DEFAULT_OWNERS, type Owner } from "#lib/domain/owner"
@@ -150,24 +150,13 @@ export function cardOpenDates(card: Card, today: PlainDate, ledger?: CardLedger)
 }
 
 /**
- * The dates a Cards tile shows (DD-217): the last closed statement while its due date is today
- * or later, paid or not, else the open period's (`cardOpenDates`). Kept ledger dates win over
- * the cycle's, as for the open period.
+ * The dates a Cards tile shows (DD-217): the statement still to pay, the oldest closed one that
+ * still owes money (`nextBill`), past its due date too; once it is paid off, or there is none,
+ * the open period's (`cardOpenDates`).
  */
 export function cardShownDates(card: Card, today: PlainDate, ledger?: CardLedger) {
-	const pending = (closeDate: PlainDate, dueDate: PlainDate) =>
-		compareDates(closeDate, today) < 0 && compareDates(dueDate, today) >= 0
-	const kept = ledger?.statements
-		.filter((s) => !s.open && pending(s.closeDate, s.dueDate))
-		.sort((a, b) => compareDates(b.closeDate, a.closeDate))[0]
-	if (kept) return { closeDate: kept.closeDate, dueDate: kept.dueDate }
-	const last = addPeriods(openPeriod(card, today), -1)
-	if (!ledger?.statements.some((s) => s.period === last)) {
-		const closeDate = closeDateOf(card.cycle, last)
-		const dueDate = dueDateOf(card.cycle, last)
-		if (pending(closeDate, dueDate)) return { closeDate, dueDate }
-	}
-	return cardOpenDates(card, today, ledger)
+	const bill = ledger ? nextBill(ledger, today) : null
+	return bill ? { closeDate: bill.closeDate, dueDate: bill.dueDate } : cardOpenDates(card, today, ledger)
 }
 
 /** The sort's key, ascending; `cardsResults` runs it in the view's direction, ties by id. */

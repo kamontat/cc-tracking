@@ -161,8 +161,7 @@ test("a tile: id) name and the last 4, the room and its word with the cardholder
 	expect(text(tile("A")?.querySelector(".name"))).toBe("A) Card A")
 	expect(text(tile("A")?.querySelector(".corner"))).toBe("•••• 1111")
 	expect(text(tile("A")?.querySelector(".aside"))).toBe("KC")
-	// 30 Oct: October's statement closed on the 18th but is due 2 Nov, so it is still the one shown.
-	expect(text(tile("A")?.querySelector(".facts"))).toBe("closes 18 Oct 2026 · due 02 Nov 2026")
+	expect(text(tile("A")?.querySelector(".facts"))).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
 	expect(tile("A")?.querySelector(".tag")).toBeNull()
 	expect(text(tile("S")?.querySelector(".aside"))).toBe("NT · Sub")
 	expect(text(tile("N")?.querySelector(".name"))).toBe("N) Card N")
@@ -172,12 +171,18 @@ test("a tile: id) name and the last 4, the room and its word with the cardholder
 	expect(text(thai.root.querySelector('a[data-card="S"] .aside'))).toBe("NT · เสริม")
 })
 
-test("line 3 shows a closed statement until its due date passes, then the open period's", () => {
-	const at = (today: string) => text(show({}, { today }, [card("A")]).root.querySelector('a[data-card="A"] .facts'))
+test("line 3 shows a closed statement until it is paid off, past its due date too, then the open period's", () => {
+	const a = card("A")
+	const buy = [{ id: "p", cardId: "A", date: "2026-11-01", amount: 100, note: "" }]
+	const paid = [{ id: "c", cardId: "A", date: "2026-11-25", amount: 100, status: "paid" as const }]
+	const at = (today: string, payments: typeof paid = []) => {
+		const ledgers = new Map([["A", cardLedger(a, buy, payments, [], today)]])
+		return text(show({}, { today, ledgers }, [a]).root.querySelector('a[data-card="A"] .facts'))
+	}
 	expect(at("2026-11-18")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
 	expect(at("2026-11-20")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
-	expect(at("2026-12-03")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
-	expect(at("2026-12-04")).toBe("closes 18 Dec 2026 · due 02 Jan 2027")
+	expect(at("2026-12-10")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	expect(at("2026-11-26", paid)).toBe("closes 18 Dec 2026 · due 02 Jan 2027")
 })
 
 test("line 3 takes the open period's dates from the ledger, a paid one's frozen dates included", () => {

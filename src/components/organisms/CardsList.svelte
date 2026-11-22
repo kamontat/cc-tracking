@@ -83,8 +83,8 @@
 	}
 
 	/**
-	 * Line 3: the last closed statement's close and due dates until its due date passes, then the
-	 * open period's (`cardShownDates`); the ledger's kept dates win over the cycle's.
+	 * Line 3: the close and due dates of the closed statement still to pay, until it is paid off,
+	 * then the open period's (`cardShownDates`); the ledger's kept dates win over the cycle's.
 	 */
 	const dates = (card: Card): string => {
 		const { closeDate, dueDate } = cardShownDates(card, today, ledgers.get(card.id))

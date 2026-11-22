@@ -242,7 +242,7 @@ describe("cardsResults", () => {
 	})
 	test("due: full upcoming dates, independent of closing order, ties by id and archived sorted too", () => {
 		const cs = [
-			card("a", { cycle: { kind: "offset", closeDay: 16, dueOffsetDays: 25 } }),
+			card("a", { cycle: { kind: "offset", closeDay: 20, dueOffsetDays: 30 } }),
 			card("c", { cycle: { kind: "fixed", closeDay: 25, dueDay: 5 } }),
 			card("b", { cycle: { kind: "fixed", closeDay: 25, dueDay: 5 } }),
 		]
@@ -347,38 +347,60 @@ describe("cardsResults", () => {
 describe("cardShownDates", () => {
 	// Closes the 10th, due 20 days later: October's statement closes 10 Oct and is due 30 Oct.
 	const c = card("a")
-	test("a closed statement stays until its due date has passed, then the open period's", () => {
-		expect(cardShownDates(c, "2026-10-10")).toEqual({ closeDate: "2026-10-10", dueDate: "2026-10-30" })
-		expect(cardShownDates(c, "2026-10-11")).toEqual({ closeDate: "2026-10-10", dueDate: "2026-10-30" })
-		expect(cardShownDates(c, "2026-10-30")).toEqual({ closeDate: "2026-10-10", dueDate: "2026-10-30" })
-		expect(cardShownDates(c, "2026-10-31")).toEqual({ closeDate: "2026-11-10", dueDate: "2026-11-30" })
+	const buy = (id: string, date: string) => ({ id, cardId: "a", date, amount: 100, note: "" })
+	const pay = (date: string, amount = 100) => ({ id: `m-${date}`, cardId: "a", date, amount, status: "paid" as const })
+	const shown = (today: string, purchases = [buy("p1", "2026-10-01")], payments: ReturnType<typeof pay>[] = []) =>
+		cardShownDates(c, today, cardLedger(c, purchases, payments, [], today))
+	const OCT = { closeDate: "2026-10-10", dueDate: "2026-10-30" }
+	const NOV = { closeDate: "2026-11-10", dueDate: "2026-11-30" }
+
+	test("a closed statement that still owes money stays, even past its due date", () => {
+		expect(shown("2026-10-11")).toEqual(OCT)
+		expect(shown("2026-10-30")).toEqual(OCT)
+		expect(shown("2026-11-05")).toEqual(OCT)
 	})
-	test("a paid statement's kept dates win, for the closed statement and the open one alike", () => {
-		const kept = [
-			{ cardId: "a", period: "2026-10", closeDate: "2026-10-12", dueDate: "2026-11-02" },
-			{ cardId: "a", period: "2026-11", closeDate: "2026-11-13", dueDate: "2026-12-03" },
-		]
-		const purchases = [
-			{ id: "p1", cardId: "a", date: "2026-10-01", amount: 100, note: "" },
-			{ id: "p2", cardId: "a", date: "2026-10-20", amount: 100, note: "" },
-		]
+	test("once it is paid off, the open period's dates", () => {
+		expect(shown("2026-10-21", undefined, [pay("2026-10-20")])).toEqual(NOV)
+		// Paid in part still owes money.
+		expect(shown("2026-10-21", undefined, [pay("2026-10-20", 40)])).toEqual(OCT)
+		// Nothing bought, nothing to pay: the open period's, ledger or none.
+		expect(shown("2026-10-21", [])).toEqual(NOV)
+		expect(cardShownDates(c, "2026-10-21")).toEqual(NOV)
+	})
+	test("before it closes, it is the open period", () => {
+		expect(shown("2026-10-05")).toEqual(OCT)
+		expect(shown("2026-10-10")).toEqual(OCT)
+	})
+	test("with several unpaid, the oldest", () => {
+		expect(shown("2026-10-15", [buy("p0", "2026-09-01"), buy("p1", "2026-10-01")])).toEqual({
+			closeDate: "2026-09-10",
+			dueDate: "2026-09-30",
+		})
+	})
+	test("a paid statement gives way to the open period, whose kept dates win", () => {
+		const kept = [{ cardId: "a", period: "2026-11", closeDate: "2026-11-13", dueDate: "2026-12-03" }]
+		const purchases = [buy("p1", "2026-10-01"), buy("p2", "2026-10-20")]
 		// Kept dates hold only while a statement is fully paid (DD-167): this pays both.
-		const paid = [{ id: "m", cardId: "a", date: "2026-10-25", amount: 200, status: "paid" as const }]
-		const at = (today: string) => cardShownDates(c, today, cardLedger(c, purchases, paid, kept, today))
-		expect(at("2026-11-01")).toEqual({ closeDate: "2026-10-12", dueDate: "2026-11-02" })
-		expect(at("2026-11-03")).toEqual({ closeDate: "2026-11-13", dueDate: "2026-12-03" })
+		const paid = [pay("2026-10-25", 200)]
+		expect(cardShownDates(c, "2026-11-01", cardLedger(c, purchases, paid, kept, "2026-11-01"))).toEqual({
+			closeDate: "2026-11-13",
+			dueDate: "2026-12-03",
+		})
 	})
 	test("soonest due follows the shown due date; soonest to close keeps the next close", () => {
-		// On 25 Oct: a's October statement was due 21 Oct, so a shows the next (closes 1 Nov, due 21 Nov);
-		// b's closed 20 Oct and is due 28 Oct, and its next closes 20 Nov.
-		const cs = [
-			card("a", { cycle: { kind: "offset", closeDay: 1, dueOffsetDays: 20 } }),
-			card("b", { cycle: { kind: "fixed", closeDay: 20, dueDay: 28 } }),
-		]
+		// On 25 Oct: a's bill closed 22 Oct, unpaid, due 1 Nov, and its next closes 22 Nov;
+		// b owes nothing, so it shows its open period: closes 20 Nov, due 5 Dec.
+		const a = card("a", { cycle: { kind: "offset", closeDay: 22, dueOffsetDays: 10 } })
+		const b = card("b", { cycle: { kind: "fixed", closeDay: 20, dueDay: 5 } })
+		const today = "2026-10-25"
+		const ledgers = new Map([
+			["a", cardLedger(a, [buy("p1", "2026-10-01")], [], [], today)],
+			["b", cardLedger(b, [], [], [], today)],
+		])
 		const ids = (sort: "close" | "due") =>
-			cardsResults(cs, [g], rooms, view({ by: "none", sort }), order, "2026-10-25").flat?.map((x) => x.id)
-		expect(ids("due")).toEqual(["b", "a"])
-		expect(ids("close")).toEqual(["a", "b"])
+			cardsResults([a, b], [g], rooms, view({ by: "none", sort }), order, today, ledgers).flat?.map((x) => x.id)
+		expect(ids("due")).toEqual(["a", "b"])
+		expect(ids("close")).toEqual(["b", "a"])
 	})
 })
 
