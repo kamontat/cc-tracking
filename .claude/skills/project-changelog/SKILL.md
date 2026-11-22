@@ -1,27 +1,47 @@
 ---
 name: project-changelog
-description: Create or update CHANGELOG.md entries for this project in its fixed format (`## YYYY-MM-DD: <summary>` with BREAKING CHANGES, Features, Improvements, Bug fixes and Decisions sections). Use this whenever the user asks to add, write, update, fix up or reformat a changelog entry, record what shipped, summarise recent commits or a merged PR into the changelog, or says things like "log this change", "add release notes", or "update the changelog" -- even if they don't name the file.
+description: Create or update CHANGELOG.md and its Thai twin CHANGELOG_TH.md for this project in their fixed format (`## YYYY-MM-DD: <summary>` with BREAKING CHANGES, Features, Improvements, Bug fixes, Decisions and Technical sections), written for the app's users. Use this whenever the user asks to add, write, update, fix up or reformat a changelog entry, record what shipped, summarise recent commits or a merged PR into the changelog, or says things like "log this change", "add release notes", or "update the changelog" -- even if they don't name the file.
 ---
 
 # Changelog
 
-`CHANGELOG.md` at the repo root is the project's history of what changed and why. The reasons
-don't show up in the code, so the changelog is where they live. Keep that purpose in mind: an
-entry that only lists files touched is worth much less than one that says what a reader of the
-app, the data or the code will now see differently.
+`CHANGELOG.md` at the repo root is the history of what changed in the app and why, written for
+the people who use it. About's _Changelog_ link (_What's new_) opens it, so its reader is
+someone who tracks cards in the app, not a developer. Each entry says what they will now see or
+do differently, in their words; the developer detail goes in the entry's last section,
+_Technical_, where a developer can still find it.
+
+## Who reads it, and how to write for them
+
+- Name things as the app names them: the page, tab, button or field label the reader sees, in
+  _italics_ (_Owed_, _Soonest due_, _Filter_ > _Shows_). Take labels from
+  `src/lib/i18n/en.ts` and `th.ts`.
+- Say what the reader notices and why it helps: "Owed now shows bills and planned payments
+  only; pick _Open statements_ in _Filter_ to see estimates too." Not the mechanism.
+- Plain words. Outside _Technical_ there are no code names (`cardShownDates`), no file paths,
+  no PRD IDs (DD-216, RD-29), no query keys (`f.shows=...`), no component, test, build, CI or
+  framework talk (Astro, Svelte, Lit, island, refactor, localStorage). Say "the address" or
+  "a saved link" instead of a query key, "saved in this browser" instead of localStorage.
+- Backticks outside _Technical_ only for text the reader sees or types exactly as written: an
+  amount `฿90,000.00`, a card line `46) UOB Preferred Platinum · Dad`, a page address `/owed`.
+- `tests/changelog.test.ts` rejects a PRD ID or a camelCase code name outside _Technical_.
+- A change with nothing a user can see (a rewrite, a test, CI) goes in _Technical_ only. An
+  entry that is all technical still gets a one-line user section when there is any visible
+  effect ("Pages open faster"); otherwise it has _Technical_ alone.
 
 ## The Thai twin
 
 `CHANGELOG_TH.md` is the same history in Thai: the same entries, dates and order, and the same
-bullets in the same sections. About's _Changelog_ link opens it for a Thai reader (PRD DD-218).
-Every entry you add or change in `CHANGELOG.md` is added or changed in `CHANGELOG_TH.md` in the
-same commit.
+bullets in the same sections. About's link opens it for a Thai reader (PRD DD-218). Every entry
+you add or change in `CHANGELOG.md` is added or changed in `CHANGELOG_TH.md` in the same commit.
 
 - Headings keep `## YYYY-MM-DD: ` and translate the summary. Sections map exactly:
-  BREAKING CHANGES `### การเปลี่ยนแปลงที่ไม่เข้ากับของเดิม`, Features `### ฟีเจอร์ใหม่`,
-  Improvements `### การปรับปรุง`, Bug fixes `### แก้ไขข้อผิดพลาด`, Decisions `### การตัดสินใจ`.
-- A UI label in _italics_ uses the Thai label from `src/lib/i18n/th.ts`; other terms follow
-  `PRD_TH.md`. Backticks, IDs, dates and amounts stay as written.
+  BREAKING CHANGES `### การเปลี่ยนแปลงที่ต้องรู้`, Features `### ฟีเจอร์ใหม่`,
+  Improvements `### การปรับปรุง`, Bug fixes `### แก้ไขข้อผิดพลาด`, Decisions `### การตัดสินใจ`,
+  Technical `### รายละเอียดทางเทคนิค`.
+- Plain, everyday Thai for the user sections, as the app's own Thai copy reads. A UI label in
+  _italics_ uses the Thai label from `src/lib/i18n/th.ts`; other terms follow `PRD_TH.md`.
+  Backticks, IDs, dates and amounts stay as written.
 - One line per bullet (Thai is not hard-wrapped), with a space between Thai and English or code.
 
 ## Entry format
@@ -50,12 +70,17 @@ Entries are newest first, directly under the file's intro paragraph.
 ### Decisions
 
 - ...
+
+### Technical
+
+- ...
 ```
 
-- **Heading**: `## ` + ISO date + `: ` + a short summary in sentence case, no trailing period.
-  The summary names the theme of the entry ("Credit limits and shared limit groups"), not a
-  list of every change. Use today's date for new work unless the user gives one or the
-  changes clearly landed on another day (check `git log --date=short`).
+- **Heading**: `## ` + ISO date + `: ` + a short summary in sentence case, no trailing period,
+  in the reader's words ("Owed shows each card's holder", not "OwedLines titles"). The summary
+  names the theme of the entry, not a list of every change. Use today's date for new work
+  unless the user gives one or the changes clearly landed on another day (check
+  `git log --date=short`).
 - **Sections** always appear in the order above, with exactly these headings. Leave out any
   section that has nothing in it -- don't write `- None`.
 - **Nothing else** goes at the `###` level. If a big entry has phases or parts, say so inside
@@ -67,43 +92,29 @@ Decide by asking how the change relates to the behaviour *before* this entry:
 
 | Section | Ask | Examples |
 |---|---|---|
-| BREAKING CHANGES | Does something that used to work now work differently, so a user, stored data, a backup file, or calling code has to adapt? | backup version bump that rejects old files, a field moved between types, a removed route or message key, renamed attribute |
-| Features | Is this a new thing that didn't exist before? | a new panel, page, setting, component, API endpoint, domain function |
-| Improvements | Did an existing thing get better without breaking anyone? | clearer layout, faster load, folded panels, better wording, refactors worth noting |
-| Bug fixes | Did something not work as it was meant to, and now it does? | wrong total, button shown when it shouldn't be, crash on empty input |
-| Decisions | Why was it done this way, and what was rejected? | alternatives considered, trade-offs, why no migration |
+| BREAKING CHANGES | Does something the reader relied on now work differently, so they have to act: an old backup, a saved link, a habit? | old backups no longer restore, a page moved so bookmarks break, a default filter changed |
+| Features | Is this a new thing the reader can use? | a new page, panel, setting, filter, sort |
+| Improvements | Did something the reader uses get better without breaking anything? | clearer layout, faster pages, better wording |
+| Bug fixes | Did something the reader could see not work as meant, and now it does? | wrong total, button shown when it shouldn't be, a crash on empty input |
+| Decisions | Why does it work this way, and what was turned down, as far as the reader cares? | why a default, why one option over another |
+| Technical | What would a developer need: code names, addresses and query keys, PRD IDs, data and backup format details, refactors, tests, build and deploy? | `cardShownDates` over `nextBill` (DD-217); `f.shows` written only when not the default; Lit removed |
 
-BREAKING CHANGES works differently from the other three. Features, Improvements and Bug fixes
-say *what kind* of change it is, and every change belongs in exactly one of them. BREAKING
-CHANGES is an extra flag on top: a change that breaks something appears there **and** in its
-own section. Readers use the two views for different things -- BREAKING CHANGES is the
-checklist of what they must act on, the rest is the full story of what's new -- so each view
-has to be complete on its own.
+BREAKING CHANGES is an extra flag on top: a change that breaks something appears there **and**
+in its own section. Write the two bullets from their own angle: BREAKING CHANGES says what
+stops working and what to do; the other says what the change gives. A break that only touches
+code (a removed message key, a renamed prop) is not the reader's to act on: it goes in
+_Technical_ alone.
 
-- Write the two bullets from their own angle, not as copies. The BREAKING CHANGES bullet says
-  what stops working and what to do about it; the other says what the change is and gives.
-  Example: BREAKING CHANGES "Version 1 backups are rejected; export again after upgrading."
-  plus Features "Backup format version 2 adds a `limitGroups` list, imported before cards."
-- A "fix" that changes behaviour someone could reasonably have relied on goes in Bug fixes
-  and BREAKING CHANGES.
-- A change that only removes something (a message key, a prop) has no natural home among the
-  three; list it in BREAKING CHANGES alone.
-- Internal refactors with no visible effect usually don't need an entry. Include one only when
-  it changes how future code must be written (a new convention, a moved module), and file it
-  under Improvements -- or BREAKING CHANGES if existing code or imports stop working.
-- Commit prefixes are hints, not rules: `feat:` is often an improvement to something existing,
-  and `ci:`/`chore:`/`docs:` changes rarely belong unless they affect deployment or users.
+Technical keeps every fact the old developer-facing entries had: code identifiers, addresses
+and query keys, PRD IDs, storage keys and backup format versions, refactors and why. Write it
+in the same plain sentences, one idea per bullet. Decisions whose reason is only technical
+(a library, a file layout) go in Technical too.
 
 ## Writing the bullets
 
-Match the voice of the existing file:
-
 - Plain, complete sentences. Say what changed and, briefly, the effect or reason.
-- Wrap code identifiers, keys, paths, routes and values in backticks: `LimitGroup`,
-  `cc:limitgroup:<id>`, `/cards`, `data-variant="quiet"`.
-- One idea per bullet; wrap lines at about 95 characters with a two-space continuation indent.
-- Say what a reader will notice, not the commit mechanics. "The due panel starts folded" beats
-  "Updated due-panel.ts to set open=false".
+- One idea per bullet; wrap English lines at about 95 characters with a two-space continuation
+  indent.
 - Put the *why* in Decisions when it's a real choice between options (and name the rejected
   option). A short "because ..." inside the bullet is fine for small things.
 
@@ -118,25 +129,18 @@ Match the voice of the existing file:
    reasons -- read them for the Decisions section.
 3. Group related commits into one bullet. Several commits that together fold three panels are
    one improvement, not three.
-4. Sort each change into Features, Improvements or Bug fixes, then ask separately whether it
-   also breaks anything and, if so, add it to BREAKING CHANGES too.
+4. Sort each change by the table above, then ask separately whether it also breaks anything
+   for the reader and, if so, add it to BREAKING CHANGES too. Put its code-level detail in
+   Technical.
 5. If an entry for the same date already exists, extend it instead of adding a second heading
    with that date: add bullets to its sections and extend its title with `, and <this
    change>`.
-6. Insert the entry above the current newest entry and show the user the result.
+6. Insert the entry above the current newest entry in both files and show the user the result.
 
 ### Updating an existing entry
 
-Edit in place. Keep the date unless the user asks to change it. If you move an item between
-sections, keep the section order and drop any section that becomes empty.
-
-### Reformatting an old-style entry
-
-Older entries may use `### Added`, `### Changed`, `### Phase ...` or other headings. When
-converting one, re-sort every bullet using the table above rather than mapping headings
-one-to-one: "Changed" usually splits between Improvements and Bug fixes, "Added" is usually
-Features, and any of them may also need a BREAKING CHANGES bullet. Keep every fact and every reason -- reformatting must not lose history.
-Keep `### Decisions` as it is.
+Edit in place, in both files. Keep the date unless the user asks to change it. If you move an
+item between sections, keep the section order and drop any section that becomes empty.
 
 ## Don'ts
 
@@ -144,3 +148,4 @@ Keep `### Decisions` as it is.
 - Don't invent reasons. If the why isn't in the conversation, commits, PR or code, leave the
   Decisions section out or ask the user.
 - Don't pad sections with trivia to make them look full.
+- Don't drop a technical fact to make an entry read plainly: move it to Technical.
