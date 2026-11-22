@@ -154,14 +154,15 @@ test("holders show by their owner record's name, in sections and on tiles", () =
 	expect(text(root.querySelector('a[data-card="S"] .aside'))).toBe("Nat · Sub")
 })
 
-test("a tile: id) name and the last 4, the room and its word with the cardholder, then the open period's dates", () => {
+test("a tile: id) name and the last 4, the room and its word with the cardholder, then its statement's dates", () => {
 	const list = [card("A"), card("S", { supplementary: true, owner: "NT" }), card("N", { last4: "" })]
 	const { root } = show({}, { today: "2026-10-30" }, list)
 	const tile = (id: string) => root.querySelector(`a[data-card="${id}"]`)
 	expect(text(tile("A")?.querySelector(".name"))).toBe("A) Card A")
 	expect(text(tile("A")?.querySelector(".corner"))).toBe("•••• 1111")
 	expect(text(tile("A")?.querySelector(".aside"))).toBe("KC")
-	expect(text(tile("A")?.querySelector(".facts"))).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	// 30 Oct: October's statement closed on the 18th but is due 2 Nov, so it is still the one shown.
+	expect(text(tile("A")?.querySelector(".facts"))).toBe("closes 18 Oct 2026 · due 02 Nov 2026")
 	expect(tile("A")?.querySelector(".tag")).toBeNull()
 	expect(text(tile("S")?.querySelector(".aside"))).toBe("NT · Sub")
 	expect(text(tile("N")?.querySelector(".name"))).toBe("N) Card N")
@@ -169,6 +170,14 @@ test("a tile: id) name and the last 4, the room and its word with the cardholder
 	setLocale("th")
 	const thai = show({}, { today: "2026-10-30" }, list)
 	expect(text(thai.root.querySelector('a[data-card="S"] .aside'))).toBe("NT · เสริม")
+})
+
+test("line 3 shows a closed statement until its due date passes, then the open period's", () => {
+	const at = (today: string) => text(show({}, { today }, [card("A")]).root.querySelector('a[data-card="A"] .facts'))
+	expect(at("2026-11-18")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	expect(at("2026-11-20")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	expect(at("2026-12-03")).toBe("closes 18 Nov 2026 · due 03 Dec 2026")
+	expect(at("2026-12-04")).toBe("closes 18 Dec 2026 · due 02 Jan 2027")
 })
 
 test("line 3 takes the open period's dates from the ledger, a paid one's frozen dates included", () => {
@@ -182,11 +191,11 @@ test("line 3 takes the open period's dates from the ledger, a paid one's frozen 
 				[{ id: "p", cardId: "A", date: "2026-10-28", amount: 100, note: "" }],
 				[{ id: "c", cardId: "A", date: "2026-10-29", amount: 100, status: "paid" }],
 				frozen,
-				"2026-10-30",
+				"2026-11-03",
 			),
 		],
 	])
-	const { root } = show({}, { today: "2026-10-30", ledgers }, [a])
+	const { root } = show({}, { today: "2026-11-03", ledgers }, [a])
 	expect(text(root.querySelector('a[data-card="A"] .facts'))).toBe("closes 20 Nov 2026 · due 07 Dec 2026")
 })
 

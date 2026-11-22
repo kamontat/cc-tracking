@@ -185,7 +185,7 @@ test("due sort can be applied from the filter and restored from the address", as
 		skipSeed: true,
 		before: async (repo) => {
 			await repo.saveLimitGroup(G1)
-			await repo.saveCard(card("a", { cycle: { kind: "offset", closeDay: 5, dueOffsetDays: 30 } }))
+			await repo.saveCard(card("a", { cycle: { kind: "offset", closeDay: 5, dueOffsetDays: 25 } }))
 			await repo.saveCard(card("b", { cycle: { kind: "offset", closeDay: 10, dueOffsetDays: 1 } }))
 		},
 	})
